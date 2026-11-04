@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -81,7 +80,9 @@ Label "The terminal waits until you trust this repository"
 Label "Shell prompts often run Git, and Git would run the programs this repository's own settings and hooks name."
 Button "Trust and run…"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

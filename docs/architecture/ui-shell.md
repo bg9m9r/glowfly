@@ -51,6 +51,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 
 - `tabs.rs` lays the repository tabs out: the system frame's tab bar, or the strip a drawn title bar holds.
 - `tab_paint.rs` paints them, with the repository's swatch and the state slot before the × (D15).
+- `tab_state.rs` paints the mark in that slot (the one place a tab shows status colours).
 - `tab_drag.rs` drags them.
 - Each tab is a Tab node in one TabList, named after it (selected while active); its × is "Close tab {name}" and closes on a middle-click or opens the tab menu on a right-click; `tabs_access_tests.rs` checks these and that Tab walks the bar's buttons.
 - `tab_list.rs`: the tab list right after the tab bar's + button: a chevron button whose popup lists the open tabs (click one to select it) and the recently closed ones, newest first (click one to reopen it).

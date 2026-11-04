@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
   Tab "docs"
   Tab "a-repository-whose-folder-name-runs-on-past-what-a-tab-holds"
@@ -86,8 +85,10 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
-  "a-reposit…t-a-tab-holds"
+  "demo"
+  "a-reposi…a-tab-holds"
   "Repository"
+  "demo"
   "Branch"
   "topic"
   "Undo"

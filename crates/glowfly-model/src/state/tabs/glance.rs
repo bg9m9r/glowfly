@@ -84,6 +84,18 @@ pub struct Failure {
     pub entry: EntryId,
 }
 
+impl Failure {
+    /// "Fetch failed": the job's label, with any fetch (all remotes, or one) said as Fetch.
+    pub fn headline(&self, t: Lang) -> String {
+        let job = if self.label.starts_with("Fetch") && !self.label.starts_with("Fetch and") {
+            t.tr("job.label.fetch").to_owned()
+        } else {
+            crate::state::job_spec::labels::shown(t, &self.label).into_owned()
+        };
+        t.trf("glance.failed", &[("job", &job)])
+    }
+}
+
 /// What one tab shows besides its name.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct TabGlance {
@@ -129,7 +141,7 @@ impl TabGlance {
             out.push(t.trf("glance.tab.running", &[("job", &label(job))]));
         }
         if let Some(f) = &self.failed {
-            out.push(t.trf("glance.failed", &[("job", &label(&f.label))]));
+            out.push(f.headline(t));
         }
         let Some(c) = &self.counts else { return out };
         if let Some(op) = c.op {

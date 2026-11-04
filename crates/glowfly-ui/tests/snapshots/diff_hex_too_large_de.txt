@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 2 geänderte Dateien" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
@@ -82,7 +81,9 @@ Button "Diff schließen"
 Label "Binary file"
 Label "64 bytes before, 70.0 KB after\nZu groß für die Byte-Ansicht (über 64 KB)."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Rückgängig"

@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Merge in progress, 1 conflicted file left, 2 changed files" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -81,7 +80,9 @@ CheckBox "Take line 5 from ours (main), conflict 1" [off]
 CheckBox "Take line 5 from theirs (theme-tweaks), conflict 1" [off]
 Button "Fold 38 unchanged lines"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Undo"
   "Redo"

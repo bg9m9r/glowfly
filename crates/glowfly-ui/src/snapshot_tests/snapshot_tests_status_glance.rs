@@ -5,6 +5,7 @@
 
 use crate::logs::LogsMsg;
 use crate::msg::{JobMsg, Msg};
+use crate::state::job_stop::{JobStop, Step};
 use crate::state::{AppState, LogEntry, RunningJob};
 use crate::ui::snapshot_check::CheckSnapshot;
 use crate::ui::snapshot_tests::{NOW, remove_fixture, with_repo};
@@ -43,6 +44,8 @@ fn failed(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     snap.remote_info = ["origin", "upstream"].map(|n| RemoteInfo { name: n.into(), ..RemoteInfo::default() }).to_vec();
     snap.fetched_at = Some(NOW - 4 * 60 - 10);
     snap.fetched_remotes = vec!["origin".into()];
+    // Fetch is offered only with a remote (`toolbar_tips::fetch_blocked`).
+    snap.remotes = vec![("origin".into(), Vec::new()), ("upstream".into(), Vec::new())];
     let run = RunInfo { title: "Fetch all".into(), summary: String::new(), took_ms: None, routine: false };
     st.log.push(LogEntry { run: Some(run), ..LogEntry::new(false, "Fetch all FAILED") });
     (st, dir)
@@ -59,7 +62,7 @@ fn status_bar_failure_dark() {
     let mut h = bar(st, true);
     h.run();
     h.check_snapshot("status_bar_failure_dark");
-    assert!(h.query_by_label("Fetch all failed").is_some());
+    assert!(h.query_by_label("Fetch failed").is_some());
     assert!(h.query_by_label("Fetched 4 min ago").is_some());
     h.get_by_label("Details").click();
     h.run();
@@ -114,11 +117,16 @@ fn while_a_job_runs_the_job_shows_and_the_fetch_item_waits() {
         keeps_undo: true,
         fetches: true,
     });
+    // On its fetch step, which Cancel can stop.
+    st.job_stop = Some(JobStop { requested: false, stopped: false, step: Step::Fetch, progress: None });
     st.settings.reduce_motion = true;
     let mut h = bar(st, true);
     h.run();
     h.check_snapshot("status_bar_job");
-    assert!(h.query_by_label("Fetch all failed").is_none(), "the job takes the failure's place");
+    h.get_by_label("Cancel").click();
+    h.run();
+    assert!(sent(&h, |m| matches!(m, Msg::Job(JobMsg::Cancel))), "Cancel after the job's text");
+    assert!(h.query_by_label("Fetch failed").is_none(), "the job takes the failure's place");
     assert!(h.query_by_label("Fetch all…").is_some());
     let item = h.get_by_label("Fetching…");
     assert!(item.is_disabled(), "disabled while the job runs");

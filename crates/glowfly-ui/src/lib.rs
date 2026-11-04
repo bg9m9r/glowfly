@@ -176,6 +176,7 @@ mod tab_dialog;
 mod tab_drag;
 mod tab_list;
 mod tab_paint;
+mod tab_state;
 mod tabs;
 mod tag_dialog;
 mod tags;

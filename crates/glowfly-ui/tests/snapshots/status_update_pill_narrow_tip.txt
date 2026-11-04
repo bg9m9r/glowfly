@@ -1,7 +1,6 @@
 window 240x400
-Label "Glowfly 0.1.0"
 Button "Update verfügbar (0.3.0)"
-Label "Update verfügbar (0.3.0)\nNeuerungen zeigen"
+Label "Neuerungen zeigen"
 TabList
   Tab "Neuer Tab" [selected]
 Button "Tab Neuer Tab schließen"

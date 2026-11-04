@@ -1,7 +1,6 @@
 window 1100x600
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 2 changed files" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -78,7 +77,9 @@ Button "Stage hunk"
 Button "Discard hunk"
 Document "Diff of greet.rs"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Pull"

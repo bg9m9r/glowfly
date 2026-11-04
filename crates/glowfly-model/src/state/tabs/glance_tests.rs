@@ -56,6 +56,10 @@ fn the_description_lists_every_state() {
         assert!(text.contains(part), "{part} in {text}");
     }
     assert_eq!(TabGlance::default().describe(t, "docs"), "docs", "nothing to say");
+    let fetch = |label: &str| Failure { label: label.into(), entry: EntryId::next() }.headline(t);
+    assert_eq!(fetch("Fetch all"), "Fetch failed", "any fetch is said as Fetch");
+    assert_eq!(fetch("Fetch origin"), "Fetch failed");
+    assert_eq!(fetch("Fetch and push"), "Fetch and push failed");
 }
 
 #[test]

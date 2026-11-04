@@ -11,9 +11,8 @@
 //! rounded chip naming the group when there is room for it. A 12 px state slot before the ×
 //! (design pass D15) shows the tab's one most pressing state (`state::tabs::glance::Mark`): a
 //! running job's dots in the accent, a failure's warning triangle, an operation in progress as
-//! an amber dot, uncommitted changes as a `weak` dot, or how far it is behind as "↓3".
+//! an amber ring, uncommitted changes as a `weak` dot, or how far it is behind as "↓3" (painted by `tab_state.rs`).
 
-use super::list_row::{ARROW_W, paint_arrow};
 use super::repo_swatch;
 use super::theme::color;
 use super::theme::sizes::ControlSize;
@@ -22,7 +21,7 @@ use super::theme::type_scale;
 use super::widgets::chip::{self, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
 use super::widgets::tab_glyph::{self, TabGlyph};
-use super::widgets::{Cut, Icon, dots, icon, paint_cut_text, paint_icon_sized, truncate};
+use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized, truncate};
 use crate::state::tabs::glance::Mark;
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
 
@@ -41,13 +40,9 @@ const CLOSE_GAP: f32 = 8.0;
 const PAD_R: f32 = 10.0;
 /// The state slot, 4 px before the close box; the name stops 4 px before the slot, so it gives
 /// up `SLOT` px to it.
-const SLOT: f32 = 12.0;
+pub(super) const SLOT: f32 = 12.0;
 const SLOT_GAP: f32 = 4.0;
 pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + SLOT + tab_glyph::BOX + PAD_R;
-/// A behind count's text size.
-const BEHIND_TEXT: f32 = type_scale::CAPTION;
-/// The dots of the in-progress and changes marks.
-const DOT_R: f32 = 3.0;
 /// The repository swatch's size, and the room it adds before the icon.
 const SWATCH: f32 = 8.0;
 pub(super) const SWATCH_ROOM: f32 = 14.0;
@@ -147,7 +142,7 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
     let slot = slot_rect(rect);
     let cut = truncate::paint_middle(p, pos2(left, cy), name, font, text_col, slot.left() - SLOT_GAP - left);
     if let Some(mark) = look.mark {
-        paint_mark(p, slot, mark, look.pulse);
+        super::tab_state::paint(p, slot, mark, look.pulse);
     }
     if look.close_alpha > 0.0 {
         tab_glyph::paint_quiet(p, close_rect.center(), TabGlyph::Close, text_col.gamma_multiply(look.close_alpha), look.close);
@@ -159,29 +154,6 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
 fn slot_rect(tab: Rect) -> Rect {
     let close = close_rect(tab);
     Rect::from_center_size(pos2(close.left() - SLOT_GAP - SLOT / 2.0, close.center().y), vec2(SLOT, SLOT))
-}
-
-/// Paints `mark` in the state slot `slot`.
-fn paint_mark(p: &egui::Painter, slot: Rect, mark: Mark, pulse: Option<f64>) {
-    let c = slot.center();
-    match mark {
-        Mark::Running => dots::paint(p, c, color::accent(), pulse),
-        Mark::Failed => paint_icon_sized(p, c, Icon::Warning, color::warn(), SLOT),
-        Mark::InProgress => {
-            p.circle_filled(c, DOT_R, color::warn());
-        }
-        Mark::Changed => {
-            p.circle_filled(c, DOT_R, color::weak());
-        }
-        Mark::Behind(n) => {
-            // The count right-aligned in the slot, its painted arrow before it (the bundled
-            // fonts have no arrows); a long count reaches left into the gap before the slot.
-            let galley = p.layout_no_wrap(n.to_string(), type_scale::font(BEHIND_TEXT), color::faint());
-            let x = slot.right() - galley.size().x;
-            p.galley(pos2(x, c.y - galley.size().y / 2.0), galley, color::faint());
-            paint_arrow(p, pos2(x - ARROW_W / 2.0 - 0.5, c.y), false, color::faint());
-        }
-    }
 }
 
 /// The active tab's band: a `BAND` px line of `band` along the top of `rect`, curving down its

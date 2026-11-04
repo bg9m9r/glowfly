@@ -1,9 +1,7 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Label "Resolve notes.txt in the merge tool…"
-ProgressIndicator
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Resolve notes.txt in the merge tool running, Merge in progress, 1 conflicted file left, 2 changed files" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -81,7 +79,9 @@ CheckBox "Take all of conflict 1 from theirs (theme-tweaks)" [off]
 CheckBox "Take line 1 from ours (main), conflict 1" [off]
 CheckBox "Take line 1 from theirs (theme-tweaks), conflict 1" [off]
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Undo"
   "Redo"

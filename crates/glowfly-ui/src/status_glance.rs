@@ -22,10 +22,9 @@ pub(super) fn failure_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>
     let Some(tab) = st.tabs.get(st.active_tab) else { return false };
     let Some(failure) = st.tab_glance(st.active_tab).failed else { return false };
     let t = st.settings.lang();
-    let job = crate::state::job_spec::labels::shown(t, &failure.label);
     let (rect, _) = ui.allocate_exact_size(vec2(MARK, MARK), Sense::hover());
     paint_icon_sized(ui.painter(), rect.center(), Icon::Warning, color::warn(), MARK);
-    let text = t.trf("glance.failed", &[("job", &job)]);
+    let text = failure.headline(t);
     ui.label(RichText::new(text).color(color::warn()).font(type_scale::strong(ui, type_scale::BODY)));
     ui.label(RichText::new("·").color(color::faint()));
     let details = buttons::quiet(t.tr("glance.details")).size(CONTROL).tip(t.tr("glance.details.tip"));
