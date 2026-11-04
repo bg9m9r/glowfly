@@ -322,6 +322,7 @@ fn show_in_progress() {
     st.view.scroll_to_row = None;
     let fx = update(&mut st, Msg::Repo(RepoMsg::ShowInProgress), Instant::now());
     assert_eq!(st.session.selection, Selection::Wip);
+    assert!(st.session.wip_drawn_selected(), "asked for: the row lights");
     assert!(st.settings.show_details_panel);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved like the other panel toggles");
     assert!(st.snap.as_ref().unwrap().graph.wip.is_some());

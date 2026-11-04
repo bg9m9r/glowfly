@@ -90,7 +90,6 @@ const DEAD_PUB: &[&str] = &[
     "crates/glowfly-ui/src/list_row.rs: FILE_ROW_BLEED",
     "crates/glowfly-ui/src/stack_rows.rs: STEP",
     "crates/glowfly-ui/src/theme/ansi.rs: body_indices",
-    "crates/glowfly-ui/src/theme/branch_colours.rs: initials_fill",
     "crates/glowfly-ui/src/theme/branch_palette.rs: LIGHT_STRONG_LINES",
     "crates/glowfly-ui/src/theme/branch_palette.rs: LIGHT_WINE_SLOT",
     "crates/glowfly-ui/src/theme/branch_palette.rs: ORANGE_SLOT",

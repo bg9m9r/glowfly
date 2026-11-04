@@ -120,12 +120,15 @@ fn labels(state: RepositoryState) -> Vec<&'static str> {
 #[test]
 fn a_stopped_cherry_pick_selects_the_wip_row_and_skips_on() {
     let (mut st, dir, f) = feature_repo("pick-stop-skip", &[("x1", "theirs\n"), ("x2", "theirs\nmore\n")], Some("ours\n"));
-    // Something else open: the stop moves to the WIP row anyway.
+    // Something else open (after the WIP row was chosen): the stop moves to the WIP row anyway,
+    // without lighting it.
+    up(&mut st, Msg::Repo(RepoMsg::SelectWip));
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f[0])));
     drive(&mut st, Msg::Selection(SelectionMsg::CherryPick(vec![f[0], f[1]])));
     let state = st.snap.as_ref().unwrap().state;
     assert!(matches!(state, RepositoryState::CherryPick | RepositoryState::CherryPickSequence), "{state:?}");
     assert_eq!(st.session.selection, Selection::Wip);
+    assert!(!st.session.wip_lit && !st.session.wip_drawn_selected(), "selected on its own: not lit");
     assert_eq!(labels(state), ["Continue", "Skip commit", "Abort cherry-pick"]);
     let (label, skip) = crate::state::op_actions::state_actions(state).unwrap()[1];
     let recorded = st.session.undo.undo.len();

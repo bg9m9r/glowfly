@@ -104,8 +104,13 @@ pub fn install(ctx: &egui::Context) {
 /// pass arrive only on the next one, so the first frame of a test harness (and any context that
 /// never installed them) would otherwise panic.
 pub fn semibold(ui: &egui::Ui, size: f32) -> FontId {
+    semibold_in(ui.ctx(), size)
+}
+
+/// `semibold` in `ctx`, for painters.
+pub fn semibold_in(ctx: &egui::Context, size: f32) -> FontId {
     let family = FontFamily::Name(SEMIBOLD.into());
-    if ui.fonts(|f| f.families().contains(&family)) { FontId::new(size, family) } else { FontId::proportional(size) }
+    if ctx.fonts(|f| f.families().contains(&family)) { FontId::new(size, family) } else { FontId::proportional(size) }
 }
 
 #[cfg(test)]

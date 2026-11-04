@@ -70,6 +70,7 @@ fn entering_and_leaving_the_comparison() {
     up(&mut st, Msg::Selection(SelectionMsg::ToggleWip));
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(3))));
     assert_eq!(st.session.selection, Selection::Wip, "Ctrl-click on the compared commit leaves the WIP row");
+    assert!(st.session.wip_drawn_selected(), "chosen: the row stays lit");
 
     // Several commits can't be compared with it.
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));

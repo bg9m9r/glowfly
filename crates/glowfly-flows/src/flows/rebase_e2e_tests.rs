@@ -61,11 +61,14 @@ fn reorder_reword_and_drop() {
 fn an_edit_step_pauses_and_continue_finishes() {
     let (mut st, dir, c) = with_panel("rebase-e2e-edit", RebaseBase::FromCommit(Oid::zero()));
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseSetAction { index: 0, action: RebaseAction::Edit }));
+    // Chosen before: the pause selects the WIP row on its own, unlit.
+    st.session.wip_lit = true;
     drive(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
 
     assert_eq!(repo_state(&st), RepositoryState::RebaseInteractive);
     assert!(st.session.rebase.view.is_none());
     assert_eq!(st.session.selection, Selection::Wip, "the banner is in view");
+    assert!(!st.session.wip_drawn_selected(), "selected on its own: not lit");
     let text = format!("Interactive rebase paused at {} (step 1 of 3) so you can edit it. Use Continue when you're done.", short(c[0]));
     assert_eq!(last_toast(&st), (true, text.as_str()));
     let actions = crate::state::op_actions::state_actions(repo_state(&st)).unwrap();

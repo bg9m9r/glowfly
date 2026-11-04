@@ -66,7 +66,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
                 r.on_hover_text(filter_hint);
             }
         });
-        ui.add_space(8.0);
+        // The first section header's own space above it (`SPACE_ABOVE`) sets it below the field.
         let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
         ref_visibility::banner(ui, st.settings.lang(), &filter, msgs);
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));

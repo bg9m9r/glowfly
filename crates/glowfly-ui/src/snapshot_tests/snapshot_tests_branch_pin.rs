@@ -6,7 +6,7 @@ use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{git, harness, harness_palette, reload, remove_fixture};
 use super::snapshot_tests_branch_colour::with_branches;
 use super::snapshot_tests_select::click;
-use super::theme::{self, branch_colours::initials_tones, branch_names, color};
+use super::theme::{self, branch_names, color, initials::initials_tones};
 use crate::msg::{GraphMsg, Msg};
 use crate::state::{AppState, Selection};
 use crate::ui::snapshot_check::CheckSnapshot;

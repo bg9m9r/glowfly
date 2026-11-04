@@ -3,18 +3,20 @@
 //! just left of the count. Their room is always kept, so a filter chip and the count never move;
 //! they are painted only while the header is hovered or focused or one of its menus is open, but
 //! are interacted every frame, so Tab and screen readers reach them. A click on either leaves the
-//! section open or closed. A section that folds away while empty (`Header::folds`) draws its
-//! header muted at count 0: a `weak` title and a `faint` 0.
+//! section open or closed. A header is quiet (12 px semibold `weak` title, 12 px `faint` count)
+//! with no divider: 12 px of space above it (`SPACE_ABOVE`) sets the sections apart. A section
+//! that folds away while empty (`Header::folds`) draws its header muted at count 0: a `faint`
+//! title and 0.
 
 use super::quiet_target::{self, State};
 use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized, row_fill};
 use crate::msg::Msg;
 use crate::state::section_actions::SectionAction;
 use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, type_scale};
+use crate::ui::theme::{color, fonts, type_scale};
 use crate::ui::widgets::menu;
 use crate::ui::widgets::row_menu::RowMenuExt;
-use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
 /// The + and ⋯: Regular quiet icon-only targets, a header's least hit area.
@@ -22,15 +24,28 @@ const HEADER_SIZE: ControlSize = ControlSize::Regular;
 const BUTTON: f32 = HEADER_SIZE.metrics().h;
 /// Between the + and the ⋯, and between the + and the count.
 const GAP: f32 = 4.0;
+/// The space above each header, outside its hit area and hover fill: what sets the sections
+/// apart (there are no dividers).
+pub const SPACE_ABOVE: f32 = 12.0;
 
-/// The fonts of a section header's title (the section-header style) and of its count (regular
-/// body text), for measuring what `section_header` draws.
+/// The fonts of a section header's title (12 px semibold) and of its count (12 px regular), for
+/// measuring what `section_header` draws.
 pub fn section_fonts(ui: &Ui) -> (FontId, FontId) {
-    (type_scale::section(ui), type_scale::font(type_scale::BODY))
+    (fonts::semibold(ui, type_scale::SMALL), type_scale::font(type_scale::SMALL))
+}
+
+/// The (title, count) colours of a header: `weak` and `faint`, or both `faint` while `muted`;
+/// while `pressed` every `faint` becomes `weak` (`faint` doesn't hold 4.5:1 on the pressed fill).
+fn header_inks(muted: bool, pressed: bool) -> (egui::Color32, egui::Color32) {
+    match (muted, pressed) {
+        (_, true) => (color::weak(), color::weak()),
+        (true, false) => (color::faint(), color::faint()),
+        (false, false) => (color::weak(), color::faint()),
+    }
 }
 
 /// Sidebar section header: chevron, title in the section-header style, and the count on the
-/// right in weak body text. Toggles `open`.
+/// right (`header_inks`). Toggles `open`.
 pub fn section_header(ui: &mut Ui, title: &str, count: Option<usize>, open: &mut bool) -> Response {
     let name = count.map_or_else(|| title.to_owned(), |n| format!("{title}, {n}"));
     header_row(ui, title, count, open, ((false, false), false), &name)
@@ -53,11 +68,11 @@ fn header_name(t: Lang, key: &str, title: &str, count: Option<usize>) -> String 
     }
 }
 
-/// `section_header`; `buttons` says which of the + and ⋯ are drawn on top of the row (the hover
-/// fill then stays while the pointer is anywhere on the row, but not while it is on one of
-/// them, which lights itself); `muted` draws the title `weak` and the count `faint` (an empty
-/// section that folds away). The row is lit through `row_fill`, the top border over it. Screen
-/// readers read it as the button `name`, expanded or not.
+/// `section_header`, below `SPACE_ABOVE`; `buttons` says which of the + and ⋯ are drawn on top
+/// of the row (the hover fill then stays while the pointer is anywhere on the row, but not while
+/// it is on one of them, which lights itself); `muted` draws it muted (`header_inks`: an empty
+/// section that folds away). The row is lit through `row_fill`. Screen readers read it as the
+/// button `name`, expanded or not.
 fn header_row(
     ui: &mut Ui,
     title: &str,
@@ -67,6 +82,7 @@ fn header_row(
     name: &str,
 ) -> Response {
     let (title_font, count_font) = section_fonts(ui);
+    ui.add_space(SPACE_ABOVE);
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), SECTION_H), Sense::click());
     let (add_rect, more_rect) = button_rects(ui, rect, count);
     let on_button = |r: Rect, shown: bool| shown && ui.rect_contains_pointer(r);
@@ -75,10 +91,10 @@ fn header_row(
         && !on_button(add_rect, buttons.0)
         && !on_button(more_rect, buttons.1);
     let p = ui.painter();
-    row_fill::paint_state(p, rect, row_fill::RowState::of(&resp, false, hovered));
-    p.line_segment([rect.left_top(), rect.right_top()], Stroke::new(1.0_f32, color::border()));
+    let state = row_fill::RowState::of(&resp, false, hovered);
+    row_fill::paint_state(p, rect, state);
     chevron(p, pos2(rect.left() + PAD_X, rect.center().y), *open, color::weak());
-    let (title_col, count_col) = if muted { (color::weak(), color::faint()) } else { (color::text(), color::weak()) };
+    let (title_col, count_col) = header_inks(muted, state.down);
     p.text(pos2(rect.left() + TITLE_X, rect.center().y), Align2::LEFT_CENTER, title, title_font, title_col);
     if let Some(n) = count {
         p.text(pos2(rect.right() - PAD_X, rect.center().y), Align2::RIGHT_CENTER, n.to_string(), count_font, count_col);
@@ -251,4 +267,65 @@ fn paint_button(ui: &Ui, r: &Response, icon: Icon, enabled: bool, open: bool) {
 /// `a` as a menu item ("New branch…"), disabled with its reason while blocked.
 pub fn action_item(ui: &mut Ui, msgs: &mut Vec<Msg>, a: &SectionAction) {
     crate::ui::common::menu_item_if(msgs, ui, a.label(), a.blocked.as_deref(), a.msg());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ui::theme::builtin;
+    use crate::ui::theme::contrast::{mix, ratio};
+    use eframe::egui::Color32;
+    use glowfly_core::settings::BuiltinTheme;
+
+    /// `layer` (translucent) over opaque `base`.
+    fn over(base: Color32, layer: Color32) -> Color32 {
+        let [r, g, b, a] = layer.to_srgba_unmultiplied();
+        mix(base, Color32::from_rgb(r, g, b), f32::from(a) / 255.0)
+    }
+
+    /// The title and count a header draws in each state (normal and muted; at rest, hovered or
+    /// focused, and pressed) read at 4.5:1 on that state's fill, in every theme; and the WIP
+    /// row's quiet `weak` label on the graph's background and hover.
+    #[test]
+    fn quiet_header_inks_read_on_every_sidebar_fill() {
+        let mut failures = Vec::new();
+        for t in BuiltinTheme::ALL {
+            let p = builtin(t);
+            color::set_palette(p);
+            // The sidebar's fill with a solid backdrop (`backdrop::fill`) is `panel`.
+            let states = [("panel", p.panel, false), ("hover", p.hover, false), ("pressed", over(p.hover, p.hover_layer()), true)];
+            for muted in [false, true] {
+                for (on, fill, pressed) in states {
+                    let (title, count) = header_inks(muted, pressed);
+                    for (name, ink) in [("title", title), ("count", count)] {
+                        if ratio(ink, fill) < 4.5 {
+                            failures.push(format!("{t:?}: {name} (muted {muted}) on {on} is {:.2}:1", ratio(ink, fill)));
+                        }
+                    }
+                }
+            }
+            for (on, fill) in [("bg", p.bg), ("hover", p.hover)] {
+                if ratio(p.weak, fill) < 4.5 {
+                    failures.push(format!("{t:?}: the WIP label on {on} is {:.2}:1", ratio(p.weak, fill)));
+                }
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
+
+    /// The count's digits are tabular at 12 px: every digit as wide, so a count changing from 18
+    /// to 19 doesn't shift.
+    #[test]
+    fn count_digits_are_tabular() {
+        let ctx = egui::Context::default();
+        ctx.set_fonts(crate::ui::theme::fonts::definitions().clone());
+        for _ in 0..2 {
+            let _ = ctx.run(egui::RawInput::default(), |_| {});
+        }
+        let font = type_scale::font(type_scale::SMALL);
+        let widths: Vec<f32> =
+            (0..10).map(|d| ctx.fonts(|f| f.layout_no_wrap(d.to_string(), font.clone(), Color32::WHITE).size().x)).collect();
+        assert!(widths.iter().all(|w| (w - widths[0]).abs() < 0.01), "{widths:?}");
+        assert_eq!(font.size, 12.0);
+    }
 }
