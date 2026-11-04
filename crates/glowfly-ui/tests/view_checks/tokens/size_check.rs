@@ -12,7 +12,7 @@ use crate::support::views::{code_lines, view_sources};
 
 /// How many hand-set sizes the size check finds: the final count after S5. It only shrinks as
 /// call sites take a `ControlSize`; never raise it.
-const SIZE_LITERALS: usize = 114;
+const SIZE_LITERALS: usize = 109;
 
 /// The folders that define sizes, which the size check skips.
 const SIZE_HOMES: &[&str] = &["widgets/", "theme/"];

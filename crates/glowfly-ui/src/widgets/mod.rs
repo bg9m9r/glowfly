@@ -25,7 +25,7 @@
 //! message `details.rs`. The tip row (an accent wash with a sentence, its button and a × menu)
 //! is `hint_row.rs`, a row of underline tabs `underline_tab.rs`, and one line of text painted at a
 //! point with its top on a whole point (`paint_text`), and the one-line rect a label is put in to
-//! sit there (`line_rect`), `text_line.rs`.
+//! sit there (`line_rect`, put without moving the cursor by `put_line`), `text_line.rs`.
 
 pub mod banner;
 mod button_look;
@@ -82,7 +82,7 @@ pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
 pub use text_field::TextField;
-pub use text_line::{line_rect, paint_text};
+pub use text_line::{line_rect, paint_text, put_line};
 pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 

@@ -6,6 +6,7 @@
 
 use super::markdown_cache::{CodeBlock, MarkdownCache, Rendered};
 use super::markdown_inline::{self, Look};
+use super::theme::tokens::BORDER_W;
 use super::theme::{color, type_scale};
 use super::widgets::{self, Icon};
 use crate::widgets::paint_text;
@@ -105,8 +106,8 @@ fn heading(ui: &mut Ui, level: u8, text: &[Inline], cx: Ctx<'_>, msgs: &mut Vec<
 
 /// A thin line across the width.
 fn rule(ui: &mut Ui) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 1.0), Sense::hover());
-    ui.painter().hline(rect.x_range(), rect.center().y, Stroke::new(1.0_f32, color::border()));
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), BORDER_W), Sense::hover());
+    ui.painter().hline(rect.x_range(), rect.center().y, Stroke::new(BORDER_W, color::border()));
 }
 
 fn list(ui: &mut Ui, start: Option<u64>, items: &[Item], cx: Ctx<'_>, msgs: &mut Vec<Msg>) {

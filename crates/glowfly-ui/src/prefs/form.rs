@@ -6,6 +6,7 @@
 
 use crate::access;
 use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::BORDER_W;
 use crate::theme::{color, controls, type_scale};
 use crate::widgets::{self, buttons};
 use eframe::egui::{self, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
@@ -106,8 +107,8 @@ pub fn section(ui: &mut Ui, title: &str) {
     ui.add_space(6.0);
     ui.label(type_scale::section_text(ui, title));
     let w = fit(ui, LABEL_W + GAP + ROW_W);
-    let (r, _) = ui.allocate_exact_size(vec2(w, 1.0), Sense::hover());
-    ui.painter().line_segment([r.left_center(), r.right_center()], Stroke::new(1.0_f32, color::border()));
+    let (r, _) = ui.allocate_exact_size(vec2(w, BORDER_W), Sense::hover());
+    ui.painter().line_segment([r.left_center(), r.right_center()], Stroke::new(BORDER_W, color::border()));
     ui.add_space(10.0);
 }
 

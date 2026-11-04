@@ -69,8 +69,10 @@ const NAME_WIDTH: f32 = 180.0;
 /// The column at the right of each row for its Retry and Open buttons, kept on every row so the
 /// outcomes line up.
 const ACTIONS_W: f32 = 150.0;
-/// A row's height: a small button's.
-const ROW_H: f32 = 24.0;
+/// The size of a row's Retry and Open buttons.
+const BUTTON: ControlSize = ControlSize::Small;
+/// A row's height: its buttons'.
+const ROW_H: f32 = BUTTON.metrics().h;
 
 /// One repository: its name (its path in the tip), where it stands, and its buttons. Returns
 /// true when Open was clicked (the dialog closes).
@@ -94,13 +96,13 @@ fn row(ui: &mut egui::Ui, t: Lang, sync: &RepoSync, index: usize, r: &SyncRow, m
         });
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if can_open(r) {
-                let open = buttons::secondary(t.tr("repo_sync.open.button")).size(ControlSize::Small);
+                let open = buttons::secondary(t.tr("repo_sync.open.button")).size(BUTTON);
                 if ui.add(open).on_hover_text(t.tr("repo_sync.open.tip")).clicked() {
                     msgs.push(Msg::Repo(RepoMsg::Open(r.path.clone())));
                     opened = true;
                 }
             }
-            if can_retry(r) && ui.add(buttons::secondary(t.tr("repo_sync.retry.button")).size(ControlSize::Small)).clicked() {
+            if can_retry(r) && ui.add(buttons::secondary(t.tr("repo_sync.retry.button")).size(BUTTON)).clicked() {
                 msgs.push(Msg::Repos(ReposMsg::RetrySync { generation: sync.generation, index }));
             }
         });

@@ -1,9 +1,10 @@
 //! One line of text set as `sizes::text_pos` sets it: `paint_text`, the drop-in for egui's
 //! `Painter::text` that puts vertically centred text on a whole point (`sizes::centred_on`), and
-//! `line_rect`, the one-line rect an egui label is put in so it sits where painted text does.
+//! `line_rect`, the one-line rect an egui label is put in so it sits where painted text does,
+//! and `put_line`, which puts a label there without moving the parent's cursor.
 
 use crate::theme::sizes;
-use eframe::egui::{Align, Align2, Color32, FontId, Painter, Pos2, Rect, Ui, vec2};
+use eframe::egui::{Align, Align2, Color32, Direction, FontId, Layout, Painter, Pos2, Rect, Response, Ui, UiBuilder, Widget, vec2};
 
 /// `Painter::text` with the same arguments and result, except that text centred on `at.y`
 /// (`Align2::*_CENTER`) has its top on a whole point at or above the exact centre, so it never
@@ -25,6 +26,14 @@ pub fn paint_text(p: &Painter, at: Pos2, anchor: Align2, text: impl ToString, fo
 pub fn line_rect(ui: &Ui, r: Rect, font: &FontId) -> Rect {
     let row_h = ui.fonts(|f| f.row_height(font));
     Rect::from_min_size(Pos2::new(r.left(), sizes::centred_top(r, row_h)), vec2(r.width(), row_h))
+}
+
+/// `widget` (a label) laid out as `ui.put` lays it out, in `line_rect(ui, r, font)`, but in a
+/// child that leaves `ui`'s cursor alone: `ui.put` moves the cursor to the line's bottom, which
+/// sits above `r`'s, so in a list of rows the next row would start that much higher.
+pub fn put_line(ui: &mut Ui, r: Rect, font: &FontId, widget: impl Widget) -> Response {
+    let line = line_rect(ui, r, font);
+    ui.new_child(UiBuilder::new().max_rect(line).layout(Layout::centered_and_justified(Direction::TopDown))).add(widget)
 }
 
 #[cfg(test)]
@@ -81,6 +90,23 @@ mod tests {
                     assert_eq!((ours.left(), ours.size()), (egui.left(), egui.size()));
                 }
             }
+        });
+    }
+
+    #[test]
+    fn put_line_sets_the_label_on_the_line_and_leaves_the_cursor() {
+        let ctx = Context::default();
+        let _ = ctx.run(Default::default(), |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                ui.spacing_mut().item_spacing.y = 0.0;
+                let font = type_scale::font(BODY);
+                let (r, _) = ui.allocate_exact_size(vec2(120.0, 19.0), egui::Sense::hover());
+                let before = ui.cursor().min;
+                let shown = put_line(ui, r, &font, egui::Label::new(egui::RichText::new("Ours, then theirs").font(font.clone())));
+                assert_eq!(shown.rect.top(), line_rect(ui, r, &font).top());
+                assert_eq!(ui.cursor().min, before, "the next row starts at the band's bottom");
+                assert_eq!(before.y, r.bottom());
+            });
         });
     }
 

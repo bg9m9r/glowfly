@@ -5,6 +5,7 @@
 //! the 8 px grid; the caller spaces them.
 
 use super::theme::color;
+use super::theme::tokens::BORDER_W;
 use super::theme::type_scale;
 use super::widgets::icon::{Icon, paint_icon_sized};
 use super::widgets::truncate::{cut_left_in, middle};
@@ -106,7 +107,7 @@ pub(super) fn file_list(ui: &mut Ui, t: Lang, paths: &[String], short: bool) {
 /// A 1 px line in the edge colour across the popover, through its padding (`pad`) on both
 /// sides.
 pub(super) fn divider(ui: &mut Ui, pad: f32) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 1.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), BORDER_W), Sense::hover());
     let line = Rect::from_min_max(pos2(rect.left() - pad, rect.top()), pos2(rect.right() + pad, rect.bottom()));
     ui.painter().rect_filled(line, 0.0, color::border());
 }
