@@ -1,8 +1,9 @@
 //! The built-in terminal panel: shell sessions (terminal tabs) per repository, global (not
 //! parked with a tab) so a hidden tab's shells keep running. The terminals a close would end
-//! while they run a program are named in `busy`.
+//! while they run a program are named in `busy`, and the tabs' names in `names`.
 
 pub mod busy;
+pub mod names;
 
 use super::AppState;
 use glowfly_core::settings::{ShellSetting, TerminalPrefs};

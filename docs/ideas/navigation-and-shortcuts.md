@@ -80,8 +80,8 @@ The command palette, keyboard shortcuts, tabs and the menu bar. Untriaged; see [
 - Toolbar Fetch, Pull, Push, Branch, Stash and Pop tooltips name the assigned key
 - Warn on the Keyboard page when a key is also a custom command's key
 - The shortcut sheet points to Preferences > Keyboard for repository commands with no key yet
-- Split palette_commands.rs's entry builders by area (the binding map moved to
-  state/palette_bindings.rs)
+- Split palette/commands.rs's entry builders by area (the binding map moved to
+  state/palette/bindings.rs)
 
 ### Menu bar
 

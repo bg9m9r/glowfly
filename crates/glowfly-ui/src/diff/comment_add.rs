@@ -16,7 +16,7 @@ use glowfly_core::repo::DiffLine;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
-use glowfly_model::state::pull_request_line_comment::{ONE_HUNK, OUTSIDE, line_blocked};
+use glowfly_model::state::pull_request::line_comment::{ONE_HUNK, OUTSIDE, line_blocked};
 
 /// The width of the button and of the draft marker: the least hit area's, and as tall as the row
 /// (a Compact quiet target, so it never reaches the next line).

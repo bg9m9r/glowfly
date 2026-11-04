@@ -5,26 +5,33 @@
 //! diffs are the shared `st.session.diff.view`, opened through `RepoMsg::OpenDiff`; its page and
 //! actions on the service are in calls.rs, its Checks section in checks.rs, its code comment
 //! threads in threads.rs (placed on the local version's lines by line_map.rs when the files aren't
-//! of the service's head), and a new code comment on diff lines in line_comment.rs.
+//! of the service's head), and a new code comment on diff lines in line_comment.rs. Checking out
+//! a pull request's branch is in checkout.rs, the detail requests for the listed ones in
+//! details.rs, matching their heads to loaded commits in heads.rs and the Create pull request
+//! dialog's From / Into picks in repo_pick.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;
 use crate::pull_request::line_comment::Leave;
 use crate::state::AppState;
+use crate::state::pull_request::line_map::LineMaps;
+use crate::state::pull_request::source::HeadFetch;
 use crate::state::pull_request::{Files, PrTab, PrView};
-use crate::state::pull_request_line_map::LineMaps;
-use crate::state::pull_request_source::HeadFetch;
 use calls::load;
 use glowfly_core::repo::DiffTarget;
 use source::{request, retip, shows_diff};
 use std::time::Instant;
 
 pub(super) mod calls;
+pub(super) mod checkout;
 mod checks;
 pub(super) mod cleanup;
 mod commits;
+pub(super) mod details;
+pub(super) mod heads;
 mod line_comment;
 mod line_map;
+pub(super) mod repo_pick;
 mod source;
 mod threads;
 

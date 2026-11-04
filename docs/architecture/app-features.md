@@ -29,9 +29,9 @@ source file, update its line here. Each section lists one feature's files in eve
 
 ## Custom commands (`CustomCommandMsg`, `CustomCommandEffect`)
 
-- Files: `custom_commands.rs`, `state/custom_commands.rs`, `state/custom_menu_items.rs`, `state/palette_custom.rs`, `update/custom_commands.rs`, `update/custom_commands_run.rs`, `runner/custom_commands.rs`, `ui/custom_menu.rs`, `ui/shortcuts/custom_keys.rs`.
+- Files: `custom_commands.rs`, `state/custom_commands.rs`, `state/custom_menu_items.rs`, `state/palette/custom.rs`, `update/custom_commands.rs`, `update/custom_commands_run.rs`, `runner/custom_commands.rs`, `ui/custom_menu.rs`, `ui/shortcuts/custom_keys.rs`.
 - `state/`: the loaded commands, their keys and placeholder values, and the menus' Commands items.
-- `palette_custom.rs`: the palette's entries.
+- `palette/custom.rs`: the palette's entries.
 - `update/custom_commands.rs`: loading and announcing problems.
 - `update/custom_commands_run.rs`: running, confirming and holding for trust.
 - `runner/`: reading the files and running a shell command.
@@ -85,6 +85,7 @@ source file, update its line here. Each section lists one feature's files in eve
 ## Several selected commits
 
 - Files: `state/selection.rs`, `state/selection_span.rs`, `state/pick.rs`, `update/selection.rs`, `update/selection_focus.rs`, `update/pick.rs`, `update/pick_done.rs`, `ui/details_multi.rs`, `ui/details_stacked.rs`, `ui/mainline_dialog.rs`.
+- `state/selection.rs` also holds `Selection` (nothing, the WIP row, one commit, several, or a commit compared with the working directory), re-exported as `state::Selection`.
 - `state/selection*.rs`: what they span (one line, a line from the first commit or a shallow boundary, or gaps, with the first commit whose parent isn't selected) and what they can do.
 - `update/selection.rs`, `update/selection_focus.rs`: loading the combined or stacked changes and going back to the focused commit with a toast.
 - `MainlineForm` in `state/pick.rs`, drawn by `ui/mainline_dialog.rs`: one mainline for every merge among them.

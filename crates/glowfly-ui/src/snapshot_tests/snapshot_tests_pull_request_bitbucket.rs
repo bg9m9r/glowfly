@@ -14,9 +14,9 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::actions::NO_METHODS;
+use glowfly_model::state::pull_request::checks::ChecksPane;
 use glowfly_model::state::pull_request::{Page, PrView};
-use glowfly_model::state::pull_request_actions::NO_METHODS;
-use glowfly_model::state::pull_request_checks::ChecksPane;
 use std::path::PathBuf;
 
 /// Tall enough to show the merge form.

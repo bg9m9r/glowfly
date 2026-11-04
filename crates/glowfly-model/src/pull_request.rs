@@ -1,6 +1,6 @@
 //! Messages and effects of the pull request panel (state/pull_request.rs,
-//! state/pull_request_source.rs, state/pull_request_commits.rs, state/pull_request_actions.rs,
-//! state/pull_request_threads.rs, state/pull_request_line_map.rs, state/pull_request_line_comment.rs,
+//! state/pull_request/source.rs, state/pull_request/commits.rs, state/pull_request/actions.rs,
+//! state/pull_request/threads.rs, state/pull_request/line_map.rs, state/pull_request/line_comment.rs,
 //! update/pull_request/,
 //! runner/pull_request.rs, ui/pull_request/); a new code comment on diff lines has its own
 //! messages in `line_comment`. Its files open through `RepoMsg::OpenDiff`, its

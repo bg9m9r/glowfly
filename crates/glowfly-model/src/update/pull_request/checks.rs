@@ -7,7 +7,7 @@ use super::calls::service_request;
 use crate::effect::{Effect, ForgeError};
 use crate::pull_request::{CallJob, PrCall, PrEffect};
 use crate::state::AppState;
-use crate::state::pull_request_checks::ChecksPane;
+use crate::state::pull_request::checks::ChecksPane;
 use glowfly_core::forge::CheckList;
 use std::time::Instant;
 

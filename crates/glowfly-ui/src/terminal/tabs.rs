@@ -16,7 +16,7 @@ use glowfly_core::settings::{ShellChoice, TerminalPrefs};
 use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::terminal::TermSession;
-use glowfly_model::state::terminal_names::tab_names;
+use glowfly_model::state::terminal::names::tab_names;
 use glowfly_model::terminal::TerminalMsg;
 
 /// Between pills.

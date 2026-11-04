@@ -1,7 +1,7 @@
-//! Matching pull request heads to loaded commits (`update/pr_heads.rs`): full ids by lookup,
+//! Matching pull request heads to loaded commits (`update/pull_request/heads.rs`): full ids by lookup,
 //! prefixes in one pass, and no history scan for a full id that isn't loaded.
 
-use crate::update::pr_heads::heads;
+use crate::update::pull_request::heads::heads;
 use git2::Oid;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};

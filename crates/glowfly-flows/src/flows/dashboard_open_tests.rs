@@ -144,7 +144,7 @@ fn opening_a_repository_any_other_way_closes_the_dashboard() {
 }
 
 fn has_entry(st: &AppState) -> bool {
-    glowfly_model::state::palette_commands::entries(st)
+    glowfly_model::state::palette::commands::entries(st)
         .iter()
         .any(|e| e.label == "Open dashboard" && e.command == PaletteCommand::Dashboard)
 }

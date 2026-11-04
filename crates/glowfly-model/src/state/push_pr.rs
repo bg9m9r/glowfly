@@ -2,10 +2,10 @@
 //! host first, which other branch the user picked as the target, and the name the code host
 //! knows the branch by. The menus, the toolbar, the palette and the create dialog show these,
 //! and `update/push_pr.rs` checks them again when the message arrives. A branch tracking a fork
-//! remote (`pr_repos`) is measured against that fork instead of the code host's remote.
+//! remote (`pull_request::repos`) is measured against that fork instead of the code host's remote.
 
 use super::branches;
-use super::pr_repos;
+use super::pull_request::repos;
 use super::{ForgeState, Selection};
 use git2::Oid;
 use glowfly_core::forge::PullRequest;
@@ -51,20 +51,20 @@ fn host_tip(host: &[(String, Oid)], name: &str) -> Option<Oid> {
     host.iter().find(|(n, _)| n == name).map(|(_, o)| *o)
 }
 
-/// Where `b` stands on the remote its pull request is pushed to (`pr_repos::pr_push_target`);
+/// Where `b` stands on the remote its pull request is pushed to (`pull_request::repos::pr_push_target`);
 /// None without a code host or when that remote isn't loaded. Push config naming a remote that
 /// can't take it blocks the push, saying why in `t`.
 pub fn host_branch(t: Lang, b: &BranchInfo, snap: &Snapshot, fs: &ForgeState) -> Option<HostBranch> {
-    match pr_repos::pr_push_target(b, snap, fs) {
+    match repos::pr_push_target(b, snap, fs) {
         Ok(remote) => host_branch_on(b, snap, fs, &remote),
-        Err(u) => fs.host.as_ref().map(|_| HostBranch::Blocked(pr_repos::push_refused(t, &u, &b.name, fs))),
+        Err(u) => fs.host.as_ref().map(|_| HostBranch::Blocked(repos::push_refused(t, &u, &b.name, fs))),
     }
 }
 
 /// Where `b` stands on `remote`; None without a code host or when `remote` isn't loaded.
 pub fn host_branch_on(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -> Option<HostBranch> {
     let host = branches_on(snap, fs, remote)?;
-    if pr_repos::own_tracking(b, fs, remote).is_some() {
+    if repos::own_tracking(b, fs, remote).is_some() {
         let exists = b.upstream_ref.as_deref().is_some_and(|r| r.starts_with("refs/remotes/"));
         return Some(match (exists, b.ahead, b.behind) {
             (false, _, _) => HostBranch::Missing,
@@ -131,7 +131,7 @@ pub fn push_item(t: Lang, snap: &Snapshot, fs: &ForgeState) -> Result<String, St
         Some(HostBranch::Missing | HostBranch::Ahead(_)) => Ok(b.name.clone()),
         Some(HostBranch::Blocked(why)) => Err(why),
         Some(HostBranch::Pushed) | None => {
-            let remote = pr_repos::pr_push_target(b, snap, fs).unwrap_or_else(|u| u.remote);
+            let remote = repos::pr_push_target(b, snap, fs).unwrap_or_else(|u| u.remote);
             Err(format!("{} is up to date on {remote}.", b.name))
         }
     }
@@ -143,12 +143,12 @@ pub fn local_for<'a>(snap: &'a Snapshot, fs: &ForgeState, source: &str) -> Optio
     local_for_on(snap, fs, &fs.remote, source)
 }
 
-/// `local_for` with the source on `remote` (tracked as the branch's own, `pr_repos::own_tracking`).
+/// `local_for` with the source on `remote` (tracked as the branch's own, `pull_request::repos::own_tracking`).
 pub fn local_for_on<'a>(snap: &'a Snapshot, fs: &ForgeState, remote: &str, source: &str) -> Option<&'a BranchInfo> {
     snap.locals
         .iter()
         .find(|b| b.name == source)
-        .or_else(|| snap.locals.iter().find(|b| pr_repos::own_tracking(b, fs, remote).is_some_and(|t| t.merge == source)))
+        .or_else(|| snap.locals.iter().find(|b| repos::own_tracking(b, fs, remote).is_some_and(|t| t.merge == source)))
 }
 
 /// The push the create dialog offers for `source` on `remote` (its From repository): its local
@@ -167,13 +167,13 @@ pub fn pr_source(snap: &Snapshot, fs: &ForgeState, name: &str) -> String {
 /// `pr_source` on `remote`.
 pub fn pr_source_on(snap: &Snapshot, fs: &ForgeState, remote: &str, name: &str) -> String {
     local_for_on(snap, fs, remote, name)
-        .and_then(|b| pr_repos::own_tracking(b, fs, remote))
+        .and_then(|b| repos::own_tracking(b, fs, remote))
         .map(|t| t.merge.clone())
         .unwrap_or_else(|| name.to_owned())
 }
 
 /// The push of local branch `b` to `remote` for a pull request: (remote, branch there, -u). A
-/// branch tracking its own branch on `remote` (`pr_repos::own_tracking`) pushes there; otherwise
+/// branch tracking its own branch on `remote` (`pull_request::repos::own_tracking`) pushes there; otherwise
 /// to its own name, with -u when it tracks nothing or `remote` is a fork, so later pushes
 /// follow, but not onto a remote push config names (git already pushes there, and the branch
 /// keeps the upstream it pulls from). None when `remote` isn't configured.
@@ -181,21 +181,21 @@ pub fn pr_push(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: &str) -
     if !snap.remotes.iter().any(|(n, _)| n == remote) {
         return None;
     }
-    match pr_repos::own_tracking(b, fs, remote) {
+    match repos::own_tracking(b, fs, remote) {
         Some(t) => Some((remote.to_owned(), t.merge.clone(), false)),
         None => {
-            let follow = pr_repos::is_fork(fs, remote) && !pr_repos::pushed_by_config(b, snap, fs, remote);
+            let follow = repos::is_fork(fs, remote) && !repos::pushed_by_config(b, snap, fs, remote);
             Some((remote.to_owned(), b.name.clone(), b.tracking.is_none() || follow))
         }
     }
 }
 
 /// The open pull request from branch `name`, found by the repository it is pushed to
-/// (`pr_repos::pr_push_target` for a local branch, else the code host's) and the name it has
+/// (`pull_request::repos::pr_push_target` for a local branch, else the code host's) and the name it has
 /// there (a local branch's upstream there may be named differently).
 pub fn open_pr<'a>(snap: &Snapshot, fs: &'a ForgeState, name: &str) -> Option<&'a PullRequest> {
     let local = snap.locals.iter().find(|b| b.name == name);
-    let remote = local.and_then(|b| pr_repos::pr_push_target(b, snap, fs).ok()).unwrap_or_else(|| fs.remote.clone());
+    let remote = local.and_then(|b| repos::pr_push_target(b, snap, fs).ok()).unwrap_or_else(|| fs.remote.clone());
     fs.pr_from(&remote, &pr_source_on(snap, fs, &remote, name))
 }
 

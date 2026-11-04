@@ -1,0 +1,126 @@
+//! Preferences > SSH: the section header the page's three sections share (the title, an
+//! optional status chip, a Refresh icon button at the right end, and the rule under them), and
+//! the Agent section: its status chip (`state::ssh::marks::agent_pill`), the Use local SSH agent
+//! setting, what the agent holds and why it may not be reachable, and on Windows the Windows'
+//! OpenSSH row (`windows`). The view never edits settings; it sends `Msg`s.
+
+use crate::prefs::ssh::SshContext;
+use crate::prefs::{GAP, LABEL_W, ROW_W, fit, help, warn};
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::chip::{Chip, ChipSize, Lead, Look};
+use crate::widgets::{self, Icon};
+use eframe::egui::{Align, Color32, Layout, RichText, Sense, Stroke, Ui, vec2};
+use glowfly_core::i18n::Lang;
+use glowfly_core::ssh_keys::{AgentReach, WinService};
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh::marks::{AgentPill, agent_pill};
+
+/// A section's header, as `form::section` draws one, with `pill` after the title and a Refresh
+/// icon button (tip `refresh_tip`, pushing `msg`) at the right end of the line.
+pub(in crate::prefs) fn header(
+    ui: &mut Ui,
+    t: Lang,
+    title: &str,
+    pill: Option<AgentPill>,
+    refresh_tip: &str,
+    msg: Msg,
+    msgs: &mut Vec<Msg>,
+) {
+    ui.add_space(6.0);
+    let w = fit(ui, LABEL_W + GAP + ROW_W);
+    ui.allocate_ui_with_layout(vec2(w, 26.0), Layout::left_to_right(Align::Center), |ui| {
+        ui.label(type_scale::section_text(ui, title));
+        if let Some(p) = pill {
+            ui.add_space(6.0);
+            pill_widget(ui, t, p);
+        }
+        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            if widgets::icon_button(ui, Icon::Refresh, refresh_tip).clicked() {
+                msgs.push(msg);
+            }
+        });
+    });
+    let (r, _) = ui.allocate_exact_size(vec2(w, 1.0), Sense::hover());
+    ui.painter().line_segment([r.left_center(), r.right_center()], Stroke::new(1.0_f32, color::border()));
+    ui.add_space(10.0);
+}
+
+/// The pill's text, hover tip and colour.
+fn pill_parts(t: Lang, p: AgentPill) -> (String, Option<&'static str>, Color32) {
+    match p {
+        AgentPill::Checking => (t.tr("prefs.ssh.agent.pill.checking").into(), None, color::weak()),
+        AgentPill::Running(0) => {
+            (t.tr("prefs.ssh.agent.pill.running_empty").into(), Some(t.tr("prefs.ssh.agent.pill.running.tip")), color::added())
+        }
+        AgentPill::Running(n) => {
+            (t.trn("prefs.ssh.agent.pill.running", n, &[]), Some(t.tr("prefs.ssh.agent.pill.running.tip")), color::added())
+        }
+        AgentPill::Unreachable => {
+            (t.tr("prefs.ssh.agent.pill.unreachable").into(), Some(t.tr("prefs.ssh.agent.pill.unreachable.tip")), color::warn())
+        }
+        AgentPill::Off => (t.tr("prefs.ssh.agent.pill.off").into(), Some(t.tr("prefs.ssh.agent.pill.off.tip")), color::weak()),
+    }
+}
+
+/// A chip: a dot in the state's colour, then its text, on a faint fill of it.
+pub(crate) fn pill_widget(ui: &mut Ui, t: Lang, p: AgentPill) {
+    let (text, tip, tint) = pill_parts(t, p);
+    let look = Look::new(color::wash(tint, 0.18), color::text());
+    let resp = Chip::new(ChipSize::Chip, text).look(look).lead(Lead::Dot(tint)).show(ui);
+    if let Some(tip) = tip {
+        resp.on_hover_text(tip);
+    }
+}
+
+/// The Agent section: header with the pill, the setting, then what the check found.
+pub(in crate::prefs) fn agent_section(ui: &mut Ui, t: Lang, page: &SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
+    let pill = agent_pill(page.agent.as_ref());
+    let recheck = Msg::Ssh(SshMsg::ReloadAgent);
+    header(ui, t, t.tr("prefs.ssh.agent.title"), Some(pill), t.tr("prefs.ssh.agent.recheck.tip"), recheck, msgs);
+    ui.vertical(|ui| {
+        ui.set_max_width(fit(ui, LABEL_W + GAP + ROW_W));
+        let mut on = cx.use_agent;
+        if ui.add(controls::Check::new(&mut on, t.tr("prefs.ssh.agent.use.check"))).changed() {
+            msgs.push(Msg::Ssh(SshMsg::SetUseAgent(on)));
+        }
+        help(ui, t.tr("prefs.ssh.agent.use.help"));
+        let Some(a) = &page.agent else { return };
+        ui.add_space(4.0);
+        match &a.reach {
+            Some(AgentReach::Keys(keys)) => {
+                for k in keys {
+                    let line = if k.comment.is_empty() { k.fingerprint.clone() } else { format!("{}  {}", k.fingerprint, k.comment) };
+                    ui.label(RichText::new(line).monospace().size(type_scale::SMALL).color(color::faint()));
+                }
+            }
+            Some(AgentReach::Failed(e)) => warn(ui, &t.trf("prefs.ssh.agent.failed.warn", &[("error", e)])),
+            Some(AgentReach::NoAgent) | None => {}
+        }
+        if a.ssh_add.is_none() {
+            warn(ui, t.tr("prefs.ssh.agent.no_ssh_add.warn"));
+        }
+        // The service is only looked up on Windows; without it, this is another system.
+        match a.service {
+            Some(s) => {
+                let line = match s {
+                    WinService::Running => t.tr("prefs.ssh.agent.service.running.help"),
+                    WinService::Stopped => t.tr("prefs.ssh.agent.service.stopped.help"),
+                    WinService::Disabled => t.tr("prefs.ssh.agent.service.disabled.help"),
+                    WinService::Missing => t.tr("prefs.ssh.agent.service.missing.help"),
+                };
+                help(ui, line);
+            }
+            None if !a.auth_sock_set && !a.running() => warn(ui, t.tr("prefs.ssh.agent.no_auth_sock.warn")),
+            None => {}
+        }
+        crate::prefs::ssh::windows::windows_row(ui, t, page, msgs);
+        if a.pageant {
+            help(ui, t.tr("prefs.ssh.agent.pageant.help"));
+        }
+        if let Some(e) = &page.agent_error {
+            warn(ui, e);
+        }
+    });
+}

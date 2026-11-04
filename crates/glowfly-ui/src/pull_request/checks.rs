@@ -22,7 +22,7 @@ use glowfly_core::text::printable;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::pull_request::PrView;
-use glowfly_model::state::pull_request_checks::{
+use glowfly_model::state::pull_request::checks::{
     ChecksPane, FAILED_TITLE, HELD, LOADING, NO_STATUS, build_link, empty_text, header_summary, run_tooltip, time_text, truncated_text,
 };
 

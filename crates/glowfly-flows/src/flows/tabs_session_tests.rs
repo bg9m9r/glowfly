@@ -144,7 +144,7 @@ fn every_session_view_round_trips_a_switch() {
     s.journal.view = Some(JournalView::default());
     let origin = Origin { ends: Ends::LastRewrite { refname: "refs/heads/topic".into() }, label: Some("topic".into()), at: None };
     s.range_diff.view = Some(RangeDiffView::loading(origin, 0));
-    s.pull_request.view = Some(glowfly_model::state::pull_request_actions::tests::view(None));
+    s.pull_request.view = Some(glowfly_model::state::pull_request::actions::tests::view(None));
     let fs = ForgeState::new(Some(github()), "origin".into(), Some(github()));
     s.issue.view = IssueView::new(listed("12"), &fs);
     assert!(s.issue.view.is_some(), "the issue panel needs a tracker");

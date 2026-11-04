@@ -6,7 +6,7 @@
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::state::forks::{ForkStep, ForkThenPr, add_job, added_as};
-use crate::state::pr_repos;
+use crate::state::pull_request::repos;
 use crate::state::push_pr::PrStart;
 use crate::state::remotes::{find, gone_text};
 use crate::state::{AppState, Modal};
@@ -22,7 +22,7 @@ pub(super) fn open(st: &mut AppState, branch: String, target: Option<String>, fx
         st.log(false, format!("Branch {branch} no longer exists."));
         return;
     }
-    let base = pr_repos::base_remote(fs).to_owned();
+    let base = repos::base_remote(fs).to_owned();
     super::remote_forks::open_create(st, &base, fx);
     if let Some(Modal::CreateFork(f)) = st.modal.as_mut() {
         f.then_pr = Some(ForkThenPr { branch, target });

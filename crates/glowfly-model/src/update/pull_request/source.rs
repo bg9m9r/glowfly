@@ -7,8 +7,8 @@
 use crate::effect::Effect;
 use crate::pull_request::{FilesJob, HeadJob, PrEffect};
 use crate::state::AppState;
+use crate::state::pull_request::source::{HeadFetch, Shown, head_fetch_blocked};
 use crate::state::pull_request::{Files, Tips};
-use crate::state::pull_request_source::{HeadFetch, Shown, head_fetch_blocked};
 use glowfly_core::git_version::Feature;
 use glowfly_core::remote_ops::fetch_ref_cmd;
 use glowfly_core::repo::PrCompare;

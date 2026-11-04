@@ -75,8 +75,8 @@ pub fn local_branch_menu(
         separator(ui);
     }
     match host {
-        Some(fs) => super::pr_menu_items::local(ui, t, b, snap, fs, sel, msgs),
-        None if !snap.remotes.is_empty() => super::pr_menu_items::local_no_host(ui, t, b, snap, msgs),
+        Some(fs) => super::pull_request::menu_items::local(ui, t, b, snap, fs, sel, msgs),
+        None if !snap.remotes.is_empty() => super::pull_request::menu_items::local_no_host(ui, t, b, snap, msgs),
         None => {}
     }
     if let Some((fs, key)) = issue {

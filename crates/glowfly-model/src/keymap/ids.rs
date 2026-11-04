@@ -284,7 +284,7 @@ pub const FAVORITE_BINDINGS: [BindingId; 9] = [
     I::OpenFavorite9,
 ];
 
-/// The Repository commands rows: each runs a palette command (`state/palette_bindings.rs`).
+/// The Repository commands rows: each runs a palette command (`state/palette/bindings.rs`).
 /// Cherry-pick and Revert came after the first fourteen, so their ids follow the pane and graph
 /// keys'; Switch branch and Open dashboard came after them, so theirs are the last.
 pub const COMMAND_BINDINGS: [BindingId; 18] = [

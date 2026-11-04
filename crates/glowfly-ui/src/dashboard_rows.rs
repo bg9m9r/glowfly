@@ -109,7 +109,7 @@ pub(super) fn pr_row(ui: &mut Ui, st: &AppState, data: &TargetData, pr: &PullReq
     {
         super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
     }
-    let r = r.on_hover_text(super::pr_menu_items::pr_tooltip(pr));
+    let r = r.on_hover_text(super::pull_request::menu_items::pr_tooltip(pr));
     let show = Dashboard::pr_host_local(data).map(|l| l.path.clone());
     let open_pr = |path: &std::path::Path| dash(DashboardMsg::OpenPr { path: path.to_path_buf(), target: t.clone(), id: pr.id });
     let link = (!pr.url.is_empty()).then_some(pr.url.as_str());

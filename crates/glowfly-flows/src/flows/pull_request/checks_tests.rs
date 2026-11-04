@@ -10,7 +10,7 @@ use glowfly_model::msg::{ForgeMsg, Msg, TabsMsg};
 use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::pull_request::Page;
-use glowfly_model::state::pull_request_checks::ChecksPane;
+use glowfly_model::state::pull_request::checks::ChecksPane;
 use glowfly_model::update::update;
 use std::time::{Duration, Instant};
 

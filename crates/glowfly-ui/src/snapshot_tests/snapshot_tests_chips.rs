@@ -19,7 +19,7 @@ use glowfly_core::signature_check::SignatureCheck;
 use glowfly_core::signing::SigningFormat;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
-use glowfly_model::state::ssh_marks::AgentPill;
+use glowfly_model::state::ssh::marks::AgentPill;
 use glowfly_model::state::updates::UpdateStatus;
 
 const KEY: &str = "SHA256:nu3mXdiXjT/P69lIp2s2NqrOSBxSCmevSqfmgZp4JuA";

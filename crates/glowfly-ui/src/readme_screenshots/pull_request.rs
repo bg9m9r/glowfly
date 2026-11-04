@@ -12,9 +12,9 @@ use glowfly_core::forge::{
     Verdict,
 };
 use glowfly_core::repo::{self, PrCompare};
+use glowfly_model::state::pull_request::checks::ChecksPane;
+use glowfly_model::state::pull_request::line_comment::draft_at;
 use glowfly_model::state::pull_request::{Page, PrTab, PrView};
-use glowfly_model::state::pull_request_checks::ChecksPane;
-use glowfly_model::state::pull_request_line_comment::draft_at;
 use glowfly_model::state::{ForgeState, Status};
 use std::sync::Arc;
 
@@ -134,7 +134,7 @@ fn readme_screenshots_pull_request() {
         let line_of =
             |text: &str| diff.hunks.iter().flat_map(|h| &h.lines).find(|l| l.text.contains(text)).and_then(|l| l.new).expect("the line");
         let named = line_of("pub fn phase(");
-        glowfly_model::state::pull_request_actions::prefill(&mut v.forms, &page(tip.to_string()).detail, None);
+        glowfly_model::state::pull_request::actions::prefill(&mut v.forms, &page(tip.to_string()).detail, None);
         v.page = Page::Loaded(Box::new(page(tip.to_string())));
         v.tab = PrTab::Files;
         let (hunk, i) = line_index(&diff, LineSide::New, named).expect("the phase line");

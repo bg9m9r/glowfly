@@ -1,7 +1,7 @@
 //! Messages and effects of custom commands, the git and shell actions defined in the user's and
 //! the repository's `commands.toml` (glowfly_core::custom_commands): the loaded lists, their
 //! keys and the menus' items in state/custom_commands.rs, the palette's entries in
-//! state/palette_custom.rs, loading in update/custom_commands.rs, running in
+//! state/palette/custom.rs, loading in update/custom_commands.rs, running in
 //! update/custom_commands_run.rs, the runner's side in runner/custom_commands.rs, the menus'
 //! Commands submenu in ui/custom_menu.rs and the keys in ui/shortcuts/custom_keys.rs.
 

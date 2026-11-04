@@ -19,9 +19,9 @@ use eframe::egui::{
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::PaletteMsg;
 use glowfly_model::state::AppState;
+use glowfly_model::state::palette::commands::RepoListCommand;
+use glowfly_model::state::palette::nav::{Jump, PAGE_ROWS};
 use glowfly_model::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, PickKind};
-use glowfly_model::state::palette_commands::RepoListCommand;
-use glowfly_model::state::palette_nav::{Jump, PAGE_ROWS};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
@@ -32,7 +32,6 @@ const LABEL_SIZE: f32 = type_scale::BODY;
 // A page (PageUp/PageDown) is the rows the list shows at its full height.
 const _: () = assert!(PAGE_ROWS == (LIST_MAX_H / ROW_H) as usize);
 
-#[path = "palette_label.rs"]
 mod label;
 
 /// The id of the palette's modal area (its rect is in egui's memory under this id).

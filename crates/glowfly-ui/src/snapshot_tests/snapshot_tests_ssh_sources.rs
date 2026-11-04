@@ -11,7 +11,7 @@ use glowfly_core::ssh_keys::{
     AgentKey, AgentReach, AgentStatus, ConfigIdentity, ConfigStatus, KeyChoice, Unresolved, WinService, WinSshFacts,
 };
 use glowfly_model::state::AppState;
-use glowfly_model::state::ssh_use::Choices;
+use glowfly_model::state::ssh::key_use::Choices;
 use std::path::PathBuf;
 
 const WIN_SSH: &str = "C:/Windows/System32/OpenSSH/ssh.exe";

@@ -2,17 +2,21 @@
 //! (drawn in its dialog, `Modal::SshKeygen`, with its fields kept here so closing the dialog
 //! keeps them), the rules that decide whether Generate can run, what Use existing last refused,
 //! and the texts its toasts and confirmation show. The key git uses and the agent are in
-//! `ssh_use`, the marks on a key card, the agent-only keys and the agent pill in `ssh_marks`,
-//! pointing git at Windows' OpenSSH in `ssh_windows`, adding a key to a service in
-//! `ssh_service`.
+//! `key_use`, the marks on a key card, the agent-only keys and the agent pill in `marks`,
+//! pointing git at Windows' OpenSSH in `windows`, adding a key to a service in `service`.
 
-use super::ssh_service::UploadForm;
-use super::ssh_use::{Choices, RepoTarget};
+pub mod key_use;
+pub mod marks;
+pub mod service;
+pub mod windows;
+
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::{
     AgentStatus, KeyFileProblem, LocationProblem, SshKeyPair, SshListing, comment_problem, default_location, resolve_location,
 };
+use key_use::{Choices, RepoTarget};
+use service::UploadForm;
 use std::path::{Path, PathBuf};
 
 pub const COPIED: &str = "Public key copied to the clipboard";

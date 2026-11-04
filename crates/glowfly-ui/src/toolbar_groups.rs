@@ -69,7 +69,7 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
     }
     if let Some(fs) = host {
         separator(ui);
-        crate::pr_menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
+        crate::pull_request::menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
     }
     separator(ui);
     let force = ItemState::danger_unless(busy.as_deref());
@@ -186,9 +186,9 @@ pub(super) fn pr(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, fs: &ForgeSt
         let caption = if merge_requests(fs) { t.tr("toolbar.pr.button_merge_request") } else { t.tr("toolbar.pr.button") };
         let pr = (Icon::PullRequest, caption, name.as_str());
         let menu_name = if merge_requests(fs) { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-        let menu = (menu_name, 260.0, crate::pr_menu_items::pr_menu_live(t, snap, fs, idle));
+        let menu = (menu_name, 260.0, crate::pull_request::menu_items::pr_menu_live(t, snap, fs, idle));
         let r = split(ui, "pr-menu", pr, (rules::pr_blocked(st).is_none(), None), st.settings.toolbar_labels, menu, |ui| {
-            crate::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
+            crate::pull_request::menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
         });
         if attach(r, keys, t, || tips::pr(st, fs)).clicked() {
             msgs.extend(create_pr(snap));

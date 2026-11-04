@@ -30,7 +30,7 @@ start with `state/`, `update/` or `ui/`.
 - `patch_save_dialog.rs`: the Create patch dialog for uncommitted changes (`Modal::SavePatch`): which changes go in (all, only staged, only unstaged), untracked files, and Only selected files with a checklist of the scope's files.
 - `publish.rs`: the "Publish to GitHub" dialog: where to create the repository, its name, visibility and description.
 - `repo_finder.rs`: the Find repositories dialog (`Modal::FindRepos`): the project folders Glowfly looks in, a filter, and the repositories found under them, grouped by project folder.
-- `ssh_keygen_dialog.rs`: the Generate SSH key dialog (`Modal::SshKeygen`): where to save the key, its comment and an optional passphrase, checked as they are typed.
+- `prefs/ssh/keygen_dialog.rs`: the Generate SSH key dialog (`Modal::SshKeygen`): where to save the key, its comment and an optional passphrase, checked as they are typed.
 - `stash_dialog.rs`: the Rename stash dialog (`Modal::RenameStash`): one field for the stash list text after "On <branch>: ".
 - `stash_push_dialog.rs`: the Stash dialog (`Modal::StashPush`): a message, what goes into the stash (every change, only the staged changes, or files ticked in a list of the working tree) and whether the staged changes also stay staged (not offered with only the staged changes; unticked each time the dialog opens).
 - `submodule_dialogs.rs`: the Add submodule dialog (a URL, the folder it goes in, an optional branch), the Edit submodule dialog (its URL and branch) and the Remove submodule confirmation (what it deletes and what would be lost), each with a side pane that explains the step.
@@ -162,7 +162,7 @@ start with `state/`, `update/` or `ui/`.
 - `remote_branch_menu.rs`: a remote branch's menu, shared by the REMOTE rows and the graph's remote labels, with its reasons in `state/remote_branch.rs`.
 - `branch_colour_menu.rs`: the branch menus' Color submenu, main's included (its Automatic is the trunk tone).
 - `stack_menu.rs`: the local branch menu's stack header note and its restack, Push stack and Create pull requests for the stack items.
-- `create_pr_dialog.rs`: the create dialog's step line and Skip during a stack's run.
+- `pull_request/create_dialog.rs`: the create dialog's step line and Skip during a stack's run.
 - `stack_rows.rs`: the LOCAL rows' stack indentation and painted elbows.
 - `repo_colour_menu.rs`: the tab menu's, the welcome rows' and the group headers' Color submenu, with the square swatches in `repo_swatch.rs`.
 - `repo_list.rs`: the start page's repository area: Favorites with + New group, the groups nested under it, the other favorites, and Recent.
@@ -175,7 +175,7 @@ start with `state/`, `update/` or `ui/`.
 - `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 - `file_menu.rs`: file actions in file rows' context menus: history and blame, restore from a commit or revert a change, open in the default program, the external editor or diff tool (or resolve in the merge tool), show in the file manager, new file in its folder, rename or delete (working-tree rows), then the custom commands (`custom_menu.rs`); the LFS, stash and patch items are in `file_menu_extra.rs`.
 - `file_menu_extra.rs`: the file row menus' Track in Git LFS submenu, the Stash dialog's entries (the Staged Files header's menu, Stash this file… on working-tree rows) and the Create patch entries of working-tree rows (`file_menu.rs` holds the rest).
-- `pr_menu_items.rs`: pull request items shared by the branch row menus and the toolbar: create one (into the branch selected before the menu opened, or from the checked-out branch into a remote one), and push the branch first when the code host lacks it or some of its commits.
+- `pull_request/menu_items.rs`: pull request items shared by the branch row menus and the toolbar: create one (into the branch selected before the menu opened, or from the checked-out branch into a remote one), and push the branch first when the code host lacks it or some of its commits.
 - `repo_menu.rs`: the toolbar repository menu's workspace commands, after Dashboard: finding repositories in project folders, opening every favorite in a tab, and fetching or pulling the listed repositories.
 
 ## Left panel and dashboard
@@ -205,7 +205,7 @@ start with `state/`, `update/` or `ui/`.
 ## Command palette and shortcuts
 
 - `palette.rs`: the command palette (Ctrl+P): a search field over the commands available now, ranked by a fuzzy match, or over a two-step command's items (tracked files for File history, stashes to apply, pop or delete), or a free-text step (the message for a new stash).
-- `palette_label.rs`: a palette row's label: its matched characters in the accent colour, a file's folder part dimmed, and a ref or repository that doesn't fit cut in its middle with its matches moved along.
+- `palette/label.rs`: a palette row's label: its matched characters in the accent colour, a file's folder part dimmed, and a ref or repository that doesn't fit cut in its middle with its matches moved along.
 - `shortcuts.rs`: keyboard shortcuts: every changeable key, and Go to tab 1 to 8, matched through the effective keymap (`global.rs`, with presses turned into chords in `chords.rs`); recording a key for Preferences > Keyboard (`record.rs`); the shortcut sheet (`sheet.rs`) and the key caps it and Preferences draw (`caps.rs`).
 - `shortcuts/caps.rs`: keys drawn as key caps: each chord's parts as caps joined by "+", alternatives joined by "or".
 - `shortcuts/chords.rs`: key presses as chords, and taking a press that one of the keymap's bindings answers to out of egui's input before the views see it.
@@ -276,12 +276,12 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/profile_setup.rs`: Preferences > Profile: the selected profile's Accounts and Preferences rows, which say what switches with it.
 - `prefs/profiles.rs`: Preferences > Profile: the open repository's identity (profile_rules.rs), the profile list (current marker, switch, inline rename, delete), the New profile form, and the selected profile's identity fields (saved by the Save / Revert bar) and folder rules (profile_rules.rs), then what else switches with it (profile_setup.rs).
 - `prefs/save_bar.rs`: the Save / Revert bar fixed under a Preferences page with unsaved edits (shown only while `state::prefs_save::unsaved` holds), and the "Saved" tick beside the page title.
-- `prefs/ssh_agent.rs`: Preferences > SSH: the section header the page's three sections share (the title, an optional status chip, a Refresh icon button at the right end, and the rule under them), and the Agent section: its status chip (`state::ssh_marks::agent_pill`), the Use local SSH agent setting, what the agent holds and why it may not be reachable, and on Windows the Windows' OpenSSH row (`ssh_windows`).
-- `prefs/ssh_card.rs`: Preferences > SSH: one key pair's card.
-- `prefs/ssh_git.rs`: Preferences > SSH: the Which key section.
-- `prefs/ssh_service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
-- `prefs/ssh_sources.rs`: Preferences > SSH, under the key cards: the `~/.ssh/config` IdentityFile entries that can't be listed as cards (each with where it is and why), and the keys only the agent holds, as compact cards that can only copy their public key.
-- `prefs/ssh_windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
+- `prefs/ssh/agent.rs`: Preferences > SSH: the section header the page's three sections share (the title, an optional status chip, a Refresh icon button at the right end, and the rule under them), and the Agent section: its status chip (`state::ssh::marks::agent_pill`), the Use local SSH agent setting, what the agent holds and why it may not be reachable, and on Windows the Windows' OpenSSH row (`ssh_windows`).
+- `prefs/ssh/card.rs`: Preferences > SSH: one key pair's card.
+- `prefs/ssh/git.rs`: Preferences > SSH: the Which key section.
+- `prefs/ssh/service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
+- `prefs/ssh/sources.rs`: Preferences > SSH, under the key cards: the `~/.ssh/config` IdentityFile entries that can't be listed as cards (each with where it is and why), and the keys only the agent holds, as compact cards that can only copy their public key.
+- `prefs/ssh/windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
 - `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
 

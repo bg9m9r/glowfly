@@ -2,7 +2,7 @@
 //! repository waits (`SessionStatus::Held`), Trust and run… asks on its behalf, and trusting
 //! the repository by any route starts the held shells. Shells already running are never held.
 
-use super::terminal_tests::{run as term, terminal, workdir};
+use super::terminal::terminal_tests::{run as term, terminal, workdir};
 use super::tests::{drive, scratch_repo};
 use super::trust_held_tests::held_repo;
 use super::trust_print_tests::{add_hook, trusted_repo};

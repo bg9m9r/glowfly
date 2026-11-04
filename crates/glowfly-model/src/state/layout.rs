@@ -4,7 +4,7 @@
 //! is drawn in full or as a narrow rail (`details_shape`), which is view state, never saved.
 
 use super::AppState;
-use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
+use super::palette::commands::{Entry, PaletteCommand, entry, with_detail};
 use crate::keymap::BindingId;
 use crate::msg::LayoutMsg;
 use glowfly_core::repo::Snapshot;

@@ -1,7 +1,7 @@
 //! Apply, pop and drop of a stash picked from a snapshot: if another tab, worktree or terminal
 //! has since pushed or dropped a stash, `stash@{N}` is a different entry and nothing runs.
 
-use super::palette_stash_tests::two_stashes;
+use super::palette::stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
 use glowfly_core::gitcli::args;

@@ -1,7 +1,7 @@
 //! Headless tests for shallow clones: the palette entries and their commit count step, the
 //! fetch jobs (which remote, refusals), and what the reload after a deepen invalidates.
 
-use super::palette_tests::repo_with_topic;
+use super::palette::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use glowfly_core::clone_ops::DepthProblem;

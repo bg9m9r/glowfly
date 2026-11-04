@@ -9,7 +9,7 @@
 //! stash names it by position and commit (`JobMsg::Stash`), so git is refused if the list moved.
 
 use super::conflict_check::{POPOVER_FILES, file_list};
-use super::palette_kinds::StashAction;
+use super::palette::kinds::StashAction;
 use super::rebase::has_conflicts;
 use super::stashes::drop_confirm_body;
 use crate::msg::{JobMsg, Msg, StashMsg};

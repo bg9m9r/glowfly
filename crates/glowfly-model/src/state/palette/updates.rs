@@ -1,0 +1,31 @@
+//! The palette's update entries: "View release notes" and "Check for updates" always, plus
+//! "Download Glowfly x.y.z" while a newer release is on offer (not to a Flatpak copy, which
+//! Flatpak updates) and, once it has downloaded, "Install Glowfly x.y.z and restart" or "Open the
+//! Glowfly x.y.z installer and quit" when it can be installed.
+
+use crate::msg::UpdateMsg;
+use crate::state::AppState;
+use crate::state::palette::commands::{Entry, PaletteCommand as C, entry, with_detail};
+use crate::state::updates::UpdateStatus;
+
+pub(in crate::state) fn entries(st: &AppState, out: &mut Vec<Entry>) {
+    out.push(entry(C::Updates(UpdateMsg::ShowNotes), "View release notes", "changelog whats new patch notes history version"));
+    let check = entry(C::Updates(UpdateMsg::CheckNow), "Check for updates", "update upgrade new version latest release download");
+    out.push(with_detail(check, st.updates.busy().then(|| "checking…".to_owned())));
+    match st.updates.settled() {
+        UpdateStatus::Available(o) | UpdateStatus::DownloadFailed { offer: o, .. } | UpdateStatus::Stale { offer: o, .. }
+            if !o.through_flatpak() =>
+        {
+            out.push(entry(C::Updates(UpdateMsg::Download), format!("Download Glowfly {}", o.version), "update upgrade new version"));
+        }
+        UpdateStatus::Downloaded { offer, method, .. } if method.acts() => {
+            let label = if method.restarts() {
+                format!("Install Glowfly {} and restart", offer.version)
+            } else {
+                format!("Open the Glowfly {} installer and quit", offer.version)
+            };
+            out.push(entry(C::Updates(UpdateMsg::InstallAndRestart), label, "update upgrade new version"));
+        }
+        _ => {}
+    }
+}

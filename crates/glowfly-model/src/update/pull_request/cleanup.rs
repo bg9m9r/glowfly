@@ -1,6 +1,6 @@
 //! After a merge from the pull request panel: one git job brings it into this repository (the
 //! source branch deleted on its remote when asked, then a fetch with pruning) and deletes the
-//! local branch when asked (its rules and commands are in state/pull_request_cleanup.rs), or the
+//! local branch when asked (its rules and commands are in state/pull_request/cleanup.rs), or the
 //! log says how when another job is running. A local branch that can't go any more (the
 //! working tree changed since the form was filled in) is kept with a line saying why, and the
 //! rest still runs. The job's headline says why the branch was kept when its local part stops.
@@ -8,7 +8,7 @@
 use super::super::ops::{JobSpec, Started, busy, start_job};
 use crate::effect::Effect;
 use crate::state::AppState;
-use crate::state::pull_request_cleanup::{CleanupJob, LocalDelete, Merging, local_delete, local_delete_cmds, restore_upstream};
+use crate::state::pull_request::cleanup::{CleanupJob, LocalDelete, Merging, local_delete, local_delete_cmds, restore_upstream};
 use glowfly_core::forge::MergeMethod;
 use glowfly_core::gitcli::args;
 use glowfly_core::remote_ops::fetch_cmd;

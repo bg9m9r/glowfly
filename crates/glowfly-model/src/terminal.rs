@@ -34,7 +34,7 @@ pub enum AfterCheck {
 }
 
 /// What waits on a `CheckBusy` answer: one of the closes that ask first while a terminal of
-/// theirs runs a program (update/terminal_busy.rs).
+/// theirs runs a program (update/terminal/busy.rs).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BusyCheck {
     /// Quitting (every way of quitting).
