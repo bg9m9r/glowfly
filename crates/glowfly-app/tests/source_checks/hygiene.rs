@@ -247,7 +247,7 @@ fn log_and_toast_text_is_translated() {
     assert!(
         sites.len() <= ENGLISH_LOG_CALLS,
         "{} log/toast calls in update/ and state/ pass English text, more than ENGLISH_LOG_CALLS ({ENGLISH_LOG_CALLS}). \
-         Translate the new message instead: add a key to crates/glowfly-core/locales/*.json and pass t.tr(\"key\"), \
+         Translate the new message instead: add a key to crates/glowfly-core/locales/<lang>/<area>.json (every language) and pass t.tr(\"key\"), \
          t.trf(\"key\", &[(\"name\", value)]) or t.trn(\"key\", n, &[]). The calls:\n{}",
         sites.len(),
         sites.join("\n")

@@ -1,0 +1,17 @@
+{
+  "repo_sync.close_running.button": "Cerrar (sigue en curso)",
+  "repo_sync.failed.diverged": "Esta rama y su upstream han avanzado las dos, así que no es posible un avance rápido. Abre el repositorio para traer con fusión o rebase allí.",
+  "repo_sync.failed.host_key": "La clave de host SSH del servidor aún no está confirmada. Abre el repositorio y obtén allí para revisarla, y vuelve a intentarlo.",
+  "repo_sync.failed.locked": "Otro programa de Git está usando este repositorio (existe {file}). Espera a que termine y vuelve a intentarlo.",
+  "repo_sync.failed.sign_in": "El servidor necesita que inicies sesión. Abre el repositorio y obtén allí para iniciar sesión, y vuelve a intentarlo.",
+  "repo_sync.failed.ssh_key": "El servidor no aceptó tu clave SSH. Revisa Preferencias > SSH y vuelve a intentarlo.",
+  "repo_sync.open.button": "Abrir",
+  "repo_sync.open.tip": "Abrir este repositorio en una pestaña",
+  "repo_sync.retry.button": "Reintentar",
+  "repo_sync.row.stopped": "Detenido",
+  "repo_sync.stop.button": "Detener",
+  "repo_sync.stop.stopping_tip": "Deteniendo: esperando a que terminen los repositorios en curso",
+  "repo_sync.stop.tip": "No iniciar más repositorios; los que están en curso terminan",
+  "repo_sync.stopping.one": "Deteniendo: {count} sigue en curso",
+  "repo_sync.stopping.other": "Deteniendo: {count} siguen en curso"
+}

@@ -1,0 +1,11 @@
+{
+  "mainline.limited.parents": "{sha} solo tiene {count} padres.",
+  "mainline.limited.plain": "{sha} no es una fusión, así que Git solo puede usar el padre 1 para estos commits.",
+  "mainline.more_merges.one": "y 1 fusión más",
+  "mainline.more_merges.other": "y {count} fusiones más",
+  "mainline.parent": "Padre {n}",
+  "mainline.several.cherry_pick.one": "Hacer cherry-pick de {total} commits, incluido 1 commit de fusión. Contar sus cambios frente a:",
+  "mainline.several.cherry_pick.other": "Hacer cherry-pick de {total} commits, incluidos {count} commits de fusión. Contar los cambios de cada fusión frente a:",
+  "mainline.several.revert.one": "Revertir {total} commits, incluido 1 commit de fusión. Contar sus cambios frente a:",
+  "mainline.several.revert.other": "Revertir {total} commits, incluidos {count} commits de fusión. Contar los cambios de cada fusión frente a:"
+}

@@ -1,0 +1,9 @@
+{
+  "sign_in.drop_failed": "Die abgelehnte Anmeldung für {host} konnte nicht entfernt werden: {why}",
+  "sign_in.dropped": "Die abgelehnte Anmeldung für {host} wurde aus dem Credential-Helper von Git entfernt.",
+  "sign_in.saved.cached": "Es ist kein Schlüsselbund-Helper installiert, daher behält Git Anmeldungen jetzt mit seinem Cache-Helper im Arbeitsspeicher, jeweils 15 Minuten nach der letzten Verwendung (credential.helper in deiner globalen Git-Konfiguration). Die Anmeldung für {host} wurde gespeichert. Installiere git-credential-libsecret, damit Anmeldungen einen Neustart überdauern. Rückgängig machen: git config --global --unset credential.helper",
+  "sign_in.saved.failed": "Die Anmeldung für {host} konnte nicht gespeichert werden: {why}",
+  "sign_in.saved.helper": "Die Anmeldung für {host} wurde mit dem Credential-Helper von Git gespeichert.",
+  "sign_in.saved.set_up": "Git speichert Anmeldungen jetzt mit {helper} (credential.helper in deiner globalen Git-Konfiguration). Die Anmeldung für {host} wurde gespeichert.",
+  "sign_in.saved.turned_off": "Die Anmeldung für {host} wurde nicht gespeichert: credential.helper ist ausgeschaltet."
+}

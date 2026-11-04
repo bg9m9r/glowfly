@@ -1,0 +1,13 @@
+{
+  "clone.log.submodules_failed": "Cloned {name} and set its folders, but cloning its submodules failed: {why}. Try again with Update all submodules in the SUBMODULES section.",
+  "clone.service.connect": "Connect GitHub, GitLab or Bitbucket in Preferences > Integrations to pick from your repositories.",
+  "clone.service.open_integrations.button": "Open integrations",
+  "clone.service.use_url.link": "Enter a URL instead",
+  "clone.submodules.check": "Clone submodules too",
+  "clone.submodules.sparse_note": "Only the submodules inside the folders to check out are cloned.",
+  "clone.toast.folders_failed": "Cloned {name}, but setting its folders failed: {why}. Choose them in Preferences > Sparse checkout.",
+  "clone.toast.retry": "Retry",
+  "clone.toast.submodules_failed": "Cloned, but its submodules didn't download.",
+  "clone.toast.submodules_failed_count.one": "Cloned, but {count} submodule didn't download.",
+  "clone.toast.submodules_failed_count.other": "Cloned, but {count} submodules didn't download."
+}

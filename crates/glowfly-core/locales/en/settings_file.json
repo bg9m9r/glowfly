@@ -1,0 +1,12 @@
+{
+  "settings_file.banner.folder.button": "Open settings folder",
+  "settings_file.banner.folder.tip": "Shows the folder holding settings.json, to check its permissions or what is using it",
+  "settings_file.banner.reading": "Reading the settings file…",
+  "settings_file.banner.retry.tip": "Reads the settings file again",
+  "settings_file.banner.text": "Defaults are in use, and nothing is saved until the file can be read.",
+  "settings_file.banner.title": "Glowfly couldn't read its settings file",
+  "settings_file.read.toast": "Your saved preferences are back in use.",
+  "settings_file.read_dropped.toast": "Your saved preferences are back; changes made meanwhile weren't kept.",
+  "settings_file.still.log": "The settings file still can't be read ({detail}). Nothing is saved until it can.",
+  "settings_file.unreadable.log": "Glowfly couldn't read its settings file, so it is using default settings and won't save any changes until the file can be read ({detail})."
+}

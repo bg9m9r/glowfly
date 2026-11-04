@@ -1,0 +1,15 @@
+{
+  "repo_colour.blocked": "Abre un repositorio en esta pestaña para darle un color",
+  "repo_colour.hue.fern": "Helecho",
+  "repo_colour.hue.iris": "Iris",
+  "repo_colour.hue.mint": "Menta",
+  "repo_colour.hue.plum": "Ciruela",
+  "repo_colour.hue.rose": "Rosa",
+  "repo_colour.hue.sky": "Cielo",
+  "repo_colour.hue.slate": "Pizarra",
+  "repo_colour.hue.teal": "Verde azulado",
+  "repo_colour.menu": "Color",
+  "repo_colour.none": "Ninguno",
+  "repo_colour.none.group_tip": "Sin color propio: usa el color de su grupo",
+  "repo_colour.none.tip": "Sin color en la pestaña de este repositorio, el borde superior de la ventana ni la lista de repositorios"
+}

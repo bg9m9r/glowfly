@@ -1,0 +1,11 @@
+{
+  "losses.comments": "comentarios escritos y aún no publicados",
+  "losses.conflict.one": "1 decisión de conflicto en {path}",
+  "losses.conflict.other": "{count} decisiones de conflicto en {path}",
+  "losses.draft": "su borrador del mensaje de commit",
+  "losses.form": "los cambios del diálogo abierto",
+  "losses.prefs": "Preferencias: los cambios sin guardar de la página {page}",
+  "losses.quit": "Al salir se pierde trabajo que no está guardado en ningún sitio:",
+  "losses.tab_one": "{tab} tiene trabajo que no está guardado en ningún sitio:",
+  "losses.tabs_many": "Algunas de estas pestañas tienen trabajo que no está guardado en ningún sitio:"
+}

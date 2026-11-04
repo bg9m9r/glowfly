@@ -1,0 +1,17 @@
+{
+  "stash.ask.apart": "No cambia ninguno de los archivos que has cambiado.",
+  "stash.ask.body": "¿Aplicar \"{message}\" sobre tus cambios sin confirmar?",
+  "stash.ask.overlap.one": "Cambia un archivo que tú también has cambiado, así que Git puede detenerse con conflictos o negarse a aplicarlo:",
+  "stash.ask.overlap.other": "Cambia {count} archivos que tú también has cambiado, así que Git puede detenerse con conflictos o negarse a aplicarlo:",
+  "stash.ask.pop_kept": "Si hay conflictos, el stash se conserva.",
+  "stash.ask.unknown": "Si cambian los mismos archivos, Git puede detenerse con conflictos o negarse a aplicarlo.",
+  "stash.blocked.conflicted": "Resuelve los archivos en conflicto antes de crear un stash.",
+  "stash.blocked.conflicts": "Resuelve primero los archivos en conflicto: Git no puede aplicar un stash mientras haya archivos en conflicto.",
+  "stash.blocked.no_files": "Elige al menos un archivo para el stash.",
+  "stash.blocked.nothing": "No hay cambios que guardar en un stash.",
+  "stash.blocked.nothing_staged": "No hay nada preparado. Prepara primero los cambios que quieres apartar, o elige otra opción.",
+  "stash.push.keep_index.check": "Mantener los cambios preparados",
+  "stash.push.keep_index.help": "Los cambios preparados van al stash y también siguen preparados, listos para confirmar.",
+  "stash.push.keep_index.staged_tip": "No se puede combinar con guardar en el stash solo los cambios preparados.",
+  "stash.push.rename_blocked.toast": "No se guardó nada: mueve el archivo que bloquea un cambio de nombre o mantén los cambios preparados."
+}

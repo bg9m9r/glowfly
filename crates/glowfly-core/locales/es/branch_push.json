@@ -1,0 +1,22 @@
+{
+  "branch_push.all.done.one": "{branch} enviada a {count} remoto",
+  "branch_push.all.done.other": "{branch} enviada a los {count} remotos",
+  "branch_push.all.failed.one": "El envío de {branch} falló en {remotes} ({count} de {total} remotos). El registro muestra por qué.",
+  "branch_push.all.failed.other": "El envío de {branch} falló en {remotes} ({count} de {total} remotos). El registro muestra por qué.",
+  "branch_push.force.body.gone": "Según la última obtención, {upstream} no está en {remote}, así que el envío forzado la crea desde {branch}.",
+  "branch_push.force.body.lease": "Si {upstream} se movió desde la última obtención, el envío se rechaza y no se sobrescribe nada.",
+  "branch_push.force.body.none": "Según la última obtención, {upstream} no tiene commits que {branch} no tenga. El envío forzado reemplaza {upstream} con {branch}.",
+  "branch_push.force.body.one": "{upstream} tiene {count} commit que {branch} no tiene. El envío forzado reemplaza {upstream} con {branch}, y ese commit deja de estar en {remote}.",
+  "branch_push.force.body.other": "{upstream} tiene {count} commits que {branch} no tiene. El envío forzado reemplaza {upstream} con {branch}, y esos commits dejan de estar en {remote}.",
+  "branch_push.force.default": "{branch} es la rama por defecto de {remote}, así que nunca se envía forzando: otros trabajan sobre ella.",
+  "branch_push.force.development": "Git Flow usa {branch} como rama de desarrollo, así que nunca se envía forzando.",
+  "branch_push.force.moved": "{upstream} se movió desde que confirmaste, así que {branch} no se envió forzando. Revisa sus nuevos commits y vuelve a intentarlo.",
+  "branch_push.force.no_remote": "No hay ningún remoto llamado {remote}.",
+  "branch_push.force.no_upstream": "{branch} no tiene upstream en un remoto al que enviar forzando.",
+  "branch_push.force.production": "Git Flow usa {branch} como rama de producción, así que nunca se envía forzando.",
+  "branch_push.force.title": "Envío forzado de {branch}",
+  "branch_push.force.upstream_changed": "El upstream de {branch} ya no es {upstream}, así que no se envió forzando. Revisa su nuevo upstream y vuelve a intentarlo.",
+  "branch_push.force.warn.default": "{dest} es la rama por defecto de {remote}, sobre la que trabajan otros: esto sobrescribe {upstream} con tu {branch} local.",
+  "branch_push.force.warn.development": "Git Flow usa {base} como rama de desarrollo: esto sobrescribe {upstream} con tu {branch} local.",
+  "branch_push.force.warn.production": "Git Flow usa {base} como rama de producción: esto sobrescribe {upstream} con tu {branch} local."
+}

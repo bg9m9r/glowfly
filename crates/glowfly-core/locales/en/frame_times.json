@@ -1,0 +1,3 @@
+{
+  "frame_times.overlay": "Frame {last} ms · average {avg} ms · slowest {max} ms"
+}

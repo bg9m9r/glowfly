@@ -1,0 +1,13 @@
+{
+  "clone.log.submodules_failed": "Se clonó {name} y se establecieron sus carpetas, pero no se pudieron clonar sus submódulos: {why}. Vuelve a intentarlo con Actualizar todos los submódulos en la sección SUBMODULES.",
+  "clone.service.connect": "Conecta GitHub, GitLab o Bitbucket en Preferencias > Integraciones para elegir entre tus repositorios.",
+  "clone.service.open_integrations.button": "Abrir integraciones",
+  "clone.service.use_url.link": "Escribir una URL en su lugar",
+  "clone.submodules.check": "Clonar también los submódulos",
+  "clone.submodules.sparse_note": "Solo se clonan los submódulos de las carpetas que tienen checkout.",
+  "clone.toast.folders_failed": "Se clonó {name}, pero no se pudieron establecer sus carpetas: {why}. Elígelas en Preferencias > Checkout parcial.",
+  "clone.toast.retry": "Reintentar",
+  "clone.toast.submodules_failed": "Clonado, pero sus submódulos no se descargaron.",
+  "clone.toast.submodules_failed_count.one": "Clonado, pero {count} submódulo no se descargó.",
+  "clone.toast.submodules_failed_count.other": "Clonado, pero {count} submódulos no se descargaron."
+}

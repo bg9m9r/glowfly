@@ -1,0 +1,8 @@
+{
+  "signing_errors.failed": "{program} falló: {said}",
+  "signing_errors.generate_failed": "la generación de la clave falló: {said}",
+  "signing_errors.new_key_not_found": "no se encontró la clave nueva",
+  "signing_errors.no_identity": "primero indica tu nombre y tu correo electrónico en Preferencias > Perfiles",
+  "signing_errors.no_public_key": "no encontrado: no hay ninguna clave pública para {key}",
+  "signing_errors.not_run": "no se pudo ejecutar {program}: {said}"
+}

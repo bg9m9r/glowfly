@@ -1,0 +1,18 @@
+{
+  "branch_sync.delete.gone": "{upstream} ya no existe.",
+  "branch_sync.rename.behind.one": "{upstream} tiene {count} commit que {branch} no tiene. Haz pull primero, o se perdería al eliminar {upstream}.",
+  "branch_sync.rename.behind.other": "{upstream} tiene {count} commits que {branch} no tiene. Haz pull primero, o se perderían al eliminar {upstream}.",
+  "branch_sync.rename.clash": "{name} choca con {other} en el remoto.",
+  "branch_sync.rename.default": "{branch} es la rama por defecto de {remote}, así que solo se renombra aquí: otros trabajan sobre ella.",
+  "branch_sync.rename.delete_failed": "{old} renombrada a {new} y enviada a {remote} como su upstream, pero eliminar {upstream} falló: {why}. El nombre antiguo sigue en {remote}.",
+  "branch_sync.rename.development": "Git Flow usa {branch} como rama de desarrollo, así que solo se renombra aquí.",
+  "branch_sync.rename.done": "{old} renombrada a {new} aquí y en {remote}.",
+  "branch_sync.rename.gone": "{upstream} ya no está en el remoto, así que allí no hay nada que renombrar.",
+  "branch_sync.rename.local_note": "Su configuración de upstream se mueve con ella; {upstream} no se renombra.",
+  "branch_sync.rename.no_upstream": "{branch} no tiene un upstream en un remoto que renombrar.",
+  "branch_sync.rename.production": "Git Flow usa {branch} como rama de producción, así que solo se renombra aquí.",
+  "branch_sync.rename.push_failed": "{old} renombrada a {new} aquí, pero el envío a {remote} falló: {why}. {upstream} se conserva, y {new} sigue su seguimiento.",
+  "branch_sync.rename.remote.check": "Renombrarla también en {remote}",
+  "branch_sync.rename.remote_note": "Envía el nombre nuevo a {remote} y lo convierte en el upstream; después elimina {upstream}. Quien más use {upstream} tendrá que cambiar al nombre nuevo.",
+  "branch_sync.rename.taken": "{other} ya existe, así que el nombre nuevo no se puede enviar allí."
+}

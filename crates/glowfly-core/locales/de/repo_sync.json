@@ -1,0 +1,17 @@
+{
+  "repo_sync.close_running.button": "Schließen (läuft weiter)",
+  "repo_sync.failed.diverged": "Dieser Branch und sein Upstream haben sich beide weiterentwickelt, daher ist kein Fast-Forward möglich. Öffne das Repository, um dort mit Merge oder Rebase zu pullen.",
+  "repo_sync.failed.host_key": "Der SSH-Hostschlüssel des Servers ist noch nicht bestätigt. Öffne das Repository und rufe dort ab, um ihn zu prüfen, und versuche es dann erneut.",
+  "repo_sync.failed.locked": "Ein anderes Git-Programm verwendet dieses Repository ({file} existiert). Warte, bis es fertig ist, und versuche es dann erneut.",
+  "repo_sync.failed.sign_in": "Der Server verlangt eine Anmeldung. Öffne das Repository und rufe dort ab, um dich anzumelden, und versuche es dann erneut.",
+  "repo_sync.failed.ssh_key": "Der Server hat deinen SSH-Schlüssel nicht akzeptiert. Prüfe Einstellungen > SSH und versuche es dann erneut.",
+  "repo_sync.open.button": "Öffnen",
+  "repo_sync.open.tip": "Dieses Repository in einem Tab öffnen",
+  "repo_sync.retry.button": "Erneut versuchen",
+  "repo_sync.row.stopped": "Angehalten",
+  "repo_sync.stop.button": "Anhalten",
+  "repo_sync.stop.stopping_tip": "Wird angehalten: die laufenden Repositorys werden noch beendet",
+  "repo_sync.stop.tip": "Keine weiteren Repositorys starten; laufende werden noch beendet",
+  "repo_sync.stopping.one": "Wird angehalten: {count} läuft noch",
+  "repo_sync.stopping.other": "Wird angehalten: {count} laufen noch"
+}

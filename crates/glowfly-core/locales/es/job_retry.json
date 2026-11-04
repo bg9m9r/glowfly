@@ -1,0 +1,6 @@
+{
+  "job_retry.button": "Reintentar",
+  "job_retry.moved": "{job} no se volvió a ejecutar: su pestaña muestra ahora otro repositorio.",
+  "job_retry.switch_back": "{job} no se volvió a ejecutar: vuelve primero a su pestaña.",
+  "job_retry.tab_closed": "{job} no se volvió a ejecutar: su pestaña se cerró."
+}

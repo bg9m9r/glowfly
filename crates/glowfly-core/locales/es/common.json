@@ -1,0 +1,22 @@
+{
+  "common.ack.check": "Entiendo que esto no se puede deshacer",
+  "common.ack.tip": "Marca primero la casilla de arriba",
+  "common.busy": "Otra operación sigue en curso.",
+  "common.cancel.button": "Cancelar",
+  "common.clone_repo.button": "Clonar repositorio…",
+  "common.close.button": "Cerrar",
+  "common.close_panel.name": "Cerrar panel",
+  "common.copy_details.button": "Copiar detalles",
+  "common.copy_path": "Copiar ruta",
+  "common.copy_sha.button": "Copiar SHA",
+  "common.delete.button": "Eliminar",
+  "common.details.button": "Detalles",
+  "common.discard.button": "Descartar",
+  "common.dismiss.button": "Descartar",
+  "common.init_repo.button": "Nuevo repositorio…",
+  "common.list.and": "{rest} y {last}",
+  "common.loading": "Cargando…",
+  "common.open_repo.button": "Abrir repositorio…",
+  "common.set_up.suffix": "Configurar…",
+  "common.try_again.button": "Reintentar"
+}

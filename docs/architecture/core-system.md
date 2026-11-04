@@ -153,7 +153,7 @@ source file, update its line here.
 - `lines.rs`: the text of performance and git command lines.
 - `output.rs`: reading a job's output: its lines as a terminal shows them, their kinds and the last meaningful one.
 - `bundle.rs`: the bug-report bundle: every log file verbatim under a short header, written in one go.
-- `i18n.rs`, `i18n/`, `locales/`: the UI's translations: languages, the bundled catalogs (English base, per-language JSON), lookups with {name} placeholders and English fallback, the OS language read once at startup (gettext's order and C rule on Linux).
+- `i18n.rs`, `i18n/`, `locales/`: the UI's translations: languages, the bundled catalogs (English base; per-language folders of per-area JSON files, merged at load), lookups with {name} placeholders and English fallback, the OS language read once at startup (gettext's order and C rule on Linux).
 - `i18n/toast_length_tests.rs`: every English text under a `toast` key is at most 140 characters (an allowlist that only shrinks).
 - `dates.rs`: dates: moment.js-style patterns, localized month and weekday words, relative ages and the history table's short ones.
 - `dates/locale_patterns.rs`: each language's usual patterns for the date locale (ISO 8601 otherwise), keyed by a normalised locale tag with the OS locale read once per run (Linux: LC_ALL, LC_TIME, LANG).
@@ -169,7 +169,7 @@ source file, update its line here.
 - `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
 - `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
 - `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
-- `i18n/catalog.rs`: the bundled catalogs: one flat JSON object of key → text per language, compiled in and parsed on first use.
+- `i18n/catalog.rs`: the bundled catalogs: per language, one flat JSON object of key → text per area (`locales/<lang>/<area>.json`), compiled in and merged on first use; tests in `catalog_tests.rs` (each file parses, holds only its area's sorted keys, no key in two files, the area list matches the folders).
 - `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.
 
 ## External tools (`external_tools.rs`, `external_tools/`)

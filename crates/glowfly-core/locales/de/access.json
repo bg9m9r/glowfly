@@ -1,0 +1,18 @@
+{
+  "access.checked_out": "{name}, ausgecheckt",
+  "access.current_worktree": "{name}, aktuell",
+  "access.section.branches.one": "{title}, {count} Branch",
+  "access.section.branches.other": "{title}, {count} Branches",
+  "access.section.items.one": "{title}, {count} Eintrag",
+  "access.section.items.other": "{title}, {count} Einträge",
+  "access.section.remotes.one": "{title}, {count} Remote",
+  "access.section.remotes.other": "{title}, {count} Remotes",
+  "access.section.stashes.one": "{title}, {count} Stash",
+  "access.section.stashes.other": "{title}, {count} Stashes",
+  "access.section.submodules.one": "{title}, {count} Submodul",
+  "access.section.submodules.other": "{title}, {count} Submodule",
+  "access.section.tags.one": "{title}, {count} Tag",
+  "access.section.tags.other": "{title}, {count} Tags",
+  "access.section.worktrees.one": "{title}, {count} Worktree",
+  "access.section.worktrees.other": "{title}, {count} Worktrees"
+}

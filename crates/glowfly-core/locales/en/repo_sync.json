@@ -1,0 +1,17 @@
+{
+  "repo_sync.close_running.button": "Close (keeps running)",
+  "repo_sync.failed.diverged": "This branch and its upstream have both moved on, so it can't be fast-forwarded. Open the repository to pull with a merge or rebase there.",
+  "repo_sync.failed.host_key": "The server's SSH host key isn't confirmed yet. Open the repository and fetch there to check it, then retry.",
+  "repo_sync.failed.locked": "Another Git program is using this repository ({file} exists). Wait for it to finish, then retry.",
+  "repo_sync.failed.sign_in": "The server needs you to sign in. Open the repository and fetch there to sign in, then retry.",
+  "repo_sync.failed.ssh_key": "The server didn't accept your SSH key. Check Preferences > SSH, then retry.",
+  "repo_sync.open.button": "Open",
+  "repo_sync.open.tip": "Open this repository in a tab",
+  "repo_sync.retry.button": "Retry",
+  "repo_sync.row.stopped": "Stopped",
+  "repo_sync.stop.button": "Stop",
+  "repo_sync.stop.stopping_tip": "Stopping: waiting for the running repositories to finish",
+  "repo_sync.stop.tip": "Start no more repositories; those already running finish",
+  "repo_sync.stopping.one": "Stopping: {count} still running",
+  "repo_sync.stopping.other": "Stopping: {count} still running"
+}

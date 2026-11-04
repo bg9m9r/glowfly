@@ -1,0 +1,11 @@
+{
+  "losses.comments": "eingegebene, noch nicht gesendete Kommentare",
+  "losses.conflict.one": "1 Konfliktentscheidung in {path}",
+  "losses.conflict.other": "{count} Konfliktentscheidungen in {path}",
+  "losses.draft": "der Entwurf der Commit-Nachricht",
+  "losses.form": "die Änderungen im offenen Dialog",
+  "losses.prefs": "Einstellungen: die noch nicht gespeicherten Änderungen auf der Seite {page}",
+  "losses.quit": "Beim Beenden geht Arbeit verloren, die nirgends gespeichert ist:",
+  "losses.tab_one": "{tab} enthält Arbeit, die nirgends gespeichert ist:",
+  "losses.tabs_many": "Einige dieser Tabs enthalten Arbeit, die nirgends gespeichert ist:"
+}

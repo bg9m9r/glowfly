@@ -1,17 +1,19 @@
 # Translations
 
-Each file here is one language's text for the UI, compiled into Glowfly
-(`src/i18n/catalog.rs`). `en.json` is the base: a text missing from another language is shown
-in English, and a key missing from English too is shown as the key itself (the tests make sure
-neither happens in shipped code).
+Each folder here is one language's text for the UI, one file per area, compiled into Glowfly
+and merged on first use (`src/i18n/catalog.rs`). `en/` is the base: a text missing from another
+language is shown in English, and a key missing from English too is shown as the key itself (the
+tests make sure neither happens in shipped code).
 
 ## Format
 
-One flat JSON object per language, keys sorted:
+A folder per language (`en/`, `de/`, `es/`) holding a file per area: `<lang>/<area>.json`,
+the area being every key's first segment (`commit.blocked.no_repo` lives in `en/commit.json`,
+`de/commit.json` and `es/commit.json`). Each file is one flat JSON object, keys sorted, 2-space
+indent, non-ASCII text as written, ending in a newline:
 
 ```json
 {
-  "commit.blocked.no_repo": "Open a repository first.",
   "status.open_pull_requests.one": "{count} open pull request",
   "status.open_pull_requests.other": "{count} open pull requests"
 }
@@ -37,17 +39,21 @@ One flat JSON object per language, keys sorted:
 
 ## Adding a key
 
-Add it to `en.json` and to every other language. `cargo test -p glowfly-core i18n` lists keys a
-language lacks, keys English lacks and changed placeholders; `cargo test -p glowfly --test
-source_checks i18n_keys` lists keys the code uses that `en.json` lacks, and English keys nothing
-uses.
+Add it to `en/<area>.json` and to the same file in every other language, keeping the keys
+sorted. A new area is a new file in every language folder plus its name in the `catalogs!` list in
+`src/i18n/catalog.rs` (a file the list names but a folder lacks fails the build). `cargo test -p
+glowfly-core i18n` lists keys a language lacks, keys English lacks, changed placeholders, keys in
+the wrong area file or in two files, unsorted files and files the list doesn't name; `cargo test -p
+glowfly --test source_checks i18n_keys` lists keys the code uses that English lacks, and English
+keys nothing uses.
 
 ## Adding a language
 
-1. Copy `en.json` to `<code>.json` and translate every text.
+1. Copy the `en/` folder to `<code>/` and translate every text.
 2. Add a variant to `Lang` in `src/i18n.rs`, with its code and its name in its own language, and
    put it in `Lang::ALL` (sorted by that name).
-3. Add its `include_str!` and table to `src/i18n/catalog.rs`.
+3. In `src/i18n/catalog.rs`, add its `area_files!` line to `catalogs!`, a table, and its arms in
+   `table` and `files`.
 4. If its plurals have more forms than one and other, extend `plural_suffix`.
 
 ## Glossary

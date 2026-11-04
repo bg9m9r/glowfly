@@ -1,0 +1,4 @@
+{
+  "history.header.close.name": "Verlauf schließen",
+  "history.load.failed": "Der Verlauf von {path} konnte nicht geladen werden: {why}"
+}

@@ -1,0 +1,3 @@
+{
+  "submodules.log.outside_sparse": "Se omitieron los submódulos que el checkout parcial deja fuera: {paths}. Añade sus carpetas en Preferencias > Checkout parcial para hacerles checkout."
+}

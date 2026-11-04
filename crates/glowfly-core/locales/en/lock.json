@@ -1,0 +1,16 @@
+{
+  "lock.delete.body": "No Git program is running, so {file} looks left behind by one that stopped. Glowfly will delete it, then run {job} again.\n\nOnly go on if no other program, such as an editor or another Git client, is working in this repository.\n\n{path}",
+  "lock.delete.button": "Delete lock file",
+  "lock.delete.confirm": "Delete and try again",
+  "lock.delete.title": "Delete the lock file?",
+  "lock.deleted": "Deleted {file}.",
+  "lock.refused.busy": "{file} wasn't deleted: {job} is still running.",
+  "lock.refused.failed": "{file} couldn't be deleted: {error}",
+  "lock.refused.hidden": "{file} wasn't deleted: this system hides other users' programs, so Glowfly can't tell whether Git is running.",
+  "lock.refused.no_list": "{file} wasn't deleted: Glowfly couldn't read the list of running programs, so it can't tell whether Git is running.",
+  "lock.refused.place": "{file} wasn't deleted: it isn't a plain file in this repository's Git folder.",
+  "lock.refused.running": "{file} wasn't deleted: Git is still running ({programs}). Wait for it to finish, then try again.",
+  "lock.refused.sandbox": "{file} wasn't deleted: the Flatpak sandbox hides the programs outside it, so Glowfly can't tell whether Git is running.",
+  "lock.refused.unreadable": "{file} wasn't deleted: Glowfly couldn't read the names of some running programs, so it can't tell whether Git is running.",
+  "lock.refused.wsl": "{file} wasn't deleted: a WSL session is open, and Glowfly can't see whether Git runs inside it."
+}

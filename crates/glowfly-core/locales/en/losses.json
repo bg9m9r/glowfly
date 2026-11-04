@@ -1,0 +1,11 @@
+{
+  "losses.comments": "comments typed and not posted yet",
+  "losses.conflict.one": "1 conflict choice in {path}",
+  "losses.conflict.other": "{count} conflict choices in {path}",
+  "losses.draft": "its commit message draft",
+  "losses.form": "the changes in the open dialog",
+  "losses.prefs": "Preferences: the changes on the {page} page that aren't saved yet",
+  "losses.quit": "Quitting loses work that isn't saved anywhere:",
+  "losses.tab_one": "{tab} holds work that isn't saved anywhere:",
+  "losses.tabs_many": "Some of these tabs hold work that isn't saved anywhere:"
+}

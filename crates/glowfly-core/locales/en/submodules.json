@@ -1,0 +1,3 @@
+{
+  "submodules.log.outside_sparse": "Left out the submodules the sparse checkout leaves out: {paths}. Add their folders in Preferences > Sparse checkout to check them out."
+}

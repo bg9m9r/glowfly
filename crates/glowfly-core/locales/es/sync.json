@@ -1,0 +1,10 @@
+{
+  "sync.published": "Se publicó {branch} en {remote}.",
+  "sync.pulled.one": "Se trajo {count} commit a {branch}.",
+  "sync.pulled.other": "Se trajeron {count} commits a {branch}.",
+  "sync.pulled_new": "Se trajeron commits nuevos a {branch}.",
+  "sync.pushed.one": "Se envió {count} commit a {upstream}.",
+  "sync.pushed.other": "Se enviaron {count} commits a {upstream}.",
+  "sync.pushed_branch": "Se envió {branch} a {upstream}.",
+  "sync.up_to_date": "{branch} ya está al día."
+}

@@ -1,0 +1,21 @@
+{
+  "service_errors.denied": "Tu cuenta de {service} no permitió esto. Reconéctala en Preferencias > Integraciones y vuelve a intentarlo.",
+  "service_errors.denied.change": "Tu cuenta de {service} no puede hacer este cambio en el repositorio. Pide acceso a su propietario o inicia sesión con otra cuenta.",
+  "service_errors.denied.create_repo": "Tu cuenta de {service} no puede crear repositorios en {owner}. Elige otro propietario o pide acceso a un propietario de {owner}.",
+  "service_errors.denied.fork": "Tu cuenta de {service} no puede hacer un fork de este repositorio. Puede que su propietario haya desactivado los forks o que tu cuenta necesite acceso.",
+  "service_errors.network": "Glowfly no pudo conectar con {service}. Comprueba tu conexión de red y vuelve a intentarlo.",
+  "service_errors.not_found.owner": "{service} no encuentra {owner} para tu cuenta. Elige otro propietario.",
+  "service_errors.not_found.repo": "{service} no encuentra este repositorio para tu cuenta. Comprueba que has iniciado sesión con una cuenta que pueda verlo.",
+  "service_errors.rate_limited": "{service} está limitando las solicitudes de tu cuenta. Espera unos minutos y vuelve a intentarlo.",
+  "service_errors.repo_exists": "Ya existe un repositorio llamado {name} en {owner}. Elige otro nombre.",
+  "service_errors.said.auth": "la autenticación falló: {said}",
+  "service_errors.said.decode": "respuesta inesperada: {said}",
+  "service_errors.said.forbidden": "acceso denegado: {said}",
+  "service_errors.said.http": "HTTP {status}: {said}",
+  "service_errors.said.keyring": "almacén de credenciales: {said}",
+  "service_errors.said.network": "error de red: {said}",
+  "service_errors.said.not_found": "no encontrado: {said}",
+  "service_errors.server": "{service} tuvo un problema por su parte. Vuelve a intentarlo en unos minutos.",
+  "service_errors.sign_in": "{service} no aceptó tu inicio de sesión. Vuelve a iniciar sesión o reconecta la cuenta en Preferencias > Integraciones.",
+  "service_errors.sign_in_again.help": "Vuelve a iniciar sesión en Preferencias > Integraciones."
+}

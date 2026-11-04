@@ -1,0 +1,16 @@
+{
+  "lock.delete.body": "No hay ningún programa de Git en marcha, así que {file} parece haber quedado de uno que se detuvo. Glowfly lo borrará y volverá a ejecutar {job}.\n\nContinúa solo si ningún otro programa, como un editor u otro cliente de Git, está trabajando en este repositorio.\n\n{path}",
+  "lock.delete.button": "Borrar archivo de bloqueo",
+  "lock.delete.confirm": "Borrar y reintentar",
+  "lock.delete.title": "¿Borrar el archivo de bloqueo?",
+  "lock.deleted": "Se borró {file}.",
+  "lock.refused.busy": "No se borró {file}: {job} sigue en marcha.",
+  "lock.refused.failed": "No se pudo borrar {file}: {error}",
+  "lock.refused.hidden": "No se borró {file}: este sistema oculta los programas de otros usuarios, así que Glowfly no sabe si Git se está ejecutando.",
+  "lock.refused.no_list": "No se borró {file}: Glowfly no pudo leer la lista de programas en marcha, así que no sabe si Git se está ejecutando.",
+  "lock.refused.place": "No se borró {file}: no es un archivo normal de la carpeta de Git de este repositorio.",
+  "lock.refused.running": "No se borró {file}: Git sigue en marcha ({programs}). Espera a que termine e inténtalo de nuevo.",
+  "lock.refused.sandbox": "No se borró {file}: el entorno aislado de Flatpak oculta los programas de fuera, así que Glowfly no sabe si Git se está ejecutando.",
+  "lock.refused.unreadable": "No se borró {file}: Glowfly no pudo leer el nombre de algunos programas en marcha, así que no sabe si Git se está ejecutando.",
+  "lock.refused.wsl": "No se borró {file}: hay una sesión de WSL abierta y Glowfly no puede ver si Git se ejecuta dentro."
+}
