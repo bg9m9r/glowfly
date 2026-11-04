@@ -32,7 +32,7 @@ pub(crate) fn p(s: &str) -> PathBuf {
     Path::new(s).components().collect()
 }
 
-fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>) -> WorktreeInfo {
+pub(crate) fn entry(path: &str, name: Option<&str>, branch: Option<&str>, head: Option<Oid>) -> WorktreeInfo {
     WorktreeInfo {
         name: name.map(str::to_owned),
         path: p(path),

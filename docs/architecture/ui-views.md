@@ -79,7 +79,9 @@ start with `state/`, `update/` or `ui/`.
 - `graph/branch_chip.rs`: a branch's ref chip drawn outside the graph, as the Branch / tag column draws it (the rebase panel's tip row).
 - `graph/labels.rs`: the row's ref chips with their marks (names cut in their middle; the checked-out branch in semibold), fitting and "+N" chip, the halo round the checked-out branch and HEAD (no layout room; a ref chip after it moves 3 px).
 - `graph/labels_tests.rs`: the chips' fitting, widths (marks; the halo takes none) and hit testing.
-- `graph/nodes.rs`: the row's nodes, sized by the row density.
+- `graph/lantern.rs`: the HEAD lantern: the glow and rim round the checked-out commit's node, drawn from a centre snapped to the pixel grid.
+- `graph/lantern_pixel_tests.rs`: the lantern as rendered: a pixel of plain fill between the rim and the glow on every row fill, theme, preset and density.
+- `graph/nodes.rs`: the row's nodes (and this tab's WIP lantern), sized by the row density.
 - `graph/marks.rs`: the painted remote (in sync) and tag marks.
 - `graph/row_look.rs`: the row's background: the lane band (none on a WIP row) and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
@@ -95,6 +97,7 @@ start with `state/`, `update/` or `ui/`.
 - `graph/resize.rs`: dragging the graph header's dividers to resize columns, and double-clicking one to reset its column.
 - `graph/search_bar.rs`: the graph's search bar: the query field (with a painted clear button while it has text), the Highlight | Filter mode, the author picker, the match count in a fixed-width slot (so Close doesn't move as it changes) and Close.
 - `graph/worktree_wip.rs`: other worktrees' WIP rows in the graph (a dashed node in its lane's colour joined to the worktree's HEAD commit, an "Uncommitted changes · <folder>" box and the change counts).
+- `snapshot_tests/snapshot_tests_lantern.rs`: the HEAD lantern's one glow and this tab's lit WIP lantern beside another worktree's WIP row, in Dusk (Comfortable and Compact) and colour-blind safe Porcelain.
 
 ## Commit details and the WIP panel
 

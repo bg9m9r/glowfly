@@ -114,6 +114,7 @@ Views never name a hex value: they read the active palette through `color::text(
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and on the dark themes' accents, white on the light ones'). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
 | tag | `tag_bg`, `tag_fg` | Tag chips in the graph: the plum of the icon's lower edge in Dusk and Dawn, and in the Garden pair and high contrast too. |
+| lantern | (not a theme-file key; theme files keep their base's) | "You are here", and nothing else: the glow and rim round the checked-out commit's node and the WIP row's lantern. Dusk's gold (its accent); a pale amber in Graphite and Midnight (#f9cb92, OKLCH 0.87 0.09 72); an orange on the light themes' paper (#cc590d, 0.60 0.164 46), where a 3:1 amber at chroma 0.10 reads brown; `text` in high contrast, which draws no glow. At least 3:1 on the row's bg, hover, selected fills and lane bands. On a light theme's highlighted band (a hovered branch's rows) the rim falls to about 2.6:1; accepted, as the highlight is transient and HEAD keeps its chip and lane. One glow on screen, never more. |
 
 ### Status
 
@@ -344,8 +345,9 @@ Besides those:
   accent is green.
 - A form's or card's marks are `weak`, not accent (the new code comment's icon), and a card's
   frame is `border` (its field's focus ring is still the accent).
-- The lantern gold of Dusk and Dawn is reserved for D19 (#456); until then it is Dusk's accent
-  and does only the three jobs above.
+- The lantern (`lantern`) is used only for "you are here": the checked-out commit's glow and rim
+  and this tab's WIP lantern. It is never a selection, focus, button, chip or text colour, and it
+  is not an accent shape in the accent count.
 
 The sign-off check for a view's goldens: count the filled accent shapes on each surface. There
 is at most one, and it sits at the surface's trailing edge.
@@ -410,6 +412,14 @@ is at most one, and it sits at the surface's trailing edge.
     comments, the terminal's black, white and foreground) are judged as greys, not hues.
   - `snapshot_tests/snapshot_tests_colour_sheet.rs` renders every theme for judging by eye
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`).
+- The HEAD lantern's glow is painted through `contrast::tint`, never as a plain alpha wash of
+  `lantern`: a warm wash on a dark field reads brown at any strength, so on the dark themes the
+  glow lifts the row's own hue and the warmth sits on the node's `lantern` rim (1 pt and a
+  pixel wide, so egui paints one solid pixel of it). Its peak is 25% on dark themes and 16% on
+  paper (18% and 12% with colour-blind safe colours), falling off
+  as 1 - smoothstep(t) from 4 px outside the node's edge (a whole pixel past the rim's
+  antialiased edge, so the rim reads on the plain row fill; HEAD's node is snapped to the pixel
+  grid) to the row's edge, stopping above a hovered row's shadow.
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
   lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7%, text fields
   4%, and a search's find fill behind matched text 24% (dark) or 18% (light) toward the accent,
@@ -597,6 +607,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | text / strong | #e6e5ef / #ffffff | text 12.9:1 on panel |
 | weak / faint | #b6b3c8 / #9b96ae | 7.85 and 5.6:1 on panel |
 | accent, primary | #f6c159 | The lantern gold, OKLCH 0.84 0.135 82; 9.7:1 on panel |
+| lantern | #f6c159 | The accent; 10.5:1 on bg, 7.45 on selected |
 | on_primary | #151229 | 11.0:1 on the gold |
 | primary_border | #d5a13c | |
 | tag_bg / tag_fg | #4a283f / #f4c9e4 | Plum, 8.6:1 |
@@ -620,6 +631,7 @@ only modified (3.9:1 unpushed); in Garden dark, removed and progress are pushed.
 | text / strong | #211f38 / #100d26 | text 15.3:1 on panel |
 | weak / faint | #54526d / #636079 | 7.2 and 5.8:1 on panel |
 | accent, primary | #5a47cf | Iris, OKLCH 0.50 0.20 283; 6.2:1 on panel, 5.1:1 on selected |
+| lantern | #cc590d | An orange, OKLCH 0.60 0.164 46; Dawn has no gold (a 3:1 gold on paper reads brown). 3.91:1 on bg, 3.30 on selected |
 | on_primary | #ffffff | 6.5:1 on the iris |
 | primary_border | #4535b5 | |
 | tag_bg / tag_fg | #f5d8ea / #763463 | Plum, 6.5:1 |
@@ -702,6 +714,7 @@ Linen's diff, syntax and danger colours.
 | modified / warn | #edb345 / #e8b339 | #975600 / #975600 | #edb345 / #e8b339 | #985700 / #985700 |
 | info / progress | #60aaf3 / #a689f1 | #1f68bc / #6d47b8 | #4fc0e7 / #a689f1 | #006e91 / #6d47b8 |
 | banner | #1c2939 | #fbecc8 | #292b2e | #fbecc8 |
+| lantern | #f9cb92 | #cc590d | #f9cb92 | #cc590d |
 | syn_comment | | | | #686e78 |
 
 Text on the panel reaches 12.9 to 13.3:1 in the dark ones and 15.2 to 15.5:1 in the light ones;

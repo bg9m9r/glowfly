@@ -1,7 +1,7 @@
 //! No built-in theme paints brown, tan, khaki or olive (docs/COLOUR.md, "No brown"): every
 //! surface, row band, chip, tint and wash, as composited on the surface it is drawn over, and
 //! every line and edge (the accent, the button and field edges, each branch lane, chip edges
-//! and letters, initials) stays out of `contrast::brownish`'s zone, in both colour presets
+//! and letters, initials, the lantern and its glow) stays out of `contrast::brownish`'s zone, in both colour presets
 //! (the colour-blind safe one with its diff and status colours too), with no exception.
 
 use super::branch_colours::{line_in, swatches};
@@ -103,8 +103,29 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
                 add(&format!("{s:?} {style:?} chip edge"), edge);
             }
         }
+        if !p.high_contrast {
+            glow_fills(p, &format!("{s:?} band"), band, &mut add);
+            glow_fills(p, &format!("{s:?} band highlighted"), crate::ui::theme::surfaces::highlight_color(band, lane), &mut add);
+        }
+    }
+    if !p.high_contrast {
+        let selected_inactive = crate::ui::theme::tokens::selected_inactive(p);
+        for (k, s) in [("bg", p.bg), ("hover", p.hover), ("selected", p.selected), ("selected inactive", selected_inactive)] {
+            glow_fills(p, k, s, &mut add);
+        }
     }
     v
+}
+
+/// The HEAD lantern's glow on surface `s` (`graph::lantern`), at four steps of its fall-off
+/// from either peak (standard and colour-blind safe).
+fn glow_fills(p: &Palette, what: &str, s: Color32, add: &mut impl FnMut(&str, Color32)) {
+    for safe in [false, true] {
+        let peak = crate::ui::graph::lantern_peak(p.dark, safe);
+        for k in [1.0, 0.75, 0.5, 0.25] {
+            add(&format!("lantern glow {k} of {peak} on {what}"), contrast::tint(s, p.lantern, peak * k, p.dark));
+        }
+    }
 }
 
 /// Every line, edge and letter `p` draws in a colour of its own: (what, the colour).
@@ -114,6 +135,7 @@ pub(super) fn lines(p: &Palette) -> Vec<(String, Color32)> {
         ("primary_border".into(), p.primary_border),
         ("input_border".into(), p.input_border),
         ("dialog_border".into(), p.dialog_border),
+        ("lantern".into(), p.lantern),
     ];
     for s in swatches() {
         let lane = line_in(s, p);

@@ -39,6 +39,9 @@ pub fn paint(p: &Painter, rect: Rect, selected: bool, hovered: bool) {
     paint_in(p, rect, selected, true, hovered);
 }
 
+/// How tall the lifted hover's shadow is inside a row's bottom edge (two 1 px lines).
+pub const HOVER_SHADOW_H: f32 = 2.0;
+
 /// `paint` for a row of a pane that takes the keyboard focus: its selection is filled with
 /// `selected` while the pane has the focus (`active`), else with `selected_inactive`.
 pub fn paint_in(p: &Painter, rect: Rect, selected: bool, active: bool, hovered: bool) {
@@ -66,7 +69,7 @@ pub fn paint_state(p: &Painter, rect: Rect, s: RowState) {
             p.rect_filled(r, 0.0, Color32::from_black_alpha(a));
         };
         line(1.0, alpha);
-        line(2.0, alpha / 2);
+        line(HOVER_SHADOW_H, alpha / 2);
     }
     if s.focused {
         tokens::focus_ring_inset(p, rect, 0);
