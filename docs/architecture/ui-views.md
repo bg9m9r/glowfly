@@ -43,7 +43,7 @@ start with `state/`, `update/` or `ui/`.
 - `worktree_move_dialog.rs`: the Move worktree dialog: the new folder (typed, or a parent picked with Browse…), checked as the user types with the pure rules in `state::worktree_move`; the runner checks the disk and reports a taken folder under the field.
 - `remotes/fork_create.rs`: the Fork dialog: looks for the user's own fork of a remote's repository first (offering to add it), says when the repository is the user's own, and otherwise is the confirmation to fork it into the user's account, add the fork as a remote and fetch it.
 - `remotes/fork_pick.rs`: the Add a fork dialog: the forks of a remote's repository on its hosting service, filtered as the user types, with the ones already added as remotes marked; the picked fork is added as a remote under a name Glowfly suggests.
-- `menu_bar/about.rs`: Help > About Glowfly (`Modal::About`): the version, licence and git in use and the project's website.
+- `menu_bar/about.rs`: Help > About Glowfly (`Modal::About`): the icon, wordmark and tagline, the Version / Git / OS / Build table, the licence footnote, the notices / privacy / website links and Copy details; tests in `menu_bar/about_tests.rs`.
 
 ## Blame and the file history's File view
 

@@ -1,22 +1,23 @@
 //! The welcome screen's mark: the app icon beside the "Glowfly" wordmark, centred as one row.
 
 use super::theme::{color, type_scale};
-use eframe::egui::{Align, ColorImage, Context, Id, Image, Layout, RichText, TextureHandle, TextureOptions, Ui, vec2};
+use eframe::egui::{Align, ColorImage, Context, Id, Image, Layout, RichText, TextureFilter, TextureHandle, TextureOptions, Ui, vec2};
 
 /// The icon's side next to the wordmark, a little taller than its capitals.
 const ICON: f32 = 64.0;
 /// Between the icon and the wordmark.
 const GAP: f32 = 12.0;
 
-/// The icon as a texture, decoded once per context (the bundled 256 px PNG).
-fn icon(ctx: &Context) -> TextureHandle {
+/// The icon as a texture, decoded once per context (the bundled 256 px PNG), with mipmaps so it
+/// scales down cleanly to the welcome's 64 px and About's 96.
+pub(super) fn icon(ctx: &Context) -> TextureHandle {
     let id = Id::new("app-mark-icon");
     if let Some(t) = ctx.data(|d| d.get_temp::<TextureHandle>(id)) {
         return t;
     }
     let data = super::app_icon();
     let image = ColorImage::from_rgba_unmultiplied([data.width as usize, data.height as usize], &data.rgba);
-    let t = ctx.load_texture("app-mark-icon", image, TextureOptions::LINEAR);
+    let t = ctx.load_texture("app-mark-icon", image, TextureOptions { mipmap_mode: Some(TextureFilter::Linear), ..TextureOptions::LINEAR });
     ctx.data_mut(|d| d.insert_temp(id, t.clone()));
     t
 }

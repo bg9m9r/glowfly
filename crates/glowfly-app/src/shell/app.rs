@@ -106,6 +106,7 @@ impl GlowflyApp {
         let mut app = Self::assemble(ctx, settings, recent, Runner::new);
         // The build's version; test apps keep the placeholder, so snapshots survive releases.
         app.st.updates.set_version(env!("CARGO_PKG_VERSION"));
+        app.st.updates.build = crate::state::menu_bar::BuildInfo::this();
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
         app.st.view.chrome = chrome;
         app.st.view.system_title_bar_offered =

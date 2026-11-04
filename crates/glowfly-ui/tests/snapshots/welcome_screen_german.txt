@@ -6,7 +6,7 @@ Button "Neuer Tab"
 Button "Repository: Öffnen…"
 Image
 Label "Glowfly"
-Label "Ein schneller, nativer Git-Client"
+Label "Deinen Verlauf klar im Blick."
 Button "Repository öffnen…"
 Label "Ein Ordner auf diesem Computer, der schon ein Git-Repository enthält."
 Button "Repository klonen…"

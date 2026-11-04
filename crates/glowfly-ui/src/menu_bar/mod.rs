@@ -27,7 +27,7 @@ mod keys;
 mod notices;
 
 pub(crate) use crate::ui::menu_keys::may_step;
-pub(super) use about::about;
+pub(super) use about::{ThisCopy, about};
 #[cfg(test)]
 pub(super) use items::hint;
 pub(crate) use keys::{marks, take};
@@ -154,6 +154,8 @@ fn single(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>, m: TopMenu)
     contents(m, ui, st, msgs);
 }
 
+#[cfg(test)]
+mod about_tests;
 #[cfg(test)]
 pub(crate) mod keys_tests;
 #[cfg(test)]
