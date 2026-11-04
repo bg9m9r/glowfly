@@ -4,12 +4,12 @@
 //! what the folded buttons would.
 
 use super::tests::{span, variant};
-use crate::msg::{JobMsg, Msg};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::H;
-use crate::ui::snapshot_tests::{harness_sized, remove_fixture};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_worktrees::H;
+use crate::snapshot_tests::{harness_sized, remove_fixture};
 use eframe::egui::{self, accesskit::Role};
 use egui_kittest::kittest::Queryable;
+use glowfly_model::msg::{JobMsg, Msg};
 
 /// The toolbar's buttons left to right, with their edges: the ones level with Refresh.
 fn toolbar_buttons(h: &H) -> Vec<(String, f64, f64)> {

@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness_palette, harness_sized};
 use super::snapshot_tests_onboarding::{ada, on, snapshot};
-use crate::state::onboarding::WelcomeStep;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme;
 use eframe::egui;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::identity::Identity;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::onboarding::WelcomeStep;
 
 #[test]
 fn welcome_start_light() {

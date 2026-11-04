@@ -3,21 +3,21 @@
 //! leaves (hovered, with its tooltip, and clicked). Shares the fixture repository and renderer
 //! with `snapshot_tests`.
 
-use crate::keymap::BindingId;
-use crate::keymap::KeyAction;
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::layout::{Panel, ToolView};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::harness;
-use crate::ui::snapshot_tests::snapshot_tests_blame::with_blame;
-use crate::ui::snapshot_tests::snapshot_tests_history::with_folder;
-use crate::ui::snapshot_tests::{reload, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::harness;
+use crate::snapshot_tests::snapshot_tests_blame::with_blame;
+use crate::snapshot_tests::snapshot_tests_history::with_folder;
+use crate::snapshot_tests::{reload, remove_fixture, with_repo};
 use eframe::egui::{self, containers::panel::PanelState};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{Panel, ToolView};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;

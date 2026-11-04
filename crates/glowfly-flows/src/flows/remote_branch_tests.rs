@@ -5,16 +5,16 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, git};
 use super::update;
-use crate::conflict_check::ConflictCheckMsg;
-use crate::effect::Effect;
-use crate::effect::SelectionEffect;
-use crate::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::remote_branch::{checkout_blocked, split, tracking_local};
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::Tracking;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::conflict_check::ConflictCheckMsg;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::msg::{BranchMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::remote_branch::{checkout_blocked, split, tracking_local};
+use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 use std::time::Instant;
 
@@ -49,7 +49,7 @@ fn checkout(remote: &str, name: &str) -> Msg {
 }
 
 fn remote_tip(st: &AppState, remote: &str, name: &str) -> Oid {
-    crate::state::remote_branch::exists(st.snap.as_ref().unwrap(), remote, name).expect("remote branch")
+    glowfly_model::state::remote_branch::exists(st.snap.as_ref().unwrap(), remote, name).expect("remote branch")
 }
 
 #[test]

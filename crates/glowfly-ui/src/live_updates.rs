@@ -9,11 +9,11 @@
 
 use super::theme::color;
 use super::widgets::chip::{self, Chip, ChipSize, Lead};
-use crate::keymap::BindingId;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::watch::{LiveUpdates, REMOTE_POLL};
 use eframe::egui::{self, Color32, Stroke, vec2};
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::watch::{LiveUpdates, REMOTE_POLL};
 
 const DOT: f32 = 6.0;
 /// The slash across the failed state's ring: its half extent and stroke.

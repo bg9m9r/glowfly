@@ -2,15 +2,15 @@
 //! comment count when there are several) pinned to the visible right edge of the line, which
 //! opens the thread in the comment pane when clicked.
 
-use crate::msg::Msg;
-use crate::state::pull_request_threads::{Mark, Marks};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::{Icon, paint_icon};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::{Icon, paint_icon};
 use eframe::egui::{self, Align2, CursorIcon, Id, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{LineSide, line_keys};
 use glowfly_core::repo::DiffLine;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request_threads::{Mark, Marks};
 
 /// The marker for diff line `dl`: of any of its file lines, or only of the `side` file (one
 /// cell of the split layout).

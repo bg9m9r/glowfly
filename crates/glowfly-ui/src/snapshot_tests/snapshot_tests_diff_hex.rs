@@ -8,12 +8,12 @@ use super::super::empty_state::BINARY_TITLE;
 use super::super::snapshot_tests::{git, harness, harness_palette, remove_fixture, with_repo};
 use super::snapshot_tests_language_check::shown_texts;
 use super::theme;
-use crate::state::AppState;
-use crate::state::diff_preview::DiffPreview;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, DiffTarget, HEX_MAX_BYTES, LoadOptions};
 use glowfly_core::settings::{ColourPalette, DiffLayout, ThemeChoice};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::DiffPreview;
 use std::path::PathBuf;
 use std::sync::Arc;
 

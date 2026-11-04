@@ -297,4 +297,7 @@ start with `state/`, `update/` or `ui/`.
 - `snapshot_check/goldens.rs`: the ~125 pixel goldens and their crop (window, dialog, top strip, top-left corner), checked against the PNGs on disk; `IMAGE_ONLY`, the theme variants kept as images only.
 - `snapshot_check/identical.rs`: no two text snapshots alike, with a shrink-only allowlist of the groups still alike.
 - `snapshot_check/tests.rs`: the tolerance, the skip variable, cropping and the text comparison's files.
+- `glyph_check/` (tests only): every non-ASCII character in every crate's string literals and in the translation files has a glyph in the fonts egui draws with, installed through `theme::fonts::install` as the app does.
+- `glyph_check/scan.rs` finds the characters with the source checks' shared lexer (`tests/view_checks/support/lexer.rs`), skipping comments and test code; `mod.rs` asks the fonts; `NEVER_DRAWN` lists the few that are never shown.
+- `glyph_check/cjk_dates.rs`: every month, weekday and half-day word of the ja_JP, zh_CN and ko_KR dates has a glyph in the tests' CJK font; the app's `platform/system_fonts/tests.rs` checks the machine's own CJK fonts where it has them.
 - `menu_testing.rs`: opens a submenu (hovering and resting past its open delay) and finds its entries.

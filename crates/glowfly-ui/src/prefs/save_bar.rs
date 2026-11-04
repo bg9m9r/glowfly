@@ -4,12 +4,12 @@
 //! `ui/shortcuts/global.rs`, and Esc on one of the bar's buttons in `ui/central.rs`).
 
 use super::primary_button;
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::blocked::BUSY;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::{self, Icon, buttons};
+use crate::theme::{color, type_scale};
+use crate::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::blocked::BUSY;
 
 /// What the bar needs from outside the page.
 pub struct BarView {

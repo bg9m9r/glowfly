@@ -5,11 +5,11 @@
 //! with its badges in both default themes.
 
 use super::tests::{settle, tracking};
-use crate::msg::{JobMsg, Msg};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, remove_fixture};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, remove_fixture};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{JobMsg, Msg};
 
 const UPSTREAM: &str = "Add app skeleton";
 

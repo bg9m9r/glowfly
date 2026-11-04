@@ -7,13 +7,13 @@ use super::history_file::{Note, PREVIEW, PREVIEW_TIP, TEXT, TEXT_TIP, bar_row, n
 use super::image_paint;
 use super::theme::color;
 use super::widgets::segmented::{Segment, segmented_opts};
-use crate::msg::{HistoryMsg, Msg};
-use crate::state::AppState;
-use crate::state::history::{FileTextData, Preview};
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, pos2, vec2};
 use git2::Oid;
 use glowfly_core::lfs::pointer::size_text;
+use glowfly_model::msg::{HistoryMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileTextData, Preview};
 use std::sync::Arc;
 
 /// The widest the rendered text gets, for lines that stay easy to read.

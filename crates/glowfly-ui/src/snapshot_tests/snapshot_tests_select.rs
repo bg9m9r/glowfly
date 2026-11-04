@@ -3,14 +3,7 @@
 
 use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::patch::PatchMsg;
-use crate::state::selection::{CommitBlock, MultiSelection};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -19,6 +12,13 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::selection::{CommitBlock, MultiSelection};
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 /// The fixture's commit with this summary.
@@ -114,7 +114,7 @@ pub(crate) fn double_click(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2,
 
 /// The y of graph row `row` (the WIP row is 0) in the window the harness draws.
 pub(crate) fn row_y(row: usize) -> f32 {
-    use crate::ui::graph::row_h;
+    use crate::graph::row_h;
     let h = row_h(glowfly_core::settings::Density::Comfortable);
     ROWS_TOP + h * row as f32 + h / 2.0
 }
@@ -164,7 +164,7 @@ fn graph_multi_menu() {
     h.get_by_label("Preview the cherry-pick").click();
     h.run();
     let want = glowfly_core::op_preview::PreviewOp::CherryPick(vec![login, search]);
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(crate::msg::OpPreviewMsg::Open(op)) if *op == want)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(glowfly_model::msg::OpPreviewMsg::Open(op)) if *op == want)));
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CherryPick(_)))), "the button doesn't pick");
     // And their SHAs, one per line.
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
@@ -187,7 +187,7 @@ fn graph_multi_menu() {
 
 /// A harness that only runs the shell's Esc handling.
 fn esc_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
-    crate::ui::snapshot_check::builder()
+    crate::snapshot_check::builder()
         .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| super::escape_key(ctx, st, msgs), (st, Vec::new()))
 }
 
@@ -304,20 +304,20 @@ fn graph_commit_menu() {
     h.get_by_label("Preview the cherry-pick").click();
     h.run();
     let want = glowfly_core::op_preview::PreviewOp::CherryPick(vec![search]);
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(crate::msg::OpPreviewMsg::Open(op)) if *op == want)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(glowfly_model::msg::OpPreviewMsg::Open(op)) if *op == want)));
     assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Selection(SelectionMsg::CherryPick(_)))), "the button doesn't pick");
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
     h.get_by_label("Edit and rebase main onto this commit…").click();
     h.run();
     let want = glowfly_core::rebase::RebaseBase::OntoCommit(search);
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(crate::msg::RebaseMsg::OpenRebase(b)) if *b == want)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(glowfly_model::msg::RebaseMsg::OpenRebase(b)) if *b == want)));
     click(&mut h, pos2(700.0, row_y(search_row)), PointerButton::Secondary);
     h.state_mut().1.clear();
     h.get_by_label("Edit the commits after this one…").click();
     h.run();
     let want = glowfly_core::rebase::RebaseBase::FromCommit(search);
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(crate::msg::RebaseMsg::OpenRebase(b)) if *b == want)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Rebase(glowfly_model::msg::RebaseMsg::OpenRebase(b)) if *b == want)));
 
     click(&mut h, pos2(700.0, row_y(fix_row)), PointerButton::Secondary);
     assert!(h.query_by_label(&format!("Fix build on Windows  {}", sha(fix))).is_some(), "the header");
@@ -340,8 +340,8 @@ fn graph_commit_menu() {
     open_submenu(&mut h, "Copy");
     submenu_item(&h, "Copy", "Link").click();
     h.run();
-    let want = crate::deep_link::LinkTarget::Commit(fix);
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
+    let want = glowfly_model::deep_link::LinkTarget::Commit(fix);
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::DeepLink(glowfly_model::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
 
     // A merge commit has no patch of its own.
     click(&mut h, pos2(700.0, row_y(merge_row)), PointerButton::Secondary);

@@ -29,8 +29,8 @@ mod tests {
     /// the shell caps it as the app does when `capped`.
     fn atlas_growth(capped: bool) -> Vec<[usize; 2]> {
         let ctx = egui::Context::default();
-        crate::ui::theme::fonts::use_test_cjk();
-        crate::ui::theme::fonts::install(&ctx);
+        glowfly_ui::theme::fonts::use_test_cjk();
+        glowfly_ui::theme::fonts::install(&ctx);
         let input = || {
             let mut raw = egui::RawInput { max_texture_side: Some(16384), ..Default::default() };
             if capped {

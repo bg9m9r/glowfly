@@ -5,9 +5,9 @@
 //! with the merge tool blocked by a job, and with the merge tool open on its file.
 
 use super::snapshot_tests::{harness_sized, settings};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::settings::{ExternalTools, ThemeChoice};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
@@ -87,7 +87,7 @@ fn diff_header_diff_tool_set_light() {
     h.run();
     h.get_by_label("Open in external diff tool").click();
     h.run();
-    let sent = |m: &crate::msg::Msg| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::OpenDiff(t)) if t.path() == "app.txt");
+    let sent = |m: &glowfly_model::msg::Msg| matches!(m, glowfly_model::msg::Msg::Tools(glowfly_model::tools::ToolsMsg::OpenDiff(t)) if t.path() == "app.txt");
     assert!(h.state().1.iter().any(sent), "Open in external diff tool opens app.txt's diff");
     drop(h);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
@@ -98,7 +98,7 @@ fn conflict_view_merge_tool_disabled() {
     use egui_kittest::kittest::Queryable;
     let (mut st, dir) = super::snapshot_tests::with_conflict("conflict-tool-busy", "notes.txt", |side| format!("{side}\n").into_bytes());
     st.settings.external_tools.merge_tool = "kdiff3".into();
-    st.job = Some(crate::state::RunningJob {
+    st.job = Some(glowfly_model::state::RunningJob {
         label: "Commit".into(),
         workdir: None,
         quiet: false,
@@ -134,7 +134,9 @@ fn conflict_view_merge_tool_button_sends_resolve() {
     h.get_by_label(MERGE_TOOL_BUTTON).click();
     h.run();
     let sent =
-        h.state().1.iter().any(|m| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::ResolveInMergeTool(p)) if p == "notes.txt"));
+        h.state().1.iter().any(
+            |m| matches!(m, glowfly_model::msg::Msg::Tools(glowfly_model::tools::ToolsMsg::ResolveInMergeTool(p)) if p == "notes.txt"),
+        );
     assert!(sent);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
@@ -144,8 +146,8 @@ fn conflict_view_while_the_merge_tool_has_the_file() {
     use egui_kittest::kittest::Queryable;
     let (mut st, dir) = super::snapshot_tests::with_conflict("conflict-in-tool", "notes.txt", |side| format!("{side}\n").into_bytes());
     st.settings.external_tools.merge_tool = "kdiff3".into();
-    st.job = Some(crate::state::RunningJob {
-        label: crate::state::tool_compare::merge_label("notes.txt"),
+    st.job = Some(glowfly_model::state::RunningJob {
+        label: glowfly_model::state::tool_compare::merge_label("notes.txt"),
         workdir: st.workdir(),
         quiet: false,
         clear_commit: false,

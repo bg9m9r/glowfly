@@ -7,18 +7,18 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_forge_filters::target;
 use super::snapshot_tests_language_main::german;
-use crate::msg::{ForgeMsg, Msg, PrefsMsg, PublishMsg};
-use crate::remote::RemoteMsg;
-use crate::state::session_view::empty_sections::Folding;
-use crate::state::{AppState, ForgeState, PrefPage, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_select::click;
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::{H, center, pushed};
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_select::click;
+use crate::snapshot_tests::snapshot_tests_worktrees::{H, center, pushed};
 use eframe::egui::PointerButton;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Connection, Provider};
 use glowfly_core::settings::{SizedPanel, ThemeChoice};
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg, PublishMsg};
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::session_view::empty_sections::Folding;
+use glowfly_model::state::{AppState, ForgeState, PrefPage, Status};
+use glowfly_model::worktree::WorktreeMsg;
 
 /// Opens `which` as if its header had been clicked while empty.
 pub(crate) fn expand(st: &mut AppState, which: Folding) {

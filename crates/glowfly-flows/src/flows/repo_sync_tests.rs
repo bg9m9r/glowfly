@@ -4,12 +4,12 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, ReposEffect};
-use crate::msg::{Msg, ReposMsg};
-use crate::state::repo_sync::{MAX_RUNNING, RowState, SyncKind, SyncScope};
-use crate::state::{AppState, Modal};
 use glowfly_core::repo_sync::{Outcome, SyncOp};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{Effect, ReposEffect};
+use glowfly_model::msg::{Msg, ReposMsg};
+use glowfly_model::state::repo_sync::{MAX_RUNNING, RowState, SyncKind, SyncScope};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -107,8 +107,8 @@ fn at_most_four_run_and_each_result_starts_the_next() {
 #[test]
 fn trust_decisions_decide_what_runs() {
     let mut st = with_favorites(&["yes", "no", "undecided"]);
-    crate::state::trust::record(&mut st.settings, &abs("yes"), RepoTrust::Trusted);
-    crate::state::trust::record(&mut st.settings, &abs("no"), RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &abs("yes"), RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &abs("no"), RepoTrust::NotTrusted);
     st.settings.auto_prune = false;
     let fx = syncs(&start(&mut st, SyncKind::Pull, SyncScope::Favorites));
     let ran: Vec<(PathBuf, SyncOp, bool)> = fx.into_iter().map(|s| (s.2, s.3, s.4)).collect();
@@ -198,7 +198,7 @@ fn retry_after_the_run_ended_and_for_a_refused_repository() {
     let again = syncs(&run(&mut st, ReposMsg::RetrySync { generation, index: 0 }));
     assert_eq!(again.iter().map(|s| (s.1, s.3)).collect::<Vec<_>>(), [(0, SyncOp::Pull)]);
     // A repository refused since is skipped without running.
-    crate::state::trust::record(&mut st.settings, &abs("b"), RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &abs("b"), RepoTrust::NotTrusted);
     assert!(run(&mut st, ReposMsg::RetrySync { generation, index: 1 }).is_empty());
     assert_eq!(states(&st)[1], RowState::Done(Outcome::Untrusted));
 }
@@ -247,7 +247,7 @@ fn a_trusted_favorite_that_gained_a_command_since_is_skipped() {
     git(&work, &["config", "core.sshCommand", "ssh-wrapper"]);
     let mut st = state();
     st.settings.favorite_repos = vec![glowfly_core::paths::encode(&work)];
-    crate::state::trust::record_trusted(&mut st.settings, &work, before);
+    glowfly_model::state::trust::record_trusted(&mut st.settings, &work, before);
     drive(&mut st, Msg::Repos(ReposMsg::StartSync { kind: SyncKind::Pull, scope: SyncScope::Favorites }));
     let sync = st.repo_sync.as_ref().unwrap();
     assert_eq!(sync.rows[0].state, RowState::Done(Outcome::Untrusted), "{:?}", sync.rows);
@@ -260,14 +260,14 @@ fn a_favorite_open_in_a_tab_uses_the_decision_where_the_tab_found_it() {
     // The tab opened the favorite and found it elsewhere on disk (a link).
     st.tabs[0].path = Some(abs("linked"));
     st.tabs[0].real = Some(abs("target"));
-    crate::state::trust::record(&mut st.settings, &abs("target"), RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &abs("target"), RepoTrust::NotTrusted);
     let fx = syncs(&start(&mut st, SyncKind::Fetch, SyncScope::Favorites));
     assert!(fx.is_empty(), "{fx:?}");
     assert_eq!(st.repo_sync.as_ref().unwrap().rows[0].state, RowState::Done(Outcome::Untrusted));
 
     st.repo_sync = None;
     let print = glowfly_core::trust::TrustPrint(["0123456789abcdef".to_string()].into());
-    crate::state::trust::record_trusted(&mut st.settings, &abs("target"), print.clone());
+    glowfly_model::state::trust::record_trusted(&mut st.settings, &abs("target"), print.clone());
     let fx: Vec<_> = start(&mut st, SyncKind::Fetch, SyncScope::Favorites)
         .into_iter()
         .filter_map(|e| if let Effect::Repos(ReposEffect::Sync { trust, .. }) = e { Some(trust) } else { None })

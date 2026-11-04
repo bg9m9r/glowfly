@@ -2,13 +2,13 @@
 //! summary taking focus for Ctrl+Shift+M. Shares the fixture repository and renderer with
 //! `ui::snapshot_tests`.
 
-use crate::msg::{DialogMsg, Dismiss, Msg};
-use crate::state::{Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
+use glowfly_model::state::{Modal, Selection};
 
 #[test]
 fn shortcut_sheet() {
@@ -102,7 +102,7 @@ fn commit_summary_takes_focus() {
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn sheet_shows_rebound_keys() {
-    use crate::keymap::{BindingId, Chord, KeyName};
+    use glowfly_model::keymap::{BindingId, Chord, KeyName};
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-rebound");
     st.keymap.set(BindingId::Refresh, vec![Chord::cmd(KeyName::Letter('R'))]);
     st.keymap.set(BindingId::NewTab, Vec::new());
@@ -134,7 +134,7 @@ fn shortcut_sheet_history() {
 /// the others once one is given a key.
 #[test]
 fn sheet_shows_command_keys_once_bound() {
-    use crate::keymap::{BindingId, Chord, KeyName};
+    use glowfly_model::keymap::{BindingId, Chord, KeyName};
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "shortcut-sheet-commands");
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
     let mut h = harness(st, true);

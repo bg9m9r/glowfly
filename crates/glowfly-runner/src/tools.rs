@@ -4,9 +4,9 @@
 //! (when Preferences sets none) in `git_tool`.
 
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
 use glowfly_core::external_tools;
 use glowfly_core::external_tools::git_config;
+use glowfly_model::msg::Msg;
 use glowfly_model::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 
 mod compare;

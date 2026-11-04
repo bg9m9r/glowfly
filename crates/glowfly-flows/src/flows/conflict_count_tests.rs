@@ -5,10 +5,10 @@
 use super::auto_stash_tests::up;
 use super::failure_headline_tests::{last_toast, opened, running};
 use super::tests::{finish, git};
-use crate::logs::LogsMsg;
-use crate::msg::{ConflictMsg, JobMsg, LoadMsg, Msg};
-use crate::state::AppState;
 use glowfly_core::gitcli::{args, run_with_input};
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{ConflictMsg, JobMsg, LoadMsg, Msg};
+use glowfly_model::state::AppState;
 use std::path::Path;
 
 const FOUR: &str = "Stopped on conflicts in 4 files. Resolve them, then continue or abort.";
@@ -38,7 +38,7 @@ fn rename_conflicts(dir: &Path, to: &str) -> String {
 
 /// The merge's job ends with only `line` of git's CONFLICT lines, as when git words the others
 /// in a way Glowfly can't read. Returns the effects its end asked for (the refresh).
-fn merge_ended(st: &mut AppState, dir: &Path, line: &str) -> Vec<crate::effect::Effect> {
+fn merge_ended(st: &mut AppState, dir: &Path, line: &str) -> Vec<glowfly_model::effect::Effect> {
     running(st, dir, "Merge");
     let output = format!("$ git merge side\n{line}\nAutomatic merge failed; fix conflicts and then commit the result.");
     up(st, Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }))

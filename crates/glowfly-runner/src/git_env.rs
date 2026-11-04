@@ -3,11 +3,11 @@
 //! `safe.directory` (`Effect::GitEnv`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::LoadKind;
-use crate::msg::Msg;
 use glowfly_core::git_program;
 use glowfly_core::git_version::{self, GitInfo};
+use glowfly_model::effect::LoadKind;
 use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
+use glowfly_model::msg::Msg;
 
 pub(super) fn run(effect: GitEnvEffect) -> Msg {
     Msg::GitEnv(match effect {

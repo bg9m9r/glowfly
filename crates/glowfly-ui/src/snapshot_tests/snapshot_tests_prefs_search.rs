@@ -5,14 +5,14 @@
 //! and Profiles pages.
 
 use super::snapshot_tests::{harness_sized, render, settings, with_repo};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::prefs::{Autocrlf, GitConfigValues};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 /// General with a git found and its config read, searched for `query`.
@@ -129,7 +129,7 @@ fn enter_and_apply(h: &mut H) {
     enter(h);
     let (st, msgs) = h.state_mut();
     for m in std::mem::take(msgs) {
-        crate::update::update(st, m, Instant::now());
+        glowfly_model::update::update(st, m, Instant::now());
     }
 }
 
@@ -150,7 +150,7 @@ fn searching(page: PrefPage, query: &str) -> H {
 fn tinted(h: &H, label: &str) -> bool {
     let n = h.query_all_by_label(label).next().expect("the row");
     let at = egui::pos2(250.0 + 24.0 + 8.0, super::snapshot_tests_painted::bounds(&n).center().y);
-    super::snapshot_tests_painted::fills_at(h, at).contains(&crate::ui::theme::color::selected())
+    super::snapshot_tests_painted::fills_at(h, at).contains(&crate::theme::color::selected())
 }
 
 /// Enter on a row far down a long page scrolls it into view and tints it.
@@ -175,7 +175,7 @@ fn a_shared_label_is_revealed_on_the_page_opened() {
     assert!(!tinted(&h, "Interface size"), "not the row on Accessibility, the page being left");
     let (st, msgs) = h.state_mut();
     for m in std::mem::take(msgs) {
-        crate::update::update(st, m, Instant::now());
+        glowfly_model::update::update(st, m, Instant::now());
     }
     assert_eq!(h.state().0.prefs.as_ref().unwrap().page, PrefPage::Ui, "Appearance comes first");
     h.run_steps(4);

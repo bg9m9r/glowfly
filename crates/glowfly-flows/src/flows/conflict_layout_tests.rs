@@ -4,13 +4,13 @@
 use super::conflict_tests::{fake_file, with_fake};
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{ConflictMsg, DiffMsg, Msg};
-use crate::state::AppState;
-use crate::state::conflict::ConflictView;
 use glowfly_core::conflict_pick::{ChunkPick, CleanEdits};
 use glowfly_core::conflict_restore::SavedPicks;
 use glowfly_core::repo::Choice;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{ConflictMsg, DiffMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::ConflictView;
 use std::time::Instant;
 
 fn send(st: &mut AppState, m: Msg) -> Vec<Effect> {

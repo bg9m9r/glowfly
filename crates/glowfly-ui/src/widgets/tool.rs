@@ -13,10 +13,10 @@ use super::button_look::{Press, Target, layer_on, paint_target};
 use super::chip::{Chip, ChipSize, Look, rect_at};
 use super::segment_bar::{BarStyle, Seg, segment_bar};
 use super::{Icon, paint_icon};
-use crate::ui::theme::color::Palette;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{BORDER_W, CARET_HIT_W};
-use crate::ui::theme::type_scale;
+use crate::theme::color::Palette;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::{BORDER_W, CARET_HIT_W};
+use crate::theme::type_scale;
 use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, pos2, vec2};
 
 /// A tool slot's width with captions shown; a longer caption widens it to the caption plus

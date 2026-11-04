@@ -6,21 +6,21 @@
 use super::common::{capitalize, issue_chip, parse_keys};
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::{FieldGroup, TextField, buttons};
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::msg::StackMsg;
-use crate::state::ForgeState;
-use crate::state::branches;
-use crate::state::pr_repos::{self, PrRepoPick};
-use crate::state::push_pr::{self, HostBranch};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::forge::{self, NewPullRequest, RefStyle};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::StackMsg;
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::branches;
+use glowfly_model::state::pr_repos::{self, PrRepoPick};
+use glowfly_model::state::push_pr::{self, HostBranch};
 
 pub(super) struct PrForm<'a> {
     pub source: &'a mut String,
@@ -212,5 +212,5 @@ pub(super) fn target_combo(ui: &mut egui::Ui, t: Lang, f: &mut PrForm) {
             ui.selectable_value(f.target, t.clone(), t);
         }
     });
-    crate::ui::access::name_if_unnamed(&combo.response, t.tr("pr.create.target.name"));
+    crate::access::name_if_unnamed(&combo.response, t.tr("pr.create.target.name"));
 }

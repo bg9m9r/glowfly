@@ -2,11 +2,11 @@
 //! Mark resolved, and running a list of git commands (through the trust gate too). Undo and redo
 //! are in `undo_run.rs`.
 
-use crate::effect::LocalOp;
-use crate::msg::{Msg, StageMsg};
 use glowfly_core::gitcli;
 use glowfly_core::repo;
 use glowfly_core::undo::{self, Action, ConflictChange, ConflictsFailed, Discarded};
+use glowfly_model::effect::LocalOp;
+use glowfly_model::msg::{Msg, StageMsg};
 use std::path::Path;
 
 /// Runs a local op. Discards, conflict saves and conflict changes (Mark resolved, Mark

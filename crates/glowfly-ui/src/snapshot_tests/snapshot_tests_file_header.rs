@@ -6,13 +6,13 @@
 
 use super::snapshot_tests::{git, harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_revert::with_commit_diff;
-use crate::state::AppState;
-use crate::state::diff_preview::DiffPreview;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::DiffPreview;
 use image::{ImageFormat, Rgba, RgbaImage};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -21,7 +21,7 @@ const DATE: &str = "2026-01-11T10:00:00+00:00";
 /// Wide enough for every header group with its labels.
 const WIDE: egui::Vec2 = egui::vec2(1800.0, 820.0);
 
-fn render(name: &str, st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
+fn render(name: &str, st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)> {
     let mut h = harness_sized(st, dark, WIDE);
     h.run();
     h.check_snapshot(name);

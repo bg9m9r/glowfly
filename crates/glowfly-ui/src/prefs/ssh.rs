@@ -7,17 +7,17 @@
 //! view edits only text buffers; everything else is a `Msg`.
 
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::ui::theme::color;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::forge::Account;
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::{KeyFileProblem, SshListing};
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
 use std::path::PathBuf;
 
 /// What the page needs from outside Preferences.

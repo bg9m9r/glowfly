@@ -7,12 +7,12 @@
 
 use super::buttons;
 use super::{PAD_X, ROW_INDENT};
-use crate::msg::{ForgeMsg, Msg, PrefsMsg};
-use crate::state::PrefPage;
-use crate::state::section_actions::SectionAction;
-use crate::ui::theme::{color, type_scale};
+use crate::theme::{color, type_scale};
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg};
+use glowfly_model::state::PrefPage;
+use glowfly_model::state::section_actions::SectionAction;
 
 /// Above the sentence.
 const TOP: i8 = 6;
@@ -65,7 +65,7 @@ pub fn failure(ui: &mut egui::Ui, t: Lang, cause: &str, sign_in: bool, msgs: &mu
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 6.0;
             let (rect, _) = ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
-            crate::ui::needs_you::badge(ui.painter(), rect);
+            crate::needs_you::badge(ui.painter(), rect);
             ui.add(egui::Label::new(RichText::new(cause).color(color::text()).size(type_scale::SMALL)).wrap());
         });
         if sign_in {

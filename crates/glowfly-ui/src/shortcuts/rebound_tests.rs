@@ -2,15 +2,15 @@
 //! Shift-stripped one, and the keys that used to be matched by hand (F5, Ctrl+comma, Ctrl+F,
 //! Ctrl+P, F7 and Alt+arrows, Ctrl+1 to 9) firing only where they did.
 
-use crate::keymap::{BindingId as I, Chord, KeyAction, KeyName as K};
-use crate::msg::{ConflictMsg, DiffMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
-use crate::state::blame::BlameView;
-use crate::state::conflict::ConflictView;
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Tab};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::{BindingId as I, Chord, KeyAction, KeyName as K};
+use glowfly_model::msg::{ConflictMsg, DiffMsg, Msg, PaletteMsg, PrefsMsg, RepoMsg, SearchMsg, TabsMsg};
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Tab};
 use std::time::Instant;
 
 struct Keys {
@@ -34,7 +34,7 @@ fn with_diff(mut st: AppState) -> AppState {
 
 fn harness(st: AppState, field: bool) -> H {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(String::new) };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some(text) = k.field.as_mut() {
@@ -69,7 +69,7 @@ fn name(m: &Msg) -> String {
         Msg::Search(SearchMsg::ToggleFilter) => "filter".into(),
         Msg::Diff(DiffMsg::JumpToChange(d)) => format!("jump {d}"),
         Msg::Conflict(ConflictMsg::ConflictStep(d)) => format!("conflict {d}"),
-        Msg::Job(crate::msg::JobMsg::Undo) => "undo".into(),
+        Msg::Job(glowfly_model::msg::JobMsg::Undo) => "undo".into(),
         Msg::Palette(PaletteMsg::RunBoundCommand(c)) => format!("run {c:?}"),
         Msg::Prefs(PrefsMsg::FocusSearch) => "prefs search".into(),
         _ => "other".into(),
@@ -193,8 +193,11 @@ fn tab_digits() {
     }
     assert_eq!(press(&mut h, CMD, Key::Num9), ["tab 3"], "the last tab");
     // Alt+2 is the central view's pane key; on macOS that is Control+2, and Option+2 is quiet.
-    let alt =
-        if cfg!(target_os = "macos") { quiet() } else { vec![format!("{:?}", KeyAction::FocusPane(crate::state::layout::Pane::Central))] };
+    let alt = if cfg!(target_os = "macos") {
+        quiet()
+    } else {
+        vec![format!("{:?}", KeyAction::FocusPane(glowfly_model::state::layout::Pane::Central))]
+    };
     assert_eq!(press(&mut h, Modifiers::ALT, Key::Num2), alt);
 }
 
@@ -214,7 +217,7 @@ fn favorite_digits_only_while_not_typing() {
     input.modifiers = CMD_ALT;
     input.events.push(Event::Key { key: Key::Num2, physical_key: None, pressed: true, repeat: false, modifiers: CMD_ALT });
     h.step();
-    assert!(matches!(&h.state().msgs[..], [Msg::Recent(crate::msg::RecentMsg::OpenFavorite(1))]), "Ctrl+Alt+2 opens favorite 2");
+    assert!(matches!(&h.state().msgs[..], [Msg::Recent(glowfly_model::msg::RecentMsg::OpenFavorite(1))]), "Ctrl+Alt+2 opens favorite 2");
     h.input_mut().modifiers = NONE;
     assert_eq!(press(&mut h, CMD, Key::Num2), ["tab 1"], "Ctrl+2 still goes to a tab");
     // AltGr is Ctrl+Alt on Windows: a focused field keeps the digit for its character.

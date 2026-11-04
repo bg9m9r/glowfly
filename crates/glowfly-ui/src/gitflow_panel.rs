@@ -5,25 +5,25 @@
 
 use super::common::short;
 use super::theme::color;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
-use crate::state::gitflow_resume::{ready_text, waiting_text};
-use crate::state::worktree_branches::Elsewhere;
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::banner::{self, Banner, BannerKind};
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::quiet_target::{self, State};
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::banner::{self, Banner, BannerKind};
+use crate::widgets::buttons;
+use crate::widgets::quiet_target::{self, State};
 use eframe::egui::{self, Align, Align2, CornerRadius, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use git2::Oid;
 use glowfly_core::gitflow::{Branches, FlowBranch, FlowGroup, GitFlowSettings, grouped};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::gitflow::{empty_text, group_title, row_tooltip, start_blocked};
+use glowfly_model::state::gitflow_resume::{ready_text, waiting_text};
+use glowfly_model::state::worktree_branches::Elsewhere;
+use glowfly_model::state::{AppState, PrefPage};
 
 const NOT_SET_UP: &str = "Git Flow isn't set up in this repository.";
 
@@ -200,7 +200,7 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
         }
         // One another worktree has: Open worktree (or Prune and check out a missing one).
         let t = st.settings.lang();
-        let elsewhere = st.snap.as_ref().and_then(|s| crate::state::worktree_branches::checkout_elsewhere(t, s, b.name));
+        let elsewhere = st.snap.as_ref().and_then(|s| glowfly_model::state::worktree_branches::checkout_elsewhere(t, s, b.name));
         let why = if b.head {
             Some("It is checked out.")
         } else if st.job.is_some() && elsewhere.is_none() {
@@ -216,7 +216,7 @@ fn branch_row(ui: &mut Ui, st: &AppState, snap: &Snapshot, s: &GitFlowSettings, 
             (None, None) => r,
         };
         if r.clicked() {
-            let checkout = crate::msg::BranchMsg::Checkout(b.name.to_owned());
+            let checkout = glowfly_model::msg::BranchMsg::Checkout(b.name.to_owned());
             msgs.push(Msg::Branch(Elsewhere::msg(elsewhere.as_ref(), checkout)));
         }
     });

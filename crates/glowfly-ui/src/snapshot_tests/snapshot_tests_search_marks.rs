@@ -6,14 +6,14 @@
 use super::snapshot_tests::{harness, harness_palette, remove_fixture};
 use super::snapshot_tests_painted::fills_at;
 use super::snapshot_tests_search::{searching, with_two_authors};
-use crate::msg::Msg;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::{self, color};
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::{self, color};
 use eframe::egui::epaint::TextShape;
 use eframe::egui::{Shape, pos2};
 use egui_kittest::Harness;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, Selection};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

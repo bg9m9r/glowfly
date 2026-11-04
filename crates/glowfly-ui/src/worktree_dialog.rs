@@ -9,14 +9,14 @@ use super::dialog_guides;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::PrefsMsg;
-use crate::msg::{FolderPurpose, Msg};
-use crate::state::worktrees::{WorktreeForm, branch_problem, default_folder, folder_problem, folder_warning};
-use crate::ui::theme::controls;
-use crate::worktree::WorktreeMsg;
+use crate::theme::controls;
 use eframe::egui::{self, Id};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FolderPurpose, Msg};
+use glowfly_model::state::worktrees::{WorktreeForm, branch_problem, default_folder, folder_problem, folder_warning};
+use glowfly_model::worktree::WorktreeMsg;
 
 /// The folder's problem: git's refusal of it, or the runner's answer for this text.
 fn folder_bad(form: &WorktreeForm, snap: Option<&Snapshot>) -> Option<String> {

@@ -9,10 +9,9 @@
 //! shows every row. Read-only: it scrolls, and nothing in it is picked or copied.
 
 use super::style::DiffStyle;
-use crate::state::AppState;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::hex_rows::{HexKind, HexRow, ascii, byte, differing, hex_rows};
@@ -20,6 +19,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
 use glowfly_core::repo::BinarySides;
 use glowfly_core::settings::{DiffLayout, DiffMode};
+use glowfly_model::state::AppState;
 use std::sync::Arc;
 
 /// Unchanged rows kept on each side of a change in the hunk view.

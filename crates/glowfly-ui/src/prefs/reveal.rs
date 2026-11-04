@@ -4,9 +4,9 @@
 //! opens a match, `sync` drops it once its navigation didn't happen (refused, or answered
 //! "stay" at "Save your changes?"), and `row` finds it by its label on that page only.
 
-use crate::state::PrefPage;
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::{self, Id, Rect, Ui, pos2};
+use glowfly_model::state::PrefPage;
 
 /// How long the tint shows.
 const TINT_SECS: f64 = 1.2;

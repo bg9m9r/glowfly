@@ -4,11 +4,11 @@
 use super::jobs::start_job;
 use super::journal_tests::opened;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::job_spec::JobSpec;
 use glowfly_core::journal::Op;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::job_spec::JobSpec;
 use std::time::Instant;
 
 /// The journal op of the job `cmd` starts as a `JobMsg::Git`.
@@ -47,7 +47,7 @@ fn the_note_survives_the_auto_stash_wrap() {
     let (mut st, dir) = opened("journal-git-job-stash");
     st.settings.auto_stash = true;
     std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
-    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Refresh));
     let fx = update(&mut st, Msg::git("Merge", &["merge", "topic"]), Instant::now());
     let Some(Effect::RunGit { cmds, journal, .. }) = fx.iter().find(|e| matches!(e, Effect::RunGit { .. })) else { panic!("a job") };
     assert!(cmds.len() > 1, "stashed first: {cmds:?}");
@@ -86,15 +86,15 @@ fn a_guarded_pick_keeps_its_note_when_stashed_first() {
     let (pick, head) = (git(&["rev-parse", "topic"]), git(&["rev-parse", "HEAD"]));
     assert_ne!(pick, head);
     std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
-    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Refresh));
     let oid = |rev: &str| git2::Oid::from_str(rev).unwrap();
-    let fx = update(&mut st, Msg::Selection(crate::msg::SelectionMsg::CherryPick(vec![oid(&pick)])), Instant::now());
+    let fx = update(&mut st, Msg::Selection(glowfly_model::msg::SelectionMsg::CherryPick(vec![oid(&pick)])), Instant::now());
     let (n, op) = journal_of(&fx);
     assert!(n > 1, "stashed first");
     assert!(matches!(op, Some(Op::CherryPick { .. })), "{op:?}");
     st.job = None;
     st.auto_stash.making = None;
-    let fx = update(&mut st, Msg::Selection(crate::msg::SelectionMsg::Revert(vec![oid(&head)])), Instant::now());
+    let fx = update(&mut st, Msg::Selection(glowfly_model::msg::SelectionMsg::Revert(vec![oid(&head)])), Instant::now());
     let (n, op) = journal_of(&fx);
     assert!(n > 1, "stashed first");
     assert!(matches!(op, Some(Op::Revert { .. })), "{op:?}");

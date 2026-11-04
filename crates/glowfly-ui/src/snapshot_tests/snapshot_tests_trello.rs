@@ -5,15 +5,15 @@
 use super::snapshot_tests::{harness, remove_fixture, settings, with_repo};
 use super::snapshot_tests_gitflow::{center, initialized, pushed};
 use super::snapshot_tests_select::click;
-use crate::msg::{BranchMsg, ForgeMsg, Msg};
-use crate::state::trello::BoardList;
-use crate::state::{AppState, ForgeState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Issue, Provider, Target, TrelloBoard};
 use glowfly_core::settings::{ThemeChoice, TrackerChoice};
+use glowfly_model::msg::{BranchMsg, ForgeMsg, Msg};
+use glowfly_model::state::trello::BoardList;
+use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const BOARD: &str = "5f1a2b3c4d5e6f7a8b9c0d1e";

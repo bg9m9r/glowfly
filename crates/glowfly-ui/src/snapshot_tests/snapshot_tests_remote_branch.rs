@@ -4,15 +4,15 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{BranchInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 fn tip(st: &AppState, name: &str) -> Oid {

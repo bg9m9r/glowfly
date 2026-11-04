@@ -20,18 +20,18 @@ mod step_row;
 use super::UiCache;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
-use crate::state::AppState;
-use crate::state::rebase::{PanelSource, RebasePanel, needs_stash};
-use crate::state::rebase_remaining::{NO_STEPS, REMAINING_TITLE, UPDATE};
-use crate::state::rebase_steps::NewStep;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::menu::{self, popup_below};
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::menu::{self, popup_below};
 use eframe::egui::{self, Align, Layout, PopupCloseBehavior, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::{PanelSource, RebasePanel, needs_stash};
+use glowfly_model::state::rebase_remaining::{NO_STEPS, REMAINING_TITLE, UPDATE};
+use glowfly_model::state::rebase_steps::NewStep;
 
 const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
 

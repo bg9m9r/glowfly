@@ -1,25 +1,25 @@
 //! The tests that run effects through the runner (`runner::testing`), and the tests that share
 //! helpers with them: `update`'s end-to-end tests, out of `update/` so the model's own tests
 //! never need the runner. One module per file; `helpers.rs` has `drive` and `finish`, and the
-//! pure helpers come from `crate::testing`. The glob import keeps the files' `super::…` paths to
+//! pure helpers come from `glowfly_model::testing`. The glob import keeps the files' `super::…` paths to
 //! update's handlers working, and `tests` names this module, as `update::tests` did.
 
 #[allow(unused_imports)]
-use crate::effect::OsEffect;
-#[allow(unused_imports)]
-use crate::effect::{Effect, UiEffect};
-#[allow(unused_imports)]
 use crate::flows as tests;
 #[allow(unused_imports)]
-use crate::msg::Msg;
+use glowfly_model::effect::OsEffect;
 #[allow(unused_imports)]
-use crate::state::AppState;
+use glowfly_model::effect::{Effect, UiEffect};
 #[allow(unused_imports)]
-use crate::update::*;
+use glowfly_model::msg::Msg;
+#[allow(unused_imports)]
+use glowfly_model::state::AppState;
+#[allow(unused_imports)]
+use glowfly_model::update::*;
 #[allow(unused_imports)]
 use std::time::Instant;
 
-pub(crate) use crate::testing::*;
+pub(crate) use glowfly_model::testing::*;
 pub(crate) use helpers::*;
 
 mod app_tests;

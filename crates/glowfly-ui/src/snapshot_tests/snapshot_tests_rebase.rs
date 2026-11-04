@@ -4,18 +4,18 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::rebase::{RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
 use std::path::PathBuf;
 
 const NEW_MESSAGE: &str = "Add the app skeleton\n\nProject layout, CI and a README.";
@@ -110,7 +110,7 @@ pub(crate) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec
     let mut st = st;
     st.view.now = 1_769_947_200;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             super::theme::apply_theme(ctx);

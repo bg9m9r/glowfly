@@ -3,15 +3,15 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::RevertWhat;
-use crate::msg::StageMsg;
-use crate::state::AppState;
 use git2::Oid;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, LoadDiffOptions, LoadOptions, RevertPart, RevertRequest, Reverted};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::RevertWhat;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 

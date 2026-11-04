@@ -5,23 +5,23 @@
 //! Everything is a `Msg`; the texts are in state/profile_rules.rs and state/repo_identity.rs.
 
 use super::{help, row};
-use crate::msg::Msg;
-use crate::profile::ProfileMsg;
-use crate::state::profile_rules::{
-    ADD_FOLDER_BUTTON, ALREADY_HERE, FOLDERS_LABEL, HERE_LABEL, NO_RULES, REMOVE_BUTTON, RULES_HELP, USE_REPO_BUTTON, add_blocked,
-    has_repository, rule_line,
-};
-use crate::state::profiles::ProfilesPage;
-use crate::state::repo_identity::{env_warnings, here_line, not_applied, not_applied_line, shadow_line, shadowed, use_here_label};
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::form_message::{self, Message};
-use crate::ui::widgets::{self, Icon};
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::form_message::{self, Message};
+use crate::widgets::{self, Icon};
 use eframe::egui::{self, Align, Align2, CornerRadius, Layout, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::repo_identity::RepoIdentity;
 use glowfly_core::settings::{FolderRule, Profile, Settings};
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::profile_rules::{
+    ADD_FOLDER_BUTTON, ALREADY_HERE, FOLDERS_LABEL, HERE_LABEL, NO_RULES, REMOVE_BUTTON, RULES_HELP, USE_REPO_BUTTON, add_blocked,
+    has_repository, rule_line,
+};
+use glowfly_model::state::profiles::ProfilesPage;
+use glowfly_model::state::repo_identity::{env_warnings, here_line, not_applied, not_applied_line, shadow_line, shadowed, use_here_label};
 use std::path::Path;
 
 const ROW_H: f32 = 40.0;

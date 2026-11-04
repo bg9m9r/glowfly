@@ -74,7 +74,7 @@ pub(crate) fn paint_control(p: &Painter, rect: Rect, hovered: bool, galley: Arc<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::{DARK, LIGHT};
+    use crate::theme::{DARK, LIGHT};
 
     #[test]
     fn the_marks_read_the_active_palette() {

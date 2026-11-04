@@ -2,21 +2,21 @@
 //! left-aligned on the content edge.
 
 use super::theme::color;
-use crate::msg::{Msg, PrefsMsg};
-use crate::onboarding::OnboardingMsg;
-use crate::state::git_env::GitState;
-use crate::state::onboarding::{EMAIL_FIELD, NAME_FIELD, Welcome};
-use crate::state::{PrefPage, host_text};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::field_group::FieldGroup;
-use crate::ui::widgets::form_message::{self, Message};
-use crate::ui::widgets::text_field::TextField;
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::field_group::FieldGroup;
+use crate::widgets::form_message::{self, Message};
+use crate::widgets::text_field::TextField;
 use eframe::egui::{self, RichText};
 use glowfly_core::forge::Connection;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::git_env::GitState;
+use glowfly_model::state::onboarding::{EMAIL_FIELD, NAME_FIELD, Welcome};
+use glowfly_model::state::{PrefPage, host_text};
 
 /// The identity fields' width (less when the content is narrower).
 const FIELD_W: f32 = 360.0;

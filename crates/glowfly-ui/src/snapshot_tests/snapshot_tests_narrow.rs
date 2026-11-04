@@ -7,11 +7,11 @@
 use super::snapshot_tests::{harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_issue::{crash, crash_details, github, set_details, with_issue};
 use super::snapshot_tests_pull_request::with_pr;
-use crate::msg::Msg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 
 const HEIGHT: f32 = 820.0;
 

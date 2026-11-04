@@ -4,10 +4,10 @@
 //! branches show. The branch colour preset is on Accessibility (Colors).
 
 use super::{check_row, combo, help, row, section};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::segmented::segmented;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::buttons;
+use crate::widgets::segmented::segmented;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{BranchVisibility as BV, ColumnWidths, Density, DescriptionMode as DM, GraphColumns, Settings};

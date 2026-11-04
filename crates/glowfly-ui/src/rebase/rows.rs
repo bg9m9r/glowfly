@@ -9,18 +9,18 @@ use super::UiCache;
 use super::commit_row::{RowKind, paint_action, paint_row};
 use super::step_row::paint_step;
 use super::{commit_row, drag, editor, keys, merge_row, step_row};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::state::rebase_remaining::LOCKED_NOTE;
-use crate::state::tabs::index_after_move;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::{Elevation, motion, radius, shadow};
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::tokens::{Elevation, motion, radius, shadow};
+use crate::theme::type_scale;
 use eframe::egui::{self, Color32, CursorIcon, Rect, Response, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::rebase::{RebaseAction, ResetTo, TodoStep};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::rebase_remaining::LOCKED_NOTE;
+use glowfly_model::state::tabs::index_after_move;
 
 pub(super) const ROW_H: f32 = 38.0;
 pub(super) const GAP: f32 = 4.0;
@@ -243,7 +243,7 @@ fn tip_row(ui: &mut Ui, panel: &RebasePanel, look: &Look) {
     let chip_x = x + g.size().x + TIP_GAP;
     p.galley(pos2(x, row.center().y - g.size().y / 2.0), g, color::faint());
     if let Some(branch) = panel.tip_branch() {
-        crate::ui::graph::branch_chip::paint(p, chip_x, row.center().y, look.snap, branch, row.right() - chip_x);
+        crate::graph::branch_chip::paint(p, chip_x, row.center().y, look.snap, branch, row.right() - chip_x);
     }
 }
 

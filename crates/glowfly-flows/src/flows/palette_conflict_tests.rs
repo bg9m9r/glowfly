@@ -1,15 +1,15 @@
 //! Headless tests for the palette's conflict entries: when they are listed, what running each
 //! does, and how they are remembered.
 
-use crate::effect::ConflictEffect;
-use crate::effect::{ConflictRead, Effect};
 use crate::flows::conflict_files_tests::both_resolved;
 use crate::flows::conflict_tests::two_conflicts;
 use crate::flows::{drive, scratch_repo, state};
-use crate::msg::{ConflictMsg, Msg, PaletteMsg, RepoMsg};
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::{AppState, Modal};
-use crate::update::update;
+use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::{ConflictRead, Effect};
+use glowfly_model::msg::{ConflictMsg, Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn run_cmd(st: &mut AppState, cmd: C) -> Vec<Effect> {

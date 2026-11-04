@@ -8,20 +8,20 @@ use super::theme::color;
 use super::widgets::quiet_target::{self, State};
 use super::widgets::row_fill;
 use super::widgets::{self, Icon, truncate};
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::state::AppState;
-use crate::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, PickKind};
-use crate::state::palette_commands::RepoListCommand;
-use crate::state::palette_nav::{Jump, PAGE_ROWS};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{
     self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2,
     vec2,
 };
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, PickKind};
+use glowfly_model::state::palette_commands::RepoListCommand;
+use glowfly_model::state::palette_nav::{Jump, PAGE_ROWS};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
@@ -136,7 +136,7 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
             .hint_text(hint)
             .font(type_scale::font(type_scale::SUBHEAD));
         let r = ui.add(controls::SizedField::new(ControlSize::Large, edit));
-        crate::ui::access::name_if_unnamed(&r, hint);
+        crate::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
         }
@@ -317,7 +317,7 @@ fn row(
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
     // The current item is announced as selected (not as a toggle).
     if selected {
-        crate::ui::access::mark_selected(&resp);
+        crate::access::mark_selected(&resp);
     }
     let p = ui.painter_at(rect);
     // On the menu pill's corners: the keyboard's row (the list's current item, which Enter runs)

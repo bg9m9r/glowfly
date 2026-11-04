@@ -3,14 +3,14 @@
 //! own pages.
 
 use super::{help, row};
-use crate::state::profiles::{
+use crate::theme::color;
+use crate::theme::type_scale;
+use eframe::egui::{RichText, Ui};
+use glowfly_core::settings::{Profile, Settings};
+use glowfly_model::state::profiles::{
     ACCOUNTS_CURRENT_HELP, ACCOUNTS_INHERIT, ACCOUNTS_LABEL, ACCOUNTS_OTHER_HELP, NO_ACCOUNTS, PREFS_LABEL, SetupView, account_line,
     accounts_of, prefs_status,
 };
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use eframe::egui::{RichText, Ui};
-use glowfly_core::settings::{Profile, Settings};
 
 pub(super) fn setup_rows(ui: &mut Ui, settings: &Settings, p: &Profile, current: bool) {
     row(ui, ACCOUNTS_LABEL, |ui| {

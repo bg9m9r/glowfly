@@ -4,10 +4,10 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{CredentialMsg, JobMsg, Msg};
-use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::{GpgAsk, Prompt, Reply};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
+use glowfly_model::state::{AppState, RunningJob};
 use std::time::Instant;
 
 const KEY: &str = "ABCDEF0123456789";

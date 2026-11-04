@@ -4,16 +4,16 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::patch::{PatchEffect, PatchMsg};
-use crate::state::AppState;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::selection::CommitBlock;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::patch_ops::PatchSource;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::patch::{PatchEffect, PatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::selection::CommitBlock;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -143,7 +143,7 @@ fn save_writes_the_patch_end_to_end() {
     // The toast shows the file in the file manager, whatever tab is active then.
     let toast = st.toasts.last().unwrap();
     let action = toast.action.as_ref().expect("a show-in-folder button");
-    assert_eq!(action.label, crate::state::files::SHOW_IN_FOLDER);
+    assert_eq!(action.label, glowfly_model::state::files::SHOW_IN_FOLDER);
     assert!(action.workdir.is_none());
     let id = toast.id;
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());

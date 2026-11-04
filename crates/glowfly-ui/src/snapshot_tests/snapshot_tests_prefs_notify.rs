@@ -4,13 +4,13 @@
 //! title bar switch, shown only where Windows' frame is offered.
 
 use super::snapshot_tests::{harness, harness_sized, render, settings};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::window_chrome::Chrome;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const LABEL: &str = "Show system notifications while Glowfly is in the background";

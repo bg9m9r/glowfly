@@ -7,17 +7,17 @@ use super::snapshot_tests::{git, harness, remove_fixture, with_repo};
 use super::snapshot_tests_history::with_folder;
 use super::snapshot_tests_line_counts::with_wip;
 use super::snapshot_tests_select::click;
-use crate::msg::{HistoryMsg, Msg, RepoMsg, StageMsg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_painted::fills_at;
-use crate::ui::theme::color;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_painted::fills_at;
+use crate::theme::color;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{HistoryMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::{AppState, Selection};
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -50,7 +50,7 @@ fn wip_row_click_on_empty_area_opens_the_diff() {
     assert!(opens(&msgs, &readme), "a click right of the path opens the diff");
     let (st, msgs) = h.state_mut();
     for m in std::mem::take(msgs) {
-        crate::update::update(st, m, Instant::now());
+        glowfly_model::update::update(st, m, Instant::now());
     }
     h.run_ok();
     let msgs = click_msgs(&mut h, pos2(x0 + 4.0, y), PointerButton::Primary);

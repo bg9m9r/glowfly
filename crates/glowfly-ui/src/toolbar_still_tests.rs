@@ -7,8 +7,8 @@
 use super::fit::BRANCH_FIT;
 use super::pickers::part_w;
 use super::tests::{span, variant};
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::H;
-use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture};
+use crate::snapshot_tests::snapshot_tests_worktrees::H;
+use crate::snapshot_tests::{harness, harness_sized, remove_fixture};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 

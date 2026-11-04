@@ -8,16 +8,16 @@ use super::super::pane_status::{self, Failure};
 use super::super::widgets::form_message::{self, Message};
 use super::super::widgets::{FieldGroup, buttons};
 use super::dialog::{field, note, problem};
-use crate::msg::Msg;
-use crate::remote::RemoteMsg;
-use crate::state::blocked::BUSY;
-use crate::state::forks::{ForkCreate, ForkStep, added_as, error_text};
-use crate::state::touched::Touched;
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui;
 use glowfly_core::forge::Connection;
 use glowfly_core::remote_ops::{RemoteNameProblem, check_remote_name};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::forks::{ForkCreate, ForkStep, added_as, error_text};
+use glowfly_model::state::touched::Touched;
 
 fn spinner_line(ui: &mut egui::Ui, text: String) {
     pane_status::loading_line(ui, &text);

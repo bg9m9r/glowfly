@@ -7,10 +7,10 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::form_message::Message;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{GroupMsg, Msg};
-use crate::state::repo_groups::GroupForm;
 use eframe::egui;
 use glowfly_core::settings::MAX_GROUP_NAME;
+use glowfly_model::msg::{GroupMsg, Msg};
+use glowfly_model::state::repo_groups::GroupForm;
 
 /// Draws the dialog; returns true when Cancel or Esc closes it. `update` closes it after a
 /// Create or Rename it takes, so a refused name keeps it open with its message.

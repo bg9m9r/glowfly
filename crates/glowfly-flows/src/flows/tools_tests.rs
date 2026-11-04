@@ -5,15 +5,15 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::{OsEffect, PrefsEffect};
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::PrefPage;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use glowfly_core::external_tools::Launch;
 use glowfly_core::native_path::native;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::{OsEffect, PrefsEffect};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::PrefPage;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::tools::{LaunchFailure, ToolEffect, ToolKind, ToolsMsg};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -174,7 +174,8 @@ fn open_in_terminal_can_use_the_panel() {
     let (mut st, dir) = open("tools-terminal-panel", "");
     st.settings.terminal.open_in_panel = true;
     st.settings.external_tools.terminal = "wt".into();
-    let spawns = |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Terminal(crate::terminal::TerminalEffect::Spawn { .. }))).count();
+    let spawns =
+        |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Terminal(glowfly_model::terminal::TerminalEffect::Spawn { .. }))).count();
     let external = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Os(OsEffect::OpenTerminal(_)) | Effect::Tool(_)));
     let fx = update(&mut st, Msg::OpenTerminal, Instant::now());
     assert_eq!(spawns(&fx), 1, "{fx:?}");
@@ -317,7 +318,7 @@ fn palette_offers_the_diff_and_merge_tools_for_what_is_open() {
     let dir = super::conflict_tests::conflicted_repo("tools-palette-merge");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    drive(&mut st, Msg::Conflict(crate::msg::ConflictMsg::OpenConflict("a.txt".into())));
+    drive(&mut st, Msg::Conflict(glowfly_model::msg::ConflictMsg::OpenConflict("a.txt".into())));
     assert_eq!(find(&st, merge_label).and_then(|e| e.detail).as_deref(), Some("no merge tool set"));
     st.settings.external_tools.merge_tool = "kdiff3".into();
     let entry = find(&st, merge_label).expect("offered");

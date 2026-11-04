@@ -5,9 +5,9 @@
 
 use super::common::{added_color, modified_color, removed_color};
 use super::theme::{color, contrast};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{Context, CornerRadius, FontId, Painter, Pos2, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::repo::{ChangeCounts, LineCount};
 

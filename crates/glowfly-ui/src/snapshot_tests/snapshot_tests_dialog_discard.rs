@@ -5,13 +5,13 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{DialogMsg, Dismiss, Msg};
-use crate::state::Modal;
-use crate::state::tags::TagForm;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
+use glowfly_model::state::Modal;
+use glowfly_model::state::tags::TagForm;
 
 fn dismissed(h: &H, how: Dismiss) -> bool {
     pushed(h, &|m| matches!(m, Msg::Dialog(DialogMsg::Dismiss(d)) if *d == how))

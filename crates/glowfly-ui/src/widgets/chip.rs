@@ -10,11 +10,11 @@
 
 use super::button_look::{Press, Target, paint_target};
 use super::truncate::{cut_galley, cut_job};
-use crate::ui::theme::color;
-use crate::ui::theme::ref_chip::ChipLook;
-pub use crate::ui::theme::sizes::ChipSize;
-use crate::ui::theme::sizes::{self, ControlSize};
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::ref_chip::ChipLook;
+pub use crate::theme::sizes::ChipSize;
+use crate::theme::sizes::{self, ControlSize};
+use crate::theme::type_scale;
 use eframe::egui::{
     self, Color32, CornerRadius, FontId, Galley, Painter, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetText, pos2, vec2,
 };

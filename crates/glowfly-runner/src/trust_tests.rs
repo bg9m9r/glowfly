@@ -2,10 +2,10 @@
 //! read, is held or failed instead of run.
 
 use super::*;
-use crate::effect::{Sealed, TrustCheck};
-use crate::msg::{JobMsg, TrustMsg};
-use crate::runner::testing::execute_checked;
+use crate::testing::execute_checked;
 use glowfly_core::settings::SavedTrust;
+use glowfly_model::effect::{Sealed, TrustCheck};
+use glowfly_model::msg::{JobMsg, TrustMsg};
 use std::path::{Path, PathBuf};
 
 fn repo(name: &str) -> PathBuf {

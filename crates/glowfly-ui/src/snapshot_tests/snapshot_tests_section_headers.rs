@@ -3,26 +3,26 @@
 //! Start menu, the WORKTREES and SUBMODULES empty states once expanded (hidden while
 //! filtering), and the REMOTE count of remotes.
 
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{BranchMsg, Msg};
-use crate::remote::RemoteMsg;
-use crate::state::session_view::empty_sections::Folding;
-use crate::submodule::SubmoduleMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_empty_states::expand;
-use crate::ui::snapshot_tests::snapshot_tests_gitflow::initialized;
-use crate::ui::snapshot_tests::snapshot_tests_painted::{bounds, shapes_inside};
-use crate::ui::snapshot_tests::snapshot_tests_pr_no_host::rest_on;
-use crate::ui::snapshot_tests::snapshot_tests_select::click;
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::{H, center, pushed};
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_empty_states::expand;
+use crate::snapshot_tests::snapshot_tests_gitflow::initialized;
+use crate::snapshot_tests::snapshot_tests_painted::{bounds, shapes_inside};
+use crate::snapshot_tests::snapshot_tests_pr_no_host::rest_on;
+use crate::snapshot_tests::snapshot_tests_select::click;
+use crate::snapshot_tests::snapshot_tests_worktrees::{H, center, pushed};
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::session_view::empty_sections::Folding;
+use glowfly_model::submodule::SubmoduleMsg;
+use glowfly_model::worktree::WorktreeMsg;
 
 /// Moves the pointer onto the header whose + is named `add`, left of its buttons.
 fn hover_header(h: &mut H, add: &str) {
@@ -184,9 +184,9 @@ fn remote_count() {
 /// the + leaves the section open and does not open the +'s menu.
 #[test]
 fn blocked_add_without_menu_keeps_section() {
-    use crate::ui::widgets::section_header::{AddAction, Header, HeaderAdd, show};
+    use crate::widgets::section_header::{AddAction, Header, HeaderAdd, show};
     use eframe::egui;
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(320.0, 120.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(320.0, 120.0)).build_ui_state(
         |ui, (open, msgs): &mut (bool, Vec<Msg>)| {
             let items = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
                 if ui.button("Probe item").clicked() {

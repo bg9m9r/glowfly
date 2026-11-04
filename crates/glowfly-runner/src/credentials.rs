@@ -1,9 +1,9 @@
 //! Saving and dropping HTTPS sign-ins with git's credential helpers (`CredentialEffect`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::CredentialEffect;
-use crate::msg::{CredentialMsg, Msg};
 use glowfly_core::git_credential;
+use glowfly_model::effect::CredentialEffect;
+use glowfly_model::msg::{CredentialMsg, Msg};
 
 pub(super) fn run(e: CredentialEffect) -> Msg {
     let msg = match e {

@@ -2,15 +2,15 @@
 //! checked in the grey lens at sign-off), each tab's accessible name listing its states, and the
 //! running job's dots standing still under reduce motion.
 
-use crate::state::tabs::Parked;
-use crate::state::tabs::glance::Glance;
-use crate::state::{AppState, LogEntry, RunningJob, Tab};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::logs::RunInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::tabs::Parked;
+use glowfly_model::state::tabs::glance::Glance;
+use glowfly_model::state::{AppState, LogEntry, RunningJob, Tab};
 use std::path::{Path, PathBuf};
 
 fn place(name: &str) -> PathBuf {

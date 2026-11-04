@@ -10,14 +10,14 @@ use super::snapshot_tests_language_check::{english_shown, shown_texts};
 use super::snapshot_tests_language_main::{H, german};
 use super::snapshot_tests_patch::applying;
 use super::snapshot_tests_rebase_edit::rebasing;
-use crate::msg::Msg;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::StopKind;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// What these areas showed in English. A `*` stands for a name or number.
@@ -133,7 +133,7 @@ fn auto_picked(name: &str) -> (AppState, PathBuf) {
     };
     let (mut st, dir) = with_conflict(name, "settings.txt", settings);
     assert_eq!(st.session.conflict.view.as_ref().unwrap().auto.iter().flatten().count(), 1);
-    st.view.details_expanded_for = crate::state::layout::tool_view(&st);
+    st.view.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
     (st, dir)
 }
 
@@ -162,9 +162,9 @@ fn conflict_narrow_1100_de() {
     let (mut st, dir) = auto_picked("lang-conflict-narrow");
     german(&mut st);
     st.view.details_expanded_for = None;
-    let toggle = |side| Msg::Conflict(crate::msg::ConflictMsg::ConflictToggle { chunk: 1, side });
+    let toggle = |side| Msg::Conflict(glowfly_model::msg::ConflictMsg::ConflictToggle { chunk: 1, side });
     for side in [glowfly_core::repo::Side::Theirs, glowfly_core::repo::Side::Ours] {
-        crate::update::update(&mut st, toggle(side), std::time::Instant::now());
+        glowfly_model::update::update(&mut st, toggle(side), std::time::Instant::now());
     }
     let mut h = super::snapshot_tests::harness_sized(st, true, eframe::egui::vec2(1100.0, 760.0));
     h.run();
@@ -222,7 +222,7 @@ fn conflict_lists_german() {
         Msg::Confirm { title, body, .. } => Some((title.clone(), body.clone())),
         _ => None,
     });
-    let body = crate::state::conflict_files::mark_conflicted_body(de, &["gamma.txt".to_owned()]);
+    let body = glowfly_model::state::conflict_files::mark_conflicted_body(de, &["gamma.txt".to_owned()]);
     assert_eq!(asked, Some((de.tr("conflict.files.mark_conflicted.title").to_owned(), body)), "the confirmation is German");
     drop(h);
     remove_fixture(&dir);
@@ -315,9 +315,9 @@ fn the_check_catches_english() {
 #[test]
 fn the_check_knows_the_chip_tooltip() {
     use super::snapshot_tests_language_check::{checkable, matches};
-    use crate::state::conflict_check::{ConflictReport, chip_tooltip};
     use glowfly_core::conflict_check::MergeTarget;
     use glowfly_model::conflict_check::CheckRequest;
+    use glowfly_model::state::conflict_check::{ConflictReport, chip_tooltip};
     let target = MergeTarget { name: "main".into(), oid: git2::Oid::zero(), kind: TargetKind::DefaultBranch };
     let request = CheckRequest { branch: "search".into(), ours: git2::Oid::zero(), target };
     let report = ConflictReport { request, result: conflicts(&["a.txt", "b.txt"]) };

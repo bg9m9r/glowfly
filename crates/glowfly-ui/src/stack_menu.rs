@@ -5,16 +5,16 @@
 //! `state::stack_push::push_blocker`, `state::stack_prs::prs_blocker`).
 
 use super::common::{menu_header, menu_header_note, menu_item_if};
-use crate::msg::{Msg, RebaseMsg, StackMsg};
-use crate::state::ForgeState;
-use crate::state::stack::blocker;
-use crate::state::stack_prs::prs_blocker;
-use crate::state::stack_push::push_blocker;
-use crate::ui::widgets::menu::separator;
+use crate::widgets::menu::separator;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 use glowfly_core::stack::RestackScope;
+use glowfly_model::msg::{Msg, RebaseMsg, StackMsg};
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::stack::blocker;
+use glowfly_model::state::stack_prs::prs_blocker;
+use glowfly_model::state::stack_push::push_blocker;
 
 /// The menu's header: the branch's name, with the branch it is stacked on under it.
 pub fn header(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot) {

@@ -3,19 +3,18 @@
 
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::CommitMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::undo::{MAX_UNDO, UndoHistory};
-use crate::state::{AppState, RunningJob};
 use git2::Oid;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE, ResetMode, UndoKind};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::undo::{MAX_UNDO, UndoHistory};
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -230,7 +229,7 @@ fn undo_result_lands_in_its_own_tab() {
         update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     assert!(st.session.undo.undo.is_empty() && st.session.undo.blocked.is_none(), "tab B has its own history");
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Job(JobMsg::JobDone { .. })), "undo results are not scoped to the active tab");
     let fx = update(&mut st, reply, Instant::now());
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "tab B is not refreshed");

@@ -13,10 +13,10 @@
 
 use super::execute::{Cx, Execute, execute_with};
 use super::trust_gate::{self, Gate, Halt};
-use crate::effect::{Accepted, Checked, Effect, Sealed, StashEffect, TrustCheck, TrustEffect};
-use crate::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use glowfly_core::trust::incoming::Unchecked;
 use glowfly_core::trust::{self, TrustScan};
+use glowfly_model::effect::{Accepted, Checked, Effect, Sealed, StashEffect, TrustCheck, TrustEffect};
+use glowfly_model::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;

@@ -5,14 +5,14 @@
 //! says when its theme is used and each group rings the pair's member (`Settings::pick_card` and
 //! `set_match_system` say what a click does).
 
-use crate::state::theme_names;
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::tokens::{self, radius};
-use crate::ui::theme::{builtin, fonts, type_scale};
+use crate::theme::color::{self, Palette};
+use crate::theme::tokens::{self, radius};
+use crate::theme::{builtin, fonts, type_scale};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Response, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{BuiltinTheme, Settings, SystemPair, ThemeChoice};
+use glowfly_model::state::theme_names;
 
 /// A card's preview height, the name line under it, and the gaps between cards.
 const PREVIEW_H: f32 = 84.0;
@@ -40,7 +40,7 @@ pub fn picker(ui: &mut Ui, t: Lang, s: &mut Settings) {
     // As `ThemeCache::apply` reads it: a desktop that doesn't say is dark.
     let os_dark = ui.ctx().system_theme().is_none_or(|s| s == egui::Theme::Dark);
     let mut system = s.theme == ThemeChoice::System;
-    if crate::ui::theme::controls::checkbox(ui, &mut system, t.tr("prefs.ui.theme.system.check")).changed() {
+    if crate::theme::controls::checkbox(ui, &mut system, t.tr("prefs.ui.theme.system.check")).changed() {
         s.set_match_system(system, os_dark);
     }
     gap(ui, 10.0);

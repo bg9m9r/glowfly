@@ -4,13 +4,13 @@
 //! fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::msg::Msg;
-use crate::msg::StageMsg;
-use crate::state::{AppState, Selection};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 /// The fixture with the "Fix build on Windows" commit selected and its diff of app.txt open.
@@ -85,9 +85,9 @@ fn revert_button_sends_msg() {
 /// The commit diff of app.txt replaced by a hunk with three changed lines (` app`, `-fix`,
 /// `+fix the build`, `+on Windows`), with `selected` of its lines selected.
 pub(crate) fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout, selected: &[usize]) -> (AppState, PathBuf) {
-    use crate::msg::DiffMsg;
-    use crate::state::lines::LineClick;
     use glowfly_core::repo::{DiffLine, FileDiff, Hunk};
+    use glowfly_model::msg::DiffMsg;
+    use glowfly_model::state::lines::LineClick;
     let (mut st, dir) = with_commit_diff(name, theme, layout, false);
     let target = st.session.diff.view.as_ref().unwrap().0.clone();
     let line = |origin: char, old: Option<u32>, new: Option<u32>, text: &str| DiffLine { origin, old, new, text: text.into() };
@@ -108,7 +108,7 @@ pub(crate) fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout,
     st.session.diff.view = Some((target.clone(), diff.into()));
     for (i, &line) in selected.iter().enumerate() {
         let how = if i == 0 { LineClick::Only } else { LineClick::Toggle };
-        crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), std::time::Instant::now());
+        glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), std::time::Instant::now());
     }
     assert_eq!(st.view.diff_lines.count_in(&target, 0), selected.len());
     (st, dir)
@@ -152,13 +152,13 @@ fn diff_commit_readonly_dark() {
 
 #[test]
 fn commit_diff_lines_click_and_revert() {
-    use crate::msg::DiffMsg;
-    use crate::state::lines::LineClick;
     use eframe::egui::{Event, Modifiers, PointerButton, pos2};
+    use glowfly_model::msg::DiffMsg;
+    use glowfly_model::state::lines::LineClick;
     // A click in a `+` line's gutter selects it, one on its text doesn't: line i is i rows
     // below the first line row, under the hunk header, and the rows start at the sidebar's edge.
     let (st, dir) = with_line_diff("revert-lines-click", ThemeChoice::Dark, DiffLayout::Inline, &[]);
-    let style = crate::ui::diff::DiffStyle::new(&st.settings);
+    let style = crate::diff::DiffStyle::new(&st.settings);
     let mut h = harness(st, true);
     h.run();
     let b = h.get_by_label("Revert hunk").bounding_box().expect("the button has bounds");

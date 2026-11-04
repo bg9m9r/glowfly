@@ -5,13 +5,13 @@
 use super::search_loaded::TYPING_PAUSE;
 use super::tests::{finish, state};
 use super::update;
-use crate::effect::{Effect, IndexEffect};
-use crate::msg::{Msg, SearchMsg};
-use crate::state::refresh::LARGE_HISTORY;
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::commit_query::CommitQuery;
 use glowfly_core::repo::CommitInfo;
+use glowfly_model::effect::{Effect, IndexEffect};
+use glowfly_model::msg::{Msg, SearchMsg};
+use glowfly_model::state::refresh::LARGE_HISTORY;
+use glowfly_model::state::{AppState, Selection};
 use std::collections::HashSet;
 use std::time::Instant;
 
@@ -54,7 +54,7 @@ pub(super) fn history(n: usize) -> Vec<CommitInfo> {
 /// A state showing `n` synthetic commits (HEAD at the newest, on main) with the search bar open.
 /// The one-commit repository behind it is in the returned folder.
 pub(super) fn large_state(name: &str, n: usize) -> (AppState, std::path::PathBuf) {
-    let mut snap = crate::state::op_fixture::snapshot(name);
+    let mut snap = glowfly_model::state::op_fixture::snapshot(name);
     let dir = snap.workdir.clone();
     snap.commits = history(n).into();
     snap.row_of = snap.commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();

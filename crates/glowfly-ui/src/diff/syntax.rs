@@ -8,9 +8,9 @@
 
 use super::text_sel::{self, Highlight};
 use super::wrap::Wrap;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::text_pos;
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
+use crate::theme::color;
+use crate::theme::sizes::text_pos;
+use crate::widgets::truncate::{cut_galley, cut_job};
 use eframe::egui::text::{CCursor, LayoutJob, TextFormat};
 use eframe::egui::{Color32, FontId, Galley, Painter, Pos2, Rect, pos2};
 use glowfly_core::highlight::{Span, TokenKind};

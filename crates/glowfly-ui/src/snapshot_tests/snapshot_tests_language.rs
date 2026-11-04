@@ -3,15 +3,15 @@
 //! box and status bar in German; and switching the language from the menu takes effect on the
 //! next frame.
 
-use crate::state::prefs::{Autocrlf, GitConfigValues};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use eframe::egui;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::settings::{ExternalTools, ThemeChoice};
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 /// Preferences open on `page`, with the settings in `language`.
@@ -42,7 +42,7 @@ fn prefs_general_german() {
 }
 
 /// The first menu on the page: the language.
-fn open_language_menu(h: &mut egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)>) {
+fn open_language_menu(h: &mut egui_kittest::Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)>) {
     h.query_all_by_role(Role::ComboBox).next().expect("the language menu").click();
     h.run();
 }
@@ -125,8 +125,8 @@ fn main_window_german() {
 /// Cancel and Close come from the catalog: a German confirmation and About.
 #[test]
 fn dialog_buttons_german() {
-    use crate::msg::Msg;
-    use crate::state::Modal;
+    use glowfly_model::msg::Msg;
+    use glowfly_model::state::Modal;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "language-dialog-de");
     st.settings.language = "de".into();
     let de = glowfly_core::i18n::Lang::De;

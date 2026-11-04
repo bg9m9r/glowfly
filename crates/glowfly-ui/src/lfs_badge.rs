@@ -2,11 +2,11 @@
 //! pointer (`FileEntry::lfs`).
 
 use super::theme::color;
-use crate::state::lfs_notes::{BADGE, BADGE_TIP};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText, Stroke};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::state::lfs_notes::{BADGE, BADGE_TIP};
 
 pub(super) fn badge(ui: &mut egui::Ui, f: &FileEntry) {
     if !f.lfs {

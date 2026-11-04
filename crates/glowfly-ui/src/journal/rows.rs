@@ -5,20 +5,20 @@
 //! own tips); right-click offers Restore…, Create branch here… and Copy > SHA.
 
 use super::chip;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::{row_label, short, subject_name};
-use crate::state::journal_restore;
-use crate::ui::common::{menu_header, menu_item, menu_item_if};
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::chip::ChipSize;
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::{paint_cut_text, row_fill};
+use crate::common::{menu_header, menu_item, menu_item_if};
+use crate::theme::{color, type_scale};
+use crate::widgets::chip::ChipSize;
+use crate::widgets::menu::separator;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::{paint_cut_text, row_fill};
 use eframe::egui::{self, Align2, CursorIcon, Rect, Sense, Ui, pos2, vec2};
 use glowfly_core::journal::Row;
 use glowfly_core::repo::Snapshot;
 use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::{row_label, short, subject_name};
+use glowfly_model::state::journal_restore;
 
 const ROW_H: f32 = 56.0;
 const PAD_X: f32 = 16.0;
@@ -35,14 +35,14 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
             let Some(row) = rows.get(i) else {
                 let t = st.settings.lang();
                 let font = type_scale::font(type_scale::SMALL);
-                ui.painter().text(rect.center(), Align2::CENTER_CENTER, crate::state::journal::capped_line(t), font, color::weak());
+                ui.painter().text(rect.center(), Align2::CENTER_CENTER, glowfly_model::state::journal::capped_line(t), font, color::weak());
                 continue;
             };
             let key = row.key();
             let selected = view.selected.as_ref() == Some(&key);
             let label = row_label(st.settings.lang(), row);
             // The row's accessible name: its label, as painted on its first line.
-            crate::ui::access::name_button(&resp, true, &label);
+            crate::access::name_button(&resp, true, &label);
             let painted = ui.is_rect_visible(rect).then(|| {
                 row_fill::paint(ui.painter(), rect, selected, resp.hovered());
                 paint(ui, st, rect, row, &label)

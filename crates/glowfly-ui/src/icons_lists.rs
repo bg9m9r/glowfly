@@ -2,7 +2,7 @@
 //! Accessibility's figure, called from `widgets::paint_icon`. Same 20 px grid and stroke as the
 //! others.
 
-use crate::ui::widgets::Icon;
+use crate::widgets::Icon;
 use eframe::egui::{Painter, Pos2, Stroke, pos2};
 
 /// Paints `icon` centred on `c`; returns false for icons painted elsewhere.

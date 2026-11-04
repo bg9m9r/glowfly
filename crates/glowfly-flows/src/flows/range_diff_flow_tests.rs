@@ -4,17 +4,17 @@
 
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, TabsMsg};
-use crate::range_diff::RangeDiffMsg;
-use crate::state::AppState;
-use crate::state::Selection;
-use crate::state::range_diff::{self as rd, Phase};
-use crate::state::selection::MultiSelection;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
 use glowfly_core::journal::{Event, Row, Subject};
 use glowfly_core::range_diff::{Outcome, Status};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
+use glowfly_model::range_diff::RangeDiffMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::Selection;
+use glowfly_model::state::range_diff::{self as rd, Phase};
+use glowfly_model::state::selection::MultiSelection;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

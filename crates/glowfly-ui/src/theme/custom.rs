@@ -4,9 +4,9 @@ use super::builtin::garden_twin;
 use super::color::Palette;
 use super::contrast::ratio;
 use super::{DEFAULT_DARK, builtin};
-use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use glowfly_core::settings::{ColorValue, SystemPair, ThemeChoice, ThemeFile};
+use glowfly_model::themes::ThemeState;
 
 /// The selected-code fills a theme file gets when it sets none: focused and unfocused, dark and
 /// light.

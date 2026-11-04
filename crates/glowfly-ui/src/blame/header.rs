@@ -5,22 +5,22 @@
 //! the right go to line and find in the file. Before a blame has loaded, row 2 has Back and File
 //! history only.
 
-use crate::keymap::Keymap;
-use crate::msg::{BlameMsg, Msg};
-use crate::state::blame::BlameView;
-use crate::state::history::HistoryPane;
-use crate::ui::common::{caret_after, short};
-use crate::ui::file_view_switch::{self, FileShow};
-use crate::ui::find_bar::FindIntent;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::submenu;
-use crate::ui::widgets::{self, buttons};
+use crate::common::{caret_after, short};
+use crate::file_view_switch::{self, FileShow};
+use crate::find_bar::FindIntent;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::menu::submenu;
+use crate::widgets::{self, buttons};
 use eframe::egui::{Align, Layout, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{BlameMoves, Settings};
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::history::HistoryPane;
 
 /// The Moves menu's button text.
 fn moves_text(t: Lang, m: BlameMoves) -> &'static str {
@@ -193,7 +193,7 @@ fn skipped_chip(ui: &mut Ui, t: Lang, view: &BlameView, snap: Option<&Snapshot>,
 
 /// Right to left: the Line field, the find arrows, the match count and the Find field.
 fn find_and_line(ui: &mut Ui, view: &mut BlameView, msgs: &mut Vec<Msg>) {
-    for intent in crate::ui::find_bar::find_and_line(ui, &mut view.find, &mut view.goto, &mut view.focus_find) {
+    for intent in crate::find_bar::find_and_line(ui, &mut view.find, &mut view.goto, &mut view.focus_find) {
         msgs.push(Msg::Blame(match intent {
             FindIntent::Changed => BlameMsg::FindChanged,
             FindIntent::Step(d) => BlameMsg::FindStep(d),

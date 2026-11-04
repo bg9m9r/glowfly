@@ -10,7 +10,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot, Tracking};
 
 pub mod push;
-pub mod rejected_push;
+pub(crate) mod rejected_push;
 
 pub const NO_REMOTES: &str = "This repository has no remotes.";
 /// Why the checked-out branch can't be hidden: HEAD is always walked, so only its label would go.

@@ -5,22 +5,18 @@
 //! branches, a Git LFS pointer in an untrusted repository), and names that share a long start
 //! cut in their middle in the left panel. Shares the fixtures of the other snapshot tests.
 
-use crate::msg::{Msg, SearchMsg, UpdateMsg, WorkFileMsg};
-use crate::state::AppState;
-use crate::state::repo_sync::{RowState, SyncKind, SyncRow};
-use crate::state::updates::UpdateStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_columns::{H, grip, pointer};
-use crate::ui::snapshot_tests::snapshot_tests_history::with_file_view;
-use crate::ui::snapshot_tests::snapshot_tests_history_file::set_text;
-use crate::ui::snapshot_tests::snapshot_tests_issue::{crash, github, with_issue};
-use crate::ui::snapshot_tests::snapshot_tests_language_panels::click_header_action;
-use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::snapshot_tests_repo_sync::{dialog, row};
-use crate::ui::snapshot_tests::snapshot_tests_search::{searching, send, with_two_authors};
-use crate::ui::snapshot_tests::snapshot_tests_updates::{sent, status_bar, the_offer};
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::{center, p, with_worktrees};
-use crate::ui::snapshot_tests::{git, harness, harness_sized, reload, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_columns::{H, grip, pointer};
+use crate::snapshot_tests::snapshot_tests_history::with_file_view;
+use crate::snapshot_tests::snapshot_tests_history_file::set_text;
+use crate::snapshot_tests::snapshot_tests_issue::{crash, github, with_issue};
+use crate::snapshot_tests::snapshot_tests_language_panels::click_header_action;
+use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::snapshot_tests::snapshot_tests_repo_sync::{dialog, row};
+use crate::snapshot_tests::snapshot_tests_search::{searching, send, with_two_authors};
+use crate::snapshot_tests::snapshot_tests_updates::{sent, status_bar, the_offer};
+use crate::snapshot_tests::snapshot_tests_worktrees::{center, p, with_worktrees};
+use crate::snapshot_tests::{git, harness, harness_sized, reload, remove_fixture, with_repo};
 use eframe::egui::{pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Issue;
@@ -28,6 +24,10 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, LfsState, LoadOptions, WorktreeInfo};
 use glowfly_core::repo_sync::Outcome;
 use glowfly_core::settings::{ColumnWidths, DescriptionMode, ThemeChoice};
+use glowfly_model::msg::{Msg, SearchMsg, UpdateMsg, WorkFileMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_sync::{RowState, SyncKind, SyncRow};
+use glowfly_model::state::updates::UpdateStatus;
 use std::path::PathBuf;
 
 /// Lets a hover's tooltip appear.
@@ -279,7 +279,7 @@ fn history_file_lfs_trust_wraps() {
     set_text(&mut st, pointer.map(String::from).to_vec(), LfsState::Pointer);
     let mut h = harness_sized(st, true, vec2(1400.0, 640.0));
     h.run();
-    assert!(h.query_by_label(crate::ui::history_file::LFS_UNTRUSTED).is_some());
+    assert!(h.query_by_label(crate::history_file::LFS_UNTRUSTED).is_some());
     h.check_snapshot("history_file_lfs_trust_wraps");
     drop(h);
     remove_fixture(&dir);

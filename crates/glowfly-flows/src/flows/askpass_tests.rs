@@ -3,13 +3,13 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::CredentialMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::state::askpass::{Carry, PromptEnd};
-use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::{Prompt, PromptKind, Reply, Secret};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::CredentialMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::askpass::{Carry, PromptEnd};
+use glowfly_model::state::{AppState, RunningJob};
 use std::time::Instant;
 
 const USERNAME: &str = "Username for 'https://github.com': ";

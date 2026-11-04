@@ -5,13 +5,13 @@
 use super::history_index_tests::{builds, opened_long, opened_long_waiting, run_build};
 use super::tests::{finish, git};
 use super::update;
-use crate::effect::{Effect, IndexEffect};
-use crate::msg::{Msg, RepoMsg, SearchMsg, TabsMsg};
-use crate::state::history_index::{BuildDelay, FIRST_BUILD_DELAY, FREE_MIN_COMMITS, HistoryCount, PARKED_FREE_AFTER};
-use crate::state::tabs::Parked;
-use crate::state::{AppState, Tab};
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::repo::{Author, CommitInfo};
+use glowfly_model::effect::{Effect, IndexEffect};
+use glowfly_model::msg::{Msg, RepoMsg, SearchMsg, TabsMsg};
+use glowfly_model::state::history_index::{BuildDelay, FIRST_BUILD_DELAY, FREE_MIN_COMMITS, HistoryCount, PARKED_FREE_AFTER};
+use glowfly_model::state::tabs::Parked;
+use glowfly_model::state::{AppState, Tab};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -163,7 +163,7 @@ fn a_build_landing_for_a_long_parked_tab_is_freed_on_the_next_tick() {
     let mut tab = parked_holding(&other, None);
     let ix = &mut tab.parked.as_mut().unwrap().session.search.index;
     ix.builds = 1;
-    ix.building = Some(crate::state::history_index::Building { build: 1, key: no_key(), indexed: 0, estimate: None, fresh: true });
+    ix.building = Some(glowfly_model::state::history_index::Building { build: 1, key: no_key(), indexed: 0, estimate: None, fresh: true });
     st.tabs.push(tab);
     let s = Instant::now();
     tick(&mut st, s);

@@ -76,7 +76,7 @@ pub const WINDOWS_POLL: Duration = Duration::from_secs(30);
 /// How often the open repository's status is re-read while the window is focused, as a safety
 /// net for the watcher; None when the watcher is trusted, or watching is off (then focus and F5
 /// refresh, as the preference says).
-pub fn poll_every(watching: bool, windows: bool, remote: bool) -> Option<Duration> {
+pub(crate) fn poll_every(watching: bool, windows: bool, remote: bool) -> Option<Duration> {
     match (watching, remote, windows) {
         (false, _, _) => None,
         (true, true, _) => Some(REMOTE_POLL),

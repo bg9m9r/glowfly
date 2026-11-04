@@ -8,10 +8,10 @@
 use super::execute::{Cx, Execute};
 use super::terminal_hold::CommandHold;
 use super::{Runner, Waker};
-use crate::effect::Effect;
-use crate::msg::Msg;
 use glowfly_core::settings::ShellSetting;
 use glowfly_core::terminal::{ShellActivity, ShellProbe, pty, shell};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
 use glowfly_model::terminal::{AfterCheck, BusyCheck, TerminalEffect, TerminalMsg};
 use std::collections::HashMap;
 use std::path::Path;
@@ -161,7 +161,7 @@ impl Reporter {
 impl Runner {
     /// Runs a terminal effect; a shell with a trust `check` starts only once it passes, in its
     /// session thread (runner/trust.rs).
-    pub(super) fn terminal(&self, e: TerminalEffect, check: Option<crate::effect::TrustCheck>) {
+    pub(super) fn terminal(&self, e: TerminalEffect, check: Option<glowfly_model::effect::TrustCheck>) {
         match e {
             TerminalEffect::Spawn { id, cwd, rows, cols, shell } => {
                 let (ctl, rx) = mpsc::channel();
@@ -291,8 +291,8 @@ fn short_name(program: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{Control, Handle, KillSwitch, ProbeSlot, Reporter, Terminals, check_activity, short_name};
-    use crate::msg::Msg;
     use glowfly_core::terminal::{ShellActivity, ShellProbe};
+    use glowfly_model::msg::Msg;
     use glowfly_model::terminal::{AfterCheck, BusyCheck, TerminalMsg};
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Arc, mpsc};
@@ -364,7 +364,7 @@ mod tests {
     #[test]
     fn checking_a_session_without_a_probe_reports_unknown() {
         let (tx, rx) = mpsc::channel();
-        check_activity(9, AfterCheck::Kill, None, Reporter { tx, waker: crate::runner::Waker::none() });
+        check_activity(9, AfterCheck::Kill, None, Reporter { tx, waker: crate::Waker::none() });
         match rx.try_recv() {
             Ok(Msg::Terminal(TerminalMsg::Activity { id: 9, activity, then })) => {
                 assert_eq!(activity, ShellActivity::Unknown);
@@ -378,7 +378,7 @@ mod tests {
     fn checking_several_sessions_reports_them_in_one_answer() {
         let (tx, rx) = mpsc::channel();
         let probes = vec![(4, None), (5, Some(ShellProbe::default()))];
-        super::check_busy(probes, BusyCheck::Quit, Reporter { tx, waker: crate::runner::Waker::none() });
+        super::check_busy(probes, BusyCheck::Quit, Reporter { tx, waker: crate::Waker::none() });
         match rx.recv_timeout(std::time::Duration::from_secs(10)) {
             Ok(Msg::Terminal(TerminalMsg::BusyChecked { found, then })) => {
                 assert_eq!(found, vec![(4, ShellActivity::Unknown), (5, ShellActivity::Unknown)]);

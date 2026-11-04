@@ -3,14 +3,14 @@
 //! information shows from the start.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

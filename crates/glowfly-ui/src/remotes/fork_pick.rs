@@ -9,16 +9,16 @@ use super::super::theme::color;
 use super::super::widgets::form_message;
 use super::super::widgets::{FieldGroup, TextField, buttons};
 use super::dialog::{field, note, problem};
-use crate::msg::Msg;
-use crate::remote::RemoteMsg;
-use crate::state::blocked::BUSY;
-use crate::state::forks::{ForkPicker, added_as, error_text, visible};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Id, Layout, RichText};
 use glowfly_core::forge::Connection;
 use glowfly_core::remote_ops::{RemoteNameProblem, check_remote_name};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::forks::{ForkPicker, added_as, error_text, visible};
 
 /// Why Add remote is disabled before a fork is picked.
 pub(crate) const PICK_FIRST: &str = "Pick a fork from the list";

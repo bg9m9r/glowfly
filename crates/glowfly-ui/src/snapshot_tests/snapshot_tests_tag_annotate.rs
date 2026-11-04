@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::Msg;
-use crate::state::tags::AnnotateForm;
-use crate::state::{AppState, Modal};
-use crate::tag::TagMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::tags::AnnotateForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::tag::TagMsg;
 
 const TAG: &str = "v0.1.0";
 

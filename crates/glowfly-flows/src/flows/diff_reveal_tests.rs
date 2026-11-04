@@ -3,8 +3,8 @@
 //! set it, and the latter two clear it.
 
 use super::diff_nav_tests::{at_end_of, finish, nav_repo, run, shown, unstaged};
-use crate::msg::{DiffMsg, Msg, RepoMsg};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
 
 #[test]
 fn a_landed_step_reveals_its_file() {

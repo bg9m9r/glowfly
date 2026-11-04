@@ -4,11 +4,11 @@
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::msg::{CommitMsg, Msg, RepoMsg};
-use crate::state::commit::commit_blocked;
-use crate::state::{AppState, CommitDraft};
 use git2::{Repository, RepositoryState};
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::msg::{CommitMsg, Msg, RepoMsg};
+use glowfly_model::state::commit::commit_blocked;
+use glowfly_model::state::{AppState, CommitDraft};
 use std::path::Path;
 use std::time::Instant;
 

@@ -3,13 +3,13 @@
 //! `searching`). The app crate's view tests that run effects through the runner use them too.
 
 use super::{git, reload, with_repo};
-use crate::msg::{Msg, SearchMsg};
-use crate::state::AppState;
-use crate::state::Selection;
-use crate::state::conflict_files::conflicted_paths;
 use glowfly_core::gitcli::{args, run_with_input};
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, SearchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::Selection;
+use glowfly_model::state::conflict_files::conflicted_paths;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -78,7 +78,7 @@ pub fn with_two_authors(theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
 }
 
 pub fn send(st: &mut AppState, msg: SearchMsg) {
-    crate::update::update(st, Msg::Search(msg), Instant::now());
+    glowfly_model::update::update(st, Msg::Search(msg), Instant::now());
 }
 
 /// The bar shown with `q` typed into it.

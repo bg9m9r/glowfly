@@ -4,13 +4,13 @@
 
 use super::tests::{drive, finish_keeping, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::tags::DETACHED_WARNING;
-use crate::tag::TagMsg;
 use glowfly_core::gitcli::args;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::tags::DETACHED_WARNING;
+use glowfly_model::tag::TagMsg;
 use std::path::PathBuf;
 use std::time::Instant;
 

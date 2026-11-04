@@ -5,11 +5,11 @@
 //! slide (animated) to where the drop would put them (`lefts_after`). In a drawn title bar the
 //! only tab has nothing to swap with, so dragging it moves the window, as the empty bar does.
 
-use crate::msg::{AppMsg, Msg, TabsMsg};
-use crate::state::tab_groups::{is_identity, move_order};
-use crate::state::window_chrome::WindowCmd;
-use crate::ui::theme::tokens::motion;
+use crate::theme::tokens::motion;
 use eframe::egui::{self, CursorIcon, Id, Key, PointerButton, Rect, Response, pos2};
+use glowfly_model::msg::{AppMsg, Msg, TabsMsg};
+use glowfly_model::state::tab_groups::{is_identity, move_order};
+use glowfly_model::state::window_chrome::WindowCmd;
 use std::ops::Range;
 
 /// Where the drag in progress is kept in egui's temporary memory.

@@ -3,14 +3,14 @@
 
 use super::tests::{git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{CredentialMsg, JobMsg, Msg};
-use crate::state::notify::AUTO_FETCH;
-use crate::state::sign_in::FetchRun;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::auth_failure::AuthNeed;
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::{self, LoadOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
+use glowfly_model::state::notify::AUTO_FETCH;
+use glowfly_model::state::sign_in::FetchRun;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 

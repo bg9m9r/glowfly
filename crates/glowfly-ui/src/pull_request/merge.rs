@@ -6,20 +6,20 @@
 
 use super::super::theme::color;
 use super::{heading, note, tone_color};
-use crate::msg::Msg;
-use crate::state::pull_request::{PrAction, PrView};
-use crate::state::pull_request_actions::{
-    delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_button, merge_choices, merge_confirm, mergeability,
-    merging, method_blocked, method_help, method_label,
-};
-use crate::state::pull_request_cleanup::local_delete;
-use crate::ui::theme::controls;
-use crate::ui::widgets::{buttons, reason};
+use crate::theme::controls;
+use crate::widgets::{buttons, reason};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::forge::{MergeMethod, PrState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::text::printable;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::pull_request::{PrAction, PrView};
+use glowfly_model::state::pull_request_actions::{
+    delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_button, merge_choices, merge_confirm, mergeability,
+    merging, method_blocked, method_help, method_label,
+};
+use glowfly_model::state::pull_request_cleanup::local_delete;
 
 /// Shown once the page is loaded.
 pub(super) fn show(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>, default_branch: Option<&str>, msgs: &mut Vec<Msg>) {
@@ -68,13 +68,13 @@ fn open(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>, default_b
         let label = ui.label(RichText::new("Commit title").color(color::text())).id;
         let title =
             egui::TextEdit::singleline(&mut v.forms.merge_title).hint_text("Empty: the service's default").desired_width(f32::INFINITY);
-        crate::ui::access::with_label(&ui.ctx().clone(), Some(label), || controls::field(ui, title));
+        crate::access::with_label(&ui.ctx().clone(), Some(label), || controls::field(ui, title));
         let label = ui.label(RichText::new("Commit message").color(color::text())).id;
         let message = egui::TextEdit::multiline(&mut v.forms.merge_message)
             .hint_text("Empty: the service's default")
             .desired_rows(3)
             .desired_width(f32::INFINITY);
-        crate::ui::access::with_label(&ui.ctx().clone(), Some(label), || controls::field(ui, message));
+        crate::access::with_label(&ui.ctx().clone(), Some(label), || controls::field(ui, message));
     }
     ui.add_space(4.0);
     let source = printable(&v.pr.source);

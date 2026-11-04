@@ -2,10 +2,10 @@
 //! reading the settings file again after it couldn't be read.
 
 use super::execute::{Cx, Execute};
-use crate::effect::{ConfigWrite, PrefsEffect};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::prefs::{Autocrlf, GitConfigValues};
 use glowfly_core::gitcli::{self, args};
+use glowfly_model::effect::{ConfigWrite, PrefsEffect};
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
 use std::path::Path;
 
 /// Runs one `Effect::Prefs`: config values here, signing keys in keys.rs.

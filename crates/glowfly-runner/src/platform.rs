@@ -13,13 +13,13 @@ pub use terminal::open_terminal;
 
 /// What is at each of `paths`: whether it is a folder (false when gone, or unreachable: a
 /// network path or a drive that isn't connected), and its identity.
-pub fn check_folders(paths: &[PathBuf]) -> Vec<crate::msg::FolderCheck> {
+pub fn check_folders(paths: &[PathBuf]) -> Vec<glowfly_model::msg::FolderCheck> {
     paths
         .iter()
         .map(|p| {
             let present = p.is_dir();
             let folder = if present { glowfly_core::paths::FolderId::of(p) } else { None };
-            crate::msg::FolderCheck { path: p.clone(), present, folder }
+            glowfly_model::msg::FolderCheck { path: p.clone(), present, folder }
         })
         .collect()
 }

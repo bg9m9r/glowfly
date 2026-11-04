@@ -5,16 +5,16 @@
 //! messages. Built from state only: no git config is read or written.
 
 use super::snapshot_tests::{harness, render, settings};
-use crate::msg::Msg;
-use crate::profile::ProfileMsg;
-use crate::state::palette::{Mode, Palette, Pick};
-use crate::state::prefs::GitConfigValues;
-use crate::state::profiles::{AddForm, COPY_ACCOUNTS, RenameForm, SWITCH_BUTTON};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::{Profile, ProfileId, ProfilePrefs, Settings, ThemeChoice};
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::palette::{Mode, Palette, Pick};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::profiles::{AddForm, COPY_ACCOUNTS, RenameForm, SWITCH_BUTTON};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const WORK: ProfileId = ProfileId(1);
@@ -67,7 +67,7 @@ fn profile_page(theme: ThemeChoice) -> AppState {
     st
 }
 
-fn page(st: &mut AppState) -> &mut crate::state::profiles::ProfilesPage {
+fn page(st: &mut AppState) -> &mut glowfly_model::state::profiles::ProfilesPage {
     &mut st.prefs.as_mut().unwrap().profiles
 }
 

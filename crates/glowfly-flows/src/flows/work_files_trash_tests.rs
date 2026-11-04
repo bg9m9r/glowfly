@@ -5,13 +5,13 @@
 
 use super::tests::{drive, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::Modal;
-use crate::state::files::TRASH;
 use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::Modal;
+use glowfly_model::state::files::TRASH;
 use std::path::PathBuf;
 
 fn delete(path: &str, mode: DeleteMode) -> FileOp {
@@ -23,7 +23,7 @@ fn unstage_delete(path: &str, mode: DeleteMode) -> FileOp {
 }
 
 /// Opens the confirmation for `path` and returns its body, button and the op it runs.
-fn ask(st: &mut crate::state::AppState, path: &str) -> (String, String, FileOp) {
+fn ask(st: &mut glowfly_model::state::AppState, path: &str) -> (String, String, FileOp) {
     assert!(run(st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: path.into(), confirmed: false })).is_empty());
     let (_, body, button, then) = confirm(st);
     let Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op)) = then else { panic!("expected DeleteConfirmed for {path}") };
@@ -322,7 +322,7 @@ fn end_to_end_trash() {
     drive(&mut st, Msg::ConfirmAccepted);
 
     assert!(!dir.join("a.txt").exists());
-    let bin = crate::runner::testing::test_bin();
+    let bin = glowfly_runner::testing::test_bin();
     let landed = std::fs::read_dir(&bin)
         .unwrap()
         .flatten()

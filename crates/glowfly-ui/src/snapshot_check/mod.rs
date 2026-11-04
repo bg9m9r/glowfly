@@ -65,8 +65,8 @@ pub(crate) fn skip_requested(value: Option<&str>) -> bool {
 /// rendering crawl. The test's thread starts in the dark view palette (`view_palette`), the one
 /// view snapshots draw in unless a test picks another.
 pub fn builder<S>() -> HarnessBuilder<S> {
-    crate::ui::theme::color::set_palette(&crate::ui::theme::view_palette(true));
-    crate::ui::theme::fonts::use_test_cjk();
+    crate::theme::color::set_palette(&crate::theme::view_palette(true));
+    crate::theme::fonts::use_test_cjk();
     Harness::builder().renderer(LazyRenderer::new(Pooled::take))
 }
 

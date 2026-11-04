@@ -5,11 +5,11 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::state;
 use super::update;
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::AppState;
-use crate::state::palette::{Group, PaletteCommand as C, listed, shown};
 use git2::RepositoryState;
 use glowfly_core::repo::{FileEntry, RemoteInfo};
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{Group, PaletteCommand as C, listed, shown};
 use std::time::Instant;
 
 fn labels(st: &AppState) -> Vec<String> {
@@ -43,7 +43,7 @@ fn empty_query_groups_recent_suggested_and_the_rest() {
     assert_eq!(all.iter().filter(|l| *l == "Refresh").count(), 1, "a recent command shows once");
     assert_eq!(all.iter().filter(|l| *l == "Pull").count(), 1, "a suggestion shows once");
     assert!(all[rest..].contains(&"Push".to_owned()), "not ahead: Push stays with the rest");
-    assert_eq!(all.len(), crate::state::palette::entries(&st).len());
+    assert_eq!(all.len(), glowfly_model::state::palette::entries(&st).len());
 
     // Ahead too: Push joins the suggestions after Pull.
     st.snap.as_mut().unwrap().locals.iter_mut().find(|b| b.is_head).unwrap().ahead = 1;

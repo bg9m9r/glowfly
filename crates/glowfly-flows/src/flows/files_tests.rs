@@ -3,18 +3,18 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::FilesMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::history::FileHistoryView;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Modal, Selection};
 use git2::{Oid, Repository};
 use glowfly_core::repo::{self, Comparison, FileEntry, LoadOptions, RestoredFrom};
 use glowfly_core::undo::Action;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -194,7 +194,7 @@ fn comparison_restore_clears_absent() {
         anchor: oid,
         cursor: oid,
         members: [oid, other].into(),
-        span: crate::state::selection_span::Span::Pair { older: other, newer: oid },
+        span: glowfly_model::state::selection_span::Span::Pair { older: other, newer: oid },
         swapped: false,
         changes: Some(Ok(changes)),
         stacked: None,

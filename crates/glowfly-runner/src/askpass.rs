@@ -2,10 +2,10 @@
 //! askpass helper as `Msg`s and hands the dialog's answers back to the waiting helper.
 
 use super::Runner;
-use crate::msg::CredentialMsg;
-use crate::msg::Msg;
 use glowfly_core::askpass::{self, Event, Reply};
 use glowfly_core::gitcli::{self, AskpassEnv};
+use glowfly_model::msg::CredentialMsg;
+use glowfly_model::msg::Msg;
 
 impl Runner {
     /// Opens the loopback listener and points every later git child at it. On failure prompts

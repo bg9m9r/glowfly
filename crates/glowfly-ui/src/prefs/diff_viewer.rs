@@ -3,8 +3,8 @@
 //! lines are painted. Its text size row is on Accessibility too (`font_size_row`).
 
 use super::{check_row, help, row};
-use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::widgets::buttons;
 use eframe::egui::{self, Ui};
 use glowfly_core::settings::{DIFF_FONT_SIZES, HistoryPane, Settings, TAB_SIZES};
 

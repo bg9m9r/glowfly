@@ -3,14 +3,13 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::JobMsg;
-use crate::msg::LoadMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WatchMsg;
-use crate::runner;
-use crate::state::{AppState, RunningJob};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::LoadMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WatchMsg;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -29,7 +28,7 @@ fn loads(fx: &[Effect]) -> Vec<&Effect> {
 /// The one load in `fx`, run: the message it reports.
 fn run_load(fx: Vec<Effect>) -> Msg {
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("a load");
-    runner::testing::execute(load).expect("a result")
+    glowfly_runner::testing::execute(load).expect("a result")
 }
 
 fn quiet_job(dir: &std::path::Path) -> RunningJob {
@@ -126,7 +125,7 @@ fn status_reads_merge_and_a_new_change_relayouts_the_graph() {
     assert!(update(&mut st, changed(), Instant::now()).is_empty(), "waits for the read running");
     assert!(update(&mut st, changed(), Instant::now()).is_empty());
 
-    let status = first.into_iter().next().and_then(runner::testing::execute).unwrap();
+    let status = first.into_iter().next().and_then(glowfly_runner::testing::execute).unwrap();
     let fx = update(&mut st, status, Instant::now());
     assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "one more read for both: {fx:?}");
     assert!(loads(&fx).is_empty());
@@ -159,7 +158,8 @@ fn read_status(st: &mut AppState) -> Vec<Effect> {
     let changed =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(st, changed, Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::testing::execute).expect("a status read");
+    let status =
+        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(glowfly_runner::testing::execute).expect("a status read");
     update(st, status, Instant::now())
 }
 

@@ -3,17 +3,17 @@
 //! listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's
 //! parent folder (`CloneEffect::CheckParent`).
 
-use crate::effect::{FileOp, LocalOp, SeenLines, WorkFileOk};
-use crate::msg::CloneMsg;
-use crate::msg::FilesMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::WorkFileMsg;
 use git2::Oid;
 use glowfly_core::error::Error;
 use glowfly_core::repo;
 use glowfly_core::undo;
 use glowfly_core::undo::RestoreFailed;
+use glowfly_model::effect::{FileOp, LocalOp, SeenLines, WorkFileOk};
+use glowfly_model::msg::CloneMsg;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::WorkFileMsg;
 use std::path::Path;
 
 /// Restores `path` from commit `oid`, saving the working copy first so the restore can be undone

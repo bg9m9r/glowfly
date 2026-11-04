@@ -1,13 +1,13 @@
 //! Headless tests for the dashboard's Review requested: requests made to a team the signed-in
 //! user belongs to, and the teams kept with the user across refreshes.
 
-use crate::effect::{AccountReply, TargetReply};
 use crate::flows::dashboard_tests::{deliver, fetch_of, gh, pr, reply, run, scanned, token};
 use crate::flows::state;
-use crate::msg::DashboardMsg;
-use crate::state::AppState;
-use crate::state::dashboard_rows::counts;
 use glowfly_core::forge::{Me, Provider, PullRequest};
+use glowfly_model::effect::{AccountReply, TargetReply};
+use glowfly_model::msg::DashboardMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::dashboard_rows::counts;
 
 /// The widgets repository on GitHub, read as `me`: a team request by Grace, the same team
 /// request on Ada's own pull request, and Grace asking Ada herself.

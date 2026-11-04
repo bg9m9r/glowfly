@@ -7,21 +7,21 @@ use super::snapshot_tests_esc::app_harness;
 use super::snapshot_tests_terminal::{pushed, with_session};
 use super::terminal::{shell_items, shell_menu};
 use super::theme::{self, color};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::terminal::SessionStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Key, vec2};
 use egui::accesskit::Role;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ShellChoice, TerminalPrefs, ThemeChoice};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::SessionStatus;
 use glowfly_model::terminal::TerminalMsg;
 use std::time::Instant;
 
 /// `m` handled as the app would, before the window is drawn.
 fn apply(st: &mut AppState, m: TerminalMsg) {
-    crate::update::update(st, Msg::Terminal(m), Instant::now());
+    glowfly_model::update::update(st, Msg::Terminal(m), Instant::now());
 }
 
 #[test]
@@ -90,7 +90,7 @@ fn terminal_shell_menu() {
     prefs.shell.program = "nu".into();
     let items = shell_items(Lang::En, &prefs, true);
     let p = theme::view_palette(true);
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(280.0, 220.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(vec2(280.0, 220.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_palette(&p);
             theme::apply_style(ui.ctx(), &p);

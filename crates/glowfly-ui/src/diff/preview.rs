@@ -10,18 +10,18 @@
 //! the sides load (or when they failed) the plain binary empty state shows.
 
 use super::empty_state::{self, EmptyIcon};
-use crate::state::AppState;
-use crate::state::diff_preview;
-use crate::ui::image_paint::{checkerboard, load};
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::image_paint::{checkerboard, load};
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
 use glowfly_core::preview_image::{PreviewImage, is_image_path};
 use glowfly_core::preview_svg::{SVG_MAX_BYTES, is_svg_path};
 use glowfly_core::repo::{BinarySide, BinarySides, HEX_MAX_BYTES};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview;
 use std::sync::Arc;
 
 /// Around the two columns, and between them.

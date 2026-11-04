@@ -4,16 +4,16 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::submodule::{Batch, SubmoduleMsg};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::settings::{SubmoduleUpdates, ThemeChoice};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::submodule::{Batch, SubmoduleMsg};
 use std::path::PathBuf;
 
 fn oid(c: char) -> Oid {

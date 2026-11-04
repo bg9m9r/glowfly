@@ -7,13 +7,13 @@ use super::gitflow_tests::{cleanup, initialized};
 use super::prefs_save_tests::{edited, git_mut, identity, on_page, page, prefs, run, writes};
 use super::profiles_tests::{PERSONAL, WORK, two_profiles};
 use super::tests::{drive, scratch_repo, state};
-use crate::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TabsMsg};
-use crate::profile::ProfileMsg;
-use crate::state::prefs::GitConfigValues;
-use crate::state::tabs::Tab;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::tools::ToolsMsg;
 use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TabsMsg};
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::tabs::Tab;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
+use glowfly_model::tools::ToolsMsg;
 
 fn asking(st: &AppState) -> bool {
     matches!(st.modal, Some(Modal::ConfirmChoice { .. }))

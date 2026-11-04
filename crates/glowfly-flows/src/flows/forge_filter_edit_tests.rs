@@ -2,14 +2,14 @@
 //! filters.
 
 use super::forge_filters_tests::{filter_calls, open, reply, saved, send};
-use crate::effect::{FilterCall, FilterResult};
-use crate::msg::FilterMsg;
-use crate::state::forge_filter_form::FilterForm;
-use crate::state::forge_filters::OptionsState;
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::filters::Who;
 use glowfly_core::forge::{Builtin, FilterChoice, FilterKind, FilterOptions};
 use glowfly_core::settings::RepoForgeFilters;
+use glowfly_model::effect::{FilterCall, FilterResult};
+use glowfly_model::msg::FilterMsg;
+use glowfly_model::state::forge_filter_form::FilterForm;
+use glowfly_model::state::forge_filters::OptionsState;
+use glowfly_model::state::{AppState, Modal};
 
 fn form(st: &mut AppState) -> &mut FilterForm {
     match st.modal.as_mut() {

@@ -8,17 +8,17 @@ use super::theme::color;
 use super::widgets::section_header::{self, HeaderAdd, HeaderResponse, MenuFn};
 use super::widgets::{self, Icon};
 use super::widgets::{menu, menu_columns};
-use crate::msg::{FilterMsg, Msg};
-use crate::state::forge_filters::Hint;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::chip::{self, Chip, ChipSize, Look};
-use crate::ui::widgets::menu::popup_below;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::chip::{self, Chip, ChipSize, Look};
+use crate::widgets::menu::popup_below;
 use eframe::egui::{self, Align, Color32, CornerRadius, Layout, Rect, Response, Sense, UiBuilder, pos2, vec2};
 use glowfly_core::forge::filters::matching;
 use glowfly_core::forge::{Builtin, FilterChoice, FilterKind, Provider, SavedFilter};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoForgeFilters;
+use glowfly_model::msg::{FilterMsg, Msg};
+use glowfly_model::state::forge_filters::Hint;
 
 /// Room after the filter chip's label for its dropdown caret (`widgets::caret`), at least 4 px
 /// clear of the label.

@@ -1,7 +1,7 @@
 //! Next/previous change across files: where a step goes, the counter between the arrows, and the
 //! neighbouring file in the list a diff came from (`diff_nav/file_order.rs`).
 
-pub mod file_order;
+pub(crate) mod file_order;
 
 use super::AppState;
 use file_order::source_entries;

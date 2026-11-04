@@ -3,11 +3,11 @@
 //! order, and a file edited since is never overwritten.
 
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::lines::LineClick::Only;
 use glowfly_core::repo::{DiffTarget, HunkOp};
 use glowfly_core::undo::{Action, Discarded};
+use glowfly_model::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::Only;
 use std::path::{Path, PathBuf};
 
 /// Thirty numbered lines, with an "x" before the ones in `changed`.

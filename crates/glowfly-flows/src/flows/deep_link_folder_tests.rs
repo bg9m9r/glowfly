@@ -5,10 +5,10 @@
 
 use super::tests::{drive, same_place, scratch_repo, state};
 use super::update;
-use crate::deep_link::DeepLinkMsg;
-use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, Modal};
+use glowfly_model::deep_link::DeepLinkMsg;
+use glowfly_model::effect::{Effect, LoadKind, UiEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

@@ -145,11 +145,11 @@ pub(super) fn offsets(n: usize, wrap: Wrap, lines_of: impl Fn(usize) -> usize) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::builtin;
-    use crate::ui::theme::contrast::ratio;
-    use crate::ui::theme::controls::mark_on;
-    use crate::ui::theme::surfaces::over;
-    use crate::ui::theme::vision::{DEUTAN, lightness_seen};
+    use crate::theme::builtin;
+    use crate::theme::contrast::ratio;
+    use crate::theme::controls::mark_on;
+    use crate::theme::surfaces::over;
+    use crate::theme::vision::{DEUTAN, lightness_seen};
     use glowfly_core::settings::BuiltinTheme;
 
     /// Under deutan vision ours and theirs stay apart by lightness: theirs' checkbox fill at

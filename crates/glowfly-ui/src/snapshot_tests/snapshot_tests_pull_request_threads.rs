@@ -4,10 +4,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::{Page, PrTab};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::diff_rows::LineSide;
@@ -16,7 +13,10 @@ use glowfly_core::forge::{
 };
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Page, PrTab};
 use std::sync::Arc;
 
 /// Unix seconds on day `day` of January 2026, at 10:00 UTC.
@@ -117,7 +117,7 @@ pub(crate) fn load(st: &mut AppState, d: PrDetail, threads: Vec<ReviewThread>) {
         },
     ];
     let v = st.session.pull_request.view.as_mut().unwrap();
-    crate::state::pull_request_actions::prefill(&mut v.forms, &d, None);
+    glowfly_model::state::pull_request_actions::prefill(&mut v.forms, &d, None);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads, threads_note: None }));
 }
 

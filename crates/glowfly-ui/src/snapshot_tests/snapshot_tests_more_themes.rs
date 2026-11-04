@@ -7,8 +7,7 @@ use super::snapshot_tests::{harness_palette_sized, remove_fixture, settings};
 use super::snapshot_tests_graph_bands::with_bands;
 use super::snapshot_tests_themes::ocean_prefs;
 use super::theme::{self, builtin, color::Palette};
-use crate::state::{AppState, PrefPage, PrefsState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::{Role, Toggled};
 use eframe::egui::vec2;
 use egui_kittest::Harness;
@@ -16,6 +15,7 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo;
 use glowfly_core::settings::{BuiltinTheme, Settings, SystemPair, ThemeChoice};
+use glowfly_model::state::{AppState, PrefPage, PrefsState, Selection};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -61,7 +61,7 @@ fn picker(name: &str, choice: ThemeChoice) {
 }
 
 /// Preferences > Appearance over `s`, drawn in `p` at the picker goldens' size.
-fn prefs(s: Settings, p: Palette) -> Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
+fn prefs(s: Settings, p: Palette) -> Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)> {
     let mut st = AppState::new(s, Vec::new(), Instant::now());
     st.prefs = Some(PrefsState::new(PrefPage::Ui));
     let mut h = harness_palette_sized(st, p, vec2(1400.0, 1040.0));

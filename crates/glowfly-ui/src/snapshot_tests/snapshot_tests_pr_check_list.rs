@@ -5,16 +5,16 @@
 use super::snapshot_tests::{NOW, harness, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_pull_request_review::{detail, load};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::PrView;
-use crate::state::pull_request_checks::{ChecksPane, HELD, LOADING};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{CheckList, CheckRun, CheckState, Checks, Provider, RunState, Target};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::pull_request_checks::{ChecksPane, HELD, LOADING};
 use std::path::PathBuf;
 
 const BUILD_URL: &str = "https://ci.example/acme/demo/build/41";

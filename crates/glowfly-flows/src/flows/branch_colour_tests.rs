@@ -5,12 +5,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{GraphMsg, Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
-use crate::runner;
-use crate::state::AppState;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::settings::ColourPalette;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{GraphMsg, Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -53,7 +52,8 @@ fn colours_survive_the_clean_to_dirty_relayout() {
     let changed =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(&mut st, changed, Instant::now());
-    let status = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(runner::testing::execute).expect("a status read");
+    let status =
+        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(glowfly_runner::testing::execute).expect("a status read");
     let _ = update(&mut st, status, Instant::now());
 
     let snap = st.snap.as_ref().unwrap();

@@ -4,13 +4,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, TrustMsg};
-use crate::state::AppState;
 use git2::Oid;
 use glowfly_core::repo;
 use glowfly_core::signature_check::{SigStatus, SignatureCheck, parse_check};
 use glowfly_core::signing::SigningFormat;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::AppState;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

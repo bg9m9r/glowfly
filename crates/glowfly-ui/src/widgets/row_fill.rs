@@ -7,7 +7,7 @@
 //! graph and the file lists the fill is `selected` while the row's pane has the keyboard focus,
 //! and the neutral `tokens::selected_inactive` otherwise.
 
-use crate::ui::theme::{color, tokens};
+use crate::theme::{color, tokens};
 use eframe::egui::{Color32, CornerRadius, Painter, Rect, Response, pos2, vec2};
 
 /// The width of a selected row's accent bar.

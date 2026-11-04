@@ -4,8 +4,8 @@
 //! can outlive an abort that puts the repository back exactly there.
 
 use super::git_ops::run_git;
-use crate::effect::UndoResult;
 use glowfly_core::undo::{self, MoveOp, OpStart, UndoKind};
+use glowfly_model::effect::UndoResult;
 use std::path::{Path, PathBuf};
 
 /// Whether the job's last command is the operation it is recorded as, and one that can stop

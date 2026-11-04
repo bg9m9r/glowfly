@@ -2,13 +2,13 @@
 
 use super::tests::{drive, git, scratch_repo};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::{AppState, Status};
 use git2::Oid;
 use glowfly_core::forge::{CheckState, Checks, PullRequest, TipQuery};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::{AppState, Status};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -116,7 +116,7 @@ fn nothing_is_asked_while_the_host_failed_or_the_repository_is_untrusted() {
 
     st.session.forge.as_mut().unwrap().host_status = Status::Ok;
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(!st.runs_git_unasked());
     assert!(tick(&mut st, t0).is_empty());
     assert!(st.session.forge.as_ref().unwrap().tips.in_flight.is_empty(), "nothing is left waiting");

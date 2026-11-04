@@ -14,17 +14,10 @@ use super::widgets;
 use super::widgets::quiet_target::{self, State};
 use super::widgets::row_fill;
 use super::widgets::section_header::{self, AddAction, Header, HeaderAdd};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::BranchMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::gitflow::{group_title, row_tooltip, start_blocked};
-use crate::state::{ForgeState, PrefPage, Selection};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::menu::separator;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, CornerRadius, Rect, Response, Sense, Stroke, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::{self, Issue};
@@ -32,6 +25,13 @@ use glowfly_core::gitflow::{Branches, FlowGroup, FlowKind, GitFlowSettings, grou
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::GraphFilter;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::gitflow::{group_title, row_tooltip, start_blocked};
+use glowfly_model::state::{ForgeState, PrefPage, Selection};
 
 /// What the rows are drawn against.
 pub(super) struct Rows<'a> {
@@ -43,7 +43,7 @@ pub(super) struct Rows<'a> {
     /// The left-panel filter has text.
     pub filtering: bool,
     /// The custom commands of the branch menus.
-    pub commands: &'a crate::state::custom_commands::MenuCommands<'a>,
+    pub commands: &'a glowfly_model::state::custom_commands::MenuCommands<'a>,
     pub t: Lang,
 }
 
@@ -89,7 +89,7 @@ pub(super) fn section(
             let Some(info) = snap.locals.iter().find(|i| i.name == b.name) else { continue };
             let label = if b.head { format!("✔  {}", b.short) } else { b.short.to_owned() };
             let selected = info.oid.is_some_and(|o| *rows.sel == Selection::Commit(o));
-            let worktree = crate::state::worktree_branches::elsewhere(snap, b.name);
+            let worktree = glowfly_model::state::worktree_branches::elsewhere(snap, b.name);
             let right = worktree.map(|_| [widgets::Part::Text(t.tr("sidebar.local.worktree.part"))]);
             let (r, _, cut) = widgets::list_row_cut(
                 ui,
@@ -101,7 +101,7 @@ pub(super) fn section(
                 b.head,
             );
             if b.head {
-                crate::ui::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.short)]));
+                crate::access::name_button(&r, true, &t.trf("access.checked_out", &[("name", &b.short)]));
             }
             branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(b.name)));
             if r.hovered() {
@@ -112,7 +112,7 @@ pub(super) fn section(
                 Some(wt) => format!(
                     "{tip}
 {}",
-                    crate::state::worktree_branches::local_tip_line(t, wt, b.name)
+                    glowfly_model::state::worktree_branches::local_tip_line(t, wt, b.name)
                 ),
                 None => tip,
             };

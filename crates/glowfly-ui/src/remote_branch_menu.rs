@@ -13,14 +13,7 @@
 
 use super::common::{menu_danger, menu_header, menu_item, menu_item_if, menu_row, menu_row_preview};
 use super::ref_visibility;
-use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
-use crate::state::rebase_onto::onto_commit_blocker;
-use crate::state::remote_branch::TrackingCheckout;
-use crate::state::worktree_branches::Elsewhere;
-use crate::state::{ForgeState, Selection, pr_repos, remote_branch, worktree_branches};
-use crate::ui::widgets::menu::{item_named, named, separator};
-use crate::worktree::WorktreeMsg;
+use crate::widgets::menu::{item_named, named, separator};
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
@@ -31,6 +24,13 @@ use glowfly_core::repo::{BranchInfo, Snapshot};
 use glowfly_core::settings::GraphFilter;
 use glowfly_core::worktree_ops::WorktreeBase;
 use glowfly_model::conflict_check::ConflictCheckMsg;
+use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
+use glowfly_model::msg::{BranchMsg, ForgeMsg, Msg, OpPreviewMsg, RebaseMsg, SelectionMsg};
+use glowfly_model::state::rebase_onto::onto_commit_blocker;
+use glowfly_model::state::remote_branch::TrackingCheckout;
+use glowfly_model::state::worktree_branches::Elsewhere;
+use glowfly_model::state::{ForgeState, Selection, pr_repos, remote_branch, worktree_branches};
+use glowfly_model::worktree::WorktreeMsg;
 
 /// What a remote branch's menu is drawn against.
 pub struct RemoteMenu<'a> {

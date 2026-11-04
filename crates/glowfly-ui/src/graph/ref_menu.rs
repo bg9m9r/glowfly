@@ -2,19 +2,19 @@
 //! (a submenu per ref when the row has several), elsewhere the commit menu, or the
 //! multi-selection menu for a row of the selection.
 
-use crate::keymap::Keymap;
-use crate::msg::Msg;
-use crate::state::custom_commands::MenuCommands;
-use crate::state::{ForgeState, Selection, remote_branch};
-use crate::ui::branch_menu::local_branch_menu;
-use crate::ui::menus::{commit_menu, multi_commit_menu};
-use crate::ui::remote_branch_menu::{RemoteMenu, remote_branch_menu};
-use crate::ui::tags::tag_menu;
-use crate::ui::widgets::menu::submenu;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::branch_menu::local_branch_menu;
+use crate::menus::{commit_menu, multi_commit_menu};
+use crate::remote_branch_menu::{RemoteMenu, remote_branch_menu};
+use crate::tags::tag_menu;
+use crate::widgets::menu::submenu;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Rect, Response};
 use glowfly_core::repo::{CommitInfo, RefKind, RefLabel, Snapshot};
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::custom_commands::MenuCommands;
+use glowfly_model::state::{ForgeState, Selection, remote_branch};
 
 /// What a row's menu is drawn against.
 pub(super) struct RowMenu<'a> {

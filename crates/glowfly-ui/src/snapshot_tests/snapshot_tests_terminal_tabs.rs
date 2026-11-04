@@ -7,17 +7,17 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, double_click};
 use super::snapshot_tests_terminal::{pushed, with_session};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::terminal::{SessionStatus, TermSession};
-use crate::state::{AppState, PrefPage};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::spacing;
-use crate::ui::widgets::tab_glyph;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::spacing;
+use crate::widgets::tab_glyph;
 use eframe::egui::{Modifiers, PointerButton, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::terminal::TermScreen;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::terminal::{SessionStatus, TermSession};
+use glowfly_model::state::{AppState, PrefPage};
 use glowfly_model::terminal::TerminalMsg;
 use std::path::PathBuf;
 

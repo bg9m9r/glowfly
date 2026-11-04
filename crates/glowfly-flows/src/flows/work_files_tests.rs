@@ -4,13 +4,13 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::files::PathForm;
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::{self, Deleted, DiffTarget, FileDiff, FileEntry, LoadOptions};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::files::PathForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 

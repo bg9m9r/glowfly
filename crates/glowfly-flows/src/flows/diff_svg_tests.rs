@@ -5,13 +5,12 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{DiffMsg, Msg, PrefsMsg, RepoMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::diff_header::{self, ChangeText, FileKind};
-use crate::state::diff_preview;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{DiffMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_header::{self, ChangeText, FileKind};
+use glowfly_model::state::diff_preview;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -47,7 +46,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 fn open(st: &mut AppState, target: DiffTarget) -> Vec<Effect> {
     let fx = run(st, Msg::Repo(RepoMsg::OpenDiff(target)));
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { .. })).expect("a diff load");
-    let msg = runner::testing::execute(load).expect("a result");
+    let msg = glowfly_runner::testing::execute(load).expect("a result");
     run(st, msg)
 }
 
@@ -58,7 +57,7 @@ fn asks(fx: &[Effect]) -> usize {
 /// Runs the sides loads among `fx` and applies their results.
 fn finish(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })) {
-        let msg = runner::testing::execute(e).expect("a result");
+        let msg = glowfly_runner::testing::execute(e).expect("a result");
         drive(st, msg);
     }
 }

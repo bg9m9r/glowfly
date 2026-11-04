@@ -5,13 +5,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{BranchMsg, Msg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::AppState;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

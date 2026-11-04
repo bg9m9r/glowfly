@@ -3,10 +3,10 @@
 
 use super::askpass_gpg_tests::{finish, last_toast, send, start_job};
 use super::tests::state;
-use crate::effect::Effect;
-use crate::msg::{CredentialMsg, Msg};
-use crate::state::AppState;
 use glowfly_core::askpass::{GpgAsk, Prompt, Reply};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CredentialMsg, Msg};
+use glowfly_model::state::AppState;
 
 fn extend_prompt(st: &mut AppState, id: u64) {
     let ask = GpgAsk { key: "0123456789ABCDEF0123456789ABCDEF01234567".into(), user: None, retry: false, extend: true };
@@ -53,7 +53,7 @@ fn a_job_that_ends_leaves_the_extend_prompt_open() {
     extend_prompt(&mut st, 7);
     send(&mut st, Msg::Credentials(CredentialMsg::CredentialPrompt { id: 8, prompt: Prompt::new("Username for 'https://x.org': ", None) }));
     st.askpass.secret = "typed".into();
-    let fx = send(&mut st, Msg::Job(crate::msg::JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
+    let fx = send(&mut st, Msg::Job(glowfly_model::msg::JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     let cancelled: Vec<u64> = fx
         .iter()
         .filter_map(|e| match e {

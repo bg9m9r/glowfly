@@ -5,13 +5,13 @@
 
 use super::caption;
 use super::index::{self, PageMatch};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::PrefPage;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::{self, Icon};
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::{self, Icon};
 use eframe::egui::{self, Id, Key, RichText, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::PrefPage;
 
 /// The column's width, and the field's inset from its sides.
 const NAV_W: f32 = 250.0;
@@ -99,7 +99,7 @@ fn search_field(ui: &mut Ui, v: &NavView, query: &mut String, focus: &mut bool, 
         ui.add_space(INSET);
         let edit = egui::TextEdit::singleline(query).id(Id::new("prefs-search")).hint_text(t.tr("prefs.search.hint"));
         let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(NAV_W - 2.0 * INSET));
-        crate::ui::access::name_if_unnamed(&r, t.tr("prefs.search.hint"));
+        crate::access::name_if_unnamed(&r, t.tr("prefs.search.hint"));
         if std::mem::take(focus) {
             r.request_focus();
         }

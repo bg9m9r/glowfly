@@ -4,11 +4,11 @@
 //! `UpdateMsg::RestartReady`, and on success the window closes. The places a staging folder may
 //! go and this copy's own files are shared with the start's tidying (runner/updates.rs).
 
-use crate::effect::RestartJob;
-use crate::msg::{Msg, UpdateMsg};
 use glowfly_core::app_update::{self, InstallMethod, RestartRequest, UpdateError};
 use glowfly_core::native_path::shown;
 use glowfly_core::paths;
+use glowfly_model::effect::RestartJob;
+use glowfly_model::msg::{Msg, UpdateMsg};
 use std::path::{Path, PathBuf};
 
 pub(super) fn run(job: RestartJob) -> Msg {

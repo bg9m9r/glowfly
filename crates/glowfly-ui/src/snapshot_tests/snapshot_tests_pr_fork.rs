@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_push_pr::{open_row_menu, sent, tip, with_host};
-use crate::msg::ForgeMsg;
-use crate::state::pr_repos::{PrRepo, PrRepoPick, RepoSide};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Target, parse_remote};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::state::pr_repos::{PrRepo, PrRepoPick, RepoSide};
+use glowfly_model::state::{AppState, Modal};
 
 fn t(url: &str) -> Target {
     parse_remote(url, &[]).unwrap()

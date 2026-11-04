@@ -13,15 +13,15 @@ use super::theme::color;
 use super::widgets::menu;
 use super::widgets::menu_row::PaintIcon;
 use super::widgets::text_field::TextField;
-use crate::msg::{Msg, RecentMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::repo_colours::listed_colour;
-use crate::state::repo_groups::{any_colour, members, ungrouped};
-use crate::state::repo_lists::{
-    clear_recent_msg, favorites, is_missing, is_open, matches_filter, missing_counts, recent_rows, remove_missing_msg,
-};
 use eframe::egui::{self, Id, Key, RichText};
 use glowfly_core::settings::RepoColour;
+use glowfly_model::msg::{Msg, RecentMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_colours::listed_colour;
+use glowfly_model::state::repo_groups::{any_colour, members, ungrouped};
+use glowfly_model::state::repo_lists::{
+    clear_recent_msg, favorites, is_missing, is_open, matches_filter, missing_counts, recent_rows, remove_missing_msg,
+};
 use std::path::{Path, PathBuf};
 
 /// The menu's width while it lists repositories: room for a name, its parent and a status.

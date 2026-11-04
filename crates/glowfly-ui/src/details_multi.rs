@@ -14,21 +14,21 @@ use super::menus::{cherry_pick_button, copy_shas, patch_button, revert_button};
 use super::theme::color;
 use super::widgets;
 use super::widgets::{Icon, buttons, icon, reason};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::state::file_folds::FileListId;
-use crate::state::lfs::TrackContext;
-use crate::state::list_keys::FileList;
-use crate::state::selection::MultiSelection;
-use crate::state::selection_span::Span;
-use crate::state::{AppState, Selection};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, DiffTarget};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::lfs::TrackContext;
+use glowfly_model::state::list_keys::FileList;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::selection_span::Span;
+use glowfly_model::state::{AppState, Selection};
 
 pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (Some(snap), Selection::Commits(m)) = (&st.snap, &st.session.selection) else { return };
@@ -155,10 +155,10 @@ fn files(ui: &mut egui::Ui, t: Lang, st: &AppState, m: &MultiSelection, from: gi
             ui.label(RichText::new(t.tr("details.multi.same_files")).color(color::weak()));
         }
         Some(Ok(c)) => {
-            let open = crate::state::wip_lists::cursor(st);
+            let open = glowfly_model::state::wip_lists::cursor(st);
             let lfs = TrackContext::of(st);
-            let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
-            let commands = crate::state::custom_commands::MenuCommands::for_state(st);
+            let tools = glowfly_model::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
+            let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
             let row_h = widgets::LIST_ROW_H;
             let mode = st.settings.file_list_mode;
             let heading = t.trn("details.commit.changed_files", c.files.len(), &[]);

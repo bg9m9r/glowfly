@@ -1,8 +1,8 @@
 //! egui's keyboard events turned into terminal input, and the keys that scroll the history.
 
-use crate::state::terminal::Clip;
 use eframe::egui::{Event, ImeEvent, Key, Modifiers};
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey};
+use glowfly_model::state::terminal::Clip;
 use glowfly_model::terminal::ScrollStep;
 
 /// What the keyboard did in one frame.

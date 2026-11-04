@@ -6,12 +6,12 @@ use super::common::{menu_item, status_color};
 use super::file_menu;
 use super::theme::color;
 use super::widgets;
-use crate::msg::{HistoryMsg, Msg};
-use crate::state::AppState;
-use crate::state::list_keys::FileList;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::repo::HistoryEntry;
+use glowfly_model::msg::{HistoryMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::list_keys::FileList;
 
 /// The caption and the list of `e`'s files, in a scroll area of its own capped at about a third
 /// of the panel's height; `scroll` brings that file into view.

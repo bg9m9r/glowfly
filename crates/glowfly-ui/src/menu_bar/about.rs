@@ -3,15 +3,15 @@
 //! footnote, and links to the third-party notices (`notices.rs`), the privacy notice (PRIVACY.md
 //! on the website) and the website. Copy details copies the table for bug reports.
 
-use crate::msg::{AppMsg, Msg};
-use crate::state::git_env::GitState;
-use crate::state::menu_bar::{BuildInfo, LICENSE, PRIVACY, WEBSITE, git_version, version_info};
-use crate::ui::app_mark;
-use crate::ui::dialog_frame::{self, Cx, Dialog, Footer};
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::buttons;
+use crate::app_mark;
+use crate::dialog_frame::{self, Cx, Dialog, Footer};
+use crate::theme::{color, type_scale};
+use crate::widgets::buttons;
 use eframe::egui::{self, Align, Image, Layout, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::git_env::GitState;
+use glowfly_model::state::menu_bar::{BuildInfo, LICENSE, PRIVACY, WEBSITE, git_version, version_info};
 
 /// The app's name: the dialog's accessible name and the wordmark (not translated).
 const NAME: &str = "Glowfly";

@@ -5,16 +5,16 @@
 //! `GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`.
 
 use super::with_bands;
-use crate::state::Selection;
-use crate::ui::snapshot_tests::{harness_palette_sized, remove_fixture};
-use crate::ui::theme::branch_colours::{line_in, swatches};
-use crate::ui::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
-use crate::ui::theme::surfaces::Tone;
-use crate::ui::theme::{apply_style, builtin, color, color::Palette, egui_theme};
+use crate::snapshot_tests::{harness_palette_sized, remove_fixture};
+use crate::theme::branch_colours::{line_in, swatches};
+use crate::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
+use crate::theme::surfaces::Tone;
+use crate::theme::{apply_style, builtin, color, color::Palette, egui_theme};
 use eframe::egui::{self, Color32, FontId, Painter, Rect, pos2, vec2};
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::repo;
 use glowfly_core::settings::BuiltinTheme;
+use glowfly_model::state::Selection;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -24,7 +24,7 @@ const ROW_H: f32 = 34.0;
 /// Draws one ref chip from `x` centred on `y` as the graph does, with its halo; returns its
 /// width, the halo's room included.
 fn chip(p: &Painter, x: f32, y: f32, text: &str, look: ChipLook) -> f32 {
-    use crate::ui::widgets::chip::{self as c, ChipSize, HALO_ROOM};
+    use crate::widgets::chip::{self as c, ChipSize, HALO_ROOM};
     let room = if look.halo.is_some() { HALO_ROOM } else { 0.0 };
     let r = c::Chip::new(ChipSize::Chip, text).look(look).paint(p, x + room, y);
     if let Some(halo) = look.halo {
@@ -53,7 +53,7 @@ fn chips(p: &Painter, pal: &Palette, y: f32) {
 /// The strip for one palette.
 fn strip(pal: Palette, name: &str) -> image::RgbaImage {
     let name = name.to_owned();
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(W, 6.0 * ROW_H + 70.0)).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(vec2(W, 6.0 * ROW_H + 70.0)).build_ui(move |ui| {
         color::set_palette(&pal);
         apply_style(ui.ctx(), &pal);
         ui.ctx().set_theme(egui_theme(&pal));
@@ -64,7 +64,7 @@ fn strip(pal: Palette, name: &str) -> image::RgbaImage {
         p.text(row(0.0).left_center() + vec2(12.0, 0.0), egui::Align2::LEFT_CENTER, &name, FontId::proportional(14.0), pal.text);
         chips(p, &pal, row(1.0).center().y);
         for (i, selected) in [(2.0, true), (3.0, false)] {
-            crate::ui::widgets::row_fill::paint(p, row(i), selected, !selected);
+            crate::widgets::row_fill::paint(p, row(i), selected, !selected);
             chips(p, &pal, row(i).center().y);
         }
         // Bands (and highlighted bands) per lane, then the tints and washes.
@@ -72,12 +72,12 @@ fn strip(pal: Palette, name: &str) -> image::RgbaImage {
         let r4 = row(4.0);
         for s in swatches() {
             let lane = line_in(s, &pal);
-            let band = crate::ui::theme::surfaces::band_color(lane, &pal);
+            let band = crate::theme::surfaces::band_color(lane, &pal);
             p.rect_filled(Rect::from_min_size(pos2(x, r4.top() + 3.0), vec2(40.0, 13.0)), 0.0, band);
             p.rect_filled(
                 Rect::from_min_size(pos2(x, r4.top() + 16.0), vec2(40.0, 13.0)),
                 0.0,
-                crate::ui::theme::surfaces::highlight_color(band, lane),
+                crate::theme::surfaces::highlight_color(band, lane),
             );
             p.circle_filled(pos2(x + 46.0, r4.center().y), 4.0, lane);
             x += 58.0;

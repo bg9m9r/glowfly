@@ -5,15 +5,15 @@
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_terminal::{pushed, with_session};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::terminal::{Selection, SessionStatus};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, MouseWheelUnit, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{CursorStyle, ThemeChoice};
 use glowfly_core::terminal::{TermPoint, TermScreen};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::{Selection, SessionStatus};
 use glowfly_model::terminal::TerminalMsg;
 
 pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;

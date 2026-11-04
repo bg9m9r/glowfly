@@ -4,12 +4,12 @@
 //! folders go (red line, Clone disabled). `render` pins today to 2026-02-01.
 
 use super::snapshot_tests::{harness, render, settings};
-use crate::state::clone::{CloneForm, LimitKind};
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
 use eframe::egui::Key;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::clone::{CloneForm, LimitKind};
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn with_form(theme: ThemeChoice, form: CloneForm) -> AppState {

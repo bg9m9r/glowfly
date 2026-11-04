@@ -5,17 +5,17 @@
 
 use super::gutter::{self, Fonts, GUTTER_W, PAD};
 use super::{menu, target};
-use crate::msg::{BlameMsg, Msg};
-use crate::state::AppState;
-use crate::state::blame::{BlameData, BlameLanding, BlameView};
-use crate::state::blame_find::ranges;
-use crate::ui::UiCache;
-use crate::ui::common::short;
-use crate::ui::diff::wrap::{MIN_COLS, RowMetrics, Wrap};
-use crate::ui::diff::{DiffStyle, paint_line};
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::menu::context_menu;
+use crate::UiCache;
+use crate::common::short;
+use crate::diff::wrap::{MIN_COLS, RowMetrics, Wrap};
+use crate::diff::{DiffStyle, paint_line};
+use crate::theme::{color, type_scale};
+use crate::widgets::menu::context_menu;
 use eframe::egui::{self, Align2, CursorIcon, FontId, Rect, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BlameData, BlameLanding, BlameView};
+use glowfly_model::state::blame_find::ranges;
 
 /// What the body saw this frame: the first line in view and a code line clicked.
 pub(super) struct BodyOut {

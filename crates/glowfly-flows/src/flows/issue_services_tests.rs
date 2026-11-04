@@ -3,13 +3,13 @@
 //! card created for another tab.
 
 use super::issue_tests::{done, err, github, jobs, open_repo, reply, run};
-use crate::effect::{Effect, IssueCall, IssueReply};
-use crate::msg::{IssueMsg, Msg};
-use crate::state::issue_form::{IssueForm, OptionsState};
-use crate::state::palette::shown;
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::filters::Named;
 use glowfly_core::forge::{Account, Auth, Connection, CreateOptions, Issue, NewIssue, Provider, Target};
+use glowfly_model::effect::{Effect, IssueCall, IssueReply};
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::issue_form::{IssueForm, OptionsState};
+use glowfly_model::state::palette::shown;
+use glowfly_model::state::{AppState, Modal};
 
 const BOARD: &str = "5f1a2b3c4d5e6f7a8b9c0d1e";
 

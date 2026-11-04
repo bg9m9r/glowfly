@@ -6,13 +6,13 @@ use super::rebase_tests::repo;
 use super::selection_tests::git;
 use super::tests::drive;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase::RebasePanel;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{RebaseAction, RebaseBase, TodoStep};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 

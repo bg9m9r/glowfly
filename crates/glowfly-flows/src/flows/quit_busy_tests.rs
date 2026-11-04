@@ -8,17 +8,17 @@ use super::quit_tests::pushing;
 use super::terminal_tests::{open_with_panel, run as term, workdir};
 use super::update;
 use super::updates_restart_tests::msi_downloaded;
-use crate::effect::partial::StopKey;
-use crate::effect::{Effect, UiEffect, UpdateEffect};
-use crate::msg::{AppMsg, CloneMsg, JobMsg, Msg, RepoMsg, TabsMsg, UpdateMsg};
-use crate::state::clone::CloneRequest;
-use crate::state::job_stop::JobStop;
-use crate::state::menu_bar::tab_name;
-use crate::state::terminal_names::name_of;
-use crate::state::{AppState, Modal, RunningJob, Tab};
-use crate::terminal::{BusyCheck, TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::clone_ops::{CloneOptions, Sparse};
 use glowfly_core::terminal::ShellActivity;
+use glowfly_model::effect::partial::StopKey;
+use glowfly_model::effect::{Effect, UiEffect, UpdateEffect};
+use glowfly_model::msg::{AppMsg, CloneMsg, JobMsg, Msg, RepoMsg, TabsMsg, UpdateMsg};
+use glowfly_model::state::clone::CloneRequest;
+use glowfly_model::state::job_stop::JobStop;
+use glowfly_model::state::menu_bar::tab_name;
+use glowfly_model::state::terminal_names::name_of;
+use glowfly_model::state::{AppState, Modal, RunningJob, Tab};
+use glowfly_model::terminal::{BusyCheck, TerminalEffect as E, TerminalMsg as T};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -145,10 +145,10 @@ fn closing_a_repository_tab_with_a_busy_terminal_asks() {
     let (mut st, dir, id) = shell_running("close-tab-busy-term");
     let tab = st.tabs[0].id;
     let fx = run(&mut st, Msg::Tabs(TabsMsg::CloseTab(0)));
-    assert_eq!(check(&fx), Some((vec![id], BusyCheck::CloseTabs(crate::msg::CloseRequest::One(tab)))), "{fx:?}");
+    assert_eq!(check(&fx), Some((vec![id], BusyCheck::CloseTabs(glowfly_model::msg::CloseRequest::One(tab)))), "{fx:?}");
     assert_eq!(st.tabs[0].path.as_deref(), Some(dir.as_path()), "the tab stays until the answer");
 
-    answer(&mut st, id, cargo(), BusyCheck::CloseTabs(crate::msg::CloseRequest::One(tab)));
+    answer(&mut st, id, cargo(), BusyCheck::CloseTabs(glowfly_model::msg::CloseRequest::One(tab)));
     let (title, body, _) = dialog(&st);
     assert_eq!(title, "Close tab?");
     assert_eq!(body, format!("{}\n\n{STOPS_ONE}", cargo_line(&st, id)));
@@ -162,7 +162,7 @@ fn closing_a_repository_tab_with_a_busy_terminal_asks() {
 #[test]
 fn closing_a_repository_tab_with_an_idle_terminal_just_closes() {
     let (mut st, dir, id) = shell_running("close-tab-idle-term");
-    let req = crate::msg::CloseRequest::One(st.tabs[0].id);
+    let req = glowfly_model::msg::CloseRequest::One(st.tabs[0].id);
     run(&mut st, Msg::Tabs(TabsMsg::CloseTab(0)));
     let fx = answer(&mut st, id, ShellActivity::Idle, BusyCheck::CloseTabs(req));
     assert!(st.modal.is_none());
@@ -269,7 +269,7 @@ fn quit_anyway_leaves_a_job_that_cant_be_stopped() {
 fn the_window_closes_by_itself_once_the_job_ends_under_the_question() {
     let mut st = pushing();
     run(&mut st, Msg::App(AppMsg::Quit));
-    assert!(crate::state::quit_confirm::asking(&st));
+    assert!(glowfly_model::state::quit_confirm::asking(&st));
     let fx = run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     assert!(closes(&fx), "{fx:?}");
     assert!(st.modal.is_none() && st.view.quitting);

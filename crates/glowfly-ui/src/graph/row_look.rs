@@ -3,9 +3,9 @@
 //! selected). The selection (a fill with that bar) and the lifted look of a hovered row come
 //! from `widgets::row_fill`. Also the inks of a row a search dims.
 
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::surfaces::{band_color, highlight_color};
-use crate::ui::widgets::row_fill::ACCENT_BAR_W;
+use crate::theme::color::{self, Palette};
+use crate::theme::surfaces::{band_color, highlight_color};
+use crate::widgets::row_fill::ACCENT_BAR_W;
 use eframe::egui::{Color32, Painter, Rect, vec2};
 
 /// How one row looks.
@@ -33,7 +33,7 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
     if look.highlighted {
         p.rect_filled(rect, 0.0, highlight_color(band, look.lane));
     }
-    crate::ui::widgets::row_fill::paint_in(p, rect, look.selected, look.active, look.hovered);
+    crate::widgets::row_fill::paint_in(p, rect, look.selected, look.active, look.hovered);
     if look.marked && !look.selected {
         p.rect_filled(Rect::from_min_size(rect.left_top(), vec2(ACCENT_BAR_W, rect.height())), 0.0, pal.accent);
     }
@@ -46,7 +46,7 @@ pub(super) fn top_fill(look: RowLook) -> Color32 {
     let band = band(look, &pal);
     match look {
         RowLook { selected: true, active: true, .. } => pal.selected,
-        RowLook { selected: true, .. } => crate::ui::theme::tokens::selected_inactive(&pal),
+        RowLook { selected: true, .. } => crate::theme::tokens::selected_inactive(&pal),
         RowLook { hovered: true, .. } => pal.hover,
         RowLook { highlighted: true, .. } => highlight_color(band, look.lane),
         _ => band,
@@ -78,9 +78,9 @@ pub(crate) fn dim_inks(pal: &Palette) -> (Color32, Color32) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::branch_colours::{line_in, swatches};
-    use crate::ui::theme::contrast::ratio;
-    use crate::ui::theme::{DARK, LIGHT, builtin};
+    use crate::theme::branch_colours::{line_in, swatches};
+    use crate::theme::contrast::ratio;
+    use crate::theme::{DARK, LIGHT, builtin};
     use glowfly_core::settings::BuiltinTheme;
 
     #[test]

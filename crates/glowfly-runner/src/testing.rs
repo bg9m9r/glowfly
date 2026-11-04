@@ -12,10 +12,10 @@
 use super::execute::{Cx, Execute, execute_with};
 use super::seams::{Seams, SeamsKind};
 use super::{Runner, Waker};
-use crate::effect::{Checked, Effect, FileOp, SandboxRule, TrustCheck};
-use crate::msg::Msg;
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
+use glowfly_model::effect::{Checked, Effect, FileOp, SandboxRule, TrustCheck};
+use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
@@ -71,12 +71,12 @@ fn refused(effect: &Effect) -> bool {
 /// them. An effect wrapped in a trust re-check (`Effect::Checked`) is allowed when the effect
 /// inside it is.
 fn allowed(effect: &Effect) -> bool {
-    use crate::effect::partial::PartialEffect;
+    use glowfly_model::effect::partial::PartialEffect;
     if let Effect::Checked(c) = effect {
         return allowed(&c.effect);
     }
-    use crate::effect::{PrefsEffect, ReposEffect};
     use glowfly_model::deep_link::DeepLinkEffect;
+    use glowfly_model::effect::{PrefsEffect, ReposEffect};
     use glowfly_model::pull_request::PrEffect;
     use glowfly_model::ssh::SshEffect;
     matches!(

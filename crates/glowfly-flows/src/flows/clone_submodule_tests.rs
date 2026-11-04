@@ -6,12 +6,12 @@ use super::path_alias_tests::alias_of;
 use super::submodule_tests::{PATH, opened};
 use super::tests::{drive, git, state};
 use super::update;
-use crate::effect::{CloneEffect, Effect};
-use crate::msg::{CloneMsg, Msg};
-use crate::state::clone::CloneRequest;
-use crate::state::{AppState, Modal};
 use glowfly_core::clone_ops::{CloneOptions, CloneOutcome, Sparse, sparse_submodule_cmds};
 use glowfly_core::repo::SubmoduleState;
+use glowfly_model::effect::{CloneEffect, Effect};
+use glowfly_model::msg::{CloneMsg, Msg};
+use glowfly_model::state::clone::CloneRequest;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -171,7 +171,10 @@ fn a_submodule_failure_names_the_submodules_not_the_folders() {
     let toast = st.toasts.last().unwrap();
     assert_eq!(toast.text, "Cloned, but its submodules didn't download.");
     let retry = toast.action.as_ref().expect("Retry");
-    assert!(matches!(*retry.msg, Msg::Submodule(crate::submodule::SubmoduleMsg::Batch { batch: crate::submodule::Batch::UpdateAll, .. })));
+    assert!(matches!(
+        *retry.msg,
+        Msg::Submodule(glowfly_model::submodule::SubmoduleMsg::Batch { batch: glowfly_model::submodule::Batch::UpdateAll, .. })
+    ));
     let logged = log_texts(&st).into_iter().find(|l| l.starts_with("Cloned app and set its folders, but cloning its submodules failed: "));
     assert!(logged.is_some_and(|l| !l.contains("Sparse checkout")), "{:?}", log_texts(&st));
 }

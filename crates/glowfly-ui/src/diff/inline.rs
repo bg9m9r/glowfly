@@ -9,12 +9,12 @@ use super::{
     DiffView, LineHover, comment_add, drag_over, fold, gutter_rect, gutter_sign, hunk_header, line_click, line_sense, paint_mark,
     thread_marks,
 };
-use crate::msg::Msg;
-use crate::state::diff_text::{LineRef, TextSide};
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::{Align2, Color32, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::DiffRow;
 use glowfly_core::highlight::Span;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::diff_text::{LineRef, TextSide};
 
 /// Draws the rows and returns the first visible one and how many rows fit.
 /// `rows`, `widest` (in columns) and the rows' heights `m` come from the rows cache; `t` is the

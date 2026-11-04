@@ -5,10 +5,6 @@
 use super::demo::{self, ORIGIN};
 use super::shots::state;
 use super::{harness, shoot};
-use crate::state::pull_request::{Page, PrTab, PrView};
-use crate::state::pull_request_checks::ChecksPane;
-use crate::state::pull_request_line_comment::draft_at;
-use crate::state::{ForgeState, Status};
 use eframe::egui;
 use glowfly_core::diff_rows::{LineSide, line_index};
 use glowfly_core::forge::{
@@ -16,6 +12,10 @@ use glowfly_core::forge::{
     Verdict,
 };
 use glowfly_core::repo::{self, PrCompare};
+use glowfly_model::state::pull_request::{Page, PrTab, PrView};
+use glowfly_model::state::pull_request_checks::ChecksPane;
+use glowfly_model::state::pull_request_line_comment::draft_at;
+use glowfly_model::state::{ForgeState, Status};
 use std::sync::Arc;
 
 /// The window this screenshot draws: wide enough for the file list, the diff and the comment box.
@@ -134,7 +134,7 @@ fn readme_screenshots_pull_request() {
         let line_of =
             |text: &str| diff.hunks.iter().flat_map(|h| &h.lines).find(|l| l.text.contains(text)).and_then(|l| l.new).expect("the line");
         let named = line_of("pub fn phase(");
-        crate::state::pull_request_actions::prefill(&mut v.forms, &page(tip.to_string()).detail, None);
+        glowfly_model::state::pull_request_actions::prefill(&mut v.forms, &page(tip.to_string()).detail, None);
         v.page = Page::Loaded(Box::new(page(tip.to_string())));
         v.tab = PrTab::Files;
         let (hunk, i) = line_index(&diff, LineSide::New, named).expect("the phase line");

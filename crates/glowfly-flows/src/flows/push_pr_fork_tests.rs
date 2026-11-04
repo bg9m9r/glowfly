@@ -6,13 +6,13 @@
 use super::push_pr_tests::{cleanup, commit_on, with_host};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg, RepoMsg};
-use crate::state::pr_repos::{PrRepoPick, RepoSide};
-use crate::state::push_pr::PrStart;
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::{NewPullRequest, PullRequest, Target, parse_remote};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
+use glowfly_model::state::pr_repos::{PrRepoPick, RepoSide};
+use glowfly_model::state::push_pr::PrStart;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

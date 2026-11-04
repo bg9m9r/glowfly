@@ -2,14 +2,14 @@
 //! highlighting in the background. `Runner::run` gives each background job a cancel ticket, so a
 //! newer `Effect::HighlightDiff` cancels the older one.
 
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::PartialMsg;
-use crate::msg::RepoMsg;
 use glowfly_core::highlight::{self, DiffHighlight, OldText, SyntaxHint};
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, FileEntry, LoadDiffOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PartialMsg;
+use glowfly_model::msg::RepoMsg;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;

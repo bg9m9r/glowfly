@@ -19,7 +19,7 @@ struct Seen {
 
 /// A harness with a 30 px anchor at `anchor_x` whose popover is open, holding a long title.
 fn harness(anchor_x: f32) -> Harness<'static, Seen> {
-    let mut h = crate::ui::snapshot_check::builder().with_size(SCREEN).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(SCREEN).build_ui_state(
         move |ui, seen: &mut Seen| {
             let id = Id::new("test-popover");
             let anchor = ui.allocate_rect(Rect::from_min_size(pos2(anchor_x, 10.0), vec2(30.0, 24.0)), Sense::click());
@@ -70,7 +70,7 @@ fn a_narrow_window_narrows_it() {
 /// A harness with an anchor, a button with a tooltip beside it in the same layer (a toolbar's),
 /// and the anchor's popover open when `open`; the pointer rests on the button.
 fn tooltip_shows(open: bool) -> bool {
-    let mut h = crate::ui::snapshot_check::builder().with_size(SCREEN).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(SCREEN).build_ui(move |ui| {
         let id = Id::new("test-popover");
         let anchor = ui.allocate_rect(Rect::from_min_size(pos2(500.0, 10.0), vec2(30.0, 24.0)), Sense::click());
         let _ = ui.put(Rect::from_min_size(pos2(20.0, 10.0), vec2(80.0, 24.0)), egui::Button::new("Other")).on_hover_text("Other's tip");

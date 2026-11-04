@@ -2,14 +2,14 @@
 //! registering this copy of Glowfly for them).
 
 use super::{help, row};
-use crate::deep_link::DeepLinkMsg;
-use crate::msg::Msg;
-use crate::state::deep_link::{SchemeView, can_unregister, status_text};
-use crate::ui::theme::color;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::url_scheme::SchemeStatus;
+use glowfly_model::deep_link::DeepLinkMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::deep_link::{SchemeView, can_unregister, status_text};
 
 pub fn links_row(ui: &mut Ui, t: Lang, view: &SchemeView, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("prefs.links.label"), |ui| {

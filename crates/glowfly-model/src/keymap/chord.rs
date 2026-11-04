@@ -229,7 +229,7 @@ impl Chord {
 
     /// The modifier and key names in display order in style `l`: command, Ctrl, Shift, Alt, then
     /// the key (["Cmd", "Option", "1"] on macOS).
-    pub fn parts_in(&self, l: KeyLabels) -> Vec<&'static str> {
+    pub(crate) fn parts_in(&self, l: KeyLabels) -> Vec<&'static str> {
         let mut out = Vec::new();
         if self.mods.command {
             out.push(l.command());

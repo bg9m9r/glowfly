@@ -5,11 +5,11 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
-use crate::effect::UndoOpts;
-use crate::msg::{JobMsg, Msg};
-use crate::state::undo::UndoCreatedForm;
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui::{self, RichText};
+use glowfly_model::effect::UndoOpts;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::undo::UndoCreatedForm;
 
 /// Draws the dialog; returns true when it should close.
 pub fn created_branch(ui: &mut egui::Ui, cx: Cx, form: &mut UndoCreatedForm, msgs: &mut Vec<Msg>) -> bool {

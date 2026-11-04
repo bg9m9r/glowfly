@@ -7,13 +7,13 @@
 use super::common::{menu_item, menu_item_if};
 use super::repo_menu_list;
 use super::repo_row::{self, Act, Columns, Row, Shown, Words};
-use crate::keymap::FAVORITE_BINDINGS;
-use crate::msg::{GroupMsg, Msg, RecentMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::repo_groups::group_hue;
-use crate::state::repo_lists::{favorite_label, is_favorite};
-use crate::ui::widgets::menu::separator;
+use crate::widgets::menu::separator;
 use eframe::egui::{self, Id};
+use glowfly_model::keymap::FAVORITE_BINDINGS;
+use glowfly_model::msg::{GroupMsg, Msg, RecentMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_groups::group_hue;
+use glowfly_model::state::repo_lists::{favorite_label, is_favorite};
 use std::path::{Path, PathBuf};
 
 /// Which list a row belongs to: a favorite (its group, None for the ungrouped ones, its index

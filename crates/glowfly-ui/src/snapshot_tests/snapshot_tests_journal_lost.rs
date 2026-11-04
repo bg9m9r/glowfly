@@ -6,17 +6,17 @@
 
 use super::snapshot_tests::{NOW, harness, remove_fixture, with_repo};
 use super::snapshot_tests_journal::journal;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::JournalView;
-use crate::state::journal_lost::{JournalTab, LostPreviewState, LostView};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::journal::{CommitLine, LostCommit, LostCommits, LostKind, Preview};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::kept::KeptWhat;
 use glowfly_model::journal::{JournalMsg, LostMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::JournalView;
+use glowfly_model::state::journal_lost::{JournalTab, LostPreviewState, LostView};
 use std::path::PathBuf;
 
 fn commit(st: &AppState, summary: &str) -> Oid {

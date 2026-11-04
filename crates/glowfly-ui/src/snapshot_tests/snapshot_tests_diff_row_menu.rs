@@ -8,20 +8,20 @@
 use super::super::snapshot_tests::remove_fixture;
 use super::super::snapshot_tests_select::click;
 use super::snapshot_tests_text_select::{Grid, H, ROWS_LEFT, drag, open};
-use crate::msg::{DiffMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
-use crate::state::diff_text::TextSide;
-use crate::state::lines::LineClick;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
+use glowfly_model::state::diff_text::TextSide;
+use glowfly_model::state::lines::LineClick;
 
 /// Applies the messages the views pushed, as the app's update would, and clears them.
 fn apply(h: &mut H) {
     let msgs = std::mem::take(&mut h.state_mut().1);
     for m in msgs {
-        crate::update::update(&mut h.state_mut().0, m, std::time::Instant::now());
+        glowfly_model::update::update(&mut h.state_mut().0, m, std::time::Instant::now());
     }
     h.run();
 }

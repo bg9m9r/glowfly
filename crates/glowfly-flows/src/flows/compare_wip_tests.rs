@@ -4,14 +4,14 @@
 
 use super::selection_tests::{fixture, git, up};
 use super::tests::drive;
-use crate::effect::Effect;
-use crate::effect::SelectionEffect;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::history::FileHistoryView;
-use crate::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare};
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::selection_wip::{WORKDIR_NEEDS_ONE, WorkdirCompare};
+use glowfly_model::state::{AppState, Selection};
 
 fn compared(st: &AppState) -> &WorkdirCompare {
     match &st.session.selection {
@@ -196,8 +196,8 @@ fn the_swapped_comparison_follows_the_working_tree() {
     assert_eq!(lines, [('-', "new")]);
     // Next file steps through the swapped list.
     let first = DiffTarget::FromWorkdir(f.c(3), "f.txt".into());
-    assert_eq!(crate::state::diff_nav::next_file(&st, &first, 1), Some(target.clone()));
-    assert_eq!(crate::state::diff_nav::next_file(&st, &DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), 1), None);
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &first, 1), Some(target.clone()));
+    assert_eq!(glowfly_model::state::diff_nav::next_file(&st, &DiffTarget::ToWorkdir(f.c(3), "f.txt".into()), 1), None);
 
     // A status read and a refresh read the list again, still swapped.
     std::fs::write(f.dir.join("more.txt"), "more\n").unwrap();

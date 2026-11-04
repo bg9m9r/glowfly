@@ -14,14 +14,14 @@ use super::super::widgets::menu::separator;
 use super::super::widgets::reason::{self, ItemState};
 use super::super::widgets::{self, Icon, buttons, icon_button};
 use super::step_tip;
-use crate::keymap::Keymap;
-use crate::msg::{ConflictMsg, Msg};
-use crate::state::conflict::ConflictView;
-use crate::tools::ToolsMsg;
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::ConflictContent;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::{ConflictMsg, Msg};
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::tools::ToolsMsg;
 
 /// The bar's height, its padding at each end and the gap between its items.
 const BAR_H: f32 = 40.0;
@@ -243,7 +243,7 @@ fn trailing(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeTo
 /// markers and Reset picks… are for text files (`text`) only.
 fn more_menu(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeTool, in_tool: bool, msgs: &mut Vec<Msg>) {
     let path = &view.path;
-    let menu = crate::ui::widgets::menu::custom_button(ui, egui::Button::new("").min_size(vec2(28.0, 28.0)), |ui| {
+    let menu = crate::widgets::menu::custom_button(ui, egui::Button::new("").min_size(vec2(28.0, 28.0)), |ui| {
         if text {
             menu_item_if(
                 msgs,

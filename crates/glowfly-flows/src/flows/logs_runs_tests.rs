@@ -3,19 +3,19 @@
 
 use super::auto_stash_tests::git_cmds;
 use super::tests::{clean_tree, drive, scratch_repo, state};
-use crate::effect::Effect;
-use crate::logs::LogsMsg;
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg, TrustMsg};
-use crate::state::AppState;
-use crate::state::activity_rows::routine_ok;
-use crate::state::logs::{EntryId, LogEntry};
 use glowfly_core::gitcli::args;
 use glowfly_core::logs::RunInfo;
+use glowfly_model::effect::Effect;
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::activity_rows::routine_ok;
+use glowfly_model::state::logs::{EntryId, LogEntry};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 fn at(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
-    crate::update::update(st, msg, now)
+    glowfly_model::update::update(st, msg, now)
 }
 
 fn done(st: &mut AppState, ok: bool, output: &str, now: Instant) -> Vec<Effect> {

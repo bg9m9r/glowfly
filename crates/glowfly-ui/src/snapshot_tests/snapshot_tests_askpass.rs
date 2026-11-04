@@ -4,15 +4,15 @@
 //! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::CredentialMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::askpass::PendingPrompt;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::askpass::{GpgAsk, Prompt, SshSignAsk};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::CredentialMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::askpass::PendingPrompt;
 
 const HOST_KEY: &str = "The authenticity of host 'example.com (192.0.2.10)' can't be established.\n\
 ED25519 key fingerprint is SHA256:Xq7fW0dkN3vQ1nYp8tLr2mH5sJc9bGa4eZo6iKu0TwE.\n\

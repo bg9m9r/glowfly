@@ -5,13 +5,12 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{DiffMsg, Inactive, JobMsg, Msg, RepoMsg, RevertWhat, StageMsg, TabsMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::lines::LineClick::Only;
 use glowfly_core::repo::{DiffTarget, Reverted};
 use glowfly_core::undo::{Action, Discarded};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{DiffMsg, Inactive, JobMsg, Msg, RepoMsg, RevertWhat, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::Only;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -147,7 +146,7 @@ fn a_revert_for_a_parked_tab_goes_to_its_history() {
         .find(|e| matches!(e, Effect::Revert { .. }))
         .expect("a revert");
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     run(&mut st, reply);
     assert_eq!(read(&a), OLD);
@@ -173,7 +172,7 @@ fn parked_results_keep_their_undo() {
         assert!(matches!(reverted(Ok(r), Some(undo.clone())), Some(Inactive::Undo(a)) if a == undo));
         assert!(reverted(Ok(r), None).is_none());
     }
-    let conflicts = crate::update::revert::done_text("f.txt", RevertWhat::Hunk, Reverted::Conflicts);
+    let conflicts = glowfly_model::update::revert::done_text("f.txt", RevertWhat::Hunk, Reverted::Conflicts);
     assert!(
         matches!(reverted(Ok(Reverted::Conflicts), Some(undo.clone())), Some(Inactive::LogAndUndo { text, undo: a }) if text == conflicts && a == undo)
     );

@@ -2,7 +2,7 @@
 //! (a command, a service's own error) in small, weak, selectable monospace. egui's
 //! `CollapsingHeader` paints its own triangle, so no font glyph is needed.
 
-use crate::ui::theme::{color, type_scale};
+use crate::theme::{color, type_scale};
 use eframe::egui::{self, RichText, Ui};
 
 /// A disclosure labelled `label`, closed at first, that shows `text` when opened. `id` keeps its

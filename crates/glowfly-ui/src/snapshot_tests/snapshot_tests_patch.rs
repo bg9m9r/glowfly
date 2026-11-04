@@ -7,18 +7,18 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{JobMsg, Msg};
-use crate::patch::{ApplyHow, PatchMsg};
-use crate::state::patch::apply::{ApplyForm, ApplyMode, NOTHING_TO_APPLY, THREE_WAY_INDEX};
-use crate::state::patch::changes::SaveChangesForm;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::patch_ops::{AmOptions, AmProgress, OnFail, PatchSummary, WipScope};
 use glowfly_core::repo::FileEntry;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::patch::{ApplyHow, PatchMsg};
+use glowfly_model::state::patch::apply::{ApplyForm, ApplyMode, NOTHING_TO_APPLY, THREE_WAY_INDEX};
+use glowfly_model::state::patch::changes::SaveChangesForm;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 
 fn files(list: &[(&str, char)]) -> Vec<FileEntry> {
@@ -247,9 +247,9 @@ fn wip_menus_open_the_create_patch_dialog() {
 #[test]
 fn commit_row_patch_item() {
     let oid = git2::Oid::from_bytes(&[0x1a; 20]).unwrap();
-    for blocked in [None, Some(crate::state::selection::CommitBlock::PatchMerge.text(glowfly_core::i18n::Lang::En))] {
+    for blocked in [None, Some(glowfly_model::state::selection::CommitBlock::PatchMerge.text(glowfly_core::i18n::Lang::En))] {
         let f = FileEntry::new("src/app.txt", 'M');
-        let mut h = crate::ui::snapshot_check::builder().with_size(eframe::egui::vec2(300.0, 260.0)).build_ui_state(
+        let mut h = crate::snapshot_check::builder().with_size(eframe::egui::vec2(300.0, 260.0)).build_ui_state(
             move |ui, msgs: &mut Vec<Msg>| {
                 super::file_menu::commit_file_items(
                     ui,
@@ -261,7 +261,7 @@ fn commit_row_patch_item() {
                     &[],
                     Default::default(),
                     blocked,
-                    &crate::state::custom_commands::MenuCommands::none(),
+                    &glowfly_model::state::custom_commands::MenuCommands::none(),
                 );
             },
             Vec::new(),

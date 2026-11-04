@@ -3,14 +3,14 @@
 //! a long draft doesn't push the conversation away), a draft too long for the service, and the
 //! Comment button with why it is disabled.
 
-use crate::msg::{IssueMsg, Msg};
-use crate::state::issue::IssueView;
-use crate::state::issue_comment::{FIELD, comment_blocked, field_problem};
-use crate::ui::access;
-use crate::ui::theme::controls;
-use crate::ui::widgets::form_message::{self, Message};
-use crate::ui::widgets::{buttons, reason};
+use crate::access;
+use crate::theme::controls;
+use crate::widgets::form_message::{self, Message};
+use crate::widgets::{buttons, reason};
 use eframe::egui::{self, Align, Ui};
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::issue::IssueView;
+use glowfly_model::state::issue_comment::{FIELD, comment_blocked, field_problem};
 
 /// The tallest the draft gets before it scrolls.
 const MAX_FIELD_H: f32 = 160.0;

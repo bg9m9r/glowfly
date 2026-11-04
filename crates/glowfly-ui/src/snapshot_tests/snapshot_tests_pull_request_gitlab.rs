@@ -2,19 +2,19 @@
 //! form and the timeline, only the project's merge methods, and the messages its buttons send.
 
 use super::{detail, entry, load};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::{Page, PrView};
-use crate::state::pull_request_checks::ChecksPane;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_pull_request::with_pr;
-use crate::ui::snapshot_tests::{harness_sized, remove_fixture};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_pull_request::with_pr;
+use crate::snapshot_tests::{harness_sized, remove_fixture};
 use eframe::egui::accesskit::Role;
 use eframe::egui::vec2;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{CheckList, EntryKind, MergeMethod, PrDetail, Provider, ReviewEvent, ReviewStyle, Target, Verdict};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Page, PrView};
+use glowfly_model::state::pull_request_checks::ChecksPane;
 use std::path::PathBuf;
 
 /// Tall enough to show the merge form.

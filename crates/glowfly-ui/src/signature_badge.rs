@@ -4,16 +4,16 @@
 
 use super::common::menu_item;
 use super::theme::color;
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::state::signatures::{BadgeState, badge};
-use crate::state::{AppState, PrefPage};
-use crate::ui::widgets::chip::{Chip, ChipSize, Lead, Look};
-use crate::ui::widgets::menu;
+use crate::widgets::chip::{Chip, ChipSize, Lead, Look};
+use crate::widgets::menu;
 use eframe::egui::{self, Color32, Painter, Pos2, Stroke, vec2};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::CommitDetail;
 use glowfly_core::signature_check::Verdict;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::signatures::{BadgeState, badge};
+use glowfly_model::state::{AppState, PrefPage};
 
 /// The glyph's size inside the chip's glyph slot.
 const GLYPH: f32 = 8.0;

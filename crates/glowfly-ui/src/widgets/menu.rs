@@ -34,7 +34,7 @@ use super::menu_columns::{self as columns, Columns};
 pub use super::menu_name::{Named, cut as cut_name, named};
 pub use super::menu_row::{Item, item, item_named};
 pub use super::menu_split::Part;
-use crate::ui::menu_keys::{self, Kind};
+use crate::menu_keys::{self, Kind};
 use eframe::egui::menu::BarState;
 use eframe::egui::{
     self, AboveOrBelow, Color32, CornerRadius, Id, InnerResponse, PopupCloseBehavior, Rect, Response, Sense, Stroke, Ui, WidgetText, vec2,
@@ -333,7 +333,7 @@ pub fn group_header_with(ui: &mut Ui, text: &str, icon: Option<(super::menu_row:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::spacing::menu::COMFORTABLE;
+    use crate::theme::spacing::menu::COMFORTABLE;
 
     fn in_menu(f: impl FnOnce(&mut Ui) + 'static) {
         let mut f = Some(f);

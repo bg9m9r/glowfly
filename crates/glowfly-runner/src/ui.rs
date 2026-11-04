@@ -1,8 +1,8 @@
 //! The effects the UI shell carries out (`Effect::Ui`): none of them reaches the runner.
 
 use super::execute::{Cx, Execute};
-use crate::effect::UiEffect;
-use crate::msg::Msg;
+use glowfly_model::effect::UiEffect;
+use glowfly_model::msg::Msg;
 
 /// Carried out by the UI shell; it never reaches the runner.
 impl Execute for UiEffect {

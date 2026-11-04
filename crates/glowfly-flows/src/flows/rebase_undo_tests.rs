@@ -3,12 +3,12 @@
 
 use super::rebase_tests::{repo, running_job};
 use super::update;
-use crate::effect::{Effect, RebaseEffect, UndoResult};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::AppState;
 use git2::Oid;
 use glowfly_core::rebase::{Outcome, QuickEdit, RebaseProgress, Stop, StopKind};
 use glowfly_core::undo::{Action, MoveOp};
+use glowfly_model::effect::{Effect, RebaseEffect, UndoResult};
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -77,7 +77,7 @@ fn graph_edits_name_themselves_for_undo() {
     let edit = QuickEdit::Reword(c[1]);
     let result = glowfly_core::rebase::prepare_edit(&dir, &edit).map_err(|e| e.to_string());
     up(&mut st, Msg::Rebase(RebaseMsg::EditPrepared { workdir: dir.clone(), result }));
-    let Some(crate::state::Modal::RewordCommit(form)) = st.modal.as_mut() else { panic!("the Reword dialog") };
+    let Some(glowfly_model::state::Modal::RewordCommit(form)) = st.modal.as_mut() else { panic!("the Reword dialog") };
     form.draft = "c2, reworded".into();
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::SubmitReword));
     let [Effect::Rebase(RebaseEffect::Start { detail, .. })] = &fx[..] else { panic!("{fx:?}") };
@@ -87,7 +87,7 @@ fn graph_edits_name_themselves_for_undo() {
 
 #[test]
 fn undo_details() {
-    use crate::state::rebase_quick::undo_detail;
+    use glowfly_model::state::rebase_quick::undo_detail;
     let o = |n: u8| Oid::from_bytes(&[n; 20]).unwrap();
     assert_eq!(undo_detail(&QuickEdit::Reword(o(0x1a))), "reword of 1a1a1a1");
     assert_eq!(undo_detail(&QuickEdit::SquashIntoParent(o(0x1a))), "squash of 1a1a1a1 into its parent");

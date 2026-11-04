@@ -6,14 +6,14 @@
 
 use super::marks::{MARK_W, paint_cloud, paint_tag};
 use super::ref_group::Chip;
-use crate::ui::build_status;
-use crate::ui::theme::color;
-use crate::ui::theme::contrast::readable_on;
-use crate::ui::theme::fonts;
-use crate::ui::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
-use crate::ui::theme::sizes::{ChipSize, ControlSize, text_pos};
-use crate::ui::widgets::chip;
-use crate::ui::widgets::truncate::{middle, middle_cut};
+use crate::build_status;
+use crate::theme::color;
+use crate::theme::contrast::readable_on;
+use crate::theme::fonts;
+use crate::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
+use crate::theme::sizes::{ChipSize, ControlSize, text_pos};
+use crate::widgets::chip;
+use crate::widgets::truncate::{middle, middle_cut};
 use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::forge::CheckState;
 use glowfly_core::i18n::Lang;

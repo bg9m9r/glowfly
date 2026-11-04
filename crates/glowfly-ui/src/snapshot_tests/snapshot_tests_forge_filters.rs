@@ -2,12 +2,7 @@
 //! the filter dialog. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::msg::{FilterMsg, Msg};
-use crate::state::forge_filter_form::FilterForm;
-use crate::state::forge_filters::{IssueList, MeState, OptionsState};
-use crate::state::touched::Touched;
-use crate::state::{AppState, ForgeState, Modal, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::Key;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::filters::{Milestone, Named, Sprint};
@@ -15,6 +10,11 @@ use glowfly_core::forge::{
     Account, Builtin, Conditions, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest, Target,
 };
 use glowfly_core::settings::{RepoForgeFilters, ThemeChoice};
+use glowfly_model::msg::{FilterMsg, Msg};
+use glowfly_model::state::forge_filter_form::FilterForm;
+use glowfly_model::state::forge_filters::{IssueList, MeState, OptionsState};
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, ForgeState, Modal, Status};
 use std::path::PathBuf;
 
 pub(crate) fn target(provider: Provider, host: &str) -> Target {

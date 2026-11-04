@@ -5,12 +5,12 @@
 
 use super::snapshot_tests::harness;
 use super::snapshot_tests_updates::{prefs, sent, status_bar, the_offer};
-use crate::msg::UpdateMsg;
-use crate::state::AppState;
-use crate::state::updates::UpdateStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::app_update::InstallMethod;
+use glowfly_model::msg::UpdateMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::updates::UpdateStatus;
 use std::path::PathBuf;
 
 fn downloaded(name: &str, method: InstallMethod) -> UpdateStatus {

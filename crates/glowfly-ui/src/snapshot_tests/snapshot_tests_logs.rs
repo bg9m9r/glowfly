@@ -2,14 +2,14 @@
 //! failure toast with Details.
 
 use super::snapshot_tests::{NOW, harness, settings};
-use crate::logs::{LogKind, LogsMsg};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::logs::{LogEntry, LogFileView, Persist};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::logs::{ActivityEntry, LogTail};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::logs::{LogKind, LogsMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::logs::{LogEntry, LogFileView, Persist};
 use std::time::Instant;
 
 /// 2026-01-29 09:30 UTC (three days before the harness's now) and a day later.
@@ -69,7 +69,7 @@ fn activity_log_error_tab() {
 /// Preferences > General's Extended Logging and Logs rows, near the end of a tall page.
 #[test]
 fn preferences_general_logging() {
-    use crate::state::{PrefPage, PrefsState};
+    use glowfly_model::state::{PrefPage, PrefsState};
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     st.settings.extended_logging = true;
     st.prefs = Some(PrefsState::new(PrefPage::General));
@@ -96,7 +96,7 @@ fn preferences_general_logging() {
 #[test]
 fn toast_failure_details() {
     let (mut st, dir) = super::snapshot_tests::with_repo(ThemeChoice::Dark, "failure-details");
-    crate::update::update(&mut st, Msg::Logged { ok: false, text: "Couldn't reach github.com".into() }, Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Logged { ok: false, text: "Couldn't reach github.com".into() }, Instant::now());
     assert!(!st.view.show_log);
     let id = st.toasts.last().map(|t| t.id).unwrap();
     let mut h = harness(st, true);

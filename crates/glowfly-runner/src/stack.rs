@@ -6,13 +6,13 @@
 
 use super::err;
 use super::execute::{Cx, Execute};
-use crate::effect::{RestackJob, StackEffect, UndoResult};
-use crate::msg::{Msg, RebaseMsg, StackMsg};
 use glowfly_core::error::Result;
 use glowfly_core::journal::Op;
 use glowfly_core::rebase::{Outcome, Resume};
 use glowfly_core::stack::{self, RestackRun};
 use glowfly_core::undo::{self, RestackBefore};
+use glowfly_model::effect::{RestackJob, StackEffect, UndoResult};
+use glowfly_model::msg::{Msg, RebaseMsg, StackMsg};
 use std::path::{Path, PathBuf};
 
 pub(super) fn run(e: StackEffect) -> Msg {

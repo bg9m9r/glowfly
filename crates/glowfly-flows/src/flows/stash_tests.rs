@@ -4,11 +4,11 @@
 use super::palette_stash_tests::two_stashes;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::state::palette::StashAction;
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::palette::StashAction;
 use std::time::Instant;
 
 #[test]

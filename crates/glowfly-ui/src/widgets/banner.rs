@@ -8,8 +8,8 @@
 use super::super::theme::color;
 use super::severity::{self, Severity};
 use super::{Icon, paint_icon};
-use crate::ui::needs_you;
-use crate::ui::theme::type_scale;
+use crate::needs_you;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Color32, CursorIcon, InnerResponse, Layout, Rect, Response, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use std::borrow::Cow;
 

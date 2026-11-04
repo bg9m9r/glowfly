@@ -4,17 +4,17 @@
 
 use super::ssh_card::{PAD_X, PAD_Y, chip};
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::state::ssh_marks::agent_only;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::{self, Icon, buttons};
+use crate::theme::tokens::radius;
+use crate::theme::{color, type_scale};
+use crate::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, CornerRadius, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
 use glowfly_core::ssh_keys::{AgentKey, ConfigIdentity, ConfigStatus, KeyFileProblem, SshListing, Unresolved};
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh_marks::agent_only;
 use std::path::Path;
 
 /// A config file as the page names it: relative to the .ssh folder (`dir`) when inside it.

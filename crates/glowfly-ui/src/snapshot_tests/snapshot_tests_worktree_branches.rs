@@ -8,15 +8,15 @@ use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed, with_worktrees};
-use crate::msg::Msg;
-use crate::state::worktrees::WorktreeForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::worktrees::WorktreeForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::PathBuf;
 
 /// The worktrees fixture with `search` checked out in the feature-login worktree.
@@ -56,7 +56,7 @@ fn worktree_local_menu() {
     h.get_by_label("Open in its worktree").click();
     h.run();
     // The checkout opens that worktree (update/branch_elsewhere.rs).
-    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(crate::msg::BranchMsg::Checkout(b)) if b == "search")));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(glowfly_model::msg::BranchMsg::Checkout(b)) if b == "search")));
 
     // A branch no worktree has: Checkout works and there is no Open in its worktree.
     row_menu(&mut h, "login-page", true);
@@ -64,7 +64,7 @@ fn worktree_local_menu() {
     assert!(h.query_by_label_contains("in its worktree").is_none());
     h.get_by_label("Checkout").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(crate::msg::BranchMsg::Checkout(b)) if b == "login-page")));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(glowfly_model::msg::BranchMsg::Checkout(b)) if b == "login-page")));
     drop(h);
     remove_fixture(&dir);
 }
@@ -104,7 +104,8 @@ fn with_search_tracked_elsewhere(name: &str, missing: bool) -> (AppState, PathBu
 /// once that folder is missing, Prune and check out <it>.
 #[test]
 fn worktree_remote_menu_opens_or_prunes() {
-    let tracking = |m: &crate::msg::BranchMsg| matches!(m, crate::msg::BranchMsg::CheckoutTracking { local, .. } if local == "search");
+    let tracking =
+        |m: &glowfly_model::msg::BranchMsg| matches!(m, glowfly_model::msg::BranchMsg::CheckoutTracking { local, .. } if local == "search");
     let (st, dir) = with_search_tracked_elsewhere("worktree-remote-opens", false);
     let mut h = harness(st, true);
     h.run();
@@ -121,7 +122,7 @@ fn worktree_remote_menu_opens_or_prunes() {
     row_menu(&mut h, "search", false);
     h.get_by_label("Prune and check out search").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(crate::msg::BranchMsg::PruneThen(b)) if tracking(b))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Branch(glowfly_model::msg::BranchMsg::PruneThen(b)) if tracking(b))));
     drop(h);
     remove_fixture(&dir);
 }

@@ -7,15 +7,15 @@
 
 use super::snapshot_tests::{harness_sized, remove_fixture, with_repo};
 use super::tabs_tests::pointer;
-use crate::msg::{Msg, TabsMsg};
-use crate::state::menu_bar::tab_name;
-use crate::state::tabs::ClosedTab;
-use crate::state::window_chrome::Chrome;
-use crate::state::{PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, accesskit::Role, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, TabsMsg};
+use glowfly_model::state::menu_bar::tab_name;
+use glowfly_model::state::tabs::ClosedTab;
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::{PrefPage, PrefsState};
 use std::path::PathBuf;
 
 #[test]

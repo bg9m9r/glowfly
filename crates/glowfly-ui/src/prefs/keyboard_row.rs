@@ -5,18 +5,18 @@
 //! with its buttons.
 
 use super::warn;
-use crate::keymap::{Binding, Chord, Keymap, Slot};
-use crate::msg::{KeysMsg, Msg};
-use crate::state::keys_page::{KeysPage, Pending};
-use crate::ui::shortcuts::Caps;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets;
-use crate::ui::widgets::buttons;
+use crate::shortcuts::Caps;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets;
+use crate::widgets::buttons;
 use eframe::egui::{Align, CornerRadius, Layout, RichText, Sense, Stroke, StrokeKind, Ui, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{Binding, Chord, Keymap, Slot};
+use glowfly_model::msg::{KeysMsg, Msg};
+use glowfly_model::state::keys_page::{KeysPage, Pending};
 
 /// The most keys a row offers Add for.
 const MAX_KEYS: usize = 4;
@@ -94,7 +94,7 @@ pub fn row(ui: &mut Ui, t: Lang, b: &'static Binding, keys: &Keymap, page: &Keys
 
 /// The warning or notice under a row, with what can be done about it.
 fn pending(ui: &mut Ui, t: Lang, p: &Pending, keys: &Keymap, msgs: &mut Vec<Msg>) {
-    let label = |id| crate::keymap::binding(id).label;
+    let label = |id| glowfly_model::keymap::binding(id).label;
     ui.horizontal_wrapped(|ui| {
         ui.add_space(12.0);
         match p {

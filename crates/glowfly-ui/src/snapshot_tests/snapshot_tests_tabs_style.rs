@@ -3,15 +3,15 @@
 //! shape, and the active tab's line in its checked-out branch's colour (grouped and not). Then
 //! the redrawn Branch icon and the menu icon at their sizes, in Dark and Light.
 
-use crate::state::{AppState, Tab};
-use crate::ui::menu_testing::texts_containing;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::ui::tabs_tests::{pointer, tab_centre};
-use crate::ui::theme::{self, color};
-use crate::ui::widgets::{self, Icon};
+use crate::menu_testing::texts_containing;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::tabs_tests::{pointer, tab_centre};
+use crate::theme::{self, color};
+use crate::widgets::{self, Icon};
 use eframe::egui::{self, pos2, vec2};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::{AppState, Tab};
 use std::path::PathBuf;
 
 /// A name of 60 characters, too long for a tab.
@@ -73,8 +73,8 @@ fn a_cut_tab_shows_its_whole_name_first() {
 
 /// `st`'s repository (`dir`) with topic checked out, from the branch-colour fixture's branches.
 fn on_topic(st: &mut AppState, dir: &std::path::Path) {
-    crate::ui::snapshot_tests::git(dir, &["checkout", "-q", "-b", "topic"], "2026-01-11T10:00:00+00:00");
-    crate::ui::snapshot_tests::reload(st, dir, &glowfly_core::repo::LoadOptions::all(500));
+    crate::snapshot_tests::git(dir, &["checkout", "-q", "-b", "topic"], "2026-01-11T10:00:00+00:00");
+    crate::snapshot_tests::reload(st, dir, &glowfly_core::repo::LoadOptions::all(500));
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn active_tab_branch_line() {
     h.run();
     h.check_snapshot("active_tab_branch_line");
     drop(h);
-    let (mut st, dir2) = crate::ui::tabs_tests::grouped_tabs("tabs-branch-line-grouped");
+    let (mut st, dir2) = crate::tabs_tests::grouped_tabs("tabs-branch-line-grouped");
     on_topic(&mut st, &dir2);
     let mut h = harness(st, true);
     h.run();
@@ -98,7 +98,7 @@ fn active_tab_branch_line() {
 
 #[test]
 fn icon_branch() {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(360.0, 160.0)).build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().with_size(vec2(360.0, 160.0)).build_ui(|ui| {
         let full = ui.max_rect();
         for (row, p) in [theme::DARK, theme::LIGHT].into_iter().enumerate() {
             color::set_palette(&p);

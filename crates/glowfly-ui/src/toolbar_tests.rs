@@ -4,16 +4,16 @@
 //! and snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at
 //! once.
 
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::snapshot_tests_worktrees::H;
-use crate::ui::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::snapshot_tests::snapshot_tests_worktrees::H;
+use crate::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{StashInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::Action;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 pub(super) fn settle(h: &mut H) {
@@ -74,23 +74,23 @@ fn groups_are_spaced_evenly() {
     assert_eq!(gap(&h, "Pull the current branch", "More pull actions"), 0.0, "a caret touches its button");
     assert_eq!(
         gap(&h, "More pull actions", "Push the current branch"),
-        f64::from(crate::ui::widgets::SPLIT_GAP),
+        f64::from(crate::widgets::SPLIT_GAP),
         "a caret is set apart from the next action"
     );
     assert_eq!(
         gap(&h, "Redo the undone action", "Pull the current branch"),
-        f64::from(crate::ui::widgets::GROUP_GAP),
+        f64::from(crate::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
     assert_eq!(
         gap(&h, "More push actions", "Create a branch"),
-        f64::from(crate::ui::widgets::GROUP_GAP),
+        f64::from(crate::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
     assert_eq!(gap(&h, "Create a branch", "Stash all changes"), 2.0);
     assert_eq!(
         gap(&h, "Unstash the latest stash", "Show the terminal panel"),
-        f64::from(crate::ui::widgets::GROUP_GAP),
+        f64::from(crate::widgets::GROUP_GAP),
         "between groups: the divider and its margins"
     );
     drop(h);
@@ -118,7 +118,7 @@ fn a_focused_button_shows_its_tooltip() {
 #[test]
 fn busy_dropdown_items_say_why() {
     let (mut st, dir) = plain(ThemeChoice::Dark, "toolbar-busy-menus");
-    crate::state::toolbar_tips::tests::running(&mut st);
+    glowfly_model::state::toolbar_tips::tests::running(&mut st);
     let busy = glowfly_core::i18n::Lang::En.tr("commit.blocked.job_running");
     // A running job shows a spinner, which keeps repainting.
     let mut h = harness(st, true);
@@ -271,16 +271,16 @@ fn tip_push_german() {
 
 /// The fixture as `plain`, changed by `case` (a name, the head, the chip, the hosting service).
 pub(super) fn variant(case: usize, labels: bool, name: &str) -> (AppState, PathBuf) {
-    use crate::state::ForgeState;
-    use crate::state::conflict_check::{ConflictReport, current_request};
     use glowfly_core::conflict_check::Prediction;
     use glowfly_core::forge::{Provider, Target};
+    use glowfly_model::state::ForgeState;
+    use glowfly_model::state::conflict_check::{ConflictReport, current_request};
     let (mut st, dir) = plain(ThemeChoice::Dark, name);
     st.settings.toolbar_labels = labels;
     if case == 4 {
         // On search, which the chip compares with main.
-        crate::ui::snapshot_tests::git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
-        crate::ui::snapshot_tests::reload(&mut st, &dir, &glowfly_core::repo::LoadOptions::all(500));
+        crate::snapshot_tests::git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
+        crate::snapshot_tests::reload(&mut st, &dir, &glowfly_core::repo::LoadOptions::all(500));
     }
     let long_branch = "feature/".to_owned() + &"a-very-long-branch-name-".repeat(3) + "that-goes-on";
     let snap = st.snap.as_mut().unwrap();

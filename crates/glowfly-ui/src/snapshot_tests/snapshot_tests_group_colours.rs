@@ -6,12 +6,12 @@
 use super::snapshot_tests::{harness_sized, settings};
 use super::snapshot_tests_repo_list::{H, abs, api, last, web, welcome_state};
 use super::snapshot_tests_select::click;
-use crate::msg::{GroupMsg, Msg};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{GroupColourDefault, RepoColour, RepoGroup, ThemeChoice};
+use glowfly_model::msg::{GroupMsg, Msg};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const RESET: &str = "Reset all group colors";

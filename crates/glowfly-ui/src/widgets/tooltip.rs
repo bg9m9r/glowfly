@@ -10,15 +10,15 @@
 
 use super::tooltip_motion;
 use super::truncate::{cut_left, truncate_label};
-use crate::keymap::Keymap;
-use crate::state::tip::{Tip, TipPreview, TipRow};
-use crate::ui::common::{status_color, status_label};
-use crate::ui::shortcuts::Caps;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::common::{status_color, status_label};
+use crate::shortcuts::Caps;
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, CornerRadius, Frame, Label, Margin, Response, RichText, Sense, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::state::tip::{Tip, TipPreview, TipRow};
 
 /// The rich tooltip's narrowest and widest.
 const MIN_W: f32 = 220.0;
@@ -148,17 +148,17 @@ mod tests {
         use egui_kittest::kittest::Queryable;
         let app = |ui: &mut Ui| {
             let (_, r) = ui.allocate_exact_size(egui::vec2(40.0, 20.0), Sense::hover() | Sense::FOCUSABLE);
-            crate::ui::access::name_button(&r, false, "Painted");
+            crate::access::name_button(&r, false, "Painted");
             attach_text(r, "Why it is off");
         };
-        let mut h = crate::ui::snapshot_check::builder().build_ui(app);
+        let mut h = crate::snapshot_check::builder().build_ui(app);
         h.run();
         assert!(h.query_by_label("Why it is off").is_none());
         h.get_by_label("Painted").focus();
         h.run();
         assert!(h.get_by_label("Painted").is_focused());
         assert!(h.query_by_label("Why it is off").is_some(), "shown on focus");
-        let mut h = crate::ui::snapshot_check::builder().build_ui(app);
+        let mut h = crate::snapshot_check::builder().build_ui(app);
         h.run();
         h.get_by_label("Painted").hover();
         h.run();

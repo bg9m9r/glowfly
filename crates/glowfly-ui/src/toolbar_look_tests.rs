@@ -2,9 +2,9 @@
 //! caret alone, and the Terminal, Search and Activity toggles stay latched while their panel
 //! is shown.
 
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::{harness, remove_fixture};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::snapshot_tests::{harness, remove_fixture};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::Tracking;
 use glowfly_core::settings::ThemeChoice;

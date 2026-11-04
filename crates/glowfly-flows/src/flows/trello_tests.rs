@@ -3,11 +3,11 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use glowfly_core::forge::{Account, Auth, Connection, Issue, Provider, ServiceError, Target, TrelloBoard};
 use glowfly_core::settings::{RepoTrust, TrackerChoice};
+use glowfly_model::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
 use std::time::Instant;
 
 const BOARD: &str = "5f1a2b3c4d5e6f7a8b9c0d1e";
@@ -29,7 +29,7 @@ fn open(name: &str, connected: bool) -> AppState {
     }
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir)));
     let real = st.snap.as_ref().expect("opened").real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
     st
 }
 

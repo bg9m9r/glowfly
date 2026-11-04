@@ -5,14 +5,14 @@
 use super::snapshot_tests::harness;
 use super::snapshot_tests_painted::fills_inside;
 use super::snapshot_tests_trust::{setting, with_prompt};
-use crate::state::AppState;
-use crate::state::Modal;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::color;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::color;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::trust::TrustScan;
 use glowfly_core::trust::known::Known;
+use glowfly_model::state::AppState;
+use glowfly_model::state::Modal;
 use std::path::{Path, PathBuf};
 
 const WORKDIR: &str = "C:/Users/developer/source/repos/clients/acme-corporation/platform/backend/services/tools";

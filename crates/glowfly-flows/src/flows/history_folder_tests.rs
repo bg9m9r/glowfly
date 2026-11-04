@@ -5,11 +5,11 @@
 use super::history_tests::{entry, oid, opened};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{DiffMsg, FilesMsg, HistoryMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use glowfly_core::repo::{self, DiffTarget, FileEntry, FileHistory, HistoryEntry, HistoryStart, LoadOptions, RestoredFrom};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{DiffMsg, FilesMsg, HistoryMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use std::time::Instant;
 
 fn send(st: &mut AppState, m: HistoryMsg) -> Vec<Effect> {

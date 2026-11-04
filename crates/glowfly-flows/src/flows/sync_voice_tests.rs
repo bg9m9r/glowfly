@@ -4,9 +4,9 @@
 
 use super::failure_headline_tests::{opened, running};
 use super::update;
-use crate::msg::{JobMsg, Msg};
-use crate::state::AppState;
 use glowfly_core::settings::ToastTime;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 

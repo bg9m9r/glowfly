@@ -4,12 +4,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, UndoResult};
-use crate::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::palette::StashAction;
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE, UNDO_STASH_MESSAGE, UndoKind};
+use glowfly_model::effect::{Effect, UndoResult};
+use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::StashAction;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -157,7 +156,7 @@ fn refusal_for_an_inactive_tab_offers_nothing() {
     let effect =
         update(&mut st, Msg::Job(JobMsg::Undo), Instant::now()).into_iter().find(|e| matches!(e, Effect::UndoRedo { .. })).expect("undo");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(&reply, Msg::Job(JobMsg::JobDone { undo: Some(UndoResult::Refused { offer_stash: true, .. }), .. })));
     update(&mut st, reply, Instant::now());
     let t = st.toasts.last().unwrap();

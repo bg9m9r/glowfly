@@ -5,13 +5,13 @@
 
 use super::profiles_tests::{PERSONAL, WORK, profile, run, saves, two_profiles, values};
 use super::tests::{drive, git, scratch_repo};
-use crate::effect::{AccountEffect, Effect};
-use crate::msg::{ForgeMsg, Msg, RepoMsg};
-use crate::profile::ProfileMsg;
-use crate::state::{AppState, ForgeState, PrefPage};
 use glowfly_core::forge::{Account, Connection, Provider, PullRequest, Target};
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{ProfilePrefs, ThemeChoice};
+use glowfly_model::effect::{AccountEffect, Effect};
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::{AppState, ForgeState, PrefPage};
 use std::path::PathBuf;
 
 fn conn(provider: Provider, host: &str, user: &str) -> Connection {
@@ -246,7 +246,7 @@ fn deleting_profile_forgets_only_its_accounts() {
 
 #[test]
 fn the_dashboard_forgets_the_previous_profiles_sign_ins() {
-    use crate::state::dashboard::{AccountRow, AccountState};
+    use glowfly_model::state::dashboard::{AccountRow, AccountState};
     let mut st = with_setups();
     let account = github().account;
     let d = &mut st.dashboard;

@@ -6,9 +6,7 @@ use super::common::short;
 use super::snapshot_tests::{NOW, git, harness, remove_fixture, with_repo};
 use super::snapshot_tests_line_counts::{lines, write};
 use super::snapshot_tests_select::click;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
@@ -18,6 +16,8 @@ use glowfly_core::gitcli::{args, run_with_input};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -209,7 +209,7 @@ fn details_hard_wrapped_body() {
     let (st, dir, _) = with_commit(ThemeChoice::Dark, "details-hard-wrapped", HARD_WRAPPED);
     // A window wide and tall enough for the panel's widest default width (520 px) and the body
     // block's tallest cap (320 px), so the whole body shows.
-    let mut h = crate::ui::snapshot_fixtures::harness_sized(st, true, eframe::egui::vec2(2080.0, 1200.0));
+    let mut h = crate::snapshot_fixtures::harness_sized(st, true, eframe::egui::vec2(2080.0, 1200.0));
     h.run();
     // Each line as written starts a line of its own: the body's label is as tall as its lines
     // and the long URL's soft wrap, never one reflowed paragraph.

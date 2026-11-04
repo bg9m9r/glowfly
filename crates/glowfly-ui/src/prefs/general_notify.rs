@@ -2,11 +2,11 @@
 //! behind alerts and the push and pull confirmations) and Commit messages (spell checking).
 
 use super::{check_row, combo, help, row, section};
-use crate::msg::{Msg, PrefsMsg};
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{Corner, Settings};
+use glowfly_model::msg::{Msg, PrefsMsg};
 
 /// The Notifications group.
 pub fn notifications(ui: &mut Ui, t: Lang, s: &mut Settings, msgs: &mut Vec<Msg>) {

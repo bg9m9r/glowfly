@@ -4,8 +4,8 @@
 //! logged with their thread, message, location and backtrace before the default hook runs.
 //! Extended logging raises the error log's level at runtime through `LogSetup::file_detail`.
 
-use crate::runner::{FileDetail, LogSetup};
 use glowfly_core::logs::{ERROR_FILE, ERROR_LOG_BYTES, KEEP_ROTATED, RotatingFile};
+use glowfly_runner::{FileDetail, LogSetup};
 use std::sync::{Arc, Mutex};
 use tracing::Level;
 use tracing_subscriber::filter::{EnvFilter, Targets};

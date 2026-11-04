@@ -4,15 +4,15 @@
 
 use super::source_tests::head_on_remote;
 use super::tests::{cleanup, open, set_pr, setup};
-use crate::effect::{Effect, LineCountsEffect};
 use crate::flows::drive;
-use crate::msg::{Msg, RepoMsg};
-use crate::pull_request::PullRequestMsg;
-use crate::state::pull_request::PrTab;
-use crate::state::{AppState, Selection};
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, LineCountsEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::PrTab;
+use glowfly_model::state::{AppState, Selection};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn listed(st: &AppState) -> Vec<Oid> {

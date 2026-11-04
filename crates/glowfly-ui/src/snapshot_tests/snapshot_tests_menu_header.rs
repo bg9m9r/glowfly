@@ -2,8 +2,8 @@
 //! the way the menu's justified items are.
 
 use super::common::commit_menu_header;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::{self, color};
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::{self, color};
 use eframe::egui;
 use git2::Oid;
 
@@ -11,7 +11,7 @@ use git2::Oid;
 fn commit_menu_header_wraps_without_stretching() {
     let summary = "fix(sensors): gust 7 ignores negative readings from the anemometer after a reset";
     let oid = Oid::from_str("0b124860a1b2c3d4e5f60718293a4b5c6d7e8f90").unwrap();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(420.0, 120.0)).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(420.0, 120.0)).build_ui(move |ui| {
         color::set_palette(&theme::DUSK);
         theme::apply_style(ui.ctx(), &theme::DUSK);
         ui.ctx().set_theme(theme::egui_theme(&theme::DUSK));

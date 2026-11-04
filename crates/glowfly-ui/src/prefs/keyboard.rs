@@ -3,16 +3,16 @@
 //! edits only its filter; everything else is a `KeysMsg` for update/keys.rs.
 
 use super::{help, keyboard_row, primary_button, warn};
-use crate::keymap::Keymap;
-use crate::msg::{KeysMsg, Msg};
-use crate::state::keys_page::KeysPage;
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{Align, Id, Layout, RichText, TextEdit, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::{KeysMsg, Msg};
+use glowfly_model::state::keys_page::KeysPage;
 
 /// The widest the list gets, so a row's keys stay near its label.
 const MAX_W: f32 = 760.0;
@@ -27,7 +27,7 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
     ui.horizontal(|ui| {
         let field = TextEdit::singleline(&mut page.filter).id(Id::new("glowfly-keys-filter")).hint_text(t.tr("prefs.keys.filter"));
         let field = ui.add(controls::SizedField::new(ControlSize::Regular, field).width(super::FIELD_W));
-        crate::ui::access::name_if_unnamed(&field, t.tr("prefs.keys.filter"));
+        crate::access::name_if_unnamed(&field, t.tr("prefs.keys.filter"));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             let why = (!keys.customized()).then_some("Every shortcut has its default key");
             let reset = buttons::secondary("Reset all to defaults").enabled(keys.customized() && !page.confirm_reset_all).why(why);

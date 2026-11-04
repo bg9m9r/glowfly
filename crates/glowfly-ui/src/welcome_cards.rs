@@ -7,15 +7,15 @@
 use super::theme::color;
 use super::theme::contrast;
 use super::welcome_art;
-use crate::msg::{CloneMsg, Msg, RepoMsg, ReposMsg};
-use crate::onboarding::{OnboardingMsg, StartChoice};
-use crate::ui::theme::tokens::{self, radius};
-use crate::ui::theme::type_scale;
+use crate::theme::tokens::{self, radius};
+use crate::theme::type_scale;
 use eframe::egui::{
     self, Align, Color32, CornerRadius, FontId, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, StrokeKind, Ui,
     UiBuilder, pos2, vec2,
 };
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{CloneMsg, Msg, RepoMsg, ReposMsg};
+use glowfly_model::onboarding::{OnboardingMsg, StartChoice};
 
 /// Between two cards side by side, and between stacked rows.
 const GAP: f32 = 12.0;
@@ -149,7 +149,7 @@ fn card(ui: &mut Ui, fit: Fit, (icon, title, hint): Card<'_>, title_font: &FontI
     col.painter().galley(title_at.min, title_galley, color::text());
     let hint_text = RichText::new(hint).size(type_scale::SMALL).color(color::weak());
     col.add(egui::Label::new(hint_text).wrap().selectable(false));
-    crate::ui::access::name_button(&resp, true, title);
+    crate::access::name_button(&resp, true, title);
     resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked()
 }
 

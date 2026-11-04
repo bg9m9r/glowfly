@@ -5,10 +5,10 @@
 
 use super::snapshot_tests::{harness, keys_harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, Selection};
 use eframe::egui::{Key, PointerButton, pos2};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, Selection};
 
 /// The selections the frames after a key or click asked for.
 fn selects(msgs: &[Msg]) -> Vec<String> {

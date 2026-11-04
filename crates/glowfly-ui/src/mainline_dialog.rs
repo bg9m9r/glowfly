@@ -6,12 +6,12 @@ use super::common::short;
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::dialog_guides;
 use super::widgets::buttons;
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::pick::{MainlineForm, ParentChoice, PickOp};
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
+use crate::theme::color;
+use crate::theme::controls;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::pick::{MainlineForm, ParentChoice, PickOp};
 
 /// The most merges listed under each parent number; the rest are counted.
 const LISTED_MERGES: usize = 3;

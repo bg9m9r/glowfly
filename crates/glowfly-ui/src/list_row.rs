@@ -14,7 +14,7 @@ pub(super) mod file_tree;
 
 use super::theme::{color, spacing, tokens};
 use super::widgets::{row_fill, truncate};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 
 use std::sync::Arc;
 
@@ -232,7 +232,7 @@ pub fn list_row_hidden(ui: &mut Ui) -> bool {
 
 /// How far a file row's selection reaches past each side of the row, into the list's panel
 /// padding (every host panel has at least this much), so the content does not move.
-pub const FILE_ROW_BLEED: f32 = spacing::GRID;
+pub(crate) const FILE_ROW_BLEED: f32 = spacing::GRID;
 
 /// One row of a file list drawn with `ScrollArea::show_rows(ui, LIST_ROW_H, ..)`: `add`'s widgets
 /// left to right, vertically centred in a row exactly `LIST_ROW_H` tall. The whole row is one

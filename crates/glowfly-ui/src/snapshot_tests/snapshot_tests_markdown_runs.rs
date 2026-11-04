@@ -5,10 +5,10 @@
 use super::markdown::body;
 use super::markdown_cache::MarkdownCache;
 use super::theme::{apply_theme, color};
-use crate::msg::Msg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
+use glowfly_model::msg::Msg;
 
 const PARAGRAPH: &str = "Read the *guide* first, then **try** the `glowfly` command. See ~~older~~ newer notes, \
 the [docs](https://example.com/docs) and *this*.";
@@ -16,7 +16,7 @@ the [docs](https://example.com/docs) and *this*.";
 #[test]
 fn markdown_runs_keep_their_spaces() {
     let mut cache = MarkdownCache::default();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(520.0, 120.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(520.0, 120.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

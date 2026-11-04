@@ -5,17 +5,17 @@
 //! on the fixture's reflog.
 
 use super::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal::JournalView;
-use crate::state::range_diff::{Origin, Phase, RangeDiffView, widest};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Key};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::range_diff::{Compared, Ends, Outcome, Pair, Range, Rewrite, Side, Status};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 use glowfly_model::range_diff::RangeDiffMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::JournalView;
+use glowfly_model::state::range_diff::{Origin, Phase, RangeDiffView, widest};
 use std::path::PathBuf;
 
 /// A changed pair's interdiff as git prints it (blank lines are five spaces).

@@ -7,8 +7,8 @@
 //! after that sends `Live` after all). No file could be placed (a read-only git dir):
 //! `Probe::Unknown`.
 
-use crate::state::watch::{PROBE_TIMEOUT, Probe};
 use glowfly_core::watch_probe::ProbeFile;
+use glowfly_model::state::watch::{PROBE_TIMEOUT, Probe};
 use notify::Event;
 use std::path::Path;
 use std::time::{Duration, Instant};

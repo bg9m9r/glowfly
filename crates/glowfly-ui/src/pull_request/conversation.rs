@@ -9,19 +9,19 @@ use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
 use super::send_key;
 use super::{note, threads, tone_color};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::{Page, PrAction, PrView, description_text};
-use crate::state::pull_request_actions::{comment_blocked, error_for, verdict_text};
-use crate::state::pull_request_threads::{self, Item};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, Margin, RichText, Ui};
 use glowfly_core::forge::{Entry, EntryKind, Verdict};
 use glowfly_core::text::printable;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Page, PrAction, PrView, description_text};
+use glowfly_model::state::pull_request_actions::{comment_blocked, error_for, verdict_text};
+use glowfly_model::state::pull_request_threads::{self, Item};
 
 pub(crate) const LOADING: &str = "Loading the conversation…";
 pub(crate) const FAILED_TITLE: &str = "Couldn't load the conversation";
@@ -124,7 +124,7 @@ fn entry(ui: &mut Ui, i: usize, e: &Entry, ctx: &threads::Ctx, md: &mut Markdown
         ui.label(RichText::new(printable(&e.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         let (did, tone) = verdict_text(&e.kind);
         ui.label(RichText::new(did).color(tone_color(tone)));
-        crate::ui::date_tip::time_label(ui, ctx.settings, e.time, ctx.now, ctx.offset);
+        crate::date_tip::time_label(ui, ctx.settings, e.time, ctx.now, ctx.offset);
     });
     let body = description_text(e.body.trim());
     if !body.is_empty() {
@@ -144,7 +144,7 @@ fn comment_box(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) 
     }
     let edit = egui::TextEdit::multiline(&mut v.forms.comment).hint_text("Write a comment").desired_rows(3).desired_width(f32::INFINITY);
     let field = controls::field(ui, edit);
-    crate::ui::access::name_field(&field, "Write a comment");
+    crate::access::name_field(&field, "Write a comment");
     let blocked = comment_blocked(v);
     if send_key(ui, &field) && blocked.is_none() {
         msgs.push(Msg::PullRequest(PullRequestMsg::PostComment));

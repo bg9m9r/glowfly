@@ -2,10 +2,10 @@
 //! loader at a fixed moment of its cycle, the still form reduce motion shows, and the moving
 //! loader on a raised card. Each row has a weak caption on the right.
 
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::{GRAPHITE, PORCELAIN, apply_style, egui_theme};
-use crate::ui::widgets::fireflies;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::color::{self, Palette};
+use crate::theme::{GRAPHITE, PORCELAIN, apply_style, egui_theme};
+use crate::widgets::fireflies;
 use eframe::egui::{Align2, CornerRadius, Rect, pos2, vec2};
 
 /// The moment the moving rows show: dots at 0.625, 1.0 and 0.306.
@@ -15,7 +15,7 @@ const ROW: f32 = 40.0;
 const SIZE: (f32, f32) = (360.0, 150.0);
 
 fn sheet(name: &str, p: &'static Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(SIZE.0, SIZE.1)).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(vec2(SIZE.0, SIZE.1)).build_ui(move |ui| {
         color::set_palette(p);
         apply_style(ui.ctx(), p);
         ui.ctx().set_theme(egui_theme(p));
@@ -30,7 +30,7 @@ fn sheet(name: &str, p: &'static Palette) {
                 painter.rect_filled(card, CornerRadius::same(8), p.raised);
             }
             fireflies::paint(painter, pos2(r.left() + 60.0, y), p, time);
-            let font = crate::ui::theme::type_scale::font(crate::ui::theme::type_scale::SMALL);
+            let font = crate::theme::type_scale::font(crate::theme::type_scale::SMALL);
             painter.text(pos2(r.right() - 32.0, y), Align2::RIGHT_CENTER, caption, font, p.weak);
         }
     });

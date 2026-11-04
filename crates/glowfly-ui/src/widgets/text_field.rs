@@ -6,10 +6,10 @@
 //! keeps its rows. Ids, hints, focus, masking and char limits behave as the plain `TextEdit`.
 //! Labels, help and messages around a field are `field_group`'s.
 
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{self, radius};
-use crate::ui::theme::{color, controls};
-use crate::ui::widgets::buttons::StyledButton;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::{self, radius};
+use crate::theme::{color, controls};
+use crate::widgets::buttons::StyledButton;
 use eframe::egui::{self, Align, Id, Key, Response, Ui, WidgetText, vec2};
 
 /// A dialog field's height, and a multiline field's least height.
@@ -101,7 +101,7 @@ impl egui::Widget for TextField<'_> {
             edit = edit.char_limit(n);
         }
         let mut r = ui.add(controls::Field(edit));
-        crate::ui::access::name_if_unnamed(&r, hint_name.as_deref().unwrap_or(""));
+        crate::access::name_if_unnamed(&r, hint_name.as_deref().unwrap_or(""));
         // egui reports the text's rect; the field is the whole box.
         r.rect += margin;
         if r.has_focus() {
@@ -144,10 +144,10 @@ mod tests {
     }
 
     fn harness() -> Harness<'static, (String, String, Seen)> {
-        crate::ui::snapshot_check::builder().with_size(vec2(400.0, 200.0)).build_ui_state(
+        crate::snapshot_check::builder().with_size(vec2(400.0, 200.0)).build_ui_state(
             |ui, (a, b, seen): &mut (String, String, Seen)| {
                 let r = ui.add(TextField::new(a).id(Id::new("one")).hint("Name"));
-                crate::ui::access::name_field(&r, "One");
+                crate::access::name_field(&r, "One");
                 seen.single = r.rect.height();
                 seen.entered.push(entered(ui, &r));
                 let r = ui.add(TextField::multiline(b, 3));

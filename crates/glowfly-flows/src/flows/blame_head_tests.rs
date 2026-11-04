@@ -2,14 +2,14 @@
 //! keeping the old blame and the top line, stale results, errors, following a rename, held
 //! repositories, parked tabs and the toggles while a re-run is in flight.
 
-use crate::effect::{BlameRequest, Effect, LoadKind};
 use crate::flows::{drive, git, scratch_repo, state};
-use crate::msg::{BlameMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::blame::{BlameData, BlameLanding, BlameView};
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::repo::{self, Blame, LoadOptions};
+use glowfly_model::effect::{BlameRequest, Effect, LoadKind};
+use glowfly_model::msg::{BlameMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BlameData, BlameLanding, BlameView};
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -209,8 +209,8 @@ fn toggle_during_a_rerun_keeps_follow() {
 
 #[test]
 fn back_and_parent_clear_follow() {
-    use crate::state::blame::BlameStep;
     use glowfly_core::repo::{BlameCommit, BlameOrigin, BlameRun};
+    use glowfly_model::state::blame::BlameStep;
     let (mut st, dir) = shown("blame-head-back");
     let step = BlameStep { path: "a.txt".into(), at: Some(oid(4)), skipped: Vec::new(), top_line: 0, cursor: None };
     st.session.blame.view.as_mut().unwrap().back.push(step);

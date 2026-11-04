@@ -6,11 +6,11 @@
 
 use super::repo_swatch;
 use super::theme::color;
-use crate::msg::{GroupMsg, Msg};
-use crate::ui::widgets::menu::{self, separator, submenu};
+use crate::widgets::menu::{self, separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoGroup;
+use glowfly_model::msg::{GroupMsg, Msg};
 use std::path::Path;
 
 /// The submenu for the favorite at `path`, now in group `current` (None: no group).

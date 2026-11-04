@@ -5,13 +5,13 @@
 use super::tests::{drive, scratch_repo, state};
 use super::trust_held_tests::held_repo;
 use super::trust_tests::{real, run};
-use crate::effect::Effect;
-use crate::effect::{LfsEffect, SparseEffect};
-use crate::lfs::LfsMsg;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TrustMsg};
-use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::lfs::LfsPattern;
 use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::{LfsEffect, SparseEffect};
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, SparseMsg, TrustMsg};
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::path::PathBuf;
 
 fn loads_lfs(fx: &[Effect]) -> bool {

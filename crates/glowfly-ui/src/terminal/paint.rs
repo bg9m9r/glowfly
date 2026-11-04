@@ -1,7 +1,7 @@
 //! Painting over the terminal's cells: the selection, the cursor in its chosen style (both in
 //! the terminal's colours, `color::term`), the dim overlay and the history's scroll thumb.
 
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::{self, Rect, Stroke, StrokeKind, pos2, vec2};
 use glowfly_core::settings::CursorStyle;
 use glowfly_core::terminal::TermPoint;

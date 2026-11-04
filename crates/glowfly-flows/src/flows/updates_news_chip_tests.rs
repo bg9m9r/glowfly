@@ -5,13 +5,13 @@
 use super::update;
 use super::updates_notes_tests::{NOTES, dialog, saves};
 use super::updates_tests::{NOW, app, send};
-use crate::msg::{Msg, UpdateMsg as U};
-use crate::state::AppState;
-use crate::state::release_notes::{NEWS_CHIP_FOR, news_chip_text};
-use crate::state::settings_file::carry_records;
 use glowfly_core::app_update::Version;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{NewsChip, Settings, WhatsNew};
+use glowfly_model::msg::{Msg, UpdateMsg as U};
+use glowfly_model::state::AppState;
+use glowfly_model::state::release_notes::{NEWS_CHIP_FOR, news_chip_text};
+use glowfly_model::state::settings_file::carry_records;
 use std::time::Instant;
 
 /// 0.2.0 starting after 0.1.0, with the default choice.
@@ -22,7 +22,7 @@ fn upgraded() -> AppState {
     st
 }
 
-fn tick(st: &mut AppState) -> Vec<crate::effect::Effect> {
+fn tick(st: &mut AppState) -> Vec<glowfly_model::effect::Effect> {
     let t = Instant::now();
     update(st, Msg::Tick(t), t)
 }
@@ -112,7 +112,7 @@ fn choosing_another_way_hides_a_waiting_chip() {
 fn a_new_install_or_a_version_without_notes_gets_no_chip() {
     let mut st = upgraded();
     st.settings.welcome_done = false;
-    update(&mut st, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup), Instant::now());
+    update(&mut st, Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::Startup), Instant::now());
     send(&mut st, U::Startup, Instant::now());
     assert!(st.settings.updates.news_chip.is_none(), "the welcome instead");
 

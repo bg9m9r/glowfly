@@ -10,21 +10,21 @@ use super::super::file_list_keys;
 use super::super::file_menu::RowSource;
 use super::super::pane_status::{self, Failure};
 use super::super::theme::color;
-use crate::msg::Msg;
-use crate::remote::RemoteMsg;
-use crate::state::AppState;
-use crate::state::lfs::TrackContext;
-use crate::state::list_keys::FileList;
-use crate::state::pull_request::{Files, PrView, empty_text, files_heading, unrelated_text};
-use crate::state::pull_request_source::{
-    NoteTone, fetch_blocked, head_button, head_fetch_blocked, offers_fetch, offers_head_fetch, out_of_sync, tone,
-};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::banner::{self, BannerKind};
-use crate::ui::widgets::buttons;
+use crate::theme::type_scale;
+use crate::widgets::banner::{self, BannerKind};
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lfs::TrackContext;
+use glowfly_model::state::list_keys::FileList;
+use glowfly_model::state::pull_request::{Files, PrView, empty_text, files_heading, unrelated_text};
+use glowfly_model::state::pull_request_source::{
+    NoteTone, fetch_blocked, head_button, head_fetch_blocked, offers_fetch, offers_head_fetch, out_of_sync, tone,
+};
 
 pub(crate) const LOADING: &str = "Comparing the branches…";
 pub(crate) const FAILED_TITLE: &str = "Couldn't compare the branches";
@@ -55,11 +55,11 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, v: &PrView, msgs: &mut Vec<Msg>) 
         Files::Loaded(c) => {
             let Some(tip) = v.source_tip() else { return };
             let (base, files) = (c.base, &c.comparison.files);
-            let open = crate::state::wip_lists::cursor(st);
+            let open = glowfly_model::state::wip_lists::cursor(st);
             let lfs = TrackContext::of(st);
-            let tools = crate::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
-            let commands = crate::state::custom_commands::MenuCommands::for_state(st);
-            let row_h = crate::ui::widgets::LIST_ROW_H;
+            let tools = glowfly_model::state::tool_compare::ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
+            let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
+            let row_h = crate::widgets::LIST_ROW_H;
             let index = |t: &DiffTarget| files.iter().position(|f| v.diff_target(&f.path).as_ref() == Some(t));
             let current = open.and_then(index);
             let focus = file_list_keys::target(ui, FileList::PullRequest, files.len(), ui.available_height(), &heading);

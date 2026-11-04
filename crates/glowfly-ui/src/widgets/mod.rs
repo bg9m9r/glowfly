@@ -83,8 +83,8 @@ pub use tool::*;
 pub use truncate::{Cut, cut_label, paint_cut, paint_cut_text, truncate_label};
 
 use super::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 
 use eframe::egui::{self, Align2, Color32, CornerRadius, Painter, Pos2, Response, Sense, Stroke, Ui, pos2, vec2};
 
@@ -134,7 +134,7 @@ pub fn nav_row_count(ui: &mut Ui, icon: Option<Icon>, text: &str, selected: bool
     // say which is the current page.
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     if selected {
-        crate::ui::access::mark_selected(&resp);
+        crate::access::mark_selected(&resp);
     }
     let p = ui.painter();
     // The selected page takes the accent bar; the focused row the inset ring on its square

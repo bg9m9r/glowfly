@@ -6,19 +6,19 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, center, dialog_button, pushed};
-use crate::msg::Msg;
-use crate::remote::RemoteMsg;
-use crate::state::forks::{ForkCreate, ForkPicker, ForkStep, ForkThenPr};
-use crate::state::remotes::RemoteForm;
-use crate::state::{AppState, Modal};
-use crate::ui::remotes::fork_pick::PICK_FIRST;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::remotes::fork_pick::PICK_FIRST;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Fork, ForkList, Target, parse_remote};
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::forks::{ForkCreate, ForkPicker, ForkStep, ForkThenPr};
+use glowfly_model::state::remotes::RemoteForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// The fixture with `origin` on GitHub (two branches), `backup` in a folder and `linus` (a

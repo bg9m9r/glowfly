@@ -4,21 +4,21 @@
 
 use super::snapshot_tests::harness;
 use super::snapshot_tests_ssh::{HOME, home_key, key_in, listing, ssh_add, ssh_mut, ssh_page, two_keys};
-use crate::state::AppState;
-use crate::state::ssh_use::Choices;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::ssh_keys::{
     AgentKey, AgentReach, AgentStatus, ConfigIdentity, ConfigStatus, KeyChoice, Unresolved, WinService, WinSshFacts,
 };
+use glowfly_model::state::AppState;
+use glowfly_model::state::ssh_use::Choices;
 use std::path::PathBuf;
 
 const WIN_SSH: &str = "C:/Windows/System32/OpenSSH/ssh.exe";
 const BUNDLED: &str = "C:/Program Files/Git/usr/bin/ssh.exe";
 
 /// A harness tall enough for the whole page with the extra blocks.
-fn taller(st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
+fn taller(st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)> {
     let mut h = harness(st, dark);
     h.set_size(eframe::egui::vec2(1400.0, 1400.0));
     h.run();

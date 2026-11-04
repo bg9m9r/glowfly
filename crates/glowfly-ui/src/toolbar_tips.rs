@@ -3,13 +3,13 @@
 //! `AppState` (the rules and previews are in `state/toolbar_tips.rs` and
 //! `state/undo_preview.rs`); `widgets::tooltip` draws them.
 
-use crate::keymap::BindingId;
-use crate::state::AppState;
-use crate::state::ForgeState;
-use crate::state::tip::{Tip, short_sha};
-use crate::state::toolbar_tips as rules;
 use glowfly_core::forge::Provider;
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::state::AppState;
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::tip::{Tip, short_sha};
+use glowfly_model::state::toolbar_tips as rules;
 
 fn lang(st: &AppState) -> Lang {
     st.settings.lang()
@@ -27,7 +27,7 @@ pub fn undo(st: &AppState) -> Tip {
     let tip = Tip::new(title).keys(BindingId::Undo);
     match (why, st.session.undo.undo.last()) {
         (Some(why), _) => tip.body(why),
-        (None, Some(a)) => tip.preview(Some(crate::state::undo_preview::preview(t, a, st.snap.as_ref(), false))),
+        (None, Some(a)) => tip.preview(Some(glowfly_model::state::undo_preview::preview(t, a, st.snap.as_ref(), false))),
         (None, None) => tip,
     }
 }
@@ -39,7 +39,7 @@ pub fn redo(st: &AppState) -> Tip {
     let tip = Tip::new(title).keys(BindingId::Redo);
     match (why, st.session.undo.redo.last()) {
         (Some(why), _) => tip.body(why),
-        (None, Some(a)) => tip.preview(Some(crate::state::undo_preview::preview(t, a, st.snap.as_ref(), true))),
+        (None, Some(a)) => tip.preview(Some(glowfly_model::state::undo_preview::preview(t, a, st.snap.as_ref(), true))),
         (None, None) => tip,
     }
 }

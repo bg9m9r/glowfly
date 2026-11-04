@@ -10,7 +10,7 @@ use super::theme::color;
 use super::theme::sizes::ControlSize;
 use super::widgets::buttons::{self, StyledButton};
 use super::widgets::severity::{self, Severity};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Color32, FontId, Layout, RichText, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::lfs::pointer::size_text;
 

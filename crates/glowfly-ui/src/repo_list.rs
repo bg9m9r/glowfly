@@ -17,13 +17,13 @@ use super::repo_row::{self, Columns, Row, Words};
 use super::theme::color;
 use super::welcome_cards::START_W;
 use super::widgets::{Icon, ghost};
-use crate::msg::{GroupMsg, Msg, RecentMsg};
-use crate::state::AppState;
-use crate::state::repo_groups::{any_colour, members, ungrouped};
-use crate::state::repo_lists::{clear_recent_msg, favorites, is_missing, is_open, missing_counts, recent_rows, remove_missing_msg};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
+use glowfly_model::msg::{GroupMsg, Msg, RecentMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_groups::{any_colour, members, ungrouped};
+use glowfly_model::state::repo_lists::{clear_recent_msg, favorites, is_missing, is_open, missing_counts, recent_rows, remove_missing_msg};
 use std::path::PathBuf;
 
 /// How far the groups and the other favorites sit in from the Favorites heading.

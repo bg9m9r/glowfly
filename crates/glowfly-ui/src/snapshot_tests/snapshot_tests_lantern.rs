@@ -6,13 +6,13 @@
 use super::snapshot_tests::{git, harness_palette_sized, reload, remove_fixture, with_repo};
 use super::snapshot_tests_worktrees::entry;
 use super::theme;
-use crate::state::graph_rows::{DisplayRow, GraphRows};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::color::Palette;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::color::Palette;
 use eframe::egui::vec2;
 use glowfly_core::repo::{ChangeCounts, LoadOptions};
 use glowfly_core::settings::{ColourPalette, Density, ThemeChoice};
+use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 /// The fixture with HEAD on an ordinary commit (so the glow rings a 20 px disc) and the README

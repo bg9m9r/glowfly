@@ -6,22 +6,21 @@
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use super::work_files_tests::{entry, loaded, run};
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::msg::WorkFileMsg;
-use crate::runner;
-use crate::state::files::TRASH;
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
 use glowfly_core::undo::{Action, DeleteVia, Saved};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::files::TRASH;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 /// How many files in the stand-in bin hold `contents`.
 fn in_bin(contents: &str) -> usize {
-    let Ok(dir) = std::fs::read_dir(runner::testing::test_bin()) else { return 0 };
+    let Ok(dir) = std::fs::read_dir(glowfly_runner::testing::test_bin()) else { return 0 };
     dir.flatten().filter(|e| std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents)).count()
 }
 
@@ -140,7 +139,7 @@ fn a_delete_for_an_inactive_tab_goes_into_its_history() {
         .find(|e| matches!(e, Effect::WorkFile { .. }))
         .expect("a delete");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    let reply = runner::testing::execute(effect).expect("a result");
+    let reply = glowfly_runner::testing::execute(effect).expect("a result");
     assert!(matches!(reply, Msg::Scoped { .. }), "scoped to tab A's repository");
     update(&mut st, reply, Instant::now());
 
@@ -158,7 +157,7 @@ fn a_delete_for_an_inactive_tab_goes_into_its_history() {
     }
 }
 
-fn offer(st: &AppState) -> &crate::state::files::TrashOffer {
+fn offer(st: &AppState) -> &glowfly_model::state::files::TrashOffer {
     match &st.modal {
         Some(Modal::TrashOffer(o)) => o,
         _ => panic!("expected the home Trash offer"),

@@ -2,16 +2,16 @@
 //! the view stands.
 
 use super::controls::{self, SPACE, ghost, icon_tip};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::{DiffMsg, Msg};
-use crate::state::diff_header::HeaderModel;
-use crate::state::diff_nav::{Counter, StepKind};
-use crate::state::tip::Tip;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::Icon;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::Icon;
 use eframe::egui::{Label, RichText, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::diff_header::HeaderModel;
+use glowfly_model::state::diff_nav::{Counter, StepKind};
+use glowfly_model::state::tip::Tip;
 
 /// The step's description and its binding, for the next (`forward`) or previous arrow.
 fn step_text(t: Lang, forward: bool, kind: StepKind) -> (BindingId, &'static str) {

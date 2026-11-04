@@ -3,11 +3,11 @@
 
 use super::branch_tests::with_origin;
 use super::tests::{accept_stash, drive, git};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::branches::{checkout_local, pr_checkout};
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::branches::{checkout_local, pr_checkout};
 use std::path::Path;
 
 fn head(dir: &Path) -> String {
@@ -29,7 +29,7 @@ fn cleanup(dirs: &[&Path]) {
 
 /// A repository whose tracked file `src` has uncommitted changes, with a branch `src` that
 /// exists only on origin.
-fn path_named_branch(name: &str) -> (crate::state::AppState, std::path::PathBuf, std::path::PathBuf) {
+fn path_named_branch(name: &str) -> (glowfly_model::state::AppState, std::path::PathBuf, std::path::PathBuf) {
     let (mut st, work, bare) = with_origin(name);
     std::fs::write(work.join("src"), "committed\n").unwrap();
     git(&work, &["add", "src"]);

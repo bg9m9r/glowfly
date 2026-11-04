@@ -10,14 +10,14 @@ use super::quit_tests::pushing;
 use super::tabs_close_tests::{conflict, fake_tabs, names, send};
 use super::trust_held_tests::held_repo;
 use super::update;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{AppMsg, DialogMsg, Dismiss, JobMsg, Msg, TabsMsg};
-use crate::state::dialog_guard::edited_form;
-use crate::state::session::RepoSession;
-use crate::state::tabs::{Parked, RenameTabForm};
-use crate::state::{AppState, CommitDraft, Modal};
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::Choice;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{AppMsg, DialogMsg, Dismiss, JobMsg, Msg, TabsMsg};
+use glowfly_model::state::dialog_guard::edited_form;
+use glowfly_model::state::session::RepoSession;
+use glowfly_model::state::tabs::{Parked, RenameTabForm};
+use glowfly_model::state::{AppState, CommitDraft, Modal};
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -156,7 +156,7 @@ fn one_question_names_unsaved_and_running_work_and_never_closes_by_itself() {
     assert!(!st.view.quitting);
     assert_eq!(question(&st).1, lost);
     assert!(!closes(&run(&mut st, nothing())));
-    assert!(crate::state::quit_confirm::asking(&st));
+    assert!(glowfly_model::state::quit_confirm::asking(&st));
 }
 
 #[test]
@@ -193,7 +193,7 @@ fn closing_a_tab_with_a_comment_not_posted_asks() {
     let (mut st, dir) = super::issue_comment_tests::loaded_panel("unsaved-comment");
     st.session.issue.view.as_mut().expect("the panel").comment.text = "Looks good".into();
     send(&mut st, TabsMsg::CloseTab(usize::MAX));
-    let tab = crate::state::menu_bar::tab_name(&st, st.active_tab).to_owned();
+    let tab = glowfly_model::state::menu_bar::tab_name(&st, st.active_tab).to_owned();
     assert_eq!(
         question(&st).1,
         format!(
@@ -203,7 +203,7 @@ fn closing_a_tab_with_a_comment_not_posted_asks() {
     );
     // A draft kept after its panel closed counts too.
     run(&mut st, Msg::CloseModal);
-    run(&mut st, Msg::Issue(crate::msg::IssueMsg::Close));
+    run(&mut st, Msg::Issue(glowfly_model::msg::IssueMsg::Close));
     send(&mut st, TabsMsg::CloseTab(usize::MAX));
     assert!(question(&st).1.ends_with("- comments typed and not posted yet"));
     let _ = std::fs::remove_dir_all(&dir);

@@ -8,11 +8,11 @@ use super::empty_state::{Glyph, MIN_TOP, PaneButton, block};
 use super::theme::color;
 use super::widgets::severity::{self, Severity};
 use super::widgets::{buttons, fireflies};
-use crate::msg::Msg;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, Rect, RichText, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
 
 /// The inline spinner's size, and the inline mark's.
 const LINE_SPINNER: f32 = 12.0;

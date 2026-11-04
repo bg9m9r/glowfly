@@ -4,16 +4,16 @@
 //! General's Glowfly Links row. Each test clicks a button and checks the message it sends.
 
 use super::snapshot_tests::{harness, harness_sized, settings};
-use crate::deep_link::{DeepLinkMsg, FindOrigin};
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::deep_link::{LinkDialog, PickReason, SchemeView};
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::link::{Link, Target};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::url_scheme::SchemeStatus;
+use glowfly_model::deep_link::{DeepLinkMsg, FindOrigin};
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::deep_link::{LinkDialog, PickReason, SchemeView};
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -24,7 +24,7 @@ fn app(theme: ThemeChoice) -> AppState {
 }
 
 fn send(st: &mut AppState, m: DeepLinkMsg) {
-    crate::update::update(st, Msg::DeepLink(m), Instant::now());
+    glowfly_model::update::update(st, Msg::DeepLink(m), Instant::now());
 }
 
 /// Opens `link` and answers its search with no match: the Repository not found dialog.
@@ -115,9 +115,12 @@ fn deep_link_not_found_no_url() {
 fn deep_link_not_found_problem() {
     let mut st = not_found(branch(Some("git@github.com:example/app.git")));
     let folder = if cfg!(windows) { r"D:\work\other-app" } else { "/home/me/work/other-app" };
-    crate::update::update(
+    glowfly_model::update::update(
         &mut st,
-        Msg::Prefs(crate::msg::PrefsMsg::FolderPicked { purpose: crate::msg::FolderPurpose::LocateLinkedRepo, path: Some(folder.into()) }),
+        Msg::Prefs(glowfly_model::msg::PrefsMsg::FolderPicked {
+            purpose: glowfly_model::msg::FolderPurpose::LocateLinkedRepo,
+            path: Some(folder.into()),
+        }),
         Instant::now(),
     );
     let seq = st.deep_link.seq;

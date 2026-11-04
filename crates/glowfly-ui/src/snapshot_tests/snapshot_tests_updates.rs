@@ -3,14 +3,14 @@
 //! status bar's update chip. Click tests check the message each button sends.
 
 use super::snapshot_tests::{harness, settings};
-use crate::msg::{Msg, PrefsMsg, UpdateMsg};
-use crate::state::release_notes::NotesDialog;
-use crate::state::updates::UpdateStatus;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Offer, Platform, Release, TargetOs, Version, offer};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg};
+use glowfly_model::state::release_notes::NotesDialog;
+use glowfly_model::state::updates::UpdateStatus;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -185,11 +185,11 @@ fn status_update_available() {
 /// a click 2 px below the bar's top, above the painted badge, still opens the notes.
 #[test]
 fn the_update_chip_clicks_across_the_bar_height() {
-    use crate::ui::status::BAR_H;
+    use crate::status::BAR_H;
     let mut h = harness(status_bar(UpdateStatus::Available(Box::new(the_offer()))), true);
     h.run();
     let chip = h.get_by_label("Update available (0.3.0)").bounding_box().expect("the chip's rect");
-    let badge = crate::ui::theme::sizes::ChipSize::Badge.metrics().h;
+    let badge = crate::theme::sizes::ChipSize::Badge.metrics().h;
     assert_eq!((chip.y1 - chip.y0) as f32, BAR_H, "the hit area is the bar's height, taller than the badge");
     let bar_top = h.ctx.screen_rect().bottom() - BAR_H;
     let at = eframe::egui::pos2(((chip.x0 + chip.x1) / 2.0) as f32, bar_top + 2.0);

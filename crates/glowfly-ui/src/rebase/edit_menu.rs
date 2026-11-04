@@ -6,19 +6,19 @@
 //! hover or focus (`state::rebase_quick`); when reword, squash and drop are all blocked by one
 //! reason, the commit menu shows one blocked row for the three (`state::commit_menu::menu_trim`) and no Drop.
 
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::{Msg, OpPreviewMsg, RebaseMsg};
-use crate::state::commit_menu::menu_trim::edits_blocked_alike;
-use crate::state::rebase_quick::EditBlockers;
-use crate::state::selection::MultiSelection;
-use crate::ui::common::{menu_row, menu_row_preview};
-use crate::ui::widgets::menu::item;
-use crate::ui::widgets::reason::ItemState;
+use crate::common::{menu_row, menu_row_preview};
+use crate::widgets::menu::item;
+use crate::widgets::reason::ItemState;
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::op_preview::PreviewOp;
 use glowfly_core::rebase::QuickEdit;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::{Msg, OpPreviewMsg, RebaseMsg};
+use glowfly_model::state::commit_menu::menu_trim::edits_blocked_alike;
+use glowfly_model::state::rebase_quick::EditBlockers;
+use glowfly_model::state::selection::MultiSelection;
 
 /// The key of `id` for a menu's shortcut column ("" without one).
 pub fn key(keys: &Keymap, id: BindingId) -> &str {

@@ -4,17 +4,17 @@
 
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::gitflow::GitFlowPage;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::gitcli::{args, run as git_run};
 use glowfly_core::gitflow::{FlowKind, GitFlowSettings};
+use glowfly_model::effect::Effect;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::gitflow::GitFlowPage;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

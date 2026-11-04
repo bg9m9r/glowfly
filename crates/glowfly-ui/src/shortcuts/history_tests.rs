@@ -2,16 +2,16 @@
 //! commits are selected, Continue and Skip only while a rebase is in progress, and none of
 //! them while a text field has the keyboard.
 
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase::RebasePanel;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_tests::{remove_fixture, with_repo};
+use crate::snapshot_tests::{remove_fixture, with_repo};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{QuickEdit, RebaseBase, Resume};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Selection};
 
 struct Keys {
     st: AppState,
@@ -22,7 +22,7 @@ struct Keys {
 
 fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some((text, focus)) = k.field.as_mut() {

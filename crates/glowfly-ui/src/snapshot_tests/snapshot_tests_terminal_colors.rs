@@ -5,11 +5,11 @@
 use super::snapshot_tests::{harness_palette, remove_fixture};
 use super::snapshot_tests_terminal::with_session;
 use super::theme::{builtin, color, terminal_scheme};
-use crate::state::terminal::SessionStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::settings::terminal_schemes::{SchemeCatalog, import, parse_stored, scheme_json};
 use glowfly_core::settings::{BuiltinTheme, TerminalColours, ThemeChoice};
 use glowfly_core::terminal::TermScreen;
+use glowfly_model::state::terminal::SessionStatus;
 
 /// The colour pattern: three rows, every colour numbered.
 fn pattern() -> String {

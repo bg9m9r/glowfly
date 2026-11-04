@@ -2,10 +2,10 @@
 //! batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
 
 use super::execute::{Cx, Execute};
-use crate::effect::SubmoduleEffect;
-use crate::msg::Msg;
-use crate::submodule::SubmoduleMsg;
 use glowfly_core::{repo, submodule_ops};
+use glowfly_model::effect::SubmoduleEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::submodule::SubmoduleMsg;
 
 pub(super) fn run(e: SubmoduleEffect) -> Msg {
     Msg::Submodule(match e {

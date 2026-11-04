@@ -4,7 +4,7 @@
 
 use super::snapshot_tests::harness;
 use super::snapshot_tests_trust::{setting, with_prompt};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::trust::TrustScan;

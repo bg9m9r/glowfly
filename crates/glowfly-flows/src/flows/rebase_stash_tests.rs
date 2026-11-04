@@ -4,12 +4,12 @@
 use super::rebase_tests::{running_job, with_panel};
 use super::tests::drive;
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg, RepoMsg};
-use crate::state::rebase::STASH_LINE;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::rebase::{Outcome, RebaseAction, RebaseBase, StartRequest};
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::rebase::STASH_LINE;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {

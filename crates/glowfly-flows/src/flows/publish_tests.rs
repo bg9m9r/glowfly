@@ -3,14 +3,14 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{AccountEffect, Effect};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PublishMsg;
-use crate::msg::RepoMsg;
-use crate::state::publish::PublishForm;
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::{Account, Connection, CreatedRepo, NewRepo, Provider, ServiceError};
+use glowfly_model::effect::{AccountEffect, Effect};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PublishMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::publish::PublishForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -221,7 +221,7 @@ fn credentials_come_from_outside_a_held_repository() {
 
     // Trusted: the repository's own folder.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record_as_found(&mut st.settings, &real);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &real);
     let fx = run(&mut st, Msg::Publish(PublishMsg::PublishDialog));
     let [Effect::Account(AccountEffect::Owners { cwd, .. })] = &fx[..] else { panic!("{fx:?}") };
     assert_eq!(*cwd, form(&st).workdir);

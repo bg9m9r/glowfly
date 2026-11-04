@@ -6,15 +6,15 @@ use super::clone_dialog::note;
 use super::pane_status::{self, Failure};
 use super::theme::color;
 use super::widgets::TextField;
-use crate::msg::{CloneMsg, Msg};
-use crate::state::clone::CloneForm;
-use crate::state::clone_service::{CloneSource, ServicePicker, account_label, visible};
-use crate::state::error_words;
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui::{self, Id, Layout, RichText};
 use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{Connection, Provider};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{CloneMsg, Msg};
+use glowfly_model::state::clone::CloneForm;
+use glowfly_model::state::clone_service::{CloneSource, ServicePicker, account_label, visible};
+use glowfly_model::state::error_words;
 
 /// The repositories the filter keeps (only the rows in view are laid out: a list can hold 1000).
 fn rows(ui: &mut egui::Ui, p: &ServicePicker, msgs: &mut Vec<Msg>) {

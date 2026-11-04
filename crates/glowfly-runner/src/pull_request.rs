@@ -8,10 +8,10 @@
 //! request list does, in the panel's repository.
 
 use super::execute::{Cx, Execute};
-use crate::effect::ForgeError;
-use crate::msg::Msg;
 use glowfly_core::forge::{self, Auth, CheckQuery, ReviewRequest};
 use glowfly_core::repo;
+use glowfly_model::effect::ForgeError;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 
 pub(super) fn run(e: PrEffect) -> Msg {

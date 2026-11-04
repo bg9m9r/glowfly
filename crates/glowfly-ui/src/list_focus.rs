@@ -9,8 +9,8 @@
 //! (`file_list_keys.rs`) and any other list built the same way, and the graph (`graph/select.rs`).
 //! A list's rows show their selection as focused only while it has the focus (`rows_active`).
 
-use crate::state::list_keys::{KeySet, ListKey, ListMove};
 use eframe::egui::{self, Event, EventFilter, Id, Key, Modifiers, WidgetInfo, WidgetType};
+use glowfly_model::state::list_keys::{KeySet, ListKey, ListMove};
 
 /// The arrows are the list's; Tab and Esc still move and drop the focus.
 const FILTER: EventFilter = EventFilter { vertical_arrows: true, horizontal_arrows: true, tab: false, escape: false };

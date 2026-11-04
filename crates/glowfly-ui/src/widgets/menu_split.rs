@@ -102,7 +102,7 @@ mod tests {
 
     /// Draws a menu with one split row and a submenu-free plain row, keeping what was clicked.
     fn harness(blocked: Option<&'static str>, own: Option<&'static str>) -> egui_kittest::Harness<'static, (Vec<Part>, Columns)> {
-        let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+        let mut h = crate::snapshot_check::builder().build_ui_state(
             move |ui, (clicks, used): &mut (Vec<Part>, Columns)| {
                 styled(ui, |ui| {
                     let s = item("Cherry-pick")

@@ -4,17 +4,17 @@
 
 use super::super::common::menu_item_if;
 use super::super::widgets::reason::{self, ItemState};
-use crate::lfs::LfsMsg;
-use crate::msg::{Msg, StageMsg, StashMsg};
-use crate::patch::PatchMsg;
-use crate::state::lfs::TrackItem;
-use crate::state::stashes::push_blocked;
-use crate::ui::widgets::menu::{separator, submenu};
+use crate::widgets::menu::{separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::patch_ops::WipScope;
 use glowfly_core::repo::{FileEntry, Snapshot};
 use glowfly_core::stash_ops::StashScope;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::{Msg, StageMsg, StashMsg};
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::lfs::TrackItem;
+use glowfly_model::state::stashes::push_blocked;
 
 /// The Track in Git LFS submenu's entries: each disabled with its reason, or showing on hover
 /// what it writes.

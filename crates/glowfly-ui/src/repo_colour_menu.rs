@@ -7,12 +7,12 @@
 use super::repo_swatch;
 use super::theme::color;
 use super::widgets::reason::{self, ItemState};
-use crate::msg::{Msg, RecentMsg};
-use crate::state::repo_colours::hue_name;
-use crate::ui::widgets::menu::{self, separator, submenu};
+use crate::widgets::menu::{self, separator, submenu};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoColour;
+use glowfly_model::msg::{Msg, RecentMsg};
+use glowfly_model::state::repo_colours::hue_name;
 use std::path::Path;
 
 /// The Color item for the repository at `path` (None: a new tab), whose own colour is

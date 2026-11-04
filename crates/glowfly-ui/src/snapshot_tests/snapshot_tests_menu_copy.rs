@@ -7,15 +7,15 @@ use super::menu_testing::{open_submenu, submenu_item};
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::msg::Msg;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Selection};
 
 fn commit(st: &AppState, summary: &str) -> Oid {
     st.snap.as_ref().unwrap().commits.iter().find(|c| c.summary == summary).unwrap().oid

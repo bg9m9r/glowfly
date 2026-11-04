@@ -7,20 +7,20 @@
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
 use super::{note, send_key};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::pull_request::PrView;
-use crate::state::pull_request_line_comment::{post_blocked, primary_is_review, review_label, suggest_blocked, where_text};
-use crate::ui::theme::controls;
-use crate::ui::theme::tokens::radius;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::theme::tokens::radius;
+use crate::widgets::buttons;
 use eframe::egui::{self, Align, Key, Margin, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffLine;
 use glowfly_core::text::printable;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::pull_request_line_comment::{post_blocked, primary_is_review, review_label, suggest_blocked, where_text};
 
 const WAITING: &str = "Waiting for the service…";
 
@@ -95,7 +95,7 @@ pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Key
             .hint_text("Leave a comment…")
             .desired_width(f32::INFINITY);
         let field = controls::field(ui, edit);
-        crate::ui::access::name_field(&field, "New comment");
+        crate::access::name_field(&field, "New comment");
         if focus {
             field.request_focus();
             field.scroll_to_me(Some(Align::Center));

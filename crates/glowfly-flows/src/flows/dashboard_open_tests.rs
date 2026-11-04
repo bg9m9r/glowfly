@@ -2,15 +2,15 @@
 //! its tab, showing a pull request at once or once that tab lists it, and the dashboard closing
 //! (but keeping its results) when a tab is chosen.
 
-use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind};
 use crate::flows::dashboard_tests::{gh, pr};
 use crate::flows::{drive, finish, git, scratch_repo, state};
-use crate::msg::{DashboardMsg, ForgeMsg, Msg, PaletteMsg, RepoMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::dashboard::{PendingPr, TargetData};
-use crate::state::palette::PaletteCommand;
-use crate::update::update;
 use glowfly_core::forge::{PullRequest, Target};
+use glowfly_model::effect::{Effect, ForgeReply, ForgeResult, LoadKind};
+use glowfly_model::msg::{DashboardMsg, ForgeMsg, Msg, PaletteMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::dashboard::{PendingPr, TargetData};
+use glowfly_model::state::palette::PaletteCommand;
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -144,7 +144,9 @@ fn opening_a_repository_any_other_way_closes_the_dashboard() {
 }
 
 fn has_entry(st: &AppState) -> bool {
-    crate::state::palette_commands::entries(st).iter().any(|e| e.label == "Open dashboard" && e.command == PaletteCommand::Dashboard)
+    glowfly_model::state::palette_commands::entries(st)
+        .iter()
+        .any(|e| e.label == "Open dashboard" && e.command == PaletteCommand::Dashboard)
 }
 
 #[test]

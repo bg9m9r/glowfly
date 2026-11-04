@@ -5,12 +5,12 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{BranchMsg, Msg, SelectionMsg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{ColumnWidths, ThemeChoice};
+use glowfly_model::msg::{BranchMsg, Msg, SelectionMsg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -48,7 +48,7 @@ fn ghost_button_opens_new_branch() {
     h.run_steps(4);
     let new_branch = |m: &Msg| matches!(m, Msg::Branch(BranchMsg::NewBranch { start: None, .. }));
     assert!(h.state().1.iter().any(new_branch), "a click opens New branch from the current branch");
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::SelectCommit(_)))), "not a row click");
+    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::Repo(glowfly_model::msg::RepoMsg::SelectCommit(_)))), "not a row click");
     drop(h);
     remove_fixture(&dir);
 }
@@ -58,7 +58,7 @@ fn ghost_button_hides_off_the_anchor_under_a_menu_and_when_off() {
     // A multi-selection holding the head, focused on another commit.
     let (mut st, dir) = head_selected("ghost-hidden");
     let other = st.snap.as_ref().unwrap().commits[0].oid;
-    crate::update::update(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(other)), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(other)), Instant::now());
     let Selection::Commits(m) = &st.session.selection else { panic!("a multi-selection") };
     assert!(m.focus() != st.snap.as_ref().unwrap().head_oid.unwrap(), "focused elsewhere");
     let mut h = harness(st, true);

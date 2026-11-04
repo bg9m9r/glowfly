@@ -5,19 +5,19 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::{UiCache, avatars::Avatars, draw, theme::color};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
-use crate::state::terminal::{SessionStatus, TermSession};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey, TermScreen};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::{SessionStatus, TermSession};
 use glowfly_model::terminal::{ScrollStep, TerminalMsg};
 
 /// A short session: a prompt, `git status` with a green and a red line, bold, 256-colour and
@@ -179,7 +179,7 @@ fn focused_terminal_forwards_keys() {
 /// The whole window with the app's shortcuts handled first, as the app runs them.
 fn with_shortcuts(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             super::shortcuts::input(ctx, st, msgs);

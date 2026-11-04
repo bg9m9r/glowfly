@@ -4,11 +4,11 @@
 
 use super::calls_tests::{done, run, view};
 use super::line_comment_tests::{lc, ready, set_text, start};
-use crate::msg::Msg;
-use crate::pull_request::PullRequestMsg;
-use crate::pull_request::line_comment::{Leave, LineCommentMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::diff_rows::LineSide;
+use glowfly_model::msg::Msg;
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::pull_request::line_comment::{Leave, LineCommentMsg};
+use glowfly_model::state::{AppState, Modal};
 
 /// The pull request message the open danger confirmation's Discard sends.
 fn asked(st: &AppState) -> Option<PullRequestMsg> {

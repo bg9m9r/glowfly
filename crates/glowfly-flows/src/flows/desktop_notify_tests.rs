@@ -5,9 +5,9 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish_keeping, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::{DesktopNote, Effect, NoteKind};
-use crate::msg::{JobMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::AppState;
+use glowfly_model::effect::{DesktopNote, Effect, NoteKind};
+use glowfly_model::msg::{JobMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::AppState;
 use std::path::Path;
 use std::time::{Duration, Instant};
 

@@ -2,12 +2,12 @@
 //! Preferences too) but under a credential prompt; a focused terminal keeps an unshifted Ctrl+Q
 //! for its shell, while macOS Cmd+Q never reaches the shell and quits.
 
-use crate::msg::{AppMsg, CredentialMsg, Msg};
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::askpass::Prompt;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{AppMsg, CredentialMsg, Msg};
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 /// Ctrl on Windows and Linux.
@@ -23,7 +23,7 @@ struct Keys {
 fn harness(change: impl FnOnce(&mut AppState)) -> Harness<'static, Keys> {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     change(&mut st);
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .build_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h
@@ -60,7 +60,7 @@ fn a_focused_terminal_keeps_ctrl_q_for_its_shell() {
 fn not_under_a_credential_prompt() {
     let mut h = harness(|st| {
         let prompt = CredentialMsg::CredentialPrompt { id: 1, prompt: Prompt::new("Password: ", None) };
-        crate::update::update(st, Msg::Credentials(prompt), Instant::now());
+        glowfly_model::update::update(st, Msg::Credentials(prompt), Instant::now());
         assert!(st.askpass.showing());
     });
     assert!(!quits(&mut h, PC_CTRL));

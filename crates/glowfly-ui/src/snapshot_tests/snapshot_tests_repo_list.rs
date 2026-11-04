@@ -4,13 +4,13 @@
 
 use super::snapshot_tests::{harness, settings};
 use super::snapshot_tests_select::click;
-use crate::msg::{GroupMsg, Msg, RecentMsg};
-use crate::state::{AppState, Tab};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{GroupMsg, Msg, RecentMsg};
+use glowfly_model::state::{AppState, Tab};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -199,7 +199,7 @@ fn welcome_repos_open_marker() {
     h.check_snapshot("welcome_repos_open_marker");
     h.get_by_label(&shown(&web())).click();
     h.run();
-    assert!(matches!(last(&h), Msg::Repo(crate::msg::RepoMsg::Open(p)) if p.as_path() == std::path::Path::new(&web())));
+    assert!(matches!(last(&h), Msg::Repo(glowfly_model::msg::RepoMsg::Open(p)) if p.as_path() == std::path::Path::new(&web())));
 }
 
 #[test]

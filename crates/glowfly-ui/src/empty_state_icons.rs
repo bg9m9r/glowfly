@@ -75,7 +75,7 @@ pub(super) fn paint(p: &Painter, c: Pos2, icon: EmptyIcon, col: Color32) {
             }
         }
         EmptyIcon::Journal => clock_back(p, c, s),
-        EmptyIcon::Shield => crate::ui::widgets::paint_icon_sized(p, c, crate::ui::widgets::Icon::Shield, col, 36.0),
+        EmptyIcon::Shield => crate::widgets::paint_icon_sized(p, c, crate::widgets::Icon::Shield, col, 36.0),
     }
 }
 

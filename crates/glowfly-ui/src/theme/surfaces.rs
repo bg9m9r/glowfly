@@ -250,7 +250,7 @@ impl Palette {
 
     /// `c` washed over surface `s` at `t` (0 to 1): the opaque colour `wash` shows there.
     #[cfg(test)]
-    pub fn wash_on(&self, s: Color32, c: Color32, t: f32) -> Color32 {
+    pub(crate) fn wash_on(&self, s: Color32, c: Color32, t: f32) -> Color32 {
         mix(s, self.wash_colour(c, t), t)
     }
 

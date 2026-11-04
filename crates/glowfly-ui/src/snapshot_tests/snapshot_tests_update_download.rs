@@ -6,13 +6,13 @@
 use super::snapshot_tests::{harness, harness_sized};
 use super::snapshot_tests_prefs_layout::overflowing;
 use super::snapshot_tests_updates::{prefs, sent, status_bar, the_offer};
-use crate::msg::UpdateMsg;
-use crate::state::AppState;
-use crate::state::updates::{Transfer, UpdateStatus};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::app_update::{Progress, SavedProblem};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::UpdateMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::updates::{Transfer, UpdateStatus};
 use std::path::PathBuf;
 
 /// Preferences while 0.3.0 downloads, 4 MB of its 10 MB done.

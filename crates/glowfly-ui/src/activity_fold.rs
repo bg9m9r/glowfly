@@ -6,16 +6,16 @@
 use super::activity_rows::{RowLook, TITLE_X, paint_row};
 use super::theme::{color, type_scale};
 use super::widgets::buttons;
-use crate::logs::LogsMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::activity_rows::output_of;
-use crate::state::logs::LogEntry;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Color32, CornerRadius, Margin, RichText, Stroke, Ui};
 use glowfly_core::logs::{OutputLine, classify_line, output_lines};
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::activity_rows::output_of;
+use glowfly_model::state::logs::LogEntry;
 
 /// The most output lines an open row draws; Copy has them all.
 pub(super) const OUTPUT_LINES: usize = 200;

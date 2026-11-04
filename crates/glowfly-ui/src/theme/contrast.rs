@@ -25,7 +25,7 @@ pub fn ratio(a: Color32, b: Color32) -> f64 {
 
 /// CIE L* lightness (0 black to 100 white).
 #[cfg(test)]
-pub fn lightness(c: Color32) -> f64 {
+pub(crate) fn lightness(c: Color32) -> f64 {
     let y = luminance(c);
     const E: f64 = 216.0 / 24389.0;
     const K: f64 = 24389.0 / 27.0;
@@ -114,7 +114,7 @@ pub fn max_chroma(l: f64, h: f64) -> f64 {
 /// darkness), lightness 0.50 and up (below it, russet) and chroma at least 95% of the most its
 /// lightness and hue hold.
 #[cfg(test)]
-pub fn brownish_text(c: Color32) -> bool {
+pub(crate) fn brownish_text(c: Color32) -> bool {
     if !brownish(c) {
         return false;
     }

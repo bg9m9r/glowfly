@@ -4,11 +4,11 @@
 use super::conflict_tests::{conflicted_repo, two_conflicts};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::ConflictEffect;
-use crate::effect::{ConflictRead, Effect, LocalOp};
-use crate::msg::{ConflictMsg, Inactive, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::{ConflictSummary, FileEntry, ResolvedFile};
+use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::{ConflictRead, Effect, LocalOp};
+use glowfly_model::msg::{ConflictMsg, Inactive, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -212,7 +212,7 @@ pub(crate) fn both_resolved(name: &str) -> (AppState, PathBuf) {
 
 #[test]
 fn mark_all_conflicted_sends_every_restorable_path() {
-    use crate::state::conflict_files::restorable_paths;
+    use glowfly_model::state::conflict_files::restorable_paths;
     let (mut st, dir) = both_resolved("cf-mark-all-conflicted");
     let all = restorable_paths(&st);
     assert_eq!(all, owned(&["a.txt", "b.txt"]));
@@ -220,8 +220,8 @@ fn mark_all_conflicted_sends_every_restorable_path() {
     assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkConflicted(p), .. }] if *p == owned(&["a.txt", "b.txt"])), "{fx:?}");
     // A record without both sides, and a file the merge tool has open, are left out.
     st.session.conflict_files.resolved[0].both_sides = false;
-    st.job = Some(crate::state::RunningJob {
-        label: crate::state::tool_compare::merge_label("b.txt"),
+    st.job = Some(glowfly_model::state::RunningJob {
+        label: glowfly_model::state::tool_compare::merge_label("b.txt"),
         workdir: st.workdir(),
         quiet: false,
         clear_commit: false,

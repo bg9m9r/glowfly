@@ -5,14 +5,13 @@ use super::diff_tests::drive_holding_diffs;
 use super::highlight_tests::{big_repo, drive_holding_highlights, land, opened_big, shown};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::runner;
 use glowfly_core::highlight::{self, DiffHighlight, Span, TokenKind};
 use glowfly_core::repo::{DiffTarget, FileDiff, HunkOp};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
 use std::time::Instant;
 
 fn has(spans: &[Span], kind: TokenKind) -> bool {
@@ -32,9 +31,9 @@ fn big() -> DiffTarget {
 }
 
 /// Runs the held background pass for the diff on screen and applies its result.
-fn finish_held(st: &mut crate::state::AppState, fx: &mut Vec<Effect>) {
+fn finish_held(st: &mut glowfly_model::state::AppState, fx: &mut Vec<Effect>) {
     let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
-    let msg = runner::testing::execute(fx.remove(i.expect("a background pass"))).expect("a result");
+    let msg = glowfly_runner::testing::execute(fx.remove(i.expect("a background pass"))).expect("a result");
     update(st, msg, Instant::now());
 }
 

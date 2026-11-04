@@ -4,9 +4,9 @@
 use super::dialog_frame::{self, Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::buttons;
-use crate::msg::{DialogMsg, Dismiss, Msg};
 use eframe::egui::{self, Id, Key, Modifiers, RichText};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
 
 /// A backdrop click, or Esc while `resp`'s modal is the top one and no popup (a combo box's
 /// list) is open; Esc is consumed only then. The same test as egui's `should_close`.

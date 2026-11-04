@@ -3,15 +3,15 @@
 //! send. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::state::tags::TagForm;
-use crate::state::{AppState, Modal};
-use crate::tag::TagMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::tags::TagForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::tag::TagMsg;
 
 fn head(st: &AppState) -> String {
     st.snap.as_ref().and_then(|s| s.head_oid).expect("born HEAD").to_string()

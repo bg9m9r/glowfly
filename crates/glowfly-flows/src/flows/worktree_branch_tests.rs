@@ -9,14 +9,14 @@
 
 use super::tests::{clean_tree, drive, finish, git, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{BranchMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::branches::push::force_blocked;
-use crate::state::palette::{Pick, entries};
-use crate::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, elsewhere, held_blocked, local_tip_line};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{BranchMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::branches::push::force_blocked;
+use glowfly_model::state::palette::{Pick, entries};
+use glowfly_model::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, elsewhere, held_blocked, local_tip_line};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -95,11 +95,11 @@ fn checkout_opens_the_worktree_that_has_the_branch() {
 fn a_free_branch_is_checked_out_as_an_undoable_job() {
     let (mut st, dir, side) = with_side("wtb-free");
     super::tests::clean_tree(&dir);
-    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Refresh));
     let fx = update(&mut st, branch(BranchMsg::Checkout("free".into())), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, record, .. }] => {
-            assert_eq!(cmds, &[crate::state::branches::checkout_local("free")]);
+            assert_eq!(cmds, &[glowfly_model::state::branches::checkout_local("free")]);
             assert!(record.is_some(), "recorded for undo");
         }
         other => panic!("expected one RunGit, got {other:?}"),
@@ -166,7 +166,7 @@ fn a_missing_worktree_is_refused_once_then_pruned_and_checked_out() {
     let fx = update(&mut st, branch(BranchMsg::PruneThen(Box::new(BranchMsg::Checkout("side".into())))), Instant::now());
     match &fx[..] {
         [Effect::RunGit { cmds, record, .. }] => {
-            assert_eq!(cmds, &[glowfly_core::worktree_ops::prune_cmd(), crate::state::branches::checkout_local("side")]);
+            assert_eq!(cmds, &[glowfly_core::worktree_ops::prune_cmd(), glowfly_model::state::branches::checkout_local("side")]);
             assert!(record.is_some(), "recorded for undo as the checkout");
         }
         other => panic!("expected one RunGit, got {other:?}"),

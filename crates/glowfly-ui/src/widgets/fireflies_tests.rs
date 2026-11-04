@@ -34,7 +34,7 @@ fn the_fade_repeats_every_period_and_passes_along_the_dots() {
 /// (None: unclipped), read out as "Loading the blame…". Its clock moves a 60 Hz frame per step
 /// (egui takes the frame time off a delayed repaint).
 fn harness(still: bool, clip: Option<f32>) -> Harness<'static> {
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(120.0, 40.0)).with_step_dt(1.0 / 60.0).build_ui(move |ui| {
+    crate::snapshot_check::builder().with_size(egui::vec2(120.0, 40.0)).with_step_dt(1.0 / 60.0).build_ui(move |ui| {
         // What `theme::a11y::configure` does under reduce motion.
         ui.ctx().all_styles_mut(|s| s.animation_time = motion::animation_time(still));
         if let Some(w) = clip {
@@ -91,7 +91,7 @@ fn in_a_minimized_window_it_asks_for_nothing() {
 
 #[test]
 fn still_dots_keep_three_to_one_in_every_theme() {
-    use crate::ui::theme::{self, contrast};
+    use crate::theme::{self, contrast};
     use glowfly_core::settings::BuiltinTheme;
     let all = BuiltinTheme::ALL.into_iter().map(|t| (format!("{t:?}"), *theme::builtin(t)));
     for (name, p) in all.chain([("GardenDark".into(), theme::GARDEN_DARK), ("GardenLight".into(), theme::GARDEN_LIGHT)]) {

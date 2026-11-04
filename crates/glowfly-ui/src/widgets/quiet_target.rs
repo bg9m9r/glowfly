@@ -5,7 +5,7 @@
 //! becomes pixels.
 
 use super::button_look::{Press, Target, paint_target};
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{CornerRadius, Painter, Rect, Response};
 
 /// What a quiet target is doing this frame.

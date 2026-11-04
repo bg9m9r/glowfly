@@ -2,14 +2,14 @@
 //! action buttons, and in the hunk view the control that fills in the unchanged lines above it.
 
 use super::{DiffView, fold, syntax};
-use crate::msg::{Msg, StageMsg};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::{self, ControlSize};
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::sizes::{self, ControlSize};
+use crate::widgets::buttons;
 use eframe::egui::{Rect, Stroke, Ui, pos2, vec2};
 use glowfly_core::highlight;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, HunkOp};
+use glowfly_model::msg::{Msg, StageMsg};
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
 
@@ -74,7 +74,7 @@ pub(super) fn hunk_header(ui: &mut Ui, rect: Rect, v: &DiffView, h: usize, msgs:
     let t = v.t;
     let revert_tip = match v.target {
         DiffTarget::ToWorkdir(oid, _) => {
-            let sha = crate::ui::common::short(*oid);
+            let sha = crate::common::short(*oid);
             if selected > 0 {
                 t.trf("diff.hunk.revert_workdir_selected.tip", &[("path", &path), ("sha", &sha)])
             } else {

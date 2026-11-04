@@ -3,10 +3,10 @@
 //! stays open while a theme file is in use; otherwise a click opens or closes it, remembered in
 //! egui memory for the session only.
 
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::chevron;
-use crate::ui::widgets::quiet_target::{self, State};
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, type_scale};
+use crate::widgets::chevron;
+use crate::widgets::quiet_target::{self, State};
 use eframe::egui::{Align2, CornerRadius, Rect, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 const SIZE: ControlSize = ControlSize::Regular;

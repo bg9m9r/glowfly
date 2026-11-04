@@ -6,9 +6,7 @@
 use super::common::short;
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::with_selection;
-use crate::state::pick::{MainlineForm, PickOp};
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
@@ -16,6 +14,8 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::pick::{MainlineForm, PickOp};
+use glowfly_model::state::{AppState, Modal, Selection};
 
 pub(crate) const STACKED: [&str; 3] = ["Search results page", "Fix build on Windows", "Initial commit"];
 

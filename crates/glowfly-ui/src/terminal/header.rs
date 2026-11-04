@@ -4,19 +4,19 @@
 //! Maximize or Restore panel, Hide panel. Every control sits on the header's centre line.
 
 use super::tabs;
-use crate::keymap::BindingId;
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::terminal::{self, SessionStatus, TermSession};
-use crate::state::tip::Tip;
-use crate::state::{AppState, PrefPage};
-use crate::ui::common::{menu_danger, menu_item_if};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::Icon;
-use crate::ui::widgets::ghost::{self, divider, ghost, icon_tip};
-use crate::ui::widgets::menu::{popup_below, separator};
+use crate::common::{menu_danger, menu_item_if};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::Icon;
+use crate::widgets::ghost::{self, divider, ghost, icon_tip};
+use crate::widgets::menu::{popup_below, separator};
 use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::terminal::{self, SessionStatus, TermSession};
+use glowfly_model::state::tip::Tip;
+use glowfly_model::state::{AppState, PrefPage};
 use glowfly_model::terminal::TerminalMsg;
 
 pub(super) const HEADER_H: f32 = 40.0;
@@ -96,7 +96,15 @@ fn buttons(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 
 /// A ghost icon button named `name`, explaining itself with `body`, or with `blocked` (and
 /// disabled) when it can't act.
-fn button(ui: &mut Ui, keys: &crate::keymap::Keymap, t: Lang, icon: Icon, name: &str, body: &str, blocked: Option<&str>) -> egui::Response {
+fn button(
+    ui: &mut Ui,
+    keys: &glowfly_model::keymap::Keymap,
+    t: Lang,
+    icon: Icon,
+    name: &str,
+    body: &str,
+    blocked: Option<&str>,
+) -> egui::Response {
     let resp = ghost(ui, ControlSize::Regular, Some(icon), None, name, blocked.is_none());
     icon_tip(resp, keys, t, Tip::new(name).body(blocked.unwrap_or(body)))
 }

@@ -5,10 +5,10 @@
 use super::helpers::finish_keeping;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{DiffMsg, Msg, RepoMsg};
-use crate::state::AppState;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 

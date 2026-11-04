@@ -9,10 +9,10 @@
 
 use super::empty_state::{EmptyIcon, PaneButton, empty_state};
 use super::pane_status::{self, Failure};
-use crate::msg::{LoadMsg, Msg, RepoMsg, SearchMsg};
-use crate::state::load_more::{Further, Reach};
-use crate::state::{AppState, MAX_COMMITS};
 use eframe::egui::Ui;
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, SearchMsg};
+use glowfly_model::state::load_more::{Further, Reach};
+use glowfly_model::state::{AppState, MAX_COMMITS};
 
 pub(super) const NO_COMMITS_TITLE: &str = "No commits yet";
 const NO_COMMITS_HINT: &str = "Stage files and commit them to start this repository's history.";

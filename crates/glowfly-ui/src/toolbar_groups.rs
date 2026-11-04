@@ -4,14 +4,14 @@
 
 use super::menus::{split, terminal_button};
 use super::tips;
-use crate::msg::{BranchMsg, ForgeMsg, JobMsg, Msg};
-use crate::state::toolbar_tips as rules;
-use crate::state::{AppState, ForgeState};
-use crate::ui::widgets::menu::{self, separator};
-use crate::ui::widgets::reason::{self, ItemState};
-use crate::ui::widgets::{self, Icon, tooltip::attach};
+use crate::widgets::menu::{self, separator};
+use crate::widgets::reason::{self, ItemState};
+use crate::widgets::{self, Icon, tooltip::attach};
 use eframe::egui;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::{BranchMsg, ForgeMsg, JobMsg, Msg};
+use glowfly_model::state::toolbar_tips as rules;
+use glowfly_model::state::{AppState, ForgeState};
 
 /// The pull menu's variants: the item's text, and the job's label (English: it is also log
 /// and undo text) with its arguments.
@@ -52,7 +52,7 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
     let busy = rules::busy_blocked(st);
     if snap.remotes.is_empty() {
         if reason::menu_button(ui, t.tr("toolbar.publish"), "", ItemState::blocked_by(busy.as_deref())).clicked() {
-            msgs.push(Msg::Publish(crate::msg::PublishMsg::PublishDialog));
+            msgs.push(Msg::Publish(glowfly_model::msg::PublishMsg::PublishDialog));
         }
     } else if let Some((template, names)) = rules::push_target_parts(t, snap) {
         let why = rules::push_blocked(st);
@@ -63,19 +63,19 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
             msgs.push(Msg::Job(JobMsg::Push { force: false }));
         }
         if let Some(b) = snap.head_info().filter(|_| snap.remotes.len() >= 2) {
-            let blocked = why.or_else(|| crate::state::branches::push_blocked(b, true));
-            crate::ui::branch_menu::push_to(ui, t, b, snap, blocked.as_deref(), msgs);
+            let blocked = why.or_else(|| glowfly_model::state::branches::push_blocked(b, true));
+            crate::branch_menu::push_to(ui, t, b, snap, blocked.as_deref(), msgs);
         }
     }
     if let Some(fs) = host {
         separator(ui);
-        crate::ui::pr_menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
+        crate::pr_menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
     }
     separator(ui);
     let force = ItemState::danger_unless(busy.as_deref());
     // Its confirmation warns plainly before overwriting the default branch or a Git Flow base.
     if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
-        msgs.push(crate::state::branches::push::head_force_confirm(t, snap));
+        msgs.push(glowfly_model::state::branches::push::head_force_confirm(t, snap));
     }
 }
 
@@ -169,7 +169,7 @@ pub(super) fn branch(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, msgs: &m
         }
         let r = tool(ui, st, Icon::Pop, (t.tr("toolbar.pop.button"), t.tr("toolbar.pop.name")), rules::pop_blocked(st).is_none());
         if attach(r, keys, t, || tips::pop(st)).clicked() {
-            msgs.extend(crate::state::stash_confirm::pop_latest(snap, t));
+            msgs.extend(glowfly_model::state::stash_confirm::pop_latest(snap, t));
         }
     });
 }
@@ -186,9 +186,9 @@ pub(super) fn pr(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, fs: &ForgeSt
         let caption = if merge_requests(fs) { t.tr("toolbar.pr.button_merge_request") } else { t.tr("toolbar.pr.button") };
         let pr = (Icon::PullRequest, caption, name.as_str());
         let menu_name = if merge_requests(fs) { t.tr("toolbar.pr_menu.merge_request") } else { t.tr("toolbar.pr_menu.pull_request") };
-        let menu = (menu_name, 260.0, crate::ui::pr_menu_items::pr_menu_live(t, snap, fs, idle));
+        let menu = (menu_name, 260.0, crate::pr_menu_items::pr_menu_live(t, snap, fs, idle));
         let r = split(ui, "pr-menu", pr, (rules::pr_blocked(st).is_none(), None), st.settings.toolbar_labels, menu, |ui| {
-            crate::ui::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
+            crate::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs);
         });
         if attach(r, keys, t, || tips::pr(st, fs)).clicked() {
             msgs.extend(create_pr(snap));
@@ -206,7 +206,7 @@ pub(super) fn create_pr(snap: &Snapshot) -> Option<Msg> {
 pub(super) fn files(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let (t, keys) = (st.settings.lang(), &st.keymap);
     widgets::tool_group(ui, |ui| {
-        terminal_button(ui, st, st.settings.toolbar_labels, crate::ui::terminal::right_click_item(t, &st.settings), msgs);
+        terminal_button(ui, st, st.settings.toolbar_labels, crate::terminal::right_click_item(t, &st.settings), msgs);
         let r = tool(ui, st, Icon::Folder, (t.tr("toolbar.folder.button"), t.tr("toolbar.folder.name")), true);
         if attach(r, keys, t, || tips::folder(st)).clicked() {
             msgs.push(Msg::OpenFolder(snap.workdir.clone()));

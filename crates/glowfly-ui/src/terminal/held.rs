@@ -2,11 +2,11 @@
 //! is held in the repository until the user trusts it, and a shell prompt often runs git, so no
 //! shell starts until then. Trust and run… brings the trust prompt up on the shells' behalf.
 
-use crate::msg::{Msg, TrustMsg};
-use crate::state::AppState;
-use crate::state::trust::Standing;
-use crate::ui::empty_state::{EmptyIcon, PaneButton, empty_state};
+use crate::empty_state::{EmptyIcon, PaneButton, empty_state};
 use eframe::egui::Ui;
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::trust::Standing;
 
 pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };

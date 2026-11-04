@@ -1,12 +1,12 @@
 //! A run's gutter: its author, date, commit and summary, the age strip and tint, and the hover
 //! text with the commit's whole message.
 
-use crate::state::AppState;
-use crate::ui::common::short;
-use crate::ui::theme::color;
-use crate::ui::widgets::paint_cut_text;
+use crate::common::short;
+use crate::theme::color;
+use crate::widgets::paint_cut_text;
 use eframe::egui::{Align2, FontId, Painter, Rect, Ui, pos2, vec2};
 use glowfly_core::repo::BlameCommit;
+use glowfly_model::state::AppState;
 
 /// Width of the author, date and commit gutter.
 pub(super) const GUTTER_W: f32 = 300.0;

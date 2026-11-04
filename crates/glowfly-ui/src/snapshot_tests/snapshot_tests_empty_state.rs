@@ -4,13 +4,13 @@
 use super::super::empty_state::{BINARY_TITLE, SHOW_WHITESPACE, WHITESPACE_HINT, WHITESPACE_TITLE};
 use super::super::snapshot_tests::{git, harness, render};
 use super::with_hidden_whitespace;
-use crate::msg::{DiffMsg, Msg};
-use crate::state::AppState;
-use crate::state::diff_preview::DiffPreview;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::DiffPreview;
 use std::path::PathBuf;
 
 /// A committed binary file changed in the working tree, its diff open with its sides loaded.

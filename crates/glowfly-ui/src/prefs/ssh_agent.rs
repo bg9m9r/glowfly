@@ -6,16 +6,16 @@
 
 use super::ssh::SshContext;
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::state::ssh_marks::{AgentPill, agent_pill};
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::chip::{Chip, ChipSize, Lead, Look};
-use crate::ui::widgets::{self, Icon};
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::chip::{Chip, ChipSize, Lead, Look};
+use crate::widgets::{self, Icon};
 use eframe::egui::{Align, Color32, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::ssh_keys::{AgentReach, WinService};
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh_marks::{AgentPill, agent_pill};
 
 /// A section's header, as `form::section` draws one, with `pill` after the title and a Refresh
 /// icon button (tip `refresh_tip`, pushing `msg`) at the right end of the line.

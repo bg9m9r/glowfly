@@ -5,13 +5,13 @@
 use super::diff_gaps_tests::{land, opened};
 use super::update;
 use super::whole_file_tests::{three_changes, with_diff};
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord, KeyName, Keymap, fold_ctrl};
-use crate::msg::{DiffMsg, Msg};
-use crate::state::AppState;
 use glowfly_core::diff_rows::{filled, gaps};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::{Expanded, folds, row_of_line};
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, Keymap, fold_ctrl};
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {

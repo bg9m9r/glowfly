@@ -4,12 +4,12 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind, LocalOp};
-use crate::git_env::{GitEnvEffect, GitEnvMsg};
-use crate::msg::{JobMsg, Msg, RepoMsg, StageMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::safe_directory::Refusal;
+use glowfly_model::effect::{Effect, LoadKind, LocalOp};
+use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -217,7 +217,7 @@ fn a_stale_owner_refusal_asks_nothing() {
     // For a tab that is no longer active, only the log line is kept.
     let inactive = GitEnvMsg::NotOwned { generation: 1, kind: LoadKind::Open, refusal: refusal(&root, None, false) }.on_inactive();
     let shown = glowfly_core::native_path::shown(&root);
-    assert!(matches!(inactive, Some(crate::msg::Inactive::Log(t)) if t.contains(&shown)));
+    assert!(matches!(inactive, Some(glowfly_model::msg::Inactive::Log(t)) if t.contains(&shown)));
 }
 
 #[test]

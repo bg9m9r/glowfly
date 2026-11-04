@@ -3,16 +3,16 @@
 //! with the field column.
 
 use super::{field_left, field_width, help, primary_button, row, text_field, trello};
-use crate::msg::{ForgeMsg, Msg, PrefsMsg};
-use crate::state::PrefsState;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::form_message::{self, Message};
-use crate::ui::widgets::{self, Icon, buttons};
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::form_message::{self, Message};
+use crate::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::forge::{self, Account, Connection, Provider, Target};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg};
+use glowfly_model::state::PrefsState;
 
 /// Why Connect waits: the host isn't known yet.
 const NO_HOST: &str = "Enter the host domain first";

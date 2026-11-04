@@ -3,13 +3,13 @@
 //! Notifications and spell checking are on General.
 
 use super::{check_row, help, row, section};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::Msg;
-use crate::themes::ThemeState;
-use crate::ui::theme::controls;
+use crate::theme::controls;
 use eframe::egui::{self, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::Msg;
+use glowfly_model::themes::ThemeState;
 
 /// The Interface rows that depend on the window frame.
 #[derive(Clone, Copy)]

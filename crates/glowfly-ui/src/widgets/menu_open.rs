@@ -4,7 +4,7 @@
 //! named as the menu's opener, so Esc gives it the focus back (`menu_keys`), and a press inside
 //! a keyboard-opened submenu doesn't close the menu (`guarded`).
 
-use crate::ui::menu_keys;
+use crate::menu_keys;
 use eframe::egui::menu::{BarState, MenuRoot};
 use eframe::egui::{self, Button, Event, Frame, InnerResponse, Key, Modifiers, Pos2, Rect, Response, Ui, WidgetText};
 

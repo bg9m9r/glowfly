@@ -9,14 +9,14 @@
 use super::theme::color;
 use super::widgets::Icon;
 use super::widgets::banner::{self, Banner, BannerKind};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::conflict_strip::{ConflictStrip, conflict_strip};
-use crate::state::op_actions::action_text;
-use crate::state::op_confirm::banner_msg;
-use crate::state::op_strip::strip_text;
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict_strip::{ConflictStrip, conflict_strip};
+use glowfly_model::state::op_actions::action_text;
+use glowfly_model::state::op_confirm::banner_msg;
+use glowfly_model::state::op_strip::strip_text;
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = st.snap.as_ref().filter(|_| !st.dashboard.open) else { return };

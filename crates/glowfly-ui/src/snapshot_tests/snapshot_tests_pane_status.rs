@@ -7,16 +7,16 @@ use super::snapshot_tests_compare::selected;
 use super::snapshot_tests_fireflies::AT;
 use super::snapshot_tests_history::with_file_view;
 use super::snapshot_tests_pull_request::with_pr;
-use crate::msg::{BlameMsg, HistoryMsg, Msg, SelectionMsg};
-use crate::state::blame::BlameView;
-use crate::state::history::{FileHistoryView, TextError, TextState};
-use crate::state::pull_request::{Files, PrTab};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{BlameMsg, HistoryMsg, Msg, SelectionMsg};
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::history::{FileHistoryView, TextError, TextState};
+use glowfly_model::state::pull_request::{Files, PrTab};
+use glowfly_model::state::{AppState, Selection};
 
 const BLAME_FAILED: &str = "Couldn't blame this file";
 
@@ -78,7 +78,7 @@ fn blame_failed() {
 #[test]
 fn blame_held_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "pane-blame-held");
-    st.session.blame.view = Some(BlameView::failed("src/app.rs".into(), None, crate::state::blame::HELD));
+    st.session.blame.view = Some(BlameView::failed("src/app.rs".into(), None, glowfly_model::state::blame::HELD));
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("blame_held_light");

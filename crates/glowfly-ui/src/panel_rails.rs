@@ -10,11 +10,11 @@ use super::theme::color;
 use super::theme::sizes::ChipSize;
 use super::widgets::chip::{Chip, Look};
 use super::widgets::{self, Icon};
-use crate::keymap::{BindingId, KeyAction};
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::layout::{Panel, wip_change_count};
 use eframe::egui::{self, Sense, Stroke, pos2};
+use glowfly_model::keymap::{BindingId, KeyAction};
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{Panel, wip_change_count};
 
 /// The edge strip's width.
 const EDGE_W: f32 = 16.0;

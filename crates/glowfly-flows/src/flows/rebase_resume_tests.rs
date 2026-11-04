@@ -4,14 +4,14 @@
 use super::rebase_tests::{repo, with_panel};
 use super::tests::drive;
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase_banner::action_msg;
-use crate::state::{AppState, Selection};
 use git2::{Oid, RepositoryState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, Resume};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase_banner::action_msg;
+use glowfly_model::state::{AppState, Selection};
 use std::time::Instant;
 
 fn short(o: Oid) -> String {
@@ -28,7 +28,7 @@ fn last_toast(st: &AppState) -> (bool, &str) {
 
 /// The banner's button for `label`, as the WIP panel sends it.
 fn banner(st: &AppState, label: &str) -> Msg {
-    let actions = crate::state::op_actions::state_actions(repo_state(st)).expect("an operation in progress");
+    let actions = glowfly_model::state::op_actions::state_actions(repo_state(st)).expect("an operation in progress");
     let (l, a) = actions.iter().find(|(l, _)| *l == label).expect("the action is offered");
     action_msg(repo_state(st), l, a)
 }

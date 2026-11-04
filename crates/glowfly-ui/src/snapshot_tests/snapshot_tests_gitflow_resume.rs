@@ -6,18 +6,18 @@
 use super::snapshot_tests::{harness, remove_fixture, render};
 use super::snapshot_tests_gitflow::{pushed, with_flow_branches};
 use super::snapshot_tests_worktrees::with_worktrees;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::branch_delete::{DeleteForm, Lost};
-use crate::state::gitflow_resume::StoppedFinish;
-use crate::state::worktree_manage::RemoveForm;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::gitflow::{Branches, FinishOptions, FlowBase, StartTips, WorkState, check_finish};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::branch_delete::{DeleteForm, Lost};
+use glowfly_model::state::gitflow_resume::StoppedFinish;
+use glowfly_model::state::worktree_manage::RemoveForm;
+use glowfly_model::state::{AppState, Modal, Selection};
 
 /// Finish of `branch` stopped at its merge number `merge` (0-based step index), from a real plan
 /// and the fixture's tips.

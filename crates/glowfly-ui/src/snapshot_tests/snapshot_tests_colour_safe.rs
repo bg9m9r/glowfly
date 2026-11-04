@@ -8,14 +8,14 @@ use super::snapshot_tests::{git, harness_palette, reload, remove_fixture};
 use super::snapshot_tests_branch_colour::with_branches;
 use super::snapshot_tests_diff::with_diff;
 use super::theme;
-use crate::msg::{DiffMsg, Msg};
-use crate::state::AppState;
-use crate::state::lines::LineClick;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::color::Palette;
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::color::Palette;
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{ColourPalette, DiffLayout, ThemeChoice};
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
 use std::time::Instant;
 
 const D: &str = "2026-01-12T10:00:00+00:00";
@@ -50,7 +50,7 @@ fn diff(layout: DiffLayout, p: Palette, name: &str) {
     let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
     let (log, new_line) = (at('-', "log it"), at('+', "new line"));
     for (line, how) in [(log, LineClick::Only), (new_line, LineClick::Toggle)] {
-        crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
+        glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
     }
     show(name, st, p);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());

@@ -43,7 +43,7 @@ pub fn is_dark(t: &Ansi) -> bool {
 }
 
 /// The basic colours that are body text on a scheme of this kind (see the rules above).
-pub fn body_indices(dark: bool) -> Vec<usize> {
+pub(crate) fn body_indices(dark: bool) -> Vec<usize> {
     if dark { (1..=7).chain(9..=15).collect() } else { (0..=6).chain(9..=14).collect() }
 }
 

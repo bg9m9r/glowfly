@@ -3,10 +3,10 @@
 //! in Compact ones (`node_r`), a merge commit's small solid dot, this tab's WIP row's lantern
 //! (in `lantern`, lit while the tree has changes) and another worktree's WIP row's dashed ring.
 
-use crate::ui::avatars::Avatars;
-use crate::ui::theme::color;
-use crate::ui::theme::initials::initials_tones;
-use crate::ui::widgets;
+use crate::avatars::Avatars;
+use crate::theme::color;
+use crate::theme::initials::initials_tones;
+use crate::widgets;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Stroke, StrokeKind, epaint::RectShape, pos2, vec2};
 use glowfly_core::settings::Density;
 

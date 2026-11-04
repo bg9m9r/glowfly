@@ -2,7 +2,7 @@
 //! the Mica backdrop and its dark or light mode, the setting that turns it off (transparency
 //! effects; high contrast is `platform::a11y_system`'s), and the system menu.
 
-use crate::state::window_native::{SysItem, system_menu_items};
+use glowfly_model::state::window_native::{SysItem, system_menu_items};
 use std::ffi::c_void;
 use windows::Win32::Foundation::{HWND, LPARAM, POINT, WPARAM};
 use windows::Win32::Graphics::Dwm::{

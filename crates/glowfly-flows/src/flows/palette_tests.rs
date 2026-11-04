@@ -3,19 +3,19 @@
 
 use super::tests::{accept_stash, drive, git, keys, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::PaletteMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::{FolderPurpose, Msg};
-use crate::state::palette::{PaletteCommand, shown};
-use crate::state::palette_commands::SHOW_REPO_FOLDER;
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection, Tab};
-use crate::tag::TagMsg;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::{FolderPurpose, Msg};
+use glowfly_model::state::palette::{PaletteCommand, shown};
+use glowfly_model::state::palette_commands::SHOW_REPO_FOLDER;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Selection, Tab};
+use glowfly_model::tag::TagMsg;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -142,7 +142,7 @@ fn entries_with_repo() {
     assert!(has(&st, "Create tag at HEAD…"));
     assert!(has(&st, "Create annotated tag at HEAD…"));
     // In entry order (the empty query lists Create branch under Suggested).
-    let all: Vec<String> = crate::state::palette::entries(&st).into_iter().map(|e| e.label).collect();
+    let all: Vec<String> = glowfly_model::state::palette::entries(&st).into_iter().map(|e| e.label).collect();
     let at = all.iter().position(|l| l == "Create branch at HEAD…").unwrap();
     assert_eq!(all[at + 1..at + 3], ["Create tag at HEAD…", "Create annotated tag at HEAD…"]);
     assert!(has(&st, "Search commits"));
@@ -378,7 +378,7 @@ fn shortcut_hints() {
         assert_eq!(hint(label), None, "{label}");
     }
     // F5 refreshes; Shift+F5 fetches.
-    assert_eq!(PaletteCommand::Fetch.binding(), Some(crate::keymap::BindingId::Fetch));
-    assert_eq!(st.keymap.hint(crate::keymap::BindingId::Fetch), Some("Shift+F5"));
+    assert_eq!(PaletteCommand::Fetch.binding(), Some(glowfly_model::keymap::BindingId::Fetch));
+    assert_eq!(st.keymap.hint(glowfly_model::keymap::BindingId::Fetch), Some("Shift+F5"));
     let _ = std::fs::remove_dir_all(&dir);
 }

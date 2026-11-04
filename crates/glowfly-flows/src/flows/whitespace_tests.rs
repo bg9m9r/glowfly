@@ -4,14 +4,14 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::AppState;
-use crate::state::lines::LineClick::Only;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, LoadOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::Only;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -88,12 +88,12 @@ fn whitespace_toggle_filters_a_real_repo() {
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
     assert!(matches!(&fx[..], [Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]));
     for e in fx {
-        let loaded = crate::runner::testing::execute(e).expect("diff result");
+        let loaded = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
     let status =
         Effect::LoadStatus { workdir: dir.clone(), generation: st.load_gen, submodules: false, open: None, git_status: true, paths: None };
-    let status = crate::runner::testing::execute(status).expect("status result");
+    let status = glowfly_runner::testing::execute(status).expect("status result");
     let fx = run(&mut st, status);
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, reload: true, .. })));
     let _ = std::fs::remove_dir_all(&dir);
@@ -129,7 +129,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
     let held = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Unstaged("ws.txt".into()))));
     let toggled = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     for e in held {
-        let late = crate::runner::testing::execute(e).expect("diff result");
+        let late = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, late);
     }
     assert_eq!(st.session.diff.view, before, "the stale result is dropped");
@@ -137,7 +137,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
 
     // The toggle asks again for the file still opening, and that lands.
     for e in toggled.into_iter().filter(|e| matches!(e, Effect::LoadDiff { .. })) {
-        let loaded = crate::runner::testing::execute(e).expect("diff result");
+        let loaded = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&DiffTarget::Unstaged("ws.txt".into())));

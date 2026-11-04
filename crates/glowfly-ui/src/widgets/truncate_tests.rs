@@ -1,7 +1,7 @@
 //! The truncate helpers' tests: cut galleys, middle (both kinds), left and path cuts, and counted labels.
 
 use super::*;
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::text::TextFormat;
 use eframe::egui::{Align, LayerId};
 

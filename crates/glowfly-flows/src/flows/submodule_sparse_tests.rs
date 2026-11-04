@@ -6,11 +6,11 @@ use super::submodule_batch_tests::{checks_all, job_cmds, step};
 use super::submodule_tests::{PATH, cleanup, opened};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::submodule::{Batch, SubmoduleMsg};
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::submodule_ops::batch_update_cmds;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::submodule::{Batch, SubmoduleMsg};
 use std::path::PathBuf;
 use std::time::Instant;
 

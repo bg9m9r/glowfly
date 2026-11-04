@@ -7,9 +7,9 @@
 
 use super::fixture::{Fixture, commit_files};
 use super::harness::Journey;
-use crate::state::Selection;
 use eframe::egui::{Key, Modifiers};
 use git2::Oid;
+use glowfly_model::state::Selection;
 
 /// A repository with two commits and an unstaged file, as it opens: the WIP selected (its
 /// staging panel shows) but not chosen, so its row isn't lit.

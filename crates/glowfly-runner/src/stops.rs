@@ -2,8 +2,8 @@
 //! their effect is handed to `Runner::run` (so a stop asked while it still waits in its queue
 //! is kept), asked by `Effect::StopGit`, and released when the effect ends.
 
-use crate::effect::partial::StopKey;
 use glowfly_core::gitcli::Stop;
+use glowfly_model::effect::partial::StopKey;
 use std::collections::HashMap;
 use std::sync::{Mutex, MutexGuard};
 

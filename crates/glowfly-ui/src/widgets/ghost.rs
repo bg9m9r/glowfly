@@ -6,14 +6,14 @@
 
 use super::button_look::{Press, Target, paint_target};
 use super::{Icon, paint_icon_sized, tooltip};
-use crate::keymap::{BindingId, Keymap};
-use crate::state::tip::Tip;
-use crate::ui::access;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::access;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{Align2, Color32, CornerRadius, CursorIcon, FontId, Id, Painter, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::state::tip::Tip;
 
 /// Icons in a Regular ghost control (the diff header's identity marks match them).
 pub const ICON: f32 = ControlSize::Regular.metrics().icon;
@@ -174,7 +174,7 @@ mod tests {
         assert_eq!((hit.size(), hit.center()), (vec2(28.0, 28.0), square.center()), "grown about its centre");
         let at_edge = square.translate(vec2(89.0, 0.0));
         assert_eq!(hit_area(at_edge, clip, 28.0).right(), 200.0, "kept inside its cell");
-        assert!(hit_area(at_edge, clip, 28.0).width() >= crate::ui::theme::tokens::HIT_MIN);
+        assert!(hit_area(at_edge, clip, 28.0).width() >= crate::theme::tokens::HIT_MIN);
         let wide = Rect::from_center_size(pos2(100.0, 20.0), vec2(120.0, 22.0));
         assert_eq!(hit_area(wide, clip, 28.0).width(), 120.0, "never narrower than it paints");
     }

@@ -3,13 +3,13 @@
 //! can't bind are skipped, and presses become chords the same way on every system.
 
 use super::chords::{chord_from_press, egui_key, key_name};
-use crate::keymap::{BindingId as I, Chord, KeyName as K, Mods, Slot};
-use crate::msg::{KeysMsg, Msg};
-use crate::state::keys_page::Recording;
-use crate::state::{AppState, PrefPage, PrefsState};
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::{BindingId as I, Chord, KeyName as K, Mods, Slot};
+use glowfly_model::msg::{KeysMsg, Msg};
+use glowfly_model::state::keys_page::Recording;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 struct Keys {
@@ -24,7 +24,7 @@ fn harness(page: PrefPage) -> H {
     let mut prefs = PrefsState::new(page);
     prefs.keys.recording = Some(Recording { id: I::NewTab, slot: Slot::Replace(0) });
     st.prefs = Some(prefs);
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .build_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h
@@ -68,9 +68,9 @@ fn the_press_goes_only_to_the_recording() {
 fn keys_work_normally_on_other_pages() {
     let mut h = harness(PrefPage::General);
     let msgs = press(&mut h, Modifiers::NONE, Key::F5, false);
-    assert!(matches!(msgs.as_slice(), [Msg::Repo(crate::msg::RepoMsg::Refresh)]));
+    assert!(matches!(msgs.as_slice(), [Msg::Repo(glowfly_model::msg::RepoMsg::Refresh)]));
     let msgs = press(&mut h, Modifiers::NONE, Key::Escape, false);
-    assert!(matches!(msgs.as_slice(), [Msg::Prefs(crate::msg::PrefsMsg::ClosePrefs)]));
+    assert!(matches!(msgs.as_slice(), [Msg::Prefs(glowfly_model::msg::PrefsMsg::ClosePrefs)]));
 }
 
 #[test]

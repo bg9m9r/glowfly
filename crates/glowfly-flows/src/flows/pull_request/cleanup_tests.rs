@@ -5,14 +5,14 @@
 //! against a local remote), and the merge method remembered per repository.
 
 use super::calls_tests::{calls, done, git_jobs, loaded, opened, reply_msg, run, view};
-use crate::effect::Effect;
 use crate::flows::{drive, finish_keeping, git};
-use crate::msg::{Msg, RepoMsg};
-use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::update::update;
 use glowfly_core::forge::{MergeMethod, Merged};
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::path::Path;
 use std::time::Instant;
 
@@ -166,8 +166,8 @@ fn a_branch_checked_out_in_another_worktree_is_kept() {
     loaded(&mut st, |d| d.methods = vec![MergeMethod::Merge]);
     let v = view(&st);
     let snap = st.snap.as_ref().unwrap();
-    let m = crate::state::pull_request_actions::merging(v, None).unwrap();
-    let (branch, plan) = crate::state::pull_request_cleanup::local_delete(st.settings.lang(), snap, &m).unwrap();
+    let m = glowfly_model::state::pull_request_actions::merging(v, None).unwrap();
+    let (branch, plan) = glowfly_model::state::pull_request_cleanup::local_delete(st.settings.lang(), snap, &m).unwrap();
     assert_eq!(branch, "feature");
     assert!(plan.is_err_and(|why| why.starts_with("feature is checked out in the worktree at")), "the checkbox is disabled");
     let fx = reply(&mut st, false);

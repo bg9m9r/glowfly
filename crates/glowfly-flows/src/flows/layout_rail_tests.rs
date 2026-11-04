@@ -7,19 +7,19 @@
 use super::issue_tests::open_repo;
 use super::tests::{git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::gitflow::GitFlowMsg;
-use crate::keymap::KeyAction;
-use crate::msg::{BlameMsg, ConflictMsg, HistoryMsg, IssueMsg, LayoutMsg, Msg, RebaseMsg};
-use crate::pull_request::PullRequestMsg;
-use crate::state::blame::BlameView;
-use crate::state::conflict::ConflictView;
-use crate::state::history::{FileHistoryView, HistoryKind};
-use crate::state::layout::{DetailsShape, Panel, ToolView, details_shape, tool_view, wip_change_count};
-use crate::state::rebase::RebasePanel;
-use crate::state::{AppState, Selection};
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadOptions};
+use glowfly_model::effect::Effect;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{BlameMsg, ConflictMsg, HistoryMsg, IssueMsg, LayoutMsg, Msg, RebaseMsg};
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::{FileHistoryView, HistoryKind};
+use glowfly_model::state::layout::{DetailsShape, Panel, ToolView, details_shape, tool_view, wip_change_count};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -87,7 +87,7 @@ fn tool_view_follows_the_central_order() {
     st.session.history.view = None;
     send(&mut st, Msg::Issue(IssueMsg::Open("12".into())));
     assert_eq!(tool_view(&st), Some(ToolView::Issue));
-    let pr = crate::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
+    let pr = glowfly_model::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
     st.session.pull_request.view = Some(pr);
     assert_eq!(tool_view(&st), Some(ToolView::PullRequest), "the pull request panel covers the issue panel");
     st.session.pull_request.view = None;
@@ -243,7 +243,8 @@ fn modes() -> [Case; 3] {
         (
             "pull request",
             |st| {
-                let pr = crate::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
+                let pr =
+                    glowfly_model::state::pull_request::PrView::new(pr(), st.session.forge.as_ref().unwrap(), st.snap.as_ref().unwrap());
                 st.session.pull_request.view = Some(pr);
             },
             Msg::PullRequest(PullRequestMsg::Close),
@@ -309,7 +310,7 @@ fn the_toggle_key_still_works_in_each_mode() {
 fn a_stopped_rebase_keeps_the_full_panel() {
     let dir = super::rebase_edit_commit_tests::stopped_at_edit("rail-stopped-rebase");
     let mut st = state();
-    super::tests::drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Open(dir.clone())));
+    super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Open(dir.clone())));
     st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(head(&st))));
     nudge(&mut st);
     assert_eq!(tool_view(&st), Some(ToolView::Rebase));

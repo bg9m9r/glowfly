@@ -5,16 +5,16 @@ use super::branch_tests::remote_commit;
 use super::push_pr_tests::{cleanup, commit_on, fetch, with_host};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::state::palette::{PaletteCommand, entries};
-use crate::state::push_pr::{self, HostBranch};
-use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::forge::PullRequest;
 use glowfly_core::repo::BranchInfo;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::palette::{PaletteCommand, entries};
+use glowfly_model::state::push_pr::{self, HostBranch};
+use glowfly_model::state::{AppState, Selection};
 use std::time::Instant;
 
 fn branch(st: &AppState, name: &str) -> BranchInfo {

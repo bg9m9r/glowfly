@@ -2,11 +2,11 @@
 //! folders for the linked repository, and the scheme registration.
 
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
-use crate::state::deep_link::NOTHING_TO_LINK;
 use glowfly_core::link::{Link, find};
 use glowfly_core::url_scheme;
 use glowfly_model::deep_link::{DeepLinkEffect, DeepLinkMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::deep_link::NOTHING_TO_LINK;
 use std::path::PathBuf;
 
 pub(super) fn run(e: DeepLinkEffect) -> Msg {

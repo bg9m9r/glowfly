@@ -4,12 +4,12 @@
 
 use super::common::menu_item_if;
 use super::theme::color;
-use crate::msg::{ForgeMsg, Msg};
-use crate::state::build_status::{MAX_SEEN, tip_queries};
-use crate::state::{AppState, ForgeState, Status};
 use eframe::egui::{self, Painter, Pos2, Rect, Response, Stroke, Ui, vec2};
 use git2::Oid;
 use glowfly_core::forge::{CheckState, PullRequest, RunState};
+use glowfly_model::msg::{ForgeMsg, Msg};
+use glowfly_model::state::build_status::{MAX_SEEN, tip_queries};
+use glowfly_model::state::{AppState, ForgeState, Status};
 use std::time::Instant;
 
 /// Width a row keeps free for the marker.

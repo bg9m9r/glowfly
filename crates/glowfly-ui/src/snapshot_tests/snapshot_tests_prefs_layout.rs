@@ -4,9 +4,7 @@
 //! draw every row, since their labels run longest.
 
 use super::snapshot_tests::{harness_sized, settings};
-use crate::state::prefs::GitConfigValues;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -14,6 +12,8 @@ use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{Profile, ProfileId, ThemeChoice};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 const WIDTH: f32 = 960.0;
@@ -22,7 +22,7 @@ const RIGHT: f64 = 960.0 - 24.0 + 1.0;
 /// The window's height, less the status bar (its version text sits at the window's right edge).
 const STATUS_HEIGHT: f32 = 30.0;
 
-pub(super) type Narrow = Harness<'static, (AppState, Vec<crate::msg::Msg>)>;
+pub(super) type Narrow = Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)>;
 
 fn narrow(st: AppState) -> Narrow {
     narrow_tall(st, 700.0)

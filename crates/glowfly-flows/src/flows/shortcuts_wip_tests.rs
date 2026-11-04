@@ -5,14 +5,14 @@
 use super::shortcuts_tests::one_hunk;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::keymap::KeyAction;
-use crate::msg::{DiffMsg, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::lines::LineClick;
-use crate::state::list_keys::{ListKey, ListMove};
-use crate::state::wip_lists::MoveOn;
 use glowfly_core::repo::{self, DiffTarget, FileEntry, LoadOptions};
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
+use glowfly_model::state::list_keys::{ListKey, ListMove};
+use glowfly_model::state::wip_lists::MoveOn;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -142,7 +142,7 @@ fn steps_skip_conflicted_files() {
 fn steps_are_ignored_under_preferences_or_a_credential_prompt() {
     let (mut st, dir) = three_files("wip-keys-covered");
     show(&mut st, un("a.txt"));
-    st.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    st.prefs = Some(glowfly_model::state::PrefsState::new(glowfly_model::state::PrefPage::General));
     assert!(step(&mut st, false, true).is_empty());
     assert!(st.view.diff_opening.is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -255,7 +255,7 @@ fn a_status_read_while_a_file_opens_asks_for_that_file() {
     assert_eq!(loads(&fx), vec![(un("b.txt"), false)]);
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
     let status =
-        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::testing::execute).expect("a status read");
+        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(glowfly_runner::testing::execute).expect("a status read");
     let fx = update(&mut st, status, Instant::now());
     assert_eq!(loads(&fx), vec![(un("b.txt"), false)], "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -278,7 +278,7 @@ fn a_file_still_opening_that_left_its_list_is_dropped() {
     update(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("x.txt"))), Instant::now());
     let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))), Instant::now());
     let status =
-        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(crate::runner::testing::execute).expect("a status read");
+        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(glowfly_runner::testing::execute).expect("a status read");
     let fx = update(&mut st, status, Instant::now());
     assert_eq!(loads(&fx), vec![(un("a.txt"), true)], "{fx:?}");
     assert_eq!(st.view.diff_opening, None);

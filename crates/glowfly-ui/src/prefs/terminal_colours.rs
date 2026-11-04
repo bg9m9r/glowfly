@@ -4,15 +4,15 @@
 //! background (the text rules of `theme/ansi.rs`). A hard-to-read scheme can still be used.
 
 use super::{fit, help, row};
-use crate::msg::Msg;
-use crate::state::theme_names;
-use crate::themes::{ThemeMsg, ThemeState};
-use crate::ui::theme::{ansi, color, terminal_scheme, type_scale};
-use crate::ui::widgets::buttons;
+use crate::theme::{ansi, color, terminal_scheme, type_scale};
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::terminal_schemes::SchemeCatalog;
 use glowfly_core::settings::{BuiltinTheme, TerminalColours};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::theme_names;
+use glowfly_model::themes::{ThemeMsg, ThemeState};
 
 pub(super) fn colours_row(ui: &mut Ui, t: Lang, choice: &mut TerminalColours, themes: &ThemeState, msgs: &mut Vec<Msg>) {
     let schemes = &themes.catalog.terminal;
@@ -35,7 +35,7 @@ pub(super) fn colours_row(ui: &mut Ui, t: Lang, choice: &mut TerminalColours, th
                         ui.selectable_value(choice, TerminalColours::Scheme(f.id.clone()), f.name.as_str());
                     }
                 });
-            crate::ui::access::from_label(&combo.response);
+            crate::access::from_label(&combo.response);
             if ui.add(buttons::secondary(t.tr("prefs.terminal.colours.import.button"))).clicked() {
                 msgs.push(Msg::Theme(ThemeMsg::PickScheme));
             }

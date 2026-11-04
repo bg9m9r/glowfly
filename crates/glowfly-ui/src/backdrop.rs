@@ -4,13 +4,13 @@
 
 use super::theme::color::Palette;
 use super::theme::contrast::{mix, ratio};
-use crate::state::window_native::{Backdrop, MicaTint};
 use eframe::egui::Color32;
+use glowfly_model::state::window_native::{Backdrop, MicaTint};
 
 /// Stand-ins for dark Mica: they bracket the blurred, tinted wallpaper it shows, from neutral
 /// to strongly hued and from black to busy. A check against the real backdrop is listed in
 /// docs/PLATFORMS.md.
-pub const MICA_DARK: [Color32; 9] = [
+pub(crate) const MICA_DARK: [Color32; 9] = [
     Color32::from_rgb(0x00, 0x00, 0x00),
     Color32::from_rgb(0x20, 0x20, 0x20),
     Color32::from_rgb(0x2c, 0x2c, 0x2c),
@@ -23,7 +23,7 @@ pub const MICA_DARK: [Color32; 9] = [
 ];
 
 /// Stand-ins for light Mica, like `MICA_DARK`: from white to strongly hued and busy.
-pub const MICA_LIGHT: [Color32; 9] = [
+pub(crate) const MICA_LIGHT: [Color32; 9] = [
     Color32::from_rgb(0xff, 0xff, 0xff),
     Color32::from_rgb(0xf3, 0xf3, 0xf3),
     Color32::from_rgb(0xe3, 0xe3, 0xe3),
@@ -38,7 +38,7 @@ pub const MICA_LIGHT: [Color32; 9] = [
 /// The tint alphas tried, most translucent first: 0.60 to 0.90.
 pub(super) const STEPS: [u8; 7] = [153, 166, 179, 191, 204, 217, 230];
 /// The alpha of a surface that fails at every step: it stays opaque.
-pub const OPAQUE: u8 = 255;
+pub(crate) const OPAQUE: u8 = 255;
 
 /// A surface that can sit on Mica.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

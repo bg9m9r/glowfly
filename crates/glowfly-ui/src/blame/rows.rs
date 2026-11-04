@@ -1,7 +1,7 @@
 //! What the blame view measures once per blame rather than every frame: the widest line (for
 //! the sideways scroll) and, with wrapping on, where each row starts.
 
-use crate::ui::diff::wrap::{self, Wrap};
+use crate::diff::wrap::{self, Wrap};
 
 /// What was measured: the blame's generation (`BlameView::data_gen`), the tab size, the row
 /// height's bits and the wrap (columns, line height bits).

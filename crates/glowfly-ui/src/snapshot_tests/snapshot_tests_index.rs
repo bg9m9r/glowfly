@@ -4,15 +4,15 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_search::{searching, send, with_two_authors};
-use crate::msg::SearchMsg;
-use crate::state::history_index::{Building, IndexAnswer};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::repo::CommitInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::SearchMsg;
+use glowfly_model::state::history_index::{Building, IndexAnswer};
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::sync::Arc;
 

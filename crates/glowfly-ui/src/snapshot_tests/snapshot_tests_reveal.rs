@@ -5,10 +5,10 @@
 
 use super::super::snapshot_check::CheckSnapshot;
 use super::super::snapshot_tests::{git, harness, remove_fixture, with_repo};
-use crate::state::{AppState, Selection};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 
 /// Writes `count` small files named f00.txt and on into `dir`.

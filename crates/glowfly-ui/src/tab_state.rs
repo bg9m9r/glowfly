@@ -9,8 +9,8 @@ use super::list_row::{ARROW_W, paint_arrow};
 use super::tab_paint::SLOT;
 use super::theme::{color, type_scale};
 use super::widgets::{Icon, dots, paint_icon_sized};
-use crate::state::tabs::glance::Mark;
 use eframe::egui::{self, Rect, pos2};
+use glowfly_model::state::tabs::glance::Mark;
 
 /// A behind count's text size.
 const BEHIND_TEXT: f32 = type_scale::CAPTION;

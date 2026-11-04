@@ -3,14 +3,14 @@
 
 use super::update;
 use super::updates_tests::{NOW, app, send};
-use crate::effect::OsEffect;
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::{CheckedRelease, Msg, UpdateMsg as U};
-use crate::state::AppState;
-use crate::state::palette::entries;
-use crate::state::updates::{UpdateStatus, flatpak_available_text, latest_text};
 use glowfly_core::app_update::{Arch, Asset, InstallKind, Platform, Release, TargetOs, UpdateError};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::{CheckedRelease, Msg, UpdateMsg as U};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{UpdateStatus, flatpak_available_text, latest_text};
 use std::time::Instant;
 
 /// Release `tag` with the Linux tar.gz, .deb and .flatpak.

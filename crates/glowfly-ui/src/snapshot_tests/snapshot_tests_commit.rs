@@ -5,16 +5,16 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
-use crate::msg::CommitMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::repo::{CommitTemplate, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

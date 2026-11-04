@@ -4,13 +4,13 @@
 //! A failure's two fixes and Details wrap inside the toast in German at every zoom.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{Msg, NotifyMsg};
-use crate::state::{AppState, ToastAction};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, containers::panel::PanelState};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{Corner, ThemeChoice};
+use glowfly_model::msg::{Msg, NotifyMsg};
+use glowfly_model::state::{AppState, ToastAction};
 use std::path::Path;
 use std::time::Instant;
 
@@ -112,7 +112,7 @@ fn toast_failure_fix() {
     let fix =
         ToastAction { label: "Stash and pull".into(), msg: Box::new(Msg::git("Pull", &["pull", "--ff"])), workdir: Some(dir.clone()) };
     st.set_last_toast_action(fix);
-    let details = crate::logs::LogsMsg::Show(crate::logs::LogKind::Activity);
+    let details = glowfly_model::logs::LogsMsg::Show(glowfly_model::logs::LogKind::Activity);
     let t = st.toasts.last_mut().unwrap();
     t.details = Some(ToastAction { label: "Details".into(), msg: Box::new(Msg::Logs(details)), workdir: None });
     let id = t.id;
@@ -150,7 +150,7 @@ fn toast_failure_two_fixes() {
     assert!(boxes.windows(2).all(|w| w[0].x1 <= w[1].x0 && (w[0].y0 - w[1].y0).abs() < 1.0), "one row, in order");
     let frame = h.get_by_label("Another Git program is using this repository (index.lock exists). Wait for it to finish, then try again.");
     let text = frame.bounding_box().expect("the text");
-    assert!(boxes[2].x1 <= text.x0 + f64::from(crate::ui::toasts::TOAST_W), "inside the toast");
+    assert!(boxes[2].x1 <= text.x0 + f64::from(crate::toasts::TOAST_W), "inside the toast");
     h.get_by_label("Try again").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ToastAlt(i) if *i == id)), "the second fix sends ToastAlt");
@@ -178,7 +178,7 @@ fn toast_push_behind_two_fixes_de() {
         let text = h.get_by_label(t.tr("git_errors.push_behind")).bounding_box().expect("the text");
         for l in labels {
             let b = h.get_by_label(l).bounding_box().expect(l);
-            assert!(b.x0 >= text.x0 && b.x1 <= text.x0 + f64::from(crate::ui::toasts::TOAST_W), "{l} inside the toast at {zoom}%");
+            assert!(b.x0 >= text.x0 && b.x1 <= text.x0 + f64::from(crate::toasts::TOAST_W), "{l} inside the toast at {zoom}%");
         }
         drop(h);
         remove_fixture(&dir);

@@ -5,23 +5,23 @@
 
 use super::ssh::SshContext;
 use super::{GAP, LABEL_W, ROW_W, fit};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::state::ssh_marks::{ConfigWhere, KeyMark, key_marks, outside_folder, remembered};
-use crate::state::ssh_use::add_blocked;
-use crate::ui::common::menu_item;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
-use crate::ui::widgets::menu::submenu;
-use crate::ui::widgets::{self, Icon, buttons};
+use crate::common::menu_item;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::{color, type_scale};
+use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::widgets::menu::submenu;
+use crate::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, Color32, CornerRadius, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::{SshKeyPair, SshListing};
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh_marks::{ConfigWhere, KeyMark, key_marks, outside_folder, remembered};
+use glowfly_model::state::ssh_use::add_blocked;
 
 /// The card's inner margin, sides and top/bottom.
 pub(super) const PAD_X: i8 = 14;

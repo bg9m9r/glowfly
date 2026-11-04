@@ -3,11 +3,11 @@
 
 use super::history_tests::{oid, with_view};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{HistoryMsg, Msg};
-use crate::state::AppState;
-use crate::state::history::{FileTextData, HistoryPane};
-use crate::state::history_text::TextNav;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{HistoryMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileTextData, HistoryPane};
+use glowfly_model::state::history_text::TextNav;
 use std::sync::Arc;
 use std::time::Instant;
 

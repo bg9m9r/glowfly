@@ -5,14 +5,14 @@ use super::rebase_quick_tests::up;
 use super::rebase_tests::repo;
 use super::selection_tests::{commit_on, git, head};
 use super::tests::drive;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, RebaseMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::state::rebase_onto::onto_commit_blocker;
 use git2::{Oid, RepositoryState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, ResetTo, TodoStep};
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::rebase_onto::onto_commit_blocker;
 use std::path::Path;
 
 fn panel(st: &AppState) -> &RebasePanel {

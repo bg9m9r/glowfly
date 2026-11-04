@@ -4,14 +4,14 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, buttons};
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::release_notes::NotesDialog;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, RichText, Sense, Stroke, pos2, vec2};
 use glowfly_core::changelog::{NoteSection, ReleaseNotes, Span, SpanStyle};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::release_notes::NotesDialog;
 
 /// Draws the dialog (wide, and resizable); true when Close was clicked.
 pub fn show(ui: &mut egui::Ui, cx: Cx, d: &NotesDialog, msgs: &mut Vec<Msg>) -> bool {

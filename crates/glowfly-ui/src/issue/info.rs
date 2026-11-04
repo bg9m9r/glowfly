@@ -6,20 +6,20 @@
 use super::super::common::state_color;
 use super::super::pull_request::{heading, note};
 use super::super::theme::color;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::AppState;
-use crate::state::gitflow::start_blocked;
-use crate::state::issue::{IssueView, linked_branches, meta_rows, state_label};
-use crate::state::issue_words::labels_label;
-use crate::state::worktree_branches::Elsewhere;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::{self, Align, Color32, Layout, RichText, Ui, vec2};
 use glowfly_core::forge;
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::text::printable;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::gitflow::start_blocked;
+use glowfly_model::state::issue::{IssueView, linked_branches, meta_rows, state_label};
+use glowfly_model::state::issue_words::labels_label;
+use glowfly_model::state::worktree_branches::Elsewhere;
 
 /// The width of the labels left of the values.
 const LABEL_W: f32 = 92.0;
@@ -41,7 +41,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 ui.horizontal(|ui| {
                     // One another worktree has: Open worktree (or Prune and check out a missing one).
                     let t = st.settings.lang();
-                    let elsewhere = crate::state::worktree_branches::checkout_elsewhere(t, snap, &b.name);
+                    let elsewhere = glowfly_model::state::worktree_branches::checkout_elsewhere(t, snap, &b.name);
                     let blocked = if b.is_head {
                         Some("Checked out")
                     } else if !idle && elsewhere.is_none() {

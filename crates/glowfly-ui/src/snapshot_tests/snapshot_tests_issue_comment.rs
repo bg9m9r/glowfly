@@ -4,13 +4,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_issue::{crash, crash_details, github, set_details, with_issue};
-use crate::msg::{IssueMsg, Msg};
-use crate::state::issue_comment::FIELD;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Issue, IssueDetails, Target};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::issue_comment::FIELD;
 
 #[test]
 fn issue_comment_box_empty() {

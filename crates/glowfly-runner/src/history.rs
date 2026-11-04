@@ -4,9 +4,6 @@
 //! the view's `MarkdownCache` when drawn) or a decoded image (`Effect::LoadFileText`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::{Effect, FileTextRequest};
-use crate::msg::{HistoryMsg, Msg, PartialMsg};
-use crate::state::history::{FileTextData, Preview, TextError};
 use glowfly_core::error::Error;
 use glowfly_core::highlight::{self, SyntaxHint};
 use glowfly_core::markdown::MARKDOWN_MAX_BYTES;
@@ -14,6 +11,9 @@ use glowfly_core::partial::MissingContent;
 use glowfly_core::preview::{self, PreviewKind};
 use glowfly_core::preview_image::{self, FILE_VIEW_SHOWN_MAX};
 use glowfly_core::repo::{self, FileAtOptions, HistoryStart, LfsState};
+use glowfly_model::effect::{Effect, FileTextRequest};
+use glowfly_model::msg::{HistoryMsg, Msg, PartialMsg};
+use glowfly_model::state::history::{FileTextData, Preview, TextError};
 use std::path::Path;
 use std::sync::Arc;
 

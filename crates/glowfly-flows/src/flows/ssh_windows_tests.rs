@@ -2,11 +2,11 @@
 //! Which key and Use local SSH agent treat the value it writes.
 
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
-use crate::effect::Effect;
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::AppState;
-use crate::state::ssh_use::Choices;
 use glowfly_core::ssh_keys::{AgentReach, AgentStatus, KeyChoice, WinService, WinSshFacts};
+use glowfly_model::effect::Effect;
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::ssh_use::Choices;
 use std::path::PathBuf;
 
 const WIN: &str = "C:/Windows/System32/OpenSSH/ssh.exe";

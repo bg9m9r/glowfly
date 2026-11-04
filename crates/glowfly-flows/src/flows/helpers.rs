@@ -1,32 +1,31 @@
 //! Headless tests for `update`: behaviour is checked through state changes and returned
 //! effects, and end-to-end against real repositories by executing effects synchronously
-//! (`drive`, `finish`); the fixtures are `crate::testing`'s.
+//! (`drive`, `finish`); the fixtures are `glowfly_model::testing`'s.
 
 use super::update;
-use crate::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
-use crate::effect::{OsEffect, PrefsEffect};
-use crate::msg::CommitMsg;
-use crate::msg::ForgeMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::patch::PatchEffect;
-use crate::runner;
-use crate::ssh::SshEffect;
-use crate::state::{AppState, ForgeState, Modal, Selection, Status};
-use crate::testing::{git, scratch_repo, state};
 use glowfly_core::forge::{CheckState, Checks, Provider, PullRequest, Target};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
+use glowfly_model::effect::{OsEffect, PrefsEffect};
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::patch::PatchEffect;
+use glowfly_model::ssh::SshEffect;
+use glowfly_model::state::{AppState, ForgeState, Modal, Selection, Status};
+use glowfly_model::testing::{git, scratch_repo, state};
 use std::time::{Duration, Instant};
 
 /// Answers the open auto-stash prompt with its primary ("Stash and ...") and runs what follows:
 /// the operation, then putting the changes back.
 #[track_caller]
 pub(crate) fn accept_stash(st: &mut AppState) {
-    assert!(matches!(st.modal, Some(crate::state::Modal::AutoStash(_))), "the auto-stash prompt is open");
-    drive(st, Msg::AutoStash(crate::msg::AutoStashMsg::Stash));
+    assert!(matches!(st.modal, Some(glowfly_model::state::Modal::AutoStash(_))), "the auto-stash prompt is open");
+    drive(st, Msg::AutoStash(glowfly_model::msg::AutoStashMsg::Stash));
 }
 
 /// Runs `msg` and every resulting effect to completion, as the app would (minus the window).
@@ -64,7 +63,7 @@ fn finish_watching(st: &mut AppState, fx: Vec<Effect>, watch: &mut dyn FnMut(&Ms
             if skipped(&effect) {
                 kept.push(effect);
             } else {
-                queue.extend(runner::testing::execute(effect));
+                queue.extend(glowfly_runner::testing::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return kept };
@@ -93,7 +92,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             | Effect::Profile(_)
             | Effect::Onboarding(_)
             // Asks a hosting service.
-            | Effect::Clone(crate::effect::CloneEffect::ListRepos { .. })
+            | Effect::Clone(glowfly_model::effect::CloneEffect::ListRepos { .. })
             // Would write the global git config, run ssh-keygen or ssh-add, call a service, or open a
             // file dialog.
             | Effect::Ssh(
@@ -107,7 +106,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             )
             // Never show real desktop notifications.
             | Effect::Notify(_)
-            | Effect::PullRequest(crate::pull_request::PrEffect::Call(_))
+            | Effect::PullRequest(glowfly_model::pull_request::PrEffect::Call(_))
             | Effect::Issue(_)
             // Would read and write the developer's real config folder.
             | Effect::Theme(_)
@@ -117,16 +116,16 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             | Effect::Logs(_)
             // Would read or change which program opens links for the developer's account.
             | Effect::DeepLink(
-                crate::deep_link::DeepLinkEffect::SchemeStatus
-                    | crate::deep_link::DeepLinkEffect::Register
-                    | crate::deep_link::DeepLinkEffect::Unregister
+                glowfly_model::deep_link::DeepLinkEffect::SchemeStatus
+                    | glowfly_model::deep_link::DeepLinkEffect::Register
+                    | glowfly_model::deep_link::DeepLinkEffect::Unregister
             )
             // Asks hosting services.
-            | Effect::Dashboard(crate::effect::DashboardEffect::Fetch(_))
+            | Effect::Dashboard(glowfly_model::effect::DashboardEffect::Fetch(_))
             // Index builds run only where a test asks (`history_index_tests`), so the load-more
             // fallback tests keep today's flow.
-            | Effect::Index(crate::effect::IndexEffect::Build { .. })
-    ) || matches!(effect, Effect::Partial(crate::effect::partial::PartialEffect::SizeHistory(r)) if r.service.is_some())
+            | Effect::Index(glowfly_model::effect::IndexEffect::Build { .. })
+    ) || matches!(effect, Effect::Partial(glowfly_model::effect::partial::PartialEffect::SizeHistory(r)) if r.service.is_some())
 }
 
 #[test]
@@ -319,9 +318,9 @@ fn push_sets_upstream_for_new_branches() {
 
 #[test]
 fn commit_signing_flow() {
-    use crate::state::PrefPage;
-    use crate::state::prefs::GitConfigValues;
     use glowfly_core::signing::{SigningFormat, SigningKey};
+    use glowfly_model::state::PrefPage;
+    use glowfly_model::state::prefs::GitConfigValues;
 
     let mut st = state();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::Signing)), Instant::now());
@@ -381,7 +380,7 @@ fn job_output_hides_credentials_in_urls() {
         stoppable: false,
         on_fail_check: None,
     };
-    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = runner::testing::execute(effect) else { panic!("expected JobDone") };
+    let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = glowfly_runner::testing::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");
     let _ = std::fs::remove_dir_all(&dir);

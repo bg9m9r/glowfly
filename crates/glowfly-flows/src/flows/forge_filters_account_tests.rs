@@ -3,16 +3,16 @@
 
 use super::forge_filters_tests::{filter_calls, open, pr, reply, send};
 use super::update;
-use crate::effect::{FilterCall, FilterResult};
-use crate::msg::{FilterMsg, ForgeMsg, Msg};
-use crate::state::forge_filters::{MeState, OptionsState, connect_issues_prompt, connect_prompt, issues_sign_in, pr_view};
-use crate::state::{AppState, Status};
 use glowfly_core::forge::{
     Account, Auth, Builtin, Connection, FilterChoice, FilterKind, FilterOptions, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest,
     Target,
 };
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::TrackerChoice;
+use glowfly_model::effect::{FilterCall, FilterResult};
+use glowfly_model::msg::{FilterMsg, ForgeMsg, Msg};
+use glowfly_model::state::forge_filters::{MeState, OptionsState, connect_issues_prompt, connect_prompt, issues_sign_in, pr_view};
+use glowfly_model::state::{AppState, Status};
 use std::time::Instant;
 
 fn choose(kind: FilterKind, b: Builtin) -> FilterMsg {

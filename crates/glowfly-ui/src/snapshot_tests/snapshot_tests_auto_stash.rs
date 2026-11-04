@@ -6,14 +6,14 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_conflict_files::{fill_lists, merging};
 use super::snapshot_tests_worktrees::pushed;
-use crate::msg::{AutoStashMsg, Msg};
-use crate::state::auto_stash::{AutoStashAsk, AutoStashJob, PendingStash, Phase};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::StashInfo;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::stash_ops::{AutoStashFor, SavedAutoStash};
+use glowfly_model::msg::{AutoStashMsg, Msg};
+use glowfly_model::state::auto_stash::{AutoStashAsk, AutoStashJob, PendingStash, Phase};
+use glowfly_model::state::{AppState, Modal};
 
 fn asking(st: &mut AppState, op: AutoStashFor, files: usize) {
     st.modal = Some(Modal::AutoStash(AutoStashAsk { op, files, always: false, retry: Box::new(Msg::CloseModal) }));
@@ -108,7 +108,7 @@ fn auto_stash_saved_offer() {
     let workdir = snap.workdir.clone();
     let saved = vec![SavedAutoStash::new(op.clone(), op.message(), oid)];
     let read = Msg::AutoStash(AutoStashMsg::SavedRead { workdir, saved });
-    crate::update::update(&mut st, read, std::time::Instant::now());
+    glowfly_model::update::update(&mut st, read, std::time::Instant::now());
     assert!(matches!(st.modal, Some(Modal::ConfirmChoice { .. })), "the offer opens");
     let mut h = harness(st, false);
     h.run();

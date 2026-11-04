@@ -4,12 +4,12 @@
 //! `update` renames the source and reloads the targets; the target branch is edited in place.
 
 use super::create_pr_dialog::{PrForm, target_combo};
-use crate::msg::{ForgeMsg, Msg};
-use crate::state::ForgeState;
-use crate::state::pr_repos::{self, RepoSide};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{ForgeMsg, Msg};
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::pr_repos::{self, RepoSide};
 
 /// The From and Into rows for remotes `from` and `into`.
 pub(super) fn rows(ui: &mut egui::Ui, t: Lang, f: &mut PrForm, fs: &ForgeState, (from, into): (&str, &str), msgs: &mut Vec<Msg>) {

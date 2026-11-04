@@ -3,19 +3,19 @@
 //! registers links, nothing to register). Click tests check the message each button sends.
 
 use super::{prefs, sent};
-use crate::deep_link::DeepLinkMsg;
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::deep_link::SchemeView;
-use crate::state::release_notes::NotesDialog;
-use crate::state::updates::UpdateStatus;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, harness_sized, settings};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, harness_sized, settings};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::app_update::{Arch, Asset, InstallKind, Offer, Platform, Release, TargetOs, Version, offer};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::url_scheme::{FLATPAK_NOTE, SchemeStatus};
+use glowfly_model::deep_link::DeepLinkMsg;
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::deep_link::SchemeView;
+use glowfly_model::state::release_notes::NotesDialog;
+use glowfly_model::state::updates::UpdateStatus;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 const LINUX: Platform = Platform { os: TargetOs::Linux, arch: Arch::X86_64 };

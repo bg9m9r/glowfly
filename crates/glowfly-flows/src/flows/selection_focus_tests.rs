@@ -2,12 +2,12 @@
 //! Ctrl-clicks it selects only the commit in focus and says how many were let go.
 
 use super::selection_tests::{fixture, up};
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord, KeyName, Keymap, fold_ctrl};
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::journal::short;
-use crate::state::selection_wip::WorkdirCompare;
-use crate::state::{AppState, Selection};
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, Keymap, fold_ctrl};
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::journal::short;
+use glowfly_model::state::selection_wip::WorkdirCompare;
+use glowfly_model::state::{AppState, Selection};
 
 fn last_toast(st: &AppState) -> Option<&str> {
     st.toasts.last().map(|t| t.text.as_str())
@@ -57,5 +57,5 @@ fn the_default_key_goes_back() {
     let keys = Keymap::default();
     assert_eq!(keys.lookup(Chord::cmd_shift(KeyName::Letter('A')), fold_ctrl()), Some(BindingId::SelectFocusedCommit));
     assert_eq!(BindingId::SelectFocusedCommit.key(), "select-focused-commit");
-    assert!(crate::keymap::binding(BindingId::SelectFocusedCommit).rebindable);
+    assert!(glowfly_model::keymap::binding(BindingId::SelectFocusedCommit).rebindable);
 }

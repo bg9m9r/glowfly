@@ -9,7 +9,7 @@ use super::branch_palette::applied;
 use super::contrast::{oklch, ratio, tint};
 use super::tests::{high_contrast, palettes};
 use super::*;
-use crate::ui::graph::lantern_peak;
+use crate::graph::lantern_peak;
 use eframe::egui::Color32;
 use glowfly_core::settings::ColourPalette;
 

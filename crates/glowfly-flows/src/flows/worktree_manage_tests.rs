@@ -4,16 +4,16 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::state::worktree_manage::{LockForm, RemoveForm, needs_force_text, prune_blocked};
-use crate::state::worktrees::find;
-use crate::state::{AppState, Modal, RunningJob};
-use crate::worktree::{RemoveRequest, Removed, WorktreeMsg};
 use glowfly_core::repo::WorktreeInfo;
 use glowfly_core::worktree_ops::{Refusal, RemoveForce, RemoveOutcome};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::worktree_manage::{LockForm, RemoveForm, needs_force_text, prune_blocked};
+use glowfly_model::state::worktrees::find;
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::worktree::{RemoveRequest, Removed, WorktreeMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

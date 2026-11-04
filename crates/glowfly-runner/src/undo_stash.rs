@@ -14,9 +14,9 @@
 //!   can't stash), nothing is stashed or undone; nor when the new stash can't be found again.
 
 use super::undo_run::{GitRun, UndoGit, undo_run};
-use crate::effect::{StashHow, UndoOpts, UndoResult, UndoStash};
 use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, Action};
+use glowfly_model::effect::{StashHow, UndoOpts, UndoResult, UndoStash};
 use std::path::Path;
 
 /// Stashes the changes, undoes (or redoes) `action` and puts the changes back when it should:

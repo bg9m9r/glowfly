@@ -2,10 +2,10 @@
 //! program, show it in the file manager.
 
 use super::file_menu::{self, NOT_IN_WORKDIR, OPEN_DEFAULT, SHOW_IN_FOLDER};
-use crate::msg::FilesMsg;
-use crate::msg::Msg;
 use eframe::egui;
 use git2::Oid;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::Msg;
 
 /// One commit's version of a file, as the header buttons act on it.
 pub(super) struct CommitFile<'a> {

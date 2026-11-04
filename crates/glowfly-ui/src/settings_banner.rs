@@ -2,12 +2,12 @@
 //! be read: defaults are in use and nothing is saved until it can (update/settings_file.rs).
 //! It stays until a Try again reads the file; Open settings folder shows where it is.
 
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::AppState;
-use crate::ui::theme::color;
-use crate::ui::widgets::banner::{self, Banner, BannerKind};
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::widgets::banner::{self, Banner, BannerKind};
+use crate::widgets::buttons;
 use eframe::egui;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::AppState;
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(u) = st.settings_file.unreadable.as_ref() else { return };

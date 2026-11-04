@@ -7,10 +7,10 @@
 
 use super::form_message::{self, Message};
 use super::severity::Severity;
-use crate::state::touched::Touched;
-use crate::ui::access;
-use crate::ui::theme::{color, type_scale};
+use crate::access;
+use crate::theme::{color, type_scale};
 use eframe::egui::{self, Align, Layout, Response, RichText, Ui};
+use glowfly_model::state::touched::Touched;
 use std::borrow::Cow;
 
 /// The space after a group, before the item spacing.
@@ -116,7 +116,7 @@ impl<'a> FieldGroup<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::widgets::text_field::TextField;
+    use crate::widgets::text_field::TextField;
     use eframe::egui::accesskit::Role;
     use eframe::egui::vec2;
     use egui_kittest::Harness;
@@ -127,7 +127,7 @@ mod tests {
 
     /// A group with help and an error, shown with `touched`, or with an info note.
     fn harness(touched: Touched, info: bool) -> Harness<'static, String> {
-        crate::ui::snapshot_check::builder().with_size(vec2(400.0, 160.0)).build_ui_state(
+        crate::snapshot_check::builder().with_size(vec2(400.0, 160.0)).build_ui_state(
             move |ui, text: &mut String| {
                 let mut g = FieldGroup::new("Branch name").help(HELP).message(&touched, "name", Some(Message::error(ERROR)));
                 if info {

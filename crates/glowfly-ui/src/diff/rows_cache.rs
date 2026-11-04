@@ -5,13 +5,13 @@
 //! lines each row shows and the row each line is on (`LineIndex`), for the text selection.
 
 use super::wrap::{RowMetrics, Wrap};
-use crate::state::diff_text::{LineRef, TextSide};
 use glowfly_core::diff_rows::{self, DiffRow, GapLines, GapSpan, SplitRow};
 use glowfly_core::repo::FileDiff;
 use glowfly_core::settings::DiffLayout;
 use glowfly_core::tabs;
 use glowfly_core::whole_file::{self, Expanded, WholeFile};
 use glowfly_core::wrap;
+use glowfly_model::state::diff_text::{LineRef, TextSide};
 use std::collections::HashMap;
 
 /// What the rows were built from. A loaded, reloaded or restored diff always comes with a new

@@ -1,25 +1,25 @@
 //! Keeps a panicking effect from leaving the UI waiting forever: the panic is caught and turned
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
-use crate::effect::partial::PartialEffect;
-use crate::effect::{
+use glowfly_core::app_update::UpdateError;
+use glowfly_core::forge::{Account, Target};
+use glowfly_model::effect::partial::PartialEffect;
+use glowfly_model::effect::{
     CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SparseEffect, StashEffect,
     SubmoduleEffect, UndoResult, UpdateEffect, WorktreeEffect,
 };
-use crate::msg::BlameMsg;
-use crate::msg::CloneMsg;
-use crate::msg::JobMsg;
-use crate::msg::LoadMsg;
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::UpdateMsg;
-use crate::msg::{ContentFailure, PartialMsg};
-use crate::patch::{PatchEffect, PatchMsg};
-use crate::remote::{RemoteEffect, RemoteMsg};
-use glowfly_core::app_update::UpdateError;
-use glowfly_core::forge::{Account, Target};
+use glowfly_model::msg::BlameMsg;
+use glowfly_model::msg::CloneMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::LoadMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::UpdateMsg;
+use glowfly_model::msg::{ContentFailure, PartialMsg};
+use glowfly_model::patch::{PatchEffect, PatchMsg};
+use glowfly_model::remote::{RemoteEffect, RemoteMsg};
 use glowfly_model::ssh::SshFailure;
 use glowfly_model::tools::ToolEffect;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -187,12 +187,12 @@ impl Recovery {
             Kind::UpdateRestart => Msg::Updates(UpdateMsg::RestartReady(Err(update))),
             Kind::RepoScan(generation, roots) => {
                 let unreadable = roots.into_iter().map(|r| (r, text.clone())).collect();
-                let report = Box::new(crate::msg::ScanFound { unreadable, ..Default::default() });
-                Msg::Repos(crate::msg::ReposMsg::Scanned { generation, report })
+                let report = Box::new(glowfly_model::msg::ScanFound { unreadable, ..Default::default() });
+                Msg::Repos(glowfly_model::msg::ReposMsg::Scanned { generation, report })
             }
             Kind::RepoSync(generation, index) => {
                 let outcome = glowfly_core::repo_sync::Outcome::Failed { reason: text, detail: String::new() };
-                Msg::Repos(crate::msg::ReposMsg::Synced { generation, index, outcome })
+                Msg::Repos(glowfly_model::msg::ReposMsg::Synced { generation, index, outcome })
             }
             Kind::LineCounts(FailedLineCounts::Commit(oid)) => Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Err(text) }),
             Kind::LineCounts(FailedLineCounts::Wip(generation)) => {
@@ -200,7 +200,7 @@ impl Recovery {
             }
             Kind::PutBack(workdir, oid) => {
                 let outcome = glowfly_core::stash_ops::PutBack::Failed;
-                Msg::AutoStash(crate::msg::AutoStashMsg::PutBack { workdir, oid, outcome, output: text, undo: None })
+                Msg::AutoStash(glowfly_model::msg::AutoStashMsg::PutBack { workdir, oid, outcome, output: text, undo: None })
             }
             Kind::Sizing(workdir, id) => {
                 tracing::debug!("{text}");

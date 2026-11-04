@@ -39,23 +39,23 @@ pub(crate) use row_look::dim_inks;
 
 use super::UiCache;
 use super::theme::color;
-use crate::keymap::BindingId;
-use crate::msg::BranchMsg;
-use crate::msg::GraphMsg;
-use crate::msg::LoadMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::graph_rows::{DisplayRow, GraphRows};
-use crate::state::tip::Tip;
-use crate::state::worktrees::{open_blocked, wip_tooltip};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::{Icon, ghost, tooltip};
-use crate::worktree::WorktreeMsg;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::{Icon, ghost, tooltip};
 use eframe::egui::{self, Rect, Sense, pos2, vec2};
 use git2::Oid;
 use glowfly_core::repo::RefKind;
 use glowfly_core::settings::{Density, DescriptionMode};
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::LoadMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
+use glowfly_model::state::tip::Tip;
+use glowfly_model::state::worktrees::{open_blocked, wip_tooltip};
+use glowfly_model::worktree::WorktreeMsg;
 use labels::Tip as ChipTip;
 use lane_colours::RowColours;
 use layout::Columns;
@@ -83,7 +83,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         return;
     }
     // The central view's pane key: the graph takes the keyboard focus.
-    let want_focus = crate::ui::pane_focus::take(st, &[crate::state::layout::Pane::Central]);
+    let want_focus = crate::pane_focus::take(st, &[glowfly_model::state::layout::Pane::Central]);
     if st.view.show_search {
         search_bar::show(ui, st, msgs);
         ui.add_space(4.0);
@@ -125,8 +125,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let fitted = header::column_header(ui, t, input, &mut st.view.column_drag, msgs);
         let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
         // A tip about the graph sits pinned under the header, pushing the rows down.
-        if let Some(h) = crate::state::hints::view(st).filter(|h| h.place == crate::state::hints::Place::Graph) {
-            crate::ui::widgets::hint_row::show(ui, t, &h, msgs);
+        if let Some(h) = glowfly_model::state::hints::view(st).filter(|h| h.place == glowfly_model::state::hints::Place::Graph) {
+            crate::widgets::hint_row::show(ui, t, &h, msgs);
         }
         // How many matches fill the graph, for a filtering search loading further back.
         st.view.graph_fit_rows = (ui.available_height() / row_h).floor() as usize;
@@ -148,7 +148,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let page = ((rows_rect.height() / row_h).floor() as usize).saturating_sub(1);
         select::target(ui, rows_rect, t.tr("graph.focus.name"), page, want_focus);
         // The selection shows as focused while the graph has the keyboard focus or nothing has.
-        let active = crate::ui::pane_focus::graph_active(ui.ctx());
+        let active = crate::pane_focus::graph_active(ui.ctx());
         let mut area = egui::ScrollArea::vertical().auto_shrink([false, false]);
         if let Some(row) = st.view.scroll_to_row.take() {
             area = area.vertical_scroll_offset(row as f32 * row_h);
@@ -160,10 +160,10 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         let settings = &st.settings;
         let idle = st.job.is_none();
         let forge = st.session.forge.as_ref();
-        let commands = crate::state::custom_commands::MenuCommands::for_state(st);
+        let commands = glowfly_model::state::custom_commands::MenuCommands::for_state(st);
         let now = st.view.now;
         let offset = st.view.utc_offset;
-        let show_avatars = crate::ui::avatars::shown(st);
+        let show_avatars = crate::avatars::shown(st);
         let avatars = &mut cache.avatars;
         let stats = &st.session.reads.stats;
         let wip_label = t.tr("graph.wip.label");
@@ -218,7 +218,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // The row's accessible name: its summary, or the text of its WIP box.
                 match (commit, worktree) {
                     (Some(c), _) => cells::name_row(&resp, c, snap.refs.get(&c.oid), settings.format_graph_time(c.time, now, offset)),
-                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &crate::state::worktrees::wip_label(t, wt)),
+                    (None, Some((_, wt))) => super::access::name_button(&resp, true, &glowfly_model::state::worktrees::wip_label(t, wt)),
                     (None, None) => super::access::name_button(&resp, true, wip_label),
                 }
                 // Another worktree's row is never selected.
@@ -244,7 +244,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // Another worktree's row: a click opens (or switches to) that worktree's tab; its
                 // menu is the WORKTREES row's.
                 if let Some((w, wt)) = worktree {
-                    let label = crate::state::worktrees::wip_label(t, wt);
+                    let label = glowfly_model::state::worktrees::wip_label(t, wt);
                     worktree_wip::draw(&painter, cols_cfg.tree.then_some(&gp), &cols, rect, (w, wt, &colours), &label, node_r);
                     let resp = resp.on_hover_text(wip_tooltip(wt));
                     if resp.clicked() && open_blocked(wt).is_none() {

@@ -1,10 +1,10 @@
 //! A Regular text field that underlines misspellings and offers corrections on right-click.
 
 use super::theme::color;
-use crate::ui::theme::controls::SizedField;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::{context_menu, separator, submenu};
+use crate::theme::controls::SizedField;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::menu::{context_menu, separator, submenu};
 use eframe::egui::{self, Stroke, TextFormat, text::LayoutJob};
 use glowfly_core::spell::{Miss, Speller};
 

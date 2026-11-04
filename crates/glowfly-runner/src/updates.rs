@@ -6,10 +6,10 @@
 
 use super::execute::{Cx, Execute};
 use super::update_restart;
-use crate::effect::UpdateEffect;
-use crate::msg::{CheckedRelease, Msg, UpdateMsg};
 use glowfly_core::app_update::{Offer, Progress, UpdateError};
 use glowfly_core::{app_update, paths, settings};
+use glowfly_model::effect::UpdateEffect;
+use glowfly_model::msg::{CheckedRelease, Msg, UpdateMsg};
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime};
 

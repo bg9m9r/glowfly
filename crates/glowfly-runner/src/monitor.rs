@@ -6,9 +6,9 @@
 
 use super::execute::{Cx, Execute};
 use super::git_ops;
-use crate::effect::{MonitorJob, MonitorOff};
-use crate::msg::{LoadMsg, Msg};
 use glowfly_core::repo;
+use glowfly_model::effect::{MonitorJob, MonitorOff};
+use glowfly_model::msg::{LoadMsg, Msg};
 use std::path::Path;
 
 impl Execute for MonitorJob {

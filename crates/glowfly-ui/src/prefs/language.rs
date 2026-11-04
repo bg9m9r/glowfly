@@ -5,8 +5,8 @@
 //! saves the change.
 
 use super::{check_row, help, row, section};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, controls, type_scale};
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, controls, type_scale};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::{self, Lang, SYSTEM};
 use glowfly_core::settings::{DateKind, Settings};
@@ -34,7 +34,7 @@ fn language_row(ui: &mut Ui, s: &mut Settings) {
                 ui.selectable_value(&mut s.language, lang.code().to_owned(), lang.native_name());
             }
         });
-        crate::ui::access::from_label(&combo.response);
+        crate::access::from_label(&combo.response);
         help(ui, t.tr("prefs.general.language.help"));
     });
 }
@@ -62,7 +62,7 @@ fn date_time_section(ui: &mut Ui, t: Lang, s: &mut Settings, now: (i64, i32)) {
                 ui.selectable_value(&mut s.date_locale, k.to_owned(), label);
             }
         });
-        crate::ui::access::from_label(&combo.response);
+        crate::access::from_label(&combo.response);
     });
     // After the locale picker, so a new locale's hints and previews show on the same frame.
     let [date, long, date_time, full] = [DateKind::Date, DateKind::LongDate, DateKind::DateTime, DateKind::Full].map(|k| s.date_default(k));

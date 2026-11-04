@@ -7,15 +7,15 @@
 use super::tests::keys;
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{ack, confirm, empty_diff, entry, last_log, loaded, run, tick, work_ops};
-use crate::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::files::TRASH;
-use crate::state::{AppState, Modal};
 use glowfly_core::repo::{Deleted, DiffTarget, TrashProblem, TrashRefusal};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::files::TRASH;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 fn discard(path: &str, mode: DeleteMode) -> FileOp {
@@ -249,7 +249,7 @@ fn discard_end_to_end(name: &str, to_trash: bool) -> (PathBuf, AppState, String)
 
 /// Whether the test build's stand-in bin holds u.txt with `contents`.
 fn in_test_bin(contents: &str) -> bool {
-    std::fs::read_dir(crate::runner::testing::test_bin())
+    std::fs::read_dir(glowfly_runner::testing::test_bin())
         .into_iter()
         .flatten()
         .flatten()

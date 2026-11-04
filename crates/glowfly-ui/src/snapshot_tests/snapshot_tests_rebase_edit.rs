@@ -4,17 +4,17 @@
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase_quick::RewordForm;
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{self, QuickEdit, RebaseProgress, Resume, Stop, StopKind};
 use glowfly_core::repo::{FileEntry, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase_quick::RewordForm;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 
 const EDIT_STEPS: &str = "Edit remaining steps…";
@@ -206,7 +206,7 @@ fn amend_and_continue(theme: ThemeChoice, name: &str) {
     assert!(h.query_by_label("Commit and continue").is_none());
     h.get_by_label("Amend and continue").click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Commit(crate::msg::CommitMsg::CommitAndContinue))));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Commit(glowfly_model::msg::CommitMsg::CommitAndContinue))));
     drop(h);
     remove_fixture(&dir);
 }
@@ -275,7 +275,7 @@ fn the_stopped_sha_selects_its_commit() {
     h.run();
     h.get_by_label(&skeleton.to_string()[..7]).click();
     h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::JumpTo(o)) if *o == skeleton)));
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Repo(glowfly_model::msg::RepoMsg::JumpTo(o)) if *o == skeleton)));
     drop(h);
     remove_fixture(&dir);
 }

@@ -5,9 +5,9 @@
 
 use super::execute::err;
 use super::git_env;
-use crate::effect::{KnownRepo, LoadKind};
-use crate::msg::{LoadMsg, Msg, RepoMsg};
 use glowfly_core::repo::{self, GraphCache, LoadOptions, MoreLoaded, Prior};
+use glowfly_model::effect::{KnownRepo, LoadKind};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
 use std::path::PathBuf;
 
 /// Runs one repository load and returns its result message.

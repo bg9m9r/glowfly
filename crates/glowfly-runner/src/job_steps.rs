@@ -19,11 +19,11 @@
 //! (`clone_stop`), once its processes have exited.
 
 use super::git_ops::job_env;
-use crate::msg::{JobMsg, Msg};
-use crate::state::job_stop::Step;
 use glowfly_core::git_progress::{self, Phase, Progress, Tail};
 use glowfly_core::gitcli::{self, Stop};
 use glowfly_core::{clone_stop, stop_cleanup, undo};
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::job_stop::Step;
 use std::path::Path;
 use std::time::{Duration, Instant};
 

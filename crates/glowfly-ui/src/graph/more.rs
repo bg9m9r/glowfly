@@ -3,22 +3,22 @@
 //! further back), that the load failed with Try again, or, otherwise, why the history stops:
 //! the newest commits only, with Load more, or a shallow clone's end, with Fetch full history.
 
-use crate::msg::{JobMsg, LoadMsg, Msg};
-use crate::state::AppState;
-use crate::state::load_more::{EndRow, HistoryNotes, MoreRow};
-use crate::state::refresh::can_load_more;
-use crate::state::shallow::header_tooltip;
-use crate::ui::pane_status::plain_error;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::severity::{self, Severity};
-use crate::ui::widgets::truncate::paint_cut_text;
-use crate::ui::widgets::{buttons, fireflies};
+use crate::pane_status::plain_error;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::severity::{self, Severity};
+use crate::widgets::truncate::paint_cut_text;
+use crate::widgets::{buttons, fireflies};
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Sense, Stroke, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::shallow_ops::Deepen;
+use glowfly_model::msg::{JobMsg, LoadMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::load_more::{EndRow, HistoryNotes, MoreRow};
+use glowfly_model::state::refresh::can_load_more;
+use glowfly_model::state::shallow::header_tooltip;
 
 /// How close to the last loaded row the graph's last visible row gets before more is loaded.
 pub(super) const NEAR_END_ROWS: usize = 40;

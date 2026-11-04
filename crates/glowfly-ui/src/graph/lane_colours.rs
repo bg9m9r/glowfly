@@ -5,9 +5,9 @@
 
 use super::paint::{LaneLine, Pattern};
 use super::ref_group::Chip;
-use crate::ui::theme::branch_colours::line;
-use crate::ui::theme::color;
-use crate::ui::theme::ref_chip::BranchTone;
+use crate::theme::branch_colours::line;
+use crate::theme::color;
+use crate::theme::ref_chip::BranchTone;
 use eframe::egui::Color32;
 use glowfly_core::graph::Layout;
 use glowfly_core::graph::owners::{Owners, RowPos};

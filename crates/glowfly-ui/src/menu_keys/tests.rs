@@ -3,7 +3,7 @@
 //! Two) and Delta. A context menu opened with Shift+F10 on a focused button, a dropdown button
 //! (`menu::custom_button`) and a popup (`menu::popup_below`).
 
-use crate::ui::widgets::{Icon, menu};
+use crate::widgets::{Icon, menu};
 use eframe::egui::{self, Event, Id, Key, Modifiers, PointerButton, PopupCloseBehavior, Pos2, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -40,7 +40,7 @@ fn rows(ui: &mut egui::Ui, log: &mut Vec<String>) {
 }
 
 fn build(app: impl FnMut(&mut egui::Ui, &mut Vec<String>) + 'static) -> H {
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .with_size(vec2(640.0, 420.0))
         .with_step_dt(0.02)
         .with_max_steps(200)

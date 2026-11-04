@@ -5,9 +5,9 @@
 use super::snapshot_tests::{harness_palette, remove_fixture, settings};
 use super::snapshot_tests_diff::with_word_diff_in;
 use super::theme::{self, builtin};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::settings::{BuiltinTheme, DiffLayout, ThemeChoice};
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 fn diff_in(t: BuiltinTheme) {

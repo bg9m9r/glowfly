@@ -18,13 +18,13 @@ use super::widgets::buttons;
 use super::widgets::chip::{Chip, ChipSize, Look};
 use super::widgets::ghost::{ghost, icon_tip};
 use super::widgets::segmented::{Segment, segmented_opts};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::journal_lost::JournalTab;
-use crate::state::tip::Tip;
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal_lost::JournalTab;
+use glowfly_model::state::tip::Tip;
 
 const HEADER_H: f32 = 56.0;
 const INSET: f32 = 16.0;

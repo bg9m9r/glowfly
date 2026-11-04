@@ -1,15 +1,15 @@
 //! The note after a slow status read: when it shows, what it offers, that it shows once per
 //! repository, and the job its button starts.
 
-use crate::effect::{Effect, LoadKind, StatusRead};
 use crate::flows::{drive, scratch_repo, state};
-use crate::msg::{LoadMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::update::status_tip::{MonitorNote, check_for, note_text};
-use crate::update::update;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::opens::Os;
 use glowfly_core::repo::{self, SlowStatus, StatusSpeedups};
+use glowfly_model::effect::{Effect, LoadKind, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::status_tip::{MonitorNote, check_for, note_text};
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 

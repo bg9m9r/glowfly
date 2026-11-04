@@ -4,15 +4,10 @@
 //! rest. These move the mouse (PointerMoved / PointerButton), which
 //! goes through egui's hit-testing, unlike an accessibility click.
 
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::conflict_check::{ConflictReport, current_request};
-use crate::state::terminal::SessionStatus;
-use crate::state::trust::{Standing, record};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_terminal::with_session;
-use crate::ui::snapshot_tests::snapshot_tests_trust::make_untrusted;
-use crate::ui::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_terminal::with_session;
+use crate::snapshot_tests::snapshot_tests_trust::make_untrusted;
+use crate::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use eframe::egui::accesskit::Role;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -20,6 +15,11 @@ use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{RepoTrust, ThemeChoice};
 use glowfly_model::conflict_check::CheckRequest;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict_check::{ConflictReport, current_request};
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::trust::{Standing, record};
 use glowfly_model::terminal::TerminalMsg;
 use std::path::Path;
 

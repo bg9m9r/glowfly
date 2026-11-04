@@ -3,7 +3,7 @@
 //! sentence on one line, then "Learn more", which opens the whole text in place, ending with
 //! "Show less". Which rows are open is view state that resets when the page changes.
 
-use crate::ui::theme::{color, type_scale};
+use crate::theme::{color, type_scale};
 use eframe::egui::{self, Id, Sense, Ui, text::LayoutJob};
 use glowfly_core::i18n::Lang;
 use std::collections::HashSet;

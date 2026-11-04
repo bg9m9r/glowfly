@@ -2,11 +2,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::ForgeMsg;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, ForgeState, ProjectKeys, Status};
 use glowfly_core::forge::{Account, Connection, Provider, Target};
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, ForgeState, ProjectKeys, Status};
 use std::time::Instant;
 
 fn target(provider: Provider, host: &str) -> Target {

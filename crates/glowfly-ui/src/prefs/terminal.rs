@@ -10,16 +10,16 @@
 use super::terminal_colours::colours_row;
 use super::tools::{program_field, warnings};
 use super::{check_row, help, row, section, text_field, warn};
-use crate::msg::Msg;
-use crate::themes::ThemeState;
-use crate::tools::ToolKind;
-use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::widgets::buttons;
 use eframe::egui::{self, Ui};
 use glowfly_core::external_tools::{self, EDITOR_PLACEHOLDERS};
 use glowfly_core::i18n::Lang;
 use glowfly_core::opens::Os;
 use glowfly_core::settings::{CursorStyle, Settings, ShellChoice, TERMINAL_FONT_SIZES, TerminalPrefs};
+use glowfly_model::msg::Msg;
+use glowfly_model::themes::ThemeState;
+use glowfly_model::tools::ToolKind;
 
 pub fn terminal_page(ui: &mut Ui, s: &mut Settings, themes: &ThemeState, msgs: &mut Vec<Msg>) {
     page_for(ui, s, themes, Os::current(), msgs);
@@ -49,7 +49,7 @@ fn built_in(ui: &mut Ui, t: Lang, s: &mut Settings, themes: &ThemeState, os: Os,
                     ui.selectable_value(&mut p.shell.choice, *c, choice_label(t, *c, windows));
                 }
             });
-        crate::ui::access::from_label(&combo.response);
+        crate::access::from_label(&combo.response);
         help(ui, if windows { t.tr("prefs.terminal.shell.help_windows") } else { t.tr("prefs.terminal.shell.help_unix") });
     });
     if p.shell.choice == ShellChoice::Custom {

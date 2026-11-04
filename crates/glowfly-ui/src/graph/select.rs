@@ -2,16 +2,16 @@
 //! row), the graph's keyboard focus target, and its keys: the arrows (Shift+arrows extend the
 //! commit selection), Page Up/Down, Home/End, H and [ ].
 
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::state::graph_rows::{DisplayRow, GraphKey, GraphRows};
-use crate::state::list_keys::{KeySet, ListKey, ListMove};
-use crate::state::{Selection, ViewState};
-use crate::ui::{list_focus, pane_focus};
+use crate::{list_focus, pane_focus};
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
+use glowfly_model::state::graph_rows::{DisplayRow, GraphKey, GraphRows};
+use glowfly_model::state::list_keys::{KeySet, ListKey, ListMove};
+use glowfly_model::state::{Selection, ViewState};
 
 /// The graph's scroll offset and visible height, and its rows' height.
 #[derive(Clone, Copy)]
@@ -110,14 +110,14 @@ pub(super) fn keyboard_nav(
     let keys = if focused == Some(id) { list_focus::take(ctx, id, KEYS) } else { list_focus::take_unfocused(ctx, page, KEYS) };
     let len = rows.len();
     // The commit a Shift move extends from (the selection's moving end), when there is one.
-    let anchor = crate::state::selection::extend_from(sel);
+    let anchor = glowfly_model::state::selection::extend_from(sel);
     let mut cursor = current_row((sel, lit), rows);
     let (mut extending, mut moved, mut on_end) = (false, false, false);
     for key in keys {
         let (mv, extend) = match key {
             // Enter: the details panel's file list (`update/shortcuts.rs`).
             ListKey::Open => {
-                msgs.push(Msg::Shortcut(crate::keymap::KeyAction::OpenDetails));
+                msgs.push(Msg::Shortcut(glowfly_model::keymap::KeyAction::OpenDetails));
                 continue;
             }
             ListKey::Move(mv) => (mv, false),

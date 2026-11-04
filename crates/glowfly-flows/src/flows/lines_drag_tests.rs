@@ -3,11 +3,11 @@
 
 use super::lines_tests::{click, loaded, run, selected, two_hunks, unstaged, with_diff};
 use super::tests::{drive, scratch_repo, state};
-use crate::msg::{DiffMsg, Msg, RepoMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::lines::LineClick::{self, Only, Range, Toggle};
 use glowfly_core::repo::{DiffTarget, HunkOp};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::{self, Only, Range, Toggle};
 
 fn start(st: &mut AppState, hunk: usize, line: usize, how: LineClick) {
     assert!(run(st, Msg::Diff(DiffMsg::StartLineDrag { hunk, line, how })).is_empty());

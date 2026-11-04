@@ -14,14 +14,14 @@ use super::snapshot_tests_gitflow::with_flow_branches;
 use super::snapshot_tests_pr_check_list::{every_state, with_checks};
 use super::snapshot_tests_pull_request_line_comment::opened;
 use super::snapshot_tests_worktrees::{H, center};
-use crate::state::PrefsState;
-use crate::state::pull_request_checks::ChecksPane;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Key, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::PrefsState;
+use glowfly_model::state::pull_request_checks::ChecksPane;
 use std::path::PathBuf;
 
 /// Runs `case` in the dark and the light view palettes, as golden `<name>_dark` and
@@ -32,7 +32,7 @@ fn both(name: &str, case: impl Fn(ThemeChoice, bool, &str)) {
 }
 
 /// A harness on `st`, `dark` or light, after its first frames.
-fn open(st: crate::state::AppState, dark: bool) -> H {
+fn open(st: glowfly_model::state::AppState, dark: bool) -> H {
     let mut h = harness(st, dark);
     h.run();
     h
@@ -201,8 +201,8 @@ fn pr_checks_run_hovered() {
 #[test]
 fn prefs_nav_selected_focused_other() {
     both("prefs_nav_selected_focused_other", |theme, dark, name| {
-        let mut st = crate::state::AppState::new(super::snapshot_tests::settings(theme), Vec::new(), std::time::Instant::now());
-        st.prefs = Some(PrefsState::new(crate::state::PrefPage::Ui));
+        let mut st = glowfly_model::state::AppState::new(super::snapshot_tests::settings(theme), Vec::new(), std::time::Instant::now());
+        st.prefs = Some(PrefsState::new(glowfly_model::state::PrefPage::Ui));
         let mut h = open(st, dark);
         let other = h.get_all_by_role(Role::Button).find(|n| n.label().as_deref() == Some("Accessibility")).expect("the Accessibility row");
         other.focus();
@@ -213,9 +213,9 @@ fn prefs_nav_selected_focused_other() {
 
 /// The palette over a repository in `theme` drawn in `p`, its keyboard row on the first command
 /// and the pointer on Push, as golden `name`.
-fn palette_scene(theme: ThemeChoice, p: crate::ui::theme::color::Palette, name: &str) {
+fn palette_scene(theme: ThemeChoice, p: crate::theme::color::Palette, name: &str) {
     let (mut st, dir) = with_repo(theme, &format!("rows-{name}"));
-    st.palette = Some(crate::state::palette::Palette::default());
+    st.palette = Some(glowfly_model::state::palette::Palette::default());
     let mut h = harness_palette(st, p);
     h.run();
     let at = center(&h, "Push");
@@ -231,8 +231,8 @@ fn palette_scene(theme: ThemeChoice, p: crate::ui::theme::color::Palette, name: 
 
 #[test]
 fn palette_cursor_and_hover() {
-    both("palette_cursor_and_hover", |theme, dark, name| palette_scene(theme, crate::ui::theme::view_palette(dark), name));
-    palette_scene(ThemeChoice::HighContrastDark, crate::ui::theme::HIGH_CONTRAST_DARK, "palette_cursor_and_hover_high_contrast_dark");
+    both("palette_cursor_and_hover", |theme, dark, name| palette_scene(theme, crate::theme::view_palette(dark), name));
+    palette_scene(ThemeChoice::HighContrastDark, crate::theme::HIGH_CONTRAST_DARK, "palette_cursor_and_hover_high_contrast_dark");
 }
 
 #[test]

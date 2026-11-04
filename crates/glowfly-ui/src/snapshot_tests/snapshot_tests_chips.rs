@@ -7,20 +7,20 @@
 use super::snapshot_tests::remove_fixture;
 use super::snapshot_tests_signature::{checked, ssh, with_signed_head};
 use super::snapshot_tests_updates::{status_bar, the_offer};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::ssh_marks::AgentPill;
-use crate::state::updates::UpdateStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::{DARK, apply_style, color, egui_theme};
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
-use crate::ui::{file_status, issue, journal, prefs, pull_request, signature_badge, tab_paint, update_notice, widgets};
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::{DARK, apply_style, color, egui_theme};
+use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::{file_status, issue, journal, prefs, pull_request, signature_badge, tab_paint, update_notice, widgets};
 use eframe::egui::{self, Event, Rect, RichText, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::CommitDetail;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::signature_check::SignatureCheck;
 use glowfly_core::signing::SigningFormat;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::ssh_marks::AgentPill;
+use glowfly_model::state::updates::UpdateStatus;
 
 const KEY: &str = "SHA256:nu3mXdiXjT/P69lIp2s2NqrOSBxSCmevSqfmgZp4JuA";
 
@@ -47,7 +47,7 @@ fn row(ui: &mut Ui, name: &str, f: impl FnOnce(&mut Ui)) {
 fn draw(ui: &mut Ui, c: &mut Catalog) {
     let t = Lang::En;
     row(ui, "Quiet chips", |ui| {
-        let _ = widgets::quiet_chip(ui, RichText::new("a1b2c3d").font(crate::ui::theme::type_scale::mono(12.0)), "SHA");
+        let _ = widgets::quiet_chip(ui, RichText::new("a1b2c3d").font(crate::theme::type_scale::mono(12.0)), "SHA");
         let _ = widgets::quiet_chip(ui, "Grace Hopper", "Committer");
     });
     row(ui, "Signature", |ui| {
@@ -86,7 +86,7 @@ fn draw(ui: &mut Ui, c: &mut Catalog) {
         }
     });
     row(ui, "Tab group", |ui| {
-        let font = crate::ui::theme::type_scale::font(tab_paint::CHIP_TEXT);
+        let font = crate::theme::type_scale::font(tab_paint::CHIP_TEXT);
         let w = ui.painter().layout_no_wrap("Work".into(), font, color::text()).size().x;
         let room = tab_paint::chip_room(w) - tab_paint::CHIP_GAP;
         let (slot, _) = ui.allocate_exact_size(vec2(room, 22.0), egui::Sense::hover());
@@ -122,7 +122,7 @@ fn chips_catalog_dark() {
         vec![ssh(&verified, ""), ssh("N\0\0\0\0undefined\0\n", no_signers), ssh("B\0\0\0\0never\0Could not verify signature.\n", "")];
     let updates = status_bar(UpdateStatus::Available(Box::new(the_offer())));
     let catalog = Catalog { signed, detail, checks, updates, msgs: Vec::new(), picker: None };
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(640.0, 380.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(vec2(640.0, 380.0)).build_ui_state(
         |ui, c: &mut Catalog| {
             color::set_palette(&DARK);
             apply_style(ui.ctx(), &DARK);

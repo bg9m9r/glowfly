@@ -6,20 +6,20 @@
 //! offering a download.
 
 use super::{help, row, warn};
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::updates::{
-    Transfer, UpdateStatus, UpdatesState, available_text, download_failed_text, install_label, progress_text, stale_text,
-};
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Rect, RichText, Sense, Ui, WidgetInfo, WidgetType, vec2};
 use glowfly_core::app_update::Offer;
 use glowfly_core::app_update::{InstallMethod, SavedProblem};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{Settings, WhatsNew};
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::updates::{
+    Transfer, UpdateStatus, UpdatesState, available_text, download_failed_text, install_label, progress_text, stale_text,
+};
 use std::path::Path;
 
 /// The progress bar's widest and its height.

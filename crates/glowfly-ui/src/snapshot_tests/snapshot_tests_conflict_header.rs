@@ -4,18 +4,18 @@
 //! expanded beside the view, so its conflicted file row (with its own Mark resolved) is drawn
 //! too.
 
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, with_conflict};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, with_conflict};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::Choice;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
 
-type H = Harness<'static, (AppState, Vec<crate::msg::Msg>)>;
+type H = Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)>;
 
 /// settings.txt with two conflicts, the first picked as ours.
 pub(crate) fn one_of_two(name: &str) -> (AppState, PathBuf) {
@@ -38,7 +38,7 @@ pub(crate) fn one_of_two(name: &str) -> (AppState, PathBuf) {
     let view = st.session.conflict.view.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
     view.picks[0] = Choice::Ours.into();
-    st.view.details_expanded_for = crate::state::layout::tool_view(&st);
+    st.view.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
     (st, dir)
 }
 
@@ -129,7 +129,8 @@ fn conflict_more_menu() {
     assert!(!h.get_by_label(MERGE_TOOL_BUTTON).is_disabled());
     h.get_by_label(MERGE_TOOL_BUTTON).click();
     h.run();
-    let sent = |m: &crate::msg::Msg| matches!(m, crate::msg::Msg::Tools(crate::tools::ToolsMsg::ResolveInMergeTool(_)));
+    let sent =
+        |m: &glowfly_model::msg::Msg| matches!(m, glowfly_model::msg::Msg::Tools(glowfly_model::tools::ToolsMsg::ResolveInMergeTool(_)));
     assert!(h.state().1.iter().any(sent), "it sends ResolveInMergeTool");
     drop(h);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
@@ -138,7 +139,7 @@ fn conflict_more_menu() {
 #[test]
 fn conflict_binary_fallback() {
     let (mut st, dir) = with_conflict("conflict-binary-fallback", "logo.bin", |side| format!("{side}\0image").into_bytes());
-    st.view.details_expanded_for = crate::state::layout::tool_view(&st);
+    st.view.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("conflict_binary_fallback");

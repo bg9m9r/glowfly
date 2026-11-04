@@ -11,12 +11,12 @@ use super::repo_row::ROW_H;
 use super::repo_swatch;
 use super::theme::{color, controls, type_scale};
 use super::widgets::{TextField, buttons, row_fill, text_field};
-use crate::msg::{GroupMsg, Msg};
-use crate::state::repo_group_picker::{AddPicker, PickRow};
 use eframe::egui::{self, Align, Layout, RichText, Sense, UiBuilder, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
 use glowfly_core::settings::RepoGroup;
+use glowfly_model::msg::{GroupMsg, Msg};
+use glowfly_model::state::repo_group_picker::{AddPicker, PickRow};
 
 /// The list's most height before it scrolls (ten rows).
 const LIST_H: f32 = 320.0;

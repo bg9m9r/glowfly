@@ -4,13 +4,7 @@
 //! window sizes is in `snapshot_tests_welcome_looks.rs`.
 
 use super::snapshot_tests::{harness, remove_fixture, settings, with_repo};
-use crate::msg::{LayoutMsg, Msg, PrefsMsg};
-use crate::onboarding::{OnboardingMsg, StartChoice};
-use crate::state::layout::Panel;
-use crate::state::onboarding::{Welcome, WelcomeStep};
-use crate::state::onboarding_tour::TourStep;
-use crate::state::{AppState, Modal, PrefPage};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers};
 use egui_kittest::kittest::Queryable;
@@ -19,6 +13,12 @@ use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
 use glowfly_core::identity::Identity;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{LayoutMsg, Msg, PrefsMsg};
+use glowfly_model::onboarding::{OnboardingMsg, StartChoice};
+use glowfly_model::state::layout::Panel;
+use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
+use glowfly_model::state::onboarding_tour::TourStep;
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
 
 pub(crate) fn ada() -> Identity {

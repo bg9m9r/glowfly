@@ -10,12 +10,12 @@ use super::button_look::{Press, Target, look, paint_button};
 use super::button_split::split;
 use super::buttons::{self, Kind, StyledButton};
 use super::{Icon, paint_icon_sized};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::surfaces::Tone;
-use crate::ui::theme::tokens::{self, Elevation, radius, shadow};
-use crate::ui::theme::{self, type_scale};
+use crate::snapshot_check::CheckSnapshot;
+use crate::theme::color::{self, Palette};
+use crate::theme::sizes::ControlSize;
+use crate::theme::surfaces::Tone;
+use crate::theme::tokens::{self, Elevation, radius, shadow};
+use crate::theme::{self, type_scale};
 use eframe::egui::{self, Align2, CornerRadius, Rect, Shape, StrokeKind, Ui, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::FocusStyle;
@@ -117,7 +117,7 @@ fn painted_row(ui: &mut Ui, label: &str, press: Press) {
 }
 
 fn render_buttons(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(820.0, 342.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(vec2(820.0, 342.0)).build_ui_state(
         move |ui, first: &mut bool| {
             frame(ui, &p);
             ui.add_space(8.0);
@@ -171,7 +171,7 @@ fn design_buttons_high_contrast_dark() {
 /// split's caret focused, a disabled action beside a caret that still works, and the danger and
 /// tonal kinds, whose divider is a shade of their fill.
 fn render_splits(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(520.0, 140.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(vec2(520.0, 140.0)).build_ui_state(
         move |ui, _: &mut ()| {
             frame(ui, &p);
             ui.add_space(8.0);
@@ -232,7 +232,7 @@ fn swatch(ui: &Ui, rect: Rect, r: impl Into<CornerRadius>, fill: egui::Color32, 
 }
 
 fn render_surfaces(name: &str, p: Palette) {
-    let mut h = crate::ui::snapshot_check::builder().with_size(vec2(720.0, 360.0)).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(vec2(720.0, 360.0)).build_ui(move |ui| {
         frame(ui, &p);
         let o = ui.max_rect().min + vec2(16.0, 16.0);
         let at = |x: f32, y: f32, w: f32, h: f32| Rect::from_min_size(o + vec2(x, y), vec2(w, h));

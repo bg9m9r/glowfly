@@ -4,13 +4,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::SparseEffect;
-use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg, SparseMsg};
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::sparse::SparsePage;
-use crate::state::{AppState, PrefPage};
 use glowfly_core::sparse_ops::{SparseCommand, SparseMode, SparseStatus};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SparseEffect;
+use glowfly_model::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg, SparseMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::sparse::SparsePage;
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

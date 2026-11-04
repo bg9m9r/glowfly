@@ -5,21 +5,21 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction, row_count, shown};
-use crate::state::{AppState, Modal};
 use glowfly_core::undo::Action;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction, row_count, shown};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
 const WITH_MESSAGE: &str = "Stash with message…";
 const CHOOSERS: [&str; 3] = ["Apply stash…", "Unstash…", "Delete stash…"];
 
-use crate::state::palette::PaletteCommand as C;
+use glowfly_model::state::palette::PaletteCommand as C;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())

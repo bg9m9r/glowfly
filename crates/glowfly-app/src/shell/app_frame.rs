@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 impl GlowflyApp {
     /// The frame-time overlay over everything `ui::draw` drew (when Preferences turns it on).
     pub(super) fn draw_overlay(&self, ctx: &egui::Context) {
-        crate::ui::frame_overlay::show(ctx, &self.st);
+        glowfly_ui::frame_overlay::show(ctx, &self.st);
     }
 
     /// Runs `f` as the frame phase `name`: timed, and traced as a span.

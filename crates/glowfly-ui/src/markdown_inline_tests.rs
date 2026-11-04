@@ -7,16 +7,16 @@
 use super::super::markdown::body;
 use super::super::markdown_cache::MarkdownCache;
 use super::super::theme::fonts;
-use crate::msg::Msg;
 use eframe::egui::{self, Pos2, Rect, Shape, vec2};
 use egui_kittest::kittest::Queryable;
+use glowfly_model::msg::Msg;
 
 #[test]
 fn an_https_link_opens_in_the_browser_and_others_do_nothing() {
     let mut cache = MarkdownCache::default();
     let src = "[docs](https://example.com/docs) and [local](a.md)";
-    let mut h = crate::ui::snapshot_check::builder()
-        .build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
+    let mut h =
+        crate::snapshot_check::builder().build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
     h.run();
     h.get_by_label("docs").click();
     h.run();
@@ -30,8 +30,8 @@ fn an_https_link_opens_in_the_browser_and_others_do_nothing() {
 /// The tooltip `src`'s link `label` shows on hover (after the app's tooltip delay).
 fn tooltip_of(src: &'static str, label: &str, tip: &str) {
     let mut cache = MarkdownCache::default();
-    let mut h = crate::ui::snapshot_check::builder()
-        .build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
+    let mut h =
+        crate::snapshot_check::builder().build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
     h.run();
     h.get_by_label(label).hover();
     for _ in 0..4 {
@@ -55,8 +55,8 @@ fn a_link_shows_its_host_in_punycode_and_says_when_its_text_names_another() {
 fn a_link_in_several_runs_is_judged_by_its_whole_text() {
     let mut cache = MarkdownCache::default();
     let src = "[**github.com**/acme](https://evil.example/)";
-    let mut h = crate::ui::snapshot_check::builder()
-        .build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
+    let mut h =
+        crate::snapshot_check::builder().build_ui_state(move |ui, msgs: &mut Vec<Msg>| body(ui, "t", src, &mut cache, msgs), Vec::new());
     h.run();
     h.get_by_label("github.com").click();
     h.run();

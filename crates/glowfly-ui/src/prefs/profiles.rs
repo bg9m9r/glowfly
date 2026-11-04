@@ -6,25 +6,25 @@
 
 use super::profile_rules::{RepoHere, here_row, rules_rows};
 use super::{help, primary_button, row, text_field};
-use crate::msg::Msg;
-use crate::profile::ProfileMsg;
-use crate::state::prefs::GitConfigValues;
-use crate::state::profiles::{
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::sizes::{self, ControlSize};
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::widgets::form_message::{self, Message};
+use eframe::egui::{self, Align, Align2, CornerRadius, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
+use glowfly_core::i18n::Lang;
+use glowfly_core::settings::{Profile, ProfileId, Settings};
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::profiles::{
     ADD_BUTTON, AddForm, COPY_ACCOUNTS, COPY_CURRENT, CURRENT_CHIP, CURRENT_HELP, DELETE_BUTTON, DELETE_DISABLED, KEY_HELP, LIST_HELP,
     LIST_LABEL, NAME_LABEL, NEW_LABEL, NEW_NAME_HINT, NO_IDENTITY, OTHER_HELP, ProfilesPage, RENAME_BUTTON, RenameForm, SWITCH_BUTTON,
     editing_caption, identity_line, key_hint,
 };
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::{self, ControlSize};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
-use crate::ui::widgets::form_message::{self, Message};
-use eframe::egui::{self, Align, Align2, CornerRadius, Key, Layout, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
-use glowfly_core::i18n::Lang;
-use glowfly_core::settings::{Profile, ProfileId, Settings};
 
 /// The list and its rows are wider than a form field, to fit the buttons beside the identity.
 const LIST_W: f32 = 640.0;

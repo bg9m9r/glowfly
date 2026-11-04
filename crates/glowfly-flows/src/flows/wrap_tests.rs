@@ -4,11 +4,11 @@
 use super::diff_tests::three_hunks;
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {

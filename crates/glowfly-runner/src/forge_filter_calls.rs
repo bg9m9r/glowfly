@@ -1,9 +1,9 @@
 //! Calls of pull request and issue filters (`ForgeCall::Filter`): the signed-in user, issue
 //! searches and the filter dialog's options.
 
-use crate::effect::{FilterCall, FilterResult, ForgeError};
 use glowfly_core::forge::filters::{filter_options, find_issues, matching, me};
 use glowfly_core::forge::{Auth, FilterKind, Target};
+use glowfly_model::effect::{FilterCall, FilterResult, ForgeError};
 
 pub(super) fn call(t: &Target, auth: &Auth, c: FilterCall) -> FilterResult {
     match c {

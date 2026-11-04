@@ -5,14 +5,14 @@
 //! `Msg`.
 
 use super::{help, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh::SshPage;
-use crate::state::ssh_windows::{WindowsOffer, windows_blocked, windows_offer};
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::{self, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh::SshPage;
+use glowfly_model::state::ssh_windows::{WindowsOffer, windows_blocked, windows_offer};
 
 pub(super) fn windows_row(ui: &mut Ui, t: Lang, page: &SshPage, msgs: &mut Vec<Msg>) {
     let offer = windows_offer(page, t);

@@ -6,11 +6,11 @@ use super::conflict_cells::CHECK_W;
 use super::diff::fold::paint_chevrons;
 use super::diff::{ROW_H, mono};
 use super::theme::color;
-use crate::msg::{ConflictMsg, Msg};
-use crate::ui::theme::tokens::radius;
+use crate::theme::tokens::radius;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::conflict_folds::CleanFold;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{ConflictMsg, Msg};
 
 /// The row's text for a fold of `n` lines.
 fn label(t: Lang, n: usize) -> String {

@@ -4,16 +4,16 @@
 //! changes are stashed first; Ctrl/Cmd+Enter submits (the dialog frame takes it before the
 //! field sees it). `update` checks the form again before running anything.
 
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase::needs_stash;
-use crate::state::rebase_quick::{BLANK, RewordForm, STASH_NOTE};
-use crate::ui::dialog_frame::{Cx, Dialog, Footer};
-use crate::ui::theme::color;
-use crate::ui::widgets::form_message::{self, Message};
-use crate::ui::widgets::text_field::TextField;
-use crate::ui::widgets::{FieldGroup, buttons};
+use crate::dialog_frame::{Cx, Dialog, Footer};
+use crate::theme::color;
+use crate::widgets::form_message::{self, Message};
+use crate::widgets::text_field::TextField;
+use crate::widgets::{FieldGroup, buttons};
 use eframe::egui::{self, RichText};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase::needs_stash;
+use glowfly_model::state::rebase_quick::{BLANK, RewordForm, STASH_NOTE};
 
 /// Draws the dialog; returns true when it should close (Cancel). The message field takes the
 /// keyboard focus once, unless `cx.keyboard` is false (a credential prompt is open above it).

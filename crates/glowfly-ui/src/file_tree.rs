@@ -4,18 +4,18 @@
 //! frames (`FrameCache`), keyed by which list it is (`FilesKey`) rather than by its paths, so a
 //! list of thousands of files is neither sorted nor read again every frame.
 
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::file_folds::FileListId;
-use crate::state::file_tree::{self, TreeRow};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::{self, Icon, buttons, icon};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::{self, Icon, buttons, icon};
 use eframe::egui::util::cache::{ComputerMut, FrameCache};
 use eframe::egui::{self, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::FileListMode;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::file_tree::{self, TreeRow};
 use std::collections::BTreeSet;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;

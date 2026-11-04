@@ -3,9 +3,9 @@
 //! already been written is dropped, and the newest snapshot always lands last.
 
 use super::Runner;
-use crate::effect::Effect;
-use crate::msg::Msg;
 use glowfly_core::persist::LatestOnly;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
 use std::sync::Arc;
 
 #[derive(Default)]

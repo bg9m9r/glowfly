@@ -10,7 +10,7 @@
 //! event that started the app right after that notification. Installing again replaces the
 //! handler, so twice is harmless.
 
-use crate::runner::platform::open_events::{self, codes::*};
+use glowfly_runner::platform::open_events::{self, codes::*};
 use objc2::rc::Retained;
 use objc2::runtime::{NSObject, NSObjectProtocol};
 use objc2::{MainThreadMarker, MainThreadOnly, define_class, msg_send, sel};

@@ -1,13 +1,13 @@
 //! Select every commit (Cmd/Ctrl+A) and go back to the focused commit (Cmd/Ctrl+Shift+A): they
 //! fire only with the graph in view and nothing typing, no diff over the graph and no dialog open.
 
-use crate::msg::{Msg, SelectionMsg};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_tests::{remove_fixture, with_repo};
+use crate::snapshot_tests::{remove_fixture, with_repo};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::state::{AppState, Modal};
 
 struct Keys {
     st: AppState,
@@ -18,7 +18,7 @@ struct Keys {
 
 fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(String::new) };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some(text) = k.field.as_mut() {

@@ -4,11 +4,11 @@
 
 use super::terminal_tests::{open_with_panel, run, terminal};
 use super::update;
-use crate::msg::Msg;
-use crate::state::terminal::SessionStatus;
-use crate::state::{AppState, Modal};
-use crate::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::terminal::ShellActivity;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::terminal::{AfterCheck, TerminalEffect as E, TerminalMsg as T};
 use std::time::Instant;
 
 /// The first tab's name once it runs pwsh: "pwsh \u{b7} <the fixture's folder>".

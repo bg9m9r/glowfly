@@ -7,12 +7,12 @@
 use super::branch_dot;
 use super::theme::branch_colours::line;
 use super::theme::{branch_names, color};
-use crate::msg::{GraphMsg, Msg};
-use crate::ui::widgets::menu::{self, separator, submenu};
+use crate::widgets::menu::{self, separator, submenu};
 use eframe::egui;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::{GraphMsg, Msg};
 
 fn pin(key: &str, slot: Option<u8>) -> Msg {
     Msg::Graph(GraphMsg::PinColour { key: key.to_owned(), slot })

@@ -140,7 +140,7 @@ pub fn restored_toast(t: Lang, path: &str, result: &Result<Restored, String>) ->
 }
 
 /// The lost commit as a HEAD state, for the journal's Restore.
-pub fn as_row(c: &LostCommit) -> Row {
+pub(crate) fn as_row(c: &LostCommit) -> Row {
     Row {
         subject: Subject::Head,
         oid: c.oid,

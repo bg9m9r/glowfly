@@ -3,9 +3,9 @@
 
 use super::tests::{drive, finish, long_repo, scratch_repo, state};
 use super::update;
-use crate::msg::{Msg, RepoMsg, TabsMsg};
-use crate::state::Selection;
-use crate::state::tabs::history_free_wake;
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::Selection;
+use glowfly_model::state::tabs::history_free_wake;
 use std::time::Instant;
 
 #[test]

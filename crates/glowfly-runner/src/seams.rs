@@ -7,10 +7,10 @@
 //! binary as git's editor and never write over the developer's own settings. Passed explicitly
 //! rather than chosen by `cfg(test)`, which a dependency is never built with.
 
-use crate::effect::Effect;
-use crate::msg::Msg;
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
 use std::time::Duration;
 
 /// Which set a `Seams` is, so a check can tell them apart without comparing function

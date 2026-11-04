@@ -1,13 +1,13 @@
 //! Headless tests for the menu bar's window actions (Quit, About), a drawn title bar's window
 //! actions and Edit > Find commits.
 
-use crate::effect::{Effect, UiEffect};
 use crate::flows::{drive, scratch_repo, state};
-use crate::msg::{AppMsg, CredentialMsg, Msg, PaletteMsg, RepoMsg, SearchMsg};
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::update::update;
 use glowfly_core::askpass::Prompt;
 use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{AppMsg, CredentialMsg, Msg, PaletteMsg, RepoMsg, SearchMsg};
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -28,7 +28,7 @@ fn quit_closes_the_window_and_changes_nothing() {
 
 #[test]
 fn window_actions_go_to_the_shell_and_change_nothing() {
-    use crate::state::window_chrome::{ResizeEdge, WindowCmd};
+    use glowfly_model::state::window_chrome::{ResizeEdge, WindowCmd};
     for cmd in [
         WindowCmd::StartDrag,
         WindowCmd::BeginResize(ResizeEdge::SouthEast),
@@ -118,13 +118,13 @@ fn find_commits_closes_the_diff_and_focuses_search() {
 
 #[test]
 fn edit_menu_copy_items_follow_the_selection() {
-    use crate::state::Selection;
-    use crate::state::menu_bar::{ShaCopy, copy_branch, copy_message, copy_sha};
     use glowfly_core::i18n::Lang;
+    use glowfly_model::state::Selection;
+    use glowfly_model::state::menu_bar::{ShaCopy, copy_branch, copy_message, copy_sha};
     const NO_COMMIT: &str = "Select a commit in the graph first";
     const NO_BRANCH: &str = "No branch is checked out";
-    use crate::state::selection::MultiSelection;
     use glowfly_core::repo::{self, LoadOptions};
+    use glowfly_model::state::selection::MultiSelection;
 
     let mut st = state();
     assert_eq!(copy_sha(&st), Err(NO_COMMIT));
@@ -154,7 +154,7 @@ fn edit_menu_copy_items_follow_the_selection() {
         anchor: head,
         cursor: head,
         members: [head, other].into(),
-        span: crate::state::selection_span::Span::Pair { older: other, newer: head },
+        span: glowfly_model::state::selection_span::Span::Pair { older: other, newer: head },
         swapped: false,
         changes: None,
         stacked: None,
@@ -173,8 +173,8 @@ fn edit_menu_copy_items_follow_the_selection() {
 
 #[test]
 fn the_app_menus_quit_asks_while_a_push_runs() {
-    use crate::state::menu_model::build;
-    use crate::state::menu_native::{NEntry, plan, take_picked};
+    use glowfly_model::state::menu_model::build;
+    use glowfly_model::state::menu_native::{NEntry, plan, take_picked};
     // Chooses the macOS app menu's Quit and handles what it sends.
     let pick = |st: &mut AppState| -> Vec<Effect> {
         let p = plan(&build(st), st.settings.lang(), 1);
@@ -190,7 +190,7 @@ fn the_app_menus_quit_asks_while_a_push_runs() {
     };
     let mut st = crate::flows::quit_tests::pushing();
     let fx = pick(&mut st);
-    assert!(crate::state::quit_confirm::asking(&st), "the quit question shows");
+    assert!(glowfly_model::state::quit_confirm::asking(&st), "the quit question shows");
     assert!(!fx.iter().any(|e| matches!(e, Effect::Ui(UiEffect::CloseWindow))), "{fx:?}");
     let mut st = state();
     let fx = pick(&mut st);

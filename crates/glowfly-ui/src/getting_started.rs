@@ -5,17 +5,17 @@
 
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::AppState;
-use crate::state::onboarding::getting_started::{Card, groups, hidden, progress};
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Stroke, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::onboarding::getting_started::{Card, groups, hidden, progress};
 
 /// A card's padding, the gap between cards, and the least width that fits a card in a column.
 const CARD_MARGIN: i8 = 14;

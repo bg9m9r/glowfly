@@ -12,8 +12,8 @@ use glowfly_core::settings::Settings;
 use std::time::{Duration, Instant};
 
 /// How long the "Saved" tick stays at full strength, then how long it fades.
-pub const SHOW_FOR: Duration = Duration::from_millis(1600);
-pub const FADE_FOR: Duration = Duration::from_millis(400);
+pub(crate) const SHOW_FOR: Duration = Duration::from_millis(1600);
+pub(crate) const FADE_FOR: Duration = Duration::from_millis(400);
 
 /// The "Saved" tick beside the page title. `mark` asks for it; the next `tick` (once per frame)
 /// stamps the time, since update handlers that save don't all know it.

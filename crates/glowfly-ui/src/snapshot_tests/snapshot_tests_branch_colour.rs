@@ -5,12 +5,12 @@
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::{GraphFilter, ThemeChoice};
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 
 const D: &str = "2026-01-12T10:00:00+00:00";

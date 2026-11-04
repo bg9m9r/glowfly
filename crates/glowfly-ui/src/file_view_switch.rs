@@ -4,9 +4,9 @@
 
 use super::file_menu;
 use super::widgets::segmented::{Segment, segmented_opts};
-use crate::state::history::HistoryPane;
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::Ui;
+use glowfly_model::state::history::HistoryPane;
 
 /// Which of the three views of the file is shown.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

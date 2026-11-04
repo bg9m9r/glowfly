@@ -4,13 +4,13 @@
 
 use super::conflict_tests::opened_two;
 use super::tests::{drive, git, scratch_repo, state};
-use crate::keymap::{BindingId, Chord, KeyName, When, binding, fold_ctrl};
-use crate::msg::{ConflictMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::conflict::keys::conflict_key;
 use git2::RepositoryState;
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::Choice;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, When, binding, fold_ctrl};
+use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::keys::conflict_key;
 use std::path::{Path, PathBuf};
 
 /// Presses `chord` with nothing but the conflict view open: the binding the keymap finds, sent

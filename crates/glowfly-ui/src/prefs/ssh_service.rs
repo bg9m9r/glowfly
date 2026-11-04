@@ -2,15 +2,15 @@
 //! the Title buffer; Add key, Cancel and the fallback button are `Msg`s.
 
 use super::{GAP, LABEL_W, ROW_W, fit, help, primary_button, text_field, warn};
-use crate::msg::Msg;
-use crate::ssh::SshMsg;
-use crate::state::ssh_service::{UploadForm, UploadState, already_note};
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, CornerRadius, RichText, Stroke, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::ssh_service::{UploadForm, UploadState, already_note};
 
 pub(super) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &str, msgs: &mut Vec<Msg>) {
     // As wide as the cards, in their style.

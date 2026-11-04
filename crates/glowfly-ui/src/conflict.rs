@@ -10,17 +10,17 @@ mod header;
 use super::conflict_output::output;
 use super::conflict_panes::panes;
 use super::theme::color;
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::ConflictMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::conflict::ConflictView;
-use crate::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
-use crate::state::tool_compare::{ToolSetup, merge_blocked, merging};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Frame, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{ConflictContent, ConflictFile, Side, Unmergeable};
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
+use glowfly_model::state::tool_compare::{ToolSetup, merge_blocked, merging};
 
 pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let scroll_to = st.view.conflict_scroll_to.take();

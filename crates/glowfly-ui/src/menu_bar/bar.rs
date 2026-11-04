@@ -5,11 +5,11 @@
 
 use super::menu_anchor::{self, MenuCmd};
 use super::{BAR, contents, keys};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::menu_keys::TopMenu;
-use crate::ui::menu_keys;
+use crate::menu_keys;
 use eframe::egui::{self, Button, Id, Key};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_keys::TopMenu;
 
 /// Draws the titles inside `egui::menu::bar` (which gives them the bar's look) and the open
 /// menu.

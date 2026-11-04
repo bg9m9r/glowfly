@@ -1,10 +1,10 @@
-use crate::effect::{Effect, UndoOpts};
-use crate::msg::{JobMsg, Msg};
-use crate::runner::testing::execute;
+use crate::testing::execute;
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::journal::{Op, notes};
 use glowfly_core::undo::{Action, ResetMode, UndoKind};
+use glowfly_model::effect::{Effect, UndoOpts};
+use glowfly_model::msg::{JobMsg, Msg};
 use std::path::{Path, PathBuf};
 
 use glowfly_core::testkit::git_out as git;

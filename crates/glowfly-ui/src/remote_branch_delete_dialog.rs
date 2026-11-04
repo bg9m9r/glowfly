@@ -8,9 +8,9 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::controls;
 use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
-use crate::msg::Msg;
-use crate::state::branch_sync::DeleteRemoteForm;
 use eframe::egui::{self, Ui};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::branch_sync::DeleteRemoteForm;
 
 /// Draws the dialog; returns true when it should close (Cancel, or the delete was sent).
 pub(super) fn show(ui: &mut Ui, cx: Cx, form: &mut DeleteRemoteForm, msgs: &mut Vec<Msg>) -> bool {

@@ -8,7 +8,7 @@ use eframe::egui::{Color32, Painter, Rect, Stroke, pos2};
 use std::collections::HashMap;
 
 /// The indentation of one layer.
-pub const STEP: f32 = 16.0;
+pub(crate) const STEP: f32 = 16.0;
 
 /// How far a row `depth` layers up is indented.
 pub fn indent(depth: usize) -> f32 {

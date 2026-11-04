@@ -9,7 +9,7 @@ use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
 use glowfly_core::logs::{RunInfo, last_message};
 
 /// The most entries a streak of routine successes keeps; older ones are counted by the first.
-pub const ROUTINE_KEEP: usize = 30;
+pub(crate) const ROUTINE_KEEP: usize = 30;
 
 /// Whether a job labelled `label` is a background auto-fetch.
 pub fn is_routine_label(label: &str) -> bool {

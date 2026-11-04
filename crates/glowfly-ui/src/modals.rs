@@ -31,10 +31,10 @@
 //! generating an SSH key (drawn by `ssh_keygen_dialog.rs`). An edited form kept under a question
 //! (state/dialog_guard.rs) is drawn first, beneath the question.
 
-use crate::msg::{DialogMsg, Dismiss, Msg};
-use crate::state::{AppState, Modal};
-use crate::ui::dialog_frame::{Cx, Tone};
+use crate::dialog_frame::{Cx, Tone};
 use eframe::egui;
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
+use glowfly_model::state::{AppState, Modal};
 
 #[path = "confirm_dialog.rs"]
 mod confirm_dialog;
@@ -80,7 +80,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let sparse_blocked = st.git.blocked(glowfly_core::git_version::Feature::SparseCheckout);
     // Worked out before the dialog borrows the state: which results are open or favorites.
     let finder = matches!(st.modal, Some(Modal::FindRepos { .. }))
-        .then(|| (crate::state::repo_scan::finder_rows(st), crate::state::repo_scan::project_folders(&st.settings)));
+        .then(|| (glowfly_model::state::repo_scan::finder_rows(st), glowfly_model::state::repo_scan::project_folders(&st.settings)));
     let repo_scan = &st.repo_scan;
     let repo_sync = st.repo_sync.as_ref();
     // The Generate SSH key dialog's fields live on the SSH page (a borrow apart from the modal's).
@@ -165,7 +165,7 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, cx, form, snap, msgs),
             Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, cx, old, form, snap, stage_renames, msgs),
             Modal::Remote(form) => {
-                let fork_source = snap.and_then(|s| crate::state::forks::fork_source(s, connections));
+                let fork_source = snap.and_then(|s| glowfly_model::state::forks::fork_source(s, connections));
                 close = super::remotes::dialog::show(ui, cx, form, snap, fork_source, idle, msgs);
             }
             Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, cx, p, snap, connections, idle, msgs),
@@ -175,8 +175,8 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
             Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, cx, filter, keys),
             Modal::Trust(p) => close = super::trust_dialog::show(ui, cx, p, msgs),
             Modal::ConflictReport(r) => {
-                let remote = snap.is_some_and(|s| crate::state::conflict_check::is_remote(s, &r.request.target));
-                let on_head = snap.is_some_and(|s| crate::state::conflict_check::for_head(r, s));
+                let remote = snap.is_some_and(|s| glowfly_model::state::conflict_check::is_remote(s, &r.request.target));
+                let on_head = snap.is_some_and(|s| glowfly_model::state::conflict_check::for_head(r, s));
                 close = super::conflict_check::report_modal(ui, cx, r, remote, on_head, idle, msgs);
             }
             Modal::OpPreview(d) => close = super::op_preview_dialog::show(ui, cx, d, &preview_env, msgs),

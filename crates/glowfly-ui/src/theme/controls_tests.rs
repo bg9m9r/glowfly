@@ -2,7 +2,7 @@
 //! readers (and the journey tests) see.
 
 use super::controls::{self, Check, Field, Radio};
-use crate::ui::access;
+use crate::access;
 use eframe::egui::{self, Key, Stroke, accesskit::Role, accesskit::Toggled};
 use egui_kittest::kittest::Queryable;
 
@@ -16,7 +16,7 @@ struct Form {
 
 #[test]
 fn a_check_toggles_on_click_and_reports_its_state() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+    let mut h = crate::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             f.changed |= controls::checkbox(ui, &mut f.on, "Sign commits").changed();
         },
@@ -33,7 +33,7 @@ fn a_check_toggles_on_click_and_reports_its_state() {
 
 #[test]
 fn a_disabled_check_ignores_clicks() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+    let mut h = crate::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             ui.add_enabled(false, Check::new(&mut f.on, "Locked"));
         },
@@ -48,7 +48,7 @@ fn a_disabled_check_ignores_clicks() {
 
 #[test]
 fn a_check_without_text_and_the_keyboard() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+    let mut h = crate::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             ui.add(Check::without_text(&mut f.on));
         },
@@ -67,7 +67,7 @@ fn a_check_without_text_and_the_keyboard() {
 
 #[test]
 fn radio_value_changes_only_on_a_different_option() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+    let mut h = crate::snapshot_check::builder().build_ui_state(
         |ui, f: &mut Form| {
             for (v, name) in [(0, "Merge"), (1, "Rebase")] {
                 if controls::radio_value(ui, &mut f.choice, v, name).changed() {
@@ -94,7 +94,7 @@ fn radio_value_changes_only_on_a_different_option() {
 fn a_field_keeps_its_role_and_name_and_restores_the_style() {
     let mut seen = None;
     let mut text = String::new();
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         super::apply_theme(ui.ctx());
         let r = ui.add(Field(egui::TextEdit::singleline(&mut text).hint_text("Filter")));
         access::name_field(&r, "Filter branches");
@@ -118,7 +118,7 @@ fn a_fields_placeholder_is_faint_in_every_builtin() {
     for t in BuiltinTheme::ALL {
         let p = *super::builtin(t);
         let mut text = String::new();
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             super::color::set_palette(&p);
             super::apply_style(ui.ctx(), &p);
             ui.ctx().set_theme(super::egui_theme(&p));
@@ -138,7 +138,7 @@ fn sized_fields_take_the_height_width_and_padding_of_their_size() {
     use super::sizes::ControlSize;
     let mut seen = Vec::new();
     let (mut a, mut b, mut c, mut d) = (String::new(), String::new(), String::new(), String::new());
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(400.0, 300.0)).build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(400.0, 300.0)).build_ui(|ui| {
         super::apply_theme(ui.ctx());
         let regular = ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(&mut a)).width(200.0));
         let large = ui.add(controls::SizedField::new(ControlSize::Large, egui::TextEdit::singleline(&mut b)));
@@ -182,7 +182,7 @@ fn disabled_radio_marks_stay_visible() {
 fn a_disabled_radio_label_is_weak_even_with_its_own_colour() {
     use super::color;
     use eframe::egui::{RichText, Shape};
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         super::apply_theme(ui.ctx());
         ui.add_enabled(false, Radio::new(false, "Plain"));
         ui.add_enabled(false, Radio::new(true, RichText::new("Coloured").color(egui::Color32::RED)));

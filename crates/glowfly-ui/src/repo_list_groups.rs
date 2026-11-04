@@ -13,15 +13,15 @@ use super::repo_row::{self, Columns};
 use super::repo_swatch;
 use super::theme::{color, type_scale};
 use super::widgets::{self, Icon, menu_columns};
-use crate::msg::{GroupMsg, Msg, RecentMsg};
-use crate::state::AppState;
-use crate::state::repo_groups::{colours_at_default, members};
-use crate::state::repo_lists::{is_missing, is_open};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::widgets::menu::{self, separator};
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::widgets::menu::{self, separator};
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align, Color32, CornerRadius, Layout, Rect, RichText, Sense, Shape, Stroke, pos2, vec2};
+use glowfly_model::msg::{GroupMsg, Msg, RecentMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_groups::{colours_at_default, members};
+use glowfly_model::state::repo_lists::{is_missing, is_open};
 
 /// A header's height: room for ⋯.
 pub(super) const HEADER_H: f32 = 28.0;

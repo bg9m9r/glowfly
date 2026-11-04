@@ -3,15 +3,15 @@
 //! button menu's Stage all and commit, Commit and push and Amend last commit.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
-use crate::msg::CommitMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::repo_identity::{IdentitySource, RepoIdentity};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 /// The fixture with README.md and NOTES.md staged.
@@ -70,12 +70,12 @@ fn commit_box_de() {
     st.settings.panel_sizes.details = Some(360.0);
     // With a summary, staging is still the first missing step.
     st.session.draft.summary = "Anmeldeformular".into();
-    let why = crate::state::commit::commit_blocked(&st, false).expect("nothing staged");
+    let why = glowfly_model::state::commit::commit_blocked(&st, false).expect("nothing staged");
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("commit_box_de");
     let r = h.get_by_label(&why).bounding_box().expect("the whole caption is shown");
-    assert!(r.height() >= 2.0 * f64::from(crate::ui::widgets::reason::LINE_H), "wrapped, not cut: {r:?}");
+    assert!(r.height() >= 2.0 * f64::from(crate::widgets::reason::LINE_H), "wrapped, not cut: {r:?}");
     let button = h.get(By::new().role(Role::Button).label("Committen"));
     assert!(button.is_disabled());
     assert_eq!(button.description().as_deref(), Some(why.as_str()));

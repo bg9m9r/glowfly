@@ -4,16 +4,15 @@
 
 use super::tests::{drive, finish, git, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::graph_rows::{DisplayRow, GraphRows};
-use crate::state::worktrees::{counts_text, wip_label, wip_tooltip};
-use crate::worktree::WorktreeMsg;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
+use glowfly_model::state::worktrees::{counts_text, wip_label, wip_tooltip};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -50,7 +49,7 @@ fn loads(st: &mut AppState, msg: Msg) -> Vec<String> {
         for e in update(st, m, Instant::now()) {
             if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
                 seen.push(format!("{e:?}"));
-                queue.extend(runner::testing::execute(e));
+                queue.extend(glowfly_runner::testing::execute(e));
             }
         }
     }

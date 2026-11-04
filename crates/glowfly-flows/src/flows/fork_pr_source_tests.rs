@@ -6,14 +6,14 @@
 use super::push_pr_fork_tests::{fetch_from, with_fork};
 use super::push_pr_tests::{cleanup, commit_on, fetch};
 use super::tests::{drive, git};
-use crate::effect::{ForgeReply, ForgeResult};
-use crate::msg::{AutoStashMsg, BranchMsg, ForgeMsg, Msg, RepoMsg};
-use crate::pull_request::PullRequestMsg;
-use crate::state::pull_request_source::fork_known;
-use crate::state::push_pr::open_pr;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::forge::{HeadRepo, PullRequest};
+use glowfly_model::effect::{ForgeReply, ForgeResult};
+use glowfly_model::msg::{AutoStashMsg, BranchMsg, ForgeMsg, Msg, RepoMsg};
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request_source::fork_known;
+use glowfly_model::state::push_pr::open_pr;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// `with_fork` with `topic` on origin and a different `topic` on ada, both fetched; the oids of

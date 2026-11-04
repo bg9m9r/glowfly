@@ -7,8 +7,8 @@
 //! app id (`dress`), so the OS shows its name and icon.
 
 use super::execute::{Cx, Execute};
-use crate::effect::{DesktopNote, NoteKind};
-use crate::msg::{Msg, NotifyMsg, PrefsMsg};
+use glowfly_model::effect::{DesktopNote, NoteKind};
+use glowfly_model::msg::{Msg, NotifyMsg, PrefsMsg};
 use notify_rust::{Notification, NotificationResponse};
 use std::sync::atomic::{AtomicUsize, Ordering};
 

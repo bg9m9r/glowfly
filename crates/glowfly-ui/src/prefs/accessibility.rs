@@ -15,15 +15,15 @@
 //! saves and restores the theme); the rest edit the settings in place.
 
 use super::{combo_response, help, row, section};
-use crate::keymap::Keymap;
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::PrefPage;
-use crate::ui::access;
-use crate::ui::theme::{color, controls};
-use crate::ui::widgets::buttons;
+use crate::access;
+use crate::theme::{color, controls};
+use crate::widgets::buttons;
 use eframe::egui::{Response, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ColourPalette, FocusStyle, Settings, ToastTime, TooltipDelay};
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::PrefPage;
 
 /// What the page shows besides the settings.
 pub struct A11yView<'a> {

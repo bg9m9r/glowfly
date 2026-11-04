@@ -8,16 +8,16 @@ use super::submodule_batch_tests::{after_job, checkout_other, checks_all, job_cm
 use super::submodule_tests::{PATH, cleanup, sub};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{JobMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::AppState;
-use crate::state::palette::StashAction;
-use crate::state::rebase_banner::action_msg;
-use crate::submodule::Batch;
 use git2::{Oid, RepositoryState};
 use glowfly_core::repo::SubmoduleState;
 use glowfly_core::submodule_ops::batch_update_cmds;
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE};
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::StashAction;
+use glowfly_model::state::rebase_banner::action_msg;
+use glowfly_model::submodule::Batch;
 use std::path::Path;
 use std::time::Instant;
 

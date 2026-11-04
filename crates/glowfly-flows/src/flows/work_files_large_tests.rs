@@ -5,11 +5,11 @@
 
 use super::tests::{keys, scratch_repo};
 use super::work_files_tests::{ack, confirm, loaded, run, tick, work_ops};
-use crate::effect::{DeleteMode, FileOp};
-use crate::msg::{Msg, WorkFileMsg};
-use crate::state::Modal;
-use crate::state::files::TRASH;
 use glowfly_core::repo::{TrashProblem, TrashRefusal};
+use glowfly_model::effect::{DeleteMode, FileOp};
+use glowfly_model::msg::{Msg, WorkFileMsg};
+use glowfly_model::state::Modal;
+use glowfly_model::state::files::TRASH;
 
 fn ops() -> [FileOp; 3] {
     [
@@ -82,7 +82,7 @@ fn the_runner_says_when_the_refused_file_is_too_large_to_keep() {
     drop(big);
     for (path, want) in [("small.txt", false), ("big.bin", true)] {
         let op = FileOp::Delete { path: path.into(), mode: DeleteMode::Trash };
-        let msg = crate::runner::testing::refused_for_test(&dir, op);
+        let msg = glowfly_runner::testing::refused_for_test(&dir, op);
         assert!(matches!(msg, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large, .. }) if too_large == want), "{path}");
         assert!(dir.join(path).exists());
     }
@@ -101,7 +101,7 @@ fn a_file_that_grew_too_large_after_undo_was_promised_is_asked_about_again() {
         FileOp::Delete { path: "big.bin".into(), mode: DeleteMode::Permanent },
         FileOp::Discard { path: "big.bin".into(), mode: DeleteMode::PermanentNoTrash, seen: None },
     ] {
-        let msg = crate::runner::testing::work_file_for_test(&dir, op.clone());
+        let msg = glowfly_runner::testing::work_file_for_test(&dir, op.clone());
         assert!(matches!(&msg, Msg::WorkFile(WorkFileMsg::NoCopyKept { .. })), "{op:?}");
         assert!(dir.join("big.bin").exists(), "nothing deleted");
         run(&mut st, msg);
@@ -119,7 +119,7 @@ fn a_file_that_grew_too_large_after_undo_was_promised_is_asked_about_again() {
     }
     // Acknowledged, it goes with no copy.
     let msg =
-        crate::runner::testing::work_file_for_test(&dir, FileOp::Delete { path: "big.bin".into(), mode: DeleteMode::PermanentNoPromise });
+        glowfly_runner::testing::work_file_for_test(&dir, FileOp::Delete { path: "big.bin".into(), mode: DeleteMode::PermanentNoPromise });
     assert!(matches!(msg, Msg::WorkFile(WorkFileMsg::WorkFileDone { result: Ok(_), .. })));
     assert!(!dir.join("big.bin").exists());
     let _ = std::fs::remove_dir_all(&dir);
@@ -129,6 +129,6 @@ fn a_file_that_grew_too_large_after_undo_was_promised_is_asked_about_again() {
 fn no_copy_kept_for_an_inactive_tab_is_logged() {
     let op = FileOp::Delete { path: "big.bin".into(), mode: DeleteMode::Permanent };
     let msg = WorkFileMsg::NoCopyKept { op, reason: "big.bin is too large for Glowfly to keep a copy for Undo".into() };
-    let Some(crate::msg::Inactive::Log(text)) = msg.on_inactive() else { panic!("a log line") };
+    let Some(glowfly_model::msg::Inactive::Log(text)) = msg.on_inactive() else { panic!("a log line") };
     assert_eq!(text, "Did not delete big.bin: big.bin is too large for Glowfly to keep a copy for Undo.");
 }

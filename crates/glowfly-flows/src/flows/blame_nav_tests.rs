@@ -2,16 +2,16 @@
 //! commits, the header toggles, the jump to file history and back to the history underneath,
 //! find, go to line and the run keys.
 
-use crate::effect::{BlameRequest, Effect};
 use crate::flows::{drive, git, scratch_repo, state};
-use crate::msg::{BlameMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::blame::{BACK_LIMIT, BlameData, BlameLanding, BlameView};
-use crate::update::blame::HELD;
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::repo::{Blame, BlameCommit, BlameOrigin, BlameRun};
 use glowfly_core::settings::BlameMoves;
+use glowfly_model::effect::{BlameRequest, Effect};
+use glowfly_model::msg::{BlameMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BACK_LIMIT, BlameData, BlameLanding, BlameView};
+use glowfly_model::update::blame::HELD;
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -148,7 +148,7 @@ fn skip_and_clear() {
 
     let v = st.session.blame.view.as_mut().unwrap();
     v.skipped = vec![oid(3)];
-    v.back.push(crate::state::blame::BlameStep { path: "a.txt".into(), at: None, skipped: Vec::new(), top_line: 0, cursor: None });
+    v.back.push(glowfly_model::state::blame::BlameStep { path: "a.txt".into(), at: None, skipped: Vec::new(), top_line: 0, cursor: None });
     let fx = send(&mut st, BlameMsg::Open { path: "a.txt".into(), at: None });
     assert!(view(&st).skipped.is_empty() && view(&st).back.is_empty());
     assert!(matches!(&requests(&fx)[..], [r] if r.opts.ignore_revs.is_empty()), "{fx:?}");
@@ -332,8 +332,8 @@ fn blame_parent_end_to_end() {
 
 #[test]
 fn blame_from_the_history_offers_the_way_back() {
-    use crate::msg::HistoryMsg;
-    use crate::state::history::HistoryPane;
+    use glowfly_model::msg::HistoryMsg;
+    use glowfly_model::state::history::HistoryPane;
     let dir = scratch_repo("blame-nav-over-history");
     commit_file(&dir, "one\ntwo\n", "second");
     let mut st = state();

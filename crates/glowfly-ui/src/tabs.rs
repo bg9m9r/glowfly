@@ -25,21 +25,21 @@ use super::theme::color;
 use super::theme::tokens::motion;
 use super::widgets::reason::{self, ItemState};
 use super::widgets::truncate::full_tip;
-use crate::msg::Msg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
-use crate::state::menu_bar::tab_name;
-use crate::state::repo_colours;
-use crate::state::tab_groups::{self, chip_rooms, new_index, shown_at};
-use crate::state::tabs::glance::Mark;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::chip::ChipSize;
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::quiet_target::State;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::ui::widgets::tab_glyph::{self, TabGlyph};
+use crate::theme::type_scale;
+use crate::widgets::chip::ChipSize;
+use crate::widgets::menu::separator;
+use crate::widgets::quiet_target::State;
+use crate::widgets::row_menu::RowMenuExt;
+use crate::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, Color32, Layout, Rect, Response, Sense, WidgetInfo, WidgetType, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_bar::tab_name;
+use glowfly_model::state::repo_colours;
+use glowfly_model::state::tab_groups::{self, chip_rooms, new_index, shown_at};
+use glowfly_model::state::tabs::glance::Mark;
 
 pub(crate) use super::tab_drag::dragging;
 
@@ -120,7 +120,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // A slot's tab: what is right of its chip.
         let tab_rect = |i: usize, slot: Rect| slot.with_min_x(slot.left() + chips[i]);
         let chip_rect = |i: usize, slot: Rect| {
-            crate::ui::widgets::chip::rect_at(ChipSize::Badge, slot.left(), slot.center().y, (chips[i] - CHIP_GAP).max(0.0))
+            crate::widgets::chip::rect_at(ChipSize::Badge, slot.left(), slot.center().y, (chips[i] - CHIP_GAP).max(0.0))
         };
         let strip_left = ui.cursor().left();
         // The tabs sit in one tab list, so a screen reader can say "tab 1 of 3".
@@ -275,10 +275,10 @@ fn name_tab(r: &Response, name: &str, active: bool) {
 /// The + after the tabs: drawn like a tab's close × (`tab_glyph`), on the same line, in its
 /// own `PLUS_W` wide, `height` tall slot, which takes the clicks; its box lights on the quiet
 /// layers and takes the focus ring.
-fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &crate::keymap::Keymap, height: f32, msgs: &mut Vec<Msg>) {
+fn new_tab_button(ui: &mut egui::Ui, t: Lang, keys: &glowfly_model::keymap::Keymap, height: f32, msgs: &mut Vec<Msg>) {
     let (rect, r) = ui.allocate_exact_size(vec2(PLUS_W, height), Sense::click());
     r.widget_info(|| WidgetInfo::labeled(WidgetType::Button, true, t.tr("tabs.new_tab.tip")));
-    let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), crate::keymap::BindingId::NewTab));
+    let r = r.on_hover_text(keys.tip(t.tr("tabs.new_tab.tip"), glowfly_model::keymap::BindingId::NewTab));
     tab_glyph::paint_quiet(ui.painter(), rect.center(), TabGlyph::Plus, color::weak(), State::of(&r, false));
     if r.clicked() {
         msgs.push(Msg::Tabs(TabsMsg::NewTab));
@@ -292,7 +292,7 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     item(ui, msgs, t.tr("tabs.menu.rename"), "", no_repo, Msg::Tabs(TabsMsg::RenameTabDialog(i)));
     let path = repo_colours::tab_path(&st.tabs[i]);
     let own = path.and_then(|p| st.settings.repo_colour_for(p));
-    let grouped = st.tabs[i].path.as_deref().and_then(|p| crate::state::repo_groups::group_hue(st, p)).is_some();
+    let grouped = st.tabs[i].path.as_deref().and_then(|p| glowfly_model::state::repo_groups::group_hue(st, p)).is_some();
     super::repo_colour_menu::items(ui, t, path, (own, grouped), msgs);
     separator(ui);
     item(ui, msgs, t.tr("tabs.menu.close"), "", None, Msg::Tabs(TabsMsg::CloseTab(i)));
@@ -301,7 +301,7 @@ fn tab_menu(ui: &mut egui::Ui, t: Lang, i: usize, st: &AppState, msgs: &mut Vec<
     let last = (i + 1 >= n).then(|| t.tr("tabs.menu.close_right.blocked"));
     item(ui, msgs, t.tr("tabs.menu.close_right"), "", last, Msg::Tabs(TabsMsg::CloseTabsToRight(i)));
     separator(ui);
-    let reopen_key = st.keymap.hint(crate::keymap::BindingId::ReopenTab).unwrap_or_default();
+    let reopen_key = st.keymap.hint(glowfly_model::keymap::BindingId::ReopenTab).unwrap_or_default();
     let none_closed = st.closed_tabs.is_empty().then(|| t.tr("tabs.menu.reopen.blocked"));
     let r = item(ui, msgs, t.tr("tabs.menu.reopen"), reopen_key, none_closed, Msg::Tabs(TabsMsg::ReopenClosedTab));
     if let Some(closed) = st.closed_tabs.last() {
@@ -322,7 +322,7 @@ fn item(ui: &mut egui::Ui, msgs: &mut Vec<Msg>, label: &str, shortcut: &str, blo
 
 #[cfg(test)]
 mod tests {
-    use crate::state::tabs::index_after_move;
+    use glowfly_model::state::tabs::index_after_move;
 
     #[test]
     fn index_after_move_shifts_the_tabs_in_between() {

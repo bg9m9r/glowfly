@@ -5,12 +5,12 @@
 
 use super::ssh_tests::{email, fill, home, loaded, page, page_mut, run, ssh};
 use super::tests::state;
-use crate::msg::{DialogMsg, Dismiss, Msg, PrefsMsg};
-use crate::ssh::{GenerateFailure, SshMsg};
-use crate::state::ssh::location_text;
-use crate::state::{Modal, PrefPage};
 use glowfly_core::i18n::Lang;
 use glowfly_core::ssh_keys::{LocationProblem, default_location};
+use glowfly_model::msg::{DialogMsg, Dismiss, Msg, PrefsMsg};
+use glowfly_model::ssh::{GenerateFailure, SshMsg};
+use glowfly_model::state::ssh::location_text;
+use glowfly_model::state::{Modal, PrefPage};
 
 #[test]
 fn open_generate_opens_the_dialog() {

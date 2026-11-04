@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::Msg;
-use crate::state::{AppState, ForgeState, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{CheckState, Checks, Provider, PullRequest, Reviewer, Target};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, ForgeState, Status};
 use std::path::PathBuf;
 use std::time::Instant;
 

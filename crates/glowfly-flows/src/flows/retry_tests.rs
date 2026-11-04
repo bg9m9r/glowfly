@@ -6,14 +6,14 @@ use super::history_tests::{oid, with_view};
 use super::selection_tests::fixture;
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::SelectionEffect;
-use crate::effect::{BlameRequest, Effect, FileTextRequest};
-use crate::msg::{BlameMsg, DashboardMsg, HistoryMsg, Msg, RepoMsg, SearchMsg, SelectionMsg};
-use crate::pull_request::{FilesJob, PrEffect, PullRequestMsg};
-use crate::state::history::{HistoryPane, TextError, TextState};
-use crate::state::pull_request::Files;
-use crate::state::{AppState, Modal, Selection};
 use glowfly_core::repo::HistoryStart;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::effect::{BlameRequest, Effect, FileTextRequest};
+use glowfly_model::msg::{BlameMsg, DashboardMsg, HistoryMsg, Msg, RepoMsg, SearchMsg, SelectionMsg};
+use glowfly_model::pull_request::{FilesJob, PrEffect, PullRequestMsg};
+use glowfly_model::state::history::{HistoryPane, TextError, TextState};
+use glowfly_model::state::pull_request::Files;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -87,7 +87,7 @@ fn blame_try_again_in_a_held_repository_asks_for_trust() {
     let fx = up(&mut st, Msg::Blame(BlameMsg::Retry));
     assert!(blame_loads(&fx).is_empty(), "{fx:?}");
     assert!(matches!(st.modal, Some(Modal::Trust(_))), "the trust prompt opens again");
-    assert_eq!(st.session.blame.view.as_ref().unwrap().error.as_deref(), Some(crate::state::blame::HELD));
+    assert_eq!(st.session.blame.view.as_ref().unwrap().error.as_deref(), Some(glowfly_model::state::blame::HELD));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -191,7 +191,7 @@ mod updates_restart;
 pub mod watch;
 mod wip_keys;
 mod wip_list;
-pub mod work_files;
+pub(crate) mod work_files;
 mod work_files_delete;
 mod worktree_counts;
 mod worktree_manage;

@@ -3,13 +3,13 @@
 
 use super::tests::{scratch_repo, state};
 use super::trust_tests::{asking, drive, open, run, untrusted_repo};
-use crate::effect::Effect;
-use crate::msg::{Msg, PublishMsg, TabsMsg, TrustMsg};
-use crate::state::trust::{record, recorded};
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::CreatedRepo;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PublishMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::trust::{record, recorded};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 
 const LABEL: &str = "Publish to GitHub";
@@ -22,7 +22,7 @@ fn a_then_b(name: &str) -> (AppState, PathBuf, PathBuf) {
     open(&mut st, &a);
     drive(&mut st, Msg::CloseModal);
     let b = untrusted_repo(&format!("{name}-b"));
-    crate::state::trust::record_as_found(&mut st.settings, &glowfly_core::paths::resolve(&b));
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &glowfly_core::paths::resolve(&b));
     open(&mut st, &b);
     assert_eq!(st.active_tab, 1);
     assert!(!asking(&st) && !st.held(), "B is trusted");
@@ -90,7 +90,7 @@ fn a_trusted_repository_in_another_tab_runs_at_once() {
     // A is trusted and B, active, isn't: A's decision is the one that counts.
     let a = untrusted_repo("elsewhere-trusted-a");
     let mut st = state();
-    crate::state::trust::record_as_found(&mut st.settings, &glowfly_core::paths::resolve(&a));
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &glowfly_core::paths::resolve(&a));
     open(&mut st, &a);
     let b = untrusted_repo("elsewhere-trusted-b");
     open(&mut st, &b);

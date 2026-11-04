@@ -6,13 +6,13 @@
 //! rebase stopped.
 
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{CommitMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::commit::commit_blocked;
-use crate::state::commit::stop::{amend_blocked_in, amends_at_stop, edit_stop};
 use git2::RepositoryState;
 use glowfly_core::gitcli::{args, run, run_with_input};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{CommitMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::commit::commit_blocked;
+use glowfly_model::state::commit::stop::{amend_blocked_in, amends_at_stop, edit_stop};
 use std::path::{Path, PathBuf};
 
 /// A repository with "first" and "second", stopped by an interactive rebase to edit "second".
