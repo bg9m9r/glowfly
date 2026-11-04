@@ -23,7 +23,7 @@ pub struct TextField<'t> {
     id: Option<Id>,
     hint: Option<WidgetText>,
     width: Option<f32>,
-    password: bool,
+    masked: bool,
     char_limit: Option<usize>,
     size: ControlSize,
 }
@@ -31,7 +31,7 @@ pub struct TextField<'t> {
 impl<'t> TextField<'t> {
     /// A single-line field.
     pub fn new(text: &'t mut dyn egui::TextBuffer) -> Self {
-        Self { text, multiline: None, id: None, hint: None, width: None, password: false, char_limit: None, size: ControlSize::Large }
+        Self { text, multiline: None, id: None, hint: None, width: None, masked: false, char_limit: None, size: ControlSize::Large }
     }
 
     /// A multiline field `rows` lines tall (at least `HEIGHT`).
@@ -57,8 +57,8 @@ impl<'t> TextField<'t> {
     }
 
     /// Masks what is typed.
-    pub fn password(mut self, password: bool) -> Self {
-        self.password = password;
+    pub fn masked(mut self, masked: bool) -> Self {
+        self.masked = masked;
         self
     }
 
@@ -76,7 +76,7 @@ impl<'t> TextField<'t> {
 
 impl egui::Widget for TextField<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let TextField { text, multiline, id, hint, width, password, char_limit, size } = self;
+        let TextField { text, multiline, id, hint, width, masked, char_limit, size } = self;
         let rows = multiline.unwrap_or(1);
         let edit = if multiline.is_some() { egui::TextEdit::multiline(text) } else { egui::TextEdit::singleline(text) };
         let margin = if multiline.is_some() {
@@ -92,7 +92,7 @@ impl egui::Widget for TextField<'_> {
             .background_color(color::field_fill())
             .desired_width(inner_w)
             .desired_rows(rows)
-            .password(password);
+            .password(masked);
         if let Some(id) = id {
             edit = edit.id(id);
         }
