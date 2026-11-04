@@ -22,6 +22,10 @@ use std::path::PathBuf;
 fn tabs_are_tab_nodes_and_each_close_names_its_tab() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "tabs-access");
     let names: Vec<String> = (0..st.tabs.len()).map(|i| tab_name(&st, i).to_owned()).collect();
+    // A tab is named with its states (design pass D15); its × by the name alone.
+    let t = st.settings.lang();
+    let labels: Vec<String> = names.iter().enumerate().map(|(i, n)| st.tab_glance(i).describe(t, n)).collect();
+    assert!(labels[0].starts_with(&format!("{}: ", names[0])), "the fixture has changes: {}", labels[0]);
     let active = st.active_tab;
     let mut h = harness_sized(st, true, vec2(1400.0, 820.0));
     h.run();
@@ -30,7 +34,7 @@ fn tabs_are_tab_nodes_and_each_close_names_its_tab() {
     let list = h.get_by_role(Role::TabList);
     assert_eq!(list.query_all_by_role(Role::Tab).count(), names.len(), "every tab in the one tab list");
     for (i, name) in names.iter().enumerate() {
-        let tab = h.query_all_by_role(Role::Tab).find(|n| n.label().as_deref() == Some(name)).expect("named after the tab");
+        let tab = h.query_all_by_role(Role::Tab).find(|n| n.label().as_deref() == Some(labels[i].as_str())).expect("named after the tab");
         assert_eq!(tab.is_selected(), Some(i == active), "{name}: selected only while active");
         let close_name = format!("Close tab {name}");
         let close = h.get_by_label(&close_name);
@@ -50,6 +54,7 @@ fn tab_walks_the_title_bar_and_its_icon_buttons() {
     // A closed tab, so the tab list button shows.
     st.closed_tabs = vec![ClosedTab::from(PathBuf::from("C:/work/old-repo"))];
     let first = tab_name(&st, 0).to_owned();
+    let first_label = st.tab_glance(0).describe(st.settings.lang(), &first);
     let mut h = harness_sized(st, true, vec2(1440.0, 880.0));
     h.run();
     let mut reached = Vec::new();
@@ -60,7 +65,7 @@ fn tab_walks_the_title_bar_and_its_icon_buttons() {
             reached.push(n.label().unwrap_or_default());
         }
     }
-    for want in ["Menu", first.as_str(), &format!("Close tab {first}"), "New tab", "All tabs and recently closed tabs"] {
+    for want in ["Menu", first_label.as_str(), &format!("Close tab {first}"), "New tab", "All tabs and recently closed tabs"] {
         assert!(reached.iter().any(|l| l == want), "Tab reaches {want:?}: {reached:?}");
     }
     drop(h);

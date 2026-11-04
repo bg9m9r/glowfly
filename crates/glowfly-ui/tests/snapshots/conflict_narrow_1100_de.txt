@@ -1,7 +1,6 @@
 window 1100x760
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Merge läuft, Noch 1 Datei mit Konflikt, 2 geänderte Dateien" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
@@ -82,7 +81,9 @@ CheckBox "Konflikt 2 ganz von ihrer Seite nehmen (theme-tweaks)" [on]
 CheckBox "Zeile 9 von unserer Seite nehmen (main), Konflikt 2" [on]
 CheckBox "Zeile 9 von ihrer Seite nehmen (theme-tweaks), Konflikt 2" [on]
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Pull"
   "Push"

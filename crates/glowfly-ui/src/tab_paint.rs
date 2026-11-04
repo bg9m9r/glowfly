@@ -8,7 +8,10 @@
 //! changing the layout; it is a quiet target of its own (`tab_glyph::paint_quiet`) that takes
 //! clicks on the least hit area around its box. Neighbouring quiet tabs are parted
 //! by a short line, and a worktree group's tabs share a strip along their bottom, after a
-//! rounded chip naming the group when there is room for it.
+//! rounded chip naming the group when there is room for it. A 12 px state slot before the ×
+//! (design pass D15) shows the tab's one most pressing state (`state::tabs::glance::Mark`): a
+//! running job's dots in the accent, a failure's warning triangle, an operation in progress as
+//! an amber ring, uncommitted changes as a `weak` dot, or how far it is behind as "↓3" (painted by `tab_state.rs`).
 
 use super::repo_swatch;
 use super::theme::color;
@@ -19,6 +22,7 @@ use super::widgets::chip::{self, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
 use super::widgets::tab_glyph::{self, TabGlyph};
 use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized, truncate};
+use crate::state::tabs::glance::Mark;
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
 
 /// A tab's corners: rounded at the top, square where it meets the bar's bottom.
@@ -34,7 +38,11 @@ const ICON: f32 = icon::SIZE_SM;
 const ICON_GAP: f32 = ControlSize::Regular.metrics().icon_gap;
 const CLOSE_GAP: f32 = 8.0;
 const PAD_R: f32 = 10.0;
-pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + tab_glyph::BOX + PAD_R;
+/// The state slot, 4 px before the close box; the name stops 4 px before the slot, so it gives
+/// up `SLOT` px to it.
+pub(super) const SLOT: f32 = 12.0;
+const SLOT_GAP: f32 = 4.0;
+pub(super) const CHROME_W: f32 = PAD_L + ICON + ICON_GAP + CLOSE_GAP + SLOT + tab_glyph::BOX + PAD_R;
 /// The repository swatch's size, and the room it adds before the icon.
 const SWATCH: f32 = 8.0;
 pub(super) const SWATCH_ROOM: f32 = 14.0;
@@ -71,6 +79,10 @@ pub(super) struct TabLook {
     pub band: Color32,
     /// The tab's repository colour, if it has one.
     pub repo: Option<Color32>,
+    /// The state its slot shows.
+    pub mark: Option<Mark>,
+    /// The time that moves a running job's dots; None holds them still.
+    pub pulse: Option<f64>,
 }
 
 impl TabLook {
@@ -87,6 +99,8 @@ impl TabLook {
             fill,
             band: color::accent(),
             repo: None,
+            mark: None,
+            pulse: None,
         }
     }
 }
@@ -125,11 +139,21 @@ pub(super) fn paint_tab(p: &egui::Painter, rect: Rect, name: &str, font: FontId,
     // The name, cut in its middle before the close slot (kept whether or not the × shows):
     // repositories often share a long start.
     let left = left + ICON + ICON_GAP;
-    let cut = truncate::paint_middle(p, pos2(left, cy), name, font, text_col, close_rect.left() - CLOSE_GAP - left);
+    let slot = slot_rect(rect);
+    let cut = truncate::paint_middle(p, pos2(left, cy), name, font, text_col, slot.left() - SLOT_GAP - left);
+    if let Some(mark) = look.mark {
+        super::tab_state::paint(p, slot, mark, look.pulse);
+    }
     if look.close_alpha > 0.0 {
         tab_glyph::paint_quiet(p, close_rect.center(), TabGlyph::Close, text_col.gamma_multiply(look.close_alpha), look.close);
     }
     cut
+}
+
+/// The state slot of the tab in `tab`: `SLOT` square, `SLOT_GAP` before the close box.
+fn slot_rect(tab: Rect) -> Rect {
+    let close = close_rect(tab);
+    Rect::from_center_size(pos2(close.left() - SLOT_GAP - SLOT / 2.0, close.center().y), vec2(SLOT, SLOT))
 }
 
 /// The active tab's band: a `BAND` px line of `band` along the top of `rect`, curving down its
@@ -214,8 +238,8 @@ mod tests {
 
     #[test]
     fn a_tab_is_its_name_and_its_chrome() {
-        assert_eq!(CHROME_W, 66.0);
-        assert_eq!(tab_width(100.0), 166.0);
+        assert_eq!(CHROME_W, 78.0, "with the 12 px state slot");
+        assert_eq!(tab_width(100.0), 178.0);
         assert_eq!(tab_width(10.0), 96.0, "the narrowest");
         assert_eq!(tab_width(400.0), 220.0, "the widest");
     }
@@ -227,6 +251,16 @@ mod tests {
     }
 
     #[test]
+    fn the_slot_takes_at_most_12_px_from_the_name() {
+        let tab = Rect::from_min_size(pos2(0.0, 0.0), vec2(160.0, 34.0));
+        let (close, slot) = (close_rect(tab), slot_rect(tab));
+        let name_end = slot.left() - SLOT_GAP;
+        assert_eq!(close.left() - CLOSE_GAP - name_end, 12.0, "the name ends 12 px sooner than before the slot");
+        assert_eq!((slot.width(), slot.center().y), (12.0, close.center().y));
+        assert_eq!(close.left() - slot.right(), SLOT_GAP);
+    }
+
+    #[test]
     fn the_close_box_keeps_its_padding() {
         let tab = Rect::from_min_size(pos2(0.0, 0.0), vec2(160.0, 34.0));
         let close = close_rect(tab);
@@ -235,5 +269,32 @@ mod tests {
         let hit = close_hit(tab);
         assert_eq!((hit.width(), hit.height(), hit.center()), (24.0, 24.0, close.center()), "a 24 x 24 hit area");
         assert!(hit.right() <= tab.right(), "inside its tab");
+    }
+
+    /// Every slot mark stands out from what a tab sits on (the bar, the active tab's fill, the
+    /// window) at 3:1 in every built-in theme, and the status bar's failure text, in `warn`,
+    /// reads at 4.5:1 on its bar.
+    #[test]
+    fn the_marks_read_in_every_theme() {
+        use crate::ui::theme::builtin;
+        use crate::ui::theme::contrast::ratio;
+        use glowfly_core::settings::BuiltinTheme;
+        let mut failures = Vec::new();
+        for t in BuiltinTheme::ALL {
+            let p = builtin(t);
+            for (bg_name, bg) in [("toolbar", p.toolbar), ("panel", p.panel), ("bg", p.bg)] {
+                for (mark, c) in [("accent", p.accent), ("warn", p.attention.warn), ("weak", p.weak), ("faint", p.faint)] {
+                    let r = ratio(c, bg);
+                    if r < 3.0 {
+                        failures.push(format!("{t:?}: {mark} on {bg_name} {r:.2}:1"));
+                    }
+                }
+            }
+            let r = ratio(p.attention.warn, p.toolbar);
+            if r < 4.5 {
+                failures.push(format!("{t:?}: warn text on the status bar {r:.2}:1"));
+            }
+        }
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
     }
 }

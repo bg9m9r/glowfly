@@ -2,7 +2,10 @@
 //! per-tab state in `AppState::session`; every other tab keeps its data parked here (its
 //! `RepoSession`, snapshot and Create issue dialog) until it is selected again. A tab parked
 //! `HISTORY_FREE_AFTER` with `HISTORY_FREE_MIN_COMMITS` or more loaded lets its commits and graph
-//! go (`update/parked_free.rs`).
+//! go (`update/parked_free.rs`). What a tab shows besides its name is in `glance`.
+
+pub mod glance;
+pub mod glance_fetch;
 
 use glowfly_core::paths::{FolderId, same_spelling};
 use glowfly_core::repo::{CommonDir, Snapshot};
@@ -213,6 +216,9 @@ pub struct Parked {
     pub issue_form: Option<Box<super::issue_form::IssueForm>>,
     /// When the first tick after parking came: what `HISTORY_FREE_AFTER` counts from.
     pub since: Option<Instant>,
+    /// The counts from a status read that arrived since parking (`glance::CountsRead`); None:
+    /// `snap`'s.
+    pub glance: Option<glance::Glance>,
 }
 
 impl Parked {

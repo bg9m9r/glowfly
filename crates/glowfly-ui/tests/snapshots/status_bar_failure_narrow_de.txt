@@ -1,0 +1,6 @@
+window 520x28
+Label "Abrufen fehlgeschlagen"
+Label "·"
+Button "Details"
+Button "Ausblenden"
+Button "Vor 4 Min. abgerufen"

@@ -2,9 +2,8 @@ window 1400x820
 Label "GitHub"
 Label "o/r"
 Label "· 0 open pull requests"
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file, 1 ahead of origin/worktree-agent-a3f9c1d2-refresh-the-sidebar-rows" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -95,7 +94,9 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "work…bar-rows"
   "1"

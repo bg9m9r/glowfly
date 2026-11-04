@@ -1,8 +1,7 @@
 window 1440x880
-Label "Glowfly 0.1.0"
 Button "Menu"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Merge in progress, 1 conflicted file left, 3 changed files" [selected]
   Tab "api-server"
   Tab "docs"
 Button "Close tab demo"
@@ -106,7 +105,9 @@ Button "Minimize window"
 Button "Maximize window"
 Button "Close window"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

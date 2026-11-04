@@ -1,9 +1,7 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Label "Loading…"
-ProgressIndicator
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -83,7 +81,9 @@ Unknown "Commit graph"
 Button "Write release notes"
 Label "Searching older commits…"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

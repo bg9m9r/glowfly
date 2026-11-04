@@ -1,7 +1,5 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 Label "LFS pull…"
-ProgressIndicator
 Button "Back to repository"
 TextInput "Search preferences"
 Label "Preferences"

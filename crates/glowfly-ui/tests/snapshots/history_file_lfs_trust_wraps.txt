@@ -1,7 +1,6 @@
 window 1400x640
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -76,7 +75,9 @@ Button "Wrap lines" [off]
 Label "3 lines"
 Label "Git LFS pointer. Trust this repository to see the file's content."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

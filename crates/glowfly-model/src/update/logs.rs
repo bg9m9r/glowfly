@@ -54,6 +54,9 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
             }
         }
         LogsMsg::Details { tab, entry } => super::logs_tabs::details(st, tab, entry, fx),
+        LogsMsg::DismissFailure(id) => {
+            st.logs.dismissed.insert(id);
+        }
         LogsMsg::Fold(id) => super::logs_runs::fold(st, id),
         LogsMsg::Fix(id) => super::logs_runs::fix(st, id, false, now, fx),
         LogsMsg::AltFix(id) => super::logs_runs::fix(st, id, true, now, fx),

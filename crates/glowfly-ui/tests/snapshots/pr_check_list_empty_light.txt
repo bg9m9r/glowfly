@@ -2,9 +2,9 @@ window 1400x820
 Label "GitHub"
 Label "acme/demo"
 Label "· 1 open pull request"
-Label "Glowfly 0.1.0"
+Button "Never fetched"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -117,7 +117,9 @@ Label "opened this pull request"
 Label "Adds a page that lists search results."
 Label "Paging and filters come in a later change."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Undo"
   "Redo"
