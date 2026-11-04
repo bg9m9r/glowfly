@@ -5,7 +5,7 @@
 
 use super::FileEntry;
 use super::history::{self, HistoryEntry, HistoryStart, Kind, Queue, entry_of, present};
-use crate::error::{Error, Result};
+use crate::error::{ReadFailed, Result};
 use git2::{Commit, Delta, DiffFindOptions, Oid, Repository, Tree};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -24,11 +24,11 @@ pub fn folder_file_today(entry_folder: &str, folder_now: &str, file: &str) -> St
 
 /// The commits that changed something under `folder` (repo-relative, '/'-separated, without a
 /// trailing '/'), newest first, examining at most `limit` commits.
-pub fn folder_history(workdir: &Path, folder: &str, start: &HistoryStart, limit: usize) -> Result<history::FileHistory> {
+pub fn folder_history(workdir: &Path, folder: &str, start: &HistoryStart, limit: usize) -> Result<history::FileHistory, ReadFailed> {
     if folder.is_empty() {
-        return Err(Error::Unsupported("A folder history needs a folder".into()));
+        return Err(ReadFailed::NoFolder);
     }
-    history::walk(workdir, folder, start, limit, Kind::Folder)
+    Ok(history::walk(workdir, folder, start, limit, Kind::Folder)?)
 }
 
 /// Looks at one commit: records an entry if it changed something under the folder `p`, and

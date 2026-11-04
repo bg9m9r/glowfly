@@ -153,7 +153,7 @@ fn folder_history_of_a_removed_folder_starts_with_d() {
 fn empty_folder_name_is_rejected() {
     let dir = scratch_repo("folder-empty");
     commit(&dir, &[("a.txt", "a\n")], "add a");
-    assert!(matches!(folder_history(&dir, "", &HistoryStart::Head, 100), Err(crate::error::Error::Unsupported(_))));
+    assert!(matches!(folder_history(&dir, "", &HistoryStart::Head, 100), Err(crate::error::ReadFailed::NoFolder)));
     // A file is not a folder.
     assert!(folder_history(&dir, "a.txt", &HistoryStart::Head, 100).unwrap().entries.is_empty());
     let _ = std::fs::remove_dir_all(&dir);

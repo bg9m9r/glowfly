@@ -3,7 +3,7 @@
 //! going away).
 
 use super::selection_tests::{fixture, git, up};
-use super::tests::drive;
+use super::tests::{drive, said};
 use git2::Oid;
 use glowfly_core::repo::{Comparison, DiffTarget, FileDiff, FileEntry};
 use glowfly_model::effect::Effect;
@@ -96,7 +96,7 @@ fn only_the_latest_read_is_kept() {
     }
     up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: Ok(c.clone()) }));
     assert_eq!(compared(&st).changes, Some(Ok(c)));
-    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: Err("bad tree".into()) }));
+    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: Err(said("bad tree")) }));
     assert_eq!(compared(&st).changes, Some(Err("bad tree".into())));
     assert!(st.log.iter().any(|l| !l.ok && l.text == "bad tree"));
     let _ = std::fs::remove_dir_all(&f.dir);
@@ -218,7 +218,7 @@ fn retry_keeps_the_direction() {
     up(&mut st, Msg::Selection(SelectionMsg::CompareWithWorkdir(f.c(3))));
     up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));
     let generation = compared(&st).generation;
-    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: Err("disk on fire".into()) }));
+    up(&mut st, Msg::Selection(SelectionMsg::WorkdirCompareLoaded { oid: f.c(3), generation, result: Err(said("disk on fire")) }));
     assert!(matches!(compared(&st).changes, Some(Err(_))));
     let fx = up(&mut st, Msg::Selection(SelectionMsg::RetryCompare));
     assert_eq!(swapped_reads(&fx), [true], "{fx:?}");

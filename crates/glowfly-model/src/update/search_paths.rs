@@ -7,7 +7,9 @@ use crate::effect::Effect;
 use crate::effect::HistoryEffect;
 use crate::msg::PathsChunk;
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::search::PathSearch;
+use glowfly_core::error::ReadFailed;
 
 /// Asks for the path answers the query still needs: resets them when the path terms changed,
 /// then requests the loaded commits that pass the text and author terms and haven't been looked
@@ -42,7 +44,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// A report for request `request`: merges it when it is the one pending, and matches again.
 /// Matches only grow below rows already shown, so nothing scrolls. When the search is done, a
 /// filtering search may load further back.
-pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChunk, String>, fx: &mut Vec<Effect>) {
+pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChunk, ReadFailed>, fx: &mut Vec<Effect>) {
     let p = &mut st.session.search.paths;
     if p.pending != Some(request) {
         return;
@@ -57,7 +59,8 @@ pub(super) fn searched(st: &mut AppState, request: u64, result: Result<PathsChun
         }
         Err(e) => {
             p.pending = None;
-            st.log(false, format!("Could not search changed files: {e}"));
+            let t = st.settings.lang();
+            st.log(false, t.trf("search.paths.failed", &[("why", &typed::read(t, &e))]));
         }
     }
     super::search::recompute(st);

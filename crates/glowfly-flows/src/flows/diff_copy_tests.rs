@@ -1,6 +1,7 @@
 //! Copy hunk as patch through the runner: the hunk read again from the repository keeps a CRLF
 //! file's line endings; a Latin-1 file's hunk is refused with a toast, as the clipboard takes
-//! only text; a request for a diff that changed since is dropped.
+//! only text; a request for a diff that changed since is dropped, and a hunk the file no longer
+//! has is refused with a toast saying so.
 
 use super::helpers::finish_keeping;
 use super::tests::{drive, git, scratch_repo, state};
@@ -58,5 +59,33 @@ fn a_copy_for_a_diff_that_changed_is_dropped() {
     let generation = st.hunk_ops_gen().expect("the diff on screen");
     let fx = update(&mut st, Msg::Diff(DiffMsg::CopyHunkPatch { index: 0, generation: generation + 1 }), Instant::now());
     assert!(fx.is_empty(), "nothing read");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_hunk_the_file_no_longer_has_is_refused_with_a_toast() {
+    let (mut st, dir) = open(
+        "diff-copy-changed",
+        b"a
+b
+c
+",
+        b"a
+B
+c
+",
+    );
+    // Edited again after the diff was shown, and not read again yet.
+    std::fs::write(
+        dir.join("f.txt"),
+        b"a
+X
+c
+",
+    )
+    .unwrap();
+    assert_eq!(copy_hunk(&mut st), None);
+    let want = "Couldn't copy the hunk as a patch: not found: the diff changed; try again on the updated diff";
+    assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text == want), "{:?}", st.toasts.last().map(|t| &t.text));
     let _ = std::fs::remove_dir_all(&dir);
 }

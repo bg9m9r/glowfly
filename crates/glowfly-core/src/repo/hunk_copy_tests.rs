@@ -140,7 +140,12 @@ fn a_hunk_that_changed_since_it_was_shown_is_refused() {
     let shown = load_diff_with(&dir, &target, LoadDiffOptions::default()).unwrap();
     write(&dir, "f.txt", "a\nX\nc\n");
     let r = hunk_patch(&dir, &target, 0, &shown.hunks[0], false);
-    assert!(r.as_ref().is_err_and(|e| e.is_not_found()), "{:?}", r.ok().map(|b| String::from_utf8_lossy(&b).into_owned()));
+    assert_eq!(
+        r.as_ref().err(),
+        Some(&crate::error::ReadFailed::DiffChanged),
+        "{:?}",
+        r.as_ref().ok().map(|b| String::from_utf8_lossy(b).into_owned())
+    );
     assert!(hunk_patch(&dir, &target, 1, &shown.hunks[0], false).is_err(), "no such hunk");
     let _ = std::fs::remove_dir_all(&dir);
 }

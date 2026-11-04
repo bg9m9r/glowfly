@@ -5,8 +5,10 @@
 //! back to the loaded-commits behaviour. Building the index is update/history_index.rs.
 
 use crate::effect::{Effect, IndexEffect};
+use crate::state::error_words::typed;
 use crate::state::history_index::IndexAnswer;
 use crate::state::{AppState, MAX_COMMITS};
+use glowfly_core::error::ReadFailed;
 use std::sync::Arc;
 
 /// Asks the index for the query's matches unless it answered already or is answering: only for
@@ -38,7 +40,7 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// The index's answer to request `request`: kept when it is the one pending, then a filtering
 /// search may load straight to its matches.
-pub(super) fn queried(st: &mut AppState, request: u64, result: Result<Vec<u32>, String>, fx: &mut Vec<Effect>) {
+pub(super) fn queried(st: &mut AppState, request: u64, result: Result<Vec<u32>, ReadFailed>, fx: &mut Vec<Effect>) {
     let ix = &mut st.session.search.index;
     if ix.pending != Some(request) {
         return;
@@ -51,7 +53,10 @@ pub(super) fn queried(st: &mut AppState, request: u64, result: Result<Vec<u32>, 
                 ix.answer = Some(IndexAnswer { query, index, positions });
             }
         }
-        Err(e) => st.log(false, format!("Could not search the history index: {e}")),
+        Err(e) => {
+            let t = st.settings.lang();
+            st.log(false, t.trf("search.index.query_failed", &[("why", &typed::read(t, &e))]));
+        }
     }
     super::search_deeper::pump(st, fx);
 }

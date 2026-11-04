@@ -191,7 +191,9 @@ pub enum Inactive {
     /// A working-tree file operation's result: a dialog may still be waiting for it.
     WorkFile { op: FileOp, result: Result<WorkFileOk, String> },
     /// A whole-history index build for that tab finished: the parked tab keeps the index.
-    IndexBuilt { build: u64, result: Result<std::sync::Arc<glowfly_core::commit_index::CommitIndex>, String> },
+    IndexBuilt { build: u64, result: Result<std::sync::Arc<glowfly_core::commit_index::CommitIndex>, glowfly_core::error::ReadFailed> },
+    /// The conflicted files of that tab couldn't be read: for its activity log, worded there.
+    ConflictFilesUnread(glowfly_core::error::ReadFailed),
     /// A load or whole status read for that tab: its tab keeps the counts it shows.
     Counts(crate::state::tabs::glance::CountsRead),
 }

@@ -9,7 +9,7 @@
 
 use super::FileEntry;
 use crate::commit_text::Decoder;
-use crate::error::Result;
+use crate::error::{ReadFailed, Result};
 use git2::{Commit, Delta, Diff, DiffFindOptions, ObjectType, Oid, Repository, Tree};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
@@ -151,8 +151,8 @@ impl Queue {
 }
 
 /// The commits that changed `path`, newest first, examining at most `limit` commits.
-pub fn file_history(workdir: &Path, path: &str, start: &HistoryStart, limit: usize) -> Result<FileHistory> {
-    walk(workdir, path, start, limit, Kind::File)
+pub fn file_history(workdir: &Path, path: &str, start: &HistoryStart, limit: usize) -> Result<FileHistory, ReadFailed> {
+    Ok(walk(workdir, path, start, limit, Kind::File)?)
 }
 
 /// HEAD's commit; `None` on an unborn branch.

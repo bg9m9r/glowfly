@@ -8,6 +8,8 @@ use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use crate::state::AppState;
 use crate::state::diff_preview::DiffPreview;
+use crate::state::error_words::typed;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{BinarySides, DiffTarget};
 use std::sync::Arc;
 
@@ -58,7 +60,8 @@ fn request(st: &AppState, fx: &mut Vec<Effect>) {
 
 /// The sides read for the diff shown at `generation`: kept when that diff is still the one the
 /// preview is for. A failure is stored too, so the body falls back to its plain binary state.
-pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, String>) {
+pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, ReadFailed>) {
+    let t = st.settings.lang();
     let shown = st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == target);
     let Some(p) = st.session.diff_preview.as_mut().filter(|p| p.target == target && shown && generation == st.session.diff.shown_gen)
     else {
@@ -67,7 +70,7 @@ pub(super) fn loaded(st: &mut AppState, target: DiffTarget, generation: u64, res
     if let Err(e) = &result {
         tracing::debug!("binary sides of {}: {e}", target.path());
     }
-    p.sides = Some(result);
+    p.sides = Some(result.map_err(|e| typed::read(t, &e)));
 }
 
 /// A tab came back: its preview's result was dropped while it was parked, so a preview still

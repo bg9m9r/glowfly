@@ -3,8 +3,9 @@
 //! results ignored, kept through a reload of the same file, cleared on close, none for text or
 //! LFS-summary diffs, and asked for again when a tab comes back still loading.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{BinarySide, BinarySides, DiffTarget};
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
@@ -63,7 +64,7 @@ fn sides(size: u64) -> Arc<BinarySides> {
     Arc::new(BinarySides { old: Some(BinarySide { size, image: None, linked: false, bytes: None }), new: None })
 }
 
-fn loaded(target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, String>) -> Msg {
+fn loaded(target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, ReadFailed>) -> Msg {
     Msg::Diff(DiffMsg::BinarySidesLoaded { target, generation, result })
 }
 
@@ -105,7 +106,7 @@ fn stale_results_are_ignored_and_errors_are_kept_quietly() {
     drive(&mut st, loaded(bin(), generation - 1, Ok(sides(1))));
     drive(&mut st, loaded(DiffTarget::Unstaged("c.bin".into()), generation, Ok(sides(2))));
     assert!(st.session.diff_preview.as_ref().unwrap().sides.is_none(), "an older or other result");
-    drive(&mut st, loaded(bin(), generation, Err("no sides".into())));
+    drive(&mut st, loaded(bin(), generation, Err(said("no sides"))));
     assert!(matches!(&st.session.diff_preview.as_ref().unwrap().sides, Some(Err(e)) if e == "no sides"));
     assert!(diff_preview::shown(&st).is_none());
     assert_eq!(st.log.len(), log, "nothing logged");

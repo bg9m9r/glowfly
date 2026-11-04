@@ -7,6 +7,7 @@ use crate::state::lines::LineClick;
 use git2::Oid;
 use glowfly_core::conflict_restore::SavedPicks;
 use glowfly_core::diff_rows::GapText;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::highlight::DiffHighlight;
 use glowfly_core::repo::{BinarySides, Choice, ConflictFile, ConflictSummary, DiffTarget, FileHistory, Side};
 use glowfly_core::settings::{DiffLayout, DiffMode};
@@ -86,7 +87,7 @@ pub enum DiffMsg {
     /// The patch text of a Copy hunk as patch, or why it couldn't be read; copied when it is
     /// UTF-8 text.
     HunkPatchRead {
-        result: Result<Vec<u8>, String>,
+        result: Result<Vec<u8>, ReadFailed>,
     },
     /// A `DiffEffect::Highlight` finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
@@ -102,14 +103,14 @@ pub enum DiffMsg {
     GapsLoaded {
         target: DiffTarget,
         generation: u64,
-        result: Result<Arc<GapText>, String>,
+        result: Result<Arc<GapText>, ReadFailed>,
     },
     /// The sizes and decoded images of the binary diff shown at `generation`
     /// (`DiffEffect::BinarySides`).
     BinarySidesLoaded {
         target: DiffTarget,
         generation: u64,
-        result: Result<Arc<BinarySides>, String>,
+        result: Result<Arc<BinarySides>, ReadFailed>,
     },
 }
 
@@ -201,7 +202,7 @@ pub enum ConflictMsg {
     ConflictLoaded {
         path: String,
         generation: u64,
-        result: Result<ConflictFile, String>,
+        result: Result<ConflictFile, ReadFailed>,
         saved: Option<SavedPicks>,
     },
     /// Mark conflicted files resolved: their working files are checked for conflict markers
@@ -215,7 +216,7 @@ pub enum ConflictMsg {
     ConflictFilesRead {
         purpose: ConflictRead,
         paths: Vec<String>,
-        result: Result<ConflictSummary, String>,
+        result: Result<ConflictSummary, ReadFailed>,
     },
 }
 
@@ -247,7 +248,7 @@ impl ConflictMsg {
             | Self::MarkResolvedConfirmed(..)
             | Self::MarkConflicted(..)
             | Self::ConflictFilesRead { result: Ok(_), .. } => None,
-            Self::ConflictFilesRead { result: Err(e), .. } => Some(crate::msg::Inactive::Log(e)),
+            Self::ConflictFilesRead { result: Err(e), .. } => Some(crate::msg::Inactive::ConflictFilesUnread(e)),
         }
     }
 }
@@ -296,7 +297,7 @@ pub enum HistoryMsg {
     FileHistoryLoaded {
         path: String,
         generation: u64,
-        result: Result<FileHistory, String>,
+        result: Result<FileHistory, ReadFailed>,
     },
     /// The File view's text of `path` as of `oid` (with `before`, as of its parent)
     /// (`Effect::LoadFileText`).

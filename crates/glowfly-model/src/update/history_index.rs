@@ -12,8 +12,11 @@
 
 use crate::effect::{Effect, IndexEffect};
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::history_index::{BuildDelay, Building, FIRST_BUILD_DELAY, FREE_MIN_COMMITS, HistoryIndex, PARKED_FREE_AFTER};
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
+use glowfly_core::error::ReadFailed;
+use glowfly_core::i18n::Lang;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -96,10 +99,10 @@ pub(super) fn progress(st: &mut AppState, build: u64, indexed: usize, estimate: 
 
 /// Build `build` finished: the index is kept, the history may already need another build (from
 /// this one), and the query is asked of it.
-pub(super) fn built(st: &mut AppState, build: u64, result: Result<Arc<CommitIndex>, String>, fx: &mut Vec<Effect>) {
+pub(super) fn built(st: &mut AppState, build: u64, result: Result<Arc<CommitIndex>, ReadFailed>, fx: &mut Vec<Effect>) {
     match finish(&mut st.session.search.index, build, result) {
         None => return,
-        Some(Some(error)) => return st.log(false, failed_text(&error)),
+        Some(Some(error)) => return st.log(false, failed_text(st.settings.lang(), &error)),
         Some(None) => {}
     }
     want_build(st, fx);
@@ -109,21 +112,22 @@ pub(super) fn built(st: &mut AppState, build: u64, result: Result<Arc<CommitInde
 
 /// `built` for the parked tab of `workdir`: it keeps the index (or the failure) for when it is
 /// shown again.
-pub(super) fn parked_built(st: &mut AppState, workdir: &Path, build: u64, result: Result<Arc<CommitIndex>, String>) {
+pub(super) fn parked_built(st: &mut AppState, workdir: &Path, build: u64, result: Result<Arc<CommitIndex>, ReadFailed>) {
     let Some(i) = st.tabs.iter().position(|t| t.is(workdir) && t.parked.is_some()) else { return };
     let Some(p) = st.tabs[i].parked.as_mut() else { return };
     if let Some(Some(error)) = finish(&mut p.session.search.index, build, result) {
-        st.log_in(Some(workdir), false, failed_text(&error));
+        let t = st.settings.lang();
+        st.log_in(Some(workdir), false, failed_text(t, &error));
     }
 }
 
-fn failed_text(e: &str) -> String {
-    format!("Could not index the history for search: {e}")
+fn failed_text(t: Lang, e: &ReadFailed) -> String {
+    t.trf("search.index.build_failed", &[("why", &typed::read(t, e))])
 }
 
 /// Applies build `build`'s result to `ix`: `None` when it isn't the build running, else the
 /// error to log once. A failure is remembered for its history, so it isn't retried.
-fn finish(ix: &mut HistoryIndex, build: u64, result: Result<Arc<CommitIndex>, String>) -> Option<Option<String>> {
+fn finish(ix: &mut HistoryIndex, build: u64, result: Result<Arc<CommitIndex>, ReadFailed>) -> Option<Option<ReadFailed>> {
     let b = ix.building.take_if(|b| b.build == build)?;
     Some(match result {
         Ok(index) => {

@@ -35,7 +35,6 @@ impl Execute for HistoryEffect {
 
 fn walk(workdir: &Path, path: String, start: &HistoryStart, limit: usize, folder: bool, generation: u64) -> Msg {
     let result = if folder { repo::folder_history(workdir, &path, start, limit) } else { repo::file_history(workdir, &path, start, limit) };
-    let result = result.map_err(|e| e.to_string());
     Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result })
 }
 

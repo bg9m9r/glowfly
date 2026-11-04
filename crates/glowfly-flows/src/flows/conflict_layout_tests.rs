@@ -2,7 +2,7 @@
 //! with markers, folds opened and closed, and wrapping long lines.
 
 use super::conflict_tests::{fake_file, with_fake};
-use super::tests::state;
+use super::tests::{said, state};
 use super::update;
 use glowfly_core::conflict_pick::{ChunkPick, CleanEdits};
 use glowfly_core::conflict_restore::SavedPicks;
@@ -37,7 +37,7 @@ fn saved_picks_come_back_when_the_file_loads() {
     let mut st = state();
     st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     st.session.conflict.generation = 1;
-    let failed = ConflictMsg::ConflictLoaded { path: "f.txt".into(), generation: 1, result: Err("gone".into()), saved: None };
+    let failed = ConflictMsg::ConflictLoaded { path: "f.txt".into(), generation: 1, result: Err(said("gone")), saved: None };
     send(&mut st, Msg::Conflict(failed));
     assert!(st.session.conflict.view.is_none());
 }
