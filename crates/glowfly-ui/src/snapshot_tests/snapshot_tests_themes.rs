@@ -24,12 +24,7 @@ fn main_high_contrast_dark() {
     remove_fixture(&dir);
 }
 
-#[test]
-fn main_high_contrast_light() {
-    let (st, dir) = with_repo(ThemeChoice::HighContrastLight, "theme-hc-light");
-    render("main_high_contrast_light", st, theme::HIGH_CONTRAST_LIGHT);
-    remove_fixture(&dir);
-}
+// High contrast light's main window is `history_table_high_contrast_light`: the same render.
 
 #[test]
 fn diff_high_contrast_light() {
