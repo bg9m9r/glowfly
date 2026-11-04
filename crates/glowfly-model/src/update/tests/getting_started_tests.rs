@@ -207,7 +207,7 @@ fn blame_opens_the_file_pick_without_counting_as_palette_use() {
     run(&mut st, O::OpenGettingStarted);
     let fx = run(&mut st, O::ShowMe(Card::Blame));
     assert!(matches!(st.palette.as_ref().map(|p| &p.mode), Some(Mode::Pick(_))), "the file pick opens");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadTrackedPaths { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Files(crate::effect::FilesEffect::LoadTracked { .. }))));
     assert!(st.palette_recent.is_empty(), "not recorded among the palette's recent commands");
     let _ = std::fs::remove_dir_all(dir);
 }

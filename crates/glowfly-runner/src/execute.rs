@@ -2,8 +2,7 @@
 //! `<area>.rs`) and the arms of the flat variants, with the result message each sends back.
 
 use super::{
-    diff_gaps, expect, files, forge_calls, git_ops, highlight, history, job_steps, journal, load, op_stops, path_search, revert,
-    signatures, status, undo_run,
+    diff_gaps, expect, forge_calls, git_ops, highlight, history, job_steps, journal, load, op_stops, path_search, revert, status, undo_run,
 };
 use glowfly_core::{avatars, gitcli, repo, undo};
 use glowfly_model::effect::areas::{effect_areas, effect_match};
@@ -59,9 +58,6 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::LoadIndexStatus { workdir, generation, submodules, open, git_status, read } => {
             Some(status::load_index(&workdir, generation, submodules, open, git_status, read, cx.graph_cache))
         }
-        Effect::LoadDetail { workdir, oid } => {
-            Some(Msg::Repo(RepoMsg::DetailLoaded { oid, result: repo::commit_detail(&workdir, oid).map_err(err) }))
-        }
         Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed } => Some(highlight::load_job(
             workdir,
             target,
@@ -83,9 +79,6 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         }
         Effect::LocalOp { workdir, op } => Some(git_ops::local_done(&workdir, op)),
         Effect::Revert { workdir, req } => Some(revert::run(&workdir, req)),
-        Effect::RestoreFile { workdir, oid, path, overwrite } => Some(files::restore(&workdir, oid, path, overwrite)),
-        Effect::WorkFile { workdir, op } => Some(files::work_file(&workdir, op, cx.seams.trashers)),
-        Effect::LoadTrackedPaths { workdir, generation } => Some(files::tracked_paths(&workdir, generation)),
         Effect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _, on_fail_check } => {
             if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
                 return Some(Msg::Job(JobMsg::JobDone { ok: false, output: refused, undo: record.map(|_| UndoResult::Recorded(None)) }));
@@ -193,7 +186,6 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::SearchPaths { workdir, request, terms, oids } => {
             Some(path_search::once(path_search::Request { workdir, request, terms, oids }))
         }
-        Effect::VerifySignature { workdir, oid, format, generation } => Some(signatures::verify(&workdir, oid, format, generation)),
         Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
             emails
                 .into_iter()

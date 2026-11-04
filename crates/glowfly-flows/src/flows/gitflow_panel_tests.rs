@@ -81,7 +81,7 @@ fn jumping_to_a_commit_closes_it() {
     let fx = update(&mut st, Msg::Repo(RepoMsg::JumpTo(tip)), Instant::now());
     assert!(!st.session.gitflow_panel);
     assert_eq!(st.session.selection, Selection::Commit(tip));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == tip)));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }) if *oid == tip)));
     cleanup(&dir);
 }
 

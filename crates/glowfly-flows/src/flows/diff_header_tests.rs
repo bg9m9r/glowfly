@@ -28,7 +28,7 @@ fn drive(st: &mut AppState, msg: Msg) {
             if matches!(e, Effect::LoadDiff { .. } | Effect::LoadBinarySides { .. } | Effect::LoadRepo { .. } | Effect::LoadStatus { .. })
                 || matches!(
                     e,
-                    Effect::LoadDetail { .. }
+                    Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { .. })
                         | Effect::Selection(SelectionEffect::Compare { .. })
                         | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
                 )

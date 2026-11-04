@@ -49,7 +49,9 @@ pub(super) fn last_log(st: &AppState) -> &str {
 }
 
 pub(super) fn work_ops(fx: &[Effect]) -> Vec<FileOp> {
-    fx.iter().filter_map(|e| if let Effect::WorkFile { op, .. } = e { Some(op.clone()) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Files(glowfly_model::effect::FilesEffect::Work { op, .. }) = e { Some(op.clone()) } else { None })
+        .collect()
 }
 
 #[test]
@@ -59,7 +61,10 @@ fn create_checks_then_sends_the_effect() {
     assert_eq!(new_form(&st), &PathForm::new("docs/"));
 
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into())));
-    assert!(matches!(&fx[..], [Effect::WorkFile { workdir, op: FileOp::Create(p) }] if *workdir == dir && p == "docs/a.md"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::Work { workdir, op: FileOp::Create(p) })] if *workdir == dir && p == "docs/a.md"),
+        "{fx:?}"
+    );
     assert_eq!(fx[0].scope(), Some(&dir));
     assert!(new_form(&st).busy);
     assert!(run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into()))).is_empty(), "not twice while busy");

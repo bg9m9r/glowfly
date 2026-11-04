@@ -30,7 +30,7 @@ fn selecting_a_commit_row_shows_the_commit() {
     assert_eq!(panel(&st).selected, Some(1));
     assert_eq!(st.session.selection, Selection::Commit(c[1]));
     assert!(
-        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
+        matches!(&fx[..], [Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }), Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == c[1]),
         "{fx:?}"
     );
     assert!(st.session.rebase.view.is_some(), "the panel stays open");

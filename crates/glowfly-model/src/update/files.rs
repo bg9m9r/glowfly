@@ -4,6 +4,7 @@
 //! working-tree files (in `work_files.rs`).
 
 use crate::effect::Effect;
+use crate::effect::FilesEffect;
 use crate::effect::OsEffect;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
@@ -30,7 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         FilesMsg::RestoreFile { oid, path, confirmed: true, overwrite, .. } => {
             // `deleted` only shapes the wording; core decides which version to write.
             if let Some(workdir) = st.workdir() {
-                fx.push(Effect::RestoreFile { workdir, oid, path, overwrite });
+                fx.push(Effect::Files(FilesEffect::Restore { workdir, oid, path, overwrite }));
             }
         }
         FilesMsg::RestoreWouldOverwrite { path, oid, reason } => {

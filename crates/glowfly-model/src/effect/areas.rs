@@ -116,6 +116,11 @@ macro_rules! effect_areas {
             Conflict($crate::effect::ConflictEffect),
             /// A selection's comparisons and stacked changes (selection.rs).
             Selection($crate::effect::SelectionEffect),
+            /// Restoring a file from a commit, changing working-tree files and listing the tracked
+            /// ones (files.rs, runner/files.rs).
+            Files($crate::effect::FilesEffect),
+            /// The details panel's reads of one commit: its detail and its signature (commit.rs); reads only.
+            Commit($crate::effect::CommitEffect),
             /// Git's file system monitor started and set, then the cache's commands (monitor.rs); unscoped like RunGit.
             TurnOnMonitor($crate::effect::MonitorJob),
             /// Git's file system monitor unset and stopped (monitor.rs); unscoped like RunGit.

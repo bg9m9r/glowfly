@@ -4,8 +4,8 @@
 
 use crate::effect::partial::{ContentRequest, PartialEffect, StopKey};
 use crate::effect::{
-    CloneEffect, ConflictEffect, ConflictRead, Effect, LfsEffect, MonitorJob, MonitorOff, ReposEffect, SelectionEffect, SparseEffect,
-    StackRequest, WorktreeEffect,
+    CloneEffect, CommitEffect, ConflictEffect, ConflictRead, Effect, FileOp, FilesEffect, LfsEffect, MonitorJob, MonitorOff, ReposEffect,
+    SandboxRule, SelectionEffect, SparseEffect, StackRequest, WorktreeEffect,
 };
 use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoveRequest};
 use glowfly_core::repo_sync::SyncOp;
@@ -114,11 +114,30 @@ fn moved_effects_keep_their_metadata() {
             })),
             ("move-worktree", None, Some(repo.as_path()), true),
         ),
+        (
+            Effect::Files(FilesEffect::Restore { workdir: w.clone(), oid, path: "a.txt".into(), overwrite: false }),
+            ("restore-file", scoped, scoped, true),
+        ),
+        (Effect::Files(FilesEffect::Work { workdir: w.clone(), op: FileOp::Create("a.txt".into()) }), ("work-file", scoped, scoped, true)),
+        (Effect::Files(FilesEffect::LoadTracked { workdir: w.clone(), generation: 1 }), ("tracked-paths", scoped, None, true)),
+        (Effect::Commit(CommitEffect::LoadDetail { workdir: w.clone(), oid }), ("load-detail", scoped, None, true)),
+        (
+            Effect::Commit(CommitEffect::VerifySignature {
+                workdir: w.clone(),
+                oid,
+                format: glowfly_core::signing::SigningFormat::OpenPgp,
+                generation: 1,
+            }),
+            ("verify-signature", scoped, None, true),
+        ),
     ];
     for (effect, expected) in &cases {
         assert_eq!(meta(effect), *expected, "{effect:?}");
         assert_eq!(effect.holds(), expected.2, "{} holds what it queues on", expected.0);
         assert_eq!(effect.stop_key(), None, "{} can't be stopped", expected.0);
+        if matches!(effect, Effect::Files(_) | Effect::Commit(_)) {
+            assert_eq!(effect.sandbox(), SandboxRule::Run, "{} runs in the whole-app tests", expected.0);
+        }
     }
 }
 

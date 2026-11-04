@@ -11,7 +11,6 @@ impl Effect {
             Effect::LoadRepo { .. } => "load-repo",
             Effect::LoadStatus { .. } => "load-status",
             Effect::LoadIndexStatus { .. } => "load-index-status",
-            Effect::LoadDetail { .. } => "load-detail",
             Effect::LoadDiff { .. } => "load-diff",
             Effect::HighlightDiff { .. } => "highlight",
             Effect::LoadDiffGaps { .. } => "load-diff-gaps",
@@ -19,15 +18,11 @@ impl Effect {
             Effect::LoadFileHistory { .. } => "file-history",
             Effect::LocalOp { .. } => "local-op",
             Effect::Revert { .. } => "revert",
-            Effect::RestoreFile { .. } => "restore-file",
-            Effect::WorkFile { .. } => "work-file",
-            Effect::LoadTrackedPaths { .. } => "tracked-paths",
             Effect::RunGit { .. } => "git",
             Effect::UndoRedo { .. } => "undo-redo",
             Effect::Forge { .. } => "forge",
             Effect::Stats { .. } => "stats",
             Effect::SearchPaths { .. } => "search-paths",
-            Effect::VerifySignature { .. } => "verify-signature",
             Effect::FetchAvatars(_) => "avatars",
             Effect::SaveSettings(_) => "save-settings",
             Effect::SaveRecent(_) => "save-recent",
@@ -48,7 +43,6 @@ impl Effect {
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
             | Effect::LoadIndexStatus { .. }
-            | Effect::LoadDetail { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadDiffGaps { .. }
@@ -56,15 +50,11 @@ impl Effect {
             | Effect::LoadFileHistory { .. }
             | Effect::LocalOp { .. }
             | Effect::Revert { .. }
-            | Effect::RestoreFile { .. }
-            | Effect::WorkFile { .. }
-            | Effect::LoadTrackedPaths { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
             | Effect::Forge { .. }
             | Effect::Stats { .. }
             | Effect::SearchPaths { .. }
-            | Effect::VerifySignature { .. }
             | Effect::FetchAvatars(_)
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)

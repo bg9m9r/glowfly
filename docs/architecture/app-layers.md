@@ -49,7 +49,7 @@ source file, update its line here. Features that span every layer are in
 
 ## `effect/`: effects
 
-- `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and the older flat variants.
+- `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and the older flat variants (counted by `source_checks`' `hygiene/flat_effects.rs`, which only shrinks).
 - `meta.rs`: `EffectMeta`, what each area decides for its effects beside its type (name, scope, timing, queue, pool hold, stop key, the tests' sandbox rule); tests in `meta_tests.rs`.
 - `areas.rs`: the table of effect areas; `effect_match!` runs one body for every area in `Effect`'s metadata, the sandbox's rule and the runner's dispatch.
 - The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `hunk_patch.rs` (Copy hunk as patch's read, run by `runner/hunk_patch.rs`), `notify.rs` (desktop notifications).
@@ -65,6 +65,8 @@ source file, update its line here. Features that span every layer are in
 - `lock.rs`: `LockEffect`: checking a lock file a failed job named, and deleting it (on the repository's queue).
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
+- `files.rs`: `FilesEffect`: restoring a file from a commit, creating, renaming, deleting and discarding working-tree files (on the repository's queue), and listing the tracked files.
+- `commit.rs`: `CommitEffect`: the details panel's reads of one commit, its detail and its signature check.
 - `worktree.rs`: `WorktreeEffect`: the worktree folder check, removing, moving and counting other worktrees' changes.
 - `monitor.rs`: `MonitorJob` and `MonitorOff`, turning git's file system monitor on and off.
 - `pick.rs`: `PickJob`, a cherry-pick or revert run that skips commits changing nothing.
@@ -341,7 +343,7 @@ source file, update its line here. Features that span every layer are in
 - `runner/askpass.rs`: the credential-prompt listener: started once with the app, it reports prompts from the askpass helper as `Msg`s and hands the dialog's answers back to the waiting helper.
 - `runner/credentials.rs`: saving and dropping HTTPS sign-ins with git's credential helpers (`CredentialEffect`).
 - `runner/expect.rs`: the check a job can carry (`Effect::RunGit { expect }`): a revision named by position, such as `stash@{2}`, must still be the commit the user picked, or nothing runs.
-- `runner/files.rs`: restoring a file from a commit with an undo entry (`Effect::RestoreFile`), creating, renaming, deleting and discarding (untracked) a working-tree file (`Effect::WorkFile`), listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
+- `runner/files.rs`: the `Execute` impl of `FilesEffect`: restoring a file from a commit with an undo entry, creating, renaming, deleting and discarding (untracked) a working-tree file, listing the tracked files; and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
 - `runner/forge_calls.rs`: calls to hosting services: pull requests and issues (`Effect::Forge`), and connected accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello account's boards.
 - `runner/forge_filter_calls.rs`: calls of pull request and issue filters (`ForgeCall::Filter`): the signed-in user, issue searches and the filter dialog's options.
 - `runner/forks.rs`: the fork dialogs' hosting-service calls (`Effect::Remote`): listing a repository's forks, finding the user's own fork and forking into the user's account.
@@ -355,7 +357,8 @@ source file, update its line here. Features that span every layer are in
 - `runner/queue.rs`: one queue per repository for the effects that change it (index, working tree, refs), so a stage, discard or conflict save never runs at the same time as a pull, a checkout or another edit of the same repository: each runs after the ones queued before it.
 - `runner/revert.rs`: reverting part of a commit or comparison diff in the working tree (`Effect::Revert`), with the working copy saved before and after so the revert can be undone.
 - `runner/saves.rs`: saving Glowfly's own files (settings, recent repositories, open tabs).
-- `runner/signatures.rs`: checking a commit's signature with git (Effect::VerifySignature).
+- `runner/signatures.rs`: checking a commit's signature with git (`CommitEffect::VerifySignature`).
+- `runner/commit.rs`: the `Execute` impl of `CommitEffect`: a commit's detail and its signature check (`signatures.rs`).
 - `runner/stashes.rs`: stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, reading and writing the auto-stashes waiting to go back across restarts, reading the files a stash changes for the question before applying it, and the abort that keeps an operation's work (also run by redoing one).
 - `runner/stats.rs`: line counts for the graph's CHANGES column.
 - `runner/svg_worker.rs` (tests in `svg_worker_tests.rs`): the one thread that draws SVG previews for `LoadBinarySides`: one drawing at a time, a newer request replacing the queued one, callers giving up after 3 s (the side shows "Can't preview this SVG") while the drawing runs on.

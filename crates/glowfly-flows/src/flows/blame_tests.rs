@@ -143,7 +143,7 @@ fn select_commit_selects_on_graph_and_closes() {
     assert!(st.session.blame.view.is_none() && st.session.history.view.is_none());
     assert_eq!(st.session.selection, Selection::Commit(h));
     assert!(
-        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == h),
+        matches!(&fx[..], [Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }), Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == h),
         "{fx:?}"
     );
 

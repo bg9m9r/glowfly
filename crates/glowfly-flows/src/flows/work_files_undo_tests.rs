@@ -136,7 +136,7 @@ fn a_delete_for_an_inactive_tab_goes_into_its_history() {
 
     let effect = update(&mut st, delete_confirmed("a.txt"), Instant::now())
         .into_iter()
-        .find(|e| matches!(e, Effect::WorkFile { .. }))
+        .find(|e| matches!(e, Effect::Files(glowfly_model::effect::FilesEffect::Work { .. })))
         .expect("a delete");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     let reply = glowfly_runner::testing::execute(effect).expect("a result");

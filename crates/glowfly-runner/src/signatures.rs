@@ -1,4 +1,4 @@
-//! Checking a commit's signature with git (Effect::VerifySignature).
+//! Checking a commit's signature with git (`CommitEffect::VerifySignature`, runner/commit.rs).
 
 use git2::Oid;
 use glowfly_core::signature_check;

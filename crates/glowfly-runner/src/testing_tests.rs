@@ -39,7 +39,7 @@ fn a_delete_run_by_a_test_goes_to_the_stand_in_bin() {
     let contents = format!("only in the stand-in bin {}\n", std::process::id());
     std::fs::write(dir.join("gone.txt"), &contents).unwrap();
     let op = FileOp::Delete { path: "gone.txt".into(), mode: DeleteMode::Trash };
-    let msg = execute(Effect::WorkFile { workdir: dir.clone(), op });
+    let msg = execute(Effect::Files(glowfly_model::effect::FilesEffect::Work { workdir: dir.clone(), op }));
     assert!(msg.is_some());
     assert!(!dir.join("gone.txt").exists());
     let binned = std::fs::read_dir(test_bin()).unwrap().flatten().any(|e| std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents));

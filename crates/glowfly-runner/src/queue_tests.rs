@@ -235,8 +235,13 @@ fn every_effect_that_changes_a_repository_queues() {
                 ignore_whitespace: false,
             },
         },
-        Effect::RestoreFile { workdir: w.clone(), oid: git2::Oid::zero(), path: "a".into(), overwrite: false },
-        Effect::WorkFile { workdir: w.clone(), op: FileOp::Create("a".into()) },
+        Effect::Files(glowfly_model::effect::FilesEffect::Restore {
+            workdir: w.clone(),
+            oid: git2::Oid::zero(),
+            path: "a".into(),
+            overwrite: false,
+        }),
+        Effect::Files(glowfly_model::effect::FilesEffect::Work { workdir: w.clone(), op: FileOp::Create("a".into()) }),
         Effect::RunGit {
             cwd: w.clone(),
             cmds: vec![glowfly_core::gitcli::args(&["commit"])],

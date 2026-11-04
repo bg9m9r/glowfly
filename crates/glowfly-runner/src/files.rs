@@ -1,14 +1,14 @@
-//! Restoring a file from a commit with an undo entry (`Effect::RestoreFile`), creating,
-//! renaming, deleting and discarding (untracked) a working-tree file (`Effect::WorkFile`),
-//! listing the tracked files (`Effect::LoadTrackedPaths`), and checking the Clone dialog's
-//! parent folder (`CloneEffect::CheckParent`).
+//! The `Execute` impl of `FilesEffect`: restoring a file from a commit with an undo entry,
+//! creating, renaming, deleting and discarding (untracked) a working-tree file, listing the
+//! tracked files, and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
 
+use super::execute::{Cx, Execute};
 use git2::Oid;
 use glowfly_core::error::Error;
 use glowfly_core::repo;
 use glowfly_core::undo;
 use glowfly_core::undo::RestoreFailed;
-use glowfly_model::effect::{FileOp, LocalOp, SeenLines, WorkFileOk};
+use glowfly_model::effect::{FileOp, FilesEffect, LocalOp, SeenLines, WorkFileOk};
 use glowfly_model::msg::CloneMsg;
 use glowfly_model::msg::FilesMsg;
 use glowfly_model::msg::Msg;
@@ -16,10 +16,20 @@ use glowfly_model::msg::PaletteMsg;
 use glowfly_model::msg::WorkFileMsg;
 use std::path::Path;
 
+impl Execute for FilesEffect {
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(match self {
+            FilesEffect::Restore { workdir, oid, path, overwrite } => restore(&workdir, oid, path, overwrite),
+            FilesEffect::Work { workdir, op } => work_file(&workdir, op, cx.seams.trashers),
+            FilesEffect::LoadTracked { workdir, generation } => tracked_paths(&workdir, generation),
+        })
+    }
+}
+
 /// Restores `path` from commit `oid`, saving the working copy first so the restore can be undone
 /// (even one that failed after changing the file). Contents only the working tree holds, without
 /// `overwrite`, come back as a second confirmation.
-pub(super) fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -> Msg {
+fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -> Msg {
     let (result, undo) = match undo::restore_saving(workdir, oid, &path, overwrite) {
         Err(RestoreFailed { error: Error::WouldOverwrite(reason), undo: None }) => {
             return Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason });
@@ -100,7 +110,7 @@ fn lines_instead(workdir: &Path, path: &str, seen: &SeenLines) -> Msg {
 }
 
 /// The paths in the index, for the palette's file finder.
-pub(super) fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
+fn tracked_paths(workdir: &Path, generation: u64) -> Msg {
     Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result: repo::tracked_paths(workdir) })
 }
 

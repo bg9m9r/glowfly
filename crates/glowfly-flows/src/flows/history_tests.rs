@@ -193,7 +193,7 @@ fn view_on_graph_selects_visible_commits_only() {
     assert!(st.session.history.view.is_none());
     assert_eq!(st.session.selection, Selection::Commit(head));
     assert!(
-        matches!(&fx[..], [Effect::LoadDetail { oid, .. }, Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == head),
+        matches!(&fx[..], [Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { oid, .. }), Effect::LineCounts(glowfly_model::effect::LineCountsEffect::Commit { .. })] if *oid == head),
         "{fx:?}"
     );
     assert!(st.view.scroll_to_row.is_some());

@@ -117,7 +117,9 @@ fn file_history_enters_pick_mode() {
     assert_eq!(pick(&st).kind, PickKind::FileHistory);
     assert_eq!(pick(&st).items, Items::Loading);
     let gen_now = st.palette_gen;
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { workdir, generation }] if *workdir == dir && *generation == gen_now));
+    assert!(
+        matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { workdir, generation })] if *workdir == dir && *generation == gen_now)
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -266,7 +268,7 @@ fn file_history_when_closed_opens_palette() {
     let (mut st, dir) = repo_with_topic("pick-closed");
     let fx = enter(&mut st);
     assert_eq!(pick(&st).kind, PickKind::FileHistory);
-    assert!(matches!(&fx[..], [Effect::LoadTrackedPaths { .. }]));
+    assert!(matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { .. })]));
 
     st.palette = None;
     st.modal =

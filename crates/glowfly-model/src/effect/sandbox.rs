@@ -12,22 +12,17 @@ impl Effect {
             Effect::LoadRepo { .. }
             | Effect::LoadStatus { .. }
             | Effect::LoadIndexStatus { .. }
-            | Effect::LoadDetail { .. }
             | Effect::LoadDiff { .. }
             | Effect::HighlightDiff { .. }
             | Effect::LoadDiffGaps { .. }
             | Effect::LoadBinarySides { .. }
             | Effect::LocalOp { .. }
             | Effect::Revert { .. }
-            | Effect::RestoreFile { .. }
-            | Effect::WorkFile { .. }
-            | Effect::LoadTrackedPaths { .. }
             | Effect::LoadFileHistory { .. }
             | Effect::RunGit { .. }
             | Effect::UndoRedo { .. }
             | Effect::Stats { .. }
             | Effect::SearchPaths { .. }
-            | Effect::VerifySignature { .. }
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
             | Effect::Watch(_)

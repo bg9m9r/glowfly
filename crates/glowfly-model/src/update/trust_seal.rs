@@ -10,6 +10,7 @@
 //! (`stale`): the active tab takes the scan just made, and the work waits for the trust prompt
 //! again, which names what changed.
 
+use crate::effect::CommitEffect;
 use crate::effect::{Accepted, Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
 use crate::patch::PatchEffect;
@@ -106,7 +107,7 @@ fn repo_of(e: &Effect) -> Option<&Path> {
 fn read_in(e: &Effect) -> Option<&Path> {
     let w = match e {
         Effect::LoadStatus { workdir, git_status: true, .. } | Effect::LoadIndexStatus { workdir, git_status: true, .. } => workdir,
-        Effect::VerifySignature { workdir, .. } => workdir,
+        Effect::Commit(CommitEffect::VerifySignature { workdir, .. }) => workdir,
         Effect::Lfs(LfsEffect::Load { workdir, .. }) => workdir,
         Effect::Sparse(SparseEffect::Load { workdir, run_git: true, .. }) => workdir,
         Effect::Tool(ToolEffect::OpenDiff(r)) if r.filters => &r.workdir,

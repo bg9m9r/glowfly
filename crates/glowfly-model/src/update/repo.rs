@@ -1,7 +1,7 @@
 //! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
-use crate::effect::{Effect, LoadKind, OsEffect, UiEffect};
+use crate::effect::{CommitEffect, Effect, LoadKind, OsEffect, UiEffect};
 use crate::msg::{FolderPurpose, RepoMsg};
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
@@ -391,7 +391,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::journal::close(st);
     super::pull_request::close(st);
     super::issue::close(st);
-    fx.push(Effect::LoadDetail { workdir, oid });
+    fx.push(Effect::Commit(CommitEffect::LoadDetail { workdir, oid }));
     super::line_counts::want_commit(st, oid, fx);
     if scroll && let Some(row) = super::search::reveal(st, oid) {
         // Leave a few rows of context above the target.

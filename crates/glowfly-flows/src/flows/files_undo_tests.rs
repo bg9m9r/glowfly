@@ -111,7 +111,7 @@ fn restore_result_for_inactive_tab_goes_to_its_history() {
 
     let effect = update(&mut st, restore(head(&a), "a.txt"), Instant::now())
         .into_iter()
-        .find(|e| matches!(e, Effect::RestoreFile { .. }))
+        .find(|e| matches!(e, Effect::Files(glowfly_model::effect::FilesEffect::Restore { .. })))
         .expect("a restore");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     let reply = glowfly_runner::testing::execute(effect).expect("a result");

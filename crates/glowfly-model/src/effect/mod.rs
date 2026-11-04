@@ -16,9 +16,11 @@ mod background;
 mod blame;
 mod branch;
 mod clone;
+mod commit;
 mod conflict;
 mod credential;
 mod dashboard;
+mod files;
 mod forge;
 mod forge_filters;
 mod history;
@@ -60,9 +62,11 @@ pub use background::{BackgroundEffect, Discard};
 pub use blame::BlameRequest;
 pub use branch::BranchEffect;
 pub use clone::CloneEffect;
+pub use commit::CommitEffect;
 pub use conflict::ConflictEffect;
 pub use credential::CredentialEffect;
 pub use dashboard::*;
+pub use files::FilesEffect;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use history::FileTextRequest;
@@ -132,10 +136,6 @@ effect_areas! { effect_enum! {
         git_status: bool,
         read: IndexRequest,
     },
-    LoadDetail {
-        workdir: PathBuf,
-        oid: Oid,
-    },
     LoadDiff {
         workdir: PathBuf,
         target: DiffTarget,
@@ -184,25 +184,6 @@ effect_areas! { effect_enum! {
     Revert {
         workdir: PathBuf,
         req: glowfly_core::repo::RevertRequest,
-    },
-    /// Writes `path` from commit `oid` (or its parent) into the working tree only.
-    /// Without `overwrite`, refuses when the file's current contents would be lost.
-    RestoreFile {
-        workdir: PathBuf,
-        oid: Oid,
-        path: String,
-        overwrite: bool,
-    },
-    /// Creates, renames, deletes or discards (untracked) a working-tree file; the index is untouched, except for
-    /// UnstageDelete, UnstageGone (index only) and a staged rename.
-    WorkFile {
-        workdir: PathBuf,
-        op: FileOp,
-    },
-    /// The files in the index, for the palette's file finder.
-    LoadTrackedPaths {
-        workdir: PathBuf,
-        generation: u64,
     },
     /// The commits that changed `path` (anything under it with `folder`), examining at most `limit`.
     LoadFileHistory {
@@ -262,13 +243,6 @@ effect_areas! { effect_enum! {
         request: u64,
         terms: Vec<glowfly_core::path_query::PathTerm>,
         oids: Vec<Oid>,
-    },
-    /// Checks commit `oid`'s signature (in `format`) with git, for the details panel's badge.
-    VerifySignature {
-        workdir: PathBuf,
-        oid: Oid,
-        format: glowfly_core::signing::SigningFormat,
-        generation: u64,
     },
     /// Downloads (or reads from the disk cache) avatars one after another.
     FetchAvatars(Vec<String>),
