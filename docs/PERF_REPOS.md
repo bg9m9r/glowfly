@@ -91,7 +91,8 @@ GLOWFLY_PERF_REPO=<out>/linux cargo test -p glowfly-flows --release perf_timing 
 
 In PowerShell, set `$env:GLOWFLY_PERF_REPO = '<out>/linux'` first. The test loads at most the
 newest 200,000 commits, so on the kernel it times about a seventh of the history (200k of its
-1.5M commits). Run it against `git` and `linux` at least, and against `linear` and `many-refs` when a change touches the history or refs.
+1.5M commits). Run it against `git` and `linux` at least, and against `linear` and `many-refs`
+when a change touches the history or refs.
 
 ## Manual checklist
 
