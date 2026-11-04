@@ -93,7 +93,7 @@ pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.onboarding.hint.is_none() {
         return;
     }
-    let covered = st.onboarding.hint.is_some_and(|h| h.id == HintId::Connect) && hints::connect_covered(st);
+    let covered = st.onboarding.hint.is_some_and(|h| h.id == HintId::Connect) && hints::connect_covered(st, st.view.sections.prs);
     if !st.settings.hints || covered {
         // Off, or the PULL REQUESTS section opened over the Connect tip: hidden, not ignored.
         st.onboarding.hint = None;

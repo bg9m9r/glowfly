@@ -97,14 +97,15 @@ fn may_offer(st: &AppState, id: HintId) -> bool {
         && !blocked(st)
         && active_tab(st).is_some()
         && (id.place() != Place::LeftPanel || st.settings.show_left_panel)
-        && !(id == HintId::Connect && connect_covered(st))
+        && !(id == HintId::Connect && connect_covered(st, st.view.sections.prs))
 }
 
 /// Whether the PULL REQUESTS section is open, so its own empty state (Connect… while no
 /// account is connected) covers the Connect tip: the tip is neither offered nor drawn then, and
 /// opening the section hides it without counting it as ignored (update/hints.rs `settle`).
-pub fn connect_covered(st: &AppState) -> bool {
-    st.view.sections.prs && st.session.forge.as_ref().is_some_and(|f| f.host.is_some())
+/// `prs_open`: the section's open flag (`ViewState::sections`).
+pub fn connect_covered(st: &AppState, prs_open: bool) -> bool {
+    prs_open && st.session.forge.as_ref().is_some_and(|f| f.host.is_some())
 }
 
 /// Shows `id` in the active tab when every rule allows it; otherwise the offer is dropped, not
@@ -191,8 +192,8 @@ pub struct HintView {
     pub button: &'static str,
 }
 
-/// The hint showing in the active tab, worded.
-pub fn view(st: &AppState) -> Option<HintView> {
+/// The hint showing in the active tab, worded; `prs_open` as for `connect_covered`.
+pub fn view(st: &AppState, prs_open: bool) -> Option<HintView> {
     let h = st.onboarding.hint.filter(|h| active_tab(st) == Some(h.tab))?;
     let t = st.settings.lang();
     let (text, button) = match h.id {
@@ -202,7 +203,7 @@ pub fn view(st: &AppState) -> Option<HintView> {
         },
         HintId::TidyCommits => (t.tr("hints.tidy.text").to_owned(), t.tr("hints.tidy.button")),
         HintId::Connect => {
-            let (service, mr) = unconnected_service(st).filter(|_| !connect_covered(st))?;
+            let (service, mr) = unconnected_service(st).filter(|_| !connect_covered(st, prs_open))?;
             let args: &[(&str, &dyn std::fmt::Display)] = &[("service", &service)];
             let text = if mr { t.trf("hints.connect.text_mr", args) } else { t.trf("hints.connect.text", args) };
             (text, t.tr("hints.connect.button"))

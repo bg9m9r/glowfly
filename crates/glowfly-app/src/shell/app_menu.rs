@@ -10,7 +10,7 @@ use glowfly_model::state::menu_model;
 /// Runs the actions of the items chosen since the last frame.
 pub(super) fn picked(menu: &mut NativeMenu, st: &mut AppState, msgs: &mut Vec<Msg>) {
     for action in menu.take_picked() {
-        action.run(st, msgs);
+        action.run(&mut st.view, msgs);
     }
 }
 

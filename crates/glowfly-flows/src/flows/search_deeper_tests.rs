@@ -47,7 +47,7 @@ fn send(st: &mut AppState, msg: SearchMsg) -> Vec<Effect> {
 /// The bar shown with `q` typed into it and the filter on.
 fn filter(st: &mut AppState, q: &str) -> Vec<Effect> {
     st.view.show_search = true;
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     let mut fx = Vec::new();
     if !st.session.search.filter {
         fx.extend(send(st, SearchMsg::ToggleFilter));
@@ -77,11 +77,11 @@ fn a_filter_with_too_few_matches_loads_further_back() {
     let limit = st.settings.commit_limit();
     let fx = filter(&mut st, "zzz-nothing");
     assert_eq!(one_full_load(&fx), 2 * limit);
-    assert!(st.searching_older());
-    assert_eq!(st.search_reach(), Reach::Searching);
+    assert!(st.searching_older(&st.view));
+    assert_eq!(st.search_reach(&st.view), Reach::Searching);
     finish(&mut st, fx);
     assert!(!st.loading, "the fixture is complete, so nothing more loads");
-    assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
+    assert_eq!(st.search_reach(&st.view), Reach::Whole { shallow: false, commits: 1 });
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -97,7 +97,7 @@ fn batches_double_and_stop_at_the_budget() {
     }
     assert_eq!(asked, [2, 4, 8, 16, 32]);
     assert_eq!(asked.len(), usize::from(DEEPER_BATCHES));
-    assert_eq!(st.search_reach(), Reach::Newest(Further::KeepSearching));
+    assert_eq!(st.search_reach(&st.view), Reach::Newest(Further::KeepSearching));
 
     let fx = update(&mut st, Msg::Load(LoadMsg::SearchFurther), Instant::now());
     assert_eq!(one_full_load(&fx), 64 * limit);
@@ -117,7 +117,7 @@ fn enough_matches_stop_it() {
 
     let (mut st, dir) = truncated("deeper-fallback");
     assert_eq!(st.view.graph_fit_rows, 0);
-    assert_eq!(st.fill_rows(), FILL_ROWS_FALLBACK);
+    assert_eq!(st.fill_rows(&st.view), FILL_ROWS_FALLBACK);
     assert_eq!(loads(&filter(&mut st, "first")).len(), 1, "before the first frame, 20 rows are wanted");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -145,13 +145,13 @@ fn a_new_or_cleared_query_stops_the_old_search() {
 fn only_while_filtering_with_the_preference_on() {
     let (mut st, dir) = truncated("deeper-only");
     st.view.show_search = true;
-    st.session.tab_view.search = "zzz".into();
+    st.view.tab.search = "zzz".into();
     assert!(loads(&send(&mut st, SearchMsg::QueryChanged)).is_empty(), "the query only dims rows");
     assert_eq!(st.refresh.deeper, None);
 
     st.settings.load_more_on_scroll = false;
     assert!(loads(&filter(&mut st, "zzz")).is_empty(), "the preference is off");
-    assert_eq!(st.search_reach(), Reach::Newest(Further::LoadMore));
+    assert_eq!(st.search_reach(&st.view), Reach::Newest(Further::LoadMore));
 
     st.settings.load_more_on_scroll = true;
     let fx = send(&mut st, SearchMsg::QueryChanged);
@@ -187,7 +187,7 @@ fn a_failed_batch_holds_the_search_and_resumes() {
     assert_eq!(loads(&filter(&mut st, "zzz")).len(), 1);
     let failed = RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Err("walk failed".into()) };
     update(&mut st, Msg::Repo(failed), Instant::now());
-    assert_eq!(st.search_reach(), Reach::Failed("walk failed"));
+    assert_eq!(st.search_reach(&st.view), Reach::Failed("walk failed"));
     assert!(loads(&send(&mut st, SearchMsg::QueryChanged)).is_empty(), "the failure holds the search");
 
     let fx = update(&mut st, Msg::Load(LoadMsg::RetryLoadMore), Instant::now());
@@ -211,7 +211,7 @@ fn a_tab_switch_drops_the_deeper_search() {
 
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     assert_eq!(st.refresh.deeper, None, "dropped by the switch");
-    assert!(st.filtering(), "the tab keeps its search");
+    assert!(st.filtering(&st.view), "the tab keeps its search");
     let next = finish_truncated(&mut st, fx);
     assert_eq!(one_full_load(&next), 2 * st.settings.commit_limit());
     assert_eq!(batches(&st), 1, "started again with a fresh budget");

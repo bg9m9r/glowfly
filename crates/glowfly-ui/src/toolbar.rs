@@ -16,7 +16,7 @@ use super::widgets::{self, Icon, tooltip::attach};
 use eframe::egui::{self, Align, Id, Layout};
 use fold::{ORDER, Part, is_folded};
 use glowfly_model::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
-use glowfly_model::state::{AppState, PrefPage};
+use glowfly_model::state::{AppState, ViewState, PrefPage};
 
 #[path = "toolbar_fit.rs"]
 mod fit;
@@ -56,7 +56,7 @@ const CHIP_GAP: f32 = 8.0;
 /// Where the toolbar keeps the chips' width with their gaps, measured each frame.
 const CHIPS: &str = "toolbar-chips";
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let labels = st.settings.toolbar_labels;
     let tool = |ui: &mut egui::Ui, icon, label: &str, name: &str, enabled| widgets::tool_button(ui, icon, label, name, enabled, labels);
@@ -116,11 +116,11 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                         }
                         let toggle =
                             |ui: &mut egui::Ui, icon, label: &str, name: &str, on| widgets::tool_toggle(ui, icon, label, name, on, labels);
-                        let r = toggle(ui, Icon::Search, t.tr("toolbar.search.button"), t.tr("toolbar.search.name"), st.view.show_search);
+                        let r = toggle(ui, Icon::Search, t.tr("toolbar.search.button"), t.tr("toolbar.search.name"), view.show_search);
                         let search = attach(r, keys, t, || tips::search(st)).clicked();
                         let r =
-                            toggle(ui, Icon::Activity, t.tr("toolbar.activity.button"), t.tr("toolbar.activity.name"), st.view.show_log);
-                        let log = attach(r, keys, t, || tips::activity(st)).clicked();
+                            toggle(ui, Icon::Activity, t.tr("toolbar.activity.button"), t.tr("toolbar.activity.name"), view.show_log);
+                        let log = attach(r, keys, t, || tips::activity(st, view.show_log)).clicked();
                         let r = tool(ui, Icon::Refresh, t.tr("toolbar.refresh.button"), t.tr("toolbar.refresh.name"), true);
                         if attach(r, keys, t, || tips::refresh(st)).clicked() {
                             msgs.push(Msg::Repo(RepoMsg::Refresh));
@@ -146,10 +146,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 // Everything after the pickers, with a group gap at least before the right-hand group.
                 pickers::remember_rest(ui.ctx(), middle + widgets::GROUP_GAP + right);
                 if search {
-                    st.view.show_search = !st.view.show_search;
+                    view.show_search = !view.show_search;
                 }
                 if log {
-                    st.view.show_log = !st.view.show_log;
+                    view.show_log = !view.show_log;
                 }
             });
         },

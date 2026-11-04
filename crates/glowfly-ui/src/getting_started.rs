@@ -28,12 +28,11 @@ fn send(msgs: &mut Vec<Msg>, m: OnboardingMsg) {
     msgs.push(Msg::Onboarding(m));
 }
 
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let show_finished = st.onboarding.getting_started.as_ref().is_some_and(|p| p.show_finished);
     egui::Frame::new().inner_margin(Margin { left: 16, right: 16, top: 12, bottom: 4 }).show(ui, |ui| {
         let (pad, w) = super::dashboard::column(ui.available_width());
-        let st: &AppState = st;
         egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
             let w = w.min((ui.available_width() - pad).max(0.0));
             ui.horizontal_top(|ui| {

@@ -34,7 +34,7 @@ fn state(name: &str) -> AppState {
 
 /// Draws one frame's header and checks it against a fresh build.
 fn frame(cache: &mut HeaderCache, st: &AppState) -> (usize, usize) {
-    assert_eq!(cache.model(st), model(st), "the cached header is the fresh one");
+    assert_eq!(cache.model(st, &st.view), model(st), "the cached header is the fresh one");
     cache.builds()
 }
 
@@ -51,7 +51,7 @@ fn the_header_parts_are_kept_until_what_they_come_from_changes() {
     // Scrolling moves the counter without rebuilding.
     st.view.tab.diff_top_row = *cache.rows.last().unwrap();
     assert_eq!(frame(&mut cache, &st), (1, 1));
-    assert_eq!(cache.model(&st).unwrap().counter, Some(Counter { index: 2, total: 2, files: false }));
+    assert_eq!(cache.model(&st, &st.view).unwrap().counter, Some(Counter { index: 2, total: 2, files: false }));
 
     // A reloaded diff comes with a new generation.
     st.session.diff.generation += 1;
@@ -88,7 +88,7 @@ fn the_header_parts_are_kept_until_what_they_come_from_changes() {
 
     // Closing the diff drops the parts.
     st.session.diff.view = None;
-    assert_eq!(cache.model(&st), None);
+    assert_eq!(cache.model(&st, &st.view), None);
     assert!(cache.rows.is_empty() && cache.order.place.is_none());
 }
 

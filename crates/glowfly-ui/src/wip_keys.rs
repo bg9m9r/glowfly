@@ -6,7 +6,7 @@
 use eframe::egui;
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::ViewState;
 use glowfly_model::state::list_keys::KeySet;
 
 /// The focus target of the Unstaged (`staged: false`) or Staged Files list.
@@ -42,8 +42,8 @@ pub(super) fn request(ctx: &egui::Context, staged: bool) {
 }
 
 /// Gives the focus to the list `update` asked for (Left or Right went to it).
-pub(super) fn requested(ctx: &egui::Context, st: &mut AppState) {
-    if let Some(staged) = st.view.wip_focus.take() {
+pub(super) fn requested(ctx: &egui::Context, view: &mut ViewState) {
+    if let Some(staged) = view.wip_focus.take() {
         request(ctx, staged);
     }
 }

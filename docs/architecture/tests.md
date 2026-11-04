@@ -11,6 +11,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `layering/core_io.rs`: which glowfly-core functions do I/O, derived from core's function bodies (direct outside work, or a call to a core function that does), and the core calls a checked file makes; `PURE_FUNCTIONS` clears the few it can't see through.
 - `layering/old_io.rs`: the hand-kept core I/O list from before #365, as a test that each entry is still denied (`NO_LONGER_IO` gives the reason for any that isn't).
 - `layering/view_cues.rs`: views never write `AppState::cues` (`ViewCues`): no assignment, `&mut` borrow or mutating call on a `cues.` path in glowfly-ui's non-test sources.
+- `layering/view_state.rs`: ratchets the views' `&mut AppState` parameters (the rest take `&AppState` and `&mut ViewState`); the count only shrinks.
 - `layering/core_fns.rs`: finds a core file's function bodies (free functions and methods, inline modules); `layering/paths.rs` reads `use` trees and the calls on a line.
 - `crates/glowfly-app/tests/source_checks/hygiene.rs`: ratchets across every crate: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).

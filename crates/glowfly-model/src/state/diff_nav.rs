@@ -3,7 +3,7 @@
 
 pub(crate) mod file_order;
 
-use super::AppState;
+use super::{AppState, ViewState};
 use file_order::source_entries;
 use glowfly_core::diff_rows::step_change;
 use glowfly_core::repo::{DiffTarget, FileDiff};
@@ -64,10 +64,10 @@ impl Step {
 
 /// The row stepping continues from: the change last stepped to while it is still on screen
 /// (it may sit below the top when the scroll clamps at the end), otherwise the top row.
-pub fn position(st: &AppState) -> usize {
-    let top = st.view.tab.diff_top_row;
+pub fn position(st: &AppState, view: &ViewState) -> usize {
+    let top = view.tab.diff_top_row;
     match st.cues.diff_cursor {
-        Some(c) if c >= top && c < top + st.view.diff_visible_rows.max(1) => c,
+        Some(c) if c >= top && c < top + view.diff_visible_rows.max(1) => c,
         _ => top,
     }
 }
@@ -92,7 +92,7 @@ pub fn shown_change_rows(st: &AppState) -> Vec<usize> {
 /// Where a step of `dir` (1 next, -1 previous) from the open diff goes.
 pub fn step(st: &AppState, dir: isize) -> Step {
     let Some((target, _)) = st.session.diff.view.as_ref().filter(|_| dir != 0) else { return Step::End };
-    step_from(&shown_change_rows(st), position(st), dir, || next_file(st, target, dir))
+    step_from(&shown_change_rows(st), position(st, &st.view), dir, || next_file(st, target, dir))
 }
 
 /// Where a step of `dir` from row `pos` goes: the next of `rows` that way, else the file `file`
@@ -119,7 +119,7 @@ pub fn current_hunk(st: &AppState) -> Option<usize> {
     if rows.is_empty() {
         return None;
     }
-    let i = rows.partition_point(|&r| r <= position(st)).saturating_sub(1);
+    let i = rows.partition_point(|&r| r <= position(st, &st.view)).saturating_sub(1);
     whole_file::hunk_of_change(d, st.settings.diff_mode, i)
 }
 
@@ -159,7 +159,7 @@ pub struct Counter {
 /// empty, an LFS summary) its place in the list it came from. `None` when neither applies.
 pub fn counter(st: &AppState) -> Option<Counter> {
     let (target, _) = st.session.diff.view.as_ref()?;
-    counter_from(&shown_change_rows(st), position(st), || {
+    counter_from(&shown_change_rows(st), position(st, &st.view), || {
         let files = source_files(st, target)?;
         Some((files.iter().position(|t| t == target)?, files.len()))
     })

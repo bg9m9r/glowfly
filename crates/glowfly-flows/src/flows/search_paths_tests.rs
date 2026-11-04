@@ -55,7 +55,7 @@ fn oids(st: &AppState, rows: &[usize]) -> Vec<Oid> {
 
 /// Types `q`: returns the path searches update asked for, as (request, oids).
 fn search(st: &mut AppState, q: &str) -> Vec<(u64, Vec<Oid>)> {
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     let fx = update(st, Msg::Search(SearchMsg::QueryChanged), Instant::now());
     settle(st, fx)
 }
@@ -90,7 +90,7 @@ fn report(st: &mut AppState, request: u64, result: Result<PathsChunk, ReadFailed
 
 /// Types `q` and runs the path search it asks for.
 fn search_all(st: &mut AppState, q: &str) {
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     up(st, SearchMsg::QueryChanged);
 }
 
@@ -271,7 +271,7 @@ fn a_tab_switch_drops_reports_and_asks_again_on_return() {
 
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let asked = settle(&mut st, fx);
-    assert_eq!(st.session.tab_view.search, "path:docs");
+    assert_eq!(st.view.tab.search, "path:docs");
     assert!(st.session.search.paths.touching.is_empty(), "the report for the parked tab was dropped");
     assert!(!asked.is_empty());
     let last = asked.last().unwrap();

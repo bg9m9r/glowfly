@@ -185,7 +185,7 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, d
                     }
                 }
                 if keys {
-                    crate::shortcuts::input(ctx, st, msgs);
+                    st.with_view(|st, view| crate::shortcuts::input(ctx, st, view, msgs));
                 }
                 draw(ctx, st, cache, msgs);
             },

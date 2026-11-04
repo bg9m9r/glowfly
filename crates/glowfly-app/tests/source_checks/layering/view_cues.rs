@@ -1,7 +1,8 @@
 //! Views read `AppState::cues` (`ViewCues`: what update and the shell set for them) and never
 //! write it: no assignment, `&mut` borrow or mutating method call on a `cues.` path anywhere in
-//! glowfly-ui's non-test sources. What views may write is `ViewState` (`st.view`). Until views
-//! take `&AppState` and the compiler enforces it (#370), this textual check does.
+//! glowfly-ui's non-test sources. What views may write is `ViewState`. Views given `&AppState`
+//! can't write it anyway; for those still taking `&mut AppState` (`view_state.rs`), this
+//! textual check does.
 
 use crate::lexer::bare_lines;
 use crate::views::view_sources;

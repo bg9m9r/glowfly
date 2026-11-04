@@ -21,7 +21,7 @@ use eframe::egui::{
     vec2,
 };
 use glowfly_model::msg::{AppMsg, Msg};
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::window_chrome::{AltFrame, WindowCmd};
 
 /// The bar's height, and its tabs' (along its bottom edge).
@@ -40,7 +40,7 @@ const MENU_AT: &str = "title-bar-menu-at";
 
 /// Draws the bar as the topmost panel. While Preferences is open it holds no menu or tabs, so
 /// the window can still be moved, resized and closed.
-pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     egui::TopBottomPanel::top("title-bar")
         .exact_height(TITLE_H)
         .show_separator_line(false)
@@ -67,7 +67,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
                 menu_anchor::close(ctx, Id::new(menu_bar::MAIN_MENU));
                 return;
             }
-            menu_button(ui, st, pos2(x, bar.center().y), msgs);
+            menu_button(ui, st, view, pos2(x, bar.center().y), msgs);
             let buttons_w = if chrome.window_buttons() { 3.0 * BUTTON_W } else { 0.0 };
             let left = x + MENU_W + 8.0;
             let strip =
@@ -98,7 +98,7 @@ fn tab_room(bar_w: f32, inset: f32, buttons_w: f32) -> f32 {
 
 /// The menu button with its left edge at `at.x`, centred on `at.y`; a click, an Alt tap or a
 /// menu's Alt+letter opens the menu below it.
-fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Msg>) {
+fn menu_button(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, at: Pos2, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let ctx = ui.ctx().clone();
     let id = Id::new(menu_bar::MAIN_MENU);
@@ -107,36 +107,36 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
     let r = ui.interact(rect, Id::new("title-bar-menu"), Sense::click());
     // The pointer always gets the list of five.
     if r.clicked() {
-        st.view.menu_keys.only = None;
-        st.view.menu_keys.keyboard = false;
+        view.menu_keys.only = None;
+        view.menu_keys.keyboard = false;
     }
-    let (tap, fired) = st.view.alt_tap.step(alt_frame(&ctx));
-    st.view.alt_tap = tap;
-    let wanted = st.cues.chrome.mnemonics().then(|| st.view.menu_keys.request.take()).flatten();
+    let (tap, fired) = view.alt_tap.step(alt_frame(&ctx));
+    view.alt_tap = tap;
+    let wanted = st.cues.chrome.mnemonics().then(|| view.menu_keys.request.take()).flatten();
     // Not while a dialog blocks the bar or the terminal has the keyboard.
     let toggle =
-        fired && st.cues.chrome.alt_opens_menu() && !st.view.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
+        fired && st.cues.chrome.alt_opens_menu() && !view.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
     let was_open = menu_anchor::open_id(&ctx, id).is_some();
     let cmd = if let Some(m) = wanted {
         // Alt was used: letting go of it is no tap.
-        st.view.alt_tap = tap.cancel();
-        st.view.menu_keys.opened_by_key(m);
+        view.alt_tap = tap.cancel();
+        view.menu_keys.opened_by_key(m);
         MenuCmd::Open
     } else if toggle {
         if !was_open {
-            let k = &mut st.view.menu_keys;
+            let k = &mut view.menu_keys;
             (k.keyboard, k.focus_first, k.only) = (true, true, None);
         }
         MenuCmd::Toggle
     } else {
         MenuCmd::None
     };
-    if was_open && let Some(m) = st.view.menu_keys.only {
-        single_keys(&ctx, st, m);
+    if was_open && let Some(m) = view.menu_keys.only {
+        single_keys(&ctx, view, m);
     }
-    let open = menu_anchor::menu_below(ui, id, &r, cmd, |ui| menu_bar::main_menu(ui, st, msgs));
+    let open = menu_anchor::menu_below(ui, id, &r, cmd, |ui| menu_bar::main_menu(ui, st, view, msgs));
     if !open {
-        st.view.menu_keys.closed();
+        view.menu_keys.closed();
     }
     // A quiet target: lit over its whole shape (latched while the menu is open), ringed while focused.
     let p = ui.painter();
@@ -150,9 +150,9 @@ fn menu_button(ui: &mut egui::Ui, st: &mut AppState, at: Pos2, msgs: &mut Vec<Ms
 
 /// Esc, Left and Right while the menu shows menu `m` alone: Esc goes back to the list of five
 /// with `m`'s row focused (instead of closing), Left and Right show the menu before or after it.
-fn single_keys(ctx: &egui::Context, st: &mut AppState, m: glowfly_model::state::menu_keys::TopMenu) {
+fn single_keys(ctx: &egui::Context, view: &mut ViewState, m: glowfly_model::state::menu_keys::TopMenu) {
     // The open menu's keys are set aside for it (`menu_keys`): take them from there.
-    let k = &mut st.view.menu_keys;
+    let k = &mut view.menu_keys;
     if take_key(ctx, Key::Escape) {
         (k.only, k.back_to) = (None, Some(m));
     } else if menu_bar::may_step(ctx) {

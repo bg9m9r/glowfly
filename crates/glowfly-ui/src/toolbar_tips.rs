@@ -201,9 +201,10 @@ pub fn settings(st: &AppState) -> Tip {
     Tip::new(t.tr("toolbar.settings.tip")).keys(BindingId::Prefs).body(t.tr("toolbar.tip.settings_body"))
 }
 
-pub fn activity(st: &AppState) -> Tip {
+/// The Activity button's tip, for the log shown (`ViewState::show_log`) or hidden.
+pub fn activity(st: &AppState, shown: bool) -> Tip {
     let t = lang(st);
-    let title = if st.view.show_log { t.tr("toolbar.tip.activity_hide") } else { t.tr("toolbar.tip.activity_show") };
+    let title = if shown { t.tr("toolbar.tip.activity_hide") } else { t.tr("toolbar.tip.activity_show") };
     Tip::new(title).body(t.tr("toolbar.tip.activity_body"))
 }
 

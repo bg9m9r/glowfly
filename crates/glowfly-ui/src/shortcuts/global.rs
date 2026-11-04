@@ -27,18 +27,18 @@ use glowfly_model::msg::{
 use glowfly_model::state::graph_rows::GraphKey;
 use glowfly_model::state::history::HistoryPane;
 use glowfly_model::state::layout::{Pane, Panel};
-use glowfly_model::state::{AppState, PrefPage, Selection};
+use glowfly_model::state::{AppState, ViewState, PrefPage, Selection};
 use glowfly_model::terminal::TerminalMsg;
 
 /// Turns this frame's shortcut presses into messages (or view-state changes, for the search
 /// bar). While Preferences > Keyboard records a key, it gets every key press instead.
-pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn input(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     // An open menu's keys are its own: no binding sees them.
     crate::menu_keys::capture(ctx);
     if record::keys(ctx, st, msgs) {
         return;
     }
-    let live = Live::now(ctx, st);
+    let live = Live::now(ctx, st, view);
     // A focused file list takes its own keys before any binding.
     let covered = live.prefs || live.askpass || live.palette || live.dialog || live.sheet;
     crate::wip_keys::input(ctx, covered, msgs);
@@ -53,7 +53,7 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         if repeat && runs_command(id) {
             continue;
         }
-        fire(id, chord, live.pane, st, msgs);
+        fire(id, chord, live.pane, st, view, msgs);
     }
     // Custom commands' keys, only over the main window itself.
     if !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.typing || live.terminal) {
@@ -63,18 +63,18 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     }
     // A menu's Alt+letter, after the bindings and custom keys (they win), while a menu bar is
     // reachable and nothing covers the window or holds the keyboard.
-    st.view.menu_keys.request = None;
+    view.menu_keys.request = None;
     let bar = st.cues.chrome.drawn() || st.settings.show_menu_bar;
     if st.cues.chrome.mnemonics() && bar && !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.terminal) {
         let marks = crate::menu_bar::marks(st);
-        st.view.menu_keys.request = ctx.input_mut(|i| crate::menu_bar::take(i, &marks));
+        view.menu_keys.request = ctx.input_mut(|i| crate::menu_bar::take(i, &marks));
     }
-    central::escape_key(ctx, st, msgs);
+    central::escape_key(ctx, st, view, msgs);
 }
 
 /// Does what `id` does; `chord` is the key pressed (its digit picks the tab for Go to tab), and
 /// `pane` the pane with the keyboard focus (F6 goes on from it).
-fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     use BindingId as I;
     // A history's File pane has no diff on screen: a folder history steps to the entry's next
     // or previous file instead.
@@ -144,7 +144,7 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         I::CopyCommitIds => Msg::Selection(SelectionMsg::CopyIds),
         // The graph applies these with its rows.
         I::SelectHead | I::PrevRefCommit | I::NextRefCommit => {
-            st.view.graph_key = Some(match id {
+            view.graph_key = Some(match id {
                 I::SelectHead => GraphKey::Head,
                 _ => GraphKey::Ref { up: id == I::PrevRefCommit },
             });
@@ -219,11 +219,11 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         I::Search if file_pane(st) => Msg::History(HistoryMsg::FocusFileFind),
         // The search bar's visibility is view state.
         I::Search => {
-            st.view.show_search = !st.view.show_search;
+            view.show_search = !view.show_search;
             return;
         }
         I::SearchFilter => {
-            st.view.show_search = true;
+            view.show_search = true;
             Msg::Search(SearchMsg::ToggleFilter)
         }
         I::Commit

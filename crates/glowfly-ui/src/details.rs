@@ -56,7 +56,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
             }
             super::pane_focus::end_details(ui.ctx());
         });
-    panel_size::track(ctx, st, SizedPanel::Details, id, resp.response.rect.width(), msgs);
+    panel_size::track(ctx, &mut st.view, SizedPanel::Details, id, resp.response.rect.width(), msgs);
 }
 
 /// What a file row draws and offers: where its change comes from, the commit its history and

@@ -8,7 +8,7 @@
 use crate::state::history_index::HistoryCount;
 use crate::state::refresh::can_load_more;
 use crate::state::shallow::history_remote;
-use crate::state::{AppState, MAX_COMMITS};
+use crate::state::{AppState, MAX_COMMITS, ViewState};
 use glowfly_core::commit_query::CommitQuery;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
@@ -128,19 +128,19 @@ pub fn retry_delay(retries: u8) -> Option<Duration> {
 
 impl AppState {
     /// Whether the search bar filters the graph to a non-empty query's matches.
-    pub fn filtering(&self) -> bool {
-        self.view.show_search && self.session.search.filter && self.session.search.active()
+    pub fn filtering(&self, view: &ViewState) -> bool {
+        view.show_search && self.session.search.filter && self.session.search.active()
     }
 
     /// Whether older history is loading for a filtering search.
-    pub fn searching_older(&self) -> bool {
-        self.filtering() && self.shows_loading_more_row()
+    pub fn searching_older(&self, view: &ViewState) -> bool {
+        self.filtering(view) && self.shows_loading_more_row()
     }
 
     /// The row the graph shows under its last commit, if any.
-    pub fn more_row(&self) -> Option<MoreRow<'_>> {
+    pub fn more_row(&self, view: &ViewState) -> Option<MoreRow<'_>> {
         if self.shows_loading_more_row() {
-            return Some(if self.filtering() { MoreRow::SearchingOlder } else { MoreRow::Loading });
+            return Some(if self.filtering(view) { MoreRow::SearchingOlder } else { MoreRow::Loading });
         }
         let error = self.refresh.more_failed.as_deref().filter(|_| self.loading_more())?;
         Some(MoreRow::Failed { error, retrying: self.refresh.more_retry_at.is_some() })
@@ -148,19 +148,19 @@ impl AppState {
 
     /// The row the graph shows after its last commit, if any: the `more_row`, else the history's
     /// notes.
-    pub fn end_row(&self) -> Option<EndRow<'_>> {
-        if let Some(r) = self.more_row() {
+    pub fn end_row(&self, view: &ViewState) -> Option<EndRow<'_>> {
+        if let Some(r) = self.more_row(view) {
             return Some(EndRow::More(r));
         }
         self.snap.as_ref().and_then(HistoryNotes::of).map(EndRow::Notes)
     }
 
     /// How far the filtering search has looked, for the pane shown when nothing matches.
-    pub fn search_reach(&self) -> Reach<'_> {
-        if self.searching_older() {
+    pub fn search_reach(&self, view: &ViewState) -> Reach<'_> {
+        if self.searching_older(view) {
             return Reach::Searching;
         }
-        if let Some(MoreRow::Failed { error, .. }) = self.more_row() {
+        if let Some(MoreRow::Failed { error, .. }) = self.more_row(view) {
             return Reach::Failed(error);
         }
         let Some(snap) = &self.snap else { return Reach::Newest(Further::Nothing) };
@@ -186,8 +186,8 @@ impl AppState {
     }
 
     /// The graph rows a filtering search tries to fill with matches.
-    pub fn fill_rows(&self) -> usize {
-        match self.view.graph_fit_rows {
+    pub fn fill_rows(&self, view: &ViewState) -> usize {
+        match view.graph_fit_rows {
             0 => FILL_ROWS_FALLBACK,
             n => n,
         }
@@ -211,39 +211,39 @@ mod tests {
     #[test]
     fn the_row_shows_loading_or_the_held_failure() {
         let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
-        assert_eq!(st.more_row(), None, "nothing loaded");
+        assert_eq!(st.more_row(&st.view), None, "nothing loaded");
         st.refresh.more_failed = Some("walk failed".into());
-        assert_eq!(st.more_row(), None, "no snapshot, so no load for more");
-        assert_eq!(st.fill_rows(), FILL_ROWS_FALLBACK);
+        assert_eq!(st.more_row(&st.view), None, "no snapshot, so no load for more");
+        assert_eq!(st.fill_rows(&st.view), FILL_ROWS_FALLBACK);
         st.view.graph_fit_rows = 7;
-        assert_eq!(st.fill_rows(), 7);
+        assert_eq!(st.fill_rows(&st.view), 7);
 
         let mut snap = crate::state::op_fixture::snapshot("more-row");
         let dir = snap.workdir.clone();
         snap.truncated = true;
         snap.loaded_with.max_commits = st.settings.commit_limit();
         st.snap = Some(snap);
-        assert_eq!(st.more_row(), None, "no more was asked for: an ordinary refresh failed");
+        assert_eq!(st.more_row(&st.view), None, "no more was asked for: an ordinary refresh failed");
         st.refresh.extra_commits = st.settings.commit_limit();
-        assert_eq!(st.more_row(), Some(MoreRow::Failed { error: "walk failed", retrying: false }));
+        assert_eq!(st.more_row(&st.view), Some(MoreRow::Failed { error: "walk failed", retrying: false }));
         st.refresh.more_retry_at = Some(Instant::now());
-        assert_eq!(st.more_row(), Some(MoreRow::Failed { error: "walk failed", retrying: true }));
+        assert_eq!(st.more_row(&st.view), Some(MoreRow::Failed { error: "walk failed", retrying: true }));
         st.loading = true;
-        assert_eq!(st.more_row(), Some(MoreRow::Loading), "a load runs");
+        assert_eq!(st.more_row(&st.view), Some(MoreRow::Loading), "a load runs");
         st.view.show_search = true;
-        st.session.tab_view.search = "x".into();
+        st.view.tab.search = "x".into();
         st.session.search.query = CommitQuery::parse("x");
         st.session.search.filter = true;
-        assert_eq!(st.more_row(), Some(MoreRow::SearchingOlder));
-        assert_eq!(st.search_reach(), Reach::Searching);
+        assert_eq!(st.more_row(&st.view), Some(MoreRow::SearchingOlder));
+        assert_eq!(st.search_reach(&st.view), Reach::Searching);
         st.loading = false;
-        assert_eq!(st.search_reach(), Reach::Failed("walk failed"));
+        assert_eq!(st.search_reach(&st.view), Reach::Failed("walk failed"));
         st.refresh.more_failed = None;
-        assert_eq!(st.search_reach(), Reach::Newest(Further::KeepSearching));
+        assert_eq!(st.search_reach(&st.view), Reach::Newest(Further::KeepSearching));
         st.settings.load_more_on_scroll = false;
-        assert_eq!(st.search_reach(), Reach::Newest(Further::LoadMore));
+        assert_eq!(st.search_reach(&st.view), Reach::Newest(Further::LoadMore));
         st.snap.as_mut().unwrap().truncated = false;
-        assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
+        assert_eq!(st.search_reach(&st.view), Reach::Whole { shallow: false, commits: 1 });
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -260,7 +260,7 @@ mod tests {
         let commits = snap.commits.clone();
         st.snap = Some(snap);
         st.view.show_search = true;
-        st.session.tab_view.search = "x".into();
+        st.view.tab.search = "x".into();
         st.session.search.query = CommitQuery::parse("x");
         st.session.search.filter = true;
         let answer = |st: &mut AppState, ix: CommitIndex, positions: Vec<u32>| {
@@ -269,15 +269,15 @@ mod tests {
             st.session.search.index.answer = Some(IndexAnswer { query: st.session.search.query.clone(), index, positions });
         };
         answer(&mut st, CommitIndex::from_commits(key.clone(), &commits), vec![]);
-        assert_eq!(st.search_reach(), Reach::Whole { shallow: false, commits: 1 });
+        assert_eq!(st.search_reach(&st.view), Reach::Whole { shallow: false, commits: 1 });
         // A capped index found nothing in what it holds.
         answer(&mut st, CommitIndex::from_commits(key.clone(), &commits).marked_incomplete(), vec![]);
-        assert_eq!(st.search_reach(), Reach::IndexCapped { commits: 1 });
+        assert_eq!(st.search_reach(&st.view), Reach::IndexCapped { commits: 1 });
         // Every match past the graph's cap.
         answer(&mut st, CommitIndex::from_commits(key, &commits), vec![250_000, 250_001]);
-        assert_eq!(st.search_reach(), Reach::PastCap { matches: 2 });
+        assert_eq!(st.search_reach(&st.view), Reach::PastCap { matches: 2 });
         st.session.search.matches = vec![0];
-        assert_eq!(st.search_reach(), Reach::Newest(Further::KeepSearching), "a loaded match: as before");
+        assert_eq!(st.search_reach(&st.view), Reach::Newest(Further::KeepSearching), "a loaded match: as before");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -309,13 +309,13 @@ mod tests {
 
         let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
         st.snap = Some(snap);
-        assert!(matches!(st.end_row(), Some(EndRow::Notes(_))));
+        assert!(matches!(st.end_row(&st.view), Some(EndRow::Notes(_))));
         st.refresh.extra_commits = st.settings.commit_limit();
         st.loading = true;
-        assert_eq!(st.end_row(), Some(EndRow::More(MoreRow::Loading)), "a pending load");
+        assert_eq!(st.end_row(&st.view), Some(EndRow::More(MoreRow::Loading)), "a pending load");
         st.loading = false;
         st.refresh.more_failed = Some("walk failed".into());
-        assert!(matches!(st.end_row(), Some(EndRow::More(MoreRow::Failed { .. }))), "a failed load");
+        assert!(matches!(st.end_row(&st.view), Some(EndRow::More(MoreRow::Failed { .. }))), "a failed load");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

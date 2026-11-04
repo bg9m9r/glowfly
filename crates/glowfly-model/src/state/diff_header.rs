@@ -8,7 +8,7 @@ pub mod cache;
 
 use super::diff_nav::{self, Counter, StepKind};
 use super::files::not_in_workdir;
-use super::{AppState, Selection};
+use super::{AppState, Selection, ViewState};
 use cache::HeaderCache;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
@@ -167,11 +167,12 @@ pub enum Primary {
 /// The header of the diff on screen, its slow parts built fresh; the diff view keeps them in a
 /// `HeaderCache` between frames.
 pub fn model(st: &AppState) -> Option<HeaderModel> {
-    HeaderCache::default().model(st)
+    HeaderCache::default().model(st, &st.view)
 }
 
-/// The header of the diff on screen, from `parts` (refreshed for `st`).
-pub(super) fn build(st: &AppState, parts: &HeaderCache) -> Option<HeaderModel> {
+/// The header of the diff on screen, from `parts` (refreshed for `st`); `view` for where
+/// stepping continues from (`diff_nav::position`).
+pub(super) fn build(st: &AppState, view: &ViewState, parts: &HeaderCache) -> Option<HeaderModel> {
     let (target, diff) = st.session.diff.view.as_ref()?;
     let path = target.path().to_owned();
     let (folder, name) = split_path(&path);
@@ -180,7 +181,7 @@ pub(super) fn build(st: &AppState, parts: &HeaderCache) -> Option<HeaderModel> {
     let svg = super::diff_preview::svg_switch(st);
     // An SVG's preview keeps the text diff's counts in the chip, but has no rows to step to.
     let has_rows = text_rows && svg != Some(true);
-    let pos = diff_nav::position(st);
+    let pos = diff_nav::position(st, view);
     let order = &parts.order;
     let step = |dir: isize| diff_nav::step_from(&parts.rows, pos, dir, || order.neighbour(dir).cloned()).kind();
     let [prev, next] = [step(-1), step(1)];

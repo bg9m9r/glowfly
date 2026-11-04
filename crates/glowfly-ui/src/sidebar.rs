@@ -33,14 +33,14 @@ use glowfly_model::state::forge_filters::{self, IssueView, PrView};
 use glowfly_model::state::layout::Pane;
 use glowfly_model::state::panel_layout::Fit;
 use glowfly_model::state::session_view::empty_sections::Folding;
-use glowfly_model::state::{AppState, ForgeState, Selection, Status};
+use glowfly_model::state::{AppState, ViewState, ForgeState, Selection, Status};
 
 type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
 /// Draws the panel at `fit`'s width (`panel_size::side_fits`).
-pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, fit: Fit, msgs: &mut Vec<Msg>) {
     let id = egui::Id::new(panel_size::SIDEBAR_ID);
-    panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Sidebar));
+    panel_size::pin(ctx, id, fit.size, view.panel_drag == Some(SizedPanel::Sidebar));
     // The filter field's hint, cut with "…" in a narrow panel (whole on hover while empty).
     let filter_hint = st.settings.lang().tr("sidebar.filter.hint");
     let fill = backdrop::fill(st.cues.backdrop, Surface::Side, color::panel());
@@ -50,7 +50,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         let pane = ui.max_rect();
         super::pane_focus::drawn_at(ui.ctx(), Pane::Sidebar, pane);
         let name = st.settings.lang().tr("sidebar.focus.name");
-        let target = super::pane_focus::sidebar(ui, st, pane, name);
+        let target = super::pane_focus::sidebar(ui, view, pane, name);
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
         ui.spacing_mut().item_spacing.y = 0.0;
         ui.add_space(widgets::PAD_X);
@@ -58,8 +58,8 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
             ui.add_space(widgets::PAD_X);
             let width = ui.available_width() - widgets::PAD_X;
             let (hint, cut) = widgets::truncate::hint(ui, filter_hint, controls::field_text_width(width));
-            let empty = st.session.tab_view.ref_filter.is_empty();
-            let edit = egui::TextEdit::singleline(&mut st.session.tab_view.ref_filter).hint_text(hint);
+            let empty = view.tab.ref_filter.is_empty();
+            let edit = egui::TextEdit::singleline(&mut view.tab.ref_filter).hint_text(hint);
             let r = ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(width));
             crate::access::name_field(&r, st.settings.lang().tr("sidebar.filter.name"));
             if empty && cut {
@@ -69,15 +69,15 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, fit: Fit, msgs: &mut Vec<Msg
         // The first section header's own space above it (`SPACE_ABOVE`) sets it below the field.
         let filter = st.snap.as_ref().map(|s| st.settings.graph_filter_for(&s.real_workdir)).unwrap_or_default();
         ref_visibility::banner(ui, st.settings.lang(), &filter, msgs);
-        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, &filter, msgs));
+        egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| sections(ui, st, view, &filter, msgs));
         target.ring(ui);
     });
-    panel_size::track(ctx, st, SizedPanel::Sidebar, id, resp.response.rect.width(), msgs);
+    panel_size::track(ctx, view, SizedPanel::Sidebar, id, resp.response.rect.width(), msgs);
 }
 
-fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
+fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let actions = glowfly_model::state::section_actions::all(st);
-    let hint = glowfly_model::state::hints::view(st).filter(|h| h.place == glowfly_model::state::hints::Place::LeftPanel);
+    let hint = glowfly_model::state::hints::view(st, view.sections.prs).filter(|h| h.place == glowfly_model::state::hints::Place::LeftPanel);
     let t = st.settings.lang();
     let open_tabs = glowfly_model::state::tabs::open_places(&st.tabs);
     let open_issue = st.session.issue.view.as_ref().map(|v| v.key.clone());
@@ -85,19 +85,19 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
     let Some(snap) = &st.snap else { return };
     let commands = glowfly_model::state::custom_commands::MenuCommands::of(&st.custom_commands, snap, trusted, t);
     let repo_filters = st.settings.forge_filters_for(&snap.real_workdir);
-    let filter = st.session.tab_view.ref_filter.to_lowercase();
+    let filter = view.tab.ref_filter.to_lowercase();
     let shown = |name: &str| glowfly_core::matching::contains_lower(name, &filter);
     let current = snap.head_branch.clone().unwrap_or_default();
     let sel = &st.session.selection;
     let fs = st.session.forge.as_ref();
     let idle = st.job.is_none();
     let sub_cx = glowfly_model::state::submodules::section_cx(st);
-    let sections = &mut st.view.sections;
-    let empty = &mut st.session.tab_view.empty_sections;
+    let sections = &mut view.sections;
+    let empty = &mut view.tab.empty_sections;
     let repo = snap.real_workdir.as_path();
-    let hover_next = &mut st.view.hover_tip_next;
-    let tips_seen = &mut st.view.tips_seen;
-    let local_rows = &mut st.view.local_rows;
+    let hover_next = &mut view.hover_tip_next;
+    let tips_seen = &mut view.tips_seen;
+    let local_rows = &mut view.local_rows;
     let slot = super::build_status::tip_slot(fs);
 
     let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &actions.local);

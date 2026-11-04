@@ -16,7 +16,8 @@
 //! `#[cfg(test)] mod` blocks. Tests build fixture repositories on disk. The sources are read
 //! with the shared string-aware lexer, and string text is not code.
 //!
-//! `layering/view_cues.rs` checks that views only read `AppState::cues`.
+//! `layering/view_cues.rs` checks that views only read `AppState::cues`, and
+//! `layering/view_state.rs` ratchets the views still taking `&mut AppState`.
 
 #[path = "layering/core_io.rs"]
 mod core_io;
@@ -28,6 +29,8 @@ mod paths;
 mod rules;
 #[path = "layering/view_cues.rs"]
 mod view_cues;
+#[path = "layering/view_state.rs"]
+mod view_state;
 
 use crate::lexer::bare_lines;
 use crate::views::crate_sources;

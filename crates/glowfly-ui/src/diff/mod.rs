@@ -48,7 +48,7 @@ use glowfly_core::settings::DiffLayout;
 use glowfly_core::whole_file::{self, Fold, WholeFile};
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::diff_text::LineRef;
 use glowfly_model::state::lines::{LineClick, LineSelection};
 use glowfly_model::state::pull_request::line_comment::{self, DiffComments};
@@ -145,42 +145,43 @@ impl DiffView<'_> {
 }
 
 /// The open diff: its header (`header`, one 48 px row) and, below it, `body`.
-pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     // The diff being opened waits for contents a partial clone hasn't downloaded.
     if let Some(p) = st.for_diff() {
         return super::content_fetch::show(ui, st, p, msgs);
     }
     if st.session.diff.view.is_none() {
         // A scroll target for a diff that is gone is dropped, not kept for the next one.
-        st.view.diff_scroll_to_row = None;
+        view.diff_scroll_to_row = None;
         return;
     }
-    if let Some(m) = cache.diff_header.model(st) {
+    if let Some(m) = cache.diff_header.model(st, view) {
         header::show(ui, &m, &st.keymap, st.settings.lang(), msgs);
     }
-    body(ui, st, cache, msgs);
+    body(ui, st, view, cache, msgs);
 }
 
 /// Draws the open diff's rows and records the first visible row and how many rows fit. The
 /// text selection comes out of the state for the frame, as the rows change it.
-fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
-    let mut text = text_sel::TextMut { sel: st.view.diff_text.take(), edge: st.view.diff_text_edge };
-    let shown = rows(ui, st, cache, scroll_to, &mut text, msgs);
-    (st.view.diff_text, st.view.diff_text_edge) = (text.sel, text.edge);
+fn record_rows(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut DiffRowsCache, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
+    let mut text = text_sel::TextMut { sel: view.diff_text.take(), edge: view.diff_text_edge };
+    let shown = rows(ui, st, cache, (scroll_to, view.tab.diff_top_row), &mut text, msgs);
+    (view.diff_text, view.diff_text_edge) = (text.sel, text.edge);
     if let Some((top, visible)) = shown {
-        st.view.tab.diff_top_row = top;
-        st.view.diff_visible_rows = visible;
+        view.tab.diff_top_row = top;
+        view.diff_visible_rows = visible;
     }
 }
 
 /// Draws the open diff's rows in the current layout and view mode (hunks, or the whole file
 /// when it loaded) and returns the first visible row and how many rows fit. Lines are
-/// selectable in every diff unless line operations are blocked.
+/// selectable in every diff unless line operations are blocked. `top` is the first row the
+/// last frame showed, kept at the top when the rows change height.
 fn rows(
     ui: &mut Ui,
     st: &AppState,
     cache: &mut DiffRowsCache,
-    scroll_to: Option<usize>,
+    (scroll_to, top): (Option<usize>, usize),
     text: &mut text_sel::TextMut,
     msgs: &mut Vec<Msg>,
 ) -> Option<(usize, usize)> {
@@ -223,7 +224,7 @@ fn rows(
     // wrapped) keep the row at the top in place.
     let heights = Heights { row_h: style.row_h, header_h: style.header_h };
     let anchor = cache.refresh_heights(lines, &gap_lines, heights, style.tab, wrap);
-    let scroll_to = scroll_to.or(anchor.then_some(st.view.tab.diff_top_row));
+    let scroll_to = scroll_to.or(anchor.then_some(top));
     let m = cache.row_metrics(style.row_h);
     let marks = st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target)).and_then(|v| threads::marks(v, target.path()));
     let marks = marks.as_ref();
@@ -342,8 +343,8 @@ pub(super) fn drag_over(ui: &Ui, v: &DiffView, rect: Rect, hunk: usize, line: us
 /// hides the changes). Commit
 /// diffs have Revert hunk buttons and line selection for Revert lines (both off while
 /// whitespace is hidden).
-pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let scroll_to = st.view.diff_scroll_to_row.take();
+pub(super) fn body(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    let scroll_to = view.diff_scroll_to_row.take();
     if let Some(note) = glowfly_model::state::lfs_notes::summary(st) {
         let text = glowfly_model::state::lfs_notes::summary_text(&note.change, &st.lfs.install);
         lfs_note::summary(ui, &text, msgs);
@@ -369,5 +370,5 @@ pub(super) fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
             return;
         }
     }
-    record_rows(ui, st, &mut cache.diff_rows, scroll_to, msgs);
+    record_rows(ui, st, view, &mut cache.diff_rows, scroll_to, msgs);
 }

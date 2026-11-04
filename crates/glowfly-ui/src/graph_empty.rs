@@ -12,7 +12,7 @@ use super::pane_status::{self, Failure};
 use eframe::egui::Ui;
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, SearchMsg};
 use glowfly_model::state::load_more::{Further, Reach};
-use glowfly_model::state::{AppState, MAX_COMMITS};
+use glowfly_model::state::{AppState, MAX_COMMITS, ViewState};
 
 pub(super) const NO_COMMITS_TITLE: &str = "No commits yet";
 const NO_COMMITS_HINT: &str = "Stage files and commit them to start this repository's history.";
@@ -36,7 +36,7 @@ pub(super) fn reloading(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// The search filters the graph and nothing matches (or it is still being searched).
-pub(super) fn no_matches(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn no_matches(ui: &mut Ui, st: &AppState, view: &ViewState, msgs: &mut Vec<Msg>) {
     if st.session.search.searching_files() {
         return pane_status::loading(ui, SEARCHING_FILES);
     }
@@ -44,7 +44,7 @@ pub(super) fn no_matches(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let n = snap.commits.len();
     // The sentence after the syntax hint, and the button after Clear search with what it sends.
-    let (reach, next) = match st.search_reach() {
+    let (reach, next) = match st.search_reach(view) {
         Reach::Searching => return pane_status::loading(ui, &t.trn("search.searching_older", n, &[])),
         Reach::Failed(error) => {
             let retry = Some(Msg::Load(LoadMsg::RetryLoadMore));

@@ -15,7 +15,7 @@ use super::theme::color;
 use crate::widgets::menu::{separator, submenu};
 use eframe::egui::{self, Button, Frame, Id, Key, Margin, Modifiers};
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::TopMenu;
 use glowfly_model::state::menu_model;
 
@@ -40,7 +40,7 @@ pub(crate) const MAIN_MENU: &str = "main-menu";
 
 /// Draws the bar as the topmost panel (call before the other top panels), with the system
 /// frame only.
-pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     if st.cues.chrome.drawn() || !st.settings.show_menu_bar {
         hide(ctx);
         return;
@@ -48,7 +48,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) 
     egui::TopBottomPanel::top("menu-bar").frame(Frame::new().fill(color::toolbar()).inner_margin(Margin::symmetric(6, 2))).show(
         ctx,
         |ui| {
-            crate::widgets::menu::bar(ui, |ui| bar::draw(ui, st, msgs));
+            crate::widgets::menu::bar(ui, |ui| bar::draw(ui, st, view, msgs));
         },
     );
 }
@@ -74,44 +74,44 @@ pub(crate) fn keep_inside(ctx: &egui::Context) {
 
 /// The first item of the menu `ui` draws takes the focus (once it can) when the menu was opened
 /// from the keyboard or switched to.
-fn focus_first(ui: &egui::Ui, st: &mut AppState) {
-    if std::mem::take(&mut st.view.menu_keys.focus_first) {
+fn focus_first(ui: &egui::Ui, view: &mut ViewState) {
+    if std::mem::take(&mut view.menu_keys.focus_first) {
         crate::menu_keys::focus_first(ui);
     }
 }
 
 /// The title bar's menu: the menu its title row shows, or the five-row list.
-pub(crate) fn main_menu(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    focus_first(ui, st);
-    match st.view.menu_keys.only {
-        Some(m) => single(ui, st, msgs, m),
-        None => menus(ui, st, msgs),
+pub(crate) fn main_menu(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+    focus_first(ui, view);
+    match view.menu_keys.only {
+        Some(m) => single(ui, st, view, msgs, m),
+        None => menus(ui, st, view, msgs),
     }
 }
 
 /// `m`'s items.
-fn contents(m: TopMenu, ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    focus_first(ui, st);
+fn contents(m: TopMenu, ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+    focus_first(ui, view);
     ui.set_min_width(draw::min_width(m));
-    let entries = menu_model::entries(st, m);
-    draw::entries(ui, st, entries, msgs);
+    let entries = menu_model::entries(st, view, m);
+    draw::entries(ui, st, view, entries, msgs);
 }
 
 /// The five menus as submenus, opening on hover. From the keyboard, Enter, Space or Right on
 /// a row shows that menu alone (`single`, so its rows don't open their submenus from the keyboard
 /// themselves), and so does a menu's letter while a row is focused.
-fn menus(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn menus(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let marks = keys::marks(st);
-    let show = keys::shown(ui.ctx(), st);
+    let show = keys::shown(ui.ctx(), st, view);
     crate::menu_keys::caller_opens(ui);
     let mut picked = None;
     let mut list_focused = false;
     for m in TopMenu::ALL {
-        let r = submenu(ui, keys::title(ui, t, m, &marks, show), |ui| contents(m, ui, st, msgs)).response;
-        if st.view.menu_keys.back_to == Some(m) {
+        let r = submenu(ui, keys::title(ui, t, m, &marks, show), |ui| contents(m, ui, st, view, msgs)).response;
+        if view.menu_keys.back_to == Some(m) {
             r.request_focus();
-            st.view.menu_keys.back_to = None;
+            view.menu_keys.back_to = None;
         }
         if r.has_focus() {
             list_focused = true;
@@ -132,26 +132,26 @@ fn menus(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         });
     }
     if let Some(m) = picked {
-        st.view.menu_keys.opened_by_key(m);
+        view.menu_keys.opened_by_key(m);
         ui.ctx().request_repaint();
     }
 }
 
 /// Menu `m` alone, under a row of the five titles (`m`'s selected; a click shows another).
-fn single(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>, m: TopMenu) {
+fn single(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>, m: TopMenu) {
     let t = st.settings.lang();
     let marks = keys::marks(st);
-    let show = keys::shown(ui.ctx(), st);
+    let show = keys::shown(ui.ctx(), st, view);
     ui.horizontal(|ui| {
         for x in TopMenu::ALL {
             if ui.add(Button::new(keys::title(ui, t, x, &marks, show)).selected(x == m)).clicked() {
-                st.view.menu_keys.only = Some(x);
-                st.view.menu_keys.focus_first = true;
+                view.menu_keys.only = Some(x);
+                view.menu_keys.focus_first = true;
             }
         }
     });
     separator(ui);
-    contents(m, ui, st, msgs);
+    contents(m, ui, st, view, msgs);
 }
 
 #[cfg(test)]

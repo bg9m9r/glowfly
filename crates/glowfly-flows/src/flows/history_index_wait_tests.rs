@@ -64,7 +64,7 @@ fn the_first_build_waits_after_open() {
     assert!(builds(&kept).is_empty(), "{kept:?}");
     assert_eq!(st.session.search.index.delay, BuildDelay::Wanted);
     st.view.show_search = true;
-    st.session.tab_view.search = "needle".into();
+    st.view.tab.search = "needle".into();
     update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now());
     assert_eq!(st.history_count(), HistoryCount::Indexing);
     assert_eq!(st.indexing(), None, "the status bar waits for the build");

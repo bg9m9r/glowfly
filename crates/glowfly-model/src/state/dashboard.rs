@@ -141,8 +141,6 @@ pub struct PendingPr {
 pub struct Dashboard {
     pub open: bool,
     pub show: DashShow,
-    /// The filter field's text buffer.
-    pub filter: String,
     pub generation: u64,
     pub phase: Phase,
     /// Fetch replies still to come for this generation.

@@ -8,23 +8,23 @@ use super::{BAR, contents, keys};
 use crate::menu_keys;
 use eframe::egui::{self, Button, Id, Key};
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::TopMenu;
 
 /// Draws the titles inside `egui::menu::bar` (which gives them the bar's look) and the open
 /// menu.
-pub(super) fn draw(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn draw(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let ctx = ui.ctx().clone();
     let id = Id::new(BAR);
     super::keep_inside(&ctx);
     let t = st.settings.lang();
     let marks = keys::marks(st);
-    let show = keys::shown(&ctx, st);
+    let show = keys::shown(&ctx, st, view);
     let mut buttons = Vec::with_capacity(TopMenu::ALL.len());
     for m in TopMenu::ALL {
         let r = ui.add(Button::new(keys::title(ui, t, m, &marks, show)));
-        let cmd = if st.view.menu_keys.request == Some(m) {
-            let k = &mut st.view.menu_keys;
+        let cmd = if view.menu_keys.request == Some(m) {
+            let k = &mut view.menu_keys;
             k.request = None;
             k.keyboard = true;
             k.focus_first = true;
@@ -32,12 +32,12 @@ pub(super) fn draw(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         } else {
             MenuCmd::None
         };
-        menu_anchor::menu_below(ui, id, &r, cmd, |ui| contents(m, ui, st, msgs));
+        menu_anchor::menu_below(ui, id, &r, cmd, |ui| contents(m, ui, st, view, msgs));
         buttons.push(r);
     }
     let open = menu_anchor::open_id(&ctx, id).and_then(|open| buttons.iter().position(|b| b.id == open));
     let Some(at) = open else {
-        st.view.menu_keys.closed();
+        view.menu_keys.closed();
         return;
     };
     if !menu_keys::may_step(&ctx) {
@@ -55,8 +55,8 @@ pub(super) fn draw(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
         let next = TopMenu::ALL[at].step(d);
         let to = TopMenu::ALL.iter().position(|&m| m == next).unwrap_or(at);
         menu_anchor::open(&ctx, id, &buttons[to]);
-        st.view.menu_keys.keyboard = true;
-        st.view.menu_keys.focus_first = true;
+        view.menu_keys.keyboard = true;
+        view.menu_keys.focus_first = true;
         ctx.request_repaint();
     }
 }

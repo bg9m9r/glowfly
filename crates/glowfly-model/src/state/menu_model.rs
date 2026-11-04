@@ -5,7 +5,7 @@
 //! (`menu_native.rs`) both come from it, so they can't disagree. `Msg` can't be cloned, so a
 //! model owns its messages and is built again whenever one is needed.
 
-use super::AppState;
+use super::{AppState, ViewState};
 use super::menu_keys::TopMenu;
 use crate::keymap::{BindingId, Chord};
 use crate::msg::{Msg, SearchMsg};
@@ -105,25 +105,25 @@ impl MenuAction {
         MenuAction::Send(Box::new(msg))
     }
 
-    pub fn run(self, st: &mut AppState, msgs: &mut Vec<Msg>) {
+    pub fn run(self, view: &mut ViewState, msgs: &mut Vec<Msg>) {
         match self {
             MenuAction::Send(m) => msgs.push(*m),
-            MenuAction::ToggleActivityLog => st.view.show_log = !st.view.show_log,
+            MenuAction::ToggleActivityLog => view.show_log = !view.show_log,
             MenuAction::ShowFilter => {
-                st.view.show_search = true;
+                view.show_search = true;
                 msgs.push(Msg::Search(SearchMsg::ToggleFilter));
             }
         }
     }
 }
 
-/// Menu `m`'s entries.
-pub fn entries(st: &AppState, m: TopMenu) -> Vec<Entry> {
+/// Menu `m`'s entries; `view` for the View menu's Activity log check.
+pub fn entries(st: &AppState, view: &ViewState, m: TopMenu) -> Vec<Entry> {
     use super::menu_model_items as b;
     match m {
         TopMenu::File => b::file(st),
         TopMenu::Edit => b::edit(st),
-        TopMenu::View => b::view(st),
+        TopMenu::View => b::view(st, view.show_log),
         TopMenu::Window => b::window(st),
         TopMenu::Help => b::help(st),
     }
@@ -132,7 +132,7 @@ pub fn entries(st: &AppState, m: TopMenu) -> Vec<Entry> {
 /// The five menus, in the bar's order.
 pub fn build(st: &AppState) -> [Menu; 5] {
     let t = st.settings.lang();
-    TopMenu::ALL.map(|m| Menu { title: m.title(t), entries: entries(st, m) })
+    TopMenu::ALL.map(|m| Menu { title: m.title(t), entries: entries(st, &st.view, m) })
 }
 
 /// Every item, submenus' included, in the order `take_item` numbers them (on a model nothing

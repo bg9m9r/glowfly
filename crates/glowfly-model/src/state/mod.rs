@@ -176,7 +176,7 @@ pub use running_job::RunningJob;
 pub use selection::Selection;
 pub use tabs::Tab;
 pub use toasts::{Toast, ToastAction};
-pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, list_keys, system_a11y, wip_lists};
+pub use view::{ColumnDrag, ViewState, diff_text, file_folds, file_lists, file_tree, frame_times, lent, list_keys, system_a11y, wip_lists};
 
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
@@ -299,7 +299,7 @@ pub struct AppState {
     pub auto_stash: auto_stash::AutoStashes,
     /// Glowfly's own update check and download (global; nothing saved but `settings.updates`).
     pub updates: updates::UpdatesState,
-    pub view: ViewState,
+    pub view: lent::Lent<ViewState>,
     pub cues: view::ViewCues,
 }
 
@@ -369,7 +369,7 @@ impl AppState {
             dashboard: Default::default(),
             auto_stash: Default::default(),
             updates: Default::default(),
-            view: ViewState::default(),
+            view: Default::default(),
             cues: Default::default(),
         };
         for p in key_problems {

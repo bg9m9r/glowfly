@@ -27,7 +27,7 @@ fn graph_search_paths() {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-paths");
     st.view.show_search = true;
     send(&mut st, SearchMsg::ToggleFilter);
-    st.session.tab_view.search = "path:notes.txt".into();
+    st.view.tab.search = "path:notes.txt".into();
     send_and_search(&mut st, SearchMsg::QueryChanged);
     assert!(!st.session.search.searching_files());
     let snap = st.snap.as_ref().unwrap();

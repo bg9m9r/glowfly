@@ -182,7 +182,7 @@ fn with_shortcuts(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut h = crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
-            super::shortcuts::input(ctx, st, msgs);
+            st.with_view(|st, view| super::shortcuts::input(ctx, st, view, msgs));
             let cache = cache.get_or_insert_with(|| UiCache {
                 avatars: Avatars::default(),
                 speller: Speller::new(),

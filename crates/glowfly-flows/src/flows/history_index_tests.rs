@@ -78,7 +78,7 @@ fn send(st: &mut AppState, msg: SearchMsg) -> Vec<Effect> {
 
 fn query(st: &mut AppState, q: &str) -> Vec<Effect> {
     st.view.show_search = true;
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     send(st, SearchMsg::QueryChanged)
 }
 
@@ -250,7 +250,7 @@ fn an_index_built_for_a_parked_tab_is_kept() {
     let build = kept.into_iter().find(|e| matches!(e, Effect::Index(IndexEffect::Build { .. }))).unwrap();
     // The bar is open with a query when the tab is parked.
     st.view.show_search = true;
-    st.session.tab_view.search = "needle".into();
+    st.view.tab.search = "needle".into();
     st.session.search.query = CommitQuery::parse("needle");
     let fx = update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     finish(&mut st, fx);

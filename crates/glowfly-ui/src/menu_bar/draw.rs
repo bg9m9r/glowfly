@@ -8,7 +8,7 @@ use crate::repo_menu_list;
 use crate::widgets::menu;
 use eframe::egui;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::TopMenu;
 use glowfly_model::state::menu_model::{Entry, Item, Mark, Submenu, SubmenuKind};
 
@@ -23,11 +23,11 @@ pub(super) fn min_width(m: TopMenu) -> f32 {
 }
 
 /// Draws `entries`.
-pub(super) fn entries(ui: &mut egui::Ui, st: &mut AppState, entries: Vec<Entry>, msgs: &mut Vec<Msg>) {
+pub(super) fn entries(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, entries: Vec<Entry>, msgs: &mut Vec<Msg>) {
     let mut entries = entries.into_iter().peekable();
     while let Some(e) = entries.next() {
         match e {
-            Entry::Item(it) => item(ui, st, it, msgs),
+            Entry::Item(it) => item(ui, view, it, msgs),
             // A group's header takes the place of its separator.
             Entry::Separator if matches!(entries.peek(), Some(Entry::Heading(_))) => {}
             Entry::Separator => menu::separator(ui),
@@ -40,7 +40,7 @@ pub(super) fn entries(ui: &mut egui::Ui, st: &mut AppState, entries: Vec<Entry>,
                     SubmenuKind::Recent => repo_menu_list::recent_submenu(ui, st, msgs),
                     SubmenuKind::Theme => {
                         ui.set_min_width(200.0);
-                        self::entries(ui, st, entries, msgs);
+                        self::entries(ui, st, view, entries, msgs);
                     }
                 });
             }
@@ -49,7 +49,7 @@ pub(super) fn entries(ui: &mut egui::Ui, st: &mut AppState, entries: Vec<Entry>,
     }
 }
 
-fn item(ui: &mut egui::Ui, st: &mut AppState, it: Item, msgs: &mut Vec<Msg>) {
+fn item(ui: &mut egui::Ui, view: &mut ViewState, it: Item, msgs: &mut Vec<Msg>) {
     let row = menu::item(it.label.as_str()).shortcut(hint(it.chord)).blocked(it.blocked.as_deref());
     let row = match it.mark {
         Mark::None => row,
@@ -58,7 +58,7 @@ fn item(ui: &mut egui::Ui, st: &mut AppState, it: Item, msgs: &mut Vec<Msg>) {
         Mark::Selected(on) => row.current(on),
     };
     if row.show(ui).clicked() {
-        it.action.run(st, msgs);
+        it.action.run(view, msgs);
         ui.close_menu();
     }
 }

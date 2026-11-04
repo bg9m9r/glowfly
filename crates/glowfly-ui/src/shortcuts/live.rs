@@ -4,7 +4,7 @@
 use eframe::egui;
 use glowfly_model::keymap::BindingId;
 use glowfly_model::state::layout::Pane;
-use glowfly_model::state::{AppState, Modal};
+use glowfly_model::state::{AppState, Modal, ViewState};
 
 /// What is open this frame, for deciding which bindings apply.
 pub(super) struct Live {
@@ -40,7 +40,7 @@ pub(super) struct Live {
 }
 
 impl Live {
-    pub(super) fn now(ctx: &egui::Context, st: &AppState) -> Self {
+    pub(super) fn now(ctx: &egui::Context, st: &AppState, view: &ViewState) -> Self {
         let sheet = matches!(st.modal, Some(Modal::Shortcuts { .. }));
         Self {
             prefs: st.prefs.is_some(),
@@ -68,7 +68,7 @@ impl Live {
             conflict: st.session.blame.view.is_none() && st.session.conflict.view.is_some(),
             blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
-            terminal: st.view.terminal.focused,
+            terminal: view.terminal.focused,
             rebasing: glowfly_model::state::conflict::keys::rebasing(st),
             pane: crate::pane_focus::focused_pane(ctx),
         }

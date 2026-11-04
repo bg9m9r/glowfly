@@ -51,7 +51,7 @@ fn up(st: &mut AppState, msg: SearchMsg) {
 }
 
 fn search(st: &mut AppState, q: &str) {
-    st.session.tab_view.search = q.into();
+    st.view.tab.search = q.into();
     up(st, SearchMsg::QueryChanged);
 }
 
@@ -123,7 +123,7 @@ fn the_filter_keeps_the_selection_in_view_and_close_clears_it() {
     assert_eq!(st.session.search.matches, [9]);
 
     up(&mut st, SearchMsg::Close);
-    assert!(!st.view.show_search && st.session.tab_view.search.is_empty() && !st.session.search.filter);
+    assert!(!st.view.show_search && st.view.tab.search.is_empty() && !st.session.search.filter);
     assert!(st.session.search.matches.is_empty() && !st.session.search.active());
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -139,14 +139,14 @@ fn author_terms_and_the_author_picker() {
     search(&mut st, "page");
     st.view.author_filter = "gra".into();
     up(&mut st, SearchMsg::PickAuthor(Some("grace@example.com".into())));
-    assert_eq!(st.session.tab_view.search, "author:grace@example.com page");
+    assert_eq!(st.view.tab.search, "author:grace@example.com page");
     assert!(st.view.author_filter.is_empty());
     assert_eq!(st.session.search.matches, [1, 3, 5, 8]);
     up(&mut st, SearchMsg::PickAuthor(Some("test@example.com".into())));
-    assert_eq!(st.session.tab_view.search, "author:test@example.com page");
+    assert_eq!(st.view.tab.search, "author:test@example.com page");
     assert_eq!(st.session.search.matches, [2, 4, 6, 9]);
     up(&mut st, SearchMsg::PickAuthor(None));
-    assert_eq!(st.session.tab_view.search, "page");
+    assert_eq!(st.view.tab.search, "page");
     assert_eq!(st.session.search.matches, PAGES);
 
     assert!(st.session.search.authors.is_none());
@@ -190,18 +190,18 @@ fn each_tab_keeps_its_own_search() {
     let b = scratch_repo("search-tabs-b");
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     assert_eq!(st.active_tab, 1);
-    assert!(st.session.tab_view.search.is_empty() && !st.session.search.filter && st.session.search.matches.is_empty());
+    assert!(st.view.tab.search.is_empty() && !st.session.search.filter && st.session.search.matches.is_empty());
     search(&mut st, "first");
     assert_eq!(st.session.search.matches, [0]);
 
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    assert_eq!(st.session.tab_view.search, "page");
+    assert_eq!(st.view.tab.search, "page");
     assert!(st.session.search.filter);
     assert_eq!(st.session.search.matches, PAGES);
     assert_eq!(st.session.search.cursor, cursor);
 
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
-    assert_eq!(st.session.tab_view.search, "first");
+    assert_eq!(st.view.tab.search, "first");
     assert!(!st.session.search.filter);
     assert_eq!(st.session.search.matches, [0]);
     let _ = std::fs::remove_dir_all(&a);
@@ -225,7 +225,7 @@ fn jumping_to_a_hidden_commit_turns_the_filter_off() {
     let typo = oid(&st, 7);
     update(&mut st, Msg::Repo(RepoMsg::JumpTo(typo)), Instant::now());
     assert!(!st.session.search.filter);
-    assert_eq!(st.session.tab_view.search, "page");
+    assert_eq!(st.view.tab.search, "page");
     assert_eq!(st.view.scroll_to_row, Some(7 + 1 - 4));
     assert_eq!(st.session.selection, Selection::Commit(typo));
     let _ = std::fs::remove_dir_all(&dir);

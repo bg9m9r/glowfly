@@ -7,7 +7,7 @@
 use eframe::egui::{self, Id, Pos2, Rect, Vec2, containers::panel::PanelState};
 use glowfly_core::settings::SizedPanel;
 use glowfly_model::msg::{LayoutMsg, Msg};
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::layout::{DetailsShape, details_shape};
 use glowfly_model::state::panel_layout::{self, DETAILS, Fit, MAIN_MIN_WIDTH, SIDEBAR, Spec};
 
@@ -40,16 +40,16 @@ pub fn forget(ctx: &egui::Context, id: &str) {
 
 /// After drawing a drawer whose size is saved in the settings: tracks the drag of its edge
 /// and, when one ends, reports the size it was dragged to (`size`, the drawn length).
-pub fn track(ctx: &egui::Context, st: &mut AppState, p: SizedPanel, id: Id, size: f32, msgs: &mut Vec<Msg>) {
+pub fn track(ctx: &egui::Context, view: &mut ViewState, p: SizedPanel, id: Id, size: f32, msgs: &mut Vec<Msg>) {
     let now = dragging(ctx, id);
-    let was = st.view.panel_drag == Some(p);
+    let was = view.panel_drag == Some(p);
     if was && !now {
         msgs.push(Msg::Layout(LayoutMsg::PanelSize { panel: p, size }));
     }
     if now {
-        st.view.panel_drag = Some(p);
+        view.panel_drag = Some(p);
     } else if was {
-        st.view.panel_drag = None;
+        view.panel_drag = None;
     }
 }
 

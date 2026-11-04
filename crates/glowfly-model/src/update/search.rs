@@ -33,7 +33,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut V
         }
         SearchMsg::Close => {
             st.view.show_search = false;
-            st.session.tab_view.search.clear();
+            st.view.tab.search.clear();
             st.session.search.loaded.due = None;
             st.session.search.filter = false;
             st.session.search.paths = PathSearch { requests: st.session.search.paths.requests, ..Default::default() };
@@ -42,7 +42,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut V
             super::search_deeper::pump(st, fx);
         }
         SearchMsg::Clear => {
-            st.session.tab_view.search.clear();
+            st.view.tab.search.clear();
             st.session.search.loaded.due = None;
             st.view.author_filter.clear();
             st.session.search.paths = PathSearch { requests: st.session.search.paths.requests, ..Default::default() };
@@ -59,7 +59,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut V
             }
         }
         SearchMsg::PickAuthor(author) => {
-            st.session.tab_view.search = commit_query::with_author(&st.session.tab_view.search, author.as_deref());
+            st.view.tab.search = commit_query::with_author(&st.view.tab.search, author.as_deref());
             st.view.author_filter.clear();
             query_changed(st, false, fx);
         }
@@ -74,7 +74,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut V
 /// The query changed: its matches (on the query worker for a large history unless `now`), the
 /// path and index answers it needs, and the next Enter's starting point.
 pub fn query_changed(st: &mut AppState, now: bool, fx: &mut Vec<Effect>) {
-    st.session.search.query = CommitQuery::parse(&st.session.tab_view.search);
+    st.session.search.query = CommitQuery::parse(&st.view.tab.search);
     let asked = !now && super::search_loaded::ask(st, fx);
     if !asked {
         recompute(st);
@@ -101,7 +101,7 @@ pub(super) fn matches_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Parses the query and finds its matches in the loaded history (path terms as far as found).
 pub fn recompute(st: &mut AppState) {
     st.session.search.loaded.pending = None;
-    st.session.search.query = CommitQuery::parse(&st.session.tab_view.search);
+    st.session.search.query = CommitQuery::parse(&st.view.tab.search);
     let touching = &st.session.search.paths.touching;
     st.session.search.matches = st.snap.as_ref().map(|s| st.session.search.query.matching_rows(&s.commits, touching)).unwrap_or_default();
 }
@@ -150,7 +150,7 @@ fn next(st: &mut AppState, fx: &mut Vec<Effect>) {
             super::repo::select_commit(st, oid, true, fx);
         }
         None => {
-            let q = st.session.tab_view.search.trim().to_owned();
+            let q = st.view.tab.search.trim().to_owned();
             st.log(false, format!("No commits match \"{q}\""));
         }
     }
