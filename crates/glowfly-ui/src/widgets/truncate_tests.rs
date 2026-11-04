@@ -244,6 +244,13 @@ fn the_head_ends_before_the_last_separator_in_its_share() {
 }
 
 #[test]
+fn the_head_ends_before_a_whole_run_of_separators() {
+    // The share is 16 ("release-please--"): the head ends before "--", not between its dashes.
+    assert_eq!(cut_units("release-please--branches--main--components--glowfly", 40.0), "release-please…main--components--glowfly");
+    assert_eq!(cut_units("feature__login-page-with-a-long-name", 20.0), "feature…-a-long-name");
+}
+
+#[test]
 fn without_a_separator_the_head_ends_at_its_share() {
     assert_eq!(cut_units("abcdefghijklmnopqrstuvwxyz0123456789", 20.0), "abcdefgh…z0123456789");
 }

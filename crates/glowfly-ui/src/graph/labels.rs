@@ -12,11 +12,12 @@ use crate::ui::theme::contrast::readable_on;
 use crate::ui::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
 use crate::ui::theme::sizes::{ChipSize, ControlSize, text_pos};
 use crate::ui::widgets::chip;
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
+use crate::ui::widgets::truncate::{middle, middle_cut};
 use eframe::egui::{Color32, FontId, Painter, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::forge::CheckState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::RefKind;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Space between two chips.
 pub(super) const GAP: f32 = 4.0;
@@ -72,9 +73,26 @@ impl ChipSpec {
     }
 }
 
+/// The check mark before the checked-out branch's name.
+const CHECK: &str = "✔ ";
+
 /// The checked-out branch's name with its check mark.
 fn check(is_head: bool, name: &str) -> String {
-    if is_head { format!("✔ {name}") } else { name.to_owned() }
+    if is_head { format!("{CHECK}{name}") } else { name.to_owned() }
+}
+
+/// `spec`'s text as its check mark (the checked-out branch's, else empty) and its name: only
+/// the name is ever cut.
+fn mark_and_name(spec: &ChipSpec) -> (&str, &str) {
+    spec.text.strip_prefix(CHECK).filter(|_| spec.style == ChipStyle::CurrentBranch).map_or(("", &spec.text), |name| (CHECK, name))
+}
+
+/// What a chip with `room` for its text shows: its check mark, then its name cut in its middle
+/// (`truncate::middle`), so names that share a long start stay apart.
+fn chip_text(p: &Painter, spec: &ChipSpec, room: f32) -> String {
+    let (mark, name) = mark_and_name(spec);
+    let mark_w = if mark.is_empty() { 0.0 } else { text_w(p, mark, FONT) };
+    format!("{mark}{}", middle(p, name, &FontId::proportional(FONT), room - mark_w))
 }
 
 /// A chip's width for its text `text_w` wide: padding, the marks and the build marker.
@@ -109,15 +127,13 @@ pub(super) fn spec_w(p: &Painter, spec: &ChipSpec) -> f32 {
     chip_w(spec, text_w(p, &spec.text, FONT))
 }
 
-/// The text a first chip keeps beside a "+N" chip: its check mark (the checked-out branch's),
-/// the first `NAME_KEEP` characters of its name and "…", or the whole text when no longer.
+/// The text a first chip keeps beside a "+N" chip: its check mark, the first `NAME_KEEP`
+/// graphemes of its name and "…" (`truncate::middle_cut` counting graphemes, "…" one of them),
+/// or the whole text when it is no longer than that.
 fn kept_text(spec: &ChipSpec) -> String {
-    let lead = if spec.style == ChipStyle::CurrentBranch { "✔ ".chars().count() } else { 0 };
-    let keep = lead + NAME_KEEP;
-    if spec.text.chars().count() <= keep {
-        return spec.text.clone();
-    }
-    spec.text.chars().take(keep).chain(['…']).collect()
+    let (mark, name) = mark_and_name(spec);
+    let graphemes = |s: &str| s.graphemes(true).count() as f32;
+    middle_cut(name, (NAME_KEEP + 1) as f32, graphemes).map_or_else(|| spec.text.clone(), |(head, _)| format!("{mark}{}…", &name[..head]))
 }
 
 /// The width of `spec`'s chip cut to its `kept_text`.
@@ -187,8 +203,8 @@ fn paint_box(p: &Painter, r: Rect, look: ChipLook) {
 }
 
 /// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box and halo
-/// (`ref_chip::ref_chip`; the halo reaches outside the rect), the tag mark, the name (cut to
-/// leave its marks room), then the local mark, the remote mark and the build marker, coloured
+/// (`ref_chip::ref_chip`; the halo reaches outside the rect), the tag mark, the name (cut in
+/// its middle to leave its marks room, `chip_text`), then the local mark, the remote mark and the build marker, coloured
 /// from its branch's `tone`.
 fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: f32) -> Rect {
     let look = ref_chip::ref_chip(spec.style, tone, &color::current());
@@ -202,8 +218,8 @@ fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: 
         text_x += TAG_LEAD;
     }
     let marks_left = r.right() - TEXT_PAD - MARK_W * spec.trailing() as f32;
-    // The name, ending in "…" when the chip is narrower than it (the half pixel absorbs rounding).
-    let g = cut_galley(p.ctx(), cut_job(spec.text.as_str(), FontId::proportional(FONT), fg), marks_left - text_x + 0.5);
+    // The name, cut in its middle when the chip is narrower than it (the half pixel absorbs rounding).
+    let g = p.layout_no_wrap(chip_text(p, spec, marks_left - text_x + 0.5), FontId::proportional(FONT), fg);
     cp.galley(pos2(text_x, text_pos(r, &g).y), g, fg);
     // Each mark centred a little right of its slot's middle, clear of the name.
     let mut slot = marks_left + MARK_W / 2.0 + 2.0;
