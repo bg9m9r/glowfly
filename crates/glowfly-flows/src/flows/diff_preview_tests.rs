@@ -61,7 +61,7 @@ fn requests(fx: &[Effect]) -> Vec<(DiffTarget, u64)> {
 }
 
 fn sides(size: u64) -> Arc<BinarySides> {
-    Arc::new(BinarySides { old: Some(BinarySide { size, image: None, bytes: None }), new: None })
+    Arc::new(BinarySides { old: Some(BinarySide { size, image: None, linked: false, bytes: None }), new: None })
 }
 
 fn loaded(target: DiffTarget, generation: u64, result: Result<Arc<BinarySides>, String>) -> Msg {

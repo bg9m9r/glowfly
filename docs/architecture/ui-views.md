@@ -127,12 +127,13 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/identity.rs`: the file's icon, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
 - `diff/header/view_menu.rs`: the View button and its menu.
+- `diff/header/svg_switch.rs`: the Text / Preview switch of an SVG that git diffs as text.
 - `diff/header/actions.rs`: the ⋯ menu of file actions and the diff tool, the small secondary Stage or Unstage, and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
 - `diff/header/fit.rs`: which parts fit, in narrowing order.
 - `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
 - `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
-- `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary.
+- `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary; an SVG on Preview (or stored binary) shows the same way, with too-large, unreadable, linked-files and loading states.
 - `diff/hex.rs`: a small binary's hex view (offset, sign, hex bytes, ASCII), changed rows and bytes filled like diff lines and words, inline or split, unchanged rows folded in the hunk view. Snapshots: `snapshot_tests/snapshot_tests_diff_hex.rs`.
 - `conflict_header.rs`: the conflict view's file bar (path and sides, the centred counter and progress meter, Mark resolved, the more-actions menu and ×).
 - `conflict_band.rs`: a conflict's band in the panes: amber mark while unresolved, the side-coloured Take checkboxes, and the order with Swap when both sides are taken.

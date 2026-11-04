@@ -35,6 +35,9 @@ pub fn diff_viewer_page(ui: &mut Ui, s: &mut Settings) {
     let (label, check, text) =
         (t.tr("prefs.editor.history_preview.label"), t.tr("prefs.editor.history_preview.check"), t.tr("prefs.editor.history_preview.help"));
     check_row(ui, label, &mut s.history.preview, check, Some(text));
+    let (label, check, text) =
+        (t.tr("prefs.editor.svg_preview.label"), t.tr("prefs.editor.svg_preview.check"), t.tr("prefs.editor.svg_preview.help"));
+    check_row(ui, label, &mut s.diff_svg_preview, check, Some(text));
     row(ui, t.tr("prefs.editor.reset.label"), |ui| {
         if ui.add(buttons::secondary(t.tr("prefs.editor.reset.button"))).clicked() {
             reset(s);
@@ -64,6 +67,7 @@ fn reset(s: &mut Settings) {
     s.diff_word_highlights = d.diff_word_highlights;
     s.diff_word_wrap = d.diff_word_wrap;
     s.history = d.history;
+    s.diff_svg_preview = d.diff_svg_preview;
 }
 
 #[cfg(test)]
@@ -80,6 +84,7 @@ mod tests {
             diff_word_highlights: false,
             diff_word_wrap: true,
             history: glowfly_core::settings::HistoryPrefs { pane: HistoryPane::File, preview: true },
+            diff_svg_preview: true,
             auto_fetch_minutes: 9,
             ..Settings::default()
         };
@@ -90,6 +95,7 @@ mod tests {
         assert!(!s.diff_word_wrap);
         assert_eq!(s.history.pane, HistoryPane::Diff);
         assert!(!s.history.preview, "Markdown shows as text again");
+        assert!(!s.diff_svg_preview, "and SVG");
         assert_eq!(s.auto_fetch_minutes, 9);
     }
 }

@@ -187,6 +187,10 @@ pub struct Settings {
     /// Wrap long diff lines to the viewer's width (diff header toggle and Preferences > Diff viewer).
     #[serde(default)]
     pub diff_word_wrap: bool,
+    /// A changed SVG shows drawn, before and after, rather than as text (diff header Text /
+    /// Preview switch and Preferences > Diff viewer).
+    #[serde(default)]
+    pub diff_svg_preview: bool,
     /// The blame header's whitespace and move toggles.
     pub blame: BlamePrefs,
     /// The file history's Diff / File choice (header toggle and Preferences > Diff viewer).

@@ -56,6 +56,7 @@ impl Default for Settings {
             diff_mode: DiffMode::Hunks,
             syntax_highlighting: true,
             diff_ignore_whitespace: false,
+            diff_svg_preview: false,
             diff_font_size: DEFAULT_DIFF_FONT_SIZE,
             tab_size: 4,
             diff_line_numbers: true,

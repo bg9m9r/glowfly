@@ -81,6 +81,7 @@ mod diff_nav_refresh_tests;
 mod diff_nav_tests;
 mod diff_preview_tests;
 mod diff_reveal_tests;
+mod diff_svg_tests;
 mod diff_tests;
 mod failure_headline_tests;
 mod fetch_time_tests;

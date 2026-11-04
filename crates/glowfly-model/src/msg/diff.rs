@@ -26,6 +26,9 @@ pub enum DiffMsg {
     SetIgnoreWhitespace(bool),
     /// Diff header toggle: wrap long lines to the viewer's width (saved in settings).
     SetWordWrap(bool),
+    /// Diff header Text / Preview switch for SVG files: show a changed SVG drawn (saved in
+    /// settings).
+    SetSvgPreview(bool),
     /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
     /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
@@ -119,6 +122,7 @@ impl DiffMsg {
             | Self::SetDiffMode(..)
             | Self::SetIgnoreWhitespace(..)
             | Self::SetWordWrap(..)
+            | Self::SetSvgPreview(..)
             | Self::JumpToChange(..)
             | Self::ExpandUnchanged(..)
             | Self::CollapseUnchanged(..)

@@ -114,7 +114,7 @@ mod workfile_unrm;
 mod worktree_counts;
 mod worktrees;
 
-pub use binary_sides::{BinarySide, BinarySides, HEX_MAX_BYTES, PREVIEW_MAX_BYTES, binary_sides};
+pub use binary_sides::{BinarySide, BinarySides, HEX_MAX_BYTES, PREVIEW_MAX_BYTES, SvgRenderer, binary_sides, binary_sides_drawn_by};
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, name_key, probe};
 pub use commit_detail::commit_detail;
