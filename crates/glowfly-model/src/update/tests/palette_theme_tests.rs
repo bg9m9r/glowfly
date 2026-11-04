@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{Msg, PaletteMsg, PrefsMsg};
 use crate::state::AppState;
 use crate::state::palette::{PaletteCommand, shown};
@@ -58,10 +59,10 @@ fn running_a_file_theme_sets_and_saves_it() {
     let ocean = ThemeChoice::Custom("ocean".into());
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ocean.clone()))));
     assert_eq!(st.settings.theme, ocean);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.theme == ocean), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.theme == ocean), "{fx:?}");
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ocean.clone()))).is_empty(), "saved only when it changes");
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ThemeChoice::Custom("forest".into()))));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     assert_eq!(st.palette_recent.position("theme-porcelain"), None);
     assert!(st.palette_recent.keys().iter().all(|k| !k.contains("ocean")), "files aren't remembered");
 }

@@ -8,6 +8,7 @@ use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Platform
 use glowfly_core::forge::ServiceError;
 use glowfly_core::i18n::Lang;
 use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, UpdateEffect};
 use glowfly_model::msg::{CheckedRelease, Msg, PaletteMsg, UpdateMsg as U};
 use glowfly_model::state::AppState;
@@ -67,7 +68,7 @@ pub(super) fn checks(fx: &[Effect]) -> Vec<bool> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 pub(super) fn tick(st: &mut AppState, t: Instant) -> Vec<Effect> {

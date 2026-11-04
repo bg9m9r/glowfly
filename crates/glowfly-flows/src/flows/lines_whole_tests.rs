@@ -8,6 +8,7 @@ use super::lines_tests::{click, loaded, run, two_hunks};
 use super::tests::{drive, git, scratch_repo, state};
 use super::work_files_tests::entry;
 use glowfly_core::repo::{self, DiffTarget, HunkOp, LoadOptions};
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{DeleteMode, Effect, FileOp, LocalOp, SeenLines};
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
 use glowfly_model::state::AppState;
@@ -123,7 +124,7 @@ fn a_partial_discard_stays_a_line_discard() {
     let (mut st, dir) = untracked_open("lines-whole-partial", "a\nb\nc\n", &[]);
     select_first(&mut st, 2);
     let fx = run(&mut st, discard_lines());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, .. }, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, .. }, .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

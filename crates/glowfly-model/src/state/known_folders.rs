@@ -1,7 +1,7 @@
 //! Which paths name one folder, without touching the disk: `update` and the views compare paths
 //! by spelling (`paths::same_spelling`) plus the identities (`paths::FolderId`) worker threads
 //! found for them, when a repository loaded (`Snapshot::folder`) or the listed folders were
-//! checked (`Effect::CheckRepoFolders`). Two spellings with one identity are one folder whatever
+//! checked (`SessionEffect::CheckRepoFolders`). Two spellings with one identity are one folder whatever
 //! their case; two with different identities are two, even where the OS usually ignores case.
 
 use super::AppState;

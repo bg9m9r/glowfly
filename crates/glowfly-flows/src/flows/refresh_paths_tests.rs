@@ -4,6 +4,7 @@
 use crate::flows::{drive, finish, git, scratch_repo, state};
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::watch::MAX_WATCH_PATHS;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, StatusRead};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, StageMsg, WatchMsg};
 use glowfly_model::state::AppState;
@@ -257,7 +258,7 @@ fn glowfly_s_own_operations_and_polls_read_everything() {
     let (mut st, dir, _workdir) = opened("paths-own");
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());
-    let op = fx.into_iter().find(|e| matches!(e, Effect::LocalOp { .. })).expect("a local op");
+    let op = fx.into_iter().find(|e| matches!(e, Effect::Files(FilesEffect::LocalOp { .. }))).expect("a local op");
     let done = glowfly_runner::testing::execute(op).expect("a result");
     let fx = update(&mut st, done, Instant::now());
     assert_eq!(read_paths(&fx), None, "staging reads the whole status");

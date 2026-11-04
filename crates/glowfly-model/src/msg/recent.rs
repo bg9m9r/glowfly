@@ -15,7 +15,7 @@ pub enum RecentMsg {
     SetFavorite { path: PathBuf, favorite: bool },
     /// Ask which listed folders are gone (startup, window focus).
     CheckFolders,
-    /// Result of `Effect::CheckRepoFolders`: what was found at each folder checked.
+    /// Result of `SessionEffect::CheckRepoFolders`: what was found at each folder checked.
     FoldersChecked(Vec<FolderCheck>),
     /// Open the favorite at this index (0 for the first; Open favorite repository 1 to 9).
     OpenFavorite(usize),
@@ -31,7 +31,7 @@ pub enum RecentMsg {
     SetColour { path: PathBuf, colour: Option<RepoColour> },
 }
 
-/// What `Effect::CheckRepoFolders` found at one listed folder.
+/// What `SessionEffect::CheckRepoFolders` found at one listed folder.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FolderCheck {
     pub path: PathBuf,

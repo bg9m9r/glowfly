@@ -7,6 +7,7 @@ use super::terminal_tests::{open_with_panel, run, terminal};
 use super::tests::scratch_repo;
 use glowfly_core::settings::{Settings, ShellChoice, ShellSetting};
 use glowfly_core::terminal::{TermInput, TermPoint};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -39,7 +40,7 @@ fn primary(fx: &[Effect]) -> Option<&str> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// Selects lines `a..=b` (numbered from the first history row) of session 0.

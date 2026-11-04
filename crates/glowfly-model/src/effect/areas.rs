@@ -128,6 +128,16 @@ macro_rules! effect_areas {
             Diff($crate::effect::DiffEffect),
             /// Running git commands and undoing or redoing an action (job.rs, runner/job.rs); unscoped.
             Job($crate::effect::JobEffect),
+            /// A file's or folder's history, the path search and the graph's line counts
+            /// (history.rs, runner/history.rs); reads only. Runner::run hands the search and the
+            /// counts to their workers.
+            History($crate::effect::HistoryEffect),
+            /// Saves of Glowfly's own files: settings, recent repositories, open tabs (save.rs,
+            /// runner/saves.rs); unscoped, ordered per file.
+            Save($crate::effect::SaveEffect),
+            /// Checking the recent repositories' folders and reading the restored tabs' groups
+            /// (session.rs, runner/session.rs); unscoped, reads only.
+            Session($crate::effect::SessionEffect),
             /// Git's file system monitor started and set, then the cache's commands (monitor.rs); unscoped like RunGit.
             TurnOnMonitor($crate::effect::MonitorJob),
             /// Git's file system monitor unset and stopped (monitor.rs); unscoped like RunGit.

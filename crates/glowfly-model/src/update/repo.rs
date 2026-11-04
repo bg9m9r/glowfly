@@ -1,7 +1,7 @@
 //! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
-use crate::effect::{CommitEffect, Effect, LoadKind, OsEffect, UiEffect};
+use crate::effect::{CommitEffect, Effect, LoadKind, OsEffect, SaveEffect, UiEffect};
 use crate::msg::{FolderPurpose, RepoMsg};
 use crate::state::{AppState, CommitDraft, Selection};
 use git2::Oid;
@@ -282,7 +282,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             st.recent = recent.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             st.recent.insert(0, snap.workdir.clone());
             st.recent.truncate(12);
-            fx.push(Effect::SaveRecent(st.recent.clone()));
+            fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
             let missing = std::mem::take(&mut st.missing_repos);
             st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());

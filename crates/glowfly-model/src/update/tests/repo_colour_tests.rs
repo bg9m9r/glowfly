@@ -5,6 +5,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{Msg, RecentMsg, TabsMsg};
 use crate::state::repo_colours::{active_colour, listed_colour, tab_colour};
 use crate::state::{AppState, Tab};
@@ -22,7 +23,7 @@ fn set(st: &mut AppState, path: PathBuf, colour: Option<RepoColour>) -> Vec<Effe
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// Unloaded tabs for made-up folders, with tab `active` selected.

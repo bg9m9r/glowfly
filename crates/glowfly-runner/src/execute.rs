@@ -1,11 +1,11 @@
 //! Executing one effect on a worker thread: each effect area's `Execute` impl (in this folder's
 //! `<area>.rs`) and the arms of the flat variants, with the result message each sends back.
 
-use super::{forge_calls, git_ops, history, path_search, revert};
+use super::forge_calls;
 use glowfly_core::{avatars, gitcli, repo};
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::areas::{effect_areas, effect_match};
-use glowfly_model::msg::{AvatarMsg, ForgeMsg, Msg, RecentMsg, RepoMsg};
+use glowfly_model::msg::{AvatarMsg, ForgeMsg, Msg};
 
 pub(super) fn err(e: glowfly_core::error::Error) -> String {
     e.to_string()
@@ -47,17 +47,8 @@ pub(super) fn execute_with(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
 
 fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
     effect_areas! { effect_match! { effect, |e| Execute::execute(e, cx), {
-        Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {
-            Some(history::walk(&workdir, path, &start, limit, folder, generation))
-        }
-        Effect::LocalOp { workdir, op } => Some(git_ops::local_done(&workdir, op)),
-        Effect::Revert { workdir, req } => Some(revert::run(&workdir, req)),
         Effect::Forge { target, cwd, auth, interactive, connected, call } => {
             Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
-        }
-        Effect::Stats { workdir, oids } => Some(Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids)))),
-        Effect::SearchPaths { workdir, request, terms, oids } => {
-            Some(path_search::once(path_search::Request { workdir, request, terms, oids }))
         }
         Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
             emails
@@ -68,18 +59,6 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                 })
                 .collect(),
         ))),
-        save @ (Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. }) => (cx.seams.save)(save),
-        Effect::CheckRepoFolders(paths) => Some(Msg::Recent(RecentMsg::FoldersChecked(super::platform::check_folders(&paths)))),
-        Effect::ReadTabGroups(paths) => {
-            let read = paths
-                .into_iter()
-                .map(|p| {
-                    let common = repo::CommonDir::at(&p);
-                    (p, common)
-                })
-                .collect();
-            Some(Msg::Tabs(glowfly_model::msg::TabsMsg::GroupsRead(read)))
-        }
         // `Runner::run` stops it; there is nothing running here to stop.
         Effect::StopGit(_) => None,
         Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. } => {

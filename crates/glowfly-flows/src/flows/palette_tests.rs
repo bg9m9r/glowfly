@@ -7,6 +7,7 @@ use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::PaletteMsg;
 use glowfly_model::msg::PrefsMsg;
 use glowfly_model::msg::RepoMsg;
@@ -235,7 +236,7 @@ fn run_theme_saves_once() {
     open_palette(&mut st);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Theme(ThemeChoice::Light))));
     assert_eq!(st.settings.theme, ThemeChoice::Light);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.theme == ThemeChoice::Light));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.theme == ThemeChoice::Light));
     assert!(st.palette.is_none());
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ThemeChoice::Light))).is_empty());
     // Nothing left for the per-frame settings check to save.

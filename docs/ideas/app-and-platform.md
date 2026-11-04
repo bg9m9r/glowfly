@@ -220,9 +220,7 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 ### Per-area effect metadata and generated dispatch
 
-- Fold LocalOp, Revert, RestoreFile, WorkFile and LoadTrackedPaths into a working-tree effect area
-- Fold SaveSettings, SaveRecent, SaveTabs, CheckRepoFolders and ReadTabGroups into an app-files effect area beside runner/saves.rs, with the Save sandbox rule on it
-- Fold the remaining flat effects (Watch, SweepWatch, AnswerPrompt, StopGit, Forge, Stats, SearchPaths, VerifySignature, FetchAvatars, LoadFileHistory) into areas, so the flat arms in names.rs, scope.rs, sandbox.rs and execute.rs go away
+- Fold the remaining flat effects (Watch, SweepWatch, AnswerPrompt, StopGit, Forge, FetchAvatars) into areas, so the flat arms in names.rs, scope.rs, sandbox.rs and execute.rs go away
 - Move panic recovery (`Recovery::of` in runner/guard.rs) into a per-area hook beside each `Execute` impl
 - Move `Runner::run`'s special routing (terminal, index worker, stats, path search, log worker, stops, watcher, prompts) into an `Execute`-side route hook
 - Give every update handler the same (st, msg, now, fx) signature, so the message table needs no argument tags

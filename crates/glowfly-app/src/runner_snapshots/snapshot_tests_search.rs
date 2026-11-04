@@ -14,7 +14,7 @@ use std::time::Instant;
 fn send_and_search(st: &mut AppState, msg: SearchMsg) {
     let fx = glowfly_model::update::update(st, Msg::Search(msg), Instant::now());
     for effect in fx {
-        if matches!(effect, glowfly_model::effect::Effect::SearchPaths { .. })
+        if matches!(effect, glowfly_model::effect::Effect::History(glowfly_model::effect::HistoryEffect::SearchPaths { .. }))
             && let Some(reply) = glowfly_runner::testing::execute(effect)
         {
             glowfly_model::update::update(st, reply, Instant::now());

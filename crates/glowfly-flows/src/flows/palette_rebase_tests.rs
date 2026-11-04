@@ -7,6 +7,7 @@ use super::update;
 use git2::RepositoryState;
 use glowfly_core::rebase::{QuickEdit, RebaseBase, Resume};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, RebaseEffect};
 use glowfly_model::msg::{Msg, PaletteMsg};
 use glowfly_model::state::palette::shown;
@@ -98,7 +99,8 @@ fn rebase_onto_the_selected_commit() {
     assert_eq!((label.as_str(), cmds), ("Rebase", vec![glowfly_core::gitcli::args(&["rebase", &other.to_string()])]));
     let msg = Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Rebase(RebaseCommand::Onto { oid: other, interactive: true })));
     // The first interactive rebase also retires the Tidy tip, which saves the settings.
-    let fx: Vec<Effect> = update(&mut st, msg, Instant::now()).into_iter().filter(|e| !matches!(e, Effect::SaveSettings(_))).collect();
+    let fx: Vec<Effect> =
+        update(&mut st, msg, Instant::now()).into_iter().filter(|e| !matches!(e, Effect::Save(SaveEffect::Settings(_)))).collect();
     let planned = matches!(&fx[..], [Effect::Rebase(RebaseEffect::LoadPlan { base: RebaseBase::OntoCommit(o), .. })] if *o == other);
     assert!(planned, "{fx:?}");
 

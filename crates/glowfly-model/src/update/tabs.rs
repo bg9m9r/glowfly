@@ -6,6 +6,7 @@
 //! (`tab_groups.rs`). Closing and reopening are in `tabs_close.rs`, labels in `tab_label.rs`,
 //! freeing a long-parked tab's history in `parked_free.rs`.
 
+use crate::effect::SaveEffect;
 use crate::effect::{Effect, LoadKind, UiEffect};
 use crate::msg::{CloseRequest, TabsMsg};
 use crate::state::tabs::Parked;
@@ -319,5 +320,5 @@ pub(super) fn save(st: &AppState) -> Effect {
     let with_path: Vec<(usize, PathBuf)> = st.tabs.iter().enumerate().filter_map(|(i, t)| t.path.clone().map(|p| (i, p))).collect();
     let active = with_path.iter().position(|(i, _)| *i >= st.active_tab).unwrap_or(0);
     let labels = with_path.iter().map(|(i, _)| st.tabs[*i].label.clone()).collect();
-    Effect::SaveTabs { paths: with_path.into_iter().map(|(_, p)| p).collect(), labels, active }
+    Effect::Save(SaveEffect::Tabs { paths: with_path.into_iter().map(|(_, p)| p).collect(), labels, active })
 }

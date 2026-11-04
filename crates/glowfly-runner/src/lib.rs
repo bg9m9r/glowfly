@@ -14,6 +14,7 @@
 use glowfly_core::repo;
 use glowfly_model::effect::DiffEffect;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::msg::Msg;
 use std::path::Path;
 use std::sync::Arc;
@@ -84,6 +85,7 @@ mod sandbox;
 mod saves;
 mod seams;
 mod selection;
+mod session;
 mod signatures;
 mod sparse;
 mod ssh;
@@ -244,22 +246,22 @@ impl Runner {
             Effect::SweepWatch { workdir } => return self.sweep_watch(workdir),
             Effect::AnswerPrompt { id, reply } => return self.answer_prompt(id, reply),
             Effect::Terminal(t) => return self.terminal(t, check),
-            Effect::Stats { workdir, oids } => return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone()),
+            Effect::History(HistoryEffect::Stats { workdir, oids }) => {
+                return self.stats.submit(workdir, oids, self.tx.clone(), self.waker.clone());
+            }
             Effect::Logs(e) if e.on_log_worker() => return self.logs.submit(e),
             Effect::StopGit(key) => {
                 let asked = self.stops.stop(key);
                 tracing::debug!(?key, asked, "stop git");
                 return;
             }
-            Effect::SearchPaths { workdir, request, terms, oids } => {
+            Effect::History(HistoryEffect::SearchPaths { workdir, request, terms, oids }) => {
                 let r = path_search::Request { workdir, request, terms, oids };
                 return self.path_search.submit(r, self.seams.chunk, self.tx.clone(), self.waker.clone());
             }
             Effect::Index(e) => return self.index.submit(e, self.tx.clone(), self.waker.clone()),
-            other => match self.save(other) {
-                Some(other) => other,
-                None => return,
-            },
+            Effect::Save(save) => return self.save(save),
+            other => other,
         };
         let tx = self.tx.clone();
         let waker = self.waker.clone();

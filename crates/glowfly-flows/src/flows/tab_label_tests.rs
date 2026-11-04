@@ -3,6 +3,7 @@
 
 use super::tabs_close_tests::{fake, fake_tabs, names, saves, send};
 use glowfly_core::repo::CommonDir;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::msg::TabsMsg;
 use glowfly_model::state::menu_bar::tab_name;
@@ -13,7 +14,7 @@ fn label(st: &AppState, i: usize) -> Option<&str> {
 }
 
 fn saved_labels(fx: &[Effect]) -> Vec<Vec<Option<String>>> {
-    fx.iter().filter_map(|e| if let Effect::SaveTabs { labels, .. } = e { Some(labels.clone()) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Save(SaveEffect::Tabs { labels, .. }) = e { Some(labels.clone()) } else { None }).collect()
 }
 
 fn titles(fx: &[Effect]) -> Vec<&str> {

@@ -8,6 +8,7 @@ use super::update;
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{self, Outcome, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
 use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, RebaseEffect};
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RebaseMsg;
@@ -125,7 +126,7 @@ fn opening_requests_the_list_and_closes_other_views() {
     st.session.conflict.view = Some(ConflictView::loading("c1.txt".into()));
     // The first interactive rebase also retires the Tidy tip, which saves the settings.
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::FromCommit(c[1]))));
-    let fx: Vec<Effect> = fx.into_iter().filter(|e| !matches!(e, Effect::SaveSettings(_))).collect();
+    let fx: Vec<Effect> = fx.into_iter().filter(|e| !matches!(e, Effect::Save(SaveEffect::Settings(_)))).collect();
     match &fx[..] {
         [e @ Effect::Rebase(RebaseEffect::LoadPlan { base, generation, .. })] => {
             assert_eq!((base, *generation), (&RebaseBase::FromCommit(c[1]), st.session.rebase.generation));

@@ -9,7 +9,7 @@
 
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
-use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::Msg;
 use std::time::Duration;
 
@@ -36,9 +36,9 @@ pub struct Seams {
     pub sequence_editor: fn() -> SequenceEditor,
     /// How long a path search's chunk may take before it is reported.
     pub chunk: Duration,
-    /// Writes a save of Glowfly's own files (`SaveSettings`, `SaveRecent`, `SaveTabs`); a
-    /// failure comes back as a line for the activity log.
-    pub save: fn(Effect) -> Option<Msg>,
+    /// Writes a save of Glowfly's own files (`SaveEffect`); a failure comes back as a line for
+    /// the activity log.
+    pub save: fn(SaveEffect) -> Option<Msg>,
 }
 
 impl Seams {

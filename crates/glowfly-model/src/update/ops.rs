@@ -1,6 +1,7 @@
 //! Staging, committing, git commands (push, pull, branch…), and auto-fetch; reverts are in update/revert.rs. Jobs start in
 //! update/jobs.rs, re-exported here.
 
+use crate::effect::FilesEffect;
 use crate::effect::{Effect, LocalOp, SeenLines, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
 use crate::state::trust::Created;
@@ -203,7 +204,7 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
 
 pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::LocalOp { workdir, op });
+        fx.push(Effect::Files(FilesEffect::LocalOp { workdir, op }));
     }
 }
 

@@ -5,6 +5,7 @@
 use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
 use glowfly_core::commit_query::CommitQuery;
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, SearchMsg, TabsMsg};
 use glowfly_model::state::AppState;
@@ -165,10 +166,10 @@ fn only_while_filtering_with_the_preference_on() {
 fn path_terms_wait_for_the_file_search() {
     let (mut st, dir) = truncated("deeper-paths");
     let mut fx = filter(&mut st, "path:nowhere/");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SearchPaths { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::SearchPaths { .. }))));
     assert!(loads(&fx).is_empty(), "the matches aren't final yet");
     let mut loaded = 0;
-    while let Some(search) = fx.iter().position(|e| matches!(e, Effect::SearchPaths { .. })) {
+    while let Some(search) = fx.iter().position(|e| matches!(e, Effect::History(HistoryEffect::SearchPaths { .. }))) {
         assert!(st.session.search.searching_files());
         let reply = glowfly_runner::testing::execute(fx.swap_remove(search)).expect("a report");
         fx = update(&mut st, reply, Instant::now());

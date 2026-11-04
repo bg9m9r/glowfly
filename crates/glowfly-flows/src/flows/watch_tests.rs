@@ -4,6 +4,7 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind, WatchTarget};
 use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
@@ -226,11 +227,11 @@ fn preference_toggle_starts_and_stops_watching() {
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "nothing changed");
     st.settings.watch_files = false;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Watch(None)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Watch(None)]), "{fx:?}");
     assert!(update(&mut st, changed(&workdir, false, Instant::now()), Instant::now()).is_empty(), "ignored while off");
     st.settings.watch_files = true;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Watch(Some(t))] if t.workdir == workdir), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Watch(Some(t))] if t.workdir == workdir), "{fx:?}");
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }

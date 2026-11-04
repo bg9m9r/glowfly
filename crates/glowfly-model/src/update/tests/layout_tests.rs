@@ -5,6 +5,7 @@
 use super::tests::{keys, scratch_repo, state};
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::keymap::{BindingId, KeyAction};
 use crate::msg::{LayoutMsg, Msg, PaletteMsg};
 use crate::state::AppState;
@@ -18,7 +19,7 @@ fn run(st: &mut AppState, msg: LayoutMsg) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 fn toast_texts(st: &AppState) -> Vec<&str> {

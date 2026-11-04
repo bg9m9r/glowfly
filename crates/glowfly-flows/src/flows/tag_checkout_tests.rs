@@ -7,6 +7,7 @@ use super::update;
 use glowfly_core::gitcli::args;
 use glowfly_core::undo::UndoKind;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::tags::DETACHED_WARNING;
@@ -73,7 +74,7 @@ fn first_checkout_warns_once_then_names_the_tag() {
     assert!(st.log.iter().any(|e| e.text == DETACHED_WARNING), "the warning is logged");
     assert!(st.log.iter().any(|e| e.text.starts_with("Checkout tag v1.0 done")));
     assert!(st.settings.detached_head_warned);
-    assert!(kept.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.detached_head_warned)), "the flag is saved");
+    assert!(kept.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.detached_head_warned)), "the flag is saved");
     assert!(st.tag_checkout.is_none());
 
     let warnings = st.log.iter().filter(|e| e.text == DETACHED_WARNING).count();
@@ -82,7 +83,7 @@ fn first_checkout_warns_once_then_names_the_tag() {
     assert_eq!(toast.text, "Checked out tag v2.0 (detached HEAD)");
     assert!(toast.action.is_none());
     assert_eq!(st.log.iter().filter(|e| e.text == DETACHED_WARNING).count(), warnings, "warned only once");
-    assert!(!kept.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(!kept.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

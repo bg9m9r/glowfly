@@ -6,7 +6,7 @@
 //! tell when the app is idle.
 
 use super::Runner;
-use glowfly_model::effect::{Effect, SandboxRule};
+use glowfly_model::effect::{Effect, SandboxRule, SaveEffect};
 use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -62,7 +62,8 @@ impl Runner {
         match effect.sandbox() {
             SandboxRule::Run => Some(effect),
             SandboxRule::Save => {
-                if let Some(msg) = save_into(&sandbox.files, effect)
+                if let Effect::Save(save) = effect
+                    && let Some(msg) = save_into(&sandbox.files, save)
                     && self.tx.send(msg).is_ok()
                 {
                     self.waker.wake();
@@ -79,14 +80,13 @@ impl Runner {
 }
 
 /// `saves::save_now`, writing into `folder`.
-pub(super) fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
+pub(super) fn save_into(folder: &Path, effect: SaveEffect) -> Option<Msg> {
     let (what, result) = match effect {
-        Effect::SaveSettings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
-        Effect::SaveRecent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),
-        Effect::SaveTabs { paths, labels, active } => {
+        SaveEffect::Settings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
+        SaveEffect::Recent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),
+        SaveEffect::Tabs { paths, labels, active } => {
             ("the open tabs", super::platform::save_tabs_to(&folder.join("tabs.txt"), &paths, &labels, active))
         }
-        _ => return None,
     };
     let e = result.err()?;
     Some(Msg::Logged { ok: false, text: format!("Could not save {what}: {e}") })
@@ -234,11 +234,11 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let repo = dir.join("repo");
-        assert!(runner.admit(Effect::SaveRecent(vec![repo.clone()])).is_none());
-        let tabs = Effect::SaveTabs { paths: vec![repo.clone()], labels: vec![Some("Web".into())], active: 0 };
+        assert!(runner.admit(Effect::Save(SaveEffect::Recent(vec![repo.clone()]))).is_none());
+        let tabs = Effect::Save(SaveEffect::Tabs { paths: vec![repo.clone()], labels: vec![Some("Web".into())], active: 0 });
         assert!(runner.admit(tabs).is_none());
         let settings = glowfly_core::settings::Settings { auto_fetch_minutes: 7, ..Default::default() };
-        assert!(runner.admit(Effect::SaveSettings(Box::new(settings))).is_none());
+        assert!(runner.admit(Effect::Save(SaveEffect::Settings(Box::new(settings)))).is_none());
         let recent = std::fs::read_to_string(dir.join("recent.txt")).unwrap();
         assert_eq!(crate::platform::parse_recent(&recent), std::slice::from_ref(&repo));
         let tabs = std::fs::read_to_string(dir.join("tabs.txt")).unwrap();

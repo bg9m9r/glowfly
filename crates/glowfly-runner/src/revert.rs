@@ -1,4 +1,4 @@
-//! Reverting part of a commit or comparison diff in the working tree (`Effect::Revert`), with
+//! Reverting part of a commit or comparison diff in the working tree (`FilesEffect::Revert`), with
 //! the working copy saved before and after so the revert can be undone.
 
 use glowfly_core::repo::{self, RevertRequest};

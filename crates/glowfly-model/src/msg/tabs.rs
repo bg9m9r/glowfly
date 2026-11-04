@@ -44,7 +44,7 @@ pub enum TabsMsg {
         labels: Vec<Option<String>>,
         active: usize,
     },
-    /// Result of `Effect::ReadTabGroups`: the common dir of each restored tab's folder.
+    /// Result of `SessionEffect::ReadTabGroups`: the common dir of each restored tab's folder.
     GroupsRead(Vec<(PathBuf, Option<CommonDir>)>),
 }
 

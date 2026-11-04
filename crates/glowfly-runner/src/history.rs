@@ -1,7 +1,9 @@
-//! The file history's background work: the walk of a file's or folder's commits
-//! (`Effect::LoadFileHistory`) and a file's text as of a commit, with its syntax spans and, for
-//! Markdown and images, what the File view's preview draws: a Markdown file's text (parsed by
-//! the view's `MarkdownCache` when drawn) or a decoded image (`Effect::LoadFileText`).
+//! The `Execute` impl of `HistoryEffect`: the walk of a file's or folder's commits, and the path
+//! search (`path_search.rs`) and the graph's line counts as a worker runs them when
+//! `Runner::run` hasn't handed them to their own workers. Also a file's text as of a commit, with
+//! its syntax spans and, for Markdown and images, what the File view's preview draws: a Markdown
+//! file's text (parsed by the view's `MarkdownCache` when drawn) or a decoded image
+//! (`Effect::LoadFileText`).
 
 use super::execute::{Cx, Execute};
 use glowfly_core::error::Error;
@@ -11,13 +13,27 @@ use glowfly_core::partial::MissingContent;
 use glowfly_core::preview::{self, PreviewKind};
 use glowfly_core::preview_image::{self, FILE_VIEW_SHOWN_MAX};
 use glowfly_core::repo::{self, FileAtOptions, HistoryStart, LfsState};
-use glowfly_model::effect::{Effect, FileTextRequest};
-use glowfly_model::msg::{HistoryMsg, Msg, PartialMsg};
+use glowfly_model::effect::{Effect, FileTextRequest, HistoryEffect};
+use glowfly_model::msg::{HistoryMsg, Msg, PartialMsg, RepoMsg};
 use glowfly_model::state::history::{FileTextData, Preview, TextError};
 use std::path::Path;
 use std::sync::Arc;
 
-pub(super) fn walk(workdir: &Path, path: String, start: &HistoryStart, limit: usize, folder: bool, generation: u64) -> Msg {
+impl Execute for HistoryEffect {
+    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+        Some(match self {
+            HistoryEffect::FileHistory { workdir, path, start, limit, folder, generation } => {
+                walk(&workdir, path, &start, limit, folder, generation)
+            }
+            HistoryEffect::Stats { workdir, oids } => Msg::Repo(RepoMsg::StatsLoaded(repo::commit_stats(&workdir, &oids))),
+            HistoryEffect::SearchPaths { workdir, request, terms, oids } => {
+                super::path_search::once(super::path_search::Request { workdir, request, terms, oids })
+            }
+        })
+    }
+}
+
+fn walk(workdir: &Path, path: String, start: &HistoryStart, limit: usize, folder: bool, generation: u64) -> Msg {
     let result = if folder { repo::folder_history(workdir, &path, start, limit) } else { repo::file_history(workdir, &path, start, limit) };
     let result = result.map_err(|e| e.to_string());
     Msg::History(HistoryMsg::FileHistoryLoaded { path, generation, result })

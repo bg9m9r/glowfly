@@ -6,6 +6,7 @@
 
 use super::ops;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::effect::WorktreeEffect;
 use crate::state::tabs::ClosedTab;
 use crate::state::worktree_manage::gone_text;
@@ -117,7 +118,7 @@ fn retarget(st: &mut AppState, from: &Path, to: &Path, folder: Option<FolderId>,
     }
     if let Some(recent) = replaced(&st.recent, |p| st.same_folder(p, from), to) {
         st.recent = recent;
-        fx.push(Effect::SaveRecent(st.recent.clone()));
+        fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
     }
     if st.closed_tabs.iter().any(|c| st.same_folder(&c.path, from)) {
         // Each keeps its label; a closed tab that already named `to` is merged into it.

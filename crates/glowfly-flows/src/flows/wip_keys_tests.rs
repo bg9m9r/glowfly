@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::undo::Action;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
@@ -58,7 +59,7 @@ fn opened(fx: &[Effect]) -> Option<&DiffTarget> {
 
 fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
     fx.iter().find_map(|e| match e {
-        Effect::LocalOp { op, .. } => Some(op),
+        Effect::Files(FilesEffect::LocalOp { op, .. }) => Some(op),
         _ => None,
     })
 }

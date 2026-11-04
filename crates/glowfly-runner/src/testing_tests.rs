@@ -4,6 +4,7 @@
 
 use super::*;
 use glowfly_model::effect::DeleteMode;
+use glowfly_model::effect::SaveEffect;
 
 /// Whether `s` is the tests' stand-ins (its kind, and `cp` as the editor). That the stand-in
 /// trash is what a delete reaches is checked by running one
@@ -56,10 +57,10 @@ fn in_config_folder(dir: &Path) -> bool {
 fn saves_run_by_a_test_land_in_the_test_folder_not_the_config_folder() {
     let marker = 4_000_000 + std::process::id();
     let settings = glowfly_core::settings::Settings { auto_fetch_minutes: marker, ..Default::default() };
-    assert!(execute(Effect::SaveSettings(Box::new(settings))).is_none(), "the save worked");
+    assert!(execute(Effect::Save(SaveEffect::Settings(Box::new(settings)))).is_none(), "the save worked");
     let repo = glowfly_core::paths::temp_dir().join(format!("glowfly-own-files-{marker}"));
-    assert!(execute(Effect::SaveRecent(vec![repo.clone()])).is_none());
-    assert!(execute(Effect::SaveTabs { paths: vec![repo.clone()], labels: vec![None], active: 0 }).is_none());
+    assert!(execute(Effect::Save(SaveEffect::Recent(vec![repo.clone()]))).is_none());
+    assert!(execute(Effect::Save(SaveEffect::Tabs { paths: vec![repo.clone()], labels: vec![None], active: 0 })).is_none());
     let dir = own_files();
     assert!(!in_config_folder(&dir), "{} is in the config folder", dir.display());
     let saved = std::fs::read_to_string(dir.join("settings.json")).unwrap();
@@ -74,7 +75,7 @@ fn saves_run_by_a_test_land_in_the_test_folder_not_the_config_folder() {
     let mut runner = Runner::new(tx, Waker::none());
     runner.seams = SEAMS;
     let repo = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-own-files-{}", std::process::id()));
-    runner.run(Effect::SaveRecent(vec![repo.clone()]));
+    runner.run(Effect::Save(SaveEffect::Recent(vec![repo.clone()])));
     let file = own_files().join("recent.txt");
     let wanted = repo.display().to_string();
     let deadline = std::time::Instant::now() + Duration::from_secs(10);
@@ -116,7 +117,7 @@ fn effects_reaching_outside_the_test_are_refused() {
         Effect::Prefs(PrefsEffect::SetGitConfig { cwd: here.clone(), global: false, key: "user.name".into(), value: None }),
         Effect::Ssh(SshEffect::ReadChoice { generation: 1, repo: None }),
         Effect::Ssh(SshEffect::SetKeyChoice { repo: Some(here.clone()), key: None }),
-        Effect::SaveSettings(Box::default()),
+        Effect::Save(SaveEffect::Settings(Box::default())),
     ];
     for effect in &inside {
         assert!(!refused(effect), "{} runs", effect.name());

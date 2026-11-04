@@ -8,6 +8,7 @@ use super::update;
 use glowfly_core::repo::SubmoduleState;
 use glowfly_core::settings::{RepoTrust, SubmoduleUpdates};
 use glowfly_core::submodule_ops::batch_update_cmds;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, EffectMeta, SubmoduleEffect};
 use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::state::submodules::batch::CONFIRM_ALL_BUTTON;
@@ -277,7 +278,7 @@ fn per_repository_choice_is_saved() {
     let (mut st, parent, lib) = opened("smb-choice");
     let r = real(&st);
     let fx = update(&mut st, Msg::Submodule(SubmoduleMsg::SetUpdates(SubmoduleUpdates::Always)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert_eq!(st.settings.submodule_updates_for(&r), Some(true));
     assert_eq!(glowfly_model::state::submodules::section_cx(&st).updates, SubmoduleUpdates::Always);
     update(&mut st, Msg::Submodule(SubmoduleMsg::SetUpdates(SubmoduleUpdates::FollowGlobal)), Instant::now());

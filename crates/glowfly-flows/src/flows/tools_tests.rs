@@ -8,6 +8,7 @@ use super::update;
 use glowfly_core::external_tools::Launch;
 use glowfly_core::native_path::native;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{OsEffect, PrefsEffect};
 use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -196,12 +197,12 @@ fn browsing_picks_and_saves_a_program() {
     let picked = PathBuf::from("C:/Tools/Ed/ed.exe");
     let fx = run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::Editor, path: Some(picked.clone()) });
     assert_eq!(st.settings.external_tools.editor, picked.display().to_string());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.external_tools.editor == picked.display().to_string()));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.external_tools.editor == picked.display().to_string()));
     assert!(run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::Terminal, path: None }).is_empty());
     assert!(st.settings.external_tools.terminal.is_empty(), "a cancelled dialog changes nothing");
     let fx = run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::Terminal, path: Some("/usr/bin/kitty".into()) });
     assert_eq!(st.settings.external_tools.terminal, PathBuf::from("/usr/bin/kitty").display().to_string());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]));
 }
 
 #[test]
@@ -283,10 +284,12 @@ fn diff_and_merge_tool_programs_are_picked_and_saved() {
     }
     let fx = run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::DiffTool, path: Some("/usr/bin/meld".into()) });
     let meld = PathBuf::from("/usr/bin/meld").display().to_string();
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.external_tools.diff_tool == meld));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.external_tools.diff_tool == meld));
     let fx = run(&mut st, ToolsMsg::ProgramPicked { kind: ToolKind::MergeTool, path: Some("/usr/bin/kdiff3".into()) });
     let kdiff3 = PathBuf::from("/usr/bin/kdiff3").display().to_string();
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.external_tools.merge_tool == kdiff3 && s.external_tools.diff_tool == meld));
+    assert!(
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.external_tools.merge_tool == kdiff3 && s.external_tools.diff_tool == meld)
+    );
 }
 
 #[test]

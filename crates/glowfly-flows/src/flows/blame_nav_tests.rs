@@ -6,6 +6,7 @@ use crate::flows::{drive, git, scratch_repo, state};
 use git2::Oid;
 use glowfly_core::repo::{Blame, BlameCommit, BlameOrigin, BlameRun};
 use glowfly_core::settings::BlameMoves;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{BlameRequest, Effect};
 use glowfly_model::msg::{BlameMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -161,7 +162,7 @@ fn toggles_save_and_reblame() {
     st.session.blame.view.as_mut().unwrap().top_line = 7;
     let fx = send(&mut st, BlameMsg::SetIgnoreWhitespace(true));
     assert!(st.settings.blame.ignore_whitespace);
-    assert!(matches!(fx.first(), Some(Effect::SaveSettings(s)) if s.blame.ignore_whitespace), "{fx:?}");
+    assert!(matches!(fx.first(), Some(Effect::Save(SaveEffect::Settings(s))) if s.blame.ignore_whitespace), "{fx:?}");
     assert!(matches!(&requests(&fx)[..], [r] if r.opts.ignore_whitespace), "{fx:?}");
     assert_eq!(view(&st).land, Some(BlameLanding { line: 7, center: false }));
     assert!(send(&mut st, BlameMsg::SetIgnoreWhitespace(true)).is_empty(), "unchanged");
@@ -172,7 +173,7 @@ fn toggles_save_and_reblame() {
 
     st.session.blame.view = None;
     let fx = send(&mut st, BlameMsg::SetMoves(BlameMoves::Off));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -182,7 +183,7 @@ fn set_wrap_lines_saves_and_keeps_the_top_line() {
     st.session.blame.view.as_mut().unwrap().top_line = 6;
     let fx = send(&mut st, BlameMsg::SetWrapLines(true));
     assert!(st.settings.blame.wrap_lines);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.blame.wrap_lines), "no reload: {fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.blame.wrap_lines), "no reload: {fx:?}");
     let v = view(&st);
     assert_eq!(v.scroll_to, Some(BlameLanding { line: 6, center: false }));
     assert!(!v.loading && v.data.is_some());

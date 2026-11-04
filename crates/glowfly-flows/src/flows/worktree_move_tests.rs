@@ -8,6 +8,7 @@ use super::update;
 use glowfly_core::paths;
 use glowfly_core::settings::RepoGroup;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::WorktreeEffect;
 use glowfly_model::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg, TabsMsg};
 use glowfly_model::state::repo_groups::members;
@@ -113,9 +114,9 @@ fn a_move_retargets_tabs_and_lists() {
     form(&mut st).folder = to.display().to_string();
 
     let fx = submit(&mut st);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "the tabs are saved");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveRecent(_))));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))), "the tabs are saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Recent(_)))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     finish(&mut st, fx);
     assert!(st.modal.is_none());
     assert!(!side.exists() && to.join("a.txt").exists());

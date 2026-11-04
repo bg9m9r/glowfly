@@ -6,7 +6,7 @@
 use super::tests::{scratch_repo, state};
 use super::update;
 use crate::effect::OsEffect;
-use crate::effect::{Effect, LoadKind};
+use crate::effect::{Effect, LoadKind, SaveEffect};
 use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
 use crate::onboarding::{OnboardingEffect, OnboardingMsg as O, StartChoice};
 use crate::state::onboarding::{SAVED_LOG, WelcomeStep};
@@ -42,7 +42,7 @@ fn step(st: &AppState) -> Option<WelcomeStep> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 /// The first Ok line in the activity log, if any.

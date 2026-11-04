@@ -13,6 +13,7 @@ use glowfly_core::settings::ExternalTools;
 use glowfly_core::undo::Action;
 use glowfly_model::effect::ConflictEffect;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg, StageMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::PrefPage;
@@ -260,7 +261,7 @@ fn running_in_view(name: &str) -> (AppState, PathBuf) {
 }
 
 fn writes(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LocalOp { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Files(FilesEffect::LocalOp { .. })))
 }
 
 /// Mark resolved's first step: the working file is read for conflict markers.

@@ -5,6 +5,7 @@ use super::tests::{finish, git, scratch_repo, state};
 use super::update;
 use glowfly_core::gitcli::args;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, KnownRepo};
 use glowfly_model::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StageMsg, TabsMsg, TrustMsg};
 use glowfly_model::state::palette::{Palette, PaletteCommand, entries};
@@ -145,7 +146,7 @@ fn trusting_releases_what_was_held() {
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }));
     assert!(st.modal.is_none());
     assert_eq!(recorded(&st.settings, &real), Some(RepoTrust::Trusted));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert!(
         fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, .. }) if opts.trusted)),
         "{fx:?}"

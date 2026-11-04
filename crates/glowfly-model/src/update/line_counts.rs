@@ -1,6 +1,7 @@
 //! Line counts: the graph's per-commit totals, per-file counts of the selected commit and of
 //! the working tree.
 
+use crate::effect::HistoryEffect;
 use crate::effect::{Effect, LineCountsEffect};
 use crate::state::{AppState, Selection};
 use git2::Oid;
@@ -14,7 +15,7 @@ pub(super) fn want_totals(st: &mut AppState, oids: Vec<Oid>, fx: &mut Vec<Effect
         oids.into_iter().filter(|o| !st.session.reads.stats.contains_key(o) && !st.session.reads.stats_pending.contains(o)).collect();
     if !missing.is_empty() {
         st.session.reads.stats_pending.extend(missing.iter().copied());
-        fx.push(Effect::Stats { workdir, oids: missing });
+        fx.push(Effect::History(HistoryEffect::Stats { workdir, oids: missing }));
     }
 }
 

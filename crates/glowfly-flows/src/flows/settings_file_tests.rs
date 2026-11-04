@@ -5,6 +5,7 @@
 
 use crate::flows::state;
 use glowfly_core::settings::{LoadProblem, Settings};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, OsEffect, PrefsEffect};
 use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
 use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg};
@@ -36,7 +37,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// Flips a setting that saves at once when changed (the toolbar's labels).
@@ -104,7 +105,7 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&real).unwrap());
     assert!(st.toasts.iter().any(|t| t.ok && t.text.contains("weren't kept")), "told it worked, and that the edits went");
     let fx = toggle_labels(&mut st);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.auto_fetch_minutes == 17 && !s.toolbar_labels), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.auto_fetch_minutes == 17 && !s.toolbar_labels), "{fx:?}");
 }
 
 #[test]
@@ -145,7 +146,7 @@ fn startup_steps_save_nothing_while_the_file_is_held() {
     assert_eq!(st.settings.updates.notes_seen, seen);
     assert_eq!(st.settings.auto_fetch_minutes, 17);
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.updates.notes_seen == seen && s.auto_fetch_minutes == 17)),
+        fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.updates.notes_seen == seen && s.auto_fetch_minutes == 17)),
         "{fx:?}"
     );
 }
@@ -235,7 +236,7 @@ fn what_glowfly_records_by_itself_is_no_edit_and_its_newer_records_are_kept() {
     assert!(s.updates.notes_seen.is_some(), "the notes recorded this start");
     assert!(
         fx.iter()
-            .any(|e| matches!(e, Effect::SaveSettings(s) if s.updates.last_checked == Some(1_800_000_000) && s.auto_fetch_minutes == 17)),
+            .any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.updates.last_checked == Some(1_800_000_000) && s.auto_fetch_minutes == 17)),
         "the newer records are written into the file's settings: {fx:?}"
     );
 }

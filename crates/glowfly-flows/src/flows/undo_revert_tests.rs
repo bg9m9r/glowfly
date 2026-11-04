@@ -8,6 +8,7 @@ use super::update;
 use glowfly_core::repo::{DiffTarget, Reverted};
 use glowfly_core::undo::{Action, Discarded};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::msg::{DiffMsg, Inactive, JobMsg, Msg, RepoMsg, RevertWhat, StageMsg, TabsMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::lines::LineClick::Only;
@@ -65,7 +66,7 @@ fn revert_hunk_with_whitespace_hidden_undo_and_redo() {
     let (mut st, dir, _) = committed("undo-revert-hunk", OLD, NEW, true);
     let msg = revert_hunk(&st);
     let fx = run(&mut st, msg);
-    assert!(matches!(&fx[..], [Effect::Revert { req, .. }] if req.ignore_whitespace), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::Revert { req, .. })] if req.ignore_whitespace), "{fx:?}");
     finish(&mut st, fx);
     let reverted = "a\n        x\n        y\nb\n";
     assert_eq!(read(&dir), reverted, "only the shown change is reverted");
@@ -143,7 +144,7 @@ fn a_revert_for_a_parked_tab_goes_to_its_history() {
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
     let effect = run(&mut st, Msg::Stage(StageMsg::RevertFile(DiffTarget::Commit(head, "f.txt".into()))))
         .into_iter()
-        .find(|e| matches!(e, Effect::Revert { .. }))
+        .find(|e| matches!(e, Effect::Files(FilesEffect::Revert { .. })))
         .expect("a revert");
     run(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)));
     let reply = glowfly_runner::testing::execute(effect).expect("a result");

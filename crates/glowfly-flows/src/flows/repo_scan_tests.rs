@@ -3,6 +3,7 @@
 use super::tests::{drive, git, state};
 use super::update;
 use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, ReposEffect};
 use glowfly_model::msg::{FolderPurpose, Msg, PrefsMsg, ReposMsg, ScanFound};
 use glowfly_model::state::repo_scan::{FoundRepo, project_folders};
@@ -29,7 +30,7 @@ fn scans(fx: &[Effect]) -> Vec<(u64, Vec<PathBuf>)> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 #[test]

@@ -2,6 +2,8 @@
 //! reordering and opening favorites, marking folders that are gone and removing them.
 
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
+use crate::effect::SessionEffect;
 use crate::msg::{FolderCheck, Msg, RecentMsg};
 use crate::state::repo_groups::prune;
 use crate::state::repo_lists::{favorites, forget_confirm, is_favorite, is_listed, is_missing, paths_to_check};
@@ -16,7 +18,7 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
         RecentMsg::ClearRecent => {
             if !st.recent.is_empty() {
                 st.recent.clear();
-                fx.push(Effect::SaveRecent(Vec::new()));
+                fx.push(Effect::Save(SaveEffect::Recent(Vec::new())));
             }
         }
         RecentMsg::SetFavorite { path, favorite: true } => {
@@ -49,7 +51,7 @@ fn remove_recent(st: &mut AppState, p: &Path, fx: &mut Vec<Effect>) {
     let before = st.recent.len();
     st.recent.retain(|r| !paths::same_spelling(r, p));
     if st.recent.len() != before {
-        fx.push(Effect::SaveRecent(st.recent.clone()));
+        fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
     }
 }
 
@@ -73,7 +75,7 @@ fn remove_missing(st: &mut AppState, fx: &mut Vec<Effect>) {
     let before = recent.len();
     st.recent = recent.into_iter().filter(|r| !is_missing(st, r)).collect();
     if st.recent.len() != before {
-        fx.push(Effect::SaveRecent(st.recent.clone()));
+        fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
     }
     let favorites = std::mem::take(&mut st.settings.favorite_repos);
     let before = favorites.len();
@@ -88,7 +90,7 @@ fn remove_missing(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn check_folders(st: &AppState, fx: &mut Vec<Effect>) {
     let paths = paths_to_check(st);
     if !paths.is_empty() {
-        fx.push(Effect::CheckRepoFolders(paths));
+        fx.push(Effect::Session(SessionEffect::CheckRepoFolders(paths)));
     }
 }
 

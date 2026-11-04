@@ -9,6 +9,7 @@ use crate::flows::{drive, finish_keeping, git};
 use glowfly_core::forge::{MergeMethod, Merged};
 use glowfly_core::undo::UndoKind;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
 use glowfly_model::state::AppState;
@@ -252,7 +253,7 @@ fn the_merge_method_is_remembered_per_repository() {
     st.session.pull_request.view.as_mut().unwrap().forms.merge_method = Some(MergeMethod::Rebase);
     let fx = run(&mut st, PullRequestMsg::Merge);
     assert!(fx.iter().any(
-        |e| matches!(e, Effect::SaveSettings(s) if s.merge_method_for(&st.snap.as_ref().unwrap().real_workdir) == Some(MergeMethod::Rebase))
+        |e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.merge_method_for(&st.snap.as_ref().unwrap().real_workdir) == Some(MergeMethod::Rebase))
     ));
 
     // Opened again: preselected, while the repository allows it.

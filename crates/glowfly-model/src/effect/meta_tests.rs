@@ -233,6 +233,61 @@ fn load_diff_and_job_effects_keep_their_metadata() {
     }
 }
 
+/// The Files, History, Save and Session areas (#373): what main gave the flat `LocalOp`,
+/// `Revert`, `LoadFileHistory`, `SearchPaths`, `Stats`, `SaveSettings`, `SaveRecent`, `SaveTabs`,
+/// `CheckRepoFolders` and `ReadTabGroups`.
+#[test]
+fn files_history_save_and_session_effects_keep_their_metadata() {
+    use crate::effect::{HistoryEffect, LocalOp, SaveEffect, SessionEffect};
+    use glowfly_core::repo::{DiffTarget, HistoryStart, RevertPart, RevertRequest};
+    let w = folder("moved-3");
+    let oid = git2::Oid::zero();
+    let scoped = Some(w.as_path());
+    let req =
+        RevertRequest { target: DiffTarget::Commit(oid, "a.txt".into()), part: RevertPart::File, dest: None, ignore_whitespace: false };
+    let cases: Vec<(Effect, Meta, SandboxRule)> = vec![
+        (
+            Effect::Files(FilesEffect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll }),
+            ("local-op", scoped, scoped, true),
+            SandboxRule::Run,
+        ),
+        (Effect::Files(FilesEffect::Revert { workdir: w.clone(), req }), ("revert", scoped, scoped, true), SandboxRule::Run),
+        (
+            Effect::History(HistoryEffect::FileHistory {
+                workdir: w.clone(),
+                path: "a.txt".into(),
+                start: HistoryStart::Head,
+                limit: 10,
+                folder: false,
+                generation: 1,
+            }),
+            ("file-history", scoped, None, true),
+            SandboxRule::Run,
+        ),
+        (
+            Effect::History(HistoryEffect::SearchPaths { workdir: w.clone(), request: 1, terms: Vec::new(), oids: vec![oid] }),
+            ("search-paths", scoped, None, true),
+            SandboxRule::Run,
+        ),
+        (Effect::History(HistoryEffect::Stats { workdir: w.clone(), oids: vec![oid] }), ("stats", scoped, None, true), SandboxRule::Run),
+        (Effect::Save(SaveEffect::Settings(Box::default())), ("save-settings", None, None, true), SandboxRule::Save),
+        (Effect::Save(SaveEffect::Recent(vec![w.clone()])), ("save-recent", None, None, true), SandboxRule::Save),
+        (
+            Effect::Save(SaveEffect::Tabs { paths: vec![w.clone()], labels: vec![None], active: 0 }),
+            ("save-tabs", None, None, true),
+            SandboxRule::Save,
+        ),
+        (Effect::Session(SessionEffect::CheckRepoFolders(vec![w.clone()])), ("check-repo-folders", None, None, true), SandboxRule::Run),
+        (Effect::Session(SessionEffect::ReadTabGroups(vec![w.clone()])), ("read-tab-groups", None, None, true), SandboxRule::Run),
+    ];
+    for (effect, expected, sandbox) in &cases {
+        assert_eq!(meta(effect), *expected, "{effect:?}");
+        assert_eq!(effect.holds(), expected.2, "{} holds what it queues on", expected.0);
+        assert_eq!(effect.stop_key(), None, "{} can't be stopped", expected.0);
+        assert_eq!(effect.sandbox(), *sandbox, "{}'s whole-app tests rule", expected.0);
+    }
+}
+
 /// `RunGit`'s queue, pool hold and stop key as main had them: a job of only fetches and pushes
 /// doesn't queue but holds the pool, one that names `.` or runs anything else queues, and only a
 /// `stoppable` job has a stop.

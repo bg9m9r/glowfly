@@ -6,6 +6,7 @@ use super::update;
 use glowfly_core::askpass::Prompt;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk, HunkOp, LoadOptions};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::CredentialMsg;
@@ -57,7 +58,7 @@ fn select_line(st: &mut AppState) {
 
 fn op(fx: &[Effect]) -> Option<&LocalOp> {
     match fx {
-        [Effect::LocalOp { op, .. }] => Some(op),
+        [Effect::Files(FilesEffect::LocalOp { op, .. })] => Some(op),
         _ => None,
     }
 }
@@ -285,7 +286,7 @@ fn s_stages_the_open_file_end_to_end() {
 
 fn revert_part(fx: &[Effect]) -> Option<&glowfly_core::repo::RevertPart> {
     match fx {
-        [Effect::Revert { req, .. }] => Some(&req.part),
+        [Effect::Files(FilesEffect::Revert { req, .. })] => Some(&req.part),
         _ => None,
     }
 }

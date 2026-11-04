@@ -7,6 +7,7 @@ use super::selection_tests::fixture;
 use super::tests::{drive, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::HistoryStart;
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::effect::SelectionEffect;
 use glowfly_model::effect::{BlameRequest, Effect, FileTextRequest};
 use glowfly_model::msg::{BlameMsg, DashboardMsg, HistoryMsg, Msg, RepoMsg, SearchMsg, SelectionMsg};
@@ -94,7 +95,7 @@ fn blame_try_again_in_a_held_repository_asks_for_trust() {
 fn history_loads(fx: &[Effect]) -> Vec<(HistoryStart, usize)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadFileHistory { start, limit, .. } => Some((start.clone(), *limit)),
+            Effect::History(HistoryEffect::FileHistory { start, limit, .. }) => Some((start.clone(), *limit)),
             _ => None,
         })
         .collect()

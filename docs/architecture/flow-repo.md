@@ -27,7 +27,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Paths are resolved on disk once, when a repository loads (`Snapshot::real_workdir`, with its identity `Snapshot::folder`).
 - `update` compares paths with the pure `paths::same_spelling` plus the identities worker threads found (`AppState::same_folder`, `state/known_folders.rs`); it never folds case, which is the volume's business.
 - Settings saved per repository are keyed by `real_workdir` through `settings::repo_keys`.
-- Worktree tab groups: each `Tab::group` is its repository's common git dir (`Snapshot::common`, or for restored tabs `Effect::ReadTabGroups`, read at startup without loading them).
+- Worktree tab groups: each `Tab::group` is its repository's common git dir (`Snapshot::common`, or for restored tabs `SessionEffect::ReadTabGroups`, read at startup without loading them).
 - The pure rules for tab group blocks, drops and regrouping are in `state/tab_groups.rs`, applied by `update/tab_groups.rs` and drawn by `ui/tabs.rs`.
 - Worktrees and branches: a local branch another worktree has checked out, or is rebasing or bisecting, is found by its exact name (`WorktreeInfo::uses`) and `WorktreeInfo::current` (`state/worktree_branches.rs`), never by comparing folder spellings.
 - That one source refuses checkout, delete and fast-forward of such a branch, and rename and force push of one being rebased or bisected (git renames one merely checked out elsewhere), naming the worktree and what it is doing; the LOCAL row's tooltip says the same.

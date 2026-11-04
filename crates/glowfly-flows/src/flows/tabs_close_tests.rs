@@ -7,6 +7,7 @@ use super::update;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::conflict_rows::Trivial;
 use glowfly_core::repo::{Choice, CommitTemplate};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{BackgroundEffect, Effect};
 use glowfly_model::msg::{CloseRequest, Msg, TabsMsg};
 use glowfly_model::state::conflict::ConflictView;
@@ -37,7 +38,7 @@ pub(super) fn names(st: &AppState) -> Vec<String> {
 }
 
 pub(super) fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveTabs { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))).count()
 }
 
 fn draft(summary: &str) -> CommitDraft {

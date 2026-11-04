@@ -4,6 +4,7 @@
 use super::*;
 use glowfly_core::settings::Settings;
 use glowfly_core::undo::UndoKind;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::ssh::SshMsg;
 use glowfly_model::state::{AppState, RunningJob};
 use glowfly_model::update::update;
@@ -182,7 +183,7 @@ fn a_panicking_line_count_reports_a_failed_result() {
 
 #[test]
 fn a_panicking_local_op_reports_to_its_repository() {
-    let effect = Effect::LocalOp { workdir: "C:/r".into(), op: glowfly_model::effect::LocalOp::StageAll };
+    let effect = Effect::Files(FilesEffect::LocalOp { workdir: "C:/r".into(), op: glowfly_model::effect::LocalOp::StageAll });
     let msg = guarded(Recovery::of(&effect, "local-op"), || panic!("static")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
     assert!(matches!(*msg, Msg::Stage(StageMsg::LocalOpDone(Err(ref e))) if e.contains("static")));

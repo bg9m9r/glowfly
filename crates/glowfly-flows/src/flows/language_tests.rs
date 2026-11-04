@@ -8,6 +8,7 @@ use super::update;
 use glowfly_core::i18n::Lang;
 use glowfly_core::identity::Identity;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{CommitMsg, Msg, PrefsMsg, RecentMsg, RepoMsg};
 use glowfly_model::onboarding::OnboardingMsg;
 use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
@@ -33,7 +34,7 @@ fn choosing_a_language_saves_it() {
     st.settings.language = "es".into();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
     let saved = fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(s.clone()),
+        Effect::Save(SaveEffect::Settings(s)) => Some(s.clone()),
         _ => None,
     });
     let saved = saved.expect("the settings are saved");

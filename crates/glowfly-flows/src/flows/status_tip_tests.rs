@@ -5,6 +5,7 @@ use crate::flows::{drive, scratch_repo, state};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::opens::Os;
 use glowfly_core::repo::{self, SlowStatus, StatusSpeedups};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind, StatusRead};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -57,7 +58,7 @@ pub(super) fn check_on(st: &mut AppState, s: StatusSpeedups, os: Os) -> Vec<Effe
 }
 
 pub(super) fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 pub(super) fn marked(st: &AppState) -> bool {

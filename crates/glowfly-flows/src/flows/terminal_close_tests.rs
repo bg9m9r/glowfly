@@ -6,6 +6,7 @@ use super::terminal_tests::{open_with_panel, run, terminal, workdir};
 use super::update;
 use glowfly_core::terminal::ShellActivity;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::terminal::SessionStatus;
 use glowfly_model::state::{AppState, Modal};
@@ -170,7 +171,7 @@ fn closing_the_last_tab_after_the_answer_hides_the_panel() {
     run(&mut st, T::CloseTab(one));
     let fx = activity(&mut st, one, ShellActivity::Idle);
     let saved = fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(s.terminal.panel_open),
+        Effect::Save(SaveEffect::Settings(s)) => Some(s.terminal.panel_open),
         _ => None,
     });
     assert_eq!(saved, Some(false));

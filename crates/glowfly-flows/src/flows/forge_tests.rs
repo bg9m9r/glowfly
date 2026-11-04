@@ -3,6 +3,7 @@
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::forge::{Account, Connection, Provider, Target};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::ForgeMsg;
 use glowfly_model::msg::{Msg, RepoMsg};
@@ -134,7 +135,7 @@ fn the_repository_chooses_whether_year_like_branch_names_name_issues() {
     assert_eq!(branch_issue(&st, "123-fix").as_deref(), Some("123"));
 
     let fx = update(&mut st, Msg::Forge(ForgeMsg::SetYearBranches(true)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(..))), "the choice is saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(..)))), "the choice is saved");
     assert_eq!(branch_issue(&st, "2024-cleanup").as_deref(), Some("2024"));
 
     // Kept for the repository: opening it again reads it.

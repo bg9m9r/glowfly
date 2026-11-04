@@ -7,12 +7,15 @@ use super::revert_tests::{head, one_hunk, run, with_diff};
 use super::tests::{drive, git, scratch_repo, state};
 use glowfly_core::repo::{DiffTarget, RevertPart, RevertRequest, Reverted};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg, RevertWhat, SelectionMsg, StageMsg};
 use glowfly_model::state::{AppState, Selection};
 
 fn parts(fx: &[Effect]) -> Vec<&RevertPart> {
-    fx.iter().filter_map(|e| if let Effect::Revert { req: RevertRequest { part, .. }, .. } = e { Some(part) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Files(FilesEffect::Revert { req: RevertRequest { part, .. }, .. }) = e { Some(part) } else { None })
+        .collect()
 }
 
 fn select_line(st: &mut AppState, target: &DiffTarget) {

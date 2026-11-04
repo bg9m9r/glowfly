@@ -13,6 +13,7 @@ use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::undo::Action;
 use glowfly_model::conflict_check::{CheckRequest, ConflictCheckMsg};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::state::blame::BlameView;
 use glowfly_model::state::conflict::ConflictView;
@@ -42,7 +43,9 @@ fn open_history(st: &mut AppState, path: &str) -> Vec<Effect> {
 
 /// The generations of the history loads among `fx`.
 fn history_loads(fx: &[Effect]) -> Vec<u64> {
-    fx.iter().filter_map(|e| if let Effect::LoadFileHistory { generation, .. } = e { Some(*generation) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::History(HistoryEffect::FileHistory { generation, .. }) = e { Some(*generation) } else { None })
+        .collect()
 }
 
 /// A failed history load of `path` at `generation`, as the runner would report it.
@@ -341,7 +344,7 @@ fn a_stats_result_for_a_parked_tab_is_dropped_and_asked_again() {
     select(&mut st, 0);
     let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("a has a commit");
     st.session.reads.stats.clear();
-    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::Stats { oids, .. } if oids == &[head]));
+    let asks = |fx: &[Effect]| fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::Stats { oids, .. }) if oids == &[head]));
     let fx = run(&mut st, Msg::Repo(RepoMsg::WantStats(vec![head])));
     assert!(asks(&fx), "a's stats are asked for");
 
