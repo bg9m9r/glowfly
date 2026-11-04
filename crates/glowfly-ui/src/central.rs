@@ -20,8 +20,8 @@ use glowfly_model::msg::RebaseMsg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::SelectionMsg;
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::layout::Pane;
+use glowfly_model::state::{AppState, ViewState};
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
 /// keyboard is outside the shell), Preferences (on the Save / Revert bar's buttons, the

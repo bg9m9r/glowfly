@@ -33,7 +33,7 @@ use glowfly_model::state::forge_filters::{self, IssueView, PrView};
 use glowfly_model::state::layout::Pane;
 use glowfly_model::state::panel_layout::Fit;
 use glowfly_model::state::session_view::empty_sections::Folding;
-use glowfly_model::state::{AppState, ViewState, ForgeState, Selection, Status};
+use glowfly_model::state::{AppState, ForgeState, Selection, Status, ViewState};
 
 type Shown<'a> = dyn Fn(&str) -> bool + 'a;
 
@@ -77,7 +77,8 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, fit: Fit, 
 
 fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let actions = glowfly_model::state::section_actions::all(st);
-    let hint = glowfly_model::state::hints::view(st, view.sections.prs).filter(|h| h.place == glowfly_model::state::hints::Place::LeftPanel);
+    let hint =
+        glowfly_model::state::hints::view(st, view.sections.prs).filter(|h| h.place == glowfly_model::state::hints::Place::LeftPanel);
     let t = st.settings.lang();
     let open_tabs = glowfly_model::state::tabs::open_places(&st.tabs);
     let open_issue = st.session.issue.view.as_ref().map(|v| v.key.clone());

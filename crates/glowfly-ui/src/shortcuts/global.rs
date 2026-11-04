@@ -27,7 +27,7 @@ use glowfly_model::msg::{
 use glowfly_model::state::graph_rows::GraphKey;
 use glowfly_model::state::history::HistoryPane;
 use glowfly_model::state::layout::{Pane, Panel};
-use glowfly_model::state::{AppState, ViewState, PrefPage, Selection};
+use glowfly_model::state::{AppState, PrefPage, Selection, ViewState};
 use glowfly_model::terminal::TerminalMsg;
 
 /// Turns this frame's shortcut presses into messages (or view-state changes, for the search

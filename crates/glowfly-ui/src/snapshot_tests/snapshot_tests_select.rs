@@ -187,8 +187,10 @@ fn graph_multi_menu() {
 
 /// A harness that only runs the shell's Esc handling.
 fn esc_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
-    crate::snapshot_check::builder()
-        .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| st.with_view(|st, view| super::escape_key(ctx, st, view, msgs)), (st, Vec::new()))
+    crate::snapshot_check::builder().build_state(
+        |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| st.with_view(|st, view| super::escape_key(ctx, st, view, msgs)),
+        (st, Vec::new()),
+    )
 }
 
 fn press_esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) {

@@ -17,7 +17,7 @@ use glowfly_core::forge::Account;
 use glowfly_model::msg::{CloneMsg, DashboardMsg, Msg, PrefsMsg, RepoMsg};
 use glowfly_model::state::dashboard::{AccountState, DashShow, Phase, service_header};
 use glowfly_model::state::dashboard_rows::{Row, counts, empty_hint, empty_text, sections};
-use glowfly_model::state::{AppState, ViewState, PrefPage};
+use glowfly_model::state::{AppState, PrefPage, ViewState};
 
 pub(super) const NO_MATCH_TITLE: &str = "Nothing matches the filter";
 const NO_MATCH_HINT: &str = "The filter looks at each title, number, author and repository.";

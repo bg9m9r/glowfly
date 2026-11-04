@@ -21,8 +21,8 @@ use eframe::egui::{
     vec2,
 };
 use glowfly_model::msg::{AppMsg, Msg};
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::window_chrome::{AltFrame, WindowCmd};
+use glowfly_model::state::{AppState, ViewState};
 
 /// The bar's height, and its tabs' (along its bottom edge).
 pub(super) const TITLE_H: f32 = 44.0;
@@ -114,8 +114,7 @@ fn menu_button(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, at: Pos2,
     view.alt_tap = tap;
     let wanted = st.cues.chrome.mnemonics().then(|| view.menu_keys.request.take()).flatten();
     // Not while a dialog blocks the bar or the terminal has the keyboard.
-    let toggle =
-        fired && st.cues.chrome.alt_opens_menu() && !view.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
+    let toggle = fired && st.cues.chrome.alt_opens_menu() && !view.terminal.focused && ctx.memory(|m| m.allows_interaction(ui.layer_id()));
     let was_open = menu_anchor::open_id(&ctx, id).is_some();
     let cmd = if let Some(m) = wanted {
         // Alt was used: letting go of it is no tap.

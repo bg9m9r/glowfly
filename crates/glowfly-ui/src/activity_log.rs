@@ -17,10 +17,10 @@ use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, RichText, Sens
 use glowfly_core::settings::SizedPanel;
 use glowfly_model::logs::{LogKind, LogsMsg};
 use glowfly_model::msg::Msg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::activity_copy::copy_log_blocked;
 use glowfly_model::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use glowfly_model::state::tip::Tip;
+use glowfly_model::state::{AppState, ViewState};
 
 pub(super) const HEADER_H: f32 = 40.0;
 /// The panel's side margin, which the hairline runs through.

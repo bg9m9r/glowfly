@@ -263,14 +263,7 @@ pub fn park(st: &mut AppState) -> Parked {
     // The settings are shared by all tabs and may change while this one is parked.
     st.session.tab_view.parked_in = Some((st.settings.diff_mode, st.settings.diff_layout));
     let view = std::mem::take(&mut st.view.tab);
-    Parked {
-        session: st.session.park(),
-        view,
-        snap: st.snap.take(),
-        issue_form: super::issue_create::park(st),
-        since: None,
-        glance: None,
-    }
+    Parked { session: st.session.park(), view, snap: st.snap.take(), issue_form: super::issue_create::park(st), since: None, glance: None }
 }
 
 fn unpark(st: &mut AppState, p: Parked) {

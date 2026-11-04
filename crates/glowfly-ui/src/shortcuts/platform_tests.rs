@@ -33,8 +33,10 @@ fn harness() -> Harness<'static, Keys> {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     // Three tabs, so the last one is tab 2.
     st.tabs = vec![Tab::empty(), Tab::empty(), Tab::empty()];
-    let mut h = crate::snapshot_check::builder()
-        .build_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
+    let mut h = crate::snapshot_check::builder().build_state(
+        |ctx, k: &mut Keys| k.st.with_view(|st, view| super::input(ctx, st, view, &mut k.msgs)),
+        Keys { st, msgs: Vec::new() },
+    );
     h.run();
     h
 }

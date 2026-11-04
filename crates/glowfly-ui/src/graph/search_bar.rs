@@ -15,7 +15,7 @@ use glowfly_core::matching::contains_lower;
 use glowfly_model::keymap::BindingId;
 use glowfly_model::msg::{Msg, SearchMsg};
 use glowfly_model::state::history_index::HistoryCount;
-use glowfly_model::state::{AppState, ViewState, Selection};
+use glowfly_model::state::{AppState, Selection, ViewState};
 
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;

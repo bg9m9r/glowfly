@@ -51,10 +51,10 @@ use glowfly_model::msg::BranchMsg;
 use glowfly_model::msg::GraphMsg;
 use glowfly_model::msg::LoadMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
 use glowfly_model::state::tip::Tip;
 use glowfly_model::state::worktrees::{open_blocked, wip_tooltip};
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::worktree::WorktreeMsg;
 use labels::Tip as ChipTip;
 use lane_colours::RowColours;
@@ -125,7 +125,9 @@ pub fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache: &mut 
         let fitted = header::column_header(ui, t, input, &mut view.column_drag, msgs);
         let (cols_cfg, widths, graph_w, inline) = (fitted.cfg, fitted.widths, fitted.graph_w, fitted.refs_inline);
         // A tip about the graph sits pinned under the header, pushing the rows down.
-        if let Some(h) = glowfly_model::state::hints::view(st, view.sections.prs).filter(|h| h.place == glowfly_model::state::hints::Place::Graph) {
+        if let Some(h) =
+            glowfly_model::state::hints::view(st, view.sections.prs).filter(|h| h.place == glowfly_model::state::hints::Place::Graph)
+        {
             crate::widgets::hint_row::show(ui, t, &h, msgs);
         }
         // How many matches fill the graph, for a filtering search loading further back.

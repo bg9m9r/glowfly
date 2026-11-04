@@ -20,7 +20,7 @@ fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(String::new) };
     let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
-            super::input(ctx, &mut k.st, &mut k.msgs);
+            k.st.with_view(|st, view| super::input(ctx, st, view, &mut k.msgs));
             if let Some(text) = k.field.as_mut() {
                 egui::CentralPanel::default().show(ctx, |ui| ui.text_edit_singleline(text).request_focus());
             }

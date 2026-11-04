@@ -7,8 +7,8 @@
 use eframe::egui::{self, Color32, Event, InputState, Modifiers, Stroke, TextFormat, TextStyle, WidgetText, text::LayoutJob};
 use glowfly_core::i18n::Lang;
 use glowfly_model::keymap::KeyName;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::{self, Mnemonic, TopMenu};
+use glowfly_model::state::{AppState, ViewState};
 
 /// Alt alone: no Ctrl, Shift or Cmd (AltGr reads as Ctrl+Alt on Windows).
 fn alt_only(m: Modifiers) -> bool {
