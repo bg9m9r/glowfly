@@ -42,7 +42,10 @@ fn source(edited: bool) -> String {
 /// `commit_edit`), and wrapping on.
 fn with_wrap_repo(name: &str, theme: ThemeChoice, commit_edit: bool) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
-    git(&dir, &["config", "core.autocrlf", "false"], "2026-01-11T10:00:00+00:00");
+    // wrap.rs keeps its bytes as written. Only wrap.rs: turning core.autocrlf off for the whole
+    // repository would make the demo's files checked out with CRLF (where the system config sets
+    // core.autocrlf) look modified whenever git re-reads them for their racy file times.
+    std::fs::write(dir.join(".git/info/attributes"), "wrap.rs -text\n").unwrap();
     let d = "2026-01-11T10:00:00+00:00";
     std::fs::write(dir.join("wrap.rs"), source(false)).unwrap();
     git(&dir, &["add", "wrap.rs"], d);

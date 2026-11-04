@@ -160,5 +160,4 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 ### Flaky tests
 
 - `trust_patch_export_tests::a_patch_export_is_checked_again_before_git_diff_runs` fails about one run in three locally ("nothing was written")
-- `snapshot_tests_wrap::file_history_wrapped` fails now and then
 - `review_threads::graphql_errors_leave_a_note` failed on the Windows runner with os error 10055 (socket buffers used up); the local mock-server tests may leak sockets
