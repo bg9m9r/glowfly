@@ -380,3 +380,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - S5: the segmented thumb's "Graph" sits low (7 px above the caps, 5 px below the baseline)
 - A Small segmented control would trip `paint_target`'s hit assert (20 px options)
 - The state-fill ratchet misses fills painted through locals or straight from `hover_layer` (the dialog header, repository rows, the split menu, theme picker cards); move them onto the shared painter and let the check see them
+
+### The firefly loader (D20)
+- Roll the fireflies out to the remaining loading panes by the words rule (words that only say "loading" become the loader's label); and the hardcoded English "Loading your repositories…" and "Loading forks…"

@@ -79,7 +79,7 @@ Button "Resize commit column"
 Button "Resize date column"
 Unknown "Commit graph"
 Button "Write release notes"
-Label "Searching older commits…"
+ProgressIndicator "Searching older commits…"
 painted:
   "demo"
   "Repository"

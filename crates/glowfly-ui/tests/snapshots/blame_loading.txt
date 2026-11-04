@@ -56,7 +56,7 @@ Label "at HEAD"
 Button "Close blame"
 Button "Back" [disabled]
 Button "File history"
-Label "Loading the blame…"
+ProgressIndicator "Loading the blame…"
 painted:
   "demo"
   "Repository"

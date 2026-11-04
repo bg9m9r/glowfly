@@ -4,6 +4,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_compare::selected;
+use super::snapshot_tests_fireflies::AT;
 use super::snapshot_tests_history::with_file_view;
 use super::snapshot_tests_pull_request::with_pr;
 use crate::msg::{BlameMsg, HistoryMsg, Msg, SelectionMsg};
@@ -29,16 +30,31 @@ fn click(h: &mut H, label: &str) -> Vec<Msg> {
     std::mem::take(&mut h.state_mut().1)
 }
 
-#[test]
-fn blame_loading() {
-    let (mut st, dir) = with_repo(ThemeChoice::Dark, "pane-blame-loading");
+/// Blame loading in `theme`, the frame drawn at the loader sheet's moment (`AT`).
+fn blame_loading_in(theme: ThemeChoice, name: &str, fixture: &str) {
+    let dark = theme == ThemeChoice::Dark;
+    let (mut st, dir) = with_repo(theme, fixture);
     st.session.blame.view = Some(BlameView::loading("src/app.rs".into(), None));
-    let mut h = harness(st, true);
+    let mut h = harness(st, dark);
     h.run_steps(3);
-    assert!(h.query_by_label("Loading the blame…").is_some());
-    h.check_snapshot("blame_loading");
+    // The harness's clock, pinned for the frame the image takes.
+    h.input_mut().time = Some(AT);
+    h.step();
+    let node = h.get_by_label("Loading the blame…");
+    assert_eq!(node.role(), eframe::egui::accesskit::Role::ProgressIndicator, "the words are the loader's label");
+    h.check_snapshot(name);
     drop(h);
     remove_fixture(&dir);
+}
+
+#[test]
+fn blame_loading() {
+    blame_loading_in(ThemeChoice::Dark, "blame_loading", "pane-blame-loading");
+}
+
+#[test]
+fn blame_loading_light() {
+    blame_loading_in(ThemeChoice::Light, "blame_loading_light", "pane-blame-loading-light");
 }
 
 #[test]

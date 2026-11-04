@@ -10,6 +10,7 @@ source file, update its line here.
 - `widgets/icon_snap.rs`: painted glyphs on the pixel grid: an icon's centre and the plus's (and minus's) ends snapped for the line width at any pixel ratio.
 - `tab_glyph.rs`: the tab bars' painted close × and new-tab + (one stroke and hover box for both, at least a 24 px hit area).
 - `dots.rs`: three dots that say work is running (the status bar's job, a tab's state slot), pulsing, or still under reduce motion.
+- `widgets/fireflies.rs`: the firefly loader of a loading pane or row: three `lantern` dots lit in turn, still at 60% under reduce motion, asking for frames only while seen; tests in `fireflies_tests.rs`.
 - `widgets/quiet_target.rs`: a quiet target a view lays out itself (a tab, the tab list and title-bar menu buttons, a section header's + and ⋯, a Git Flow group's +, a row inset in a padded pane on `radius::SM`, a palette row, the diff's comment button), lit and ringed through `paint_target`.
 - `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, Preferences and the File view.
 - `ghost::close_view`: the × that closes a view (the diff, blame, a history, an issue or pull request), with Close and its Esc cap in the tooltip.

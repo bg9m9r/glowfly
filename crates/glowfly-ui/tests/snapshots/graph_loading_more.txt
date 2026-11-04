@@ -78,7 +78,7 @@ Button "Fix build on Windows"
 Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
-Label "Loading more commits…"
+ProgressIndicator "Loading more commits…"
 painted:
   "demo"
   "Repository"

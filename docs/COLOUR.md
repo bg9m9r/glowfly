@@ -114,7 +114,7 @@ Views never name a hex value: they read the active palette through `color::text(
 | primary ink | `on_primary` | Text and icons on a primary fill (dark ink on the gold of Dusk and on the dark themes' accents, white on the light ones'). |
 | danger | `danger`, `danger_off` | Destructive buttons. |
 | tag | `tag_bg`, `tag_fg` | Tag chips in the graph: the plum of the icon's lower edge in Dusk and Dawn, and in the Garden pair and high contrast too. |
-| lantern | (not a theme-file key; theme files keep their base's) | "You are here", and nothing else: the glow and rim round the checked-out commit's node and the WIP row's lantern. Dusk's gold (its accent); a pale amber in Graphite and Midnight (#f9cb92, OKLCH 0.87 0.09 72); an orange on the light themes' paper (#cc590d, 0.60 0.164 46), where a 3:1 amber at chroma 0.10 reads brown; `text` in high contrast, which draws no glow. At least 3:1 on the row's bg, hover, selected fills and lane bands. On a light theme's highlighted band (a hovered branch's rows) the rim falls to about 2.6:1; accepted, as the highlight is transient and HEAD keeps its chip and lane. One glow on screen, never more. |
+| lantern | (not a theme-file key; theme files keep their base's) | "You are here", and nothing else: the glow and rim round the checked-out commit's node and the WIP row's lantern, and the firefly loader's dots (no glow; a loader is not a second "you are here" glow). Dusk's gold (its accent); a pale amber in Graphite and Midnight (#f9cb92, OKLCH 0.87 0.09 72); an orange on the light themes' paper (#cc590d, 0.60 0.164 46), where a 3:1 amber at chroma 0.10 reads brown; `text` in high contrast, which draws no glow. At least 3:1 on the row's bg, hover, selected fills and lane bands. On a light theme's highlighted band (a hovered branch's rows) the rim falls to about 2.6:1; accepted, as the highlight is transient and HEAD keeps its chip and lane. One glow on screen, never more. |
 
 ### Status
 
@@ -346,7 +346,8 @@ Besides those:
 - A form's or card's marks are `weak`, not accent (the new code comment's icon), and a card's
   frame is `border` (its field's focus ring is still the accent).
 - The lantern (`lantern`) is used only for "you are here": the checked-out commit's glow and rim
-  and this tab's WIP lantern. It is never a selection, focus, button, chip or text colour, and it
+  and this tab's WIP lantern; the one exception is the firefly loader's dots (no glow: a loader
+  is not a second "you are here" glow). It is never a selection, focus, button, chip or text colour, and it
   is not an accent shape in the accent count.
 
 The sign-off check for a view's goldens: count the filled accent shapes on each surface. There

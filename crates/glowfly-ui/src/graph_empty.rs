@@ -28,7 +28,7 @@ pub(super) fn no_commits(ui: &mut Ui) {
 pub(super) fn reloading(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     if st.loading {
-        return pane_status::loading(ui, t.tr("common.loading"));
+        return pane_status::loader(ui, t.tr("common.loading"));
     }
     let error = st.session.tab_view.history_reload_error.as_deref().unwrap_or_default();
     let retry = Some(Msg::Repo(RepoMsg::Refresh));

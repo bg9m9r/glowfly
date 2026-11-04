@@ -98,6 +98,7 @@ start with `state/`, `update/` or `ui/`.
 - `graph/search_bar.rs`: the graph's search bar: the query field (with a painted clear button while it has text), the Highlight | Filter mode, the author picker, the match count in a fixed-width slot (so Close doesn't move as it changes) and Close.
 - `graph/worktree_wip.rs`: other worktrees' WIP rows in the graph (a dashed node in its lane's colour joined to the worktree's HEAD commit, an "Uncommitted changes · <folder>" box and the change counts).
 - `snapshot_tests/snapshot_tests_lantern.rs`: the HEAD lantern's one glow and this tab's lit WIP lantern beside another worktree's WIP row, in Dusk (Comfortable and Compact) and colour-blind safe Porcelain.
+- `snapshot_tests/snapshot_tests_fireflies.rs`: the firefly loader sheet (moving, still, on raised) in Graphite and Porcelain; the moment the moving rows and `blame_loading` show.
 
 ## Commit details and the WIP panel
 
