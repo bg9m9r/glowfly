@@ -6,6 +6,8 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::safe_directory::Refusal;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind, LocalOp};
 use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
@@ -59,7 +61,10 @@ fn remind_me_later_is_for_the_session_and_dont_show_again_saves_the_version() {
 
     let fx = run(&mut st, GitEnvMsg::HideBannerForGood);
     assert_eq!(st.settings.git_banner_hidden_for.as_deref(), Some("2.34.1"));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.git_banner_hidden_for.as_deref() == Some("2.34.1"))), "{fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.git_banner_hidden_for.as_deref() == Some("2.34.1"))),
+        "{fx:?}"
+    );
     assert_eq!(st.git_banner(), None);
     assert!(!st.git.banner_dismissed, "hidden through the setting");
     let log = st.log.last().expect("a log line");
@@ -119,7 +124,7 @@ fn discarding_needs_git_restore() {
     assert!(text.contains("needs git 2.23 or newer (you have 2.22.0)"), "{text}");
     git_version(&mut st, (2, 23, 0));
     let fx = update(&mut st, Msg::Stage(StageMsg::DiscardFile("a.txt".into())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::DiscardFile(p), .. }] if p == "a.txt"), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::DiscardFile(p), .. })] if p == "a.txt"), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

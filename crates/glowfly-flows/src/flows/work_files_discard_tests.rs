@@ -8,6 +8,7 @@ use super::tests::keys;
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{ack, confirm, empty_diff, entry, last_log, loaded, run, tick, work_ops};
 use glowfly_core::repo::{Deleted, DiffTarget, TrashProblem, TrashRefusal};
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{DeleteMode, Effect, FileOp, LocalOp, WorkFileOk};
 use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
@@ -224,7 +225,10 @@ fn delete_confirmed_accepts_discard() {
 fn tracked_discard_unchanged() {
     let (mut st, dir) = loaded("wfd-tracked");
     let fx = run(&mut st, Msg::Stage(StageMsg::DiscardFile("f.txt".into())));
-    assert!(matches!(&fx[..], [Effect::LocalOp { workdir, op: LocalOp::DiscardFile(p) }] if *workdir == dir && p == "f.txt"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { workdir, op: LocalOp::DiscardFile(p) })] if *workdir == dir && p == "f.txt"),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

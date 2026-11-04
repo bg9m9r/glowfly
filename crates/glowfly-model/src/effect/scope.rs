@@ -11,20 +11,10 @@ impl Effect {
     /// active are dropped (the tab reloads when it is selected again).
     pub fn scope(&self) -> Option<&PathBuf> {
         effect_areas! { effect_match! { self, |e| e.scope(), {
-            Effect::LoadFileHistory { workdir, .. }
-            | Effect::LocalOp { workdir, .. }
-            | Effect::Revert { workdir, .. }
-            | Effect::Stats { workdir, .. }
-            | Effect::SearchPaths { workdir, .. } => Some(workdir),
             Effect::Forge { cwd, .. } => Some(cwd),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
             Effect::FetchAvatars(_)
-            | Effect::SaveSettings(_)
-            | Effect::SaveRecent(_)
-            | Effect::CheckRepoFolders(_)
-            | Effect::ReadTabGroups(_)
-            | Effect::SaveTabs { .. }
             | Effect::Watch(_)
             | Effect::SweepWatch { .. }
             | Effect::AnswerPrompt { .. }
@@ -36,20 +26,10 @@ impl Effect {
     /// can change that repository.
     pub fn queue(&self) -> Option<&Path> {
         effect_areas! { effect_match! { self, |e| e.queue(), {
-            Effect::LocalOp { workdir, .. }
-            | Effect::Revert { workdir, .. } => Some(workdir),
-            // Reads, network calls, Glowfly's own files (ordered by `saves`) and work outside the
-            // process. Listed one by one so a new effect has to decide.
-            Effect::LoadFileHistory { .. }
-            | Effect::CheckRepoFolders(_)
-            | Effect::ReadTabGroups(_)
-            | Effect::Forge { .. }
-            | Effect::Stats { .. }
-            | Effect::SearchPaths { .. }
+            // Network calls and work outside the process. Listed one by one so a new effect has
+            // to decide.
+            Effect::Forge { .. }
             | Effect::FetchAvatars(_)
-            | Effect::SaveSettings(_)
-            | Effect::SaveRecent(_)
-            | Effect::SaveTabs { .. }
             | Effect::Watch(_)
             | Effect::SweepWatch { .. }
             | Effect::AnswerPrompt { .. }

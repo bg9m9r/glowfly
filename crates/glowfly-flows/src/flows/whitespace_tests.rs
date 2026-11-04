@@ -6,6 +6,8 @@ use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, LoadOptions};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
@@ -53,7 +55,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     assert!(
-        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s)), Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]
         if s.diff_ignore_whitespace)
     );
     assert!(st.view.diff_lines.is_empty(), "hunk rows change, so the selection goes");
@@ -65,7 +67,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
     // With no diff open only the setting changes.
     let mut st = state();
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_ignore_whitespace));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.diff_ignore_whitespace));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -125,7 +127,7 @@ fn commit_diffs_reload_with_whitespace_hidden_and_keep_revert() {
     finish(&mut st, fx);
     let generation = st.hunk_ops_gen().expect("the reload landed");
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertHunk { index: 0, generation }));
-    assert!(matches!(&fx[..], [Effect::Revert { req, .. }] if req.ignore_whitespace), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::Revert { req, .. })] if req.ignore_whitespace), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

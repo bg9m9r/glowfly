@@ -8,6 +8,8 @@ use glowfly_core::diff_rows::header_rows;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileHistory, HistoryEntry, Hunk, HunkOp, LoadOptions};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::{Expanded, WholeFile, block_rows};
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::HistoryMsg;
@@ -73,7 +75,7 @@ fn set_diff_mode_whole_reloads_and_keeps_hunk() {
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     assert_eq!(st.settings.diff_mode, DiffMode::WholeFile);
     assert!(
-        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Diff(glowfly_model::effect::DiffEffect::Load { whole_file: true, reload: false, .. })]
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s)), Effect::Diff(glowfly_model::effect::DiffEffect::Load { whole_file: true, reload: false, .. })]
             if s.diff_mode == DiffMode::WholeFile),
         "{fx:?}"
     );
@@ -124,7 +126,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
         assert!(shown.is_some());
 
         let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
-        assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_mode == DiffMode::Hunks), "{fx:?}");
+        assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.diff_mode == DiffMode::Hunks), "{fx:?}");
         let (_, d) = st.session.diff.view.as_ref().unwrap();
         assert!(d.whole.is_none());
         let header = header_rows(&three_changes(false), layout)[2];
@@ -187,7 +189,10 @@ fn line_ops_blocked_in_whole_mode() {
     let shown = st.session.diff.view.as_ref().unwrap().1.hunks[2].clone();
     let fx = run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "f.txt".into(), index: 2, generation }));
     // With the hunk as shown, so core can refuse it if the file changed since.
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 2, expected, .. }, .. }] if *expected == shown), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Hunk { index: 2, expected, .. }, .. })] if *expected == shown),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -269,7 +274,10 @@ fn whole_file_with_ignore_whitespace_stages_the_shown_hunk() {
     assert!(st.session.diff.view.as_ref().and_then(|(_, d)| d.whole.as_ref()).is_some());
     let generation = st.hunk_ops_gen().expect("loaded");
     let fx = run(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { index: 0, ignore_whitespace: true, .. }, .. }]), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Hunk { index: 0, ignore_whitespace: true, .. }, .. })]),
+        "{fx:?}"
+    );
     finish(&mut st, fx);
     assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.last().map(|l| &l.text));
     assert_eq!(staged(&dir), ["-    let a = 1;", "+    let a = 10;"], "the re-indent stays unstaged");

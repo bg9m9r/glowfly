@@ -7,6 +7,9 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::{self, DiffTarget, FileEntry, Hazard, HistoryStart, LoadOptions};
 use glowfly_core::settings::FileListMode;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::HistoryEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::{DiffMsg, HistoryMsg, LayoutMsg, Msg, RepoMsg, StageMsg, TabsMsg};
@@ -67,7 +70,7 @@ fn step(st: &mut AppState, down: bool) -> Option<DiffTarget> {
 
 fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
     fx.iter().find_map(|e| match e {
-        Effect::LocalOp { op, .. } => Some(op),
+        Effect::Files(FilesEffect::LocalOp { op, .. }) => Some(op),
         _ => None,
     })
 }
@@ -77,7 +80,7 @@ fn the_list_mode_is_saved_once() {
     let mut st = state();
     let fx = run(&mut st, Msg::Layout(LayoutMsg::SetFileListMode(FileListMode::Tree)));
     assert_eq!(st.settings.file_list_mode, FileListMode::Tree);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     assert!(run(&mut st, Msg::Layout(LayoutMsg::SetFileListMode(FileListMode::Tree))).is_empty());
 }
 
@@ -244,7 +247,7 @@ fn a_folder_rows_history_starts_at_its_commit() {
     let head = st.snap.as_ref().unwrap().head_oid.unwrap();
     let fx = run(&mut st, Msg::History(HistoryMsg::OpenFolderHistory { path: "src/search".into(), at: Some(head) }));
     assert!(
-        matches!(&fx[..], [Effect::LoadFileHistory { path, start: HistoryStart::At(o), folder: true, .. }] if path == "src/search" && *o == head),
+        matches!(&fx[..], [Effect::History(HistoryEffect::FileHistory { path, start: HistoryStart::At(o), folder: true, .. })] if path == "src/search" && *o == head),
         "{fx:?}"
     );
     let v = st.session.history.view.as_ref().unwrap();

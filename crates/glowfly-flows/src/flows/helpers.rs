@@ -5,6 +5,8 @@
 use super::update;
 use glowfly_core::forge::{CheckState, Checks, Provider, PullRequest, Target};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
 use glowfly_model::effect::{OsEffect, PrefsEffect};
 use glowfly_model::msg::CommitMsg;
@@ -79,8 +81,8 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
         // These need a user or the network; tests don't exercise them here.
         Effect::Ui(_)
             | Effect::Os(OsEffect::PickFolder { .. } | OsEffect::OpenUrl(_) | OsEffect::OpenTerminal(_) | OsEffect::OpenFolder(_))
-            | Effect::Forge { .. } | Effect::Account(_) | Effect::SaveSettings(_) | Effect::SaveRecent(_)
-            | Effect::SaveTabs { .. } | Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. }
+            | Effect::Forge { .. } | Effect::Account(_) | Effect::Save(SaveEffect::Settings(_)) | Effect::Save(SaveEffect::Recent(_))
+            | Effect::Save(SaveEffect::Tabs { .. }) | Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. }
             // Shells are never started by these tests.
             | Effect::Terminal(_)
             | Effect::Os(OsEffect::OpenPath { .. } | OsEffect::RevealPath(_))
@@ -211,7 +213,7 @@ fn settings_are_saved_only_when_changed() {
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     st.settings.toolbar_labels = !st.settings.toolbar_labels;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]));
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "saved once");
 }
 
@@ -273,7 +275,7 @@ fn stage_and_commit_end_to_end() {
     assert_eq!(snap.unstaged.len(), 1);
 
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::StageFile(p), .. }] if p == "a.txt"));
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::StageFile(p), .. })] if p == "a.txt"));
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     assert_eq!(st.snap.as_ref().unwrap().staged.len(), 1);
 

@@ -12,6 +12,7 @@ use glowfly_core::rebase::Resume;
 use glowfly_core::stash_ops::AutoStashFor;
 use glowfly_core::undo::UndoKind;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{AutoStashMsg, BranchMsg, CommitMsg, JobMsg, Msg, RebaseMsg, RepoMsg, SelectionMsg};
 use glowfly_model::state::{AppState, Modal, remote_branch};
 use std::path::Path;
@@ -72,7 +73,7 @@ fn always_stash_saves_and_skips_prompt() {
     a.always = true;
     let fx = up(&mut st, Msg::AutoStash(AutoStashMsg::Stash));
     assert!(st.settings.auto_stash, "Always stash is on");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.auto_stash)), "and saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.auto_stash)), "and saved");
     finish(&mut st, fx);
     mine_is_back(&st, &dir);
 

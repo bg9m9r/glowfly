@@ -9,6 +9,7 @@ use glowfly_core::repo::{
     Choice, Chunk, ConflictContent, ConflictFile, ConflictIds, DiffTarget, FileDiff, Operation, Segment, Side, SideLabels,
 };
 use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::msg::ConflictMsg;
 use glowfly_model::msg::Msg;
@@ -180,7 +181,7 @@ fn save_is_refused_until_every_chunk_is_picked() {
     let fx = update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now());
     let ids = st.session.conflict.view.as_ref().unwrap().file.as_ref().unwrap().ids.clone();
     match &fx[..] {
-        [Effect::LocalOp { op: LocalOp::ResolveConflict { path, contents, expected }, .. }] => {
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::ResolveConflict { path, contents, expected }, .. })] => {
             assert_eq!((path.as_str(), contents.as_str()), ("a.txt", "one\nours\n"));
             assert_eq!(*expected, ids);
         }

@@ -10,6 +10,7 @@
 //! diff slot's `generation`: its buttons wait for the reload, which `must_reload` then forces.
 
 use crate::effect::Effect;
+use crate::effect::FilesEffect;
 use crate::msg::RevertWhat;
 use crate::state::AppState;
 use glowfly_core::repo::{DiffTarget, RevertPart, RevertRequest, Reverted};
@@ -88,7 +89,7 @@ fn push(st: &AppState, target: DiffTarget, part: RevertPart, fx: &mut Vec<Effect
     // the indexes of a hunk or lines checked against `hunk_ops_gen` count the diff with this
     // setting.
     let ignore_whitespace = st.settings.diff_ignore_whitespace && !matches!(part, RevertPart::File);
-    fx.push(Effect::Revert { workdir, req: RevertRequest { target, part, dest, ignore_whitespace } });
+    fx.push(Effect::Files(FilesEffect::Revert { workdir, req: RevertRequest { target, part, dest, ignore_whitespace } }));
 }
 
 /// The file's current name when `target` is a File history entry under an older one.

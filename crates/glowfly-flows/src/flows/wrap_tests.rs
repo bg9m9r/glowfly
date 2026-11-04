@@ -6,6 +6,7 @@ use super::tests::state;
 use super::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
@@ -27,7 +28,7 @@ fn set_word_wrap_saves_and_keeps_top_row() {
     st.session.tab_view.diff_top_row = 4;
     st.view.diff_cursor = Some(4);
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetWordWrap(true)));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_word_wrap));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.diff_word_wrap));
     assert!(st.settings.diff_word_wrap);
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(4), "the top row stays in place");
@@ -42,7 +43,7 @@ fn set_word_wrap_saves_and_keeps_top_row() {
 fn set_word_wrap_without_a_diff_only_saves() {
     let mut st = state();
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetWordWrap(true)));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.diff_word_wrap));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.diff_word_wrap));
     assert_eq!(st.view.diff_scroll_to_row, None);
 }
 

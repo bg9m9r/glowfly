@@ -3,6 +3,7 @@
 
 use glowfly_core::app_update::UpdateError;
 use glowfly_core::forge::{Account, Target};
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::JobEffect;
 use glowfly_model::effect::LoadEffect;
 use glowfly_model::effect::partial::PartialEffect;
@@ -123,7 +124,7 @@ impl Recovery {
             Effect::Clone(CloneEffect::ListRepos { account, .. }) => Kind::Repos(account.clone()),
             Effect::Rebase(RebaseEffect::Start { .. } | RebaseEffect::Resume { .. }) => Kind::Rebase,
             Effect::Rebase(RebaseEffect::EditTodo { .. }) => Kind::EditTodo,
-            Effect::LocalOp { .. } => Kind::LocalOp,
+            Effect::Files(FilesEffect::LocalOp { .. }) => Kind::LocalOp,
             Effect::Load(LoadEffect::Repo { generation, kind, .. }) => Kind::Load(*generation, *kind),
             Effect::Load(LoadEffect::Status { generation, .. }) | Effect::Load(LoadEffect::IndexStatus { generation, .. }) => {
                 Kind::Status(*generation)

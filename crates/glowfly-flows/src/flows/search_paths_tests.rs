@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, skipped, state};
 use super::update;
 use git2::Oid;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::msg::{Msg, PathsChunk, RepoMsg, SearchMsg, TabsMsg};
 use glowfly_model::state::graph_rows::GraphRows;
 use glowfly_model::state::{AppState, Selection};
@@ -67,7 +68,7 @@ fn settle(st: &mut AppState, fx: Vec<Effect>) -> Vec<(u64, Vec<Oid>)> {
     loop {
         for effect in fx {
             match effect {
-                Effect::SearchPaths { request, oids, .. } => asked.push((request, oids)),
+                Effect::History(HistoryEffect::SearchPaths { request, oids, .. }) => asked.push((request, oids)),
                 e if !skipped(&e) => queue.extend(glowfly_runner::testing::execute(e)),
                 _ => {}
             }

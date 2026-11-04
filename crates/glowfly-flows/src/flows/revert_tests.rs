@@ -7,6 +7,7 @@ use git2::Oid;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, LoadDiffOptions, LoadOptions, RevertPart, RevertRequest, Reverted};
 use glowfly_core::settings::DiffMode;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::RevertWhat;
@@ -47,7 +48,7 @@ fn expect_effect(st: &mut AppState, target: &DiffTarget) {
     let fx = revert(st, 0);
     let want = one_hunk().hunks[0].clone();
     assert!(
-        matches!(&fx[..], [Effect::Revert { req: RevertRequest { target: t, part: RevertPart::Hunk { index: 0, expected }, dest: None, ignore_whitespace: false }, .. }]
+        matches!(&fx[..], [Effect::Files(FilesEffect::Revert { req: RevertRequest { target: t, part: RevertPart::Hunk { index: 0, expected }, dest: None, ignore_whitespace: false }, .. })]
             if t == target && *expected == want),
         "{fx:?}"
     );
@@ -90,7 +91,10 @@ fn whitespace_hidden_reverts_carry_the_flag_but_files_dont() {
     st.settings.diff_ignore_whitespace = true;
     let fx = revert(&mut st, 0);
     assert!(
-        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::Hunk { .. }, ignore_whitespace: true, .. }, .. }]),
+        matches!(
+            &fx[..],
+            [Effect::Files(FilesEffect::Revert { req: RevertRequest { part: RevertPart::Hunk { .. }, ignore_whitespace: true, .. }, .. })]
+        ),
         "{fx:?}"
     );
     st.view.diff_lines.target = Some(target.clone());
@@ -98,12 +102,18 @@ fn whitespace_hidden_reverts_carry_the_flag_but_files_dont() {
     st.view.diff_lines.lines.insert(1);
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
     assert!(
-        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::Lines { .. }, ignore_whitespace: true, .. }, .. }]),
+        matches!(
+            &fx[..],
+            [Effect::Files(FilesEffect::Revert { req: RevertRequest { part: RevertPart::Lines { .. }, ignore_whitespace: true, .. }, .. })]
+        ),
         "{fx:?}"
     );
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertFile(target)));
     assert!(
-        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::File, ignore_whitespace: false, .. }, .. }]),
+        matches!(
+            &fx[..],
+            [Effect::Files(FilesEffect::Revert { req: RevertRequest { part: RevertPart::File, ignore_whitespace: false, .. }, .. })]
+        ),
         "{fx:?}"
     );
     assert!(st.log.is_empty());
@@ -161,7 +171,7 @@ fn whole_file_mode_uses_the_normal_hunk() {
     st.session.diff.view = Some((target, diff.into()));
     let fx = revert(&mut st, 1);
     assert!(
-        matches!(&fx[..], [Effect::Revert { req: RevertRequest { part: RevertPart::Hunk { index: 1, expected }, .. }, .. }] if *expected == want),
+        matches!(&fx[..], [Effect::Files(FilesEffect::Revert { req: RevertRequest { part: RevertPart::Hunk { index: 1, expected }, .. }, .. })] if *expected == want),
         "{fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

@@ -2,6 +2,7 @@
 //! the routing of its other messages: showing a page (prefs_nav.rs), the Save / Revert bar
 //! (prefs_save.rs, prefs_leave.rs), signing keys (prefs_signing.rs) and pickers (prefs_pick.rs).
 
+use crate::effect::SaveEffect;
 use crate::effect::{Effect, PrefsEffect};
 use crate::msg::PrefsMsg;
 use crate::state::prefs::GitConfigValues;
@@ -160,7 +161,7 @@ pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
     if let Some(p) = st.prefs.as_mut() {
         p.saved.mark();
     }
-    Some(Effect::SaveSettings(Box::new(st.settings.clone())))
+    Some(Effect::Save(SaveEffect::Settings(Box::new(st.settings.clone()))))
 }
 
 /// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while

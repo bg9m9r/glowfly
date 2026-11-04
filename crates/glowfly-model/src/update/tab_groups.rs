@@ -4,6 +4,7 @@
 //! in `state/tab_groups.rs`.
 
 use crate::effect::Effect;
+use crate::effect::SessionEffect;
 use crate::state::tab_groups::{blocks, grouped_order, is_identity, move_order, new_index, same_group};
 use crate::state::tabs::Place;
 use crate::state::{AppState, Tab};
@@ -85,7 +86,7 @@ pub(super) fn loaded(st: &mut AppState) {
     apply_order(st, &order);
 }
 
-/// `Effect::ReadTabGroups` answered: records each restored tab's group (one found by a load
+/// `SessionEffect::ReadTabGroups` answered: records each restored tab's group (one found by a load
 /// wins), then pulls the groups together.
 pub(super) fn read(st: &mut AppState, results: Vec<(PathBuf, Option<CommonDir>)>, fx: &mut Vec<Effect>) {
     for (path, common) in results {
@@ -109,6 +110,6 @@ pub(super) fn regroup(st: &mut AppState, fx: &mut Vec<Effect>) {
 pub(super) fn restored(st: &AppState, fx: &mut Vec<Effect>) {
     let paths: Vec<PathBuf> = st.tabs.iter().filter(|t| t.group.is_none()).filter_map(|t| t.path.clone()).collect();
     if !paths.is_empty() {
-        fx.push(Effect::ReadTabGroups(paths));
+        fx.push(Effect::Session(SessionEffect::ReadTabGroups(paths)));
     }
 }

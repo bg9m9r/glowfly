@@ -7,6 +7,7 @@ use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::keymap::{BindingId, Chord, KeyName, Keymap, Slot};
 use glowfly_model::msg::{KeysMsg, Msg, PaletteMsg, RepoMsg};
 use glowfly_model::state::palette::{InputKind, Mode, PaletteCommand as C, PickKind, shown};
@@ -142,7 +143,7 @@ fn keys(st: &mut AppState, m: KeysMsg) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 #[test]

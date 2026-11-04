@@ -1,10 +1,11 @@
-//! Saving Glowfly's own files (settings, recent repositories, open tabs). Each save runs on its
-//! own thread, so each file's saves are ordered: one that was requested before a save that has
-//! already been written is dropped, and the newest snapshot always lands last.
+//! Saving Glowfly's own files (settings, recent repositories, open tabs; `SaveEffect`). Each
+//! save runs on its own thread, so each file's saves are ordered: one that was requested before a
+//! save that has already been written is dropped, and the newest snapshot always lands last.
 
 use super::Runner;
+use super::execute::{Cx, Execute};
 use glowfly_core::persist::LatestOnly;
-use glowfly_model::effect::Effect;
+use glowfly_model::effect::{EffectMeta, SaveEffect};
 use glowfly_model::msg::Msg;
 use std::sync::Arc;
 
@@ -16,20 +17,26 @@ pub(super) struct Saves {
 }
 
 impl Saves {
-    fn order(&self, effect: &Effect) -> Option<&Arc<LatestOnly>> {
+    fn order(&self, effect: &SaveEffect) -> &Arc<LatestOnly> {
         match effect {
-            Effect::SaveSettings(_) => Some(&self.settings),
-            Effect::SaveRecent(_) => Some(&self.recent),
-            Effect::SaveTabs { .. } => Some(&self.tabs),
-            _ => None,
+            SaveEffect::Settings(_) => &self.settings,
+            SaveEffect::Recent(_) => &self.recent,
+            SaveEffect::Tabs { .. } => &self.tabs,
         }
     }
 }
 
+/// A save that reaches a worker as any other effect would (`testing::execute`): written at once.
+impl Execute for SaveEffect {
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        (cx.seams.save)(self)
+    }
+}
+
 impl Runner {
-    /// Starts a save effect, or hands any other effect back.
-    pub(super) fn save(&self, effect: Effect) -> Option<Effect> {
-        let Some(order) = self.saves.order(&effect) else { return Some(effect) };
+    /// Starts a save on its own thread, behind the earlier saves of the same file.
+    pub(super) fn save(&self, effect: SaveEffect) {
+        let order = self.saves.order(&effect);
         let (order, ticket) = (order.clone(), order.ticket());
         let (tx, waker, save) = (self.tx.clone(), self.waker.clone(), self.seams.save);
         let name = effect.name();
@@ -45,18 +52,16 @@ impl Runner {
         if let Err(e) = spawned {
             tracing::error!("could not start a worker thread for {name}: {e}");
         }
-        None
     }
 }
 
 /// Writes one save effect into the user's config folder (`Seams::REAL`'s `save`); a failure
 /// comes back as a line for the activity log.
-pub(super) fn save_now(effect: Effect) -> Option<Msg> {
+pub(super) fn save_now(effect: SaveEffect) -> Option<Msg> {
     let (what, result) = match effect {
-        Effect::SaveSettings(settings) => ("settings", settings.save()),
-        Effect::SaveRecent(list) => ("the recent repositories", super::platform::save_recent(&list)),
-        Effect::SaveTabs { paths, labels, active } => ("the open tabs", super::platform::save_tabs(&paths, &labels, active)),
-        _ => return None,
+        SaveEffect::Settings(settings) => ("settings", settings.save()),
+        SaveEffect::Recent(list) => ("the recent repositories", super::platform::save_recent(&list)),
+        SaveEffect::Tabs { paths, labels, active } => ("the open tabs", super::platform::save_tabs(&paths, &labels, active)),
     };
     let e = result.err()?;
     tracing::warn!("could not save {what}: {e}");

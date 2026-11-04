@@ -9,6 +9,7 @@ use super::update;
 use glowfly_core::settings::{ShellChoice, ShellSetting};
 use glowfly_core::terminal::TermInput;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
 use glowfly_model::state::terminal::SessionStatus;
 use glowfly_model::state::{AppState, Modal};
@@ -34,7 +35,7 @@ fn active(st: &AppState) -> Option<u64> {
 
 fn saved_open(fx: &[Effect]) -> Option<bool> {
     fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(s.terminal.panel_open),
+        Effect::Save(SaveEffect::Settings(s)) => Some(s.terminal.panel_open),
         _ => None,
     })
 }

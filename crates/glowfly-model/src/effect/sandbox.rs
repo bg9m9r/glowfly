@@ -9,18 +9,10 @@ impl Effect {
     /// from its `EffectMeta`; every flat variant is listed, so a new one has to be placed.
     pub fn sandbox(&self) -> SandboxRule {
         effect_areas! { effect_match! { self, |e| e.sandbox(), {
-            Effect::LocalOp { .. }
-            | Effect::Revert { .. }
-            | Effect::LoadFileHistory { .. }
-            | Effect::Stats { .. }
-            | Effect::SearchPaths { .. }
-            | Effect::CheckRepoFolders(_)
-            | Effect::ReadTabGroups(_)
-            | Effect::Watch(_)
+            Effect::Watch(_)
             | Effect::SweepWatch { .. }
             | Effect::AnswerPrompt { .. }
             | Effect::StopGit(_) => SandboxRule::Run,
-            Effect::SaveSettings(_) | Effect::SaveRecent(_) | Effect::SaveTabs { .. } => SandboxRule::Save,
             Effect::Forge { .. } | Effect::FetchAvatars(_) => SandboxRule::Drop,
         } } }
     }

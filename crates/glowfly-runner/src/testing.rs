@@ -14,7 +14,7 @@ use super::seams::{Seams, SeamsKind};
 use super::{Runner, Waker};
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
-use glowfly_model::effect::{Checked, Effect, FileOp, SandboxRule, TrustCheck};
+use glowfly_model::effect::{Checked, Effect, FileOp, SandboxRule, SaveEffect, TrustCheck};
 use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
@@ -128,7 +128,7 @@ pub fn own_files() -> PathBuf {
 }
 
 /// `saves::save_now` into `own_files()`.
-fn save_for_test(effect: Effect) -> Option<Msg> {
+fn save_for_test(effect: SaveEffect) -> Option<Msg> {
     let dir = own_files();
     if let Err(e) = std::fs::create_dir_all(&dir) {
         return Some(Msg::Logged { ok: false, text: format!("Could not create {}: {e}", dir.display()) });

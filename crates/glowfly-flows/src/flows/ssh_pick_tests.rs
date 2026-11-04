@@ -6,6 +6,7 @@ use super::ssh_tests::{home, listing, loaded, page, page_mut, pair, run, ssh};
 use super::tests::state;
 use glowfly_core::ssh_keys::{KeyFileProblem, SshKeyPair};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{Msg, PrefsMsg};
 use glowfly_model::ssh::{SshEffect, SshMsg};
 use glowfly_model::state::PrefPage;
@@ -22,7 +23,7 @@ fn picked(pair: &SshKeyPair) -> SshMsg {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 fn names(st: &glowfly_model::state::AppState) -> Vec<String> {

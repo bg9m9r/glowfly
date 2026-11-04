@@ -8,6 +8,7 @@ use glowfly_core::forge::{
 };
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{RepoTrust, Settings};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, FilterCall, FilterResult, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::{FilterMsg, ForgeMsg, Msg, RepoMsg};
 use glowfly_model::state::forge_filters::{Hint, MeState, issue_view, pr_view};
@@ -45,7 +46,7 @@ pub(super) fn filter_calls(fx: &[Effect]) -> Vec<(&Target, &FilterCall)> {
 /// The settings the effects in `fx` save, if any.
 pub(super) fn saved(fx: &[Effect]) -> Option<&Settings> {
     fx.iter().find_map(|e| match e {
-        Effect::SaveSettings(s) => Some(&**s),
+        Effect::Save(SaveEffect::Settings(s)) => Some(&**s),
         _ => None,
     })
 }

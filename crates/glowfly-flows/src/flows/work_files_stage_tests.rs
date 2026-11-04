@@ -5,6 +5,7 @@
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{empty_diff, entry, loaded, new_form, rename_form, run, work_ops};
 use glowfly_core::repo::{DiffTarget, FileEntry};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, FileOp, WorkFileOk};
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
@@ -72,7 +73,7 @@ fn set_rename_stages_saves() {
     assert!(st.settings.stage_renames, "on by default");
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::SetRenameStages(false)));
     assert!(!st.settings.stage_renames);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.stage_renames), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if !s.stage_renames), "{fx:?}");
     assert!(run(&mut st, Msg::WorkFile(WorkFileMsg::SetRenameStages(false))).is_empty(), "no change, no save");
 }
 

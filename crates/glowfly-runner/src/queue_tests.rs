@@ -2,6 +2,7 @@
 
 use super::*;
 use glowfly_core::repo_sync::SyncOp;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{
     Effect, EffectMeta, MonitorJob, MonitorOff, RebaseEffect, ReposEffect, SparseEffect, StashEffect, WorktreeEffect,
 };
@@ -146,7 +147,7 @@ fn which_effects_queue() {
     let shell = Effect::CustomCommand(CustomCommandEffect::RunShell(ShellRun { cwd: w.clone(), script: "make".into() }));
     assert_eq!(Effect::queue(&shell), Some(w.as_path()));
     assert_eq!(Effect::queue(&Effect::CustomCommand(CustomCommandEffect::Load { generation: 1, workdir: w.clone() })), None);
-    let op = Effect::LocalOp { workdir: w.clone(), op: glowfly_model::effect::LocalOp::StageAll };
+    let op = Effect::Files(FilesEffect::LocalOp { workdir: w.clone(), op: glowfly_model::effect::LocalOp::StageAll });
     assert_eq!(Effect::queue(&op), Some(w.as_path()));
     assert_eq!(
         Effect::queue(&Effect::Load(glowfly_model::effect::LoadEffect::Status {
@@ -227,8 +228,8 @@ fn every_effect_that_changes_a_repository_queues() {
     use glowfly_model::effect::{FileOp, LocalOp};
     let w = PathBuf::from("C:/r");
     let changing = [
-        Effect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll },
-        Effect::Revert {
+        Effect::Files(FilesEffect::LocalOp { workdir: w.clone(), op: LocalOp::StageAll }),
+        Effect::Files(FilesEffect::Revert {
             workdir: w.clone(),
             req: RevertRequest {
                 target: DiffTarget::Commit(git2::Oid::zero(), "a".into()),
@@ -236,7 +237,7 @@ fn every_effect_that_changes_a_repository_queues() {
                 dest: None,
                 ignore_whitespace: false,
             },
-        },
+        }),
         Effect::Files(glowfly_model::effect::FilesEffect::Restore {
             workdir: w.clone(),
             oid: git2::Oid::zero(),

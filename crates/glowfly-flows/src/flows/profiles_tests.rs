@@ -8,6 +8,7 @@ use glowfly_core::identity::Identity;
 use glowfly_core::settings::{Profile, ProfileId};
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::PrefsEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{Msg, PrefsMsg};
 use glowfly_model::profile::{IdentityField, ProfileEffect, ProfileMsg};
 use glowfly_model::state::prefs::GitConfigValues;
@@ -46,7 +47,7 @@ fn page_mut(st: &mut AppState) -> &mut ProfilesPage {
 }
 
 pub(super) fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// The global git config writes among `fx`, one by one or batched for a save.

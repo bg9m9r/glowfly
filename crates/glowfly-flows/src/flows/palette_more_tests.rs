@@ -6,6 +6,7 @@ use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
 use glowfly_core::settings::DiffLayout;
 use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::PaletteMsg;
@@ -189,7 +190,7 @@ fn diff_toggles_name_the_next_state() {
 
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::DiffLayout(DiffLayout::Split))));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]), "{fx:?}");
     assert!(has(&st, "Use inline diff layout"));
     assert!(!has(&st, "Use split diff layout"));
 
@@ -213,7 +214,7 @@ fn toolbar_labels_toggle_saves_once() {
     open_palette(&mut st);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ToolbarLabels(false))));
     assert!(!st.settings.toolbar_labels);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.toolbar_labels), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if !s.toolbar_labels), "{fx:?}");
     assert!(st.palette.is_none());
     // Nothing left for the per-frame settings check to save.
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());

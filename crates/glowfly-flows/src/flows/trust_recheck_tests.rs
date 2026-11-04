@@ -6,6 +6,7 @@ use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{clean_tree, git};
 use super::trust_held_tests::held_repo;
 use super::trust_tests::{asking, drive, open, real, run};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, Seal, Sealed, TrustCheck};
 use glowfly_model::msg::{Msg, TrustMsg};
 use glowfly_model::state::trust::TrustPrompt;
@@ -135,7 +136,7 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
         accepted: None,
         lang: Default::default(),
     };
-    let save = || Effect::SaveRecent(Vec::new());
+    let save = || Effect::Save(SaveEffect::Recent(Vec::new()));
     let shell = || Effect::Os(glowfly_model::effect::OsEffect::OpenTerminal(dir.clone()));
     // At its place; a seal whose place another effect took checks every effect of its name,
     // so none runs unchecked; one whose effect is gone is dropped.

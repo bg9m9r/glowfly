@@ -8,18 +8,8 @@ impl Effect {
     /// `EffectMeta`.
     pub fn name(&self) -> &'static str {
         effect_areas! { effect_match! { self, |e| e.name(), {
-            Effect::LoadFileHistory { .. } => "file-history",
-            Effect::LocalOp { .. } => "local-op",
-            Effect::Revert { .. } => "revert",
             Effect::Forge { .. } => "forge",
-            Effect::Stats { .. } => "stats",
-            Effect::SearchPaths { .. } => "search-paths",
             Effect::FetchAvatars(_) => "avatars",
-            Effect::SaveSettings(_) => "save-settings",
-            Effect::SaveRecent(_) => "save-recent",
-            Effect::CheckRepoFolders(_) => "check-repo-folders",
-            Effect::ReadTabGroups(_) => "read-tab-groups",
-            Effect::SaveTabs { .. } => "save-tabs",
             Effect::Watch(_) => "watch",
             Effect::SweepWatch { .. } => "sweep-watch",
             Effect::AnswerPrompt { .. } => "answer-prompt",
@@ -31,18 +21,7 @@ impl Effect {
     /// comes from its `EffectMeta`.
     pub fn timed(&self) -> bool {
         effect_areas! { effect_match! { self, |e| e.timed(), {
-            Effect::LoadFileHistory { .. }
-            | Effect::LocalOp { .. }
-            | Effect::Revert { .. }
-            | Effect::Forge { .. }
-            | Effect::Stats { .. }
-            | Effect::SearchPaths { .. }
-            | Effect::FetchAvatars(_)
-            | Effect::SaveSettings(_)
-            | Effect::SaveRecent(_)
-            | Effect::CheckRepoFolders(_)
-            | Effect::ReadTabGroups(_)
-            | Effect::SaveTabs { .. } => true,
+            Effect::Forge { .. } | Effect::FetchAvatars(_) => true,
             // They wait on the system or never run on a worker thread.
             Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. } | Effect::StopGit(_) => false,
         } } }

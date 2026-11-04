@@ -4,6 +4,7 @@
 
 use super::tests::{git, scratch_repo, state};
 use super::update;
+use crate::effect::SaveEffect;
 use crate::effect::{Effect, LoadKind};
 use crate::msg::{Msg, RepoMsg};
 use crate::onboarding::OnboardingMsg as O;
@@ -23,7 +24,7 @@ fn run(st: &mut AppState, m: O) -> Vec<Effect> {
 }
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 fn load(st: &mut AppState, dir: &Path) {

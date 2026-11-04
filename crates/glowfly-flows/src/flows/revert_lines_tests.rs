@@ -7,6 +7,7 @@ use git2::Oid;
 use glowfly_core::repo::{DiffTarget, HistoryEntry, RevertPart, RevertRequest};
 use glowfly_core::settings::DiffMode;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::msg::{DiffMsg, Msg, RepoMsg, StageMsg};
 use glowfly_model::state::history::FileHistoryView;
 use glowfly_model::state::lines::LineClick;
@@ -17,7 +18,7 @@ fn select(st: &mut AppState, line: usize) {
 }
 
 fn requests(fx: &[Effect]) -> Vec<&RevertRequest> {
-    fx.iter().filter_map(|e| if let Effect::Revert { req, .. } = e { Some(req) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Files(FilesEffect::Revert { req, .. }) = e { Some(req) } else { None }).collect()
 }
 
 #[test]

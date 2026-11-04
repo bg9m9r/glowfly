@@ -10,7 +10,7 @@ use crate::lexer::bare_lines;
 
 /// How many flat variants `Effect` still declares outside the areas. Lower it when you move some
 /// into an area; never raise it.
-const FLAT_EFFECTS: usize = 16;
+const FLAT_EFFECTS: usize = 6;
 
 /// The file that declares `Effect`.
 const EFFECT_MOD: &str = "crates/glowfly-model/src/effect/mod.rs";

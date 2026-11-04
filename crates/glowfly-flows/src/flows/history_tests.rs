@@ -5,6 +5,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use git2::Oid;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, FileHistory, HistoryEntry, HistoryStart, LoadOptions};
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::msg::ConflictMsg;
 use glowfly_model::msg::HistoryMsg;
@@ -69,7 +70,7 @@ fn opening_file_history_requests_a_walk() {
     let fx = update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     let limit = st.settings.commit_limit();
     assert!(
-        matches!(&fx[..], [Effect::LoadFileHistory { path, start: HistoryStart::Head, limit: l, generation: 1, .. }]
+        matches!(&fx[..], [Effect::History(HistoryEffect::FileHistory { path, start: HistoryStart::Head, limit: l, generation: 1, .. })]
             if path == "a.txt" && *l == limit),
         "{fx:?}"
     );
@@ -160,7 +161,10 @@ fn searching_further_appends_without_duplicates() {
     }
     let fx = update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now());
     assert!(st.session.history.view.as_ref().unwrap().loading);
-    assert!(matches!(&fx[..], [Effect::LoadFileHistory { start: HistoryStart::Resume(r), .. }] if *r == resume), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::History(HistoryEffect::FileHistory { start: HistoryStart::Resume(r), .. })] if *r == resume),
+        "{fx:?}"
+    );
     assert!(update(&mut st, Msg::History(HistoryMsg::MoreFileHistory), Instant::now()).is_empty(), "one request at a time");
 
     let batch = FileHistory {
@@ -275,7 +279,7 @@ fn tab_switch_parks_file_history() {
     assert!(st.session.history.generation > first);
     let gen_now = st.session.history.generation;
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadFileHistory { start: HistoryStart::Head, generation, .. } if *generation == gen_now)),
+        fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::FileHistory { start: HistoryStart::Head, generation, .. }) if *generation == gen_now)),
         "{fx:?}"
     );
     let _ = std::fs::remove_dir_all(&a);
@@ -304,7 +308,7 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     let fx = update(&mut st, Msg::History(HistoryMsg::OpenFileHistory { path: "a.txt".into(), at: None }), Instant::now());
     // The walk lands, selecting entry 0 and asking for its diff, which is still in flight
     // when the user switches tabs: its result is dropped.
-    let walk = fx.into_iter().find(|e| matches!(e, Effect::LoadFileHistory { .. })).unwrap();
+    let walk = fx.into_iter().find(|e| matches!(e, Effect::History(HistoryEffect::FileHistory { .. }))).unwrap();
     if let Some(m) = glowfly_runner::testing::execute(walk) {
         update(&mut st, m, Instant::now());
     }

@@ -6,6 +6,7 @@ use super::update;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{FilterOp, GraphFilter};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::GraphMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
@@ -84,7 +85,7 @@ fn hide_saves_and_reloads_without_branch() {
     assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
 
     let fx = op(&mut st, FilterOp::Hide(heads("feature")));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
     assert_eq!(load_opts(&fx).hidden, [heads("feature")]);
     run(&mut st, fx);
     assert!(!has_label(&st, "feature") && !has_commit(&st, "feature work"));
@@ -134,7 +135,7 @@ fn checking_out_hidden_branch_shows_it_again() {
         })
         .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "the load already showed it");
     assert_eq!(filter(&st).hidden, [heads("other")], "only the checked-out branch is unhidden");
     assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
@@ -235,7 +236,7 @@ fn deleted_refs_are_pruned() {
         .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     let opts = load_opts(&fx);
     assert!(opts.hidden.is_empty() && opts.solo.is_empty(), "reloaded without the solo");
     run(&mut st, fx);
@@ -283,7 +284,7 @@ fn hide_show_and_solo_a_tag() {
     assert!(has_label(&st, "rel") && has_commit(&st, "feature work"));
 
     let fx = op(&mut st, FilterOp::Hide(tags("rel")));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
     assert_eq!(load_opts(&fx).hidden, [tags("rel")]);
     run(&mut st, fx);
     assert!(!has_label(&st, "rel") && !has_commit(&st, "feature work"));
@@ -326,7 +327,7 @@ fn deleted_tags_are_pruned() {
         .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     let opts = load_opts(&fx);
     assert!(opts.hidden.is_empty() && opts.solo.is_empty(), "reloaded without the solo");
     run(&mut st, fx);

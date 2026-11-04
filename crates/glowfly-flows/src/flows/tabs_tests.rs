@@ -5,6 +5,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind, UiEffect};
 use glowfly_model::msg::CommitMsg;
 use glowfly_model::msg::ConflictMsg;
@@ -179,7 +180,7 @@ fn restored_tabs_load_when_first_selected() {
         fx.iter()
             .any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, kind: LoadKind::Open, .. }) if path == &a))
     );
-    match fx.iter().find_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths, *active)) } else { None }) {
+    match fx.iter().find_map(|e| if let Effect::Save(SaveEffect::Tabs { paths, active, .. }) = e { Some((paths, *active)) } else { None }) {
         Some((paths, active)) => assert_eq!((paths.len(), active), (2, 0)),
         None => panic!("switching tabs saves the session"),
     }
@@ -264,7 +265,9 @@ fn tab_names(st: &AppState) -> Vec<String> {
 }
 
 fn saved(fx: &[Effect]) -> Vec<(Vec<PathBuf>, usize)> {
-    fx.iter().filter_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths.clone(), *active)) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Save(SaveEffect::Tabs { paths, active, .. }) = e { Some((paths.clone(), *active)) } else { None })
+        .collect()
 }
 
 /// The paths on the recently closed list, oldest first.

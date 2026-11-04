@@ -5,6 +5,7 @@ use crate::flows::{drive, git, scratch_repo, state};
 use glowfly_core::conflict_pick::{ChunkPick, LineRef};
 use glowfly_core::conflict_rows::Trivial;
 use glowfly_core::repo::{Choice, ConflictContent, Segment, Side, marker_regions};
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -200,7 +201,7 @@ fn save_with_markers_writes_and_stays_conflicted() {
     send(&mut st, ConflictMsg::ConflictToggle { chunk: 0, side: Side::Ours });
     let fx = send(&mut st, ConflictMsg::SaveConflictKeepMarkers);
     match &fx[..] {
-        [Effect::LocalOp { op: LocalOp::SavePartialResolution { path, contents, .. }, .. }] => {
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::SavePartialResolution { path, contents, .. }, .. })] => {
             assert_eq!(path, "f.txt");
             assert_eq!(marker_regions(contents.as_bytes()), 1);
             assert!(contents.contains("line 2 ours\n") && contents.contains("<<<<<<< main\nline 10 ours\n"));
@@ -239,7 +240,7 @@ fn save_with_an_edited_chunk_stages_the_typed_text() {
     send(&mut st, ConflictMsg::ConflictEditOutput(true));
     type_in_chunk(&mut st, 0, "typed\n");
     match &send(&mut st, ConflictMsg::SaveConflict)[..] {
-        [Effect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. }] => assert_eq!(contents, "one\ntyped\n"),
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. })] => assert_eq!(contents, "one\ntyped\n"),
         other => panic!("expected one resolve, got {other:?}"),
     }
     assert!(send(&mut st, ConflictMsg::SaveConflictKeepMarkers).is_empty(), "nothing is left for markers");
@@ -296,7 +297,9 @@ fn save_writes_the_edited_clean_lines() {
     type_in_clean(&mut st, 0, "uno\n");
     send(&mut st, ConflictMsg::ConflictTakeAll(Side::Theirs));
     match &send(&mut st, ConflictMsg::SaveConflict)[..] {
-        [Effect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. }] => assert_eq!(contents, "uno\ntheirs\n"),
+        [Effect::Files(FilesEffect::LocalOp { op: LocalOp::ResolveConflict { contents, .. }, .. })] => {
+            assert_eq!(contents, "uno\ntheirs\n")
+        }
         other => panic!("expected one resolve, got {other:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);

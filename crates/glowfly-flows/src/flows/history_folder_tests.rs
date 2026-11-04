@@ -6,6 +6,7 @@ use super::history_tests::{entry, oid, opened};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::{self, DiffTarget, FileEntry, FileHistory, HistoryEntry, HistoryStart, LoadOptions, RestoredFrom};
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::msg::{DiffMsg, FilesMsg, HistoryMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -47,7 +48,10 @@ fn opening_folder_history_requests_a_folder_walk() {
     let (mut st, dir) = opened("folder-open");
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), super::history_tests::empty_diff().into()));
     let fx = send(&mut st, HistoryMsg::OpenFolderHistory { path: "src".into(), at: None });
-    assert!(matches!(&fx[..], [Effect::LoadFileHistory { path, start: HistoryStart::Head, folder: true, .. }] if path == "src"), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::History(HistoryEffect::FileHistory { path, start: HistoryStart::Head, folder: true, .. })] if path == "src"),
+        "{fx:?}"
+    );
     let v = st.session.history.view.as_ref().unwrap();
     assert_eq!(v.kind, HistoryKind::Folder);
     assert!(v.loading && st.session.diff.view.is_none());
@@ -93,7 +97,7 @@ fn folder_rerun_keeps_the_selected_file() {
     let m = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Ok(Box::new(snap)) });
     let fx = update(&mut st, m, Instant::now());
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadFileHistory { start: HistoryStart::Head, folder: true, .. })),
+        fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::FileHistory { start: HistoryStart::Head, folder: true, .. }))),
         "a folder re-runs from HEAD: {fx:?}"
     );
     let entries = vec![folder_entry(1, &["src/new.rs", "src/a.rs", "src/b.rs"]), folder_entry(2, &[])];

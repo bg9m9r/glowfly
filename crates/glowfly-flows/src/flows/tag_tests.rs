@@ -6,6 +6,7 @@ use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::state::{AppState, Modal, RunningJob};
@@ -167,7 +168,7 @@ fn push_new_tags_setting_saved() {
     let mut st = state();
     let fx = update(&mut st, Msg::Tag(TagMsg::SetPushNewTags(true)), Instant::now());
     assert!(st.settings.push_new_tags);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.push_new_tags));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.push_new_tags));
     assert!(update(&mut st, Msg::Tag(TagMsg::SetPushNewTags(true)), Instant::now()).is_empty());
 }
 

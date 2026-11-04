@@ -4,6 +4,7 @@
 use super::super::tests::state;
 use super::super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::logs::{Earlier, LOG_LIMIT, LogFileView, Persist};
@@ -177,7 +178,7 @@ fn set_extended_saves_and_tells_the_runner() {
     let mut st = state();
     let fx = logs(&mut st, LogsMsg::SetExtended(true));
     assert!(st.settings.extended_logging);
-    assert!(matches!(fx[..], [Effect::SaveSettings(_), Effect::Logs(LogsEffect::SetExtended(true))]), "{fx:?}");
+    assert!(matches!(fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Logs(LogsEffect::SetExtended(true))]), "{fx:?}");
     assert_eq!(st.log.last().unwrap().text, "Extended logging is on: git commands and their timings are added here.");
     assert!(!st.view.show_log);
     assert!(logs(&mut st, LogsMsg::SetExtended(true)).is_empty(), "no change, no effects");
@@ -190,10 +191,10 @@ fn set_extended_from_preferences_is_saved_once() {
     let mut st = state();
     st.prefs = Some(PrefsState::new(PrefPage::General));
     let fx = logs(&mut st, LogsMsg::SetExtended(true));
-    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count(), 1);
+    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count(), 1);
     // The frame's SettingsEdited sees nothing new to save, and keeps the setting.
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert!(st.settings.extended_logging);
 }
 

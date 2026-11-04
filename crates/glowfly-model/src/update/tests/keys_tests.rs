@@ -5,6 +5,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::keymap::{BindingId as I, Chord, KeyName as K, Keymap, Slot};
 use crate::msg::{KeysMsg, Msg};
 use crate::state::keys_page::{KeysPage, Pending};
@@ -28,7 +29,7 @@ fn keys(st: &AppState) -> &KeysPage {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 /// Records `c` for `id`'s `slot`, returning the effects of the recorded key.

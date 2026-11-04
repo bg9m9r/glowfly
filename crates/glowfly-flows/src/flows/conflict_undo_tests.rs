@@ -10,6 +10,7 @@ use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::{Choice, Side};
 use glowfly_core::undo::Action;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::msg::{CommitMsg, ConflictMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::conflict::ConflictView;
@@ -245,7 +246,7 @@ fn a_resolution_saved_for_an_inactive_tab_goes_to_its_history() {
 
     let effect = update(&mut st, Msg::Conflict(ConflictMsg::SaveConflict), Instant::now())
         .into_iter()
-        .find(|e| matches!(e, Effect::LocalOp { .. }))
+        .find(|e| matches!(e, Effect::Files(FilesEffect::LocalOp { .. })))
         .expect("a save");
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     let reply = glowfly_runner::testing::execute(effect).expect("a result");

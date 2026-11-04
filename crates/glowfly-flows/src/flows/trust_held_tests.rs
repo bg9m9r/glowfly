@@ -7,6 +7,7 @@ use super::trust_tests::{asking, drive, open, real, run, untrusted_repo};
 use glowfly_core::gitcli::args;
 use glowfly_core::init_ops::InitPlan;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, InitEffect, StashEffect};
 use glowfly_model::msg::{CloneMsg, CommitMsg, InitMsg, Msg, TrustMsg};
 use glowfly_model::patch::PatchMsg;
@@ -131,7 +132,7 @@ fn trust_and_run_runs_the_held_job() {
     let real = real(&st);
     let fx = trust_and_run(&mut st);
     assert_eq!(recorded(&st.settings, &real), Some(RepoTrust::Trusted));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) if opts.trusted)), "{fx:?}");
     let gits = run_gits(&fx);
     let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, .. })] = gits.as_slice() else { panic!("one RunGit: {fx:?}") };

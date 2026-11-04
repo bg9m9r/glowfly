@@ -10,6 +10,7 @@ use super::update;
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadOptions};
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::gitflow::GitFlowMsg;
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::{BlameMsg, ConflictMsg, HistoryMsg, IssueMsg, LayoutMsg, Msg, RebaseMsg};
@@ -25,7 +26,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 fn opened(name: &str) -> (AppState, PathBuf) {

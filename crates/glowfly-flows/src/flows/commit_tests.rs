@@ -7,6 +7,7 @@ use super::update;
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::FileEntry;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::CommitMsg;
 use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
@@ -297,6 +298,6 @@ fn set_push_after_commit_saves() {
     let mut st = state();
     let fx = update(&mut st, Msg::Commit(CommitMsg::SetPushAfterCommit(true)), Instant::now());
     assert!(st.settings.push_after_commit);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.push_after_commit));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.push_after_commit));
     assert!(update(&mut st, Msg::Commit(CommitMsg::SetPushAfterCommit(true)), Instant::now()).is_empty());
 }

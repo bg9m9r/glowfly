@@ -5,6 +5,7 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish_keeping, same_place, scratch_repo, state};
 use super::update;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{DesktopNote, Effect, NoteKind};
 use glowfly_model::msg::{JobMsg, Msg, PrefsMsg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -16,7 +17,7 @@ fn notes(fx: &[Effect]) -> Vec<&DesktopNote> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 fn set(st: &mut AppState, on: bool) -> Vec<Effect> {

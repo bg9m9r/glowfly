@@ -7,6 +7,7 @@ use super::updates_tests::{app, release, send};
 use glowfly_core::app_update::{InstallKind, Version};
 use glowfly_core::settings::WhatsNew;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{CheckedRelease, Msg, UpdateMsg as U};
 use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
@@ -43,7 +44,7 @@ fn upgraded(seen: Option<&str>) -> AppState {
 }
 
 pub(super) fn saves(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
+    fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_))))
 }
 
 pub(super) fn dialog(st: &AppState) -> Option<&glowfly_model::state::release_notes::NotesDialog> {

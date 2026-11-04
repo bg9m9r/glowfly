@@ -8,6 +8,7 @@ use glowfly_core::highlight::{self, DiffHighlight, Span, TokenKind};
 use glowfly_core::repo::{DiffTarget, FileDiff, HunkOp};
 use glowfly_core::settings::DiffMode;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
@@ -47,7 +48,7 @@ pub(super) fn drive_holding_highlights(st: &mut AppState, msg: Msg) -> Vec<Effec
                 Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
                 | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
                 | Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
-                | Effect::LocalOp { .. } => queue.extend(glowfly_runner::testing::execute(effect)),
+                | Effect::Files(FilesEffect::LocalOp { .. }) => queue.extend(glowfly_runner::testing::execute(effect)),
                 _ => {}
             }
         }

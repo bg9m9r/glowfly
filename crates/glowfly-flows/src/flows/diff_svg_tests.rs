@@ -7,6 +7,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{DiffMsg, Msg, PrefsMsg, RepoMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::diff_header::{self, ChangeText, FileKind};
@@ -90,7 +91,7 @@ fn preview_draws_both_sides_and_text_drops_them() {
     open(&mut st, svg());
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetSvgPreview(true)));
     assert!(st.settings.diff_svg_preview, "saved in the settings");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert_eq!(asks(&fx), 1);
     finish(&mut st, fx);
     let s = diff_preview::shown(&st).expect("drawn");

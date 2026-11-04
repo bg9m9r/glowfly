@@ -6,6 +6,7 @@ use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::{self, DiffTarget, HunkOp};
 use glowfly_core::undo::{Action, Discarded};
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
 use glowfly_model::state::AppState;
@@ -64,7 +65,13 @@ fn stage_hunk_applies_only_the_shown_change() {
     let (mut st, dir, _) = reindented("ws-ops-stage", false);
     let generation = st.hunk_ops_gen().expect("hunk buttons on");
     let fx = run(&mut st, hunk(HunkOp::Stage, generation));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { op: HunkOp::Stage, ignore_whitespace: true, .. }, .. }]), "{fx:?}");
+    assert!(
+        matches!(
+            &fx[..],
+            [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Hunk { op: HunkOp::Stage, ignore_whitespace: true, .. }, .. })]
+        ),
+        "{fx:?}"
+    );
     finish(&mut st, fx);
     assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.last().map(|l| &l.text));
     assert_eq!(changes(&dir, &DiffTarget::Staged("f.txt".into())), ["+if {", "+}"]);
@@ -80,7 +87,7 @@ fn lines_can_be_selected_and_staged() {
     assert!(!st.view.diff_lines.is_empty(), "selection works with whitespace hidden");
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
     assert!(
-        matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { lines, ignore_whitespace: true, .. }, .. }] if *lines == [close]),
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { lines, ignore_whitespace: true, .. }, .. })] if *lines == [close]),
         "{fx:?}"
     );
     finish(&mut st, fx);
@@ -102,7 +109,7 @@ fn discard_lines_removes_only_the_shown_line_and_undoes_exactly() {
     let close = select_close(&mut st);
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Discard)));
     assert!(
-        matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, lines, ignore_whitespace: true, .. }, .. }] if *lines == [close]),
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { op: HunkOp::Discard, lines, ignore_whitespace: true, .. }, .. })] if *lines == [close]),
         "{fx:?}"
     );
     finish(&mut st, fx);
@@ -133,7 +140,7 @@ fn unstage_lines_on_a_staged_diff() {
     let close = select_close(&mut st);
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage)));
     assert!(
-        matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Lines { op: HunkOp::Unstage, lines, ignore_whitespace: true, .. }, .. }] if *lines == [close]),
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { op: HunkOp::Unstage, lines, ignore_whitespace: true, .. }, .. })] if *lines == [close]),
         "{fx:?}"
     );
     finish(&mut st, fx);
@@ -165,7 +172,13 @@ fn unstage_hunk_on_a_staged_diff() {
     let (mut st, dir, _) = reindented("ws-ops-unstage", true);
     let generation = st.hunk_ops_gen().unwrap();
     let fx = run(&mut st, hunk(HunkOp::Unstage, generation));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { op: HunkOp::Unstage, ignore_whitespace: true, .. }, .. }]), "{fx:?}");
+    assert!(
+        matches!(
+            &fx[..],
+            [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Hunk { op: HunkOp::Unstage, ignore_whitespace: true, .. }, .. })]
+        ),
+        "{fx:?}"
+    );
     finish(&mut st, fx);
     assert_eq!(changes(&dir, &DiffTarget::Staged("f.txt".into())), REINDENT, "the re-indent stays staged");
     assert_eq!(read(&dir), NEW);
@@ -178,6 +191,6 @@ fn with_whitespace_shown_the_flag_is_off() {
     drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(false)));
     let generation = st.hunk_ops_gen().unwrap();
     let fx = run(&mut st, hunk(HunkOp::Stage, generation));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::Hunk { ignore_whitespace: false, .. }, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Hunk { ignore_whitespace: false, .. }, .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

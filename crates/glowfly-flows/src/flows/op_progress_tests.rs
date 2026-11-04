@@ -10,6 +10,7 @@ use git2::{Repository, RepositoryState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::undo::Action;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg, SelectionMsg};
 use glowfly_model::state::op_actions::state_actions;
 use glowfly_model::state::op_confirm::banner_msg;
@@ -324,7 +325,7 @@ fn show_in_progress() {
     assert_eq!(st.session.selection, Selection::Wip);
     assert!(st.session.wip_drawn_selected(), "asked for: the row lights");
     assert!(st.settings.show_details_panel);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved like the other panel toggles");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "saved like the other panel toggles");
     assert!(st.snap.as_ref().unwrap().graph.wip.is_some());
     assert_eq!(st.view.scroll_to_row, Some(0));
     let _ = std::fs::remove_dir_all(&dir);

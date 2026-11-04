@@ -7,6 +7,8 @@ use glowfly_core::diff_rows::header_rows;
 use glowfly_core::repo::{DiffLine, DiffTarget, FileDiff, Hunk, HunkOp};
 use glowfly_core::settings::DiffLayout;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::PrefsMsg;
@@ -48,7 +50,7 @@ fn set_diff_layout_saves_and_keeps_hunk() {
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(s) if s.diff_layout == DiffLayout::Split)));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(s)) if s.diff_layout == DiffLayout::Split)));
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
     assert_eq!(st.session.tab_view.diff_top_row, split[1]);
@@ -68,7 +70,7 @@ fn set_diff_layout_without_diff_still_saves() {
     let mut st = state();
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.settings.diff_layout, DiffLayout::Split);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     assert_eq!(st.view.diff_scroll_to_row, None);
 }
 
@@ -212,7 +214,7 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
 
     st.settings.syntax_highlighting = false;
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if !s.syntax_highlighting));
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if !s.syntax_highlighting));
     assert_eq!(st.session.diff.view.as_ref().unwrap().1.highlight, want, "only painting is gated, so turning it back on needs no reload");
 }
 
@@ -225,7 +227,7 @@ pub(super) fn drive_holding_diffs(st: &mut AppState, msg: Msg) -> Vec<Effect> {
             match effect {
                 Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }) => held.push(effect),
                 Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
-                | Effect::LocalOp { .. }
+                | Effect::Files(FilesEffect::LocalOp { .. })
                 | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }) => queue.extend(glowfly_runner::testing::execute(effect)),
                 _ => {}
             }

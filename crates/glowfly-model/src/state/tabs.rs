@@ -51,7 +51,7 @@ pub struct Tab {
     /// any other spelling of it, case included where the volume ignores case.
     pub folder: Option<FolderId>,
     /// The common dir of the tab's repository, from its snapshot or the startup read
-    /// (`Effect::ReadTabGroups`): what groups worktree tabs. None for a new tab, or before either.
+    /// (`SessionEffect::ReadTabGroups`): what groups worktree tabs. None for a new tab, or before either.
     pub group: Option<CommonDir>,
     /// Everything this tab showed when it was last active. `None` for the active tab, and for
     /// a tab restored at startup that hasn't been loaded yet.

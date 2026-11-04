@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::{ConflictSummary, FileEntry, ResolvedFile};
 use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{ConflictRead, Effect, LocalOp};
 use glowfly_model::msg::{ConflictMsg, Inactive, Msg, RepoMsg, StageMsg, TabsMsg};
 use glowfly_model::state::{AppState, Modal};
@@ -52,7 +53,10 @@ fn mark_resolved_with_markers_left_asks_first() {
     assert!(matches!(*then, Msg::Conflict(ConflictMsg::MarkResolvedConfirmed(ref p)) if *p == owned(&["a.txt"])));
     assert!(is_conflicted(&st, "a.txt"), "nothing staged before the answer");
     let fx = update(&mut st, *then, Instant::now());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkResolved(p), .. }] if *p == owned(&["a.txt"])), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::MarkResolved(p), .. })] if *p == owned(&["a.txt"])),
+        "{fx:?}"
+    );
     super::tests::finish(&mut st, fx);
     assert!(!is_conflicted(&st, "a.txt"));
     assert!(markers_in(&dir, "a.txt") == 1, "staged as it was");
@@ -79,7 +83,7 @@ fn staging_a_conflicted_file_goes_through_the_markers_check() {
     std::fs::write(dir.join("new.txt"), "new\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("new.txt".into())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::StageFile(p), .. }] if p == "new.txt"), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::StageFile(p), .. })] if p == "new.txt"), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -110,7 +114,10 @@ fn mark_conflicted_brings_the_conflict_back() {
     assert!(!is_conflicted(&st, "a.txt"));
     assert_eq!(st.session.conflict_files.resolved.iter().map(|r| r.entry.path.as_str()).collect::<Vec<_>>(), ["a.txt"]);
     let fx = send(&mut st, ConflictMsg::MarkConflicted(owned(&["a.txt", "other.txt"])));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkConflicted(p), .. }] if *p == owned(&["a.txt"])), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::MarkConflicted(p), .. })] if *p == owned(&["a.txt"])),
+        "{fx:?}"
+    );
     super::tests::finish(&mut st, fx);
     assert!(is_conflicted(&st, "a.txt"));
     assert!(markers_in(&dir, "a.txt") >= 1);
@@ -217,7 +224,10 @@ fn mark_all_conflicted_sends_every_restorable_path() {
     let all = restorable_paths(&st);
     assert_eq!(all, owned(&["a.txt", "b.txt"]));
     let fx = send(&mut st, ConflictMsg::MarkConflicted(all));
-    assert!(matches!(&fx[..], [Effect::LocalOp { op: LocalOp::MarkConflicted(p), .. }] if *p == owned(&["a.txt", "b.txt"])), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::MarkConflicted(p), .. })] if *p == owned(&["a.txt", "b.txt"])),
+        "{fx:?}"
+    );
     // A record without both sides, and a file the merge tool has open, are left out.
     st.session.conflict_files.resolved[0].both_sides = false;
     st.job = Some(glowfly_model::state::RunningJob {

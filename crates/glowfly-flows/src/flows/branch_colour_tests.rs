@@ -8,6 +8,7 @@ use super::update;
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::settings::ColourPalette;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::{GraphMsg, Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
 use glowfly_model::state::AppState;
 use std::path::PathBuf;
@@ -73,7 +74,7 @@ fn a_pin_recolours_at_once_is_saved_and_survives_a_reopen() {
     let (mut st, dir) = opened("branch-pin");
     let automatic = swatch(&st, "topic");
     let fx = pin(&mut st, "topic", Some(9));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "saved");
     assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "no reload");
     assert_eq!(swatch(&st, "topic"), Swatch::Slot(9));
     assert_ne!(swatch(&st, "fix-1"), Swatch::Slot(9), "the automatic neighbour moves off it");
@@ -88,7 +89,7 @@ fn a_pin_recolours_at_once_is_saved_and_survives_a_reopen() {
     assert_eq!(swatch(&again, "topic"), Swatch::Slot(9), "kept across loads");
 
     let fx = pin(&mut st, "topic", None);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))));
     assert_eq!(swatch(&st, "topic"), automatic, "Automatic restores the picked hue");
     assert!(st.settings.branch_pins.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
@@ -99,7 +100,7 @@ fn pinning_main_is_saved_and_recolours_it() {
     let (mut st, dir) = opened("branch-pin-main");
     assert_eq!(swatch(&st, "main"), Swatch::Trunk);
     let fx = pin(&mut st, "main", Some(3));
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "saved");
     assert_eq!(swatch(&st, "main"), Swatch::Slot(3));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     assert_eq!(st.settings.branch_pins_for(&real).get("main"), Some(&3));
@@ -111,7 +112,7 @@ fn automatic_returns_main_to_the_trunk() {
     let (mut st, dir) = opened("branch-unpin-main");
     let _ = pin(&mut st, "main", Some(3));
     let fx = pin(&mut st, "main", None);
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "saved");
     assert_eq!(swatch(&st, "main"), Swatch::Trunk);
     assert!(st.settings.branch_pins.is_empty());
     let _ = std::fs::remove_dir_all(&dir);

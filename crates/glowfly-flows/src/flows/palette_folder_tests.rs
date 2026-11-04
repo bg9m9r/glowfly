@@ -5,6 +5,7 @@ use super::palette_tests::repo_with_topic;
 use super::update;
 use glowfly_core::repo::HistoryStart;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::msg::{Msg, PaletteMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::history::HistoryKind;
@@ -63,7 +64,7 @@ fn picking_a_folder_opens_its_history() {
     let v = st.session.history.view.as_ref().expect("history open");
     assert_eq!((v.path.as_str(), v.kind, v.at), ("src/ui", HistoryKind::Folder, None));
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadFileHistory { path, folder: true, start: HistoryStart::Head, .. } if path == "src/ui")),
+        fx.iter().any(|e| matches!(e, Effect::History(HistoryEffect::FileHistory { path, folder: true, start: HistoryStart::Head, .. }) if path == "src/ui")),
         "{fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

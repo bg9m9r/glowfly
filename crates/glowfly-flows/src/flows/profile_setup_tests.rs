@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo};
 use glowfly_core::forge::{Account, Connection, Provider, PullRequest, Target};
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{ProfilePrefs, ThemeChoice};
+use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{AccountEffect, Effect};
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
 use glowfly_model::profile::ProfileMsg;
@@ -94,7 +95,7 @@ fn switch_applies_incoming_setup() {
     assert_eq!(work.prefs.as_ref().map(|p| p.theme.clone()), Some(ThemeChoice::Graphite));
     assert_eq!(work.connections, Some(vec![github()]));
     assert_eq!(saves(&fx), 1);
-    let saved = fx.iter().find_map(|e| if let Effect::SaveSettings(s) = e { Some(s) } else { None }).unwrap();
+    let saved = fx.iter().find_map(|e| if let Effect::Save(SaveEffect::Settings(s)) = e { Some(s) } else { None }).unwrap();
     assert_eq!((saved.theme.clone(), saved.active_profile), (ThemeChoice::Light, Some(PERSONAL)), "saved after the swap");
     assert!(st.toasts.iter().any(|t| t.ok && t.text == "Switched to profile Personal"));
 }

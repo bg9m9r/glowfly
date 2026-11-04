@@ -6,6 +6,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{GroupMsg, Msg, RecentMsg};
 use crate::state::repo_colours::{listed_colour, tab_colour};
 use crate::state::repo_groups::{colours_at_default, members, ungrouped};
@@ -24,7 +25,7 @@ fn paths(list: &[&str]) -> Vec<PathBuf> {
 }
 
 fn saves(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::SaveSettings(_))).count()
+    fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count()
 }
 
 fn move_to(st: &mut AppState, p: &str, group: Option<usize>, index: usize) -> Vec<Effect> {
@@ -154,7 +155,7 @@ fn the_favorite_keys_and_open_all_follow_the_groups() {
     let tabs: Vec<Option<PathBuf>> = st.tabs.iter().map(|t| t.path.clone()).collect();
     assert!(tabs.contains(&Some(PathBuf::from("/w/c"))) && tabs.contains(&Some(PathBuf::from("/w/d"))), "{tabs:?}");
     assert!(!tabs.contains(&Some(PathBuf::from("/w/a"))), "only the group's");
-    assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Tabs { .. }))), "{fx:?}");
 }
 
 #[test]

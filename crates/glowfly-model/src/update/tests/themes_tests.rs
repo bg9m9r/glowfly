@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::SaveEffect;
 use crate::msg::{Msg, PrefsMsg};
 use crate::state::{AppState, PrefPage};
 use crate::themes::ThemeMsg;
@@ -20,7 +21,10 @@ fn a_retired_theme_is_announced_once() {
     st.settings.theme = ThemeChoice::Midnight;
     st.settings.retired_theme = Some(("Garden Dark".to_owned(), BuiltinTheme::Midnight));
     let fx = loaded(&mut st);
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s)] if s.theme == ThemeChoice::Midnight && s.retired_theme.is_none()), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.theme == ThemeChoice::Midnight && s.retired_theme.is_none()),
+        "{fx:?}"
+    );
     assert_eq!(st.toasts.len(), 1);
     let toast = &st.toasts[0];
     assert_eq!(toast.text, "Garden Dark is no longer included; Glowfly now uses Midnight.");

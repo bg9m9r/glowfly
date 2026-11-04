@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use git2::Oid;
 use glowfly_core::repo::{self, DiffTarget, FileHistory, HistoryStart, LoadOptions};
+use glowfly_model::effect::HistoryEffect;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::msg::{HistoryMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
@@ -23,7 +24,7 @@ fn refresh_with_head(st: &mut AppState, head: Option<Oid>) -> Vec<Effect> {
 
 /// The history walks among `fx`.
 fn walks(fx: &[Effect]) -> Vec<&Effect> {
-    fx.iter().filter(|e| matches!(e, Effect::LoadFileHistory { .. })).collect()
+    fx.iter().filter(|e| matches!(e, Effect::History(HistoryEffect::FileHistory { .. }))).collect()
 }
 
 fn history(entries: Vec<glowfly_core::repo::HistoryEntry>) -> FileHistory {
@@ -37,7 +38,7 @@ fn head_move_reruns_the_open_history() {
     let fx = refresh_with_head(&mut st, Some(oid(9)));
     let gen_now = st.session.history.generation;
     assert!(
-        matches!(&walks(&fx)[..], [Effect::LoadFileHistory { start: HistoryStart::Moved(o), path, folder: false, generation, .. }]
+        matches!(&walks(&fx)[..], [Effect::History(HistoryEffect::FileHistory { start: HistoryStart::Moved(o), path, folder: false, generation, .. })]
             if Some(*o) == old && path == "a.txt" && *generation == gen_now),
         "{fx:?}"
     );
@@ -119,7 +120,7 @@ fn rerun_keeps_the_search_depth() {
     assert_eq!(st.session.history.view.as_ref().unwrap().batches, 2);
     let fx = refresh_with_head(&mut st, Some(oid(9)));
     let want = 2 * st.settings.commit_limit();
-    assert!(matches!(&walks(&fx)[..], [Effect::LoadFileHistory { limit, .. }] if *limit == want), "{fx:?}");
+    assert!(matches!(&walks(&fx)[..], [Effect::History(HistoryEffect::FileHistory { limit, .. })] if *limit == want), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -133,7 +134,7 @@ fn head_view_takes_the_new_name_from_a_rerun() {
     assert_eq!(v.path, "b.txt");
     assert!(v.head_path.is_none() && v.as_of.is_none());
     let fx = refresh_with_head(&mut st, Some(oid(8)));
-    assert!(matches!(&walks(&fx)[..], [Effect::LoadFileHistory { path, .. }] if path == "b.txt"), "{fx:?}");
+    assert!(matches!(&walks(&fx)[..], [Effect::History(HistoryEffect::FileHistory { path, .. })] if path == "b.txt"), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
