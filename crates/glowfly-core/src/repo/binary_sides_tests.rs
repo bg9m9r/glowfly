@@ -207,3 +207,13 @@ fn an_svg_naming_another_file_says_so() {
     assert!(s.new.as_ref().is_some_and(|s| s.linked && s.image.is_some()));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_svg_of_exactly_its_cap_is_rendered() {
+    let dir = scratch_repo("binary-sides-svg-at-cap");
+    put(&dir, "icon.svg", ICON.as_bytes());
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: ICON.len() as u64, hex: HEX_MAX_BYTES };
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("icon.svg".into()), caps).unwrap();
+    assert_eq!(dims(&s.new), Some((24, 16)), "size <= cap renders");
+    let _ = std::fs::remove_dir_all(&dir);
+}

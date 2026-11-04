@@ -5,6 +5,7 @@ source file, update its line here.
 
 ## Commit graph and branch colours
 
+- : the SVG preview's budget: refuses drawings whose filters (morphology radius, turbulence octaves, convolution size, primitive count, total pixel work) or stacked layers cost too much.
 - `graph.rs`, `graph/`: lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes.
 - `graph/lanes.rs`: the lane layout itself (`layout`), kept with where the lanes stand below the last row so `Layout::extend` lays more commits out under it.
 - `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.
@@ -45,6 +46,7 @@ source file, update its line here.
 
 - `preview_image.rs`: decoding a PNG, JPEG, GIF, WebP or BMP (an animation's first frame), shared by the binary diff's preview and the file history's File view.
 - `preview_svg.rs` (tests in `preview_svg_tests.rs`): an SVG drawn by resvg for the diff's preview, its longer side at 1024 px; `<image>` hrefs other than `data:` are refused and flagged (`linked`), and text is set only in the bundled fonts.
+- `preview_svg_budget.rs`: the SVG preview's budget: refuses drawings whose filters (morphology radius, turbulence octaves, convolution size, primitive count, total pixel work) or stacked layers cost too much.
 - `bundled_fonts.rs`: the bytes of the fonts in `assets/fonts/`, shared by the interface's font setup and the SVG preview.
 - `preview_image.rs` bounds dimensions, pixel count (64 Mpx) and allocation, scales from the decoded buffer without a whole copy, reads the format from the content, and scales down to at most 1024 px a side for the diff (`decode`) or 2048 for the File view (`decode_sized`, which says why an image can't be shown); it also says which paths count as images.
 - `markdown.rs`: Markdown parsed with pulldown-cmark into blocks and styled runs, for pull request and issue bodies and the file history's File view preview: HTML dropped, images as alt-text links, bare https links, nesting capped, nothing over 512 KB. Pure.

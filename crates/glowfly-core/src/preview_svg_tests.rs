@@ -115,3 +115,82 @@ fn svg_paths_by_extension() {
         assert!(!is_svg_path(p), "{p}");
     }
 }
+
+/// `render` of `body`, which must come back within a second (a debug build on CI is slow, but
+/// a refused drawing never reaches the filters at all).
+fn quick(body: &str) -> Result<SvgRender, SvgError> {
+    let start = std::time::Instant::now();
+    let r = render(&svg(body));
+    assert!(start.elapsed() < std::time::Duration::from_secs(1), "took {:?}", start.elapsed());
+    r
+}
+
+#[test]
+fn costly_filters_are_refused_quickly() {
+    let filtered = |filter: &str| {
+        format!(r#"width="100" height="100"><filter id="f">{filter}</filter><rect width="100" height="100" filter="url(#f)"/>"#)
+    };
+    let hostile = [
+        r#"<feMorphology radius="100000"/>"#,
+        r#"<feMorphology operator="dilate" radius="50"/>"#,
+        r#"<feTurbulence baseFrequency="0.05" numOctaves="1000000000"/>"#,
+        r#"<feTurbulence baseFrequency="0.05" numOctaves="11"/>"#,
+    ];
+    for f in hostile {
+        assert_eq!(quick(&filtered(f)).unwrap_err(), SvgError::TooCostly, "{f}");
+    }
+    // A large convolution kernel costs its area for every pixel.
+    let kernel = vec!["1"; 99 * 99].join(" ");
+    let convolve = format!(r#"<feConvolveMatrix order="99" kernelMatrix="{kernel}"/>"#);
+    assert_eq!(quick(&filtered(&convolve)).unwrap_err(), SvgError::TooCostly);
+    // Too many primitives, even cheap ones.
+    let many = r#"<feOffset dx="1"/>"#.repeat(200);
+    assert_eq!(quick(&filtered(&many)).unwrap_err(), SvgError::TooCostly);
+    // Modest filters still draw.
+    for f in
+        [r#"<feMorphology radius="1"/>"#, r#"<feTurbulence baseFrequency="0.05" numOctaves="4"/>"#, r#"<feGaussianBlur stdDeviation="5"/>"#]
+    {
+        assert!(quick(&filtered(f)).is_ok(), "{f}");
+    }
+}
+
+#[test]
+fn a_costly_filter_inside_an_embedded_svg_is_refused_too() {
+    use base64::Engine;
+    let inner = svg(
+        r#"width="100" height="100"><filter id="f"><feMorphology radius="100000"/></filter><rect width="100" height="100" filter="url(#f)"/>"#,
+    );
+    let b64 = base64::engine::general_purpose::STANDARD.encode(inner);
+    let body = format!(r#"width="10" height="10"><image width="10" height="10" href="data:image/svg+xml;base64,{b64}"/>"#);
+    assert_eq!(quick(&body).unwrap_err(), SvgError::TooCostly);
+}
+
+#[test]
+fn deep_stacks_of_layers_are_refused() {
+    let nest = |depth: usize, attr: &str| {
+        let open = format!("<g {attr}>").repeat(depth);
+        format!(r#"width="100" height="100">{open}<rect width="100" height="100"/>{}"#, "</g>".repeat(depth))
+    };
+    for attr in [r#"opacity="0.9""#, r#"filter="url(#f)""#] {
+        let deep = format!(r#"{}<filter id="f"><feOffset dx="1"/></filter>"#, nest(300, attr));
+        assert_eq!(quick(&deep).unwrap_err(), SvgError::TooCostly, "{attr}");
+    }
+    assert!(quick(&nest(4, r#"opacity="0.9""#)).is_ok(), "a few layers draw");
+}
+
+#[test]
+fn references_to_other_files_are_flagged_wherever_they_are() {
+    use base64::Engine;
+    let used = quick(r##"width="10" height="10"><use href="other.svg#icon"/><use href="#local"/><rect id="local" width="1" height="1"/>"##)
+        .unwrap();
+    assert!(used.linked, "a <use> of another file");
+    let local =
+        quick(r##"width="10" height="10"><a href="https://example.invalid"><rect id="r" width="1" height="1"/></a><use href="#r"/>"##)
+            .unwrap();
+    assert!(!local.linked, "a link and a local <use> name no file to draw");
+    let inner = svg(r#"width="10" height="10"><image width="10" height="10" href="https://example.invalid/x.png"/>"#);
+    let b64 = base64::engine::general_purpose::STANDARD.encode(inner);
+    let nested =
+        quick(&format!(r#"width="10" height="10"><image width="10" height="10" href="data:image/svg+xml;base64,{b64}"/>"#)).unwrap();
+    assert!(nested.linked, "an external image inside an embedded SVG");
+}

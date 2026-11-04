@@ -80,6 +80,7 @@ pub mod pick_ops;
 pub mod preview;
 pub mod preview_image;
 pub mod preview_svg;
+mod preview_svg_budget;
 pub(crate) mod process_tree;
 pub mod profile_includes;
 pub mod push_all;
