@@ -1,6 +1,8 @@
 //! The HEAD lantern: the one glow on screen, round the checked-out commit's node, and the 1 px
-//! `lantern` rim on the node's edge (docs/COLOUR.md, "lantern"). The glow starts just past the
-//! rim, so the rim sits on the plain row fill and keeps its 3:1, and fades to the row's edge (a
+//! `lantern` rim on the node's edge (docs/COLOUR.md, "lantern"). HEAD's node is drawn from a
+//! centre snapped to the pixel grid, and the glow starts a whole pixel past the rim's
+//! antialiased edge, so the rim sits on the plain row fill and keeps its 3:1 (checked on the
+//! rendered pixels in `lantern_pixel_tests.rs`). It fades to the row's edge (a
 //! smoothstep) as opaque rings, each the row's top fill tinted toward `lantern` through
 //! `contrast::tint` (a plain warm wash on a dark field reads brown). On a hovered row it stops
 //! short of the hover's shadow. None in the high-contrast themes, nor on a row a search dims; it
@@ -11,7 +13,7 @@ use super::row_look::{RowLook, top_fill};
 use crate::ui::theme::color::{self, Palette};
 use crate::ui::theme::contrast::tint;
 use crate::ui::widgets::row_fill::HOVER_SHADOW_H;
-use eframe::egui::{Color32, Mesh, Painter, Pos2, Stroke, vec2};
+use eframe::egui::{Color32, Mesh, Painter, Pos2, Rect, Stroke, emath::GuiRounding, vec2};
 use git2::Oid;
 use glowfly_core::repo::CommitInfo;
 
@@ -23,9 +25,12 @@ const SEGMENTS: usize = 48;
 /// How far outside the node's edge the rim's centre line runs, and its width.
 const RIM_GAP: f32 = 1.75;
 const RIM_W: f32 = 1.0;
-/// How far outside the node's edge the glow starts: past the rim's outer edge and its
-/// antialiasing, so the rim reads on the plain fill.
-const GLOW_GAP: f32 = 2.5;
+/// How far egui's antialiasing carries a stroke past its edge.
+const FEATHER: f32 = 0.5;
+/// How far outside the node's edge the glow starts: a whole pixel past the rim's antialiased
+/// edge, so a pixel of plain fill shows between the rim and the glow.
+const GLOW_GAP: f32 = 4.0;
+const _: () = assert!(GLOW_GAP >= RIM_GAP + RIM_W / 2.0 + FEATHER + 1.0);
 
 /// How strongly the glow tints its row at the node's edge: lighter on paper (a stronger warm
 /// wash there reads tan) and lower again with colour-blind safe colours.
@@ -65,23 +70,50 @@ pub(super) fn shade(pal: &Palette, fill: Color32, t: f32) -> Color32 {
 
 /// Paints the glow centred on `c` behind the node of radius `node_r` when the row is `commit`'s
 /// and it glows (`glows`: it is `head`'s, …), on the row's top fill (`row_look::top_fill(look)`), and returns where the
-/// rim goes. On a lifted row (`look` hovered, not selected) it stops above the hover's shadow.
+/// rim goes: HEAD's node centre snapped to the pixel grid, and the node's edge.
 pub(super) fn glow(
     p: &Painter,
     c: Pos2,
     (commit, head): (Option<&CommitInfo>, Option<Oid>),
-    (node_r, row_h): (f32, f32),
+    sizes: (f32, f32),
     (look, shown): (RowLook, bool),
-) -> Option<f32> {
-    let (fill, lifted) = (top_fill(look), look.hovered && !look.selected);
-    let pal = color::current();
-    let commit = commit.filter(|c| glows(head == Some(c.oid), pal.high_contrast, shown))?;
+) -> Option<(Pos2, f32)> {
+    let commit = commit.filter(|c| glows(head == Some(c.oid), color::current().high_contrast, shown))?;
     let kind = if commit.parents.len() > 1 { NodeKind::Merge } else { NodeKind::Commit };
+    head_glow(p, c, kind, sizes, look)
+}
+
+/// The glow round HEAD's `kind` node (radius `node_r`, in a `row_h` row) on a row that looks
+/// `look`, from `c` snapped to the pixel grid; None in the high-contrast themes. On a lifted
+/// row (hovered, not selected) it stops above the hover's shadow. Returns the snapped centre
+/// and the node's edge.
+pub(super) fn head_glow(p: &Painter, c: Pos2, kind: NodeKind, (node_r, row_h): (f32, f32), look: RowLook) -> Option<(Pos2, f32)> {
+    let pal = color::current();
+    if pal.high_contrast {
+        return None;
+    }
+    let c = c.round_to_pixels(p.pixels_per_point());
     let (edge, inner, outer) = extent(kind, node_r, row_h);
+    let clip = clip_for(p.clip_rect(), look.hovered && !look.selected);
+    p.with_clip_rect(clip).add(mesh(&pal, c, (inner, outer), top_fill(look)));
+    Some((c, edge))
+}
+
+/// The glow's clip within the row's `clip`: on a `lifted` row (hovered, not selected) it stops
+/// above the hover's shadow, which it would otherwise paint over.
+pub(super) fn clip_for(mut clip: Rect, lifted: bool) -> Rect {
+    if lifted {
+        clip.max.y -= HOVER_SHADOW_H;
+    }
+    clip
+}
+
+/// The glow's rings centred on `c` from `inner` to `outer`, tinted on `fill`.
+fn mesh(pal: &Palette, c: Pos2, (inner, outer): (f32, f32), fill: Color32) -> Mesh {
     let mut mesh = Mesh::default();
     for i in 0..=RINGS {
         let t = i as f32 / RINGS as f32;
-        let (r, col) = (inner + (outer - inner) * t, shade(&pal, fill, t));
+        let (r, col) = (inner + (outer - inner) * t, shade(pal, fill, t));
         for s in 0..SEGMENTS {
             let a = s as f32 / SEGMENTS as f32 * std::f32::consts::TAU;
             mesh.colored_vertex(c + vec2(a.cos(), a.sin()) * r, col);
@@ -95,18 +127,17 @@ pub(super) fn glow(
             mesh.add_triangle(b, b + seg, a + seg);
         }
     }
-    let mut clip = p.clip_rect();
-    if lifted {
-        clip.max.y -= HOVER_SHADOW_H;
-    }
-    p.with_clip_rect(clip).add(mesh);
-    Some(edge)
+    mesh
 }
 
 /// The 1 px opaque `lantern` rim just outside a glowing node whose edge is `edge` from `c`.
 pub(super) fn rim(p: &Painter, c: Pos2, edge: f32) {
     p.circle_stroke(c, edge + RIM_GAP, Stroke::new(RIM_W, color::current().lantern));
 }
+
+#[cfg(test)]
+#[path = "lantern_pixel_tests.rs"]
+mod pixel_tests;
 
 #[cfg(test)]
 mod tests {
@@ -124,22 +155,17 @@ mod tests {
 
     #[test]
     fn the_glow_ends_at_the_row_edge() {
-        assert_eq!(extent(NodeKind::Commit, 10.0, 36.0), (10.0, 12.5, 18.0));
-        assert_eq!(extent(NodeKind::Commit, 8.0, 28.0), (8.0, 10.5, 14.0));
-        assert_eq!(extent(NodeKind::Merge, 10.0, 36.0), (4.0, 6.5, 14.0));
-        assert_eq!(extent(NodeKind::Merge, 8.0, 28.0), (4.0, 6.5, 14.0));
+        assert_eq!(extent(NodeKind::Commit, 10.0, 36.0), (10.0, 14.0, 18.0));
+        assert_eq!(extent(NodeKind::Commit, 8.0, 28.0), (8.0, 12.0, 14.0));
+        assert_eq!(extent(NodeKind::Merge, 10.0, 36.0), (4.0, 8.0, 14.0));
+        assert_eq!(extent(NodeKind::Merge, 8.0, 28.0), (4.0, 8.0, 14.0));
     }
 
-    /// The rim sits on the plain fill: the glow starts past its outer edge and antialiasing.
     #[test]
-    fn the_glow_leaves_the_rim_on_the_plain_fill() {
-        for (node_r, row_h) in [(10.0, 36.0), (8.0, 28.0)] {
-            for kind in [NodeKind::Commit, NodeKind::Merge] {
-                let (edge, inner, outer) = extent(kind, node_r, row_h);
-                assert!(inner >= edge + RIM_GAP + RIM_W / 2.0 + 0.25, "{kind:?} at {node_r}");
-                assert!(inner < outer, "{kind:?} at {node_r}: the glow has room");
-            }
-        }
+    fn a_lifted_row_clips_the_glow_above_the_hover_shadow() {
+        let row = Rect::from_min_max(eframe::egui::pos2(0.0, 0.0), eframe::egui::pos2(100.0, 36.0));
+        assert_eq!(clip_for(row, false), row);
+        assert_eq!(clip_for(row, true), Rect::from_min_max(row.min, eframe::egui::pos2(100.0, 36.0 - HOVER_SHADOW_H)));
     }
 
     #[test]

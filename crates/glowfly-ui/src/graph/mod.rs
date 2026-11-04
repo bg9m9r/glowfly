@@ -253,16 +253,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     resp.row_menu(|ui| super::worktrees::row_menu(ui, wt, msgs));
                     continue;
                 }
-                // The HEAD lantern's glow, under the lanes; its rim goes on after the node.
-                let fill = row_look::top_fill(look);
+                // The HEAD lantern's glow under the lanes, from HEAD's node snapped to pixels; its rim goes on after the node.
                 let glow = lantern::glow(&gp, pos2(node_x, mid), (commit, snap.head_oid), (node_r, row_h), (look, cols_cfg.tree && !dim));
+                let at = glow.map_or(pos2(node_x, mid), |(at, _)| at);
                 if cols_cfg.tree && !filtered {
                     draw_lanes(&gp, cols.graph.0, rect, g, &colours);
                 }
 
                 let Some(c) = commit else {
                     if cols_cfg.tree {
-                        nodes::wip_lantern(&gp, pos2(node_x, mid), node_r, fill, snap.is_dirty());
+                        nodes::wip_lantern(&gp, pos2(node_x, mid), node_r, row_look::top_fill(look), snap.is_dirty());
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
                     wip_row::draw(&mp, &cols, mid, (wip_label, selected), snap.changes, wip_total);
@@ -275,14 +275,14 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let kind = if c.parents.len() > 1 { NodeKind::Merge } else { NodeKind::Commit };
                 if cols_cfg.tree {
                     if kind == NodeKind::Merge {
-                        nodes::merge_dot(&gp, pos2(node_x, mid), lane_col);
+                        nodes::merge_dot(&gp, at, lane_col);
                     } else {
                         let av = if show_avatars { Some(&mut *avatars) } else { None };
-                        nodes::commit(&gp, (pos2(node_x, mid), node_r), c.author.name(), c.author.email(), lane_col, av);
+                        nodes::commit(&gp, (at, node_r), c.author.name(), c.author.email(), lane_col, av);
                     }
                 }
-                if let Some(inner) = glow {
-                    lantern::rim(&gp, pos2(node_x, mid), inner);
+                if let Some((at, edge)) = glow {
+                    lantern::rim(&gp, at, edge);
                 }
 
                 // BRANCH / TAG column, joined to the node; in a narrow table, the chips lead the message.

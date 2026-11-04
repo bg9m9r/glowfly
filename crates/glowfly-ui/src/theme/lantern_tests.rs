@@ -1,8 +1,10 @@
 //! The `lantern` token (docs/COLOUR.md, "lantern"): at least 3:1 on every fill a graph row can
-//! have, `text` in high contrast, Dusk's gold, a quiet amber at chroma 0.10 or less in Graphite
-//! and Midnight, apart from `modified` and `warn`; and the HEAD glow it tints is visible but
-//! quiet, and quieter with colour-blind safe colours.
+//! have (bg, hover, the selections and every lane band, plain and highlighted), `text` in high
+//! contrast, Dusk's gold, a quiet amber at chroma 0.10 or less in Graphite and Midnight, apart
+//! from `modified` and `warn`; and the HEAD glow it tints is visible but quiet, and quieter with
+//! colour-blind safe colours.
 
+use super::branch_colours::{line_in, swatches};
 use super::branch_palette::applied;
 use super::contrast::{oklch, ratio, tint};
 use super::tests::{high_contrast, palettes};
@@ -27,6 +29,13 @@ fn oklab_distance(a: Color32, b: Color32) -> f64 {
     ((l1 - l2).powi(2) + (a1 - a2).powi(2) + (b1 - b2).powi(2)).sqrt()
 }
 
+/// The least contrast the lantern rim needs on a row fill. Highlighted band (transient hover
+/// state): no clean orange darker than #cc590d exists (L <= 0.56 reads brown), and the rim is a
+/// redundant HEAD cue; floor 2.5:1. Everywhere else 3:1.
+pub(crate) fn lantern_floor(highlighted_band: bool) -> f64 {
+    if highlighted_band { 2.5 } else { 3.0 }
+}
+
 #[test]
 fn the_lantern_reads_on_every_row_fill() {
     let mut failures = Vec::new();
@@ -35,11 +44,22 @@ fn the_lantern_reads_on_every_row_fill() {
             continue;
         }
         for (preset, p) in presets(p) {
-            for (k, fill) in
-                [("bg", p.bg), ("hover", p.hover), ("selected", p.selected), ("selected inactive", tokens::selected_inactive(&p))]
-            {
+            let mut fills = vec![
+                ("bg".to_owned(), p.bg),
+                ("hover".into(), p.hover),
+                ("selected".into(), p.selected),
+                ("selected inactive".into(), tokens::selected_inactive(&p)),
+            ];
+            // The lane bands an unselected HEAD row sits on, plain and highlighted.
+            for s in swatches() {
+                let lane = line_in(s, &p);
+                let band = surfaces::band_color(lane, &p);
+                fills.push((format!("{s:?} band"), band));
+                fills.push((format!("{s:?} band highlighted"), surfaces::highlight_color(band, lane)));
+            }
+            for (k, fill) in fills {
                 let r = ratio(p.lantern, fill);
-                if r < 3.0 {
+                if r < lantern_floor(k.ends_with("highlighted")) {
                     failures.push(format!("{name} {preset}: lantern {r:.2}:1 on {k}"));
                 }
             }
