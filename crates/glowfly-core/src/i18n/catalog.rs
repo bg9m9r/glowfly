@@ -5,6 +5,7 @@
 
 use super::Lang;
 use serde::de::{Deserializer, MapAccess, Visitor};
+use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::sync::OnceLock;
@@ -82,10 +83,15 @@ pub(super) fn merge<'a>(files: impl IntoIterator<Item = (&'a str, &'a str)>) -> 
     let mut reported = HashSet::new();
     for (_, src) in files {
         for (key, text) in entries(src).unwrap_or_default() {
-            if !texts.contains_key(&key) {
-                texts.insert(key, text);
-            } else if reported.insert(key.clone()) {
-                dups.push(key);
+            match texts.entry(key) {
+                Entry::Vacant(slot) => {
+                    slot.insert(text);
+                }
+                Entry::Occupied(slot) => {
+                    if reported.insert(slot.key().clone()) {
+                        dups.push(slot.key().clone());
+                    }
+                }
             }
         }
     }
