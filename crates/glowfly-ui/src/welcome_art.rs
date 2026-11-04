@@ -32,15 +32,16 @@ const TOP: f32 = 24.0;
 /// The ice head ends this far from the art's right edge; the icon's units the art spans across.
 const RIGHT: f32 = 24.0;
 const SPAN: f32 = 750.0;
-/// The gold lane fades in over this much of the art's left edge, in pieces this long.
-const FADE_IN: f32 = 32.0;
-const PIECE: f32 = 4.0;
+/// The gold lane starts this far in from the art's left edge, with a round end.
+const GOLD_START: f32 = 12.0;
 
 /// The lanes, in icon units: the gold trunk, then each branch's elbow (from, the elbow's control
 /// height, the turn) and where it ends.
 const GOLD_LANE: [(f32, f32); 2] = [(340.0, 1000.0), (340.0, 664.0)];
-const ROSE_LANE: ((f32, f32), f32, (f32, f32), (f32, f32)) = ((340.0, 858.0), 774.0, (612.0, 690.0), (612.0, 452.0));
-const ICE_LANE: ((f32, f32), f32, (f32, f32), (f32, f32)) = ((612.0, 616.0), 537.0, (792.0, 458.0), (792.0, 250.0));
+/// A branch lane: where it leaves its parent, its elbow's control height, the turn and its end.
+type Branch = ((f32, f32), f32, (f32, f32), (f32, f32));
+const ROSE_LANE: Branch = ((340.0, 858.0), 774.0, (612.0, 690.0), (612.0, 452.0));
+const ICE_LANE: Branch = ((612.0, 616.0), 537.0, (792.0, 458.0), (792.0, 250.0));
 /// The commits: where, which lane (0 gold, 1 rose, 2 ice) and the dot's radius in px.
 const COMMITS: [((f32, f32), usize, f32); 5] =
     [((340.0, 858.0), 0, 4.0), ((612.0, 616.0), 1, 4.0), ((612.0, 534.0), 1, 3.3), ((792.0, 458.0), 2, 4.0), ((792.0, 356.0), 2, 3.3)];
@@ -57,17 +58,19 @@ const HEAD_MID: [Color32; 2] = [Color32::from_rgb(0xfd, 0xc4, 0xea), Color32::fr
 const HEAD_CENTRE: [Color32; 2] = [Color32::from_rgb(0xff, 0xf3, 0xfb), Color32::from_rgb(0xf4, 0xf9, 0xff)];
 /// A head's halo rings on the dark themes: (radius × core, tint toward the hue), outermost first.
 pub(super) const HEAD_HALO: [(f32, f32); 2] = [(2.2, 0.06), (1.6, 0.12)];
-/// The lantern's frame (`draw.rs` `LIGHT`: translate(340 664) rotate(28) scale(1.1)) and its
-/// ellipse's radii in the frame's units.
+/// The lantern's frame (`draw.rs` `LIGHT`: translate(340 664) rotate(28) scale(1.1)) without
+/// its tilt, so in the art the body lies along its lane and both wings fan forward, above and
+/// below it, and its ellipse's radii in the frame's units.
 const LANTERN_AT: (f32, f32) = (340.0, 664.0);
-const LANTERN_TURN: f32 = 28.0;
 const LANTERN_SCALE: f32 = 1.1;
 const LANTERN_R: (f32, f32) = (100.0, 132.0);
 /// The dark themes' lantern: concentric ellipses (scale, colour), and its halo rings (scale,
-/// tint toward gold), outermost first.
+/// lift toward `text`: neutral, so the band's own hue doesn't ring the gold), outermost first.
 const LANTERN_TONES: [(f32, Color32); 3] =
     [(1.0, Color32::from_rgb(0xf4, 0xb1, 0x4d)), (0.72, Color32::from_rgb(0xff, 0xe6, 0xb0)), (0.40, Color32::from_rgb(0xff, 0xfb, 0xf1))];
-pub(super) const LANTERN_HALO: [(f32, f32); 3] = [(1.7, 0.08), (1.45, 0.14), (1.2, 0.22)];
+pub(super) const LANTERN_HALO: [(f32, f32); 3] = [(1.7, 0.05), (1.45, 0.09), (1.2, 0.14)];
+/// The wings' fill: `text` at this alpha on the dark and light themes, so the halo shows through.
+const WING_ALPHA: (f32, f32) = (0.18, 0.08);
 /// Segments per ellipse and per wing curve.
 const ELLIPSE_STEPS: usize = 32;
 const CURVE_STEPS: usize = 24;
@@ -93,9 +96,11 @@ pub(super) struct ArtStyle {
     pub rose: Color32,
     pub ice: Color32,
     pub lane_w: f32,
-    /// The wings' fill (none in high contrast) and their 1 px edge.
+    /// The wings' see-through fill (none in high contrast) and their 1 px edge.
     pub wing_fill: Option<Color32>,
     pub wing_edge: Color32,
+    /// The lantern's halo rings, outermost first (`LANTERN_HALO`).
+    pub lantern_halo: [Color32; 3],
 }
 
 impl ArtStyle {
@@ -124,9 +129,10 @@ pub(super) fn art_style(p: &Palette) -> ArtStyle {
             lane_w: 3.0,
             wing_fill: None,
             wing_edge: p.text,
+            lantern_halo: [p.panel; 3],
         };
     }
-    let (kind, tint, wing) = if p.dark { (ArtKind::Dark, 0.10, 0.12) } else { (ArtKind::Light, 0.08, 0.06) };
+    let (kind, tint, wing) = if p.dark { (ArtKind::Dark, 0.10, WING_ALPHA.0) } else { (ArtKind::Light, 0.08, WING_ALPHA.1) };
     let band = contrast::mix(p.panel, p.accent, tint);
     let (gold, rose, ice) = match kind {
         ArtKind::Dark => (GOLD, contrast::mix(band, ROSE, TRAIL), contrast::mix(band, ICE, TRAIL)),
@@ -140,8 +146,9 @@ pub(super) fn art_style(p: &Palette) -> ArtStyle {
         rose,
         ice,
         lane_w: 2.5,
-        wing_fill: Some(contrast::mix(band, p.text, wing)),
+        wing_fill: Some(p.text.gamma_multiply(wing)),
         wing_edge: contrast::mix(band, p.text, 0.5),
+        lantern_halo: LANTERN_HALO.map(|(_, k)| contrast::mix(band, p.text, k)),
     }
 }
 
@@ -182,7 +189,7 @@ fn cubic(p0: Pos2, p1: Pos2, p2: Pos2, p3: Pos2, steps: usize) -> impl Iterator<
 
 /// A branch lane: the app's S-shaped elbow from `from` over to `turn` (both control points at
 /// the elbow's height `my`), then straight on to `end`.
-fn branch(m: &Map, (from, my, turn, end): ((f32, f32), f32, (f32, f32), (f32, f32))) -> Vec<Pos2> {
+fn branch(m: &Map, (from, my, turn, end): Branch) -> Vec<Pos2> {
     let mut points = vec![m.at(from)];
     points.extend(cubic(m.at(from), m.at((from.0, my)), m.at((turn.0, my)), m.at(turn), 32));
     points.push(m.at(end));
@@ -191,9 +198,7 @@ fn branch(m: &Map, (from, my, turn, end): ((f32, f32), f32, (f32, f32), (f32, f3
 
 /// A point of the lantern frame (`l` in its units), as an offset in the art.
 fn lantern_offset(m: &Map, l: (f32, f32)) -> Vec2 {
-    let (sin, cos) = LANTERN_TURN.to_radians().sin_cos();
-    let d = (LANTERN_SCALE * (l.0 * cos - l.1 * sin), LANTERN_SCALE * (l.0 * sin + l.1 * cos));
-    m.shape(d)
+    m.shape((LANTERN_SCALE * l.0, LANTERN_SCALE * l.1))
 }
 
 /// The lantern's ellipse at `scale`, as a closed polygon in the art.
@@ -236,8 +241,8 @@ pub(super) fn paint(p: &Painter, r: Rect, s: &ArtStyle) {
     let m = Map::new(r);
     let hues = [s.gold, s.rose, s.ice];
     if s.glows() {
-        for &(scale, k) in &LANTERN_HALO {
-            p.add(Shape::convex_polygon(lantern_ellipse(&m, scale), contrast::tint(s.band, GOLD, k, true), Stroke::NONE));
+        for (&(scale, _), ring) in LANTERN_HALO.iter().zip(s.lantern_halo) {
+            p.add(Shape::convex_polygon(lantern_ellipse(&m, scale), ring, Stroke::NONE));
         }
         for (i, hue) in [ROSE, ICE].into_iter().enumerate() {
             let (c, radius) = head(&m, i);
@@ -276,18 +281,13 @@ pub(super) fn paint(p: &Painter, r: Rect, s: &ArtStyle) {
     }
 }
 
-/// The gold trunk, fading in from the band over the art's first `FADE_IN` px.
+/// The gold trunk, from `GOLD_START` in from the art's left edge, with a round start, into the
+/// lantern.
 fn gold_lane(p: &Painter, m: &Map, r: Rect, s: &ArtStyle) {
-    let (a, b) = (m.at(GOLD_LANE[0]), m.at(GOLD_LANE[1]));
-    let fade_end = (a.x + FADE_IN).min(b.x);
-    let mut x = a.x;
-    while x < fade_end {
-        let next = (x + PIECE).min(fade_end);
-        let tone = contrast::mix(s.band, s.gold, ((x + next) / 2.0 - r.left()) / FADE_IN);
-        p.line_segment([pos2(x, a.y), pos2(next, a.y)], Stroke::new(s.lane_w, tone));
-        x = next;
-    }
-    p.line_segment([pos2(fade_end, a.y), b], Stroke::new(s.lane_w, s.gold));
+    let end = m.at(GOLD_LANE[1]);
+    let start = pos2(r.left() + GOLD_START, end.y);
+    p.circle_filled(start, s.lane_w / 2.0, s.gold);
+    p.line_segment([start, end], Stroke::new(s.lane_w, s.gold));
 }
 
 /// The lantern: toned ellipses on the dark themes, one solid ellipse elsewhere.

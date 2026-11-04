@@ -59,7 +59,7 @@ fn every_mark_reads_on_the_band_and_none_is_brown() {
         let mut painted = marks(&s);
         if s.glows() {
             painted.extend(LANTERN_TONES.iter().map(|&(_, c)| ("lantern tone", c)));
-            painted.extend(LANTERN_HALO.iter().map(|&(_, k)| ("lantern halo", contrast::tint(s.band, GOLD, k, true))));
+            painted.extend(s.lantern_halo.iter().map(|&c| ("lantern halo", c)));
             for hue in [ROSE, ICE] {
                 painted.extend(HEAD_HALO.iter().map(|&(_, k)| ("head halo", contrast::tint(s.band, hue, k, true))));
             }
@@ -74,6 +74,21 @@ fn every_mark_reads_on_the_band_and_none_is_brown() {
 /// full-strength gold. The light themes draw all three opaque at about 3.6 to 4:1 (the orange
 /// can't go darker without turning brown) and high contrast all at full strength; there the
 /// lantern's size leads instead.
+#[test]
+fn the_lantern_halo_is_a_neutral_lift() {
+    for (name, p) in palettes() {
+        let s = art_style(&p);
+        if !s.glows() {
+            continue;
+        }
+        let band_chroma = contrast::oklch(s.band).1;
+        for c in s.lantern_halo {
+            assert!(!brownish(c), "{name}: {c:?} reads brown");
+            assert!(contrast::oklch(c).1 <= band_chroma + 0.01, "{name}: {c:?} is more coloured than the band");
+        }
+    }
+}
+
 #[test]
 fn the_gold_leads_the_trail_on_the_dark_themes() {
     for (name, p) in palettes().into_iter().filter(|(_, p)| art_style(p).kind == ArtKind::Dark) {
@@ -95,7 +110,11 @@ fn the_art_stays_inside_the_band() {
     assert!(top - r.top() >= 4.0, "the ice head's halo starts at {top}");
     let (ice, _) = head(&m, 1);
     assert!((r.right() - ice.x - 24.0).abs() < 0.01, "the ice head ends 24 px from the right edge");
-    assert!((m.at(GOLD_LANE[0]).x - r.left()).abs() < 0.01, "the gold lane comes in from the left edge");
+    let wings: Vec<Pos2> = [false, true].into_iter().flat_map(|mirror| wing(&m, mirror)).collect();
+    let (top, bottom) = wings.iter().fold((f32::MAX, f32::MIN), |(t, b), p| (t.min(p.y), b.max(p.y)));
+    assert!(top - r.top() > 44.7 + 2.0 && bottom - r.top() <= 100.0, "the wings span {top}..{bottom}, clear of the rose lane");
+    let lantern = m.at(LANTERN_AT);
+    assert!(wings.iter().all(|p| p.x > lantern.x), "both wings fan forward, along the trail");
 }
 
 /// The drawing as painted into `art_rect` in `p`: the image and the style.
