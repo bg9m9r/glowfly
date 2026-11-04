@@ -416,7 +416,8 @@ is at most one, and it sits at the surface's trailing edge.
   `lantern`: a warm wash on a dark field reads brown at any strength, so on the dark themes the
   glow lifts the row's own hue and the warmth sits on the node's 1 px `lantern` rim. Its peak is
   25% on dark themes and 16% on paper (18% and 12% with colour-blind safe colours), falling off
-  as 1 - smoothstep(t) from the node's edge to the row's edge.
+  as 1 - smoothstep(t) from 2.5 px outside the node's edge (past the rim, which so reads at 3:1
+  on the plain row fill) to the row's edge, stopping above a hovered row's shadow.
 - Tinting a surface: the faint tints of a surface (graph row bands up to 7% toward the row's
   lane, the toolbar groups' backing 9% toward the accent, the dialog guide 7%, text fields
   4%, and a search's find fill behind matched text 24% (dark) or 18% (light) toward the accent,

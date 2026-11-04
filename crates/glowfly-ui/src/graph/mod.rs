@@ -255,7 +255,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 }
                 // The HEAD lantern's glow, under the lanes; its rim goes on after the node.
                 let fill = row_look::top_fill(look);
-                let glow = lantern::glow(&gp, pos2(node_x, mid), (commit, snap.head_oid), (node_r, row_h), (fill, cols_cfg.tree && !dim));
+                let glow = lantern::glow(&gp, pos2(node_x, mid), (commit, snap.head_oid), (node_r, row_h), (look, cols_cfg.tree && !dim));
                 if cols_cfg.tree && !filtered {
                     draw_lanes(&gp, cols.graph.0, rect, g, &colours);
                 }
