@@ -145,6 +145,7 @@ pub(super) mod snapshot_tests_push_pr;
 pub(super) mod snapshot_tests_range_diff;
 pub(super) mod snapshot_tests_rebase;
 pub(super) mod snapshot_tests_rebase_edit;
+pub(super) mod snapshot_tests_rebase_header;
 pub(super) mod snapshot_tests_rebase_keys;
 pub(super) mod snapshot_tests_rebase_merges;
 pub(super) mod snapshot_tests_rebase_steps;

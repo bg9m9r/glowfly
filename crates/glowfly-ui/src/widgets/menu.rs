@@ -133,7 +133,9 @@ pub fn submenu<R>(ui: &mut Ui, title: impl Into<WidgetText>, add_contents: impl 
     // row is drawn hovered.
     let lit = ui.rect_contains_pointer(r.response.rect) || r.inner.is_some();
     let at = egui::pos2(r.response.rect.right() - pad - columns::CHEVRON_W / 2.0, r.response.rect.center().y);
-    super::chevron(ui.painter(), at, false, if lit { color::text() } else { color::weak() });
+    // The stroked chevron the panels use (`Icon::ExpandRight`), at the small icon size.
+    let ink = if lit { color::text() } else { color::weak() };
+    super::paint_icon_sized(ui.painter(), at, super::Icon::ExpandRight, ink, super::icon::SIZE_SM);
     r
 }
 

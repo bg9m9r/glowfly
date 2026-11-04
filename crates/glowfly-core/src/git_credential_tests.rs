@@ -52,7 +52,9 @@ fn knows_each_platforms_store() {
     assert_eq!(platform_helpers("macos"), ["osxkeychain"]);
     assert_eq!(platform_helpers("linux"), ["libsecret"]);
     assert!(platform_helpers("freebsd").is_empty());
-    assert!(setup_hint("linux").contains("git-credential-libsecret"));
+    assert_eq!(store_to_install("linux"), Some("git-credential-libsecret"));
+    assert_eq!(store_to_install("windows"), Some("Git Credential Manager"));
+    assert_eq!(store_to_install("freebsd"), None);
     assert_eq!(fallback_helper("linux"), Some("cache"));
     for os in ["windows", "macos", "freebsd"] {
         assert_eq!(fallback_helper(os), None, "{os}");
@@ -145,7 +147,8 @@ fn sets_up_the_platform_store_when_git_has_none() {
     let c = cred("https://example.com", "ada", "hunter2").unwrap();
     let nothing = |_: &Path| None;
     let missing = remember_in(&dir, &c, &env(&global), nothing, nothing).unwrap_err();
-    assert!(missing.contains("no credential store is set up"), "no store and no credential-cache: {missing}");
+    let install = store_to_install(std::env::consts::OS).map(str::to_owned);
+    assert_eq!(missing, CredentialError::NoStore { install }, "no store and no credential-cache");
     assert!(!Path::new(&global).exists(), "no helper named that git can't run");
     let found = |_: &Path| Some(LOGGING_HELPER.to_owned());
     let cache = |_: &Path| Some("cache".to_owned());

@@ -187,6 +187,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("history_table_high_contrast_light", Window),
     ("history_table_compact_dark", Window),
     ("rebase_dragging", Window),
+    // The lift in a light theme, and the header wrapping at 1100 px with the tip row.
+    ("rebase_dragging_light", Window),
+    ("rebase_header_narrow_light", Window),
     // A commit body kept as written: hard line breaks, long lines soft-wrapped.
     ("details_hard_wrapped_body", Window),
     // Diffs, blame, conflicts and the pull request's line comments.
@@ -326,6 +329,8 @@ const IMAGE_ONLY: &[&str] = &[
     // `status_bar_failure_dark` and `tabs_states_dark` in Light: only their look differs.
     "status_bar_failure_light",
     "tabs_states_light",
+    // `rebase_dragging` in Porcelain.
+    "rebase_dragging_light",
     // `graph_chips_shared_prefix_dark` in Porcelain.
     "graph_chips_shared_prefix_light",
     // `prefs_general` in Porcelain.

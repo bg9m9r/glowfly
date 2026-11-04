@@ -2,6 +2,9 @@
 //! the one place job toasts (update/job_errors.rs), other flows' failure headlines (auto-stash,
 //! clone, submodule, Git Flow, worktree) and the Fetch/Pull repositories rows (repo_sync.rs) get
 //! them from; and a hosting service's refusal (`hosting`), for every call that shows one. Pure.
+//! The typed errors of result messages are worded in `typed`.
+
+pub mod typed;
 
 use crate::effect::ForgeError;
 use glowfly_core::auth_failure::AuthNeed;

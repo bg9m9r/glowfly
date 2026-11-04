@@ -9,7 +9,7 @@
 #   pwsh scripts/make-perf-repos.ps1 -Download            # also clone git/git and the Linux kernel
 #   pwsh scripts/make-perf-repos.ps1 -Only linear,octopus # just these
 #
-# The clones download about 6 GB (the kernel nearly all of it), so they are made only with
+# The clones download about 4 GB (the kernel nearly all of it), so they are made only with
 # -Download. The set goes into -Out, by default `glowfly-perf-repos` in the user's local cache
 # folder (%LOCALAPPDATA%, ~/Library/Caches or $XDG_CACHE_HOME), never inside this checkout.
 #
@@ -41,8 +41,8 @@ $ErrorActionPreference = 'Stop'
 # Every repository: how it's made, what to point GLOWFLY_PERF_REPO at (Open, below the folder)
 # and its rough size at scale 1.
 $repos = [ordered]@{
-    'git'          = @{ Url = $GitUrl; About = 'git/git, the real history (~75k commits)'; Size = '~300 MB download' }
-    'linux'        = @{ Url = $LinuxUrl; About = 'the Linux kernel, full history (~1.3M commits, ~90k files)'; Size = '~5.5 GB download, ~7 GB on disk' }
+    'git'          = @{ Url = $GitUrl; About = 'git/git, the real history (~85k commits)'; Size = '~0.3 GB download, ~0.4 GB on disk' }
+    'linux'        = @{ Url = $LinuxUrl; About = 'the Linux kernel, full history (~1.5M commits, ~97k files)'; Size = '~4 GB download, ~6 GB on disk' }
     'linear'       = @{ Build = 'Build-LinearRepo'; About = '1M commits in a line over 2,000 files'; Size = '~0.6 GB' }
     'many-refs'    = @{ Build = 'Build-RefRepo'; About = '100k tags and 20k branches on 100k commits'; Size = '~0.1 GB' }
     'wide-tree'    = @{ Build = 'Build-WideTreeRepo'; About = '500k files; ~10k changed, ~2.5k deleted, ~5k untracked'; Size = '~0.7 GB' }

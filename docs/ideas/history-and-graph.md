@@ -55,6 +55,8 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 ### Interactive rebase
 
 - Move commits up/down or reword several commits from a multi-selection in the graph
+- Word the palette's rebase entries like the commit menu ("Edit and rebase main onto 1a2b3c4…"), and move the panel's English literals (title, buttons, editor labels) into the locales
+- Animate the dragged row's lift in and out, not just the other rows moving apart
 - A preference to always stash automatically, without asking, before a rebase
 - Spellcheck in the Reword dialog (needs `UiCache` in modals)
 - Date tooltip on the painted author/date of rebase rows
