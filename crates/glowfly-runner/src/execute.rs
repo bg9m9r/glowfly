@@ -74,7 +74,8 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
         Effect::HighlightDiff { target, generation, diff, .. } => highlight::finish_job(target, generation, &diff, cx.cancelled),
         Effect::LoadDiffGaps { workdir, target, generation, diff } => Some(diff_gaps::load_job(workdir, target, generation, diff)),
         Effect::LoadBinarySides { workdir, target, generation } => {
-            let result = repo::binary_sides(&workdir, &target).map(std::sync::Arc::new).map_err(err);
+            // SVG sides draw on the one SVG worker, which stops waiting past its deadline.
+            let result = repo::binary_sides_drawn_by(&workdir, &target, &crate::svg_worker::render).map(std::sync::Arc::new).map_err(err);
             Some(Msg::Diff(DiffMsg::BinarySidesLoaded { target, generation, result }))
         }
         Effect::LoadFileHistory { workdir, path, start, limit, folder, generation } => {

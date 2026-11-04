@@ -359,6 +359,7 @@ same names, so `crate::state::…` reads the same in both. The rest is glowfly-a
 - `runner/signatures.rs`: checking a commit's signature with git (Effect::VerifySignature).
 - `runner/stashes.rs`: stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, reading and writing the auto-stashes waiting to go back across restarts, reading the files a stash changes for the question before applying it, and the abort that keeps an operation's work (also run by redoing one).
 - `runner/stats.rs`: line counts for the graph's CHANGES column.
+- `runner/svg_worker.rs` (tests in `svg_worker_tests.rs`): the one thread that draws SVG previews for `LoadBinarySides`: one drawing at a time, a newer request replacing the queued one, callers giving up after 3 s (the side shows "Can't preview this SVG") while the drawing runs on.
 - `runner/submodules.rs`: the SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
 - `runner/terminal_out.rs`: a shell's output on its way to the UI thread, which parses it.
 - `runner/tools/git_tool.rs`: running the diff and merge tools git config names (Preferences > External tools sets none).

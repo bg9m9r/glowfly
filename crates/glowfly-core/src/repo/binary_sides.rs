@@ -1,5 +1,5 @@
 //! A binary diff's two sides as the viewer shows them: each side's size and, for an image
-//! small enough, its decoded image (an SVG, within `SVG_MAX_BYTES`, rendered by `preview_svg`,
+//! small enough, its decoded image (an SVG, within `SVG_MAX_BYTES`, drawn by `preview_svg` or the renderer the caller passes (`binary_sides_drawn_by`),
 //! whether git takes it for text or binary); any other file of at most `HEX_MAX_BYTES` brings its bytes
 //! for the hex view. The sides come from `tool_sides::diff_sides`, so renames,
 //! deletions and untracked files resolve the same way the viewer and the external diff tool see
@@ -10,7 +10,7 @@ use super::tool_sides::{SideSource, diff_sides};
 use crate::error::Result;
 use crate::lfs::pointer;
 use crate::preview_image::{self, PreviewImage};
-use crate::preview_svg::{self, SVG_MAX_BYTES};
+use crate::preview_svg::{self, SVG_MAX_BYTES, SvgError, SvgRender};
 use git2::Repository;
 use std::io::Read;
 use std::path::Path;
@@ -47,7 +47,16 @@ pub struct BinarySides {
 /// `PREVIEW_MAX_BYTES` and reading other files up to `HEX_MAX_BYTES`. Blocking: call from a
 /// worker thread.
 pub fn binary_sides(workdir: &Path, target: &DiffTarget) -> Result<BinarySides> {
-    binary_sides_with(workdir, target, Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, hex: HEX_MAX_BYTES })
+    binary_sides_drawn_by(workdir, target, &preview_svg::render)
+}
+
+/// What draws an SVG side: `preview_svg::render`, or the runner's one SVG worker, which calls
+/// it with a deadline.
+pub type SvgRenderer<'a> = &'a dyn Fn(&[u8]) -> std::result::Result<SvgRender, SvgError>;
+
+/// `binary_sides` with each SVG side drawn by `svg`.
+pub fn binary_sides_drawn_by(workdir: &Path, target: &DiffTarget, svg: SvgRenderer<'_>) -> Result<BinarySides> {
+    sides_within(workdir, target, Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, hex: HEX_MAX_BYTES }, svg)
 }
 
 /// The largest image decoded, SVG rendered and other file read for the hex view.
@@ -58,11 +67,11 @@ pub(crate) struct Caps {
     pub hex: u64,
 }
 
-/// `binary_sides` within `caps`.
-pub(crate) fn binary_sides_with(workdir: &Path, target: &DiffTarget, caps: Caps) -> Result<BinarySides> {
+/// `binary_sides` within `caps`, each SVG side drawn by `svg`.
+fn sides_within(workdir: &Path, target: &DiffTarget, caps: Caps, svg: SvgRenderer<'_>) -> Result<BinarySides> {
     let sides = diff_sides(workdir, target)?;
     let repo = Repository::open(workdir)?;
-    let mut out = BinarySides { old: side(&repo, workdir, &sides.old, caps)?, new: side(&repo, workdir, &sides.new, caps)? };
+    let mut out = BinarySides { old: side(&repo, workdir, &sides.old, caps, svg)?, new: side(&repo, workdir, &sides.new, caps, svg)? };
     // The hex view compares both sides: one side without its bytes leaves neither.
     if out.hex().is_none() {
         out.old.iter_mut().chain(out.new.iter_mut()).for_each(|s| s.bytes = None);
@@ -89,7 +98,7 @@ impl BinarySides {
 
 /// One side's size, preview and hex bytes; `None` for a side with no file. The contents are
 /// read only when the size is within a cap.
-fn side(repo: &Repository, workdir: &Path, source: &SideSource, caps: Caps) -> Result<Option<BinarySide>> {
+fn side(repo: &Repository, workdir: &Path, source: &SideSource, caps: Caps, svg: SvgRenderer<'_>) -> Result<Option<BinarySide>> {
     let (path, size) = match source {
         SideSource::Empty => return Ok(None),
         SideSource::Blob { id, path, .. } => (path.as_str(), repo.odb()?.read_header(*id)?.0 as u64),
@@ -114,7 +123,7 @@ fn side(repo: &Repository, workdir: &Path, source: &SideSource, caps: Caps) -> R
     let side = BinarySide { size, image: None, linked: false, bytes: None };
     Ok(Some(match kind {
         Kind::Image => BinarySide { image: bytes.as_deref().and_then(preview_image::decode), ..side },
-        Kind::Svg => match bytes.as_deref().map(preview_svg::render) {
+        Kind::Svg => match bytes.as_deref().map(svg) {
             Some(Ok(r)) => BinarySide { image: Some(r.image), linked: r.linked, ..side },
             _ => side,
         },

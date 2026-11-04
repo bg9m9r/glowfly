@@ -27,6 +27,8 @@ pub enum SvgError {
     Empty,
     /// Its filters or layers would take too long or too much memory to draw.
     TooCostly,
+    /// It was still drawing when the runner stopped waiting, or a newer request took its place.
+    Abandoned,
 }
 
 /// The bundled fonts, loaded once and shared by every render.

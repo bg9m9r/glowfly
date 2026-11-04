@@ -6,6 +6,11 @@ use crate::testutil::*;
 use image::{ImageFormat, Rgba, RgbaImage};
 use std::path::PathBuf;
 
+/// The sides within `caps`, SVGs drawn by `preview_svg::render`.
+fn binary_sides_with(workdir: &Path, target: &DiffTarget, caps: Caps) -> Result<BinarySides> {
+    sides_within(workdir, target, caps, &preview_svg::render)
+}
+
 fn png(w: u32, h: u32) -> Vec<u8> {
     let img = RgbaImage::from_pixel(w, h, Rgba([10, 120, 200, 255]));
     let mut out = std::io::Cursor::new(Vec::new());
