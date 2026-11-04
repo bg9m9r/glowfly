@@ -1,0 +1,11 @@
+{
+  "mainline.limited.parents": "{sha} has only {count} parents.",
+  "mainline.limited.plain": "{sha} isn't a merge, so Git can only use parent 1 for these commits.",
+  "mainline.more_merges.one": "and 1 more merge",
+  "mainline.more_merges.other": "and {count} more merges",
+  "mainline.parent": "Parent {n}",
+  "mainline.several.cherry_pick.one": "Cherry-pick {total} commits, including 1 merge commit. Count its changes against:",
+  "mainline.several.cherry_pick.other": "Cherry-pick {total} commits, including {count} merge commits. Count each merge's changes against:",
+  "mainline.several.revert.one": "Revert {total} commits, including 1 merge commit. Count its changes against:",
+  "mainline.several.revert.other": "Revert {total} commits, including {count} merge commits. Count each merge's changes against:"
+}

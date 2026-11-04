@@ -1,0 +1,11 @@
+{
+  "mainline.limited.parents": "{sha} hat nur {count} Eltern-Commits.",
+  "mainline.limited.plain": "{sha} ist kein Merge, daher kann Git für diese Commits nur Eltern-Commit 1 verwenden.",
+  "mainline.more_merges.one": "und 1 weiterer Merge",
+  "mainline.more_merges.other": "und {count} weitere Merges",
+  "mainline.parent": "Eltern-Commit {n}",
+  "mainline.several.cherry_pick.one": "{total} Commits cherry-picken, darunter 1 Merge-Commit. Seine Änderungen zählen gegen:",
+  "mainline.several.cherry_pick.other": "{total} Commits cherry-picken, darunter {count} Merge-Commits. Die Änderungen jedes Merges zählen gegen:",
+  "mainline.several.revert.one": "{total} Commits reverten, darunter 1 Merge-Commit. Seine Änderungen zählen gegen:",
+  "mainline.several.revert.other": "{total} Commits reverten, darunter {count} Merge-Commits. Die Änderungen jedes Merges zählen gegen:"
+}

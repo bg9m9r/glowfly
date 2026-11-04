@@ -1,0 +1,14 @@
+{
+  "hints.connect.button": "Connect…",
+  "hints.connect.text": "Connect your {service} account to see this repository's pull requests here.",
+  "hints.connect.text_mr": "Connect your {service} account to see this repository's merge requests here.",
+  "hints.menu.dismiss": "Don't show this again",
+  "hints.menu.off": "Turn off tips",
+  "hints.options.tip": "Tip options",
+  "hints.reset.toast": "Tips will show again as you work.",
+  "hints.tidy.button": "Tidy commits…",
+  "hints.tidy.text": "Combine or reword your unpushed commits before you push, so the history reads clearly.",
+  "hints.undo.button": "Open journal",
+  "hints.undo.text": "{key} undoes that, and the operation journal keeps every earlier state of your branches.",
+  "hints.undo.text_unbound": "Undo reverses that, and the operation journal keeps every earlier state of your branches."
+}

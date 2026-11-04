@@ -1,0 +1,4 @@
+{
+  "history.header.close.name": "Close history",
+  "history.load.failed": "Could not load the history of {path}: {why}"
+}

@@ -1,0 +1,15 @@
+{
+  "tag.delete.body": "¿Eliminar la etiqueta local {tag}?",
+  "tag.delete.title": "Eliminar etiqueta",
+  "tag.delete_remote.body": "¿Eliminar la etiqueta {tag} de {remotes}? Tu etiqueta local se queda, y quien ya la obtuvo conserva su copia.",
+  "tag.delete_remote.button_all": "Eliminar de todos los remotos",
+  "tag.delete_remote.button_one": "Eliminar de {remote}",
+  "tag.delete_remote.title_all": "Eliminar la etiqueta de todos los remotos",
+  "tag.delete_remote.title_one": "Eliminar la etiqueta del remoto",
+  "tag.menu.all_remotes": "Todos los remotos",
+  "tag.menu.all_remotes_ask": "Todos los remotos…",
+  "tag.menu.annotate": "Anotar…",
+  "tag.menu.annotate.tip": "Sustituir esta etiqueta ligera por una etiqueta anotada en el mismo commit",
+  "tag.menu.delete_from_remote": "Eliminar del remoto",
+  "tag.menu.delete_locally": "Eliminar localmente…"
+}

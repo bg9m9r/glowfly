@@ -1,0 +1,15 @@
+{
+  "tag.delete.body": "Lokalen Tag {tag} löschen?",
+  "tag.delete.title": "Tag löschen",
+  "tag.delete_remote.body": "Tag {tag} von {remotes} löschen? Dein lokaler Tag bleibt, und wer ihn schon abgerufen hat, behält seine Kopie.",
+  "tag.delete_remote.button_all": "Von allen Remotes löschen",
+  "tag.delete_remote.button_one": "Von {remote} löschen",
+  "tag.delete_remote.title_all": "Tag von allen Remotes löschen",
+  "tag.delete_remote.title_one": "Tag vom Remote löschen",
+  "tag.menu.all_remotes": "Alle Remotes",
+  "tag.menu.all_remotes_ask": "Alle Remotes…",
+  "tag.menu.annotate": "Annotieren…",
+  "tag.menu.annotate.tip": "Diesen einfachen Tag durch einen annotierten Tag auf demselben Commit ersetzen",
+  "tag.menu.delete_from_remote": "Vom Remote löschen",
+  "tag.menu.delete_locally": "Lokal löschen…"
+}

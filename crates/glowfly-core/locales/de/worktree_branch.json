@@ -1,0 +1,21 @@
+{
+  "worktree_branch.blocked.bisecting": "{branch} wird gerade im Worktree unter {path} per Bisect durchsucht. Beende den Bisect dort zuerst.",
+  "worktree_branch.blocked.delete": "{branch} ist im Worktree unter {path} ausgecheckt. Entferne zuerst diesen Worktree oder checke dort einen anderen Branch aus.",
+  "worktree_branch.blocked.fast_forward": "{branch} ist im Worktree unter {path} ausgecheckt, daher kann nur dieser Worktree ihn vorspulen.",
+  "worktree_branch.blocked.missing": "{branch} ist im Worktree unter {path} ausgecheckt, dessen Ordner fehlt. Bereinige ihn zuerst.",
+  "worktree_branch.blocked.rebasing": "{branch} wird gerade im Worktree unter {path} rebased. Setze den Rebase dort zuerst fort oder brich ihn ab.",
+  "worktree_branch.missing.button": "Bereinigen und auschecken",
+  "worktree_branch.missing.log": "{branch} ist noch in einem fehlenden Worktree ausgecheckt ({path}).",
+  "worktree_branch.missing.tip": "Der Worktree unter {path} ist weg. Bereinigt ihn und checkt dann {branch} aus.",
+  "worktree_branch.missing.toast": "{branch} ist noch in einem Worktree ausgecheckt, dessen Ordner fehlt ({path}).",
+  "worktree_branch.open.tip.bisecting": "Öffnet den Worktree unter {path}, in dem {branch} mitten im Bisect ist",
+  "worktree_branch.open.tip.checked_out": "Öffnet den Worktree unter {path}",
+  "worktree_branch.open.tip.rebasing": "Öffnet den Worktree unter {path}, in dem {branch} mitten im Rebase ist",
+  "worktree_branch.opened.bisecting": "Worktree unter {path} geöffnet, in dem {branch} mitten im Bisect ist.",
+  "worktree_branch.opened.checked_out": "Worktree unter {path} geöffnet, in dem {branch} ausgecheckt ist.",
+  "worktree_branch.opened.rebasing": "Worktree unter {path} geöffnet, in dem {branch} mitten im Rebase ist.",
+  "worktree_branch.tip.bisecting": "Mitten im Bisect im Worktree unter {path}",
+  "worktree_branch.tip.checked_out": "Im Worktree unter {path} ausgecheckt",
+  "worktree_branch.tip.missing": "{line} (Ordner fehlt)",
+  "worktree_branch.tip.rebasing": "Mitten im Rebase im Worktree unter {path}"
+}

@@ -1,0 +1,11 @@
+{
+  "read_errors.diff_changed": "not found: the diff changed; try again on the updated diff",
+  "read_errors.file_changed": "not found: the file changed",
+  "read_errors.internal": "Glowfly hit an internal error ({effect})",
+  "read_errors.missing_content": "the contents of {path} haven't been downloaded from {remote} yet",
+  "read_errors.no_folder": "A folder history needs a folder",
+  "read_errors.no_thread": "could not start a thread: {said}",
+  "read_errors.not_conflicted": "not found: {path} is not conflicted",
+  "read_errors.old_file_unreadable": "the old file can't be read",
+  "read_errors.stopped": "stopped"
+}

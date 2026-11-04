@@ -1,0 +1,13 @@
+{
+  "pick.empty.all.cherry_pick.one": "Nada que aplicar con cherry-pick: la rama ya tiene los cambios de {sha}.",
+  "pick.empty.all.cherry_pick.other": "Nada que aplicar con cherry-pick: la rama ya tiene los cambios de los {count} commits.",
+  "pick.empty.all.revert.one": "Nada que revertir: los cambios de {sha} ya están deshechos en esta rama.",
+  "pick.empty.all.revert.other": "Nada que revertir: los cambios de los {count} commits ya están deshechos en esta rama.",
+  "pick.empty.left.cherry_pick": "{sha} no cambia nada: la rama ya tiene sus cambios. Omitirlo requiere Git 2.23 o posterior, así que el cherry-pick se detiene ahí; Cancelar lo termina.",
+  "pick.empty.left.revert": "{sha} no cambia nada: sus cambios ya están deshechos en esta rama. Omitirlo requiere Git 2.23 o posterior, así que la reversión se detiene ahí; Cancelar la termina.",
+  "pick.empty.skipped_log": "Omitidos porque no cambian nada en esta rama: {shas}",
+  "pick.empty.some.cherry_pick.one": "Se aplicaron con cherry-pick {done} de {total} commits; se omitió {sha}, cuyos cambios ya tiene la rama.",
+  "pick.empty.some.cherry_pick.other": "Se aplicaron con cherry-pick {done} de {total} commits; se omitieron {count} cuyos cambios ya tiene la rama.",
+  "pick.empty.some.revert.one": "Se revirtieron {done} de {total} commits; se omitió {sha}, cuyos cambios ya están deshechos en esta rama.",
+  "pick.empty.some.revert.other": "Se revirtieron {done} de {total} commits; se omitieron {count} cuyos cambios ya están deshechos en esta rama."
+}

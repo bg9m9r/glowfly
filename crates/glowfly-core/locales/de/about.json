@@ -1,0 +1,19 @@
+{
+  "about.copy_info.tip": "Für Fehlerberichte",
+  "about.copy_notices.button": "Alle Hinweise kopieren",
+  "about.description": "Ein nativer Git-Client für Windows, macOS und Linux.",
+  "about.license": "Lizenziert unter {license}",
+  "about.no_warranty": "Bereitgestellt ohne Mängelgewähr und ohne jegliche Gewährleistung; siehe die Lizenzdateien.",
+  "about.notices.back.button": "Zurück",
+  "about.notices.button": "Hinweise zu Drittanbietern…",
+  "about.notices.intro": "Glowfly enthält Bibliotheken, Schriftarten und Syntaxdefinitionen von Drittanbietern; ihre Lizenzen folgen.",
+  "about.notices.title": "Hinweise zu Drittanbietern",
+  "about.privacy.button": "Datenschutz",
+  "about.row.build": "Build",
+  "about.row.git": "Git",
+  "about.row.os": "System",
+  "about.row.version": "Version",
+  "about.tagline": "Deinen Verlauf klar im Blick.",
+  "about.unknown": "Unbekannt",
+  "about.website.button": "Website"
+}

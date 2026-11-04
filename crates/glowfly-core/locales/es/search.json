@@ -1,0 +1,23 @@
+{
+  "search.author.name": "Autor",
+  "search.authors.filter": "Filtrar autores",
+  "search.clear.button": "Borrar búsqueda",
+  "search.empty.beyond_reach.one": "{count} commit más antiguo coincide, más allá de los {max} más recientes que puede mostrar el grafo.",
+  "search.empty.beyond_reach.other": "{count} commits más antiguos coinciden, más allá de los {max} más recientes que puede mostrar el grafo.",
+  "search.empty.hint": "Las palabras buscan en mensajes, autores e ids de commit; author:name y path:folder/ acotan la búsqueda.",
+  "search.empty.newest.one": "Solo se buscó en el commit más reciente.",
+  "search.empty.newest.other": "Se buscó en los {count} commits más recientes.",
+  "search.empty.shallow.one": "Se buscó en el único commit de este clon superficial.",
+  "search.empty.shallow.other": "Se buscó en los {count} commits de este clon superficial.",
+  "search.empty.title": "Ningún commit coincide",
+  "search.empty.truncated": "Solo están cargados los {count} commits más recientes.",
+  "search.empty.whole.one": "Se buscó en todo el historial (1 commit).",
+  "search.empty.whole.other": "Se buscó en todo el historial ({count} commits).",
+  "search.index.build_failed": "No se pudo indexar el historial para la búsqueda: {why}",
+  "search.index.query_failed": "No se pudo buscar en el índice del historial: {why}",
+  "search.keep_searching.button": "Seguir buscando",
+  "search.load_more.button": "Cargar más commits",
+  "search.paths.failed": "No se pudieron buscar los archivos cambiados: {why}",
+  "search.searching_older.one": "Sin coincidencias en el commit más reciente. Buscando en los anteriores…",
+  "search.searching_older.other": "Sin coincidencias en los {count} commits más recientes. Buscando en los anteriores…"
+}

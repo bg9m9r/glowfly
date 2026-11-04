@@ -1,0 +1,4 @@
+{
+  "watch.silent.log": "Los cambios en {repo} no llegan al momento, así que Glowfly lo vuelve a leer cada {secs} segundos mientras su ventana tiene el foco. Reiniciar Glowfly puede devolver las actualizaciones en vivo.",
+  "watch.silent.toast": "Las actualizaciones en vivo de {repo} se detuvieron; Glowfly lo relee cada {secs} segundos."
+}

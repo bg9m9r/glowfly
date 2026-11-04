@@ -1,0 +1,3 @@
+{
+  "submodules.log.outside_sparse": "Die Submodule, die der Sparse Checkout auslässt, wurden ausgelassen: {paths}. Füge ihre Ordner unter Einstellungen > Sparse Checkout hinzu, um sie auszuchecken."
+}

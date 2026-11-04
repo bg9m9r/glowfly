@@ -1,0 +1,9 @@
+{
+  "sign_in.drop_failed": "Couldn't drop the rejected sign-in for {host}: {why}",
+  "sign_in.dropped": "Dropped the rejected sign-in for {host} from git's credential helper.",
+  "sign_in.saved.cached": "No keyring helper is installed, so Git now keeps sign-ins in memory with its cache helper, for 15 minutes after each use (credential.helper in your global Git config). Saved the sign-in for {host}. Install git-credential-libsecret to keep sign-ins after a restart. To undo it: git config --global --unset credential.helper",
+  "sign_in.saved.failed": "Couldn't save the sign-in for {host}: {why}",
+  "sign_in.saved.helper": "Saved the sign-in for {host} with Git's credential helper.",
+  "sign_in.saved.set_up": "Git now saves sign-ins with {helper} (credential.helper in your global Git config). Saved the sign-in for {host}.",
+  "sign_in.saved.turned_off": "Didn't save the sign-in for {host}: credential.helper is turned off."
+}

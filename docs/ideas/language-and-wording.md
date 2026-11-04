@@ -75,3 +75,8 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - Compare, workdir compare and stacked-list failures log the bare cause; give the activity-log line a translated headline
 - A failed match of the loaded history (`LoadedMatched`) is only a tracing warning; consider an activity-log line
 - Reuse `ReadFailed` for repo.rs's reads (snapshot, commit detail, file diff, signatures, line counts, status) as the next #367 area
+
+### Locale catalogs per area
+
+- Split the `prefs` area (about 670 keys) into per-page files (`locales/<lang>/prefs/<page>.json`) if it keeps drawing merge conflicts
+- A small script that adds or renames a key in every language's area file at once

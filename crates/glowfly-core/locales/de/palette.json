@@ -1,0 +1,14 @@
+{
+  "palette.files.failed": "Die Dateien des Repositorys konnten nicht aufgelistet werden: {why}",
+  "palette.getting_started": "Erste Schritte",
+  "palette.group.all": "Alle Befehle",
+  "palette.group.recent": "Zuletzt verwendet",
+  "palette.group.suggested": "Vorschläge",
+  "palette.pick_selected.one": "Ausgewählten Commit cherry-picken",
+  "palette.pick_selected.other": "Die {count} ausgewählten Commits cherry-picken",
+  "palette.revert_selected.one": "Ausgewählten Commit reverten",
+  "palette.revert_selected.other": "Die {count} ausgewählten Commits reverten",
+  "palette.tips.again": "Tipps wieder zeigen",
+  "palette.tips.off": "Tipps ausschalten",
+  "palette.tips.on": "Tipps einschalten"
+}

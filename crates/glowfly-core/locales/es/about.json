@@ -1,0 +1,19 @@
+{
+  "about.copy_info.tip": "Para informes de errores",
+  "about.copy_notices.button": "Copiar todos los avisos",
+  "about.description": "Un cliente de Git nativo para Windows, macOS y Linux.",
+  "about.license": "Con licencia {license}",
+  "about.no_warranty": "Se ofrece tal cual, sin garantía de ningún tipo; consulta los archivos de licencia.",
+  "about.notices.back.button": "Volver",
+  "about.notices.button": "Avisos de terceros…",
+  "about.notices.intro": "Glowfly incluye bibliotecas, fuentes y definiciones de sintaxis de terceros; sus licencias aparecen a continuación.",
+  "about.notices.title": "Avisos de terceros",
+  "about.privacy.button": "Privacidad",
+  "about.row.build": "Compilación",
+  "about.row.git": "Git",
+  "about.row.os": "Sistema",
+  "about.row.version": "Versión",
+  "about.tagline": "Ve tu historial con claridad.",
+  "about.unknown": "Desconocido",
+  "about.website.button": "Sitio web"
+}

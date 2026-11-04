@@ -1,0 +1,21 @@
+{
+  "service_errors.denied": "Dein {service}-Konto hat das nicht erlaubt. Verbinde es unter Einstellungen > Integrationen neu und versuche es dann erneut.",
+  "service_errors.denied.change": "Dein {service}-Konto darf diese Änderung im Repository nicht vornehmen. Bitte den Besitzer um Zugriff oder melde dich mit einem anderen Konto an.",
+  "service_errors.denied.create_repo": "Dein {service}-Konto darf bei {owner} keine Repositorys anlegen. Wähle einen anderen Besitzer oder bitte einen Besitzer von {owner} um Zugriff.",
+  "service_errors.denied.fork": "Dein {service}-Konto kann dieses Repository nicht forken. Vielleicht hat der Besitzer Forks abgeschaltet, oder dein Konto braucht Zugriff.",
+  "service_errors.network": "Glowfly hat {service} nicht erreicht. Prüfe deine Netzwerkverbindung und versuche es dann erneut.",
+  "service_errors.not_found.owner": "{service} findet {owner} für dein Konto nicht. Wähle einen anderen Besitzer.",
+  "service_errors.not_found.repo": "{service} findet dieses Repository für dein Konto nicht. Prüfe, ob du mit einem Konto angemeldet bist, das es sehen kann.",
+  "service_errors.rate_limited": "{service} begrenzt gerade die Anfragen deines Kontos. Warte ein paar Minuten und versuche es dann erneut.",
+  "service_errors.repo_exists": "Ein Repository namens {name} gibt es bei {owner} schon. Wähle einen anderen Namen.",
+  "service_errors.said.auth": "Authentifizierung fehlgeschlagen: {said}",
+  "service_errors.said.decode": "unerwartete Antwort: {said}",
+  "service_errors.said.forbidden": "Zugriff verweigert: {said}",
+  "service_errors.said.http": "HTTP {status}: {said}",
+  "service_errors.said.keyring": "Credential-Store: {said}",
+  "service_errors.said.network": "Netzwerkfehler: {said}",
+  "service_errors.said.not_found": "nicht gefunden: {said}",
+  "service_errors.server": "{service} hatte ein Problem auf seiner Seite. Versuche es in ein paar Minuten erneut.",
+  "service_errors.sign_in": "{service} hat deine Anmeldung nicht akzeptiert. Melde dich erneut an oder verbinde das Konto unter Einstellungen > Integrationen neu.",
+  "service_errors.sign_in_again.help": "Melde dich unter Einstellungen > Integrationen erneut an."
+}

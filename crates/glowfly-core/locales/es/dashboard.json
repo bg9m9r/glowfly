@@ -1,0 +1,6 @@
+{
+  "dashboard.empty.connect.button": "Conectar un servicio…",
+  "dashboard.empty.hint": "Abre o clona repositorios para ver aquí sus pull requests e issues.",
+  "dashboard.empty.title": "Aún no hay repositorios",
+  "dashboard.updated": "Actualizado {age}"
+}

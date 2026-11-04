@@ -1,0 +1,21 @@
+{
+  "worktree_branch.blocked.bisecting": "{branch} está a mitad de un bisect en el worktree de {path}. Termina primero el bisect allí.",
+  "worktree_branch.blocked.delete": "{branch} está extraída en el worktree de {path}. Elimina primero ese worktree o extrae allí otra rama.",
+  "worktree_branch.blocked.fast_forward": "{branch} está extraída en el worktree de {path}, así que solo ese worktree puede avanzarla.",
+  "worktree_branch.blocked.missing": "{branch} está extraída en el worktree de {path}, cuya carpeta falta. Límpialo primero.",
+  "worktree_branch.blocked.rebasing": "{branch} está a mitad de un rebase en el worktree de {path}. Continúa o cancela primero el rebase allí.",
+  "worktree_branch.missing.button": "Limpiar y hacer checkout",
+  "worktree_branch.missing.log": "{branch} sigue extraída en un worktree que falta ({path}).",
+  "worktree_branch.missing.tip": "El worktree de {path} ya no existe. Lo limpia y luego hace checkout de {branch}.",
+  "worktree_branch.missing.toast": "{branch} sigue extraída en un worktree cuya carpeta ya no existe ({path}).",
+  "worktree_branch.open.tip.bisecting": "Abre el worktree de {path}, donde {branch} está a mitad de un bisect",
+  "worktree_branch.open.tip.checked_out": "Abre el worktree de {path}",
+  "worktree_branch.open.tip.rebasing": "Abre el worktree de {path}, donde {branch} está a mitad de un rebase",
+  "worktree_branch.opened.bisecting": "Se abrió el worktree de {path}, donde {branch} está a mitad de un bisect.",
+  "worktree_branch.opened.checked_out": "Se abrió el worktree de {path}, donde {branch} está extraída.",
+  "worktree_branch.opened.rebasing": "Se abrió el worktree de {path}, donde {branch} está a mitad de un rebase.",
+  "worktree_branch.tip.bisecting": "A mitad de un bisect en el worktree de {path}",
+  "worktree_branch.tip.checked_out": "Extraída en el worktree de {path}",
+  "worktree_branch.tip.missing": "{line} (falta la carpeta)",
+  "worktree_branch.tip.rebasing": "A mitad de un rebase en el worktree de {path}"
+}

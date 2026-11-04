@@ -1,0 +1,6 @@
+{
+  "markdown.link.goes_to.tip": "Lleva a {host}, no a {shown}",
+  "markdown.link.mismatch.body": "El texto del enlace muestra {shown}, pero el enlace lleva a {host}.\n\n{url}\n\nÁbrelo solo si confías en {host}.",
+  "markdown.link.mismatch.button": "Abrir enlace",
+  "markdown.link.mismatch.title": "¿Abrir otro sitio?"
+}

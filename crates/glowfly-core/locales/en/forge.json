@@ -1,0 +1,7 @@
+{
+  "forge.noun.card": "card",
+  "forge.noun.issue": "issue",
+  "forge.noun.merge_request": "merge request",
+  "forge.noun.pull_request": "pull request",
+  "forge.noun.work_item": "work item"
+}

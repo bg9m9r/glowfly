@@ -1,0 +1,22 @@
+{
+  "common.ack.check": "Mir ist klar, dass sich das nicht rückgängig machen lässt",
+  "common.ack.tip": "Zuerst das Kästchen oben ankreuzen",
+  "common.busy": "Ein anderer Vorgang läuft noch.",
+  "common.cancel.button": "Abbrechen",
+  "common.clone_repo.button": "Repository klonen…",
+  "common.close.button": "Schließen",
+  "common.close_panel.name": "Bereich schließen",
+  "common.copy_details.button": "Details kopieren",
+  "common.copy_path": "Pfad kopieren",
+  "common.copy_sha.button": "SHA kopieren",
+  "common.delete.button": "Löschen",
+  "common.details.button": "Details",
+  "common.discard.button": "Verwerfen",
+  "common.dismiss.button": "Ausblenden",
+  "common.init_repo.button": "Neues Repository…",
+  "common.list.and": "{rest} und {last}",
+  "common.loading": "Wird geladen…",
+  "common.open_repo.button": "Repository öffnen…",
+  "common.set_up.suffix": "Einrichten…",
+  "common.try_again.button": "Erneut versuchen"
+}

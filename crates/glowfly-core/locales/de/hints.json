@@ -1,0 +1,14 @@
+{
+  "hints.connect.button": "Verbinden…",
+  "hints.connect.text": "Verbinde dein {service}-Konto, um die Pull Requests dieses Repositorys hier zu sehen.",
+  "hints.connect.text_mr": "Verbinde dein {service}-Konto, um die Merge Requests dieses Repositorys hier zu sehen.",
+  "hints.menu.dismiss": "Nicht mehr anzeigen",
+  "hints.menu.off": "Tipps ausschalten",
+  "hints.options.tip": "Tipp-Optionen",
+  "hints.reset.toast": "Tipps erscheinen wieder, während du arbeitest.",
+  "hints.tidy.button": "Commits aufräumen…",
+  "hints.tidy.text": "Fasse deine noch nicht gepushten Commits vor dem Push zusammen oder formuliere sie um, damit die Historie klar lesbar ist.",
+  "hints.undo.button": "Journal öffnen",
+  "hints.undo.text": "{key} macht das rückgängig, und das Vorgangsjournal bewahrt jeden früheren Stand deiner Branches auf.",
+  "hints.undo.text_unbound": "Rückgängig macht das ungeschehen, und das Vorgangsjournal bewahrt jeden früheren Stand deiner Branches auf."
+}

@@ -1,0 +1,9 @@
+{
+  "sign_in.drop_failed": "No se pudo quitar el inicio de sesión rechazado de {host}: {why}",
+  "sign_in.dropped": "Se quitó el inicio de sesión rechazado de {host} del asistente de credenciales de Git.",
+  "sign_in.saved.cached": "No hay ningún asistente de llavero instalado, así que ahora Git guarda los inicios de sesión en memoria con su asistente de caché, durante 15 minutos tras cada uso (credential.helper en tu configuración global de Git). Se guardó el inicio de sesión de {host}. Instala git-credential-libsecret para conservarlos tras reiniciar. Para deshacerlo: git config --global --unset credential.helper",
+  "sign_in.saved.failed": "No se pudo guardar el inicio de sesión de {host}: {why}",
+  "sign_in.saved.helper": "Se guardó el inicio de sesión de {host} con el asistente de credenciales de Git.",
+  "sign_in.saved.set_up": "Ahora Git guarda los inicios de sesión con {helper} (credential.helper en tu configuración global de Git). Se guardó el inicio de sesión de {host}.",
+  "sign_in.saved.turned_off": "No se guardó el inicio de sesión de {host}: credential.helper está desactivado."
+}

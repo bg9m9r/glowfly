@@ -1,0 +1,17 @@
+{
+  "op_strip.all_resolved": "All conflicts resolved",
+  "op_strip.am": "Applying patches",
+  "op_strip.am_step": "Applying patches, patch {step} of {total}",
+  "op_strip.bisect": "Bisect in progress",
+  "op_strip.cherry_pick": "Cherry-pick in progress",
+  "op_strip.conflicted.one": "{count} conflicted file left",
+  "op_strip.conflicted.other": "{count} conflicted files left",
+  "op_strip.conflicts": "Conflicts to resolve",
+  "op_strip.interactive": "Interactive rebase in progress",
+  "op_strip.interactive_step": "Interactive rebase in progress, step {step} of {total}",
+  "op_strip.merge": "Merge in progress",
+  "op_strip.rebase": "Rebase in progress",
+  "op_strip.rebase_step": "Rebase in progress, step {step} of {total}",
+  "op_strip.revert": "Revert in progress",
+  "op_strip.show.button": "Show work in progress"
+}

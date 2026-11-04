@@ -1,0 +1,20 @@
+{
+  "remote_branch.checkout.diverged": "{branch} und {upstream} sind auseinandergelaufen ({ahead} voraus, {behind} zurück), daher wird {branch} ausgecheckt, ohne ihn zu verschieben. Führe sie mit Merge oder Rebase zusammen.",
+  "remote_branch.checkout.gone": "{upstream} gibt es nicht mehr.",
+  "remote_branch.checkout.not_tracking": "{branch} folgt {upstream} nicht mehr.",
+  "remote_branch.delete.body": "Branch {branch} auf {remote} löschen? Das betrifft alle, die das Remote nutzen.",
+  "remote_branch.delete.title": "Remote-Branch löschen",
+  "remote_branch.delete.tracked.one": "Der lokale Branch {branches} folgt {upstream}. Sein Upstream zeigte danach auf einen Branch, den es nicht mehr gibt.",
+  "remote_branch.delete.tracked.other": "{count} lokale Branches folgen {upstream}: {branches}. Ihre Upstreams zeigten danach auf einen Branch, den es nicht mehr gibt.",
+  "remote_branch.delete.unset.check.one": "Upstream von {branches} entfernen",
+  "remote_branch.delete.unset.check.other": "Upstreams aller {count} entfernen",
+  "remote_branch.menu.checkout_fast_forward": "{branch} auschecken und per Fast-Forward nachziehen",
+  "remote_branch.menu.checkout_local": "{branch} auschecken",
+  "remote_branch.menu.compare_with": "Mit {branch} vergleichen",
+  "remote_branch.menu.delete": "Vom Remote löschen…",
+  "remote_branch.menu.fast_forward_local": "Fast-Forward von {branch} auf diesen Branch",
+  "remote_branch.menu.open_in_worktree": "{branch} in seinem Worktree öffnen",
+  "remote_branch.menu.prune_checkout": "Bereinigen und {branch} auschecken",
+  "remote_branch.menu.range_diff": "Mit dem Stand vor dem letzten Force-Push vergleichen",
+  "remote_branch.menu.set_as_upstream": "Als Upstream von {branch} festlegen"
+}

@@ -1,0 +1,14 @@
+{
+  "hints.connect.button": "Conectar…",
+  "hints.connect.text": "Conecta tu cuenta de {service} para ver aquí las pull requests de este repositorio.",
+  "hints.connect.text_mr": "Conecta tu cuenta de {service} para ver aquí las merge requests de este repositorio.",
+  "hints.menu.dismiss": "No volver a mostrar",
+  "hints.menu.off": "Desactivar los consejos",
+  "hints.options.tip": "Opciones del consejo",
+  "hints.reset.toast": "Los consejos volverán a aparecer mientras trabajas.",
+  "hints.tidy.button": "Ordenar commits…",
+  "hints.tidy.text": "Combina o reescribe tus commits sin publicar antes de hacer push, para que el historial se lea con claridad.",
+  "hints.undo.button": "Abrir el diario",
+  "hints.undo.text": "{key} lo deshace, y el diario de operaciones guarda cada estado anterior de tus ramas.",
+  "hints.undo.text_unbound": "Deshacer lo revierte, y el diario de operaciones guarda cada estado anterior de tus ramas."
+}

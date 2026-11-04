@@ -1,0 +1,4 @@
+{
+  "watch.silent.log": "Änderungen an {repo} kommen nicht live an, deshalb liest Glowfly es alle {secs} Sekunden neu, solange sein Fenster im Vordergrund ist. Ein Neustart von Glowfly kann die Live-Updates zurückbringen.",
+  "watch.silent.toast": "Live-Updates für {repo} sind ausgefallen; Glowfly liest es alle {secs} Sekunden neu."
+}
