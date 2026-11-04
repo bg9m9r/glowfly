@@ -140,9 +140,9 @@ fn dashboard_assigned_light() {
     let trello_account = account(Provider::Trello, "trello.com");
     let jira = Target::jira(&jira_account, "PROJ");
     let trello = Target::trello(&trello_account, "b1", "Roadmap");
+    st.view.dashboard_filter = "search".into();
     let d = &mut st.dashboard;
     d.show = DashShow::Assigned;
-    d.filter = "search".into();
     // Assigned to Ada: her own #42 on GitHub and Sam's !5 on GitLab.
     if let Some(Ok(prs)) = &mut d.targets[0].prs {
         prs[0] = assigned_to_ada(prs[0].clone());

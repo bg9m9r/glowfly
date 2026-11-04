@@ -183,7 +183,7 @@ fn the_app_menus_quit_asks_while_a_push_runs() {
         let mut menus = build(st);
         let mut msgs = Vec::new();
         for action in take_picked(&mut menus, 1, &[*tag]) {
-            action.run(st, &mut msgs);
+            action.run(&mut st.view, &mut msgs);
         }
         assert!(matches!(&msgs[..], [Msg::App(AppMsg::Quit)]));
         msgs.into_iter().flat_map(|m| run(st, m)).collect()

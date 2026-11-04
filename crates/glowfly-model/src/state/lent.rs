@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn lends_and_takes_back() {
-        let mut l = Lent::default();
+        let mut l = Lent::<Vec<i32>>::default();
         l.give_back(vec![1]);
         let v = l.lend();
         assert_eq!(v, [1]);

@@ -5,8 +5,8 @@
 //! (`menu_native.rs`) both come from it, so they can't disagree. `Msg` can't be cloned, so a
 //! model owns its messages and is built again whenever one is needed.
 
-use super::{AppState, ViewState};
 use super::menu_keys::TopMenu;
+use super::{AppState, ViewState};
 use crate::keymap::{BindingId, Chord};
 use crate::msg::{Msg, SearchMsg};
 

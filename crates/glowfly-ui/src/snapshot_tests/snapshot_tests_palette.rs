@@ -227,8 +227,10 @@ fn palette_ignores_keys_under_a_credential_prompt() {
 #[test]
 fn shortcut_toggles() {
     let st = AppState::new(super::snapshot_tests::settings(ThemeChoice::Dark), Vec::new(), std::time::Instant::now());
-    let mut h = crate::snapshot_check::builder()
-        .build_state(|ctx, (st, msgs): &mut (AppState, Vec<Msg>)| st.with_view(|st, view| super::shortcuts::input(ctx, st, view, msgs)), (st, Vec::new()));
+    let mut h = crate::snapshot_check::builder().build_state(
+        |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| st.with_view(|st, view| super::shortcuts::input(ctx, st, view, msgs)),
+        (st, Vec::new()),
+    );
     h.press_key_modifiers(Modifiers::COMMAND, Key::P);
     h.run();
     assert_eq!(h.state().1.iter().filter(|m| matches!(m, Msg::Palette(PaletteMsg::TogglePalette))).count(), 1);

@@ -21,7 +21,7 @@ fn frame(ctx: &egui::Context, st: &mut AppState, w: f32) -> f32 {
             fill(ui);
             ui.label("short")
         });
-        track(ctx, st, SizedPanel::Details, id, resp.response.rect.width(), &mut msgs);
+        track(ctx, &mut st.view, SizedPanel::Details, id, resp.response.rect.width(), &mut msgs);
         width = resp.response.rect.width();
     });
     width

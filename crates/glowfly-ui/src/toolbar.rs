@@ -16,7 +16,7 @@ use super::widgets::{self, Icon, tooltip::attach};
 use eframe::egui::{self, Align, Id, Layout};
 use fold::{ORDER, Part, is_folded};
 use glowfly_model::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
-use glowfly_model::state::{AppState, ViewState, PrefPage};
+use glowfly_model::state::{AppState, PrefPage, ViewState};
 
 #[path = "toolbar_fit.rs"]
 mod fit;
@@ -118,8 +118,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
                             |ui: &mut egui::Ui, icon, label: &str, name: &str, on| widgets::tool_toggle(ui, icon, label, name, on, labels);
                         let r = toggle(ui, Icon::Search, t.tr("toolbar.search.button"), t.tr("toolbar.search.name"), view.show_search);
                         let search = attach(r, keys, t, || tips::search(st)).clicked();
-                        let r =
-                            toggle(ui, Icon::Activity, t.tr("toolbar.activity.button"), t.tr("toolbar.activity.name"), view.show_log);
+                        let r = toggle(ui, Icon::Activity, t.tr("toolbar.activity.button"), t.tr("toolbar.activity.name"), view.show_log);
                         let log = attach(r, keys, t, || tips::activity(st, view.show_log)).clicked();
                         let r = tool(ui, Icon::Refresh, t.tr("toolbar.refresh.button"), t.tr("toolbar.refresh.name"), true);
                         if attach(r, keys, t, || tips::refresh(st)).clicked() {

@@ -8,9 +8,9 @@ use crate::repo_menu_list;
 use crate::widgets::menu;
 use eframe::egui;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::TopMenu;
 use glowfly_model::state::menu_model::{Entry, Item, Mark, Submenu, SubmenuKind};
+use glowfly_model::state::{AppState, ViewState};
 
 /// The width a menu opens at, at least.
 pub(super) fn min_width(m: TopMenu) -> f32 {

@@ -41,7 +41,7 @@ fn harness(focused: bool, rebind: impl FnOnce(&mut AppState)) -> H {
     let keys = Keys { st, msgs: Vec::new(), left: Vec::new() };
     let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
-            super::input(ctx, &mut k.st, &mut k.msgs);
+            k.st.with_view(|st, view| super::input(ctx, st, view, &mut k.msgs));
             k.left = ctx.input(|i| {
                 i.events
                     .iter()

@@ -8,8 +8,8 @@ use super::{BAR, contents, keys};
 use crate::menu_keys;
 use eframe::egui::{self, Button, Id, Key};
 use glowfly_model::msg::Msg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::TopMenu;
+use glowfly_model::state::{AppState, ViewState};
 
 /// Draws the titles inside `egui::menu::bar` (which gives them the bar's look) and the open
 /// menu.

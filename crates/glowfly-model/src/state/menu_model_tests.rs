@@ -119,7 +119,7 @@ fn edit_window_and_help_list_their_items_in_order() {
     let mut hidden = state();
     hidden.settings.hints_seen.insert(crate::state::onboarding::getting_started::HIDDEN_ID.into());
     let help_hidden: Vec<&str> = help.iter().copied().filter(|r| *r != "Getting started").collect();
-    assert_eq!(rows(&entries(&hidden, TopMenu::Help)), help_hidden, "hidden from Help");
+    assert_eq!(rows(&entries(&hidden, &hidden.view, TopMenu::Help)), help_hidden, "hidden from Help");
 }
 
 #[test]

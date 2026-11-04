@@ -5,10 +5,10 @@
 //! open folds or the LFS summary change (`DiffKey`), or the list, the file or the list mode
 //! (`file_order::ListKey`); the rest of the header is built each frame from them.
 
-use crate::state::{AppState, ViewState};
 use crate::state::diff_header::{self, HeaderModel};
 use crate::state::diff_nav::file_order::{self, FileOrder, ListKey};
 use crate::state::lfs_notes;
+use crate::state::{AppState, ViewState};
 use glowfly_core::repo::FileDiff;
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::{self, Expanded, WholeFile};

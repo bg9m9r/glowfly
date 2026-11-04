@@ -17,10 +17,10 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::logs::format_took;
 use glowfly_model::logs::LogsMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::activity_copy::copy_log_blocked;
 use glowfly_model::state::activity_rows::{ActivityRow, SessionHead, foldable, rows, title_of};
 use glowfly_model::state::logs::EntryId;
+use glowfly_model::state::{AppState, ViewState};
 use std::time::Duration;
 
 pub(super) const ROW_H: f32 = 32.0;

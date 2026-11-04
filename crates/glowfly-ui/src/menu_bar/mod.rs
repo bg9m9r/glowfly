@@ -15,9 +15,9 @@ use super::theme::color;
 use crate::widgets::menu::{separator, submenu};
 use eframe::egui::{self, Button, Frame, Id, Key, Margin, Modifiers};
 use glowfly_model::msg::Msg;
-use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::state::menu_keys::TopMenu;
 use glowfly_model::state::menu_model;
+use glowfly_model::state::{AppState, ViewState};
 
 mod about;
 mod bar;
