@@ -117,8 +117,6 @@ painted:
   "3"
   "✔  login"
   "Tags"
-  "Stashes"
-  "Worktrees"
   "Production"
   "f0d635c"
   "Development"

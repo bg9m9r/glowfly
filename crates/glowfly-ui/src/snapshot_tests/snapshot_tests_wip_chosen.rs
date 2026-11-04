@@ -1,8 +1,9 @@
 //! The WIP row chosen or not (issue #439): a repository opens with the WIP selected (its staging
-//! panel shows) but the row unlit, so the first Down lands on it; a click chooses it, and the
-//! chosen row has the selection fill and a `text` label, dark and light.
+//! panel shows) but the row unlit, so the first Down lands on it (and from a chosen WIP row, on
+//! the first commit); a click chooses it, and the chosen row has the selection fill and a
+//! `text` label, dark and light.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{harness, keys_harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::{click, row_y};
 use crate::msg::{Msg, RepoMsg};
 use crate::state::{AppState, Selection};
@@ -21,7 +22,7 @@ fn selects(msgs: &[Msg]) -> Vec<String> {
 }
 
 fn down(st: AppState) -> Vec<String> {
-    let mut h = harness(st, true);
+    let mut h = keys_harness(st, true);
     h.run_steps(4);
     h.state_mut().1.clear();
     h.press_key(Key::ArrowDown);
@@ -41,15 +42,15 @@ fn graph_wip_chosen() {
 }
 
 #[test]
-fn down_from_an_unlit_wip_lands_on_it_and_from_a_chosen_one_on_head() {
+fn down_from_an_unlit_wip_lands_on_it_and_from_a_chosen_one_on_the_first_commit() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "wip-chosen-down");
     assert_eq!(st.session.selection, Selection::Wip);
     assert!(!st.session.wip_drawn_selected());
-    let head = st.snap.as_ref().unwrap().head_oid.unwrap();
+    let first = st.snap.as_ref().unwrap().commits[0].oid;
     assert_eq!(down(st), ["wip"], "the first Down chooses the WIP row");
     let (mut st, _) = with_repo(ThemeChoice::Dark, "wip-chosen-down");
     st.session.wip_lit = true;
-    assert_eq!(down(st), [head.to_string()], "from the chosen WIP row, Down goes to HEAD");
+    assert_eq!(down(st), [first.to_string()], "from the chosen WIP row, Down goes to the first commit");
     remove_fixture(&dir);
 }
 

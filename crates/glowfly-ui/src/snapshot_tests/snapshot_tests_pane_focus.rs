@@ -113,7 +113,9 @@ fn selects(sent: &[Msg]) -> Vec<String> {
 
 #[test]
 fn the_graph_keeps_its_keys_after_a_click_on_a_button() {
-    let (st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-stage-all");
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-stage-all");
+    // The WIP row chosen (lit), so the keys move from it.
+    st.session.wip_lit = true;
     let first = st.snap.as_ref().unwrap().commits[0].oid.to_string()[..7].to_owned();
     let mut h = keys_harness(st, true);
     h.run();
@@ -144,7 +146,9 @@ fn the_graph_keeps_its_keys_after_a_click_on_a_button() {
 
 #[test]
 fn graph_keys() {
-    let (st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-graph");
+    let (mut st, dir) = with_wip(ThemeChoice::Dark, "pane-keys-graph");
+    // The WIP row chosen (lit), so the keys move from it.
+    st.session.wip_lit = true;
     let snap = st.snap.as_ref().unwrap();
     let short = |o: git2::Oid| o.to_string()[..7].to_owned();
     let last = short(snap.commits.last().unwrap().oid);

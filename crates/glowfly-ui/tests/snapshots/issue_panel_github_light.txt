@@ -154,8 +154,6 @@ painted:
   "0"
   "Worktrees"
   "0"
-  "Submodules"
-  "0"
   "Write a comment"
   "1."
   "2."

@@ -135,5 +135,3 @@ painted:
   "0"
   "Worktrees"
   "0"
-  "Submodules"
-  "0"

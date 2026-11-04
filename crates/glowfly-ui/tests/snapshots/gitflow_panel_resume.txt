@@ -122,7 +122,6 @@ painted:
   "Remote"
   "3"
   "✔  login"
-  "Tags"
   "Production"
   "f0d635c"
   "Development"

@@ -144,7 +144,7 @@ painted:
   "Date"
   "M 1"
   "AL"
-  "✔ releas…s--glowfly"
+  "✔ release…ts--glowfly"
   "+1"
   "Ada Lovelace"
   "Jan 10"
