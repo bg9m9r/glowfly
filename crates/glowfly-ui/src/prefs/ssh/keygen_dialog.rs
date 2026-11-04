@@ -15,8 +15,8 @@ use glowfly_model::ssh::SshMsg;
 use glowfly_model::state::ssh::{SshPage, location_text};
 
 /// A field in its label-field-help `group`; returns its response and whether Enter left it.
-fn field(ui: &mut Ui, group: FieldGroup<'_>, text: &mut String, id: &str, hint: &str, password: bool) -> (egui::Response, bool) {
-    let r = group.show(ui, |ui| ui.add(TextField::new(text).id(Id::new(id)).hint(hint).password(password)));
+fn field(ui: &mut Ui, group: FieldGroup<'_>, text: &mut String, id: &str, hint: &str, masked: bool) -> (egui::Response, bool) {
+    let r = group.show(ui, |ui| ui.add(TextField::new(text).id(Id::new(id)).hint(hint).masked(masked)));
     let enter = text_field::entered(ui, &r);
     (r, enter)
 }

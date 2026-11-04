@@ -208,7 +208,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             let r = FieldGroup::new(label).note(notice).show(ui, |ui| {
                 ui.horizontal(|ui| {
                     let width = ui.available_width() - 32.0;
-                    let r = ui.add(TextField::new(&mut p.secret).id(secret_id).password(!p.reveal).width(width));
+                    let r = ui.add(TextField::new(&mut p.secret).id(secret_id).masked(!p.reveal).width(width));
                     let (icon, tip) = if p.reveal { (Icon::EyeOff, "Hide") } else { (Icon::Eye, "Show") };
                     if widgets::icon_button(ui, icon, tip).clicked() {
                         p.reveal = !p.reveal;
