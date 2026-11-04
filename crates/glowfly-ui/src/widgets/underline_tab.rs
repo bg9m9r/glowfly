@@ -4,6 +4,7 @@
 //! the tab's bottom, on the 1 px `border` line under the whole row. Selection is shown by the
 //! line, never by a filled block (`docs/COLOUR.md`, "The accent").
 
+use super::paint_text;
 use super::quiet_target::{self, State};
 use crate::theme::color;
 use crate::theme::sizes::ControlSize;
@@ -52,7 +53,7 @@ fn tab(ui: &mut Ui, selected: bool, label: &str) -> Response {
         quiet_target::paint(p, rect, SIZE.metrics().radius, SIZE, s);
         let ink = if selected || s.lit() { color::text() } else { color::weak() };
         let text = Rect::from_center_size(rect.center(), galley.size());
-        p.text(text.left_center(), Align2::LEFT_CENTER, label, type_scale::font(SIZE.metrics().text), ink);
+        paint_text(p, text.left_center(), Align2::LEFT_CENTER, label, type_scale::font(SIZE.metrics().text), ink);
         if selected {
             let line = Rect::from_min_max(pos2(text.left(), rect.bottom() - LINE_H), pos2(text.right(), rect.bottom()));
             p.rect_filled(line, 0.0, color::accent());

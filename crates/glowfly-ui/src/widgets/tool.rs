@@ -12,7 +12,7 @@ use super::super::theme::color;
 use super::button_look::{Press, Target, layer_on, paint_target};
 use super::chip::{Chip, ChipSize, Look, rect_at};
 use super::segment_bar::{BarStyle, Seg, segment_bar};
-use super::{Icon, paint_icon};
+use super::{Icon, paint_icon, paint_text};
 use crate::theme::color::Palette;
 use crate::theme::sizes::ControlSize;
 use crate::theme::tokens::{BORDER_W, CARET_HIT_W};
@@ -123,7 +123,7 @@ fn paint_tool(p: &Painter, rect: Rect, (icon, label): (Icon, &str), enabled: boo
             color::weak()
         };
         paint_icon(p, pos2(rect.center().x, rect.top() + ICON_Y), icon, col);
-        p.text(pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, type_scale::font(type_scale::SMALL), caption);
+        paint_text(p, pos2(rect.center().x, rect.top() + CAPTION_Y), Align2::CENTER_CENTER, label, type_scale::font(type_scale::SMALL), caption);
     } else {
         paint_icon(p, rect.center(), icon, col);
     }

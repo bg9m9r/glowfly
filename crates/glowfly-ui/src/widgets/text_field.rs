@@ -1,5 +1,5 @@
-//! A dialog's text field: Large (36 px) unless given a `ControlSize`, with single-line text
-//! centred, the field padding of `theme::controls::field_margin` (10 px at the sides), the
+//! A dialog's text field: Large (36 px) unless given a `ControlSize`, with single-line text set
+//! where `sizes::text_pos` would (`theme::controls::line_field_margin`), the field padding of `theme::controls::field_margin` (10 px at the sides), the
 //! faint accent-tinted `color::field_fill()`, and `theme::controls::Field`'s edge and focus ring
 //! (the only code that draws them), with a soft accent halo outside the ring while focused
 //! (`tokens::focus_halo`; the field's Strong focus ring in its place under Strong). A multiline field gets the same fill, edge and padding, and
@@ -10,7 +10,7 @@ use crate::theme::sizes::ControlSize;
 use crate::theme::tokens::{self, radius};
 use crate::theme::{color, controls};
 use crate::widgets::buttons::StyledButton;
-use eframe::egui::{self, Align, Id, Key, Response, Ui, WidgetText, vec2};
+use eframe::egui::{self, Id, Key, Response, Ui, WidgetText, vec2};
 
 /// A dialog field's height, and a multiline field's least height.
 pub const HEIGHT: f32 = ControlSize::Large.metrics().h;
@@ -78,13 +78,16 @@ impl egui::Widget for TextField<'_> {
         let TextField { text, multiline, id, hint, width, password, char_limit, size } = self;
         let rows = multiline.unwrap_or(1);
         let edit = if multiline.is_some() { egui::TextEdit::multiline(text) } else { egui::TextEdit::singleline(text) };
-        let margin = controls::field_margin(size, multiline.is_some(), None);
+        let margin = if multiline.is_some() {
+            controls::field_margin(size, true, None)
+        } else {
+            let font = egui::FontSelection::Default.resolve(ui.style());
+            controls::line_field_margin(size, ui.fonts(|f| f.row_height(&font)), None)
+        };
         let inner_w = width.map_or(f32::INFINITY, |w| (w - margin.sum().x).max(0.0));
-        let align = if multiline.is_some() { Align::Min } else { Align::Center };
         let mut edit = edit
             .margin(margin)
             .min_size(vec2(0.0, size.metrics().h))
-            .vertical_align(align)
             .background_color(color::field_fill())
             .desired_width(inner_w)
             .desired_rows(rows)

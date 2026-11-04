@@ -8,6 +8,7 @@
 //! their middle instead (`middle`): a short head ending before a separator, "…", and a tail that
 //! fills the rest, so `worktree-agent-a1…` names stay apart.
 
+use crate::theme::sizes;
 use eframe::egui::text::{LayoutJob, TextWrapping};
 use eframe::egui::{
     self, Color32, FontId, Galley, Painter, Pos2, Rect, Response, Sense, TextStyle, TextWrapMode, Ui, WidgetText, pos2, vec2,
@@ -62,7 +63,7 @@ pub fn paint_cut(p: &Painter, at: Pos2, job: LayoutJob, max_w: f32) -> Cut {
         return Cut { rect: Rect::from_min_size(at, vec2(0.0, 0.0)), cut: !job.text.is_empty() };
     }
     let galley = cut_galley(p.ctx(), job, max_w);
-    let min = pos2(at.x, at.y - galley.size().y / 2.0);
+    let min = pos2(at.x, sizes::centred_on(at.y, galley.size().y));
     let cut = Cut { rect: Rect::from_min_size(min, galley.size()), cut: galley.elided };
     p.galley(min, galley, fallback);
     cut
@@ -257,7 +258,7 @@ pub fn paint_middle(p: &Painter, at: Pos2, text: &str, font: FontId, color: Colo
     let shown = middle(p, text, &font, max_w);
     let cut = shown != text;
     let galley = p.layout_no_wrap(shown, font, color);
-    let min = pos2(at.x, at.y - galley.size().y / 2.0);
+    let min = pos2(at.x, sizes::centred_on(at.y, galley.size().y));
     let rect = Rect::from_min_size(min, galley.size());
     p.galley(min, galley, color);
     Cut { rect, cut }
