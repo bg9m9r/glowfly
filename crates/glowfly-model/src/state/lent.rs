@@ -12,10 +12,6 @@ pub struct Lent<T> {
 }
 
 impl<T: Default> Lent<T> {
-    pub fn new(value: T) -> Self {
-        Self { value, lent: false }
-    }
-
     /// Takes the value out, leaving a default in its place until `give_back`.
     pub(crate) fn lend(&mut self) -> T {
         debug_assert!(!self.lent, "lent twice");
@@ -52,7 +48,8 @@ mod tests {
 
     #[test]
     fn lends_and_takes_back() {
-        let mut l = Lent::new(vec![1]);
+        let mut l = Lent::default();
+        l.give_back(vec![1]);
         let v = l.lend();
         assert_eq!(v, [1]);
         l.give_back(vec![2]);
@@ -63,7 +60,7 @@ mod tests {
     #[cfg(debug_assertions)]
     #[should_panic(expected = "lent to the views")]
     fn reading_while_lent_panics_in_debug() {
-        let mut l = Lent::new(vec![1]);
+        let mut l = Lent::<Vec<i32>>::default();
         let _v = l.lend();
         let _ = l.len();
     }
