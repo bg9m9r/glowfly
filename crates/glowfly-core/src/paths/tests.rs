@@ -175,8 +175,9 @@ fn case_twins_on_the_temp_volume() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
-/// A real case-sensitive volume or folder (CI: a case-sensitive APFS image on macOS, a folder
-/// with `fsutil file setCaseSensitiveInfo` on Windows), named by `GLOWFLY_TEST_CS_DIR`.
+/// A real case-sensitive volume or folder (CI: a folder with `fsutil file setCaseSensitiveInfo`
+/// on Windows; locally on a Mac, a case-sensitive APFS image, docs/PLATFORMS.md), named by
+/// `GLOWFLY_TEST_CS_DIR`.
 #[test]
 fn case_twins_on_a_case_sensitive_volume() {
     let Some(base) = std::env::var_os("GLOWFLY_TEST_CS_DIR").map(PathBuf::from) else {

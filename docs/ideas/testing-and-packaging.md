@@ -105,7 +105,7 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Crop the text snapshots of menus, tooltips and popovers to the popup, as dialogs already are, so a toolbar label change doesn't touch them
 - Find text snapshots no test writes any more (a `.txt` with no `.new.txt` after a full run) and delete them
 - Give icon-only widgets and painted rows accessible names, so more of a view shows in its accessibility tree than in the painted-text list
-- Run the text snapshots on the macOS and Linux CI runners too, with per-platform files where labels differ (shortcut names, title bar)
+- Run the text snapshots on the Linux CI runner too, with per-platform files where labels differ (shortcut names, title bar)
 - Delete the text snapshots no test writes: `pull_request_gitlab_light`, `tabs_group_dragging` and `terminal_ansi_dark` (the per-theme terminal test names its files by theme id)
 - The names check scans the app's `runner_snapshots` folder, which holds no text snapshots (they are written into glowfly-ui's folder)
 - The chip catalog test reaches chip painters made `pub(crate)` for it; re-export them under `cfg(test)` instead

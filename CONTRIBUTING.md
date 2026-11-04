@@ -14,7 +14,8 @@ Thanks for your interest! Bug reports, ideas and pull requests are all welcome.
 ## Building and checking
 
 You need a recent stable Rust toolchain, Git, and PowerShell 7 (`pwsh`). Glowfly is developed on
-Windows; CI also builds it on macOS and Linux, where it is less tested. On Debian or Ubuntu,
+Windows; CI also builds and tests it on Linux for every pull request, and the Release workflow
+builds and packages macOS at each release. Both are less tested. On Debian or Ubuntu,
 `scripts/linux-deps.sh` installs the system libraries the build needs.
 
 ```

@@ -2,7 +2,7 @@
 //! compares a text snapshot of the frame (`text.rs`, `compare.rs`); the pixel goldens listed in
 //! `goldens.rs` are also compared as images, cropped as listed (and only as images when their
 //! text would repeat another snapshot's; `identical.rs` keeps the texts apart). With
-//! `GLOWFLY_SKIP_SNAPSHOTS=1` (CI on macOS and Linux, where the images were not rendered, wgpu
+//! `GLOWFLY_SKIP_SNAPSHOTS=1` (CI on Linux, where the images were not rendered, wgpu
 //! may have no adapter and the platform's own labels differ) the comparisons are skipped with a
 //! note, and the rest of each test (driving the harness, checking messages) still runs. Every
 //! harness comes from [`builder`], so harnesses reuse wgpu devices instead of each making its

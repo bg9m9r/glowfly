@@ -115,7 +115,7 @@ fn staged_case_only_rename_of_a_non_ascii_name() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// The same renames on the real file system, where it ignores case (Windows and macOS on CI).
+/// The same renames on the real file system, where it ignores case (Windows on CI, and macOS).
 #[test]
 fn real_case_insensitive_volume() {
     let dir = scratch_repo("wfc-real");
