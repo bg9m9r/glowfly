@@ -4,6 +4,7 @@
 use super::ops::{JobSpec, start_job};
 use crate::effect::{AccountEffect, Effect};
 use crate::msg::PublishMsg;
+use crate::state::error_words::typed;
 use crate::state::publish::PublishForm;
 use crate::state::{AppState, Modal};
 use glowfly_core::error::advice::{self, Ask};
@@ -39,11 +40,11 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                     f.clear_error();
                 }
                 Err(e) => {
-                    let sentence = advice::service(t, account.provider.name(), Ask::Owners, &e);
-                    let raw = format!("Couldn't sign in to {}: {e}", account.display());
+                    let sentence = advice::service(t, account.provider.name(), Ask::Owners, &e.to_string());
+                    let why = typed::service(t, &e);
                     match sentence {
-                        Some(s) => f.set_error(Some(s), e),
-                        None => f.set_error(None, raw),
+                        Some(s) => f.set_error(Some(s), why),
+                        None => f.set_error(None, t.trf("publish.owners.failed", &[("account", &account.display()), ("why", &why)])),
                     }
                 }
             }
@@ -68,7 +69,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                 if form(st).is_some_and(|f| same_spelling(&f.workdir, &workdir)) {
                     st.modal = None;
                 }
-                st.log(true, format!("Created {} ({}).", repo.full_name, repo.html_url));
+                st.log(true, t.trf("publish.created", &[("name", &repo.full_name), ("url", &repo.html_url)]));
                 let cmds = vec![args(&["remote", "add", "--", "origin", &repo.clone_url]), args(&["push", "-u", "--", "origin", &branch])];
                 // It runs in the published repository even if another tab is active now, as
                 // that repository's trust decision allows (update/trust.rs).
@@ -78,11 +79,11 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
                 Some(f) => {
                     let (owner, name) = (f.owner.clone(), f.name.trim().to_owned());
                     let service = f.account().map_or("GitHub", |a| a.provider.name());
-                    let sentence = advice::service(t, service, Ask::CreateRepo { owner: &owner, name: &name }, &e);
+                    let sentence = advice::service(t, service, Ask::CreateRepo { owner: &owner, name: &name }, &e.to_string());
                     f.creating = false;
-                    f.set_error(sentence, e);
+                    f.set_error(sentence, typed::service(t, &e));
                 }
-                None => st.log(false, format!("Creating the GitHub repository failed: {e}")),
+                None => st.log(false, t.trf("publish.create.failed", &[("why", &typed::service(t, &e))])),
             },
         },
     }

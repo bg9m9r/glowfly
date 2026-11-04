@@ -10,7 +10,7 @@ use std::path::Path;
 
 /// Runs one account effect; the token saves and drops answer only when they fail.
 pub(super) fn account(e: AccountEffect) -> Option<Msg> {
-    let err = |e: glowfly_core::error::Error| e.to_string();
+    let err = forge::ServiceError::from;
     match e {
         AccountEffect::Owners { account, cwd } => {
             let result = forge::resolve_auth(&account, &cwd, true, true).and_then(|a| forge::repo_owners(&account, &a)).map_err(err);
@@ -53,7 +53,7 @@ fn connect(account: Account, user: Option<String>, token: Option<String>, cwd: &
         }
         None => ("Git Credential Manager".to_owned(), forge::from_credential_manager(&account, cwd, true), None),
     };
-    let result = auth.and_then(|a| forge::verify(&account, &a)).map_err(|e| e.to_string());
+    let result = auth.and_then(|a| forge::verify(&account, &a)).map_err(forge::ServiceError::from);
     Msg::Forge(ForgeMsg::Connected { account, method, token: saved, result })
 }
 
@@ -61,7 +61,7 @@ fn connect(account: Account, user: Option<String>, token: Option<String>, cwd: &
 /// `connected` is true: update sends this only for a connected account.
 fn trello_boards(account: Account, cwd: &Path) -> Msg {
     let result =
-        forge::resolve_auth(&account, cwd, false, true).and_then(|a| forge::trello_boards(&account, &a)).map_err(|e| e.to_string());
+        forge::resolve_auth(&account, cwd, false, true).and_then(|a| forge::trello_boards(&account, &a)).map_err(forge::ServiceError::from);
     Msg::Forge(ForgeMsg::TrelloBoardsLoaded { account, result })
 }
 

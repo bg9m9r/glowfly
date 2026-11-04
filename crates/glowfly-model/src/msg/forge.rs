@@ -3,7 +3,7 @@
 
 use crate::effect::ForgeReply;
 use crate::state::pr_repos::RepoSide;
-use glowfly_core::forge::{Account, CreatedRepo, NewPullRequest, TrelloBoard};
+use glowfly_core::forge::{Account, CreatedRepo, NewPullRequest, ServiceError, TrelloBoard};
 use glowfly_core::settings::TrackerChoice;
 use std::path::PathBuf;
 
@@ -113,7 +113,7 @@ pub enum ForgeMsg {
         account: Account,
         method: String,
         token: Option<(Option<String>, String)>,
-        result: Result<String, String>,
+        result: Result<String, ServiceError>,
     },
     /// This repository > Issue tracker from the side list; loads Trello boards when
     /// Trello is chosen.
@@ -122,7 +122,7 @@ pub enum ForgeMsg {
     LoadTrelloBoards(Account),
     TrelloBoardsLoaded {
         account: Account,
-        result: Result<Vec<TrelloBoard>, String>,
+        result: Result<Vec<TrelloBoard>, ServiceError>,
     },
 }
 
@@ -162,13 +162,13 @@ pub enum PublishMsg {
     PublishAccount(usize),
     PublishOwners {
         account: Account,
-        result: Result<Vec<String>, String>,
+        result: Result<Vec<String>, ServiceError>,
     },
     Publish,
     Published {
         workdir: PathBuf,
         branch: String,
-        result: Result<CreatedRepo, String>,
+        result: Result<CreatedRepo, ServiceError>,
     },
 }
 
