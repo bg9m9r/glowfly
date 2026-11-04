@@ -140,6 +140,8 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Preview `.svgz` files
 - A light or dark backdrop choice behind the checkerboard
 - In a diff pane too narrow for the header even with the name cut, the Text / Preview switch is clipped with the rest; let it give way (into the View menu) instead
+- The preview's Before, After, Added, Deleted and the size text are English constants under German and Spanish; move them to the catalogs
+- A drawing in dark colours is hard to see on the dark theme's checkerboard (the backdrop choice above would help)
 - Bound the render's time: a drawing with huge filters can take seconds on the worker thread
 
 ### Merge conflict tool

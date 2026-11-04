@@ -363,3 +363,24 @@ fn file_header_snapshots() {
     let mut h = themed(binary, 900.0, 48.0);
     h.check_snapshot("file_header_binary");
 }
+
+#[test]
+fn the_svg_switch_sends_its_choice_by_click_and_by_key() {
+    let svg =
+        |on| HeaderModel { svg: Some(on), name: "icon.svg".into(), path: "src/ui/icon.svg".into(), kind: FileKind::Image, ..unstaged() };
+    assert!(matches!(&click(svg(false), 1400.0, "Preview")[..], [Msg::Diff(DiffMsg::SetSvgPreview(true))]));
+    assert!(matches!(&click(svg(true), 1400.0, "Text")[..], [Msg::Diff(DiffMsg::SetSvgPreview(false))]));
+    assert!(click(svg(false), 1400.0, "Text").is_empty(), "the raised segment sends nothing");
+    // From the keyboard: the segment focused, Space and Enter pick it.
+    for key in [egui_kittest::kittest::Key::Space, egui_kittest::kittest::Key::Enter] {
+        let mut h = harness(svg(false), 1400.0);
+        h.get_by_label("Preview").focus();
+        h.run();
+        h.get_by_label("Preview").key_press(key);
+        h.run();
+        assert!(matches!(&std::mem::take(h.state_mut())[..], [Msg::Diff(DiffMsg::SetSvgPreview(true))]), "{key:?}");
+    }
+    // Without the switch there is no Text or Preview in the header.
+    let h = harness(unstaged(), 1400.0);
+    assert!(h.query_by_label("Preview").is_none());
+}
