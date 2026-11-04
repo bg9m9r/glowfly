@@ -227,7 +227,11 @@ fn retry_keeps_the_direction() {
 }
 
 fn listed_loads(fx: &[Effect]) -> Vec<Option<FileEntry>> {
-    fx.iter().filter_map(|e| if let Effect::LoadDiff { listed, .. } = e { Some(listed.clone()) } else { None }).collect()
+    fx.iter()
+        .filter_map(
+            |e| if let Effect::Diff(glowfly_model::effect::DiffEffect::Load { listed, .. }) = e { Some(listed.clone()) } else { None },
+        )
+        .collect()
 }
 
 #[test]

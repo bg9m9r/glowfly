@@ -90,7 +90,7 @@ fn fold_keys_act_on_gaps_in_the_hunk_view() {
     st.view.diff_visible_rows = 60;
     let g = gaps(&st.session.diff.view.as_ref().unwrap().1);
     let fx = open_key(&mut st);
-    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })).count(), 1, "{fx:?}");
+    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Gaps { .. }))).count(), 1, "{fx:?}");
     assert!(st.session.tab_view.diff_expanded.contains(g[0].key));
     land(&mut st, fx);
     assert_eq!(filled(&st.session.diff.view.as_ref().unwrap().1, &st.session.tab_view.diff_expanded).len(), 1);

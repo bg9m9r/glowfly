@@ -39,7 +39,9 @@ fn published(workdir: &Path) -> Msg {
 }
 
 fn run_git_cwds(fx: &[Effect]) -> Vec<PathBuf> {
-    fx.iter().filter_map(|e| if let Effect::RunGit { cwd, .. } = e { Some(cwd.clone()) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, .. }) = e { Some(cwd.clone()) } else { None })
+        .collect()
 }
 
 fn cleanup(dirs: &[&Path]) {

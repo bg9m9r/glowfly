@@ -88,11 +88,11 @@ fn a_closed_or_other_tab_gets_no_retry() {
     let retry: Retry = (**kept).clone();
     let closed = Retry { tab: TabId::next(), ..retry.clone() };
     let fx = up(&mut st, Msg::Job(JobMsg::Retry(Box::new(closed))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })) && st.job.is_none());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) && st.job.is_none());
     assert_eq!(last_toast(&st).text, "Push wasn't run again: its tab was closed.");
     let moved = Retry { workdir: Some(dir.join("elsewhere")), ..retry };
     let fx = up(&mut st, Msg::Job(JobMsg::Retry(Box::new(moved))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))));
     assert_eq!(last_toast(&st).text, "Push wasn't run again: its tab shows another repository now.");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -160,7 +160,7 @@ fn delete_lock_file_is_refused_while_git_runs() {
     };
     assert!(std::path::Path::new(&lock).exists(), "the lock stays");
     let fx = up(&mut st, Msg::Lock(done));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "the job doesn't run");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "the job doesn't run");
     let t = last_toast(&st);
     assert!(t.text.starts_with("index.lock wasn't deleted:"), "{}", t.text);
     assert_eq!(buttons(t), ["Try again"], "Try again stays on offer");
@@ -253,7 +253,9 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     st.session.draft.summary = "Better words".into();
     let fx = up(&mut st, Msg::ToastAction(id));
     let message = fx.iter().find_map(|e| match e {
-        Effect::RunGit { write_file: Some((_, m)), .. } => Some(String::from_utf8(m.clone()).unwrap()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { write_file: Some((_, m)), .. }) => {
+            Some(String::from_utf8(m.clone()).unwrap())
+        }
         _ => None,
     });
     assert_eq!(
@@ -276,7 +278,7 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     let id = last_toast(&st).id;
     st.session.draft.summary.clear();
     let fx = up(&mut st, Msg::ToastAction(id));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })) && st.job.is_none());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) && st.job.is_none());
     assert_eq!(last_toast(&st).text, "Write a summary to commit.");
     let _ = std::fs::remove_dir_all(&dir);
 }

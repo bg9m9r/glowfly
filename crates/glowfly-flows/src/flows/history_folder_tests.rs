@@ -36,7 +36,7 @@ fn with_folder_view(name: &str) -> (AppState, std::path::PathBuf) {
 fn diff_targets(fx: &[Effect]) -> Vec<DiffTarget> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadDiff { target, .. } => Some(target.clone()),
+            Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, .. }) => Some(target.clone()),
             _ => None,
         })
         .collect()

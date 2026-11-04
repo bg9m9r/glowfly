@@ -87,7 +87,9 @@ fn medium_file_opens_colored_then_corrects() {
         let_lines(d)
     );
     assert_eq!(held.len(), 1);
-    assert!(matches!(&held[0], Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
+    assert!(
+        matches!(&held[0], Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, .. }) if *generation == st.session.diff.shown_gen)
+    );
 
     let view = (st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
     let msg = glowfly_runner::testing::execute(held.remove(0)).expect("a result");
@@ -124,6 +126,6 @@ fn adopt_requires_same_old_text() {
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");
     assert_ne!(shown(&st).highlight, per_hunk);
-    assert!(fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

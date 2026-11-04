@@ -52,7 +52,7 @@ fn open(st: &mut AppState, mine: Option<Fork>) -> Vec<Effect> {
 
 fn git_job(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }

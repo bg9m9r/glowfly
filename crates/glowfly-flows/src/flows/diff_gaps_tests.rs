@@ -56,12 +56,12 @@ fn gap_lines(st: &AppState) -> usize {
 }
 
 fn loads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Gaps { .. }))).count()
 }
 
-/// Runs the LoadDiffGaps effects among `fx` and applies their results.
+/// Runs the `DiffEffect::Gaps` effects among `fx` and applies their results.
 pub(super) fn land(st: &mut AppState, fx: Vec<Effect>) {
-    for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })) {
+    for e in fx.into_iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Gaps { .. }))) {
         let msg = glowfly_runner::testing::execute(e).expect("a result");
         run(st, msg);
     }

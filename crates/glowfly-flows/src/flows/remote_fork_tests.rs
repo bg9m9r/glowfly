@@ -73,7 +73,7 @@ fn last_log(st: &AppState) -> String {
 
 fn git_job(fx: &[Effect]) -> (PathBuf, Vec<Vec<String>>) {
     match fx {
-        [Effect::RunGit { cwd, cmds, .. }] => (cwd.clone(), cmds.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, .. })] => (cwd.clone(), cmds.clone()),
         other => panic!("unexpected effects {other:?}"),
     }
 }

@@ -62,7 +62,7 @@ fn command_for(st: &mut AppState, query: &str) -> C {
 /// The argv of the one RunGit effect in `fx`.
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("expected one RunGit, got {} effects", other.len()),
     }
 }
@@ -228,7 +228,7 @@ fn delete_chosen_stash_confirms() {
     let cmd = command_for(&mut st, "first");
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st.palette.is_none());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))));
     let Some(Modal::ConfirmDanger { title, body, button, then, .. }) = &st.modal else { panic!("no confirmation") };
     assert_eq!(title, "Delete stash");
     assert_eq!(button, "Delete");

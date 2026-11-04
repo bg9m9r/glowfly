@@ -7,7 +7,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Unchanged lines in a diff
 
-- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`Effect::LoadDiffGaps`, `update/diff_gaps.rs`).
+- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`DiffEffect::Gaps`, `update/diff_gaps.rs`).
 - E and Shift+E open the next closed run from the top or fold back the one there (`update/fold_keys.rs`).
 
 ## Next/previous change across files
@@ -154,12 +154,12 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 ## Incremental status
 
 - The watcher (`watcher.rs`) collects the work-tree paths of a burst when nothing else changed (no `info/exclude`, `.gitignore`, `.gitattributes`, HEAD or ref change, no lost events, at most `watch::MAX_WATCH_PATHS`) and sends them in `WatchMsg::RepoChanged { paths }`.
-- `update/refresh_paths.rs` asks for `Effect::LoadStatus { paths: Some }`.
+- `update/refresh_paths.rs` asks for `LoadEffect::Status { paths: Some }`.
 - The runner (`runner/status.rs`) reads only the unstaged rows under them (`repo::status_of_paths`, widened to a submodule's or nested repository's root) or, when they can't be read on their own, the whole status in the same effect.
 - `update` merges the rows into the lists on screen (`repo::merge_unstaged`) and keeps the staged list.
 - A burst that also changed the index sends `WatchMsg::IndexChanged { paths }`.
 - Every whole read keeps a memo of the index entries it started from (`Snapshot::index_memo`, `repo::IndexMemo`, read just before the status).
-- `update/refresh_index.rs` asks for `Effect::LoadIndexStatus`, which compares the index with the memo (path, stage, mode, id, skip-worktree, intent-to-add; not stat data).
+- `update/refresh_index.rs` asks for `LoadEffect::IndexStatus`, which compares the index with the memo (path, stage, mode, id, skip-worktree, intent-to-add; not stat data).
 - It reads both lists' rows only for the changed paths, the burst's paths and the staged additions, deletions and renames a rename may pair with (`repo::status_after_index_change`, merged by `merge_staged` and `merge_unstaged`, storing the new memo).
 - A conflicted or non-UTF-8 changed entry, a read set past the cap or one that can't be read alone, or no memo reads the whole status.
 - Glowfly's own refreshes and the polls read everything; reads asked for while one runs merge (`state::refresh::Wanted`).
@@ -222,5 +222,5 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Every full load (`update/repo.rs`, after the trust check), Reload custom commands and a watcher burst touching `.glowfly/` send `CustomCommandEffect::Load` with a new `generation`; the answer is dropped when it is older or for another folder.
 - Loaded commands get their keys (checked against the keymap and each other) and their problems, logged and toasted only when the set changes (`CustomCommands::reported`).
 - A run fills the placeholders from the row (`vars_for`) and may ask first (`Modal::Confirm`).
-- A run is then an ordinary job: a git command through `start_job` (`Effect::RunGit` with prompts), a shell command through `begin_job` as `CustomCommandEffect::RunShell`, answered with `JobMsg::JobDone`.
+- A run is then an ordinary job: a git command through `start_job` (`JobEffect::RunGit` with prompts), a shell command through `begin_job` as `CustomCommandEffect::RunShell`, answered with `JobMsg::JobDone`.
 - The repository's own commands run only while the repository is Trusted with a print that covers the commands file as loaded (`FileRead::digest`, kept as `CustomCommands::repo_digest`); otherwise, including an edit made outside Glowfly that the next full load hasn't noticed yet, they wait in `trust::hold` with a prompt listing that file, and Trust and run trusts it.

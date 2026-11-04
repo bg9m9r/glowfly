@@ -4,6 +4,7 @@
 //! What a message newly recorded (`recorded_since`) offers the Undo tip and counts amends for
 //! the Tidy tip (state/hints.rs).
 
+use crate::effect::JobEffect;
 use crate::effect::{Effect, StashHow, UndoOpts, UndoResult};
 use crate::msg::{JobMsg, Msg};
 use crate::state::hints::{self, HintId};
@@ -74,7 +75,7 @@ fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut
     };
     // An undo or redo that moves HEAD with the index may be followed by updating the submodules.
     let moves = glowfly_core::submodule_ops::undo_moves_work_tree(&action, redo);
-    let started = super::ops::begin_job(st, &label, true, move |cwd| Effect::UndoRedo { cwd, action, redo, opts }, fx);
+    let started = super::ops::begin_job(st, &label, true, move |cwd| Effect::Job(JobEffect::UndoRedo { cwd, action, redo, opts }), fx);
     if started != super::ops::Started::No {
         super::submodule_batch::job_started(st, &label, moves);
         // Running Undo by any route retires the Undo tip: its feature is known.

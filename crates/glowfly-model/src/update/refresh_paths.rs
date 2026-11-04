@@ -4,6 +4,7 @@
 //! `refresh_index.rs`, or a whole read).
 
 use super::refresh::{diff_changed, must_reload, open_file, set_status, status_set};
+use crate::effect::LoadEffect;
 use crate::effect::{Effect, StatusRead};
 use crate::state::AppState;
 use crate::state::refresh::Wanted;
@@ -24,7 +25,7 @@ pub(super) fn refresh_paths(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<
     let git_status = st.runs_git_unasked();
     // The open file's stamp only matters when the read may cover it.
     let open = open_file(st).filter(|p| repo::covers(&paths, p, fold));
-    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open, git_status, paths: Some(paths) });
+    fx.push(Effect::Load(LoadEffect::Status { workdir, generation: st.load_gen, submodules, open, git_status, paths: Some(paths) }));
 }
 
 /// Merges a read of some paths into `snap`'s unstaged list, as `refresh::set_status` does for a

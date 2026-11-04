@@ -45,18 +45,18 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 /// Opens `target`, applies its diff and returns the effects that raised, unrun.
 fn open(st: &mut AppState, target: DiffTarget) -> Vec<Effect> {
     let fx = run(st, Msg::Repo(RepoMsg::OpenDiff(target)));
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { .. })).expect("a diff load");
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).expect("a diff load");
     let msg = glowfly_runner::testing::execute(load).expect("a result");
     run(st, msg)
 }
 
 fn asks(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { .. }))).count()
 }
 
 /// Runs the sides loads among `fx` and applies their results.
 fn finish(st: &mut AppState, fx: Vec<Effect>) {
-    for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })) {
+    for e in fx.into_iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { .. }))) {
         let msg = glowfly_runner::testing::execute(e).expect("a result");
         drive(st, msg);
     }

@@ -145,7 +145,10 @@ fn the_favorite_keys_and_open_all_follow_the_groups() {
     let mut st = grouped();
     move_to(&mut st, "/w/d", Some(0), 0);
     let fx = update(&mut st, Msg::Recent(RecentMsg::OpenFavorite(0)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == &PathBuf::from("/w/d"))), "{fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Load(crate::effect::LoadEffect::Repo { path, .. }) if path == &PathBuf::from("/w/d"))),
+        "{fx:?}"
+    );
     let work = members(&st.settings, 0);
     let fx = update(&mut st, Msg::Recent(RecentMsg::OpenAll(work)), Instant::now());
     let tabs: Vec<Option<PathBuf>> = st.tabs.iter().map(|t| t.path.clone()).collect();

@@ -60,7 +60,7 @@ fn deliver(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     fx.iter()
         .find_map(|e| match e {
-            Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
             _ => None,
         })
         .unwrap_or_else(|| panic!("expected a git job, got {fx:?}"))

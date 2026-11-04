@@ -322,7 +322,10 @@ fn a_merge_for_a_tab_no_longer_active_still_ends_the_job() {
     );
     assert!(st.job.is_none());
     assert!(
-        !fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. } | Effect::LoadRepo { .. })),
+        !fx.iter().any(|e| matches!(
+            e,
+            Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }) | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+        )),
         "the active tab is not refreshed: {fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

@@ -10,7 +10,7 @@ use crate::lexer::bare_lines;
 
 /// How many flat variants `Effect` still declares outside the areas. Lower it when you move some
 /// into an area; never raise it.
-const FLAT_EFFECTS: usize = 25;
+const FLAT_EFFECTS: usize = 16;
 
 /// The file that declares `Effect`.
 const EFFECT_MOD: &str = "crates/glowfly-model/src/effect/mod.rs";
@@ -20,12 +20,15 @@ const FLAT_BLOCK: &str = "effect_enum! {";
 
 /// The names of the variants in the block `src` opens with `FLAT_BLOCK`, in order: each first
 /// identifier at the block's top level, after its opening or a top-level comma. Comments and
-/// literals are skipped. Empty when there is no such block.
+/// literals are skipped, and the `>` of a `->` in a field's type closes nothing. Empty when there
+/// is no such block.
 fn flat_variants(src: &str) -> Vec<String> {
     let code = bare_lines(src).join("\n");
     let Some(open) = code.find(FLAT_BLOCK) else { return Vec::new() };
-    let (mut depth, mut want, mut word, mut found) = (0usize, true, String::new(), Vec::new());
+    let (mut depth, mut want, mut word, mut found, mut prev) = (0usize, true, String::new(), Vec::new(), ' ');
     for c in code[open + FLAT_BLOCK.len()..].chars() {
+        let arrow = prev == '-' && c == '>';
+        prev = c;
         if c.is_ascii_alphanumeric() || c == '_' {
             word.push(c);
             continue;
@@ -36,6 +39,7 @@ fn flat_variants(src: &str) -> Vec<String> {
         }
         word.clear();
         match c {
+            _ if arrow => {}
             '{' | '(' | '[' | '<' => depth += 1,
             '}' | ')' | ']' | '>' if depth == 0 => break,
             '}' | ')' | ']' | '>' => depth -= 1,
@@ -74,4 +78,6 @@ fn the_flat_effect_count_finds_each_variant_once() {
                u8>>),\n    E {\n        f: bool,\n    },\n} }\nfn after() {}\n";
     assert_eq!(flat_variants(src), ["A", "B", "D", "E"], "variants only, not their fields, types or comments");
     assert!(flat_variants("pub enum Effect { A, B }").is_empty(), "no flat block, nothing counted");
+    let arrows = "effect_enum! {\n    A {\n        f: Box<dyn Fn(u8) -> u8 + Send>,\n    },\n    B(fn() -> bool),\n    C,\n}\n";
+    assert_eq!(flat_variants(arrows), ["A", "B", "C"], "a `->` in a field's type doesn't end the count");
 }

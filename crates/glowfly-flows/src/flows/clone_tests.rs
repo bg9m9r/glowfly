@@ -39,7 +39,7 @@ fn shallow(limit: HistoryLimit, branch: Option<&str>) -> CloneOptions {
 /// The single RunGit job in `fx`: (folder, commands, prompts).
 fn job(fx: &[Effect]) -> (PathBuf, Vec<Vec<String>>, bool) {
     match fx {
-        [Effect::RunGit { cwd, cmds, prompts, .. }] => (cwd.clone(), cmds.clone(), *prompts),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, prompts, .. })] => (cwd.clone(), cmds.clone(), *prompts),
         other => panic!("unexpected effects {other:?}"),
     }
 }

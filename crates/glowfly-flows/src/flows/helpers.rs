@@ -132,7 +132,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
 fn opening_ignores_stale_results() {
     let mut st = state();
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open("C:/a".into())), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadRepo { generation: 1, kind: LoadKind::Open, .. }]));
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { generation: 1, kind: LoadKind::Open, .. })]));
     assert!(st.loading);
     // A newer load supersedes the first; the first's result is ignored.
     update(&mut st, Msg::Repo(RepoMsg::Open("C:/b".into())), Instant::now());
@@ -153,7 +153,7 @@ fn only_one_git_job_runs_at_a_time() {
     let dir = scratch_repo("jobs");
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = update(&mut st, Msg::git("Fetch", &["fetch"]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     assert!(update(&mut st, Msg::git("Pull", &["pull"]), Instant::now()).is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("still running")));
 
@@ -161,7 +161,7 @@ fn only_one_git_job_runs_at_a_time() {
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: "$ git fetch".into(), undo: None }), Instant::now());
     assert!(st.job.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Fetch succeeded"));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. }))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -178,7 +178,7 @@ fn auto_fetch_runs_quietly_on_its_interval() {
     assert!(update(&mut st, Msg::Tick(start + Duration::from_secs(30)), Instant::now()).is_empty(), "too early");
     let fx = update(&mut st, Msg::Tick(start + Duration::from_secs(61)), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. })] => {
             assert_eq!(cmds[0], args(&["fetch", "--all", "--prune"]));
             assert!(!prompts, "background jobs never open a credential prompt");
         }
@@ -307,7 +307,7 @@ fn push_sets_upstream_for_new_branches() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: false }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. })] => {
             assert_eq!(cmds[0], args(&["push", "-u", "--", "origin", "main"]));
             assert!(prompts, "user-started jobs may ask for credentials");
         }
@@ -369,7 +369,7 @@ fn commit_signing_flow() {
 fn job_output_hides_credentials_in_urls() {
     let dir = scratch_repo("redact");
     let cmds = vec![args(&["remote", "add", "--", "x", "https://ada:TOKEN123@example.com/o/r.git"])];
-    let effect = Effect::RunGit {
+    let effect = Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: dir.clone(),
         cmds,
         write_file: None,
@@ -379,7 +379,7 @@ fn job_output_hides_credentials_in_urls() {
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    };
+    });
     let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = glowfly_runner::testing::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");
     assert!(!output.contains("TOKEN123") && output.contains("https://***@example.com/o/r.git"), "{output}");

@@ -125,7 +125,7 @@ fn window_focus_checks_folders() {
     assert!(st.snap.is_some());
     let fx = update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::CheckRepoFolders(l) if l.len() == 1)), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the refresh still runs: {fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "the refresh still runs: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -176,7 +176,11 @@ fn open_all_adds_tabs_for_unopened_present_favorites() {
     assert_eq!(tabs, [Some(PathBuf::from("/w/a")), Some(PathBuf::from("/w/c"))], "one new tab: /w/a is open, /w/b missing");
     assert_eq!(st.active_tab, 1);
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveTabs { .. })), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == &PathBuf::from("/w/c"))), "{fx:?}");
+    assert!(
+        fx.iter()
+            .any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, .. }) if path == &PathBuf::from("/w/c"))),
+        "{fx:?}"
+    );
 }
 
 #[test]

@@ -58,7 +58,7 @@ fn stage_all_and_commit_end_to_end() {
     st.session.draft.summary = "Everything".into();
     let fx = update(&mut st, Msg::Commit(CommitMsg::StageAllAndCommit), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }, ..] => assert_eq!(cmds[0], args(&["add", "--all"])),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }), ..] => assert_eq!(cmds[0], args(&["add", "--all"])),
         other => panic!("expected RunGit, got {other:?}"),
     }
     st.job = None;
@@ -184,13 +184,16 @@ fn no_push_when_commit_fails_or_tab_changed() {
 
     st.job = Some(job(Some(dir.with_file_name("elsewhere"))));
     let fx = update(&mut st, done(true), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     let last = st.log.last().unwrap();
     assert!(last.ok && last.text == "Push after committing was skipped: that repository's tab is no longer active.");
 
     st.job = Some(job(st.workdir()));
     let fx = update(&mut st, done(false), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "a failed commit doesn't push: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))),
+        "a failed commit doesn't push: {fx:?}"
+    );
 
     // Nothing to push from a detached HEAD.
     git(&dir, &["checkout", "-q", "--detach"]);

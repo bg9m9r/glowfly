@@ -51,7 +51,7 @@ fn delete(tag: &str, remotes: &[&str]) -> Msg {
 /// The commands of the single job `fx` starts.
 fn job_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }

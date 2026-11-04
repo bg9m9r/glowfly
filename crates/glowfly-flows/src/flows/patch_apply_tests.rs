@@ -34,7 +34,7 @@ fn send(st: &mut AppState, path: &Path, how: ApplyHow, commits: usize) -> Vec<Ef
 /// The commands of the job `fx` starts.
 fn job_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }
@@ -123,7 +123,9 @@ fn apply_changes_starts_the_chosen_git_apply() {
         st.modal = Some(dialog(&st, &p));
         let fx = send(&mut st, &p, how, 0);
         let ApplyHow::Changes(o) = how else { unreachable!() };
-        assert!(matches!(&fx[..], [Effect::RunGit { on_fail_check, .. }] if *on_fail_check == patch_ops::applied_check(&text, &o)));
+        assert!(
+            matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { on_fail_check, .. })] if *on_fail_check == patch_ops::applied_check(&text, &o))
+        );
         let cmds = job_cmds(&fx);
         let want: Vec<Vec<String>> = want.into_iter().map(|c| c.into_iter().map(str::to_owned).chain([text.clone()]).collect()).collect();
         assert_eq!(cmds, want);
@@ -152,7 +154,10 @@ fn apply_commits_starts_git_am_unless_blocked() {
     let o = AmOptions { keep_cr: true, signoff: true, ..AmOptions::default() };
     let fx = send(&mut st, &p, ApplyHow::Commits(o), 2);
     let check = patch_ops::am_applied_check(&st.snap.as_ref().unwrap().git_dir);
-    assert!(check.is_some() && matches!(&fx[..], [Effect::RunGit { on_fail_check, .. }] if *on_fail_check == check));
+    assert!(
+        check.is_some()
+            && matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { on_fail_check, .. })] if *on_fail_check == check)
+    );
     assert_eq!(job_cmds(&fx), [patch_ops::am_cmd(p.to_str().unwrap(), &o)]);
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(AM_LABEL));
     forget_job(&mut st);

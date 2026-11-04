@@ -42,7 +42,7 @@ pub(super) fn refreshes(fx: &[Effect]) -> usize {
 pub(super) fn git_jobs(fx: &[Effect]) -> Vec<Vec<Vec<String>>> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
             _ => None,
         })
         .collect()

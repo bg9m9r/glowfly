@@ -168,7 +168,7 @@ fn trash_refused_offers_permanent() {
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
         }),
     );
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete permanently?", "Delete permanently"));
     assert_eq!(

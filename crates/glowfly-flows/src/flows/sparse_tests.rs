@@ -211,7 +211,7 @@ fn a_finished_job_reloads_the_tab_and_the_page() {
     let fx = sparse(&mut st, SparseMsg::Done { ok: true, output: "$ git sparse-checkout reapply".into() });
     assert!(st.job.is_none());
     assert!(toasts(&st).contains(&"Reapply sparse paths succeeded".to_owned()), "{:?}", toasts(&st));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { known: None, .. })), "a full reload");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: None, .. }))), "a full reload");
     assert!(loads(&fx));
     assert!(page(&st).status.is_some(), "the page keeps its status until the new one arrives");
     assert!(page(&st).refill);
@@ -235,7 +235,10 @@ fn a_finished_job_reloads_the_tab_and_the_page() {
     st.job.as_mut().unwrap().workdir = Some(dir.join("elsewhere"));
     let fx = sparse(&mut st, SparseMsg::Done { ok: true, output: String::new() });
     assert!(st.job.is_none());
-    assert!(!loads(&fx) && !fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the other tab is left alone");
+    assert!(
+        !loads(&fx) && !fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))),
+        "the other tab is left alone"
+    );
     cleanup(&dir);
 }
 

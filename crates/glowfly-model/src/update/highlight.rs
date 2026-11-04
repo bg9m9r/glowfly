@@ -1,8 +1,9 @@
 //! Syntax highlighting finished in the background: large diffs arrive with a pending highlight
-//! (plain or provisional spans), `Effect::HighlightDiff` parses them on a worker thread (the
+//! (plain or provisional spans), `DiffEffect::Highlight` parses them on a worker thread (the
 //! lines and the function context in the hunk headers), and `DiffMsg::DiffHighlighted` attaches the
 //! result if the same diff is still on screen.
 
+use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use crate::state::AppState;
 use glowfly_core::highlight::DiffHighlight;
@@ -40,12 +41,12 @@ fn adopt(old: &FileDiff, new: &mut FileDiff) {
 pub(super) fn schedule(st: &AppState, fx: &mut Vec<Effect>) {
     let (Some(workdir), Some((target, d))) = (st.workdir(), st.session.diff.view.as_ref()) else { return };
     if pending(d) || d.whole.as_deref().is_some_and(|w| pending(&w.diff)) {
-        fx.push(Effect::HighlightDiff {
+        fx.push(Effect::Diff(DiffEffect::Highlight {
             workdir,
             target: target.clone(),
             generation: st.session.diff.shown_gen,
             diff: std::sync::Arc::clone(d),
-        });
+        }));
     }
 }
 

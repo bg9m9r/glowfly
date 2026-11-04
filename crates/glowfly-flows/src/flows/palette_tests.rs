@@ -298,7 +298,7 @@ fn run_prefs_close_tab_open_repo() {
     assert!(has(&st, "Fetch all remotes"));
     assert!(has(&st, "Pull"));
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Fetch)));
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch all"));
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);

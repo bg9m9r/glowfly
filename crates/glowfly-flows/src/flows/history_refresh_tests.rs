@@ -73,7 +73,10 @@ fn rerun_replaces_entries_and_keeps_the_selection() {
     assert_eq!(v.selected, Some(2));
     assert!(!v.loading && !v.rerun);
     assert_eq!(st.view.history_scroll_to, Some(2));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDiff { .. })), "the diff on screen stays: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))),
+        "the diff on screen stays: {fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -86,7 +89,7 @@ fn rerun_without_the_selected_commit_selects_the_first() {
     let fx = update(&mut st, m, Instant::now());
     assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(0));
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadDiff { target: DiffTarget::Commit(o, p), .. } if *o == oid(9) && p == "a.txt")),
+        fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { target: DiffTarget::Commit(o, p), .. }) if *o == oid(9) && p == "a.txt")),
         "{fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

@@ -52,8 +52,10 @@ fn toggle_saves_and_reloads_the_open_diff() {
     assert!(st.hunk_ops_gen().is_some());
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(s), Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]
-        if s.diff_ignore_whitespace));
+    assert!(
+        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]
+        if s.diff_ignore_whitespace)
+    );
     assert!(st.view.diff_lines.is_empty(), "hunk rows change, so the selection goes");
     assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the reload");
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
@@ -86,16 +88,24 @@ fn whitespace_toggle_filters_a_real_repo() {
     // Opening a diff, and reloading it after a status refresh, both carry the setting.
     drive(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(ws.clone())));
-    assert!(matches!(&fx[..], [Effect::LoadDiff { ignore_whitespace: true, reload: false, .. }]));
+    assert!(matches!(&fx[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]));
     for e in fx {
         let loaded = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, loaded);
     }
-    let status =
-        Effect::LoadStatus { workdir: dir.clone(), generation: st.load_gen, submodules: false, open: None, git_status: true, paths: None };
+    let status = Effect::Load(glowfly_model::effect::LoadEffect::Status {
+        workdir: dir.clone(),
+        generation: st.load_gen,
+        submodules: false,
+        open: None,
+        git_status: true,
+        paths: None,
+    });
     let status = glowfly_runner::testing::execute(status).expect("status result");
     let fx = run(&mut st, status);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, reload: true, .. })));
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: true, .. })))
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -107,7 +117,10 @@ fn commit_diffs_reload_with_whitespace_hidden_and_keep_revert() {
     let head = st.snap.as_ref().unwrap().commits[0].oid;
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head, "a.txt".into()))));
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadDiff { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })));
+    assert!(fx.iter().any(|e| matches!(
+        e,
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, target: DiffTarget::Commit(..), .. })
+    )));
     assert_eq!(st.hunk_ops_gen(), None, "Revert Hunk waits for the reload");
     finish(&mut st, fx);
     let generation = st.hunk_ops_gen().expect("the reload landed");
@@ -136,7 +149,7 @@ fn a_load_started_before_the_toggle_is_dropped() {
     assert_eq!(st.hunk_ops_gen(), None);
 
     // The toggle asks again for the file still opening, and that lands.
-    for e in toggled.into_iter().filter(|e| matches!(e, Effect::LoadDiff { .. })) {
+    for e in toggled.into_iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))) {
         let loaded = glowfly_runner::testing::execute(e).expect("diff result");
         run(&mut st, loaded);
     }

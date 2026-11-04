@@ -49,7 +49,7 @@ fn a_clone_with_submodules_carries_the_flag() {
     let mut st = state();
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(request(None, true))), Instant::now());
     match fx.as_slice() {
-        [Effect::RunGit { cmds, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => {
             assert_eq!(cmds, &[["clone", "--recurse-submodules", "--", URL, "app"].map(String::from).to_vec()])
         }
         other => panic!("{other:?}"),
@@ -58,7 +58,10 @@ fn a_clone_with_submodules_carries_the_flag() {
 
     let mut st = state();
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(request(None, false))), Instant::now());
-    assert!(matches!(fx.as_slice(), [Effect::RunGit { cmds, .. }] if !cmds[0].iter().any(|a| a == "--recurse-submodules")), "{fx:?}");
+    assert!(
+        matches!(fx.as_slice(), [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] if !cmds[0].iter().any(|a| a == "--recurse-submodules")),
+        "{fx:?}"
+    );
     assert_eq!(st.submodules.offered, [std::path::PathBuf::from(work()).join("app")]);
 }
 

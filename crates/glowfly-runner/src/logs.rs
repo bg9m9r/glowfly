@@ -10,6 +10,7 @@ use glowfly_core::gitcli::{self, GitRun};
 use glowfly_core::logs::{self, ActivityEntry, ActivityFile, LogTail, RotatingFile};
 use glowfly_core::native_path;
 use glowfly_model::effect::Effect;
+use glowfly_model::effect::LoadEffect;
 use glowfly_model::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use glowfly_model::msg::Msg;
 use glowfly_model::state::LOG_LIMIT;
@@ -132,7 +133,7 @@ pub(super) fn pick_export(name: &str) -> Msg {
 /// The repository folder an effect works in, for its performance line ("" for none).
 pub(super) fn folder_of(effect: &Effect) -> String {
     let path = match effect {
-        Effect::LoadRepo { path, .. } => Some(path.as_path()),
+        Effect::Load(LoadEffect::Repo { path, .. }) => Some(path.as_path()),
         e => e.scope().map(PathBuf::as_path).or_else(|| e.queue()),
     };
     path.map(native_path::shown).unwrap_or_default()

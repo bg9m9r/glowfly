@@ -1,9 +1,10 @@
 //! The binary diff's sizes and image previews: asked for when a binary diff is shown
-//! (`Effect::LoadBinarySides`), kept through a reload of the same file until the new sides
+//! (`DiffEffect::BinarySides`), kept through a reload of the same file until the new sides
 //! arrive, ignored when they come back for a diff that is no longer on screen, and asked for
 //! again when a tab comes back with them still loading. An SVG diffed as text asks for them
 //! while its Text / Preview switch says Preview (`set_svg_preview`).
 
+use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use crate::state::AppState;
 use crate::state::diff_preview::DiffPreview;
@@ -51,7 +52,7 @@ pub(super) fn settings_edited(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 fn request(st: &AppState, fx: &mut Vec<Effect>) {
     if let (Some(workdir), Some(p)) = (st.workdir(), st.session.diff_preview.as_ref()) {
-        fx.push(Effect::LoadBinarySides { workdir, target: p.target.clone(), generation: p.generation });
+        fx.push(Effect::Diff(DiffEffect::BinarySides { workdir, target: p.target.clone(), generation: p.generation }));
     }
 }
 

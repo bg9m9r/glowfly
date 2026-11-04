@@ -216,7 +216,7 @@ fn reverted_results() {
     ];
     for (what, r, ok, text) in toasts {
         let fx = run(&mut st, reverted("a.txt", what, Ok(r)));
-        assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "{fx:?}");
+        assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })]), "{fx:?}");
         finish(&mut st, fx);
         assert!(st.toasts.last().is_some_and(|t| t.ok == ok && t.text == text), "{:?} want {text}", st.toasts.last().map(|t| &t.text));
     }
@@ -228,7 +228,7 @@ fn reverted_results() {
     ];
     for (what, text) in fails {
         let fx = run(&mut st, reverted("a.txt", what, Err("x".into())));
-        assert!(matches!(&fx[..], [Effect::LoadStatus { .. }]), "{fx:?}");
+        assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })]), "{fx:?}");
         finish(&mut st, fx);
         assert!(st.log.last().is_some_and(|l| !l.ok && l.text == text), "{:?}", st.log.last().map(|l| &l.text));
     }

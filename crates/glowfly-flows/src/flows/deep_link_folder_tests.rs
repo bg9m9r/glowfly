@@ -21,7 +21,9 @@ fn focuses(fx: &[Effect]) -> bool {
 }
 
 fn loads(fx: &[Effect], dir: &Path) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Open, path, .. } if same_place(path, dir)))
+    fx.iter().any(
+        |e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, path, .. }) if same_place(path, dir)),
+    )
 }
 
 fn shows(st: &AppState, dir: &Path) -> bool {

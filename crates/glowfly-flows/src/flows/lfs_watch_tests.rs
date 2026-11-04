@@ -53,14 +53,17 @@ fn a_watched_gitattributes_edit_reads_the_whole_status_and_the_patterns() {
     assert!(!bin_tracked(&st));
     std::fs::write(dir.join(".gitattributes"), "*.bin filter=lfs -text\n").unwrap();
     let fx = update(&mut st, watched(&workdir), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadStatus { paths: None, .. }]), "one whole status read, no reload: {fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { paths: None, .. })]),
+        "one whole status read, no reload: {fx:?}"
+    );
     finish(&mut st, fx);
     assert_eq!(raws(&st), ["*.bin"]);
     assert!(bin_tracked(&st), "the file menu sees the new pattern");
 
     std::fs::write(dir.join(".gitattributes"), "").unwrap();
     let fx = update(&mut st, watched(&workdir), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     finish(&mut st, fx);
     assert!(raws(&st).is_empty(), "removing the line empties the patterns");
     assert!(!bin_tracked(&st));
@@ -73,7 +76,10 @@ fn a_refresh_that_finds_the_refs_unchanged_picks_up_the_patterns() {
     std::fs::write(dir.join(".gitattributes"), "*.psd filter=lfs diff=lfs merge=lfs -text\n").unwrap();
     // A rescan (events were lost) checks the refs first.
     let fx = update(&mut st, watched_full(&workdir, true), Instant::now());
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { known: Some(_), .. })).expect("a checked refresh");
+    let load = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: Some(_), .. })))
+        .expect("a checked refresh");
     let msg = glowfly_runner::testing::execute(load).expect("a result");
     assert!(matches!(msg, Msg::Load(LoadMsg::RepoUnchanged { lfs_patterns: Some(_), .. })));
     let fx = update(&mut st, msg, Instant::now());

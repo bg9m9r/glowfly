@@ -158,7 +158,7 @@ fn pull_request_checkout_asks_with_its_own_op() {
 
 /// Nothing ran (and no prompt opened).
 fn nothing_ran(fx: &[glowfly_model::effect::Effect]) -> bool {
-    !fx.iter().any(|e| matches!(e, glowfly_model::effect::Effect::RunGit { .. }))
+    !fx.iter().any(|e| matches!(e, glowfly_model::effect::Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })))
 }
 
 fn last_log(st: &AppState) -> &str {

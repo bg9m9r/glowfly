@@ -186,7 +186,13 @@ fn each_outcome_has_its_message() {
     assert!(st.job.is_none());
     let t = st.toasts.last().unwrap();
     assert!(t.ok && t.text == "Removed submodule libs/lib. Commit to record the removal.", "{}", t.text);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. } | Effect::LoadRepo { .. })), "the tab reloads: {fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(
+            e,
+            Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }) | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+        )),
+        "the tab reloads: {fx:?}"
+    );
 
     started(&mut st);
     let dir = store(&parent);
@@ -234,7 +240,10 @@ fn a_removal_ends_its_job_after_a_tab_switch() {
     let fx = removed(&mut st, RemoveOutcome::Removed, "");
     assert!(st.job.is_none());
     assert!(st.toasts.last().unwrap().ok);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "the other tab reloads when selected: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))),
+        "the other tab reloads when selected: {fx:?}"
+    );
     cleanup(&[&parent, &lib]);
 }
 

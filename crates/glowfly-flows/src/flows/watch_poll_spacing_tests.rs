@@ -12,7 +12,7 @@ use glowfly_model::state::watch::{POLL_GAP_CAP, REMOTE_POLL};
 use std::time::{Duration, Instant};
 
 fn statuses(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadStatus { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).count()
 }
 
 /// A focused tab on a repository the runner said is on a network volume.

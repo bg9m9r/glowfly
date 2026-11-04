@@ -133,7 +133,7 @@ fn force_push_leaves_out_force_if_includes_for_an_old_git() {
     git_version(&mut st, (2, 29, 2));
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => {
             assert!(cmds[0].iter().any(|a| a.starts_with("--force-with-lease=")), "{cmds:?}");
             assert!(!cmds[0].iter().any(|a| a == "--force-if-includes"), "{cmds:?}");
         }
@@ -153,7 +153,7 @@ fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     let mut st = state();
     let root = PathBuf::from("/srv/shared/app");
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     let generation = st.load_gen;
     run(&mut st, GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, refusal: refusal(&root, Some(r"OTHERPC\alice"), false) });
     assert!(!st.loading);
@@ -180,7 +180,10 @@ fn a_repository_owned_by_another_user_is_explained_and_can_be_trusted() {
     let fx = run(&mut st, GitEnvMsg::AddSafeDirectory(root.clone()));
     assert!(matches!(&fx[..], [Effect::GitEnv(GitEnvEffect::AddSafeDirectory(p))] if *p == root), "{fx:?}");
     let fx = run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Ok(()) });
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if *path == root)), "opens again: {fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, .. }) if *path == root)),
+        "opens again: {fx:?}"
+    );
     assert!(st.log.iter().any(|l| l.ok && l.text.starts_with("Trusted ")), "logged");
     run(&mut st, GitEnvMsg::SafeDirectoryAdded { root: root.clone(), result: Err("locked\n".into()) });
     assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text.ends_with("Git said: locked")), "{:?}", st.toasts.last().map(|t| &t.text));

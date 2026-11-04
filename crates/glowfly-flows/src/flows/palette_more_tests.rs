@@ -109,7 +109,7 @@ fn refresh_entry() {
     assert_eq!(find(&st, "Refresh").expect("Refresh").shortcut(&st.keymap), Some("F5"));
     open_palette(&mut st);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::Refresh)));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. }))));
     assert!(st.palette.is_none());
 
     assert!(!has(&state(), "Refresh"));

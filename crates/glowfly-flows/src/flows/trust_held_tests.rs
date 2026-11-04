@@ -60,7 +60,7 @@ fn trust_and_run(st: &mut AppState) -> Vec<Effect> {
 }
 
 fn run_gits(fx: &[Effect]) -> Vec<&Effect> {
-    fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).collect()
+    fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).collect()
 }
 
 fn last_log(st: &AppState) -> (bool, &str) {
@@ -113,7 +113,9 @@ fn commit_while_held_asks_first() {
 
     let fx = trust_and_run(&mut st);
     let gits = run_gits(&fx);
-    let [Effect::RunGit { cmds, write_file, .. }] = gits.as_slice() else { panic!("one RunGit: {fx:?}") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, write_file, .. })] = gits.as_slice() else {
+        panic!("one RunGit: {fx:?}")
+    };
     assert_eq!(cmds[0], args(&["add", "--all"]));
     assert!(write_file.is_some(), "the commit message file is written");
     let job = st.job.as_ref().expect("the commit runs");
@@ -130,9 +132,9 @@ fn trust_and_run_runs_the_held_job() {
     let fx = trust_and_run(&mut st);
     assert_eq!(recorded(&st.settings, &real), Some(RepoTrust::Trusted));
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, .. } if opts.trusted)), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) if opts.trusted)), "{fx:?}");
     let gits = run_gits(&fx);
-    let [Effect::RunGit { cwd, cmds, .. }] = gits.as_slice() else { panic!("one RunGit: {fx:?}") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, .. })] = gits.as_slice() else { panic!("one RunGit: {fx:?}") };
     assert_eq!(*cmds, vec![args(&["pull", "--ff"])]);
     assert!(glowfly_core::paths::same_spelling(cwd, &st.workdir().unwrap()));
     let job = st.job.as_ref().expect("Pull runs");
@@ -237,7 +239,9 @@ fn clone_and_init_are_not_held() {
     let req = CloneRequest { url: "https://example.invalid/r.git".into(), parent, name: "r".into(), options: Default::default() };
     let fx = run(&mut st, Msg::Clone(CloneMsg::Start(req)));
     let gits = run_gits(&fx);
-    let [Effect::RunGit { cmds, .. }] = gits.as_slice() else { panic!("clone runs at once: {fx:?}") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] = gits.as_slice() else {
+        panic!("clone runs at once: {fx:?}")
+    };
     assert_eq!(cmds[0][0], "clone");
     assert!(st.trust.held.is_none());
     let _ = std::fs::remove_dir_all(&dir);

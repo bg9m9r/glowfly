@@ -231,7 +231,11 @@ fn opening_another_repo_in_the_tab_forgets_the_old_one() {
     let mut fx = Vec::new();
     super::refresh::load(&mut st, next.clone(), glowfly_model::effect::LoadKind::Open, &mut fx);
     let mut kept = Vec::new();
-    let msg = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).and_then(glowfly_runner::testing::execute).unwrap();
+    let msg = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })))
+        .and_then(glowfly_runner::testing::execute)
+        .unwrap();
     kept.extend(update(&mut st, msg, Instant::now()));
     assert_eq!(forgets(&kept), [old]);
     assert!(st.session.search.index.ready.is_none() && st.session.search.index.building.is_none());

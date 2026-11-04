@@ -103,7 +103,7 @@ fn a_remote_row_runs_the_main_lists_checkout() {
     let from_row = run(&mut st2, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
     assert!(st2.palette.is_none());
     let git_of = |fx: &[Effect]| match fx {
-        [Effect::RunGit { cmds, record, .. }] => (cmds.clone(), record.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => (cmds.clone(), record.clone()),
         other => panic!("expected one RunGit, got {other:?}"),
     };
     assert_eq!(git_of(&from_row), git_of(&from_main));

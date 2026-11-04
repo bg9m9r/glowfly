@@ -98,7 +98,7 @@ fn a_free_branch_is_checked_out_as_an_undoable_job() {
     super::tests::drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Refresh));
     let fx = update(&mut st, branch(BranchMsg::Checkout("free".into())), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, record, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => {
             assert_eq!(cmds, &[glowfly_model::state::branches::checkout_local("free")]);
             assert!(record.is_some(), "recorded for undo");
         }
@@ -165,7 +165,7 @@ fn a_missing_worktree_is_refused_once_then_pruned_and_checked_out() {
 
     let fx = update(&mut st, branch(BranchMsg::PruneThen(Box::new(BranchMsg::Checkout("side".into())))), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, record, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => {
             assert_eq!(cmds, &[glowfly_core::worktree_ops::prune_cmd(), glowfly_model::state::branches::checkout_local("side")]);
             assert!(record.is_some(), "recorded for undo as the checkout");
         }
@@ -193,7 +193,10 @@ fn rebasing_side(name: &str) -> (AppState, PathBuf, PathBuf) {
 /// `what` is refused, logging `why`, with nothing started.
 fn refused(st: &mut AppState, what: &str, m: BranchMsg, why: &str) {
     let fx = update(st, branch(m), Instant::now());
-    assert!(fx.iter().all(|e| !matches!(e, Effect::RunGit { .. })) && st.job.is_none(), "{what}: {fx:?}");
+    assert!(
+        fx.iter().all(|e| !matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) && st.job.is_none(),
+        "{what}: {fx:?}"
+    );
     assert_eq!(last_log(st), (false, why.to_owned()), "{what}");
 }
 

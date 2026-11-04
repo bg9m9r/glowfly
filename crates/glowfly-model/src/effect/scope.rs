@@ -11,13 +11,7 @@ impl Effect {
     /// active are dropped (the tab reloads when it is selected again).
     pub fn scope(&self) -> Option<&PathBuf> {
         effect_areas! { effect_match! { self, |e| e.scope(), {
-            Effect::LoadStatus { workdir, .. }
-            | Effect::LoadIndexStatus { workdir, .. }
-            | Effect::LoadDiff { workdir, .. }
-            | Effect::HighlightDiff { workdir, .. }
-            | Effect::LoadDiffGaps { workdir, .. }
-            | Effect::LoadBinarySides { workdir, .. }
-            | Effect::LoadFileHistory { workdir, .. }
+            Effect::LoadFileHistory { workdir, .. }
             | Effect::LocalOp { workdir, .. }
             | Effect::Revert { workdir, .. }
             | Effect::Stats { workdir, .. }
@@ -25,10 +19,7 @@ impl Effect {
             Effect::Forge { cwd, .. } => Some(cwd),
             // Unscoped: global answers, jobs whose result must reach `update` whichever tab is
             // active, and work outside any repository.
-            Effect::LoadRepo { .. }
-            | Effect::RunGit { .. }
-            | Effect::UndoRedo { .. }
-            | Effect::FetchAvatars(_)
+            Effect::FetchAvatars(_)
             | Effect::SaveSettings(_)
             | Effect::SaveRecent(_)
             | Effect::CheckRepoFolders(_)
@@ -47,18 +38,9 @@ impl Effect {
         effect_areas! { effect_match! { self, |e| e.queue(), {
             Effect::LocalOp { workdir, .. }
             | Effect::Revert { workdir, .. } => Some(workdir),
-            Effect::RunGit { cmds, .. } if cmds.iter().all(|c| network_only(c)) => None,
-            Effect::RunGit { cwd, .. } | Effect::UndoRedo { cwd, .. } => Some(cwd),
             // Reads, network calls, Glowfly's own files (ordered by `saves`) and work outside the
             // process. Listed one by one so a new effect has to decide.
-            Effect::LoadRepo { .. }
-            | Effect::LoadStatus { .. }
-            | Effect::LoadIndexStatus { .. }
-            | Effect::LoadDiff { .. }
-            | Effect::LoadDiffGaps { .. }
-            | Effect::LoadBinarySides { .. }
-            | Effect::HighlightDiff { .. }
-            | Effect::LoadFileHistory { .. }
+            Effect::LoadFileHistory { .. }
             | Effect::CheckRepoFolders(_)
             | Effect::ReadTabGroups(_)
             | Effect::Forge { .. }
@@ -80,13 +62,7 @@ impl Effect {
     /// repack. On Windows an open handle keeps the old packs from being deleted.
     pub fn holds(&self) -> Option<&Path> {
         effect_areas! { effect_match! { self, |e| e.holds(), {
-            Effect::RunGit { cwd, .. } => Some(cwd),
             flat => flat.queue(),
         } } }
     }
-}
-
-/// Fetch and push update remote-tracking refs at most; they never touch the index or files.
-fn network_only(cmd: &[String]) -> bool {
-    matches!(glowfly_core::gitcli::subcommand(cmd), Some("fetch" | "push")) && !cmd.iter().any(|a| a == ".")
 }

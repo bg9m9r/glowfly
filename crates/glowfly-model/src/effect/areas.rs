@@ -121,6 +121,13 @@ macro_rules! effect_areas {
             Files($crate::effect::FilesEffect),
             /// The details panel's reads of one commit: its detail and its signature (commit.rs); reads only.
             Commit($crate::effect::CommitEffect),
+            /// Loading the repository and reading its status (load.rs, runner/load.rs); reads only.
+            Load($crate::effect::LoadEffect),
+            /// The open diff, its highlighting, its unchanged lines and a binary diff's sides
+            /// (diff.rs, runner/diff.rs); reads only.
+            Diff($crate::effect::DiffEffect),
+            /// Running git commands and undoing or redoing an action (job.rs, runner/job.rs); unscoped.
+            Job($crate::effect::JobEffect),
             /// Git's file system monitor started and set, then the cache's commands (monitor.rs); unscoped like RunGit.
             TurnOnMonitor($crate::effect::MonitorJob),
             /// Git's file system monitor unset and stopped (monitor.rs); unscoped like RunGit.

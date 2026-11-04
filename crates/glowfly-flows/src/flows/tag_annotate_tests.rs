@@ -73,7 +73,7 @@ fn annotate_starts_one_job() {
     open(&mut st, "v1");
     let fx = update(&mut st, annotate(&sha, " notes "), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, expect, record, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, record, .. })] => {
             assert_eq!(
                 cmds,
                 &[vec!["tag".to_owned(), "-a".into(), "-f".into(), "-m".into(), "notes".into(), "--".into(), "v1".into(), sha.clone()]]

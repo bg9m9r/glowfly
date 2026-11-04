@@ -143,7 +143,9 @@ fn add_runs_the_job_and_closes() {
     filled(&mut st, "libs/lib", Some(Ok(Vec::new())));
     let fx = run(&mut st, sm(SubmoduleMsg::Add));
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts: true, .. }] => assert_eq!(cmds[0], add_cmd(URL, "libs/lib", Some("dev"))),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts: true, .. })] => {
+            assert_eq!(cmds[0], add_cmd(URL, "libs/lib", Some("dev")))
+        }
         other => panic!("{other:?}"),
     }
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Add submodule libs/lib"));
@@ -198,15 +200,18 @@ fn add_in_an_untrusted_repository_asks_first() {
     let (mut st, dir) = held_repo("sm-add-held");
     filled(&mut st, "libs/lib", Some(Ok(Vec::new())));
     let fx = run(&mut st, sm(SubmoduleMsg::Add));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     match &st.modal {
         Some(Modal::Trust(p)) => assert_eq!(p.held.as_deref(), Some("Add submodule libs/lib")),
         _ => panic!("expected the trust prompt"),
     }
     let real = real(&st);
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
-    let gits: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).collect();
-    assert!(matches!(gits[..], [Effect::RunGit { cmds, .. }] if cmds[0] == add_cmd(URL, "libs/lib", Some("dev"))), "{fx:?}");
+    let gits: Vec<&Effect> = fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).collect();
+    assert!(
+        matches!(gits[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] if cmds[0] == add_cmd(URL, "libs/lib", Some("dev"))),
+        "{fx:?}"
+    );
     cleanup(&[&dir]);
 }
 

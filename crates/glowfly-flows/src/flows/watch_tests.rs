@@ -46,7 +46,7 @@ fn job(workdir: Option<PathBuf>) -> RunningJob {
 }
 
 fn is_status(fx: &[Effect], st: &AppState, workdir: &Path) -> bool {
-    matches!(fx, [Effect::LoadStatus { workdir: w, generation, .. }] if w == workdir && *generation == st.load_gen)
+    matches!(fx, [Effect::Load(glowfly_model::effect::LoadEffect::Status { workdir: w, generation, .. })] if w == workdir && *generation == st.load_gen)
 }
 
 fn watches(fx: &[Effect]) -> Vec<Option<WatchTarget>> {
@@ -73,7 +73,10 @@ fn outside_file_change_refreshes_status_only() {
 fn ref_change_refreshes_everything() {
     let (mut st, dir, workdir) = opened("watch-full");
     let fx = update(&mut st, changed(&workdir, true, Instant::now()), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadRepo { kind: LoadKind::Refresh, path, .. }] if *path == workdir), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, path, .. })] if *path == workdir),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -138,7 +141,7 @@ fn an_index_change_reads_the_index() {
     snap.staged = vec![FileEntry::new("added.txt", 'A'), FileEntry::new("edited.txt", 'M'), renamed];
     let fx = update(&mut st, index_changed(&workdir, &["a.txt"], Instant::now()), Instant::now());
     match &fx[..] {
-        [Effect::LoadIndexStatus { workdir: w, generation, read, .. }] => {
+        [Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus { workdir: w, generation, read, .. })] => {
             assert!(w == &workdir && *generation == st.load_gen);
             assert!(std::sync::Arc::ptr_eq(&read.old, &old), "compared with the memo on screen");
             assert_eq!(read.paths, ["a.txt"]);
@@ -165,7 +168,7 @@ fn an_index_change_reads_the_index() {
     // Without a memo of the index on screen: the whole status.
     st.snap.as_mut().unwrap().index_memo = None;
     let fx = update(&mut st, index_changed(&workdir, &[], Instant::now()), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadStatus { paths: None, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { paths: None, .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -175,7 +178,12 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
-            if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
+            if matches!(
+                e,
+                Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                    | Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+            ) {
                 queue.extend(glowfly_runner::testing::execute(e));
             } else {
                 all.push(e);
@@ -247,7 +255,9 @@ fn watch_failure_is_reported_once_per_repository() {
 /// refresh walked everything again (not `RepoUnchanged`).
 fn full_report(st: &mut AppState, workdir: &Path) -> bool {
     let fx = update(st, changed(workdir, true, Instant::now()), Instant::now());
-    let [Effect::LoadRepo { kind: LoadKind::Refresh, known: Some(_), .. }] = &fx[..] else { panic!("a checked refresh: {fx:?}") };
+    let [Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, known: Some(_), .. })] = &fx[..] else {
+        panic!("a checked refresh: {fx:?}")
+    };
     let msgs: Vec<Msg> = fx.into_iter().filter_map(glowfly_runner::testing::execute).collect();
     let full = msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::RepoLoaded { .. })));
     for m in msgs {

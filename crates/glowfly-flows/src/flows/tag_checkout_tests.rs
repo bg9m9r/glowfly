@@ -47,7 +47,7 @@ fn checkout_starts_one_job_named_after_the_tag() {
     let (mut st, dir, _) = tagged("tag-co-job");
     let fx = run(&mut st, checkout("v1.0"));
     match &fx[..] {
-        [Effect::RunGit { cmds, record, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => {
             assert_eq!(cmds, &vec![args(&["checkout", "refs/tags/v1.0"])]);
             assert_eq!(record, &Some(UndoKind::Checkout));
         }

@@ -54,7 +54,7 @@ fn tree_repo(name: &str) -> (AppState, PathBuf) {
 /// The one diff `fx` asks for.
 fn loaded(fx: &[Effect]) -> Option<&DiffTarget> {
     fx.iter().find_map(|e| match e {
-        Effect::LoadDiff { target, .. } => Some(target),
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, .. }) => Some(target),
         _ => None,
     })
 }

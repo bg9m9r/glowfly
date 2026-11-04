@@ -28,8 +28,8 @@ pub(super) fn ask(st: &AppState) -> &AutoStashAsk {
 
 /// The commands of the one RunGit in `fx`.
 pub(super) fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
-    match fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).collect::<Vec<_>>()[..] {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+    match fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).collect::<Vec<_>>()[..] {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         _ => panic!("expected one RunGit, got {fx:?}"),
     }
 }

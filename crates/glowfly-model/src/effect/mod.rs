@@ -5,9 +5,8 @@ pub use crate::file_op::{DeleteMode, FileOp, SeenLines, WorkFileOk};
 use git2::Oid;
 use glowfly_core::askpass::Reply;
 use glowfly_core::forge::{Auth, Target};
-use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry, HistoryStart, LoadOptions};
+use glowfly_core::repo::HistoryStart;
 use glowfly_core::settings::Settings;
-use glowfly_core::undo::{Action, UndoKind};
 use std::path::PathBuf;
 
 mod account;
@@ -20,6 +19,7 @@ mod commit;
 mod conflict;
 mod credential;
 mod dashboard;
+mod diff;
 mod files;
 mod forge;
 mod forge_filters;
@@ -28,8 +28,10 @@ mod hunk_patch;
 mod index;
 mod init;
 mod issue;
+mod job;
 mod lfs;
 mod line_counts;
+mod load;
 mod lock;
 mod meta;
 mod monitor;
@@ -66,6 +68,7 @@ pub use commit::CommitEffect;
 pub use conflict::ConflictEffect;
 pub use credential::CredentialEffect;
 pub use dashboard::*;
+pub use diff::DiffEffect;
 pub use files::FilesEffect;
 pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
 pub use forge_filters::{FilterCall, FilterResult};
@@ -74,8 +77,10 @@ pub use hunk_patch::HunkPatchRequest;
 pub use index::{IndexEffect, Shared};
 pub use init::InitEffect;
 pub use issue::*;
+pub use job::JobEffect;
 pub use lfs::LfsEffect;
 pub use line_counts::{FailedLineCounts, LineCountsEffect};
+pub use load::LoadEffect;
 pub use lock::LockEffect;
 pub use meta::EffectMeta;
 pub use meta::SandboxRule;
@@ -105,76 +110,6 @@ pub use worktree::WorktreeEffect;
 // its metadata (`EffectMeta`). The flat variants below predate the areas: a new effect goes in an
 // area (a new variant of its type, or a new row in areas.rs), never here.
 effect_areas! { effect_enum! {
-    LoadRepo {
-        path: PathBuf,
-        opts: LoadOptions,
-        generation: u64,
-        kind: LoadKind,
-        /// The snapshot on screen: when its `refs_key` still matches, only the status is read (`LoadMsg::RepoUnchanged`).
-        known: Option<KnownRepo>,
-        /// The history on screen: commits a full load takes instead of reading them again, and for `More` the walk's frontier.
-        prior: Option<glowfly_core::repo::Prior>,
-    },
-    LoadStatus {
-        workdir: PathBuf,
-        generation: u64,
-        /// The last load found submodules: read them again even without a .gitmodules.
-        submodules: bool,
-        /// The file whose working-tree or index diff is open, for `LoadMsg::StatusLoaded::open_stamp`.
-        open: Option<String>,
-        /// Let git read the status (fsmonitor, untracked cache); false while the repository isn't trusted.
-        git_status: bool,
-        /// Re-read only these work-tree paths' unstaged rows; None reads everything.
-        paths: Option<Vec<String>>,
-    },
-    /// After an index change: both lists' rows of the changed paths, else the whole status.
-    LoadIndexStatus {
-        workdir: PathBuf,
-        generation: u64,
-        submodules: bool,
-        open: Option<String>,
-        git_status: bool,
-        read: IndexRequest,
-    },
-    LoadDiff {
-        workdir: PathBuf,
-        target: DiffTarget,
-        reload: bool,
-        generation: u64,
-        /// On a reload, the diff on screen: unchanged hunks keep its highlighting.
-        previous: Option<std::sync::Arc<FileDiff>>,
-        /// Hide whitespace-only changes (the diff_ignore_whitespace setting when the request was made).
-        ignore_whitespace: bool,
-        /// Also load the whole file (the diff_mode setting when the request was made).
-        whole_file: bool,
-        /// `target`'s row in the list loaded with its whole commit or comparison
-        /// (`diff_nav::file_order::listed`), so only the file and its rename partner are read.
-        listed: Option<FileEntry>,
-    },
-    /// Finishes the syntax highlighting `diff` arrived with (pending in its hunks or its whole
-    /// file) for the diff shown at `generation` (DiffSlot::shown_gen). Started by
-    /// Runner::run with a cancel ticket: a newer HighlightDiff cancels this one.
-    HighlightDiff {
-        workdir: PathBuf,
-        target: DiffTarget,
-        generation: u64,
-        diff: std::sync::Arc<FileDiff>,
-    },
-    /// Reads the unchanged lines between `diff`'s hunks for the hunk view, for the diff shown at
-    /// `generation` (DiffSlot::shown_gen).
-    LoadDiffGaps {
-        workdir: PathBuf,
-        target: DiffTarget,
-        generation: u64,
-        diff: std::sync::Arc<FileDiff>,
-    },
-    /// Reads the sizes and decodes the images of the binary diff shown at `generation`
-    /// (DiffSlot::shown_gen), for its header and preview.
-    LoadBinarySides {
-        workdir: PathBuf,
-        target: DiffTarget,
-        generation: u64,
-    },
     LocalOp {
         workdir: PathBuf,
         op: LocalOp,
@@ -193,34 +128,6 @@ effect_areas! { effect_enum! {
         limit: usize,
         folder: bool,
         generation: u64,
-    },
-    /// Runs git commands in order, stopping at the first failure. `write_file` is written first
-    /// (commit messages, already in the repository's commit encoding). With `record`, the state before and after is compared and
-    /// the resulting undoable action reported back; with `journal`, a journal note is written
-    /// when the run moved HEAD or the op's branch (runner/journal.rs). Without `prompts`
-    /// (background jobs) git fails rather than open a credential prompt.
-    RunGit {
-        cwd: PathBuf,
-        cmds: Vec<Vec<String>>,
-        write_file: Option<(PathBuf, Vec<u8>)>,
-        record: Option<UndoKind>,
-        journal: Option<glowfly_core::journal::Op>,
-        prompts: bool,
-        /// Run nothing unless this revision still resolves to this commit.
-        expect: Option<(String, git2::Oid)>,
-        /// Every command only fetches: `Effect::StopGit(StopKey::Job)` can stop it.
-        stoppable: bool,
-        /// Run after a failure: when this check passes the job ends with
-        /// `JobMsg::FailCheckPassed` instead of `JobDone` (a patch that is already applied).
-        on_fail_check: Option<Vec<String>>,
-    },
-    /// Undoes (or redoes) `action` after checking the repository still matches it. Unscoped like
-    /// `RunGit`: the job's result must reach `update` even if its tab is no longer active.
-    UndoRedo {
-        cwd: PathBuf,
-        action: Action,
-        redo: bool,
-        opts: UndoOpts,
     },
     Forge {
         target: Target,

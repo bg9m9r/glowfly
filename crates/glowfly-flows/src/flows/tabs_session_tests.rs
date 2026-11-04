@@ -240,7 +240,9 @@ fn a_diff_result_from_before_the_switch_is_dropped() {
     select(&mut st, 0);
     let target = DiffTarget::Unstaged("a.txt".into());
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(target.clone())));
-    let g = fx.iter().find_map(|e| if let Effect::LoadDiff { generation, .. } = e { Some(*generation) } else { None });
+    let g = fx.iter().find_map(|e| {
+        if let Effect::Diff(glowfly_model::effect::DiffEffect::Load { generation, .. }) = e { Some(*generation) } else { None }
+    });
     let g = g.expect("the diff is asked for");
 
     select(&mut st, 1);

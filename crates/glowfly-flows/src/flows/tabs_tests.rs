@@ -65,7 +65,7 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     assert!(active_is(&st, &a));
     assert_eq!(st.session.draft.summary, "work in a");
     assert_eq!(st.view.diff_scroll_to_row, Some(6), "A's diff reopens where it was scrolled");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. }))));
 
     // Opening an already open repository selects its tab.
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
@@ -100,7 +100,7 @@ fn results_for_other_tabs_are_dropped() {
     update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now());
     update(&mut st, Msg::Tabs(TabsMsg::SelectTab(1)), Instant::now());
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))));
     assert!(st.toasts.iter().all(|t| t.text != "Commit succeeded"), "a commit shows in the graph, not in a toast");
     assert!(st.tabs[0].log.iter().any(|l| l.text.starts_with("Commit done")), "it is logged");
     let parked = st.tabs[0].parked.as_ref().expect("tab A is parked");
@@ -167,12 +167,18 @@ fn restored_tabs_load_when_first_selected() {
         Instant::now(),
     );
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1), "the empty start tab is replaced");
-    let loads: Vec<&PathBuf> = fx.iter().filter_map(|e| if let Effect::LoadRepo { path, .. } = e { Some(path) } else { None }).collect();
+    let loads: Vec<&PathBuf> = fx
+        .iter()
+        .filter_map(|e| if let Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, .. }) = e { Some(path) } else { None })
+        .collect();
     assert_eq!(loads, [&b], "only the active tab loads at startup");
     assert_eq!(st.tabs[0].name, a.file_name().unwrap().to_string_lossy());
 
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, kind: LoadKind::Open, .. } if path == &a)));
+    assert!(
+        fx.iter()
+            .any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, kind: LoadKind::Open, .. }) if path == &a))
+    );
     match fx.iter().find_map(|e| if let Effect::SaveTabs { paths, active, .. } = e { Some((paths, *active)) } else { None }) {
         Some((paths, active)) => assert_eq!((paths.len(), active), (2, 0)),
         None => panic!("switching tabs saves the session"),
@@ -276,7 +282,9 @@ fn move_tab_keeps_the_active_repository() {
     assert_eq!(st.active_tab, 2);
     assert_eq!(st.session.draft.summary, "wip");
     assert_eq!(st.load_gen, load_gen);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. } | Effect::Ui(UiEffect::SetTitle(_)))));
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }) | Effect::Ui(UiEffect::SetTitle(_))))
+    );
     assert_eq!(fx.len(), 1);
     assert_eq!(saved(&fx), [(vec![fake("a"), fake("c"), fake("b")], 2)]);
 }
@@ -315,7 +323,7 @@ fn close_other_tabs_keeping_an_inactive_tab() {
     let saves = saved(&fx);
     assert_eq!(saves.len(), 1);
     assert!(saves[0].0.len() == 1 && super::tests::same_place(&saves[0].0[0], &a));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. }))));
     cleanup(&[&a, &b]);
 }
 
@@ -325,7 +333,7 @@ fn close_other_tabs_keeping_the_active_tab() {
     let fx = update(&mut st, Msg::Tabs(TabsMsg::CloseOtherTabs(2)), Instant::now());
     assert_eq!((tab_names(&st), st.active_tab), (vec!["c".to_owned()], 0));
     assert_eq!(closed(&st), [fake("d"), fake("b"), fake("a")], "a is reopened first");
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))));
     assert_eq!(saved(&fx), [(vec![fake("c")], 0)]);
     // With one tab left there is nothing to close.
     assert!(update(&mut st, Msg::Tabs(TabsMsg::CloseOtherTabs(0)), Instant::now()).is_empty());
@@ -338,7 +346,9 @@ fn close_tabs_to_the_right() {
     let fx = update(&mut st, Msg::Tabs(TabsMsg::CloseTabsToRight(1)), Instant::now());
     assert_eq!((tab_names(&st), st.active_tab), (vec!["a".to_owned(), "b".into()], 1));
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, kind: LoadKind::Open, .. } if path == &fake("b"))),
+        fx.iter().any(
+            |e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, kind: LoadKind::Open, .. }) if path == &fake("b"))
+        ),
         "the survivor was never loaded"
     );
     assert!(update(&mut st, Msg::Tabs(TabsMsg::CloseTabsToRight(1)), Instant::now()).is_empty());
@@ -350,7 +360,7 @@ fn close_tabs_to_the_right() {
 fn bulk_closed_tabs_reopen_in_their_original_order() {
     let mut st = fake_tabs(&["a", "b", "c", "d"], 0);
     let fx = update(&mut st, Msg::Tabs(TabsMsg::CloseTabsToRight(1)), Instant::now());
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the active tab stays");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "the active tab stays");
     update(&mut st, Msg::Tabs(TabsMsg::ReopenClosedTab), Instant::now());
     update(&mut st, Msg::Tabs(TabsMsg::ReopenClosedTab), Instant::now());
     let paths: Vec<PathBuf> = st.tabs.iter().filter_map(|t| t.path.clone()).collect();

@@ -55,7 +55,7 @@ fn listed(st: &AppState, label: &str) -> Vec<Option<String>> {
 /// The argv lists of the one RunGit effect in `fx`.
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("expected one RunGit, got {} effects", other.len()),
     }
 }
@@ -110,7 +110,7 @@ fn fetch_full_history_job() {
     let fx = run(&mut st, sized);
     assert!(st.partial.sizing.is_none() && st.modal.is_none(), "a small history doesn't ask");
     match &fx[..] {
-        [Effect::RunGit { cmds, prompts, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. })] => {
             assert_eq!(cmds, &argv(&["fetch", "--unshallow", "--", "origin"]));
             assert!(prompts, "a job the user started may ask for credentials");
         }
@@ -197,10 +197,13 @@ fn deepen_drops_stats_of_old_boundary() {
 
     // Step through the job by hand to see the effects of the reload that follows it.
     let fx = run(&mut st, deepen(Deepen::By(1)));
-    let [Effect::RunGit { .. }] = &fx[..] else { panic!("expected one RunGit") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })] = &fx[..] else { panic!("expected one RunGit") };
     let done = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).expect("a job result");
     let fx = run(&mut st, done);
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })).expect("a refresh");
+    let load = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. })))
+        .expect("a refresh");
     let loaded = glowfly_runner::testing::execute(load).expect("a load result");
     let fx = run(&mut st, loaded);
     assert!(!st.session.reads.stats.contains_key(&root), "line counts made as a root commit are dropped");
@@ -225,9 +228,9 @@ fn deepen_refused() {
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Fetch at least one more commit."));
 
     let fx = run(&mut st, Msg::git("Fetch", &["fetch"]));
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     let fx = run(&mut st, deepen(Deepen::Full));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "another job is running");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "another job is running");
     assert!(st.log.last().is_some_and(|l| l.text.contains("still running")));
     st.job = None;
 

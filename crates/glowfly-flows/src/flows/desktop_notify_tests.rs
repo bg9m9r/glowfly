@@ -30,7 +30,7 @@ fn tab_name(st: &AppState) -> String {
 /// Ends a Fetch job (its effects are not run) with `ok` and `output`; returns the effects.
 fn fetch_ends(st: &mut AppState, ok: bool, output: &str) -> Vec<Effect> {
     let fx = update(st, Msg::git("Fetch", &["fetch", "--all"]), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
     update(st, Msg::Job(JobMsg::JobDone { ok, output: output.into(), undo: None }), Instant::now())
 }
 

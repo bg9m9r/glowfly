@@ -50,7 +50,7 @@ fn remove(dirs: &[std::path::PathBuf]) {
 fn bound_fetch_runs_the_palette_fetch() {
     let (mut st, dirs) = repo_with_remote("bound-fetch");
     let fx = bound(&mut st, C::Fetch);
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Fetch all"));
     assert!(st.palette.is_none(), "a one-step command leaves the palette closed");
     assert!(st.palette_recent.is_empty(), "a key press isn't a recent palette command");

@@ -73,7 +73,9 @@ fn logged(st: &AppState, text: &str) -> bool {
 }
 
 fn run_git(fx: &[Effect]) -> Vec<&Vec<Vec<String>>> {
-    fx.iter().filter_map(|e| if let Effect::RunGit { cmds, .. } = e { Some(cmds) } else { None }).collect()
+    fx.iter()
+        .filter_map(|e| if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) = e { Some(cmds) } else { None })
+        .collect()
 }
 
 fn open_after_load(st: &AppState) -> Option<PrStart> {

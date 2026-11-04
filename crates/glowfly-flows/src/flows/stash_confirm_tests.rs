@@ -27,7 +27,7 @@ fn palette(st: &mut AppState, cmd: C) -> Vec<Effect> {
 /// The commands and revision guard of the one RunGit in `fx`.
 fn git_job(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(String, git2::Oid)>) {
     match fx {
-        [Effect::RunGit { cmds, expect, .. }] => (cmds.clone(), expect.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, .. })] => (cmds.clone(), expect.clone()),
         _ => panic!("expected one RunGit, got {} effects", fx.len()),
     }
 }

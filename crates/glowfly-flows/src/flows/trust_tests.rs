@@ -63,7 +63,9 @@ fn is_forge(e: &Effect) -> bool {
 /// The `git_status` of the status read after a local operation.
 fn status_read_git(st: &mut AppState) -> Option<bool> {
     let fx = run(st, Msg::Stage(StageMsg::LocalOpDone(Ok(None))));
-    let flag = fx.iter().find_map(|e| if let Effect::LoadStatus { git_status, .. } = e { Some(*git_status) } else { None });
+    let flag = fx.iter().find_map(|e| {
+        if let Effect::Load(glowfly_model::effect::LoadEffect::Status { git_status, .. }) = e { Some(*git_status) } else { None }
+    });
     finish(st, fx);
     flag
 }
@@ -98,7 +100,7 @@ fn a_clean_repository_is_not_asked_about() {
     assert!(st.settings.repo_trust.is_empty(), "nothing is saved for a clean repository");
     assert!(st.runs_git_unasked());
     let fx = tick_past_interval(&mut st);
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -107,21 +109,26 @@ fn an_undecided_repository_is_asked_about_and_held() {
     let dir = untrusted_repo("trust-ask");
     let mut st = state();
     let fx = run(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, .. } if !opts.trusted)), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) if !opts.trusted)), "{fx:?}");
     finish(&mut st, fx);
     let Some(Modal::Trust(p)) = &st.modal else { panic!("expected the trust prompt") };
     assert!(p.scan.config.iter().any(|c| c.key == "core.sshCommand"), "{:?}", p.scan);
     assert_eq!(p.scan.hooks, ["pre-commit"]);
     assert!(!st.runs_git_unasked());
 
-    assert!(!tick_past_interval(&mut st).iter().any(|e| matches!(e, Effect::RunGit { .. })), "no auto-fetch");
+    assert!(
+        !tick_past_interval(&mut st).iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))),
+        "no auto-fetch"
+    );
     assert!(st.session.forge.as_ref().is_some_and(|f| f.host.is_some()), "GitHub is detected");
     let fx = run(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(!fx.iter().any(is_forge), "no hosting-service call: {fx:?}");
     finish(&mut st, fx);
 
     let fx = run(&mut st, Msg::Repo(RepoMsg::WindowFocused));
-    let known = fx.iter().find_map(|e| if let Effect::LoadRepo { known: Some(k), .. } = e { Some(k.clone()) } else { None });
+    let known = fx.iter().find_map(|e| {
+        if let Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: Some(k), .. }) = e { Some(k.clone()) } else { None }
+    });
     assert!(matches!(known, Some(KnownRepo { git_status: false, .. })), "{known:?}");
     finish(&mut st, fx);
     assert_eq!(status_read_git(&mut st), Some(false));
@@ -139,7 +146,10 @@ fn trusting_releases_what_was_held() {
     assert!(st.modal.is_none());
     assert_eq!(recorded(&st.settings, &real), Some(RepoTrust::Trusted));
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "{fx:?}");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, known: None, .. } if opts.trusted)), "{fx:?}");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, .. }) if opts.trusted)),
+        "{fx:?}"
+    );
     assert!(fx.iter().any(is_forge), "hosting-service data loads: {fx:?}");
     assert!(st.toasts.last().is_some_and(|t| t.ok && t.text.contains("trusted")));
     finish(&mut st, fx);
@@ -147,7 +157,7 @@ fn trusting_releases_what_was_held() {
     assert_eq!(status_read_git(&mut st), Some(true));
     let fx = tick_past_interval(&mut st);
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds[0][..2], args(&["fetch", "--all"])[..]),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(cmds[0][..2], args(&["fetch", "--all"])[..]),
         other => panic!("expected a fetch, got {other:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -285,7 +295,7 @@ fn ask_after_dont_trust_shows_a_refused_prompt() {
 
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }));
     assert_eq!(recorded(&st.settings, &real), Some(RepoTrust::Trusted));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, .. } if opts.trusted)), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) if opts.trusted)), "{fx:?}");
     assert!(fx.iter().any(is_forge), "{fx:?}");
     finish(&mut st, fx);
     ask(&mut st, &real);

@@ -12,6 +12,7 @@
 //! lives in `glowfly-core`.
 
 use glowfly_core::repo;
+use glowfly_model::effect::DiffEffect;
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::Msg;
 use std::path::Path;
@@ -32,6 +33,7 @@ mod credentials;
 mod custom_commands;
 mod dashboard;
 mod deep_link;
+mod diff;
 mod diff_gaps;
 mod execute;
 mod expect;
@@ -51,6 +53,7 @@ mod index_query;
 mod init;
 mod instance;
 mod issues;
+mod job;
 mod job_steps;
 mod journal;
 mod keys;
@@ -145,7 +148,7 @@ pub struct Runner {
     /// The listener for links a second Glowfly process hands over, once started (never in
     /// tests); dropping it removes the instance file.
     instance: Option<glowfly_core::instance::Listener>,
-    /// Counts HighlightDiff jobs started: a job whose number is no longer the latest stops.
+    /// Counts `DiffEffect::Highlight` jobs started: a job whose number is no longer the latest stops.
     highlight_epoch: Arc<AtomicU64>,
     /// The built-in terminal's shell sessions.
     terminals: terminal::Terminals,
@@ -262,7 +265,8 @@ impl Runner {
         let waker = self.waker.clone();
         let name = effect.name();
         let epoch = &self.highlight_epoch;
-        let ticket = matches!(effect, Effect::HighlightDiff { .. }).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
+        let ticket =
+            matches!(effect, Effect::Diff(DiffEffect::Highlight { .. })).then(|| (epoch.clone(), epoch.fetch_add(1, Ordering::SeqCst) + 1));
         let repo = effect.queue().map(Path::to_owned);
         let hold = effect.holds().map(Path::to_owned);
         let recovery = guard::Recovery::of(&effect, name);

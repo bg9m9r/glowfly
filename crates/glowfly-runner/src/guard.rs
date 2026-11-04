@@ -3,6 +3,8 @@
 
 use glowfly_core::app_update::UpdateError;
 use glowfly_core::forge::{Account, Target};
+use glowfly_model::effect::JobEffect;
+use glowfly_model::effect::LoadEffect;
 use glowfly_model::effect::partial::PartialEffect;
 use glowfly_model::effect::{
     CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SparseEffect, StashEffect,
@@ -105,9 +107,9 @@ impl FailedFork {
 impl Recovery {
     pub(super) fn of(effect: &Effect, name: &'static str) -> Self {
         let kind = match effect {
-            Effect::RunGit { record, .. } => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
+            Effect::Job(JobEffect::RunGit { record, .. }) => Kind::Job(record.as_ref().map(|_| UndoResult::Recorded(None))),
             Effect::Pick(j) => Kind::Job(j.record.as_ref().map(|_| UndoResult::Recorded(None))),
-            Effect::UndoRedo { redo, .. } => Kind::Job(Some(UndoResult::Failed { redo: *redo, stash: None })),
+            Effect::Job(JobEffect::UndoRedo { redo, .. }) => Kind::Job(Some(UndoResult::Failed { redo: *redo, stash: None })),
             Effect::Worktree(WorktreeEffect::Remove(_) | WorktreeEffect::Move(_))
             | Effect::Submodule(SubmoduleEffect::Remove(_))
             | Effect::Stash(StashEffect::Rename { .. })
@@ -122,8 +124,10 @@ impl Recovery {
             Effect::Rebase(RebaseEffect::Start { .. } | RebaseEffect::Resume { .. }) => Kind::Rebase,
             Effect::Rebase(RebaseEffect::EditTodo { .. }) => Kind::EditTodo,
             Effect::LocalOp { .. } => Kind::LocalOp,
-            Effect::LoadRepo { generation, kind, .. } => Kind::Load(*generation, *kind),
-            Effect::LoadStatus { generation, .. } | Effect::LoadIndexStatus { generation, .. } => Kind::Status(*generation),
+            Effect::Load(LoadEffect::Repo { generation, kind, .. }) => Kind::Load(*generation, *kind),
+            Effect::Load(LoadEffect::Status { generation, .. }) | Effect::Load(LoadEffect::IndexStatus { generation, .. }) => {
+                Kind::Status(*generation)
+            }
             Effect::Ssh(e) => Kind::Ssh(e.failure()),
             Effect::Remote(e) => Kind::Fork(FailedFork::of(e)),
             Effect::LoadBlame(r) => Kind::Blame { path: r.path.clone(), generation: r.generation },

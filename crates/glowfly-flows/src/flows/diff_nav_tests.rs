@@ -91,7 +91,7 @@ pub(super) fn finish(st: &mut AppState, fx: Vec<Effect>) {
 pub(super) fn one_load(fx: &[Effect]) -> (&DiffTarget, bool) {
     let fx: Vec<&Effect> = fx.iter().filter(|e| !matches!(e, Effect::LineCounts(_))).collect();
     match fx.as_slice() {
-        [Effect::LoadDiff { target, reload, .. }] => (target, *reload),
+        [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload, .. })] => (target, *reload),
         other => panic!("expected one diff load, got {other:?}"),
     }
 }

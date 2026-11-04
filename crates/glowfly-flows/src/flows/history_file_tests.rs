@@ -63,7 +63,7 @@ fn selecting_in_file_pane_requests_text_and_diff() {
     let fx = send(&mut st, HistoryMsg::SelectHistoryEntry(1));
     assert_eq!(text_requests(&fx), [(oid(2), "old.txt".to_owned())]);
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadDiff { target: DiffTarget::Commit(o, p), .. } if *o == oid(2) && p == "old.txt")),
+        fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { target: DiffTarget::Commit(o, p), .. }) if *o == oid(2) && p == "old.txt")),
         "the diff loads underneath: {fx:?}"
     );
     let _ = std::fs::remove_dir_all(&dir);

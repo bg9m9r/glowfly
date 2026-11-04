@@ -30,7 +30,7 @@ fn run_git(st: &mut AppState, msg: Msg) -> (Vec<Vec<String>>, Option<UndoKind>) 
     let fx = update(st, msg, Instant::now());
     st.job = None;
     match &fx[..] {
-        [Effect::RunGit { cmds, record, .. }] => (cmds.clone(), record.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => (cmds.clone(), record.clone()),
         [] => (Vec::new(), None),
         other => panic!("unexpected effects {other:?}"),
     }

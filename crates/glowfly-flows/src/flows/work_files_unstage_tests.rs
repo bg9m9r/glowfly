@@ -87,7 +87,7 @@ fn unstage_gone_results() {
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::Unstaged { undo: None }) }));
     assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Removed s.txt from the staging area."));
     assert!(st.session.diff.view.is_none(), "the staged diff of the unstaged file is closed");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));
     assert_eq!(last_log(&st), "Could not unstage s.txt: boom");

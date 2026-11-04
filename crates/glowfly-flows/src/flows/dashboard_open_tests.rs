@@ -60,7 +60,7 @@ fn open_repo_selects_its_tab_or_loads_it() {
     let mut st = state();
     st.dashboard.open = true;
     let fx = run(&mut st, DashboardMsg::OpenRepo(b.clone()));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Open, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, .. }))));
     assert_eq!(st.tabs.len(), 1, "the empty tab is used");
     assert_eq!(st.tabs[0].path.as_deref(), Some(b.as_path()));
     assert!(!st.dashboard.open);
@@ -81,7 +81,7 @@ fn show_pull_request_opens_at_once_or_when_the_tab_lists_it() {
 
     // Not open yet: it waits for the new tab's list.
     let fx = run(&mut st, DashboardMsg::OpenPr { path: b.clone(), target: gh("acme", "b"), id: 7 });
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Open, .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, .. }))));
     assert!(st.dashboard.pending_pr.is_some());
     finish(&mut st, fx);
     assert!(st.snap.as_ref().is_some_and(|s| same(&s.workdir, &b)));

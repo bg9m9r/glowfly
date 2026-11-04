@@ -234,7 +234,7 @@ fn unstage_delete_results() {
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Ok(WorkFileOk::deleted(Deleted::Permanently)) }));
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Deleted s.txt and removed it from the staging area."));
     assert!(st.session.diff.view.is_none(), "the staged diff of the deleted file is closed");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));
     assert_eq!(last_log(&st), "Could not delete s.txt: boom");
@@ -253,7 +253,7 @@ fn create_result_closes_or_shows_the_error() {
     );
     assert!(st.modal.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created docs/a.md."));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     finish(&mut st, fx);
 
     let fx = run(
@@ -281,7 +281,7 @@ fn create_result_closes_or_shows_the_error() {
     let form = new_form(&st);
     assert!(!form.busy);
     assert_eq!(form.error, Some(("docs/a.md".into(), "docs/a.md already exists".into())));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
 
     st.modal = None;
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Err("boom".into()) }));

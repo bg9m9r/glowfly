@@ -139,7 +139,7 @@ fn selecting_an_entry_opens_the_diff_at_its_path() {
     assert_eq!(st.session.history.view.as_ref().unwrap().selected, Some(1));
     assert_eq!(st.view.history_scroll_to, Some(1));
     assert!(
-        matches!(&fx[..], [Effect::LoadDiff { target: DiffTarget::Commit(o, p), reload: false, .. }] if *o == oid(2) && p == "old.txt"),
+        matches!(&fx[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target: DiffTarget::Commit(o, p), reload: false, .. })] if *o == oid(2) && p == "old.txt"),
         "{fx:?}"
     );
     st.view.history_scroll_to = None;
@@ -313,7 +313,8 @@ fn tab_switch_reloads_the_selected_entrys_diff() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(b.clone())));
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let want = selected_target(&st);
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { target, .. } if *target == want));
+    let load =
+        fx.into_iter().find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, .. }) if *target == want));
     run(&mut st, load.expect("the selected entry's diff is asked for again"));
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&want));
     let _ = std::fs::remove_dir_all(&a);

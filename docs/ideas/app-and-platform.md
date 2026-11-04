@@ -220,9 +220,6 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 ### Per-area effect metadata and generated dispatch
 
-- Fold the diff effects (LoadDiff, HighlightDiff, LoadDiffGaps, LoadBinarySides) into a `DiffEffect` area, with HighlightDiff's cancel ticket from `Runner::run`
-- Fold RunGit, Pick and UndoRedo into a job effect area, with the fetch-and-push queue rule and RunGit's stop key beside it
-- Fold LoadRepo, LoadStatus, LoadIndexStatus and LoadDetail into a load effect area
 - Fold LocalOp, Revert, RestoreFile, WorkFile and LoadTrackedPaths into a working-tree effect area
 - Fold SaveSettings, SaveRecent, SaveTabs, CheckRepoFolders and ReadTabGroups into an app-files effect area beside runner/saves.rs, with the Save sandbox rule on it
 - Fold the remaining flat effects (Watch, SweepWatch, AnswerPrompt, StopGit, Forge, Stats, SearchPaths, VerifySignature, FetchAvatars, LoadFileHistory) into areas, so the flat arms in names.rs, scope.rs, sandbox.rs and execute.rs go away

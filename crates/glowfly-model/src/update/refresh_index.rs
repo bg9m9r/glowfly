@@ -5,6 +5,7 @@
 //! pair with (`repo::status_after_index_change`), or the whole status when that can't be done.
 
 use super::refresh::{diff_changed, must_reload, open_file, refresh_status, status_set};
+use crate::effect::LoadEffect;
 use crate::effect::{Effect, IndexRequest};
 use crate::state::AppState;
 use crate::state::refresh::Wanted;
@@ -31,7 +32,7 @@ pub(super) fn refresh_index(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<
     st.refresh.status_busy = true;
     let git_status = st.runs_git_unasked();
     let read = IndexRequest { old, partners, paths };
-    fx.push(Effect::LoadIndexStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status, read });
+    fx.push(Effect::Load(LoadEffect::IndexStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status, read }));
 }
 
 /// The staged rows a changed path may pair with as a rename: additions, deletions and renames,

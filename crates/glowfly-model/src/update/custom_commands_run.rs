@@ -11,6 +11,7 @@
 use super::jobs::{JobSpec, begin_job, busy, start_job};
 use crate::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg, ShellRun, Target};
 use crate::effect::Effect;
+use crate::effect::JobEffect;
 use crate::msg::Msg;
 use crate::state::custom_commands::{missing_text, vars_for};
 use crate::state::trust::{Standing, TrustPrompt, prompt_for};
@@ -142,7 +143,7 @@ fn job_effect(cwd: PathBuf, e: Expanded) -> (Effect, bool) {
             let cmds = vec![argv];
             let keeps = super::undo::keeps_history(&cmds);
             (
-                Effect::RunGit {
+                Effect::Job(JobEffect::RunGit {
                     cwd,
                     cmds,
                     write_file: None,
@@ -152,7 +153,7 @@ fn job_effect(cwd: PathBuf, e: Expanded) -> (Effect, bool) {
                     expect: None,
                     stoppable: false,
                     on_fail_check: None,
-                },
+                }),
                 keeps,
             )
         }

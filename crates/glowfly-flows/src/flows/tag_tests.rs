@@ -66,7 +66,9 @@ fn create_tag_commands() {
     open_dialog(&mut st, false);
     let fx = update(&mut st, create(&sha, " v1 ", "", None), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds, &[vec!["tag".to_owned(), "v1".into(), sha.clone()]]),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => {
+            assert_eq!(cmds, &[vec!["tag".to_owned(), "v1".into(), sha.clone()]])
+        }
         other => panic!("unexpected effects {other:?}"),
     }
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Create tag"));
@@ -78,7 +80,7 @@ fn create_tag_commands() {
     open_dialog(&mut st, true);
     let fx = update(&mut st, create(&sha, "v1", " notes ", Some("origin")), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => {
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => {
             assert_eq!(cmds[0], ["tag", "-a", "v1", sha.as_str(), "-m", "notes"]);
             assert_eq!(cmds[1], ["push", "--", "origin", "refs/tags/v1:refs/tags/v1"]);
             assert_eq!(cmds.len(), 2);

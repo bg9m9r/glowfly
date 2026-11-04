@@ -86,7 +86,7 @@ pub struct ContentRequest {
 /// Which running git commands (or downloads) `Effect::StopGit` stops.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StopKey {
-    /// The active job's (a `RunGit` that only fetches).
+    /// The active job's (a `JobEffect::RunGit` that only fetches).
     Job,
     /// A background download of missing contents.
     Content(u64),
@@ -99,7 +99,7 @@ impl Effect {
     /// area's comes from its `EffectMeta`.
     pub fn stop_key(&self) -> Option<StopKey> {
         effect_areas! { effect_match! { self, |e| e.stop_key(), {
-            Effect::RunGit { stoppable: true, .. } => Some(StopKey::Job),
+            // No flat variant can be stopped.
             _ => None,
         } } }
     }

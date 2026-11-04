@@ -24,7 +24,7 @@ fn head(st: &AppState) -> git2::Oid {
 /// The commands of the only RunGit in `fx`.
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, prompts: true, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts: true, .. })] => cmds.clone(),
         other => panic!("one prompting RunGit expected: {other:?}"),
     }
 }
@@ -45,7 +45,10 @@ fn a_git_command_runs_as_a_toolbar_job() {
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Log"));
     st.job = None;
     let fx = run(&mut st, Source::User, "Reset", Target::Commit(oid));
-    assert!(matches!(fx.as_slice(), [Effect::RunGit { record: Some(_), .. }]), "reset is recorded for undo: {fx:?}");
+    assert!(
+        matches!(fx.as_slice(), [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(_), .. })]),
+        "reset is recorded for undo: {fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -66,7 +69,7 @@ fn a_shell_command_runs_as_a_job_and_refreshes() {
     let fx = update(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: "$ echo\nmain".into(), undo: None }), Instant::now());
     assert!(st.job.is_none());
     assert!(st.log.iter().any(|l| l.text.contains("Hi")), "an activity row");
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -163,7 +166,12 @@ Runs: git status"
     assert_eq!(held(&st), Some("Mine"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = update(&mut st, Msg::Trust(TrustMsg::Decide { real: real.clone(), trusted: true }), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { cmds, .. } if cmds == &[vec!["status".to_owned()]])), "{fx:?}");
+    assert!(
+        fx.iter().any(
+            |e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) if cmds == &[vec!["status".to_owned()]])
+        ),
+        "{fx:?}"
+    );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Mine"));
     st.job = None;
     // Trusted now: it runs at once, and so does a shell command.

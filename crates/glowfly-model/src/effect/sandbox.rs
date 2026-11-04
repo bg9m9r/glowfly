@@ -9,18 +9,9 @@ impl Effect {
     /// from its `EffectMeta`; every flat variant is listed, so a new one has to be placed.
     pub fn sandbox(&self) -> SandboxRule {
         effect_areas! { effect_match! { self, |e| e.sandbox(), {
-            Effect::LoadRepo { .. }
-            | Effect::LoadStatus { .. }
-            | Effect::LoadIndexStatus { .. }
-            | Effect::LoadDiff { .. }
-            | Effect::HighlightDiff { .. }
-            | Effect::LoadDiffGaps { .. }
-            | Effect::LoadBinarySides { .. }
-            | Effect::LocalOp { .. }
+            Effect::LocalOp { .. }
             | Effect::Revert { .. }
             | Effect::LoadFileHistory { .. }
-            | Effect::RunGit { .. }
-            | Effect::UndoRedo { .. }
             | Effect::Stats { .. }
             | Effect::SearchPaths { .. }
             | Effect::CheckRepoFolders(_)

@@ -73,7 +73,7 @@ fn set_diff_mode_whole_reloads_and_keeps_hunk() {
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     assert_eq!(st.settings.diff_mode, DiffMode::WholeFile);
     assert!(
-        matches!(&fx[..], [Effect::SaveSettings(s), Effect::LoadDiff { whole_file: true, reload: false, .. }]
+        matches!(&fx[..], [Effect::SaveSettings(s), Effect::Diff(glowfly_model::effect::DiffEffect::Load { whole_file: true, reload: false, .. })]
             if s.diff_mode == DiffMode::WholeFile),
         "{fx:?}"
     );
@@ -100,14 +100,14 @@ fn diff_loaded_in_whole_mode_scrolls_to_kept_block() {
     // Another file opens on its first change block.
     let other = DiffTarget::Unstaged("g.txt".into());
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(other.clone())));
-    assert!(matches!(&fx[..], [Effect::LoadDiff { whole_file: true, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { whole_file: true, .. })]), "{fx:?}");
     arrive(&mut st, other.clone(), three_changes(true));
     assert_eq!(st.view.diff_scroll_to_row, Some(rows[0]));
 
     // The hunk view still opens at the top.
     st.settings.diff_mode = DiffMode::Hunks;
     let fx = run(&mut st, Msg::Repo(RepoMsg::OpenDiff(other.clone())));
-    assert!(matches!(&fx[..], [Effect::LoadDiff { whole_file: false, .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { whole_file: false, .. })]), "{fx:?}");
     arrive(&mut st, other, three_changes(false));
     assert_eq!(st.view.diff_scroll_to_row, Some(0));
     let _ = std::fs::remove_dir_all(&dir);
@@ -239,7 +239,7 @@ fn whole_file_stage_block_end_to_end() {
     let generation = st.hunk_ops_gen().expect("enabled");
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index, generation }));
     assert!(
-        held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, whole_file: true, previous: Some(p), .. } if p.whole.is_some())),
+        held.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { reload: true, whole_file: true, previous: Some(p), .. }) if p.whole.is_some())),
         "{held:?}"
     );
     for e in held {
@@ -298,7 +298,10 @@ fn file_history_honours_whole_mode() {
     view.append(FileHistory { entries: vec![entry], from_head: true, ..Default::default() });
     st.session.history.view = Some(view);
     let fx = run(&mut st, Msg::History(HistoryMsg::SelectHistoryEntry(0)));
-    assert!(matches!(&fx[..], [Effect::LoadDiff { target: DiffTarget::Commit(o, _), whole_file: true, .. }] if *o == head), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target: DiffTarget::Commit(o, _), whole_file: true, .. })] if *o == head),
+        "{fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -39,7 +39,7 @@ pub(super) fn load(
     whole(workdir, generation, submodules, open_stamp, git_status, cache)
 }
 
-/// An index read (`Effect::LoadIndexStatus`), or the whole status when it can't be read so.
+/// An index read (`LoadEffect::IndexStatus`), or the whole status when it can't be read so.
 pub(super) fn load_index(
     workdir: &Path,
     generation: u64,

@@ -8,18 +8,9 @@ impl Effect {
     /// `EffectMeta`.
     pub fn name(&self) -> &'static str {
         effect_areas! { effect_match! { self, |e| e.name(), {
-            Effect::LoadRepo { .. } => "load-repo",
-            Effect::LoadStatus { .. } => "load-status",
-            Effect::LoadIndexStatus { .. } => "load-index-status",
-            Effect::LoadDiff { .. } => "load-diff",
-            Effect::HighlightDiff { .. } => "highlight",
-            Effect::LoadDiffGaps { .. } => "load-diff-gaps",
-            Effect::LoadBinarySides { .. } => "binary-sides",
             Effect::LoadFileHistory { .. } => "file-history",
             Effect::LocalOp { .. } => "local-op",
             Effect::Revert { .. } => "revert",
-            Effect::RunGit { .. } => "git",
-            Effect::UndoRedo { .. } => "undo-redo",
             Effect::Forge { .. } => "forge",
             Effect::Stats { .. } => "stats",
             Effect::SearchPaths { .. } => "search-paths",
@@ -40,18 +31,9 @@ impl Effect {
     /// comes from its `EffectMeta`.
     pub fn timed(&self) -> bool {
         effect_areas! { effect_match! { self, |e| e.timed(), {
-            Effect::LoadRepo { .. }
-            | Effect::LoadStatus { .. }
-            | Effect::LoadIndexStatus { .. }
-            | Effect::LoadDiff { .. }
-            | Effect::HighlightDiff { .. }
-            | Effect::LoadDiffGaps { .. }
-            | Effect::LoadBinarySides { .. }
-            | Effect::LoadFileHistory { .. }
+            Effect::LoadFileHistory { .. }
             | Effect::LocalOp { .. }
             | Effect::Revert { .. }
-            | Effect::RunGit { .. }
-            | Effect::UndoRedo { .. }
             | Effect::Forge { .. }
             | Effect::Stats { .. }
             | Effect::SearchPaths { .. }

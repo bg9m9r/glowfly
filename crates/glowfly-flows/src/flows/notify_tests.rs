@@ -100,7 +100,7 @@ fn no_alert_for_a_tab_switched_away() {
     st.settings.auto_fetch_minutes = 1;
     let tick = st.last_fetch + Duration::from_secs(61);
     let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
     let run = fx.remove(0);
     let fx = update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     finish(&mut st, fx);
@@ -146,7 +146,7 @@ fn pull_action_runs_pull() {
     let id = st.toasts.last().expect("an alert").id;
     let fx = update(&mut st, Msg::ToastAction(id), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds, &vec![args(&["pull", "--ff"])]),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(cmds, &vec![args(&["pull", "--ff"])]),
         other => panic!("expected a pull, got {other:?}"),
     }
     assert!(st.toasts.iter().all(|t| t.id != id));
@@ -191,7 +191,7 @@ fn lfs_behind(name: &str) -> (AppState, PathBuf, PathBuf) {
 }
 
 fn is_lfs_fetch(e: &Effect) -> bool {
-    matches!(e, Effect::RunGit { cmds, .. } if *cmds == [args(&["lfs", "fetch"])])
+    matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) if *cmds == [args(&["lfs", "fetch"])])
 }
 
 fn assert_alert(st: &AppState) {
