@@ -40,6 +40,7 @@ pub fn service(t: Lang, e: &ServiceError) -> String {
         ServiceError::Other { said } => said.clone(),
     }
 }
+
 /// Why listing, generating or exporting a signing key failed (`PrefsMsg::SigningKeysLoaded`,
 /// `GpgKeyGenerated` and `PublicKeyExported`).
 pub fn signing_key(t: Lang, e: &KeyError) -> String {
