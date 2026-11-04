@@ -79,9 +79,9 @@ pub enum PrefsMsg {
         purpose: FilePurpose,
         path: Option<PathBuf>,
     },
-    SigningKeysLoaded(Result<Vec<glowfly_core::signing::SigningKey>, String>),
-    GpgKeyGenerated(Result<String, String>),
-    PublicKeyExported(Result<String, String>),
+    SigningKeysLoaded(Result<Vec<glowfly_core::signing::SigningKey>, glowfly_core::signing::KeyError>),
+    GpgKeyGenerated(Result<String, glowfly_core::signing::KeyError>),
+    PublicKeyExported(Result<String, glowfly_core::signing::KeyError>),
     /// `PrefsEffect::ExtendGpgKey` finished.
     KeyExtended(Result<(), glowfly_core::gpg_prompt::extend::ExtendFailed>),
     FolderPicked {
@@ -105,7 +105,7 @@ pub enum PrefsMsg {
     /// success, the error on the page otherwise.
     ConfigSaved {
         ticket: u64,
-        result: Result<(), String>,
+        result: Result<(), glowfly_core::identity::ConfigWriteFailed>,
     },
     /// The Save / Revert bar's Revert (or Esc): put the open page's fields back to what was loaded.
     RevertPage,
@@ -181,7 +181,7 @@ pub enum PaletteMsg {
     PaletteBack,
     TrackedPathsLoaded {
         generation: u64,
-        result: Result<Vec<String>, String>,
+        result: Result<Vec<String>, glowfly_core::repo::ListFilesFailed>,
     },
 }
 

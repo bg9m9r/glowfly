@@ -9,9 +9,11 @@ use crate::effect::Effect;
 use crate::effect::{ConfigWrite, PrefsEffect};
 use crate::msg::Msg;
 use crate::profile::{IdentityField, ProfileMsg};
+use crate::state::error_words::typed;
 use crate::state::prefs::GitConfigValues;
 use crate::state::prefs_save::{PendingSave, saving, unsaved};
 use crate::state::{AppState, PrefPage};
+use glowfly_core::identity::ConfigWriteFailed;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
@@ -104,7 +106,7 @@ pub(super) fn write_now(st: &mut AppState, global: bool, key: String, value: Opt
 /// A save's writes finished: on success the loaded copy takes what was written and the tick
 /// shows; a refusal stays on its page (the edits kept) and goes to the activity log, with a
 /// toast when its page isn't the one open.
-pub(super) fn written(st: &mut AppState, ticket: u64, result: Result<(), String>, now: Instant) {
+pub(super) fn written(st: &mut AppState, ticket: u64, result: Result<(), ConfigWriteFailed>, now: Instant) {
     let done = st.prefs.as_mut().and_then(|p| p.saving.iter().position(|s| s.ticket == ticket).map(|i| p.saving.remove(i)));
     match result {
         Ok(()) => {
@@ -119,7 +121,9 @@ pub(super) fn written(st: &mut AppState, ticket: u64, result: Result<(), String>
             p.saved.mark();
         }
         Err(e) => {
-            let text = st.settings.lang().trf("prefs.save.failed", &[("error", &e)]);
+            let t = st.settings.lang();
+            let e = typed::config_write(t, &e);
+            let text = t.trf("prefs.save.failed", &[("error", &e)]);
             st.log(false, text.clone());
             let page = done.map(|d| d.page);
             let open = st.prefs.as_ref().map(|p| p.page);

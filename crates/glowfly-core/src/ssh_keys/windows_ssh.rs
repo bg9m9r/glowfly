@@ -183,5 +183,5 @@ fn read_system_command(cwd: &Path) -> Option<String> {
 /// file of their own).
 pub fn write_windows_ssh(cwd: &Path, program: &Path, env: &[(&str, &str)]) -> Result<(), String> {
     let value = windows_ssh_command_for(program).ok_or("This program's path can't be written into git config")?;
-    crate::identity::set_config(cwd, true, SSH_COMMAND_KEY, Some(&value), env)
+    crate::identity::set_config(cwd, true, SSH_COMMAND_KEY, Some(&value), env).map_err(|e| e.to_string())
 }
