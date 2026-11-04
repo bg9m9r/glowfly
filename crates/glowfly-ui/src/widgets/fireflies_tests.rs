@@ -62,7 +62,7 @@ fn moving_it_asks_for_a_frame_at_the_next_step_not_at_once() {
     // one every frame would exceed the step limit instead.
     h.run();
     let delay = delay(&h);
-    assert!(delay > Duration::ZERO && delay <= STEP, "{delay:?}");
+    assert!(delay > Duration::ZERO && delay <= REDRAW, "{delay:?}");
     assert!(h.query_by_label("Loading the blame…").is_some(), "the words stay as its label");
 }
 

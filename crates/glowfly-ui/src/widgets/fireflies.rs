@@ -23,7 +23,7 @@ const STILL: f32 = 0.6;
 /// The contrast a still dot keeps on bg, panel and raised.
 const STILL_FLOOR: f64 = 3.0;
 /// The fade is redrawn this often while it moves (egui wakes for it; nothing repaints between).
-const STEP: Duration = Duration::from_millis(33);
+const REDRAW: Duration = Duration::from_millis(33);
 /// Where in its cycle a dot has risen, starts to fall and has fallen: it holds full for a third
 /// of the cycle, so one of the three is always at full `lantern`.
 const RISEN: f64 = 0.25;
@@ -82,13 +82,13 @@ fn visible(ui: &Ui, rect: Rect) -> bool {
 }
 
 /// Paints the loader centred on `c` with `ui`'s painter, still under reduce motion
-/// (`motion::reduced`). While it moves and can be seen, asks for a frame after `STEP`.
+/// (`motion::reduced`). While it moves and can be seen, asks for a frame after `REDRAW`.
 pub fn paint_at(ui: &Ui, c: Pos2) {
     let rect = Rect::from_center_size(c, SIZE);
     let moving = !motion::reduced(ui.ctx()) && visible(ui, rect);
     paint(ui.painter(), c, &color::current(), moving.then(|| ui.input(|i| i.time)));
     if moving {
-        ui.ctx().request_repaint_after(STEP);
+        ui.ctx().request_repaint_after(REDRAW);
     }
 }
 
