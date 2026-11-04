@@ -1,6 +1,6 @@
 //! The HEAD lantern: the one glow on screen, round the checked-out commit's node, and the 1 px
 //! `lantern` rim on the node's edge (docs/COLOUR.md, "lantern"). The glow fades from the node's
-//! edge to the row's edge as opaque rings, each the row's top fill tinted toward `lantern`
+//! edge to the row's edge (a smoothstep) as opaque rings, each the row's top fill tinted toward `lantern`
 //! through `contrast::tint` (a plain warm wash on a dark field reads brown). None in the
 //! high-contrast themes, nor on a row a search dims; it is static, so reduce motion keeps it.
 
@@ -43,9 +43,15 @@ pub(super) fn extent(kind: NodeKind, node_r: f32, row_h: f32) -> (f32, f32) {
     (inner, (inner + REACH).min(row_h / 2.0))
 }
 
+/// The glow's fall-off: slow by the node, where the rim covers the first px, and slow again
+/// at the row's edge.
+fn smoothstep(t: f32) -> f32 {
+    t * t * (3.0 - 2.0 * t)
+}
+
 /// The glow's colour `t` of the way (0 to 1) from the node's edge to its outer edge, on `fill`.
 pub(super) fn shade(pal: &Palette, fill: Color32, t: f32) -> Color32 {
-    let a = peak(pal.dark, color::colour_safe()) * (1.0 - t).powi(2);
+    let a = peak(pal.dark, color::colour_safe()) * (1.0 - smoothstep(t));
     tint(fill, pal.lantern, a, pal.dark)
 }
 
@@ -115,6 +121,20 @@ mod tests {
         for t in BuiltinTheme::ALL {
             let p = builtin(t);
             assert_eq!(shade(p, p.bg, 1.0), p.bg, "{t:?}: no seam at the outer edge");
+        }
+    }
+
+    /// Halfway out the glow still lifts the row (docs/COLOUR.md, "lantern").
+    #[test]
+    fn the_glow_still_shows_halfway_out() {
+        use crate::ui::theme::contrast::ratio;
+        for t in BuiltinTheme::ALL {
+            let p = builtin(t);
+            if p.high_contrast {
+                continue;
+            }
+            let half = tint(p.bg, p.lantern, peak(p.dark, false) * (1.0 - smoothstep(0.5)), p.dark);
+            assert!(ratio(half, p.bg) >= 1.08, "{t:?}: {:.3}:1 halfway out", ratio(half, p.bg));
         }
     }
 

@@ -67,10 +67,12 @@ pub(super) fn wip_ring(p: &Painter, c: Pos2, r: f32, lane: Color32) {
     widgets::dashed_circle(p, c, r, Stroke::new(1.6_f32, lane));
 }
 
-/// The sizes of the WIP lantern, by density: the cap's size and the gap under it, the body's
+/// The sizes of the WIP lantern, by density (geometry of the mark, not the corner scale): the
+/// cap's size and corner radius and the gap under it, the body's
 /// size and corner radius (its top `body_top` above the row's middle), and the flame's size.
 struct LanternSize {
     cap: (f32, f32),
+    cap_r: f32,
     gap: f32,
     body: (f32, f32),
     body_r: f32,
@@ -79,9 +81,9 @@ struct LanternSize {
 }
 
 const LANTERN_COMFORTABLE: LanternSize =
-    LanternSize { cap: (6.0, 2.0), gap: 2.0, body: (10.0, 12.0), body_r: 3.0, body_top: 4.0, flame: (4.0, 6.0) };
+    LanternSize { cap: (6.0, 2.0), cap_r: 1.0, gap: 2.0, body: (10.0, 12.0), body_r: 3.0, body_top: 4.0, flame: (4.0, 6.0) };
 const LANTERN_COMPACT: LanternSize =
-    LanternSize { cap: (5.0, 2.0), gap: 1.0, body: (8.0, 10.0), body_r: 2.5, body_top: 3.5, flame: (3.0, 5.0) };
+    LanternSize { cap: (5.0, 2.0), cap_r: 1.0, gap: 1.0, body: (8.0, 10.0), body_r: 2.5, body_top: 3.5, flame: (2.0, 4.0) };
 
 /// The rects of the WIP lantern centred on `c` for a node of radius `r`: cap, body and flame.
 fn lantern_rects(c: Pos2, r: f32) -> (Rect, Rect, Rect, &'static LanternSize) {
@@ -98,7 +100,7 @@ fn lantern_rects(c: Pos2, r: f32) -> (Rect, Rect, Rect, &'static LanternSize) {
 pub(super) fn wip_lantern(p: &Painter, c: Pos2, r: f32, fill: Color32, lit: bool) {
     let ink = color::current().lantern;
     let (cap, body, flame, s) = lantern_rects(c, r);
-    p.rect_filled(cap, CornerRadius::same(1), ink);
+    p.rect_filled(cap, CornerRadius::same(s.cap_r as u8), ink);
     p.rect_filled(body, CornerRadius::same(s.body_r as u8), fill);
     p.rect_stroke(body, CornerRadius::same(s.body_r as u8), Stroke::new(1.5_f32, ink), StrokeKind::Inside);
     if lit {
@@ -118,6 +120,6 @@ mod tests {
         assert_eq!((body.width(), cap.width(), flame.center().y), (10.0, 6.0, 2.0));
         let (cap, body, flame, _) = lantern_rects(c, node_r(Density::Compact));
         assert_eq!((cap.top(), body.top(), body.bottom()), (-6.5, -3.5, 6.5));
-        assert_eq!((body.width(), flame.size()), (8.0, vec2(3.0, 5.0)));
+        assert_eq!((body.width(), flame.size(), flame.center().y), (8.0, vec2(2.0, 4.0), 1.5));
     }
 }
