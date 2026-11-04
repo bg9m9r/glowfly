@@ -1,11 +1,10 @@
 //! Executing one effect on a worker thread: each effect area's `Execute` impl (in this folder's
-//! `<area>.rs`) and the arms of the flat variants, with the result message each sends back.
+//! `<area>.rs`), with the result message each sends back.
 
-use super::forge_calls;
-use glowfly_core::{avatars, gitcli, repo};
+use glowfly_core::{gitcli, repo};
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::areas::{effect_areas, effect_match};
-use glowfly_model::msg::{AvatarMsg, ForgeMsg, Msg};
+use glowfly_model::msg::Msg;
 
 pub(super) fn err(e: glowfly_core::error::Error) -> String {
     e.to_string()
@@ -38,32 +37,9 @@ pub(super) trait Execute {
 /// send back, if any. Results that belong to one repository come back as `Msg::Scoped`.
 pub(super) fn execute_with(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
     let scope = effect.scope().cloned();
-    let msg = execute_unscoped(effect, cx)?;
+    let msg = effect_areas! { effect_match! { effect, |e| Execute::execute(e, cx) } }?;
     Some(match scope {
         Some(workdir) => Msg::Scoped { workdir, msg: Box::new(msg) },
         None => msg,
     })
-}
-
-fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
-    effect_areas! { effect_match! { effect, |e| Execute::execute(e, cx), {
-        Effect::Forge { target, cwd, auth, interactive, connected, call } => {
-            Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
-        }
-        Effect::FetchAvatars(emails) => Some(Msg::Avatars(AvatarMsg::AvatarsLoaded(
-            emails
-                .into_iter()
-                .map(|e| {
-                    let img = avatars::fetch(&e);
-                    (e, img)
-                })
-                .collect(),
-        ))),
-        // `Runner::run` stops it; there is nothing running here to stop.
-        Effect::StopGit(_) => None,
-        Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. } => {
-            tracing::warn!("watch or prompt effect reached a worker; it is handled by Runner::run");
-            None
-        }
-    } } }
 }

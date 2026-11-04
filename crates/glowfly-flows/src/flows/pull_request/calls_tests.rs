@@ -7,6 +7,7 @@ use glowfly_core::forge::{
     Auth, Entry, EntryKind, MergeMethod, MergeState, Merged, PrDetail, PrPage, PrState, Provider, ReviewEvent, ReviewStyle, Target,
 };
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
@@ -36,7 +37,7 @@ pub(super) fn loads(fx: &[Effect]) -> usize {
 }
 
 pub(super) fn refreshes(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::Forge { call: ForgeCall::Refresh { .. }, .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { call: ForgeCall::Refresh { .. }, .. }))).count()
 }
 
 pub(super) fn git_jobs(fx: &[Effect]) -> Vec<Vec<Vec<String>>> {

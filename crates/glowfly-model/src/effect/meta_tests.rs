@@ -288,6 +288,40 @@ fn files_history_save_and_session_effects_keep_their_metadata() {
     }
 }
 
+/// The Network and Control areas (#373): what main gave the flat `Forge`, `FetchAvatars`,
+/// `Watch`, `SweepWatch`, `AnswerPrompt` and `StopGit`, with the pool hold and stop key too.
+#[test]
+fn network_and_control_effects_keep_their_metadata() {
+    use crate::effect::{ControlEffect, ForgeCall, NetworkEffect, WatchTarget};
+    use glowfly_core::askpass::Reply;
+    use glowfly_core::forge::{Provider, Target};
+    let w = folder("moved-4");
+    let target =
+        Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+    let call = ForgeCall::Refresh { need_default: false, with_issues: false };
+    let forge = NetworkEffect::Forge { target, cwd: w.clone(), auth: None, interactive: false, connected: false, call };
+    let watch = WatchTarget { workdir: w.clone(), git_dir: w.join(".git") };
+    let cases: Vec<(Effect, Meta, SandboxRule)> = vec![
+        (Effect::Network(forge), ("forge", Some(w.as_path()), None, true), SandboxRule::Drop),
+        (Effect::Network(NetworkEffect::Avatars(vec!["ada@example.invalid".into()])), ("avatars", None, None, true), SandboxRule::Drop),
+        (Effect::Control(ControlEffect::Watch(Some(watch))), ("watch", None, None, false), SandboxRule::Run),
+        (Effect::Control(ControlEffect::Watch(None)), ("watch", None, None, false), SandboxRule::Run),
+        (Effect::Control(ControlEffect::SweepWatch { workdir: w.clone() }), ("sweep-watch", None, None, false), SandboxRule::Run),
+        (
+            Effect::Control(ControlEffect::AnswerPrompt { id: 1, reply: Reply::Cancel }),
+            ("answer-prompt", None, None, false),
+            SandboxRule::Run,
+        ),
+        (Effect::Control(ControlEffect::StopGit(StopKey::Job)), ("stop-git", None, None, false), SandboxRule::Run),
+    ];
+    for (effect, expected, sandbox) in &cases {
+        assert_eq!(meta(effect), *expected, "{effect:?}");
+        assert_eq!(effect.holds(), None, "{} holds no repository", expected.0);
+        assert_eq!(effect.stop_key(), None, "{} can't be stopped", expected.0);
+        assert_eq!(effect.sandbox(), *sandbox, "{}'s whole-app tests rule", expected.0);
+    }
+}
+
 /// `RunGit`'s queue, pool hold and stop key as main had them: a job of only fetches and pushes
 /// doesn't queue but holds the pool, one that names `.` or runs anything else queues, and only a
 /// `stoppable` job has a stop.

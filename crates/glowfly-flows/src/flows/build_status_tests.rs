@@ -6,6 +6,7 @@ use git2::Oid;
 use glowfly_core::forge::{CheckState, Checks, PullRequest, TipQuery};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::state::{AppState, Status};
@@ -37,7 +38,7 @@ fn asked(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Vec<TipQuery>> {
     update(st, msg, now)
         .into_iter()
         .filter_map(|e| match e {
-            Effect::Forge { call: ForgeCall::TipChecks(q), .. } => Some(q),
+            Effect::Network(NetworkEffect::Forge { call: ForgeCall::TipChecks(q), .. }) => Some(q),
             _ => None,
         })
         .collect()

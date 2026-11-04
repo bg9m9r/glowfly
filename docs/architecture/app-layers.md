@@ -48,7 +48,7 @@ source file, update its line here. Features that span every layer are in
 
 ## `effect/`: effects
 
-- `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and the older flat variants (counted by `source_checks`' `hygiene/flat_effects.rs`, which only shrinks).
+- `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and no flat variants (`source_checks`' `hygiene/flat_effects.rs` keeps them out).
 - `meta.rs`: `EffectMeta`, what each area decides for its effects beside its type (name, scope, timing, queue, pool hold, stop key, the tests' sandbox rule); tests in `meta_tests.rs`.
 - `areas.rs`: the table of effect areas; `effect_match!` runs one body for every area in `Effect`'s metadata, the sandbox's rule and the runner's dispatch.
 - The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `hunk_patch.rs` (Copy hunk as patch's read, run by `runner/hunk_patch.rs`), `notify.rs` (desktop notifications).
@@ -71,14 +71,16 @@ source file, update its line here. Features that span every layer are in
 - `history.rs`: `HistoryEffect`: a file's or folder's history, the path search and the graph's line counts (the last two on `Runner::run`'s workers); and `FileTextRequest`, the File view's read.
 - `save.rs`: `SaveEffect`: saves of the settings, the recent repositories and the open tabs (`SandboxRule::Save`).
 - `session.rs`: `SessionEffect`: which recent repositories' folders are gone, and the restored tabs' groups.
+- `network.rs`: `NetworkEffect`: a hosting service's calls (`ForgeCall`, scoped to the repository) and avatar downloads, both dropped by the whole-app tests' runner.
+- `control.rs`: `ControlEffect`: setting and sweeping the watcher, answering a credential prompt and stopping a running git command, which `Runner::run` carries out itself (untimed, never queued).
 - `job.rs`: `JobEffect`: a job's git commands (`RunGit`, with the fetch-and-push queue rule, its pool hold and its stop key) and undoing or redoing an action.
 - `worktree.rs`: `WorktreeEffect`: the worktree folder check, removing, moving and counting other worktrees' changes.
 - `monitor.rs`: `MonitorJob` and `MonitorOff`, turning git's file system monitor on and off.
 - `pick.rs`: `PickJob`, a cherry-pick or revert run that skips commits changing nothing.
 - `stack.rs`: `StackEffect`, `StackPushJob`: a stack's push with the remote tips it saw and whether pull requests follow.
-- `names.rs`: `Effect::name`, `timed` (flat variants; areas delegate).
-- `scope.rs`: `Effect::scope`, `queue`, `holds` (flat variants; areas delegate).
-- `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`; flat variants, areas delegate).
+- `names.rs`: `Effect::name`, `timed` (from the area's `EffectMeta`).
+- `scope.rs`: `Effect::scope`, `queue`, `holds` (from the area's `EffectMeta`).
+- `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`, from the area's `EffectMeta`).
 - `effect/credential.rs`: saving and dropping HTTPS sign-ins typed in the credential prompt (runner/credentials.rs).
 - `effect/repos.rs`: what repositories across folders ask the runner (runner/repos.rs): listing the project folders, and fetching or pulling one listed repository.
 

@@ -4,6 +4,7 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind, WatchTarget};
 use glowfly_model::msg::JobMsg;
@@ -51,7 +52,7 @@ fn is_status(fx: &[Effect], st: &AppState, workdir: &Path) -> bool {
 }
 
 fn watches(fx: &[Effect]) -> Vec<Option<WatchTarget>> {
-    fx.iter().filter_map(|e| if let Effect::Watch(t) = e { Some(t.clone()) } else { None }).collect()
+    fx.iter().filter_map(|e| if let Effect::Control(ControlEffect::Watch(t)) = e { Some(t.clone()) } else { None }).collect()
 }
 
 fn watched_dir(fx: &[Effect]) -> Option<Option<PathBuf>> {
@@ -227,11 +228,14 @@ fn preference_toggle_starts_and_stops_watching() {
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "nothing changed");
     st.settings.watch_files = false;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Watch(None)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Control(ControlEffect::Watch(None))]), "{fx:?}");
     assert!(update(&mut st, changed(&workdir, false, Instant::now()), Instant::now()).is_empty(), "ignored while off");
     st.settings.watch_files = true;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
-    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Watch(Some(t))] if t.workdir == workdir), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Control(ControlEffect::Watch(Some(t)))] if t.workdir == workdir),
+        "{fx:?}"
+    );
     assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }

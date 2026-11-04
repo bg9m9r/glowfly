@@ -2,6 +2,7 @@
 //! update/push_pr.rs.
 
 use super::pr_details;
+use crate::effect::NetworkEffect;
 use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
 use crate::state::error_words::{hosting, hosting_log, typed};
@@ -122,7 +123,7 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
     }
     fs.loading += 1;
     let auth = if interactive { None } else { fs.auth.get(&account.key()).cloned() };
-    fx.push(Effect::Forge { target, cwd, auth, interactive, connected, call });
+    fx.push(Effect::Network(NetworkEffect::Forge { target, cwd, auth, interactive, connected, call }));
 }
 
 /// Refreshes pull requests and issues; `force` ignores the interval and earlier failures.

@@ -5,15 +5,9 @@ use super::areas::{effect_areas, effect_match};
 use super::{Effect, EffectMeta, SandboxRule};
 
 impl Effect {
-    /// What the whole-app tests' runner does with it (runner/sandbox.rs): an area's rule comes
-    /// from its `EffectMeta`; every flat variant is listed, so a new one has to be placed.
+    /// What the whole-app tests' runner does with it (runner/sandbox.rs), from the area's
+    /// `EffectMeta`.
     pub fn sandbox(&self) -> SandboxRule {
-        effect_areas! { effect_match! { self, |e| e.sandbox(), {
-            Effect::Watch(_)
-            | Effect::SweepWatch { .. }
-            | Effect::AnswerPrompt { .. }
-            | Effect::StopGit(_) => SandboxRule::Run,
-            Effect::Forge { .. } | Effect::FetchAvatars(_) => SandboxRule::Drop,
-        } } }
+        effect_areas! { effect_match! { self, |e| e.sandbox() } }
     }
 }

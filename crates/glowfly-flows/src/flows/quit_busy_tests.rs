@@ -10,6 +10,7 @@ use super::update;
 use super::updates_restart_tests::msi_downloaded;
 use glowfly_core::clone_ops::{CloneOptions, Sparse};
 use glowfly_core::terminal::ShellActivity;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::partial::StopKey;
 use glowfly_model::effect::{Effect, UiEffect, UpdateEffect};
 use glowfly_model::msg::{AppMsg, CloneMsg, JobMsg, Msg, RepoMsg, TabsMsg, UpdateMsg};
@@ -239,7 +240,7 @@ fn quit_anyway_stops_a_fetch_and_closes_once_it_has_ended() {
     run(&mut st, Msg::App(AppMsg::Quit));
     assert!(dialog(&st).1.starts_with("Fetch is still running in api."), "{}", dialog(&st).1);
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert!(fx.iter().any(|e| matches!(e, Effect::StopGit(StopKey::Job))), "the stop is sent: {fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Control(ControlEffect::StopGit(StopKey::Job)))), "the stop is sent: {fx:?}");
     assert!(!closes(&fx), "the window waits for the stopped fetch: {fx:?}");
     assert!(st.view.quit_after_stop && !st.view.quitting);
     let output = "Cancelled.\nRemoved 1 file the stopped command left behind.".into();
@@ -262,7 +263,7 @@ fn quit_anyway_leaves_a_job_that_cant_be_stopped() {
     let mut st = pushing();
     run(&mut st, Msg::App(AppMsg::Quit));
     let fx = run(&mut st, Msg::ConfirmAccepted);
-    assert!(closes(&fx) && !fx.iter().any(|e| matches!(e, Effect::StopGit(_))), "{fx:?}");
+    assert!(closes(&fx) && !fx.iter().any(|e| matches!(e, Effect::Control(ControlEffect::StopGit(_)))), "{fx:?}");
 }
 
 #[test]

@@ -3,6 +3,7 @@
 
 use super::tests::state;
 use super::update;
+use crate::effect::NetworkEffect;
 use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, Msg};
 use crate::state::{AppState, ForgeState, Status};
@@ -59,7 +60,7 @@ fn answers(ids: &[u64]) -> Vec<PrDetails> {
 fn chunks(fx: Vec<Effect>) -> Vec<Vec<u64>> {
     fx.into_iter()
         .filter_map(|e| match e {
-            Effect::Forge { call: ForgeCall::PrDetails(c), .. } => Some(c.iter().map(|p| p.id).collect()),
+            Effect::Network(NetworkEffect::Forge { call: ForgeCall::PrDetails(c), .. }) => Some(c.iter().map(|p| p.id).collect()),
             _ => None,
         })
         .collect()

@@ -6,6 +6,7 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::clone_ops::CloneOptions;
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::partial::StopKey;
 use glowfly_model::msg::{CloneMsg, JobMsg, Msg, RepoMsg};
@@ -53,7 +54,7 @@ fn a_fetch_is_cancelled_and_ends_as_cancelled() {
     assert!(st.job_cancellable() && !st.job_cancelling());
 
     let fx = run(&mut st, Msg::Job(JobMsg::Cancel));
-    assert!(matches!(&fx[..], [Effect::StopGit(StopKey::Job)]));
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::StopGit(StopKey::Job))]));
     assert!(st.job_cancelling() && !st.job_cancellable());
     assert!(st.log.last().is_some_and(|l| l.text == "Cancelling Fetch…"));
     assert!(run(&mut st, Msg::Job(JobMsg::Cancel)).is_empty(), "asked once");
@@ -93,7 +94,7 @@ fn a_fetch_that_finished_before_the_stop_reached_it_ends_as_usual() {
 /// Cancels the running job and has the runner report it stopped with `output`.
 fn cancel_and_stop(st: &mut AppState, output: &str) {
     let fx = run(st, Msg::Job(JobMsg::Cancel));
-    assert!(matches!(&fx[..], [Effect::StopGit(StopKey::Job)]), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::StopGit(StopKey::Job))]), "{fx:?}");
     drive(st, Msg::Job(JobMsg::Stopped { output: output.into(), undo: None }));
 }
 
@@ -153,7 +154,7 @@ fn a_clone_is_cancelled_and_not_opened() {
     assert_eq!(stoppable(&fx), Some(true));
     assert_eq!(st.job_stop.as_ref().map(|s| s.step), Some(Step::Clone));
     let fx = run(&mut st, Msg::Job(JobMsg::Cancel));
-    assert!(matches!(&fx[..], [Effect::StopGit(StopKey::Job)]));
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::StopGit(StopKey::Job))]));
     let output = format!("$ git clone -- x app\nCancelled.\nRemoved {}, which the stopped clone had made.", parent.join("app").display());
     let fx = run(&mut st, Msg::Job(JobMsg::Stopped { output, undo: None }));
     assert!(

@@ -8,6 +8,7 @@ use super::tests::{drive, git, scratch_repo};
 use glowfly_core::forge::{Account, Connection, Provider, PullRequest, Target};
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{ProfilePrefs, ThemeChoice};
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{AccountEffect, Effect};
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
@@ -54,7 +55,7 @@ fn token_deletes(fx: &[Effect]) -> Vec<Account> {
 }
 
 fn forge_calls(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::Forge { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Network(NetworkEffect::Forge { .. }))).count()
 }
 
 fn pr(id: u64) -> PullRequest {
@@ -165,7 +166,7 @@ fn account_change_reloads_forge() {
     assert!(fs.last_refresh.is_some(), "refreshed at once");
     assert_eq!(forge_calls(&fx), 1, "{fx:?}");
     // Personal doesn't list github.com, so the sign-in Work saved for it isn't used.
-    assert!(fx.iter().any(|e| matches!(e, Effect::Forge { auth: None, connected: false, .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { auth: None, connected: false, .. }))), "{fx:?}");
     assert!(st.tabs[0].parked.as_ref().unwrap().session.forge.is_none(), "the parked tab detects again when selected");
     for d in [a, b] {
         let _ = std::fs::remove_dir_all(d);

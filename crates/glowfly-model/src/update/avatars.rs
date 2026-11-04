@@ -3,6 +3,7 @@
 //! lookups are on and the active repository is publicly hosted (`avatars::lookups_allowed`).
 
 use crate::effect::Effect;
+use crate::effect::NetworkEffect;
 use crate::msg::AvatarMsg;
 use crate::state::AppState;
 
@@ -15,7 +16,7 @@ pub(super) fn handle(st: &mut AppState, msg: AvatarMsg, fx: &mut Vec<Effect>) {
         AvatarMsg::WantAvatars(emails) => {
             let remotes = st.snap.as_ref().map_or(&[][..], |s| &s.remote_urls);
             if glowfly_core::avatars::lookups_allowed(st.settings.avatar_lookups, remotes) {
-                fx.extend(emails.chunks(BATCH).map(|c| Effect::FetchAvatars(c.to_vec())));
+                fx.extend(emails.chunks(BATCH).map(|c| Effect::Network(NetworkEffect::Avatars(c.to_vec()))));
             }
         }
         AvatarMsg::AvatarsLoaded(batch) => st.view.avatars_loaded.extend(batch),

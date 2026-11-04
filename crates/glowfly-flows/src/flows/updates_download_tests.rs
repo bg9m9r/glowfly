@@ -5,6 +5,7 @@ use super::update;
 use super::updates_tests::{found, offered, saved, send};
 use glowfly_core::app_update::{InstallKind, Progress, SavedProblem, UpdateError};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::partial::StopKey;
 use glowfly_model::effect::{Effect, UpdateEffect};
 use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg as U};
@@ -58,7 +59,7 @@ fn cancel_stops_the_download_and_offers_it_again() {
     let (mut st, t) = downloading();
     send(&mut st, U::DownloadProgress(Progress { done: 40, total: Some(100) }), t);
     let fx = send(&mut st, U::CancelDownload, t);
-    assert!(matches!(fx.as_slice(), [Effect::StopGit(StopKey::UpdateDownload)]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Control(ControlEffect::StopGit(StopKey::UpdateDownload))]), "{fx:?}");
     assert!(st.updates.transfer.cancelling);
     assert!(send(&mut st, U::CancelDownload, t).is_empty(), "asked once");
     assert!(send(&mut st, U::Download, t).is_empty(), "nothing new starts until it has stopped");

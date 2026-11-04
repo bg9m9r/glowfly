@@ -5,6 +5,7 @@ use super::tests::{drive, scratch_repo, state};
 use super::update;
 use glowfly_core::forge::{Account, Auth, Connection, Issue, Provider, ServiceError, Target, TrelloBoard};
 use glowfly_core::settings::{RepoTrust, TrackerChoice};
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
 use glowfly_model::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
@@ -40,7 +41,7 @@ fn run(st: &mut AppState, msg: ForgeMsg) -> Vec<Effect> {
 fn my_issues_calls(fx: &[Effect]) -> Vec<bool> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::Forge { call: ForgeCall::MyIssues { .. }, connected, .. } => Some(*connected),
+            Effect::Network(NetworkEffect::Forge { call: ForgeCall::MyIssues { .. }, connected, .. }) => Some(*connected),
             _ => None,
         })
         .collect()
@@ -136,7 +137,7 @@ fn unconnected_trello_is_never_contacted() {
     let mut st = open("trello-unconnected", false);
     run(&mut st, ForgeMsg::SetTracker(trello(BOARD, "Website")));
     let fx = run(&mut st, ForgeMsg::ForgeRefresh { interactive: true });
-    assert!(!fx.iter().any(|e| matches!(e, Effect::Forge { .. })), "nothing is called");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Network(NetworkEffect::Forge { .. }))), "nothing is called");
     let fs = st.session.forge.as_ref().unwrap();
     assert!(matches!(&fs.tracker_status, Status::Error(e) if e.contains("not connected")), "{:?}", fs.tracker_status);
 

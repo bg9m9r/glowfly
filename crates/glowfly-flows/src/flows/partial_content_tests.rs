@@ -7,6 +7,7 @@ use super::trust_tests::{asking, real};
 use super::update;
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::partial::{PartialEffect, StopKey};
 use glowfly_model::effect::{BlameRequest, Effect, FileTextRequest};
 use glowfly_model::msg::{ContentFailure, Msg, PartialMsg, RepoMsg, TrustMsg};
@@ -122,7 +123,7 @@ fn cancel_failure_and_try_again() {
     let back = read_head_diff(&mut st);
     let id = fetch_id(&run(&mut st, back));
     let fx = run(&mut st, Msg::Partial(PartialMsg::StopContent));
-    assert!(matches!(&fx[..], [Effect::StopGit(StopKey::Content(i))] if *i == id));
+    assert!(matches!(&fx[..], [Effect::Control(ControlEffect::StopGit(StopKey::Content(i)))] if *i == id));
     assert_eq!(phase(&st), Some(ContentPhase::Fetching { id, stopping: true }));
     assert!(run(&mut st, Msg::Partial(PartialMsg::StopContent)).is_empty(), "asked once");
     let stopped = |id| Msg::Partial(PartialMsg::ContentFetched { id, result: Err(ContentFailure::Stopped) });

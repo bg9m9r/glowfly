@@ -1,5 +1,5 @@
 //! The effects of a shallow clone's size check and a partial clone's missing contents
-//! (runner/partial.rs), and the keys of the git commands that can be stopped (`Effect::StopGit`).
+//! (runner/partial.rs), and the keys of the git commands that can be stopped (`ControlEffect::StopGit`).
 
 use super::SandboxRule;
 use super::areas::{effect_areas, effect_match};
@@ -83,7 +83,7 @@ pub struct ContentRequest {
     pub cmds: Vec<Vec<String>>,
 }
 
-/// Which running git commands (or downloads) `Effect::StopGit` stops.
+/// Which running git commands (or downloads) `ControlEffect::StopGit` stops.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StopKey {
     /// The active job's (a `JobEffect::RunGit` that only fetches).
@@ -95,12 +95,9 @@ pub enum StopKey {
 }
 
 impl Effect {
-    /// The key a runner registers this effect's stop under; None when it can't be stopped. An
-    /// area's comes from its `EffectMeta`.
+    /// The key a runner registers this effect's stop under, from the area's `EffectMeta`; None
+    /// when it can't be stopped.
     pub fn stop_key(&self) -> Option<StopKey> {
-        effect_areas! { effect_match! { self, |e| e.stop_key(), {
-            // No flat variant can be stopped.
-            _ => None,
-        } } }
+        effect_areas! { effect_match! { self, |e| e.stop_key() } }
     }
 }

@@ -4,6 +4,7 @@
 use super::tests::state;
 use super::update;
 use crate::effect::Effect;
+use crate::effect::NetworkEffect;
 use crate::msg::{AvatarMsg, Msg};
 use crate::state::AppState;
 use std::time::Instant;
@@ -23,7 +24,7 @@ fn with_remote(name: &str, on: bool, url: Option<&str>) -> AppState {
 fn fetches(st: &mut AppState) -> Vec<usize> {
     let emails: Vec<String> = (0..10).map(|i| format!("dev{i}@example.com")).collect();
     let fx = update(st, Msg::Avatars(AvatarMsg::WantAvatars(emails)), Instant::now());
-    fx.iter().map(|e| if let Effect::FetchAvatars(b) = e { b.len() } else { 0 }).collect()
+    fx.iter().map(|e| if let Effect::Network(NetworkEffect::Avatars(b)) = e { b.len() } else { 0 }).collect()
 }
 
 #[test]

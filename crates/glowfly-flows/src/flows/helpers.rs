@@ -5,7 +5,9 @@
 use super::update;
 use glowfly_core::forge::{CheckState, Checks, Provider, PullRequest, Target};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::FilesEffect;
+use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
 use glowfly_model::effect::{OsEffect, PrefsEffect};
@@ -81,8 +83,9 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
         // These need a user or the network; tests don't exercise them here.
         Effect::Ui(_)
             | Effect::Os(OsEffect::PickFolder { .. } | OsEffect::OpenUrl(_) | OsEffect::OpenTerminal(_) | OsEffect::OpenFolder(_))
-            | Effect::Forge { .. } | Effect::Account(_) | Effect::Save(SaveEffect::Settings(_)) | Effect::Save(SaveEffect::Recent(_))
-            | Effect::Save(SaveEffect::Tabs { .. }) | Effect::Watch(_) | Effect::SweepWatch { .. } | Effect::AnswerPrompt { .. }
+            | Effect::Network(NetworkEffect::Forge { .. }) | Effect::Account(_)
+            | Effect::Save(SaveEffect::Settings(_) | SaveEffect::Recent(_) | SaveEffect::Tabs { .. })
+            | Effect::Control(ControlEffect::Watch(_) | ControlEffect::SweepWatch { .. } | ControlEffect::AnswerPrompt { .. })
             // Shells are never started by these tests.
             | Effect::Terminal(_)
             | Effect::Os(OsEffect::OpenPath { .. } | OsEffect::RevealPath(_))

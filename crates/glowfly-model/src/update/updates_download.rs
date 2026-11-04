@@ -5,6 +5,7 @@
 //! missing or changed file into `UpdateStatus::Stale` with Download again.
 
 use super::updates::downloaded_toast;
+use crate::effect::ControlEffect;
 use crate::effect::OsEffect;
 use crate::effect::partial::StopKey;
 use crate::effect::{Effect, UpdateEffect};
@@ -61,7 +62,7 @@ pub(super) fn progress(st: &mut AppState, p: Progress) {
 pub(super) fn cancel(st: &mut AppState, fx: &mut Vec<Effect>) {
     if matches!(st.updates.status, UpdateStatus::Downloading(_)) && !st.updates.transfer.cancelling {
         st.updates.transfer.cancelling = true;
-        fx.push(Effect::StopGit(StopKey::UpdateDownload));
+        fx.push(Effect::Control(ControlEffect::StopGit(StopKey::UpdateDownload)));
     }
 }
 

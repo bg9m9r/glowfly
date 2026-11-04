@@ -80,7 +80,7 @@ source file, update its line in the matching file.
   (scroll, hover, open sections, a drag's preview until its release sends a `Msg`), never domain
   state such as the log, the selection or a form's checks. They never touch disk, network,
   processes or the clock. They may use core types and pure helpers. Avatars, for example, are
-  requested by the views, fetched through `Effect::FetchAvatars`, and turned into textures by the
+  requested by the views, fetched through `NetworkEffect::Avatars`, and turned into textures by the
   shell.
 - **`update`** is the only place domain state changes. It never blocks and does no I/O. Anything
   slow or outside the process (git, HTTP, the file system) becomes an `Effect`.
