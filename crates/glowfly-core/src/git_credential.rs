@@ -132,14 +132,30 @@ pub fn platform_helpers(os: &str) -> &'static [&'static str] {
     }
 }
 
-/// How to get a credential store on `os`, for the error when none is installed.
-pub fn setup_hint(os: &str) -> &'static str {
+/// The credential store to install on `os`, for the error when none is installed
+/// ([`CredentialError::NoStore`]); None when there is none to name.
+pub fn store_to_install(os: &str) -> Option<&'static str> {
     match os {
-        "windows" => "install Git Credential Manager or set credential.helper",
-        "macos" => "install git-credential-osxkeychain or set credential.helper",
-        "linux" => "install git-credential-libsecret or set credential.helper",
-        _ => "set credential.helper",
+        "windows" => Some("Git Credential Manager"),
+        "macos" => Some("git-credential-osxkeychain"),
+        "linux" => Some("git-credential-libsecret"),
+        _ => None,
     }
+}
+
+/// Why [`remember`] or [`forget`] failed. The model words it in the user's language
+/// (`state/error_words/typed.rs`); `said` is git's own last line, when it printed one.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CredentialError {
+    /// git has no helper and no credential store is installed: install `install` (this OS's
+    /// store, when it has one) or set `credential.helper`.
+    NoStore { install: Option<String> },
+    /// Adding the store to the global git config failed.
+    SetUpFailed { said: Option<String> },
+    /// `git credential approve` failed.
+    ApproveFailed { said: Option<String> },
+    /// `git credential reject` failed.
+    RejectFailed { said: Option<String> },
 }
 
 /// The helper to fall back to on `os` when none of its [`platform_helpers`] is installed: git's
@@ -242,7 +258,7 @@ pub enum Remembered {
 
 /// Saves `c` with git's credential helper, setting up the platform's store when git has none
 /// (or, on Linux without a keyring helper, git's in-memory cache).
-pub fn remember(cwd: &Path, c: &HttpsCredential) -> Result<Remembered, String> {
+pub fn remember(cwd: &Path, c: &HttpsCredential) -> Result<Remembered, CredentialError> {
     remember_in(cwd, c, &[], installed_helper, |cwd| usable_fallback(cwd, &[]))
 }
 
@@ -255,20 +271,20 @@ pub(crate) fn remember_in(
     env: &[(&str, &str)],
     find: impl Fn(&Path) -> Option<String>,
     fallback: impl Fn(&Path) -> Option<String>,
-) -> Result<Remembered, String> {
+) -> Result<Remembered, CredentialError> {
     let (helper, done) = match plan(helper_config(cwd, &c.url(), env), || find(cwd), || fallback(cwd)) {
-        Plan::Approve => return send(cwd, c, "approve", env).map(|()| Remembered::Helper),
+        Plan::Approve => return approve(cwd, c, env).map(|()| Remembered::Helper),
         Plan::TurnedOff => return Ok(Remembered::TurnedOff),
-        Plan::Missing => return Err(format!("no credential store is set up ({})", setup_hint(std::env::consts::OS))),
+        Plan::Missing => return Err(CredentialError::NoStore { install: store_to_install(std::env::consts::OS).map(str::to_owned) }),
         Plan::SetUp(name) => (name.clone(), Remembered::SetUp(name)),
         Plan::Cache(helper) => (helper, Remembered::Cached),
     };
     let add = args(&["config", "--global", "--add", "credential.helper", &helper]);
     let out = gitcli::output(cwd, &add, "", &quiet_env(env), Some(gitcli::READ_TIMEOUT));
     if !out.ok {
-        return Err(failure(&out, "could not set credential.helper"));
+        return Err(CredentialError::SetUpFailed { said: last_line(&out) });
     }
-    send(cwd, c, "approve", env).map(|()| done).inspect_err(|_| take_back(cwd, &helper, env))
+    approve(cwd, c, env).map(|()| done).inspect_err(|_| take_back(cwd, &helper, env))
 }
 
 /// Removes `helper` from the global config's `credential.helper`, that exact value only.
@@ -278,27 +294,33 @@ pub(crate) fn take_back(cwd: &Path, helper: &str, env: &[(&str, &str)]) {
 }
 
 /// Tells git's credential helpers that `c` was rejected, so they drop it.
-pub fn forget(cwd: &Path, c: &HttpsCredential) -> Result<(), String> {
+pub fn forget(cwd: &Path, c: &HttpsCredential) -> Result<(), CredentialError> {
     forget_in(cwd, c, &[])
 }
 
 /// [`forget`] with `env` added to the git call.
-pub(crate) fn forget_in(cwd: &Path, c: &HttpsCredential, env: &[(&str, &str)]) -> Result<(), String> {
-    send(cwd, c, "reject", env)
+pub(crate) fn forget_in(cwd: &Path, c: &HttpsCredential, env: &[(&str, &str)]) -> Result<(), CredentialError> {
+    send(cwd, c, "reject", env).map_err(|said| CredentialError::RejectFailed { said })
 }
 
-/// Runs `git credential <action>` with `c` on stdin, wiping the text afterwards.
-fn send(cwd: &Path, c: &HttpsCredential, action: &str, env: &[(&str, &str)]) -> Result<(), String> {
+/// `git credential approve` with `c`.
+fn approve(cwd: &Path, c: &HttpsCredential, env: &[(&str, &str)]) -> Result<(), CredentialError> {
+    send(cwd, c, "approve", env).map_err(|said| CredentialError::ApproveFailed { said })
+}
+
+/// Runs `git credential <action>` with `c` on stdin, wiping the text afterwards; on failure,
+/// git's last line.
+fn send(cwd: &Path, c: &HttpsCredential, action: &str, env: &[(&str, &str)]) -> Result<(), Option<String>> {
     let mut input = c.request(true);
     let out = gitcli::output(cwd, &args(&["credential", action]), &input, &quiet_env(env), Some(APPROVE_TIMEOUT));
     askpass::wipe(&mut input);
-    if out.ok { Ok(()) } else { Err(failure(&out, &format!("git credential {action} failed"))) }
+    if out.ok { Ok(()) } else { Err(last_line(&out)) }
 }
 
-/// The last line git printed, or `fallback` when it printed nothing.
-fn failure(out: &GitOutput, fallback: &str) -> String {
+/// The last line git printed, or None when it printed nothing.
+fn last_line(out: &GitOutput) -> Option<String> {
     let text = out.combined();
-    text.lines().last().map(str::trim).filter(|l| !l.is_empty()).unwrap_or(fallback).to_owned()
+    text.lines().last().map(str::trim).filter(|l| !l.is_empty()).map(str::to_owned)
 }
 
 #[cfg(test)]

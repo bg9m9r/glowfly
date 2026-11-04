@@ -19,9 +19,9 @@ pub enum CredentialMsg {
     /// Cancel, No or Esc.
     CancelCredentials,
     /// Saving an HTTPS sign-in for `host` with git's credential helper ended (runner/credentials.rs).
-    Remembered { host: String, result: Result<glowfly_core::git_credential::Remembered, String> },
+    Remembered { host: String, result: Result<glowfly_core::git_credential::Remembered, glowfly_core::git_credential::CredentialError> },
     /// Dropping a rejected HTTPS sign-in for `host` from git's credential helper ended.
-    Forgotten { host: String, result: Result<(), String> },
+    Forgotten { host: String, result: Result<(), glowfly_core::git_credential::CredentialError> },
     /// The sign-in banner's "Fetch <remote>": fetch it in a job that can prompt (update/sign_in.rs).
     SignInFetch { workdir: PathBuf, remote: String },
     /// The sign-in banner's "Not now": hide the remote's line; auto-fetch still skips it.
