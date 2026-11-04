@@ -44,7 +44,7 @@ fn entering_and_leaving_the_comparison() {
     assert_eq!(compared(&st).oid, f.c(3));
     assert_eq!(reads(&fx), [(f.c(3), 1)]);
     assert_eq!(fx.len(), 1, "{fx:?}");
-    assert!(st.session.selection.wip_shown() && st.session.selection.includes(f.c(3)));
+    assert!(st.session.wip_drawn_selected() && st.session.selection.includes(f.c(3)));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::CollapseSelection));
     assert_eq!(st.session.selection, Selection::Commit(f.c(3)), "Esc returns to the commit");

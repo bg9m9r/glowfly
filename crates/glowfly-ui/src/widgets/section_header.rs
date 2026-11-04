@@ -26,7 +26,7 @@ const BUTTON: f32 = HEADER_SIZE.metrics().h;
 const GAP: f32 = 4.0;
 /// The space above each header, outside its hit area and hover fill: what sets the sections
 /// apart (there are no dividers).
-pub const SPACE_ABOVE: f32 = 12.0;
+const SPACE_ABOVE: f32 = 12.0;
 
 /// The fonts of a section header's title (12 px semibold) and of its count (12 px regular), for
 /// measuring what `section_header` draws.

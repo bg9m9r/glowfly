@@ -11,7 +11,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Colours
 
-- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the change and selected-diff-line fills.
+- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown` and `clear` that keep tints, edges, fills and chip letters out of it, and the change and selected-diff-line fills.
 - `theme/ref_chip.rs`: the graph's ref chip colours: filled local branches, outlined remotes and tags, the halo on the checked-out branch and HEAD, each standing 3:1 from every row surface.
 - `theme/ref_chip_tests.rs`: the ref chips in every built-in and both presets: text on the fill or every row surface, fill or edge 3:1 from every row surface, the halo only where you are.
 - `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets (the colour-safe one with its diff and status colours), stay out of the brown zone, with no exception.

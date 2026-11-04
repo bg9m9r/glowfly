@@ -186,8 +186,8 @@ Olive's slot is a deep Wine (hue 352), Gold's a Navy (hue 262), both darker than
 neighbours, and Orange is a clear amber at hue 62 (#c47100, at the sRGB edge: the one warm line
 that stays clean at 3:1). Beside Porcelain's cobalt, Forest (hue 142) takes Navy's
 slot; on Dawn, Jade takes it and Forest takes Indigo's, beside the iris accent. A chip whose
-tone would letter it in brown (the amber's text tone) is lettered in the ink instead
-(`contrast::clean_ink`), its fill and edge keeping the hue.
+tone would letter it in brown (the amber's text tone) is lettered in the ink instead, its
+fill and edge keeping the hue.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
 - `branch.chips`: chip tones, which ref chips are edged and lettered in (see Chip tints).

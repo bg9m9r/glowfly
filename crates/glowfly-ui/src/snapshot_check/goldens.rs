@@ -357,7 +357,8 @@ const IMAGE_ONLY: &[&str] = &[
     "prefs_accessibility_system_on",
     "main_high_contrast_dark",
     "main_high_contrast_light",
-    // `graph_wip_chosen_dark` in Porcelain.
+    // The WIP row chosen: `main_dark`'s text; only its look differs.
+    "graph_wip_chosen_dark",
     "graph_wip_chosen_light",
     "history_table_dark",
     "history_table_light",
