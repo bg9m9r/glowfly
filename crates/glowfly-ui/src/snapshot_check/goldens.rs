@@ -176,6 +176,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("graph_wip_row_light", Window),
     ("graph_wip_row_high_contrast", Window),
     ("graph_worktree_wips", Window),
+    ("graph_lantern_dusk", Window),
+    ("graph_lantern_compact_dusk", Window),
+    ("graph_lantern_colour_safe_porcelain", Window),
     ("graph_chips_shared_prefix_dark", Window),
     ("graph_chips_shared_prefix_light", Window),
     ("graph_ghost_branch", Window),
@@ -414,6 +417,9 @@ const IMAGE_ONLY: &[&str] = &[
     "diff_hex_inline_colour_safe_dark",
     "person_colours_graph_light",
     "graph_wip_row_light",
+    // `graph_lantern_dusk` in Compact rows and in colour-blind safe Porcelain.
+    "graph_lantern_compact_dusk",
+    "graph_lantern_colour_safe_porcelain",
     "graph_wip_row_high_contrast",
     // `main_dark`'s text in a narrow details panel: the icon-only actions show only in the image.
     "wip_header_icons",

@@ -14,6 +14,7 @@ mod frame_asks;
 mod header;
 mod labels;
 mod lane_colours;
+mod lantern;
 mod layout;
 mod marks;
 mod more;
@@ -30,6 +31,8 @@ mod select;
 mod wip_row;
 mod worktree_wip;
 
+#[cfg(test)]
+pub(crate) use lantern::peak as lantern_peak;
 pub use paint::draw_avatar;
 #[cfg(test)]
 pub(crate) use row_look::dim_inks;
@@ -250,13 +253,16 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                     resp.row_menu(|ui| super::worktrees::row_menu(ui, wt, msgs));
                     continue;
                 }
+                // The HEAD lantern's glow, under the lanes; its rim goes on after the node.
+                let fill = row_look::top_fill(look);
+                let glow = lantern::glow(&gp, pos2(node_x, mid), (commit, snap.head_oid), (node_r, row_h), (fill, cols_cfg.tree && !dim));
                 if cols_cfg.tree && !filtered {
                     draw_lanes(&gp, cols.graph.0, rect, g, &colours);
                 }
 
                 let Some(c) = commit else {
                     if cols_cfg.tree {
-                        nodes::wip_ring(&gp, pos2(node_x, mid), node_r, lane_col);
+                        nodes::wip_lantern(&gp, pos2(node_x, mid), node_r, fill, snap.is_dirty());
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
                     wip_row::draw(&mp, &cols, mid, (wip_label, selected), snap.changes, wip_total);
@@ -274,6 +280,9 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         let av = if show_avatars { Some(&mut *avatars) } else { None };
                         nodes::commit(&gp, (pos2(node_x, mid), node_r), c.author.name(), c.author.email(), lane_col, av);
                     }
+                }
+                if let Some(inner) = glow {
+                    lantern::rim(&gp, pos2(node_x, mid), inner);
                 }
 
                 // BRANCH / TAG column, joined to the node; in a narrow table, the chips lead the message.

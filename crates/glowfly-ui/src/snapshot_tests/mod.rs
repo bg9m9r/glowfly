@@ -86,6 +86,7 @@ pub(super) mod snapshot_tests_language_files;
 pub(super) mod snapshot_tests_language_main;
 pub(super) mod snapshot_tests_language_menus;
 pub(super) mod snapshot_tests_language_panels;
+pub(super) mod snapshot_tests_lantern;
 pub(super) mod snapshot_tests_lfs;
 pub(super) mod snapshot_tests_lfs_notes;
 pub(super) mod snapshot_tests_line_counts;
