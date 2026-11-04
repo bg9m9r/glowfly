@@ -1,5 +1,4 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 ProgressIndicator
 Button "Installing Glowfly 0.3.0…"
 TabList

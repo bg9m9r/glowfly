@@ -1,5 +1,4 @@
 window 1100x820
-Label "Glowfly 0.1.0"
 TabList
   Tab "demo" [selected]
   Tab "api-server"

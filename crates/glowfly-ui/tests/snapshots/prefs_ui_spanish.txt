@@ -1,5 +1,4 @@
 window 1400x2400
-Label "Glowfly 0.1.0"
 Button "Volver"
 TextInput "Buscar en preferencias"
 Label "Preferencias"

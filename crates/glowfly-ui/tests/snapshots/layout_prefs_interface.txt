@@ -1,5 +1,4 @@
 window 1400x1300
-Label "Glowfly 0.1.0"
 Button "Zoom 125%"
 Button "Show toolbar"
 Button "Back"

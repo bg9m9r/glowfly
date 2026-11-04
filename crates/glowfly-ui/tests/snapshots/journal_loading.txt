@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -59,7 +58,9 @@ Label "Operation journal"
 Label "Every state HEAD and your branches have been in, newest first"
 Label "Reading the journal…"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

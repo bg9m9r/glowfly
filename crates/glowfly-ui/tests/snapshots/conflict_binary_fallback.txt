@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: Merge in progress, 1 conflicted file left, 2 changed files" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -91,7 +90,9 @@ Label "Binary file: pick a whole version."
 Button "Use ours (main)"
 Button "Use theirs (theme-tweaks)"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "Undo"
   "Redo"

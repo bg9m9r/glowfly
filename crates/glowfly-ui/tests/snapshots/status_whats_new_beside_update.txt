@@ -1,5 +1,4 @@
 window 1400x820
-Label "Glowfly 0.2.0"
 Button "Update available (0.3.0)"
 Button "What's new in 0.2.0"
 TabList

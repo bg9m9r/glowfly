@@ -134,7 +134,7 @@ const PARTS_GAP: f32 = spacing::GRID;
 pub const NAME_GAP: f32 = 12.0;
 /// The space between a count and its arrow, and the arrow's width.
 const ARROW_GAP: f32 = 1.5;
-const ARROW_W: f32 = 6.0;
+pub(crate) const ARROW_W: f32 = 6.0;
 
 /// A laid-out right-hand part: its text, and for a count, which way its arrow points.
 struct Piece {
@@ -188,7 +188,7 @@ pub fn paint_parts(p: &Painter, at: Pos2, parts: &[Part<'_>], col: Color32) {
 
 /// A small arrow centred on `c`, pointing up (ahead) or down (behind). Painted because the
 /// bundled fonts have no arrow glyphs.
-fn paint_arrow(p: &Painter, c: Pos2, up: bool, col: Color32) {
+pub(crate) fn paint_arrow(p: &Painter, c: Pos2, up: bool, col: Color32) {
     let s = Stroke::new(1.3_f32, col);
     // The down arrow sits half a pixel higher: its tip's round caps reach lower than a stem end.
     let (tip, tail) = if up { (c.y - 3.5, c.y + 3.5) } else { (c.y + 3.0, c.y - 4.0) };

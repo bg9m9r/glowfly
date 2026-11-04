@@ -1,7 +1,6 @@
 window 1400x820
-Label "Glowfly 0.1.0"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 geänderte Datei" [selected]
   Tab "api-server"
 Button "Tab demo schließen"
 Button "Tab api-server schließen"
@@ -84,7 +83,9 @@ Button "Pullen"
 Button "Force-Push mit Lease…"
 Button "Details"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Rückgängig"

@@ -1,0 +1,4 @@
+window 900x28
+Label "Fetch all…"
+Button "Cancel"
+Button "Fetching…" [disabled]

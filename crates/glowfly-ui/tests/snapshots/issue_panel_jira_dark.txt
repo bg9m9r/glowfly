@@ -5,9 +5,9 @@ Label "· 0 open pull requests"
 Label "·"
 Label "Jira Cloud"
 Label "· 2 assigned"
-Label "Glowfly 0.1.0"
+Button "Never fetched"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -111,7 +111,9 @@ Label "opened this issue"
 Label "Users with a + in their password can't sign in.\n\n- Seen on Chrome and Firefox\n- Started after 1.9"
 Label "No comments yet."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

@@ -1,7 +1,7 @@
 window 1400x820
-Label "Glowfly 0.1.0"
+Button "Never fetched" [disabled]
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -79,7 +79,9 @@ Button "Load more"
 Button "Fetch full history"
 Label "Shallow clone: showing the newest 6 commits."
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "main"
   "Undo"

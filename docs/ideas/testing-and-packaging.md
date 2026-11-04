@@ -32,7 +32,8 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Build the Linux packages on an older glibc baseline so the AppImage and packages run on older distributions
 - Sign the .rpm (rpm --addsign) and the AppImage, and publish apt and dnf repositories
 - Debian version for pre-release tags: map '-' to '~' in --deb-version as the rpm does
-- Automate the Homebrew tap and winget-pkgs submissions from the release job with a token
+- Automate the Homebrew tap, Scoop bucket and winget-pkgs submissions from the release job with a token
+- Scoop: detect a Scoop install (under `scoop/apps/glowfly`) and leave updates to `scoop update`, as a Flatpak copy leaves them to Flatpak
 - release-please's first try at creating the draft release failed with an empty error just after it made the tag (0.3.0-rc.1, the first draft-mode release); re-running the job made the draft. Find the cause, or have the job retry once
 - Rename a swapped AppImage whose file name carries the old version to the new release's name
 - An aarch64 Flatpak bundle (a native arm64 builder image, or a QEMU build if it fits the time)

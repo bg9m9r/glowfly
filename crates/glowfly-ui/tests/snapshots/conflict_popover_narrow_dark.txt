@@ -1,7 +1,7 @@
 window 960x540
-Label "Glowfly 0.1.0"
+Button "Never fetched"
 TabList
-  Tab "demo" [selected]
+  Tab "demo: 1 changed file, 1 ahead of origin/release-please--branches--main--components--glowfly, 1 behind origin/release-please--branches--main--components--glowfly" [selected]
   Tab "api-server"
 Button "Close tab demo"
 Button "Close tab api-server"
@@ -85,7 +85,9 @@ Button "Add login page"
 Button "Add app skeleton"
 Button "Initial commit"
 painted:
+  "demo"
   "Repository"
+  "demo"
   "Branch"
   "release-…"
   "1"
