@@ -4,10 +4,10 @@
 use super::pr_details;
 use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
 use crate::msg::ForgeMsg;
-use crate::state::error_words::{hosting, hosting_log};
+use crate::state::error_words::{hosting, hosting_log, typed};
 use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, PrefPage, ProjectKeys, Status, pr_repos, tracker_target};
 use glowfly_core::error::advice::Ask;
-use glowfly_core::forge::{self, Account, Connection, Target};
+use glowfly_core::forge::{self, Account, Connection, ServiceError, Target};
 use glowfly_core::repo::Snapshot;
 use std::time::Instant;
 
@@ -305,7 +305,7 @@ fn connected(
     account: Account,
     method: String,
     token: Option<(Option<String>, String)>,
-    result: Result<String, String>,
+    result: Result<String, ServiceError>,
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
@@ -326,7 +326,9 @@ fn connected(
                 p.int_token.clear();
                 p.int_adding = false;
             }
-            st.log(true, format!("Connected to {} ({}) as {user}.", account.provider.name(), account.display()));
+            let t = st.settings.lang();
+            let (service, place) = (account.provider.name(), account.display());
+            st.log(true, t.trf("prefs.integrations.connected", &[("service", &service), ("account", &place), ("user", &user)]));
             // A new connection can make a self-hosted remote recognizable.
             if let Some(fs) = st.session.forge.as_mut() {
                 fs.auth.remove(&account.key());
@@ -343,8 +345,9 @@ fn connected(
             super::dashboard::account_changed(st, &account, fx);
         }
         Err(e) => {
+            let t = st.settings.lang();
             if let Some(p) = st.prefs.as_mut() {
-                p.int_error = Some(e);
+                p.int_error = Some(typed::service(t, &e));
             }
         }
     }

@@ -3,8 +3,9 @@
 
 use crate::effect::{AccountEffect, Effect};
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::trello::BoardList;
-use glowfly_core::forge::{self, Account, TrelloBoard};
+use glowfly_core::forge::{self, Account, ServiceError, TrelloBoard};
 use glowfly_core::settings::TrackerChoice;
 
 /// Loads the boards of the repository's Trello account, unless they are loaded or loading.
@@ -37,7 +38,8 @@ fn start(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
 }
 
 /// The boards arrived; a reply for an account no longer shown is ignored.
-pub(super) fn boards_loaded(st: &mut AppState, account: Account, result: Result<Vec<TrelloBoard>, String>) {
+pub(super) fn boards_loaded(st: &mut AppState, account: Account, result: Result<Vec<TrelloBoard>, ServiceError>) {
+    let t = st.settings.lang();
     let Some(list) = st.prefs.as_mut().map(|p| &mut p.trello_boards).filter(|l| l.account.as_ref() == Some(&account)) else {
         return;
     };
@@ -47,6 +49,6 @@ pub(super) fn boards_loaded(st: &mut AppState, account: Account, result: Result<
             list.boards = boards;
             list.error = None;
         }
-        Err(e) => list.error = Some(e),
+        Err(e) => list.error = Some(typed::service(t, &e)),
     }
 }
