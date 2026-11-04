@@ -4,11 +4,12 @@
 //! and where the New branch… ghost button goes. In a narrow table the same chips lead the
 //! message instead (`fit::Fitted::refs_inline`).
 
-use super::marks::{MARK_W, paint_cloud, paint_local, paint_tag};
+use super::marks::{MARK_W, paint_cloud, paint_tag};
 use super::ref_group::Chip;
 use crate::ui::build_status;
 use crate::ui::theme::color;
 use crate::ui::theme::contrast::readable_on;
+use crate::ui::theme::fonts;
 use crate::ui::theme::ref_chip::{self, BranchTone, ChipLook, ChipStyle};
 use crate::ui::theme::sizes::{ChipSize, ControlSize, text_pos};
 use crate::ui::widgets::chip;
@@ -42,8 +43,6 @@ pub(super) struct ChipSpec {
     style: ChipStyle,
     /// A tag mark before the name.
     lead_tag: bool,
-    /// The local mark after the name.
-    local: bool,
     /// The remote mark after the name (a remote branch, or a local one with copies on remotes
     /// at the same commit).
     remote: bool,
@@ -54,11 +53,10 @@ pub(super) struct ChipSpec {
 impl ChipSpec {
     pub(super) fn of(chip: &Chip, build: Option<CheckState>) -> Self {
         let l = chip.label;
-        let plain = |style, text: String| Self { text, style, lead_tag: false, local: false, remote: false, build };
+        let plain = |style, text: String| Self { text, style, lead_tag: false, remote: false, build };
         match l.kind {
             RefKind::Head => plain(ChipStyle::Head, "HEAD".to_owned()),
             RefKind::Local => Self {
-                local: true,
                 remote: chip.folds(),
                 ..plain(if l.is_head { ChipStyle::CurrentBranch } else { ChipStyle::Branch }, check(l.is_head, &l.name))
             },
@@ -69,7 +67,13 @@ impl ChipSpec {
 
     /// How many marks follow the name.
     fn trailing(&self) -> usize {
-        usize::from(self.local) + usize::from(self.remote) + usize::from(self.build.is_some())
+        usize::from(self.remote) + usize::from(self.build.is_some())
+    }
+
+    /// The chip's text font: semibold for the checked-out branch, else regular, at the chip's
+    /// text size. Every measurement of the chip's text goes through it.
+    pub(super) fn font(&self, p: &Painter) -> FontId {
+        if self.style == ChipStyle::CurrentBranch { fonts::semibold_in(p.ctx(), FONT) } else { FontId::proportional(FONT) }
     }
 }
 
@@ -91,8 +95,9 @@ fn mark_and_name(spec: &ChipSpec) -> (&str, &str) {
 /// (`truncate::middle`), so names that share a long start stay apart.
 fn chip_text(p: &Painter, spec: &ChipSpec, room: f32) -> String {
     let (mark, name) = mark_and_name(spec);
-    let mark_w = if mark.is_empty() { 0.0 } else { text_w(p, mark, FONT) };
-    format!("{mark}{}", middle(p, name, &FontId::proportional(FONT), room - mark_w))
+    let font = spec.font(p);
+    let mark_w = if mark.is_empty() { 0.0 } else { text_w(p, mark, &font) };
+    format!("{mark}{}", middle(p, name, &font, room - mark_w))
 }
 
 /// A chip's width for its text `text_w` wide: padding, the marks and the build marker.
@@ -118,13 +123,13 @@ fn halo_leads(styles: &[ChipStyle]) -> Vec<f32> {
     (0..styles.len()).map(|i| if i > 0 && styles[i - 1].halo() { HALO_ROOM } else { 0.0 }).collect()
 }
 
-fn text_w(p: &Painter, text: &str, size: f32) -> f32 {
-    p.layout_no_wrap(text.to_owned(), FontId::proportional(size), color::weak()).size().x
+fn text_w(p: &Painter, text: &str, font: &FontId) -> f32 {
+    p.layout_no_wrap(text.to_owned(), font.clone(), color::weak()).size().x
 }
 
 /// A chip's whole width for `spec`.
 pub(super) fn spec_w(p: &Painter, spec: &ChipSpec) -> f32 {
-    chip_w(spec, text_w(p, &spec.text, FONT))
+    chip_w(spec, text_w(p, &spec.text, &spec.font(p)))
 }
 
 /// The text a first chip keeps beside a "+N" chip: its check mark, the first `NAME_KEEP`
@@ -138,7 +143,7 @@ fn kept_text(spec: &ChipSpec) -> String {
 
 /// The width of `spec`'s chip cut to its `kept_text`.
 fn kept_w(p: &Painter, spec: &ChipSpec) -> f32 {
-    chip_w(spec, text_w(p, &kept_text(spec), FONT))
+    chip_w(spec, text_w(p, &kept_text(spec), &spec.font(p)))
 }
 
 /// The "+n" badge.
@@ -204,8 +209,8 @@ fn paint_box(p: &Painter, r: Rect, look: ChipLook) {
 
 /// Draws a chip of width `w` from `x`, centred on `y`, and returns its rect: its box and halo
 /// (`ref_chip::ref_chip`; the halo reaches outside the rect), the tag mark, the name (cut in
-/// its middle to leave its marks room, `chip_text`), then the local mark, the remote mark and the build marker, coloured
-/// from its branch's `tone`.
+/// its middle to leave its marks room, `chip_text`; semibold for the checked-out branch), then
+/// the remote mark and the build marker, coloured from its branch's `tone`.
 pub(super) fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: BranchTone, w: f32) -> Rect {
     let look = ref_chip::ref_chip(spec.style, tone, &color::current());
     let fg = look.text;
@@ -219,14 +224,10 @@ pub(super) fn draw_chip(p: &Painter, x: f32, y: f32, spec: &ChipSpec, tone: Bran
     }
     let marks_left = r.right() - TEXT_PAD - MARK_W * spec.trailing() as f32;
     // The name, cut in its middle when the chip is narrower than it (the half pixel absorbs rounding).
-    let g = p.layout_no_wrap(chip_text(p, spec, marks_left - text_x + 0.5), FontId::proportional(FONT), fg);
+    let g = p.layout_no_wrap(chip_text(p, spec, marks_left - text_x + 0.5), spec.font(p), fg);
     cp.galley(pos2(text_x, text_pos(r, &g).y), g, fg);
     // Each mark centred a little right of its slot's middle, clear of the name.
     let mut slot = marks_left + MARK_W / 2.0 + 2.0;
-    if spec.local {
-        paint_local(&cp, pos2(slot, y), fg);
-        slot += MARK_W;
-    }
     if spec.remote {
         paint_cloud(&cp, pos2(slot, y), fg);
         slot += MARK_W;
@@ -370,7 +371,7 @@ pub(super) fn tip_row(ui: &mut Ui, t: Lang, chip: &Chip, tone: BranchTone) {
     let ink = readable_on(fg, ui.visuals().window_fill, pal.dark, 3.0);
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 2.0;
-        let marks: [(bool, PaintMark); 3] = [(spec.lead_tag, paint_tag), (spec.local, paint_local), (spec.remote, paint_cloud)];
+        let marks: [(bool, PaintMark); 2] = [(spec.lead_tag, paint_tag), (spec.remote, paint_cloud)];
         for (_, paint) in marks.into_iter().filter(|(on, _)| *on) {
             let (r, _) = ui.allocate_exact_size(vec2(MARK_W, MARK_W), Sense::hover());
             paint(ui.painter(), r.center(), ink);

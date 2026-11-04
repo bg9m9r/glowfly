@@ -38,6 +38,7 @@ pub mod custom;
 pub mod families;
 pub mod fonts;
 mod inactive;
+pub mod initials;
 pub mod missing_glyphs;
 pub mod ref_chip;
 pub mod sizes;

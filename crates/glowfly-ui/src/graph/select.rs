@@ -50,10 +50,11 @@ pub(super) fn anchor(sel: &Selection) -> Option<Oid> {
     }
 }
 
-/// The graph row (counting the WIP row) that keyboard navigation starts from.
-pub(super) fn current_row(sel: &Selection, rows: &GraphRows) -> Option<usize> {
+/// The graph row (counting the WIP row) that keyboard navigation starts from: none for a WIP
+/// selection that isn't `lit` (`RepoSession::wip_lit`), so the first move lands on the WIP row.
+pub(super) fn current_row((sel, lit): (&Selection, bool), rows: &GraphRows) -> Option<usize> {
     match sel {
-        Selection::Wip => rows.has_wip().then_some(0),
+        Selection::Wip => (lit && rows.has_wip()).then_some(0),
         Selection::Commit(o) => rows.row_of(*o),
         Selection::Commits(m) => rows.row_of(m.focus()),
         Selection::VsWorkdir(w) => rows.row_of(w.oid),
@@ -90,7 +91,7 @@ pub(super) fn focus(ctx: &egui::Context) {
 /// that row would, stopping at the WIP row; without a selected commit they act as plain arrows.
 pub(super) fn keyboard_nav(
     ui: &egui::Ui,
-    sel: &Selection,
+    (sel, lit): (&Selection, bool),
     snap: &Snapshot,
     rows: &GraphRows,
     scroll: Viewport,
@@ -110,7 +111,7 @@ pub(super) fn keyboard_nav(
     let len = rows.len();
     // The commit a Shift move extends from (the selection's moving end), when there is one.
     let anchor = crate::state::selection::extend_from(sel);
-    let mut cursor = current_row(sel, rows);
+    let mut cursor = current_row((sel, lit), rows);
     let (mut extending, mut moved, mut on_end) = (false, false, false);
     for key in keys {
         let (mv, extend) = match key {

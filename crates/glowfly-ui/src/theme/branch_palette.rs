@@ -31,7 +31,7 @@ const fn hex(c: u32) -> Color32 {
 }
 
 /// The light tones' clear amber (OKLCH hue 62, chroma at the sRGB edge): 3:1 on Sand's paper
-/// as a line; its text tone (4.5:1) is a deep amber, lettered in the ink (`contrast::clean_ink`).
+/// as a line; its text tone (4.5:1) is a deep amber, lettered in the ink.
 const AMBER_LINE: Color32 = hex(0xc47100);
 const AMBER_TEXT: Color32 = hex(0x7c4600);
 /// Wine (hue 352) and Navy (hue 262), darker than their neighbours, in Olive's and Gold's

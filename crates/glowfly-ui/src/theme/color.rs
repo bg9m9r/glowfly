@@ -256,8 +256,8 @@ palette_fields!(
     terminal_bright_white => ansi.colors[15],
 );
 
-/// The active palette's branch preset (how many hues branches and people pick from).
-pub fn branch_preset() -> ColourPalette {
+/// The active palette's branch preset (how many hues branches pick from).
+fn branch_preset() -> ColourPalette {
     ACTIVE.with_borrow(|p| p.branch.preset)
 }
 

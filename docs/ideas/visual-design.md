@@ -191,3 +191,6 @@ Themes, brand and branch colour, contrast, type scale and control styling. Untri
 - Onboarding: add a Look step (theme + Colours); the welcome flow has no theme choice today
 - In the colour-safe colours, open issues (`added`, blue) and closed ones (`progress`, violet)
   are only 0.022 apart under deutan on light themes (`issue/mod.rs`); give them a shape or label cue
+
+### Quiet main window chrome (D3)
+- Review whether dark local chip fills (lifted to 3:1) can come down a step without breaking the chip separation tests

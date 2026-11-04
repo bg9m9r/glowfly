@@ -239,11 +239,6 @@ impl Selection {
             Selection::None | Selection::Wip => false,
         }
     }
-
-    /// Whether the graph's WIP row is drawn selected (alone or compared with a commit).
-    pub fn wip_shown(&self) -> bool {
-        matches!(self, Selection::Wip | Selection::VsWorkdir(_))
-    }
 }
 
 /// A dialog over the window. `Shortcuts` is the keyboard shortcut sheet, `filter` its filter

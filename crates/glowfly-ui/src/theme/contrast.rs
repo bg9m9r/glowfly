@@ -198,13 +198,6 @@ pub fn readable_on(fg: Color32, fill: Color32, dark: bool, min: f64) -> Color32 
     fg
 }
 
-/// `tone` pushed until it reads at 4.5:1 on `fill`, for a chip's or initials' letters; the
-/// palette's own text when that would read brown (a warm branch tone dark enough for paper).
-pub fn clean_ink(tone: Color32, fill: Color32, p: &Palette) -> Color32 {
-    let ink = readable_on(tone, fill, p.dark, 4.5);
-    if brownish(ink) { readable_on(p.text, fill, p.dark, 4.5) } else { ink }
-}
-
 /// The lightness and chroma [`clear`] lifts a brown colour to at least: a clear orange, gold or
 /// lime, never a tan.
 const CLEAR: (f64, f64) = (0.80, 0.13);

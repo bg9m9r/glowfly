@@ -128,8 +128,6 @@ painted:
   "✔  login"
   "1"
   "0"
-  "Tags"
-  "1"
   "M"
   "Summary"
   "Description"

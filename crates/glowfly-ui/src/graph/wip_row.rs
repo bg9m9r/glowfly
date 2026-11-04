@@ -19,6 +19,11 @@ const TOTAL_GAP: f32 = 12.0;
 /// The characters of the label the chips leave it before they hide.
 const LABEL_KEEP: usize = 6;
 
+/// The label's colour: quiet until the row is chosen.
+fn label_ink(selected: bool) -> eframe::egui::Color32 {
+    if selected { color::text() } else { color::weak() }
+}
+
 /// What the row shows in its room.
 #[derive(Debug, PartialEq)]
 struct Fit {
@@ -49,9 +54,17 @@ fn kept_width(label: &str, measure: impl Fn(String) -> f32) -> f32 {
     measure(label.chars().take(LABEL_KEEP).chain(['…']).collect())
 }
 
-/// Draws the row's cells, centred on `mid`. `total` is None while the counts aren't known (or
-/// are incomplete).
-pub(super) fn draw(mp: &Painter, cols: &Columns, mid: f32, label: &str, changes: ChangeCounts, total: Option<LineCount>) {
+/// Draws the row's cells, centred on `mid`: the label `weak`, or `text` while the row is drawn
+/// `selected` (chosen, `RepoSession::wip_drawn_selected`). `total` is None while the counts
+/// aren't known (or are incomplete).
+pub(super) fn draw(
+    mp: &Painter,
+    cols: &Columns,
+    mid: f32,
+    (label, selected): (&str, bool),
+    changes: ChangeCounts,
+    total: Option<LineCount>,
+) {
     let ctx = mp.ctx();
     let font = type_scale::font(type_scale::BODY);
     // The span already ends at the table's inset.
@@ -60,7 +73,7 @@ pub(super) fn draw(mp: &Painter, cols: &Columns, mid: f32, label: &str, changes:
     let widths = (measure(label.to_owned()), kept_width(label, measure));
     let chips_w = line_counts::chips_width(ctx, changes);
     let fits = fit(right - left, widths, chips_w, total.map(|t| line_counts::total_width(ctx, t)));
-    let cut = paint_cut_text(mp, pos2(left, mid), label, font, color::text(), fits.label_max);
+    let cut = paint_cut_text(mp, pos2(left, mid), label, font, label_ink(selected), fits.label_max);
     if fits.chips {
         line_counts::paint_chips(mp, cut.rect.right() + LABEL_GAP, mid, changes);
     }
@@ -172,7 +185,7 @@ mod tests {
                 let cols = cols(300.0 + room - span(&first));
                 assert!((span(&cols) - room).abs() < 0.01, "{} for {room}", span(&cols));
                 ui.painter().rect_filled(ui.max_rect(), 0.0, color::bg());
-                draw(ui.painter(), &cols, ui.max_rect().center().y, label, changes, total);
+                draw(ui.painter(), &cols, ui.max_rect().center().y, (label, false), changes, total);
             });
             h.run();
             h.check_snapshot(name);
