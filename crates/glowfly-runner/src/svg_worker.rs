@@ -7,7 +7,7 @@
 //! its result is dropped when it arrives. No thread is ever stopped.
 
 use glowfly_core::preview_svg::{self, SvgError, SvgRender};
-use std::sync::mpsc::{self, RecvTimeoutError, SyncSender};
+use std::sync::mpsc::{self, SyncSender};
 use std::sync::{Arc, Condvar, Mutex, OnceLock};
 use std::time::Duration;
 
@@ -66,10 +66,8 @@ impl<R: Send + 'static> Worker<R> {
             *lock.lock().unwrap_or_else(|e| e.into_inner()) = Some(Job { bytes: bytes.to_vec(), reply });
             ready.notify_one();
         }
-        match result.recv_timeout(self.deadline) {
-            Ok(r) => Some(r),
-            Err(RecvTimeoutError::Timeout | RecvTimeoutError::Disconnected) => None,
-        }
+        // Past the deadline, or replaced before it started (its sender dropped): given up.
+        result.recv_timeout(self.deadline).ok()
     }
 }
 
