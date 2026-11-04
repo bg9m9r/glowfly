@@ -276,7 +276,7 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/profile_setup.rs`: Preferences > Profile: the selected profile's Accounts and Preferences rows, which say what switches with it.
 - `prefs/profiles.rs`: Preferences > Profile: the open repository's identity (profile_rules.rs), the profile list (current marker, switch, inline rename, delete), the New profile form, and the selected profile's identity fields (saved by the Save / Revert bar) and folder rules (profile_rules.rs), then what else switches with it (profile_setup.rs).
 - `prefs/save_bar.rs`: the Save / Revert bar fixed under a Preferences page with unsaved edits (shown only while `state::prefs_save::unsaved` holds), and the "Saved" tick beside the page title.
-- `prefs/ssh/agent.rs`: Preferences > SSH: the section header the page's three sections share (the title, an optional status chip, a Refresh icon button at the right end, and the rule under them), and the Agent section: its status chip (`state::ssh::marks::agent_pill`), the Use local SSH agent setting, what the agent holds and why it may not be reachable, and on Windows the Windows' OpenSSH row (`ssh_windows`).
+- `prefs/ssh/agent.rs`: Preferences > SSH: the section header the page's three sections share (the title, an optional status chip, a Refresh icon button at the right end, and the rule under them), and the Agent section: its status chip (`state::ssh::marks::agent_pill`), the Use local SSH agent setting, what the agent holds and why it may not be reachable, and on Windows the Windows' OpenSSH row (`windows`).
 - `prefs/ssh/card.rs`: Preferences > SSH: one key pair's card.
 - `prefs/ssh/git.rs`: Preferences > SSH: the Which key section.
 - `prefs/ssh/service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
