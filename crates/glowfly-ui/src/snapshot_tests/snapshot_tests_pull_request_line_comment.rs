@@ -19,7 +19,7 @@ use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::pull_request::PrTab;
-use glowfly_model::state::pull_request_line_comment::draft_at;
+use glowfly_model::state::pull_request::line_comment::draft_at;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -115,7 +115,7 @@ fn pull_request_line_comment_suggestion_light() {
     let v = st.session.pull_request.view.as_mut().unwrap();
     let (hk, i) = d.hunks.iter().enumerate().find_map(|(h, k)| k.lines.iter().position(|l| l.origin == '+').map(|i| (h, i))).unwrap();
     let mut dr = draft_at(v, &target, &d, hk, i, i).unwrap();
-    dr.text = glowfly_model::state::pull_request_line_comment::with_suggestion("Maybe:", &dr);
+    dr.text = glowfly_model::state::pull_request::line_comment::with_suggestion("Maybe:", &dr);
     dr.error = Some("the server said \u{201c}Validation Failed pull_request_review_thread.line must be part of the diff\u{201d}".into());
     v.line_draft = Some(dr);
     let mut h = harness_sized(st, false, WIDE);

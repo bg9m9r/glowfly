@@ -1,7 +1,7 @@
 //! Closing tabs and reopening closed ones. A close that would lose work held only in memory (a
 //! commit message draft, conflict choices not saved yet, an edited dialog, comments not posted;
 //! `state/tab_losses.rs`) or end a
-//! terminal running a program (asked about first, update/terminal_busy.rs) asks first; the
+//! terminal running a program (asked about first, update/terminal/busy.rs) asks first; the
 //! confirmation names its tabs by id, so it closes the right ones if they moved meanwhile.
 
 use super::tabs::{activate, open, park, save};
@@ -54,7 +54,7 @@ fn decide(st: &mut AppState, req: CloseRequest, confirmed: bool, busy: Option<Ve
             None => {
                 let ids = ids_for_tabs(st, &closing);
                 if !ids.is_empty() {
-                    super::terminal_busy::check(ids, BusyCheck::CloseTabs(req), fx);
+                    super::terminal::busy::check(ids, BusyCheck::CloseTabs(req), fx);
                     return;
                 }
                 Vec::new()

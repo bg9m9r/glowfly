@@ -11,7 +11,7 @@ use glowfly_core::gitcli::args;
 use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::{Effect, ForgeCall, ForgeReply, ForgeResult};
 use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
-use glowfly_model::state::pr_repos::{PrRepoPick, RepoSide};
+use glowfly_model::state::pull_request::repos::{PrRepoPick, RepoSide};
 use glowfly_model::state::push_pr::PrStart;
 use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};

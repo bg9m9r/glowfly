@@ -15,9 +15,9 @@ use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::{RepoTrust, ThemeChoice};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::checks::ChecksPane;
+use glowfly_model::state::pull_request::source::HeadFetch;
 use glowfly_model::state::pull_request::{Files, PrTab, PrView};
-use glowfly_model::state::pull_request_checks::ChecksPane;
-use glowfly_model::state::pull_request_source::HeadFetch;
 use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 

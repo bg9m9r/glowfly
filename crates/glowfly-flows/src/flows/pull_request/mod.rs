@@ -6,6 +6,7 @@ use glowfly_model::update::pull_request::*;
 
 mod bitbucket_tests;
 mod calls_tests;
+mod checkout_tests;
 mod checks_tests;
 mod cleanup_tests;
 mod commits_tests;

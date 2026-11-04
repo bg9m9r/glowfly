@@ -13,7 +13,7 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::pull_request::PrTab;
-use glowfly_model::state::pull_request_line_map::{LineMaps, wanted};
+use glowfly_model::state::pull_request::line_map::{LineMaps, wanted};
 use std::sync::Arc;
 
 #[test]

@@ -1,7 +1,7 @@
 //! Pull requests and issues for the open repository.
 
 use super::build_status::TipChecks;
-use super::pr_details::PrDetailPass;
+use super::pull_request::details::PrDetailPass;
 use git2::Oid;
 use glowfly_core::forge::{self, Account, Auth, Issue, Provider, PullRequest, RefStyle, Target};
 use glowfly_core::i18n::Lang;
@@ -46,7 +46,7 @@ pub struct ForgeState {
     pub remote: String,
     /// Repositories of remotes on the code host's account (the code host's first), for pull
     /// requests across forks; set by detect.
-    pub pr_repos: Vec<super::pr_repos::PrRepo>,
+    pub pr_repos: Vec<super::pull_request::repos::PrRepo>,
     pub tracker: Option<Target>,
     /// Credentials by account key.
     pub auth: HashMap<String, Auth>,
@@ -146,7 +146,7 @@ impl ForgeState {
 
     fn is_source_remote(&self, pr: &PullRequest, remote: &str) -> bool {
         let Some(host) = self.host.as_ref() else { return remote == self.remote && pr.head_repo.is_same() };
-        let repo = if remote == self.remote { Some(host) } else { super::pr_repos::repo(self, remote).map(|r| &r.target) };
+        let repo = if remote == self.remote { Some(host) } else { super::pull_request::repos::repo(self, remote).map(|r| &r.target) };
         repo.is_some_and(|r| pr.head_repo.is(r, host))
     }
 

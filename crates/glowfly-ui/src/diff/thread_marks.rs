@@ -11,7 +11,7 @@ use glowfly_core::diff_rows::{LineSide, line_keys};
 use glowfly_core::repo::DiffLine;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::pull_request_threads::{Mark, Marks};
+use glowfly_model::state::pull_request::threads::{Mark, Marks};
 
 /// The marker for diff line `dl`: of any of its file lines, or only of the `side` file (one
 /// cell of the split layout).

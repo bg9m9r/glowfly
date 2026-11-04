@@ -10,10 +10,10 @@ use crate::pull_request::line_comment::{Leave, LineCommentMsg};
 use crate::pull_request::{PrCall, PrReply};
 use crate::state::AppState;
 use crate::state::error_words::hosting;
-use crate::state::pull_request::{Page, PrAction, PrTab, PrView};
-use crate::state::pull_request_line_comment::{
+use crate::state::pull_request::line_comment::{
     ONE_HUNK, OUTSIDE, discard_confirm, draft_at, edited, post_blocked, start_blocked, suggest_blocked, with_suggestion,
 };
+use crate::state::pull_request::{Page, PrAction, PrTab, PrView};
 use glowfly_core::diff_rows::{LineSide, line_index, row_of_file_line};
 use glowfly_core::error::advice::Ask;
 use glowfly_core::forge::{NewComment, NewThread, Target};

@@ -2,7 +2,7 @@
 //! update/publish.rs, update/askpass.rs).
 
 use crate::effect::ForgeReply;
-use crate::state::pr_repos::RepoSide;
+use crate::state::pull_request::repos::RepoSide;
 use glowfly_core::forge::{Account, CreatedRepo, NewPullRequest, ServiceError, TrelloBoard};
 use glowfly_core::settings::TrackerChoice;
 use std::path::PathBuf;

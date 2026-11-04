@@ -10,8 +10,8 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::ssh_keys::{AgentKey, AgentReach, AgentStatus, KeyChoice, KeyFileProblem, SshKeyPair, SshListing, WinService};
-use glowfly_model::state::ssh_service::{UploadForm, UploadState};
-use glowfly_model::state::ssh_use::{Choices, RepoTarget};
+use glowfly_model::state::ssh::key_use::{Choices, RepoTarget};
+use glowfly_model::state::ssh::service::{UploadForm, UploadState};
 use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -273,7 +273,7 @@ fn prefs_ssh_add_to_service() {
 
 #[test]
 fn prefs_ssh_service_fallback() {
-    let message = glowfly_model::state::ssh_service::fallback_note(glowfly_core::i18n::Lang::En, "GitHub");
+    let message = glowfly_model::state::ssh::service::fallback_note(glowfly_core::i18n::Lang::En, "GitHub");
     let st = with_form(ThemeChoice::Light, UploadState::Failed { message, fallback: true }, "");
     let mut h = tall(st, false);
     assert!(h.query_by_label("Copy key and open settings").is_some());

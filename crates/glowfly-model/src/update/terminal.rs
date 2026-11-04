@@ -1,9 +1,9 @@
 //! The built-in terminal panel: showing and hiding it (remembered in the settings), a first
 //! shell per repository (started the first time the panel shows that repository), keyboard
-//! input, resizing, and the shells' output and exit. Terminal tabs are in terminal_tabs.rs,
-//! scrolling, the selection and the grid's menu in terminal_view.rs, and renaming a tab and
-//! maximising the panel in terminal_header.rs. Workdirs are compared as
-//! plain paths: no filesystem access here.
+//! input, resizing, and the shells' output and exit. Terminal tabs are in `tabs`, scrolling, the
+//! selection and the grid's menu in `view`, renaming a tab and maximising the panel in `header`,
+//! asking what a closing shell runs in `busy` and importing colour schemes in `schemes`. Workdirs
+//! are compared as plain paths: no filesystem access here.
 
 use crate::effect::Effect;
 use crate::state::AppState;
@@ -13,8 +13,13 @@ use glowfly_core::settings::ShellSetting;
 use glowfly_core::terminal::{TermScreen, encode};
 use std::path::{Path, PathBuf};
 
+pub(super) mod busy;
+pub(super) mod header;
+pub(super) mod schemes;
+pub(super) mod tabs;
+pub(super) mod view;
+
 pub(super) fn handle(st: &mut AppState, m: TerminalMsg, now: std::time::Instant, fx: &mut Vec<Effect>) {
-    use super::{terminal_header as header, terminal_tabs as tabs, terminal_view as view};
     match m {
         TerminalMsg::Toggle => {
             if st.snap.is_none() {
@@ -121,7 +126,7 @@ pub(super) fn handle(st: &mut AppState, m: TerminalMsg, now: std::time::Instant,
             AfterCheck::Close => tabs::activity(st, id, activity, fx),
             AfterCheck::Kill => tabs::kill_activity(st, id, activity, fx),
         },
-        TerminalMsg::BusyChecked { found, then } => super::terminal_busy::answered(st, &found, then, now, fx),
+        TerminalMsg::BusyChecked { found, then } => busy::answered(st, &found, then, now, fx),
     }
 }
 

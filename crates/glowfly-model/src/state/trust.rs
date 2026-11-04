@@ -7,7 +7,7 @@
 //! only; update/trust.rs asks and records.
 
 use super::AppState;
-use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
+use super::palette::commands::{Entry, PaletteCommand, entry, with_detail};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{RepoTrust, SavedTrust, Settings, repo_keys};
 use glowfly_core::trust::{TrustPrint, TrustScan};

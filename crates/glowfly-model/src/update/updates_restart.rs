@@ -1,6 +1,6 @@
 //! Install and restart: after Preferences' unsaved edits (prefs_leave), a running operation, and
 //! the tabs' unsaved work and terminals running a program (asked about first,
-//! update/terminal_busy.rs) have been dealt with, the downloaded update is prepared on a worker
+//! update/terminal/busy.rs) have been dealt with, the downloaded update is prepared on a worker
 //! (runner/update_restart.rs). Once it is ready the window closes, the same way as Quit;
 //! a failure changes nothing and says why. At the next start, an installer that failed or was
 //! cancelled is said too (`last_install`).
@@ -42,7 +42,7 @@ fn decide(st: &mut AppState, confirmed: bool, busy: Option<Vec<BusyTerminal>>, n
             None => {
                 let ids = running_ids(st);
                 if !ids.is_empty() {
-                    super::terminal_busy::check(ids, BusyCheck::Restart, fx);
+                    super::terminal::busy::check(ids, BusyCheck::Restart, fx);
                     return;
                 }
                 Vec::new()

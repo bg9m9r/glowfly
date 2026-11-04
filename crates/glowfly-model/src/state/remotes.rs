@@ -2,7 +2,7 @@
 //! views and `update` so a disabled item or a refused request shows the same words. Pure.
 
 use super::forks::{ForkAction, add_fork_label, fork_label, fork_target};
-use super::palette_commands::{Entry, PaletteCommand, entry, with_detail};
+use super::palette::commands::{Entry, PaletteCommand, entry, with_detail};
 use crate::remote::RemoteMsg;
 use glowfly_core::forge::{self, Connection};
 use glowfly_core::remote_ops::{RemoteEdit, RemoteNameProblem, UrlProblem, add_cmds, check_remote_name, check_url, display_url, edit_cmds};

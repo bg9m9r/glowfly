@@ -21,14 +21,14 @@ use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::AppState;
-use glowfly_model::state::pull_request::{PrAction, PrView, description_text};
-use glowfly_model::state::pull_request_actions::error_for;
-use glowfly_model::state::pull_request_line_comment::draft_on;
-use glowfly_model::state::pull_request_line_map::{head_path, on_local_file};
-use glowfly_model::state::pull_request_threads::{
+use glowfly_model::state::pull_request::actions::error_for;
+use glowfly_model::state::pull_request::line_comment::draft_on;
+use glowfly_model::state::pull_request::line_map::{head_path, on_local_file};
+use glowfly_model::state::pull_request::threads::{
     file_threads, go_to_open, hidden, hidden_text, is_open, kind_counts, outdated_toggle, placement, reply_blocked, resolve_blocked,
     resolve_label, resolved_toggle, where_text,
 };
+use glowfly_model::state::pull_request::{PrAction, PrView, description_text};
 use std::collections::HashMap;
 
 /// Where a card is drawn: in the conversation (with its path and code snippet) or in its

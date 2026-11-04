@@ -157,3 +157,14 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - `trust_patch_export_tests::a_patch_export_is_checked_again_before_git_diff_runs` fails about one run in three locally ("nothing was written")
 - `snapshot_tests_wrap::file_history_wrapped` fails now and then
 - `review_threads::graphql_errors_leave_a_note` failed on the Windows runner with os error 10055 (socket buffers used up); the local mock-server tests may leak sockets
+
+### Module folders per area
+
+- Group the remaining state/ prefix families into folders: rebase_*, repo_*, op_*, menu_*, stack_*, issue_*, journal_*, session_*, worktree_*, conflict_*, diff_*, gitflow_*, selection_*, history_*, dashboard_*
+- Group the remaining update/ prefix families: branch_*, search_*, logs_*, conflict_*, repo_*, submodule_*, rebase_*, history_*, diff_*, prefs_*, gitflow_*, trust_*
+- Group the remaining flows/ families (rebase_*, trust_*, worktree_*, conflict_*, undo_*, diff_*, work_*, history_*, updates_*, submodule_*, gitflow_*) and move push_pr_* and fork_pr_* tests into flows/pull_request/
+- Group the remaining glowfly-ui families: toolbar_*, repo_*, details_*, conflict_*, file_*, dialog_*, welcome_*, history_*, markdown_*, tab_/tabs_*, gitflow_*, worktree_*
+- Move ui/prefs/terminal_colours.rs into prefs/terminal/ once #425 has landed (its line lives in ui-theme.md)
+- Group glowfly-ui's snapshot_tests/snapshot_tests_* files into per-area subfolders (views.rs's test-file rule must first cover folders)
+- Group glowfly-runner's terminal_* files (terminal.rs, terminal_hold.rs, terminal_out.rs) into runner/terminal/
+- Split update/tests/ per area further if it grows (one <area>_tests.rs per area today)

@@ -14,7 +14,7 @@ use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::pull_request::PrView;
-use glowfly_model::state::pull_request_checks::{ChecksPane, HELD, LOADING};
+use glowfly_model::state::pull_request::checks::{ChecksPane, HELD, LOADING};
 use std::path::PathBuf;
 
 const BUILD_URL: &str = "https://ci.example/acme/demo/build/41";

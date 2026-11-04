@@ -21,7 +21,7 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::state::PrefsState;
-use glowfly_model::state::pull_request_checks::ChecksPane;
+use glowfly_model::state::pull_request::checks::ChecksPane;
 use std::path::PathBuf;
 
 /// Runs `case` in the dark and the light view palettes, as golden `<name>_dark` and

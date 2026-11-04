@@ -1,9 +1,8 @@
-//! Preferences > SSH: one column of three sections. Keys lists the key pairs as cards
-//! (`ssh_card`, with the Add to service form under its card, `ssh_service`), the ~/.ssh/config
-//! entries that can't be listed and the keys only the agent holds (`ssh_sources`), and offers
-//! Generate… (the Generate SSH key dialog, `ui/ssh_keygen_dialog.rs`) and Use existing…; Which
-//! key picks the key git uses (`ssh_git`); Agent shows the local SSH agent (`ssh_agent`, with
-//! the Windows' OpenSSH row from `ssh_windows`). The
+//! Preferences > SSH: one column of three sections. Keys lists the key pairs as cards (`card`,
+//! with the Add to service form under its card, `service`), the ~/.ssh/config entries that can't
+//! be listed and the keys only the agent holds (`sources`), and offers Generate… (the Generate
+//! SSH key dialog, `keygen_dialog`) and Use existing…; Which key picks the key git uses (`git`);
+//! Agent shows the local SSH agent (`agent`, with the Windows' OpenSSH row from `windows`). The
 //! view edits only text buffers; everything else is a `Msg`.
 
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
@@ -20,6 +19,14 @@ use glowfly_model::ssh::SshMsg;
 use glowfly_model::state::ssh::SshPage;
 use std::path::PathBuf;
 
+pub(super) mod agent;
+pub(super) mod card;
+pub(super) mod git;
+pub(crate) mod keygen_dialog;
+pub(super) mod service;
+pub(super) mod sources;
+pub(super) mod windows;
+
 /// What the page needs from outside Preferences.
 pub struct SshContext {
     /// Settings > Use local SSH agent.
@@ -35,7 +42,7 @@ pub struct SshContext {
 
 pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
     let reload = Msg::Ssh(SshMsg::Reload);
-    super::ssh_agent::header(ui, t, t.tr("prefs.ssh.keys.title"), None, t.tr("prefs.ssh.keys.reload.tip"), reload, msgs);
+    agent::header(ui, t, t.tr("prefs.ssh.keys.title"), None, t.tr("prefs.ssh.keys.reload.tip"), reload, msgs);
     if let Some(error) = &page.error {
         ui.label(RichText::new(t.tr("prefs.ssh.keys.error.label")).color(color::text()));
         warn(ui, error);
@@ -55,8 +62,8 @@ pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs:
     };
     keys_section(ui, t, page, &listing, cx, msgs);
     ui.add_space(14.0);
-    super::ssh_git::which_key(ui, t, page, &listing, cx, msgs);
-    super::ssh_agent::agent_section(ui, t, page, cx, msgs);
+    git::which_key(ui, t, page, &listing, cx, msgs);
+    agent::agent_section(ui, t, page, cx, msgs);
 }
 
 fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
@@ -76,13 +83,13 @@ fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, 
         }
     });
     for key in &listing.keys {
-        super::ssh_card::card(ui, t, key, listing, page, cx, msgs);
+        card::card(ui, t, key, listing, page, cx, msgs);
         if let Some(form) = page.upload.as_mut().filter(|f| same_spelling(&f.key, &key.private)) {
-            super::ssh_service::upload_form(ui, t, form, &key.file_name(), msgs);
+            service::upload_form(ui, t, form, &key.file_name(), msgs);
         }
     }
-    super::ssh_sources::config_notes(ui, t, listing);
-    super::ssh_sources::agent_only_rows(ui, t, page, msgs);
+    sources::config_notes(ui, t, listing);
+    sources::agent_only_rows(ui, t, page, msgs);
     ui.horizontal(|ui| {
         let blocked = page.open_blocked(t);
         let generate = buttons::secondary(t.tr("prefs.ssh.keys.generate.button")).enabled(blocked.is_none()).why(blocked);

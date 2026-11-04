@@ -1,7 +1,7 @@
 //! Messages of a new code comment on lines of a pull request file's diff (the comment button on
 //! a diff line, the hunk header's Comment on N lines, and the comment box in the Files changed
 //! pane). Handled by update/pull_request/line_comment.rs; its rules are in
-//! state/pull_request_line_comment.rs.
+//! state/pull_request/line_comment.rs.
 
 use glowfly_core::diff_rows::LineSide;
 

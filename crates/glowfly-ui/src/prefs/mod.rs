@@ -32,13 +32,7 @@ mod reveal;
 mod save_bar;
 mod signing;
 mod sparse;
-mod ssh;
-mod ssh_agent;
-mod ssh_card;
-mod ssh_git;
-mod ssh_service;
-mod ssh_sources;
-mod ssh_windows;
+pub(super) mod ssh;
 pub(super) mod terminal;
 mod terminal_colours;
 mod theme_files;
@@ -49,9 +43,9 @@ mod trello;
 mod updates_row;
 // For the chip catalog golden (`snapshot_tests_chips.rs`).
 #[cfg(test)]
-pub(crate) use ssh_agent::pill_widget as ssh_agent_pill;
+pub(crate) use ssh::agent::pill_widget as ssh_agent_pill;
 #[cfg(test)]
-pub(crate) use ssh_card::chip as ssh_card_chip;
+pub(crate) use ssh::card::chip as ssh_card_chip;
 
 pub(super) use form::*;
 
@@ -110,9 +104,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some(), save_first };
     let ssh_cx = ssh::SshContext {
         use_agent: st.settings.use_ssh_agent,
-        services: glowfly_model::state::ssh_service::services(&st.settings.connections)
+        services: glowfly_model::state::ssh::service::services(&st.settings.connections)
             .into_iter()
-            .map(|c| (c.account.clone(), glowfly_model::state::ssh_service::service_label(&c.account)))
+            .map(|c| (c.account.clone(), glowfly_model::state::ssh::service::service_label(&c.account)))
             .collect(),
         job: st.job.as_ref().map(|j| j.label.clone()),
         extra: st.settings.ssh_extra_keys.clone(),

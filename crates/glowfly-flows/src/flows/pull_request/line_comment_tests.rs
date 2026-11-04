@@ -55,7 +55,7 @@ pub(super) fn start(st: &mut AppState, side: LineSide, line: u32, extend: bool) 
     lc(st, LineCommentMsg::Start { side, line, extend });
 }
 
-pub(super) fn draft(st: &AppState) -> &glowfly_model::state::pull_request_line_comment::LineDraft {
+pub(super) fn draft(st: &AppState) -> &glowfly_model::state::pull_request::line_comment::LineDraft {
     view(st).line_draft.as_ref().expect("a draft")
 }
 

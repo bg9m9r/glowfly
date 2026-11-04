@@ -17,8 +17,8 @@ use glowfly_core::repo::RangeCommit;
 use glowfly_core::text::printable;
 use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::commits::{commits_heading, empty_text, more_text, second_line};
 use glowfly_model::state::pull_request::{Files, PrView, unrelated_text};
-use glowfly_model::state::pull_request_commits::{commits_heading, empty_text, more_text, second_line};
 use glowfly_model::state::{AppState, Selection};
 
 const ROW_H: f32 = 44.0;

@@ -4,7 +4,7 @@
 //! once it is accepted, Unstash naming the newest stash by position and commit, the refusal
 //! over conflicts, and Delete's own question.
 
-use super::palette_tests::repo_with_topic;
+use super::palette::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git};
 use super::update;
 use glowfly_model::effect::Effect;

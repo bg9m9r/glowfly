@@ -117,7 +117,7 @@ pub(crate) fn load(st: &mut AppState, d: PrDetail, threads: Vec<ReviewThread>) {
         },
     ];
     let v = st.session.pull_request.view.as_mut().unwrap();
-    glowfly_model::state::pull_request_actions::prefill(&mut v.forms, &d, None);
+    glowfly_model::state::pull_request::actions::prefill(&mut v.forms, &d, None);
     v.page = Page::Loaded(Box::new(PrPage { detail: d, entries, threads, threads_note: None }));
 }
 

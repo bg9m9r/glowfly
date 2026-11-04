@@ -14,12 +14,12 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::text::printable;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::pull_request::{PrAction, PrView};
-use glowfly_model::state::pull_request_actions::{
+use glowfly_model::state::pull_request::actions::{
     delete_after_merge_blocked, delete_branch_offer, error_for, merge_blocked, merge_button, merge_choices, merge_confirm, mergeability,
     merging, method_blocked, method_help, method_label,
 };
-use glowfly_model::state::pull_request_cleanup::local_delete;
+use glowfly_model::state::pull_request::cleanup::local_delete;
+use glowfly_model::state::pull_request::{PrAction, PrView};
 
 /// Shown once the page is loaded.
 pub(super) fn show(ui: &mut Ui, t: Lang, v: &mut PrView, snap: Option<&Snapshot>, default_branch: Option<&str>, msgs: &mut Vec<Msg>) {

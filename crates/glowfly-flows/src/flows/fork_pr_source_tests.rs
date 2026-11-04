@@ -11,7 +11,7 @@ use glowfly_core::forge::{HeadRepo, PullRequest};
 use glowfly_model::effect::{ForgeReply, ForgeResult};
 use glowfly_model::msg::{AutoStashMsg, BranchMsg, ForgeMsg, Msg, RepoMsg};
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::pull_request_source::fork_known;
+use glowfly_model::state::pull_request::source::fork_known;
 use glowfly_model::state::push_pr::open_pr;
 use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;

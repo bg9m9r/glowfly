@@ -202,7 +202,7 @@ fn sections(ui: &mut egui::Ui, st: &mut AppState, graph: &GraphFilter, msgs: &mu
         let view = forge_filters::pr_view(t, f, &repo_filters);
         let picker = Picker { kind: FilterKind::Prs, label: &view.label, filters: &repo_filters, provider: f.host_provider() };
         let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
-            super::pr_menu_items::pr_menu(ui, t, snap, f, idle, msgs);
+            super::pull_request::menu_items::pr_menu(ui, t, snap, f, idle, msgs);
             separator(ui);
             menu_item(msgs, ui, t.tr("sidebar.new_filter"), Msg::ForgeFilter(FilterMsg::NewDialog(FilterKind::Prs)));
         };
@@ -301,7 +301,7 @@ fn pull_requests(
         if let Some(c) = &pr.checks {
             super::build_status::paint_marker(&ui.painter_at(r.rect), marker.center(), c.state);
         }
-        let r = r.on_hover_text(super::pr_menu_items::pr_tooltip(pr));
+        let r = r.on_hover_text(super::pull_request::menu_items::pr_tooltip(pr));
         if r.double_clicked() {
             msgs.push(Msg::PullRequest(PullRequestMsg::Open(pr.id)));
         } else if r.clicked()
@@ -313,7 +313,7 @@ fn pull_requests(
             menu_item(msgs, ui, format!("Show {}", f.pr_noun()), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
             menu_item(msgs, ui, "Open in browser", Msg::OpenUrl(pr.url.clone()));
             super::build_status::pr_menu_item(ui, pr, msgs);
-            super::pr_menu_items::checkout_item(ui, t, snap, f, pr, msgs);
+            super::pull_request::menu_items::checkout_item(ui, t, snap, f, pr, msgs);
             let base = glowfly_model::state::worktree_branches::pr_base(snap, &f.remote, &pr.source).err();
             let create = Msg::Worktree(glowfly_model::worktree::WorktreeMsg::CreateForPr { id: pr.id, source: pr.source.clone() });
             menu_item_if(msgs, ui, "Create worktree…", base.as_deref(), create);

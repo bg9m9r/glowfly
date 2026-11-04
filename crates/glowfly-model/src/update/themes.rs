@@ -1,5 +1,5 @@
 //! Theme files: reloading the themes folder, opening it, creating a file from the theme in use,
-//! importing terminal colour schemes (terminal_schemes.rs), and reporting the problems of what
+//! importing terminal colour schemes (terminal/schemes.rs), and reporting the problems of what
 //! was loaded.
 
 use crate::effect::Effect;
@@ -50,7 +50,7 @@ pub(super) fn handle(st: &mut AppState, msg: ThemeMsg, now: Instant, fx: &mut Ve
         ThemeMsg::PickScheme => fx.push(Effect::Theme(ThemeEffect::PickScheme)),
         ThemeMsg::SchemePicked(None) => {}
         ThemeMsg::SchemePicked(Some(path)) => fx.push(Effect::Theme(ThemeEffect::ImportScheme { path })),
-        ThemeMsg::SchemesImported { file, result } => super::terminal_schemes::imported(st, &file, result, now, fx),
+        ThemeMsg::SchemesImported { file, result } => super::terminal::schemes::imported(st, &file, result, now, fx),
     }
 }
 
@@ -93,7 +93,7 @@ fn loaded(st: &mut AppState, cat: ThemeCatalog) {
     }
     st.themes.catalog = cat;
     st.themes.generation += 1;
-    super::terminal_schemes::check_selected(st);
+    super::terminal::schemes::check_selected(st);
     let ThemeChoice::Custom(id) = &st.settings.theme else {
         st.themes.reported = None;
         return;

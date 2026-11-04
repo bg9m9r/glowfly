@@ -169,7 +169,7 @@ pub enum PaletteMsg {
     /// Move the palette selection by this many rows, wrapping.
     PaletteMove(isize),
     /// Move the palette selection by a page or to an end of the list, clamped.
-    PaletteJump(crate::state::palette_nav::Jump),
+    PaletteJump(crate::state::palette::nav::Jump),
     /// The pointer moved onto row `.0` of the palette list: select it, without scrolling.
     PaletteHover(usize),
     /// Close the palette and run this command (or, for a two-step command, open its sub-list).
