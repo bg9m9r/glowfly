@@ -189,7 +189,7 @@ pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleMemo, SubmoduleSta
 pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};
-pub use tracked::tracked_paths;
+pub use tracked::{ListFilesFailed, tracked_paths};
 pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os_trash, os_untrash};
 pub use unmerged::unmerged_count;
 pub(crate) use workfile::contained;

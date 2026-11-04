@@ -102,6 +102,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             if generation != st.palette_gen {
                 return;
             }
+            let t = st.settings.lang();
             let Some(Palette { mode: Mode::Pick(pick), selected, .. }) = st.palette.as_mut() else { return };
             if !pick.kind.lists_files() {
                 return;
@@ -113,8 +114,9 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
                     pick.set_items(Items::Ready(rows));
                 }
                 Err(e) => {
-                    pick.set_items(Items::Failed(e.clone()));
-                    st.log(false, e);
+                    let text = t.trf("palette.files.failed", &[("why", &e.said)]);
+                    pick.set_items(Items::Failed(text.clone()));
+                    st.log(false, text);
                 }
             }
         }

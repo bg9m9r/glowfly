@@ -15,6 +15,7 @@ use crate::state::palette::{Items, MAX_PICK_ROWS, Mode, Palette, PaletteCommand,
 use crate::state::rebase::RebasePanel;
 use crate::state::{AppState, Modal};
 use glowfly_core::rebase::RebaseBase;
+use glowfly_core::repo::ListFilesFailed;
 use std::time::Instant;
 
 const FILE_HISTORY: &str = "File history…";
@@ -41,7 +42,7 @@ fn pick_mut(st: &mut AppState) -> &mut Pick {
     }
 }
 
-fn loaded(st: &mut AppState, generation: u64, result: Result<Vec<String>, String>) {
+fn loaded(st: &mut AppState, generation: u64, result: Result<Vec<String>, ListFilesFailed>) {
     run(st, Msg::Palette(PaletteMsg::TrackedPathsLoaded { generation, result }));
 }
 
@@ -168,10 +169,12 @@ fn tracked_paths_failure_shows_and_logs() {
     enter(&mut st);
     let before = st.log.len();
     let g = st.palette_gen;
-    loaded(&mut st, g, Err("boom".into()));
-    assert_eq!(pick(&st).items, Items::Failed("boom".into()));
+    loaded(&mut st, g, Err(ListFilesFailed { said: "boom".into() }));
+    let text = "Could not list the repository's files: boom";
+    assert_eq!(pick(&st).items, Items::Failed(text.into()));
     assert_eq!(st.log.len(), before + 1);
     assert!(!st.log.last().unwrap().ok);
+    assert_eq!(st.log.last().unwrap().text, text);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
     let _ = std::fs::remove_dir_all(&dir);

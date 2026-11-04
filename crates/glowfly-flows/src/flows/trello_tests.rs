@@ -6,7 +6,7 @@ use super::update;
 use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use crate::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg};
 use crate::state::{AppState, ForgeState, PrefPage, PrefsState, Status};
-use glowfly_core::forge::{Account, Auth, Connection, Issue, Provider, Target, TrelloBoard};
+use glowfly_core::forge::{Account, Auth, Connection, Issue, Provider, ServiceError, Target, TrelloBoard};
 use glowfly_core::settings::{RepoTrust, TrackerChoice};
 use std::time::Instant;
 
@@ -124,11 +124,11 @@ fn boards_reply_fills_the_picker_and_stale_replies_are_ignored() {
     assert!(!list.loading && list.error.is_none() && list.has(BOARD) && list.boards.len() == 2);
 
     let other = Account { host: "other.example".into(), ..acct() };
-    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: other, result: Err("boom".into()) });
+    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: other, result: Err(ServiceError::Other { said: "boom".into() }) });
     assert_eq!(st.prefs.as_ref().unwrap().trello_boards.error, None, "another account's reply");
 
-    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: acct(), result: Err("rate limit".into()) });
-    assert_eq!(st.prefs.as_ref().unwrap().trello_boards.error.as_deref(), Some("rate limit"));
+    run(&mut st, ForgeMsg::TrelloBoardsLoaded { account: acct(), result: Err(ServiceError::Forbidden { said: "rate limit".into() }) });
+    assert_eq!(st.prefs.as_ref().unwrap().trello_boards.error.as_deref(), Some("access denied: rate limit"));
 }
 
 #[test]

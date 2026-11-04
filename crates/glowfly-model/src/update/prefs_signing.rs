@@ -3,8 +3,9 @@
 
 use crate::effect::{Effect, PrefsEffect, UiEffect};
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use glowfly_core::gpg_prompt::extend::ExtendFailed;
-use glowfly_core::signing::{SigningFormat, SigningKey};
+use glowfly_core::signing::{KeyError, SigningFormat, SigningKey};
 use std::time::Instant;
 
 fn non_empty(value: &str, default: &str) -> String {
@@ -21,7 +22,8 @@ pub(super) fn load_keys(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Prefs(PrefsEffect::ListSigningKeys { format, program: non_empty(git.program(), format.default_program()) }));
 }
 
-pub(super) fn keys_loaded(st: &mut AppState, result: Result<Vec<SigningKey>, String>) {
+pub(super) fn keys_loaded(st: &mut AppState, result: Result<Vec<SigningKey>, KeyError>) {
+    let t = st.settings.lang();
     let Some(p) = st.prefs.as_mut() else { return };
     match result {
         Ok(keys) => {
@@ -30,7 +32,7 @@ pub(super) fn keys_loaded(st: &mut AppState, result: Result<Vec<SigningKey>, Str
         }
         Err(e) => {
             p.signing.keys = Some(Vec::new());
-            p.signing.keys_error = Some(e);
+            p.signing.keys_error = Some(typed::signing_key(t, &e));
         }
     }
 }
@@ -49,7 +51,8 @@ pub(super) fn generate_gpg_key(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// A generated key becomes the global signing key.
-pub(super) fn gpg_key_generated(st: &mut AppState, result: Result<String, String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn gpg_key_generated(st: &mut AppState, result: Result<String, KeyError>, now: Instant, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     if let Some(p) = st.prefs.as_mut() {
         p.signing.generating = false;
     }
@@ -64,10 +67,10 @@ pub(super) fn gpg_key_generated(st: &mut AppState, result: Result<String, String
                 key: "user.signingkey".into(),
                 value: Some(id.clone()),
             }));
-            st.toast(true, format!("Created GPG key {id} and set it as your signing key"), now);
+            st.toast(true, t.trf("prefs.signing.generate.done", &[("id", &id)]), now);
             load_keys(st, fx);
         }
-        Err(e) => st.log(false, format!("Could not generate a GPG key: {e}")),
+        Err(e) => st.log(false, t.trf("prefs.signing.generate.failed", &[("why", &typed::signing_key(t, &e))])),
     }
 }
 
@@ -119,12 +122,13 @@ pub(super) fn copy_public_key(st: &AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Prefs(PrefsEffect::ExportPublicKey { format, program, key: git.signing_key.clone() }));
 }
 
-pub(super) fn public_key_exported(st: &mut AppState, result: Result<String, String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn public_key_exported(st: &mut AppState, result: Result<String, KeyError>, now: Instant, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     match result {
         Ok(text) => {
             fx.push(Effect::Ui(UiEffect::CopyText(text)));
-            st.toast(true, "Public key copied to the clipboard", now);
+            st.toast(true, t.tr("prefs.signing.copy_public_key.done"), now);
         }
-        Err(e) => st.log(false, format!("Could not export the public key: {e}")),
+        Err(e) => st.log(false, t.trf("prefs.signing.copy_public_key.failed", &[("why", &typed::signing_key(t, &e))])),
     }
 }

@@ -54,6 +54,7 @@ mod releases;
 mod remote;
 mod repo_size;
 mod review;
+mod service_error;
 mod ssh_keys;
 mod user_repos;
 mod web;
@@ -87,6 +88,7 @@ pub(crate) use remote::split_url;
 pub use remote::{Connection, parse_host, parse_remote};
 pub use repo_size::repo_size;
 pub use review::*;
+pub use service_error::ServiceError;
 pub use ssh_keys::{
     AddKeyOutcome, RegisteredKey, add_ssh_key, default_title, list_ssh_keys, needs_fallback, same_key, ssh_keys_page, title_problem,
 };

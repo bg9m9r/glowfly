@@ -50,6 +50,7 @@ source file, update its line here.
 - `ssh_keys.rs`: SSH public keys on the user's account.
 - `releases.rs`: Glowfly's own newest release and its public files (unauthenticated, https only).
 - `forge/auth.rs`: credentials: environment variables, the OS credential store and Git Credential Manager.
+- `forge/service_error.rs`: `ServiceError`, a failed sign-in or call as the account results carry it (connecting, owners, creating a repository, Trello boards): its kind, the HTTP status and the service's own words, never a token; the model words it (`state/error_words/typed.rs`).
 - `forge/azure_remote.rs`: Azure DevOps remote URLs and host names: which organization, project and repository a remote names, and the host its credentials are stored under.
 - `forge/forks.rs`: forks of a repository on its hosting service: listing them, finding the signed-in user's own fork, and forking into the user's account.
 - `forge/publish.rs`: creating a repository on a hosting service, for publishing a local repository that has no remote yet.
