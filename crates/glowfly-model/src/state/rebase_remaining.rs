@@ -3,13 +3,13 @@
 
 use super::rebase::RebasePanel;
 use git2::RepositoryState;
+use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{self, EditTodoRequest};
 use glowfly_core::repo::Snapshot;
 
 pub const REMAINING_TITLE: &str = "Edit rebase steps";
 /// The primary button.
 pub const UPDATE: &str = "Update steps";
-pub const REMAINING_HINT: &str = "Steps run from top to bottom; the steps already done aren't listed.";
 pub const LOCKED_NOTE: &str = "These steps finish the commit being reworded and can't be changed.";
 pub const ENDED: &str = "The rebase ended, so its steps can't be edited any more.";
 pub const UPDATED: &str = "Updated the remaining steps of the rebase";
@@ -17,16 +17,15 @@ pub const UPDATED: &str = "Updated the remaining steps of the rebase";
 pub const EDIT_JOB: &str = "Edit rebase steps";
 pub const NO_STEPS: &str = "No steps are left; add an exec or break step.";
 
-/// "3 steps left in the rebase of feature onto 1a2b3c4 Base · 2 done".
-pub fn subtitle(panel: &RebasePanel) -> String {
+/// "3 steps left in the rebase of feature onto 1a2b3c4, 2 done."
+pub fn subtitle(t: Lang, panel: &RebasePanel) -> String {
     let Some(r) = &panel.remaining else { return "Loading steps…".into() };
-    let n = panel.items.len();
-    let steps = if n == 1 { "1 step".to_owned() } else { format!("{n} steps") };
     let of = match &r.branch {
         Some(b) => b.clone(),
-        None => "a detached HEAD".into(),
+        None => t.tr("rebase.remaining.detached").to_owned(),
     };
-    format!("{steps} left in the rebase of {of} onto {} · {} done", r.onto_label, r.done)
+    let onto = super::rebase_merges::onto_name(&r.onto_label);
+    t.trn("rebase.remaining.subtitle", panel.items.len(), &[("branch", &of), ("onto", &onto), ("done", &r.done)])
 }
 
 /// Why the remaining steps can't be edited now, if they can't: only an interactive rebase's.

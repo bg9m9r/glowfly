@@ -23,13 +23,13 @@ use super::widgets::{Icon, paint_icon};
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
 use crate::state::AppState;
-use crate::state::rebase::{HINT, PanelSource, RebasePanel, needs_stash};
-use crate::state::rebase_remaining::{NO_STEPS, REMAINING_HINT, REMAINING_TITLE, UPDATE};
+use crate::state::rebase::{PanelSource, RebasePanel, needs_stash};
+use crate::state::rebase_remaining::{NO_STEPS, REMAINING_TITLE, UPDATE};
 use crate::state::rebase_steps::NewStep;
 use crate::ui::theme::tokens::radius;
 use crate::ui::theme::type_scale;
+use crate::ui::widgets::buttons;
 use crate::ui::widgets::menu::{self, popup_below};
-use crate::ui::widgets::{buttons, truncate};
 use eframe::egui::{self, Align, Layout, PopupCloseBehavior, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 
@@ -38,6 +38,7 @@ const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back
 pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(panel) = &st.session.rebase.view else { return };
     let remaining = panel.source == PanelSource::Remaining;
+    let t = st.settings.lang();
     let blocker = st.snap.as_ref().and_then(|s| panel.start_blocker(s, st.job.is_some()));
     let blocker = blocker.map(|b| panel.held_text(st.settings.lang(), &b).unwrap_or(b));
     let blocker = blocker.or_else(|| st.snap.as_ref().and_then(|s| panel.message_blocker(s, st.settings.lang())));
@@ -54,9 +55,10 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         if let Some(e) = panel.error.as_ref().filter(|e| blocker.as_ref() != Some(*e)) {
             ui.add(egui::Label::new(RichText::new(e).color(color::removed())).wrap());
         }
-        ui.label(RichText::new(if remaining { REMAINING_HINT } else { HINT }).size(type_scale::SMALL).color(color::weak()));
+        // The order line: oldest first, and the last step becomes the branch's tip.
+        ui.add(egui::Label::new(RichText::new(panel.order_hint(t)).size(type_scale::SMALL).color(color::faint())).wrap());
         if !remaining && st.snap.as_ref().is_some_and(needs_stash) {
-            ui.label(RichText::new(STASH_HINT).size(type_scale::SMALL).color(color::weak()));
+            ui.add(egui::Label::new(RichText::new(STASH_HINT).size(type_scale::SMALL).color(color::faint())).wrap());
         }
     });
     ui.separator();
@@ -68,7 +70,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
     rows::list(ui, st, cache, msgs);
 }
 
-/// Title and subtitle on the left (the subtitle cut with "…" before the buttons); at the
+/// Title and subtitle on the left (the subtitle wraps before the buttons, never cut); at the
 /// trailing edge ⋯ (Restore original order), Cancel and the one filled button: Start rebase
 /// (Update steps on a running rebase's remaining steps), or Reload steps on a stale list, which
 /// hides the ⋯.
@@ -96,8 +98,8 @@ fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs
             ui.set_width(title_w);
             ui.spacing_mut().item_spacing.y = 2.0;
             let font = type_scale::strong(ui, type_scale::SUBHEAD);
-            truncate::truncate_label(ui, RichText::new(title).font(font).color(color::text()), title_w);
-            truncate::truncate_label(ui, RichText::new(panel.subtitle()).color(color::weak()), title_w);
+            ui.add(egui::Label::new(RichText::new(title).font(font).color(color::text())).wrap());
+            ui.add(egui::Label::new(RichText::new(panel.subtitle(t)).color(color::weak())).wrap());
         });
         ui.add_space(8.0);
         if panel.starting {

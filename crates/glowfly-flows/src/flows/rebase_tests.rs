@@ -279,7 +279,7 @@ fn an_unchanged_list_onto_a_branch_can_start() {
     git(&dir, &["checkout", "-q", "main"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch("base".into()))));
-    assert_eq!(panel(&st).subtitle(), "Rebasing 3 commits of main onto base");
+    assert_eq!(panel(&st).subtitle(glowfly_core::i18n::Lang::En), "Rebasing 3 commits of main onto base.");
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::StartRebase { confirmed: false, autostash: false }));
     assert!(matches!(&fx[..], [Effect::Rebase(RebaseEffect::Start { .. })]), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

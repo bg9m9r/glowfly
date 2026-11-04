@@ -278,6 +278,15 @@ fn dialogs_float_higher_than_menus() {
 }
 
 #[test]
+fn a_lifted_row_casts_a_tight_shadow_darker_in_dark_themes() {
+    for (p, alpha) in [(DARK, 89), (LIGHT, 46)] {
+        let want = Shadow { offset: [0, 4], blur: 12, spread: 0, color: Color32::from_black_alpha(alpha) };
+        assert_eq!(shadow(Elevation::Lift, &p), want, "y 4, blur 12, black at 35% dark and 18% light");
+    }
+    assert!(shadow(Elevation::Lift, &DARK).blur < shadow(Elevation::Float, &DARK).blur, "tighter than a menu's");
+}
+
+#[test]
 fn the_easing_curve_settles_and_reduce_motion_stops_it() {
     assert_eq!(motion::ease(0.0), 0.0);
     assert!((motion::ease(1.0) - 1.0).abs() < 1e-4);

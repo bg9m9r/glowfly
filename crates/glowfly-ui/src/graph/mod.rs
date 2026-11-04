@@ -6,6 +6,7 @@
 //! branch… ghost button on the checked-out commit, and the end row below the last commit
 //! (`more`).
 
+pub(crate) mod branch_chip;
 mod cells;
 mod find_marks;
 mod fit;

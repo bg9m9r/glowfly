@@ -146,61 +146,75 @@ pub fn harness_sized(st: AppState, dark: bool, size: egui::Vec2) -> Harness<'sta
 }
 
 pub fn harness_palette_sized(st: AppState, p: Palette, size: egui::Vec2) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, p, size, 1.0, false)
+    build(st, p, size, 1.0, false, STEP)
 }
 
 /// `harness_palette_sized` at `ppp` pixels per point (the README screenshots draw at 2).
 #[cfg(test)]
 pub(crate) fn harness_scaled(st: AppState, p: Palette, size: egui::Vec2, ppp: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, p, size, ppp, false)
+    build(st, p, size, ppp, false, STEP)
 }
 
 /// `harness` that also runs the shortcuts before each frame's drawing, as the app's input
 /// handling does (the keys a focused list takes first among them).
 pub fn keys_harness(st: AppState, dark: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
-    build(st, theme::view_palette(dark), SIZE, 1.0, true)
+    build(st, theme::view_palette(dark), SIZE, 1.0, true, STEP)
 }
 
-fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool) -> Harness<'static, (AppState, Vec<Msg>)> {
+/// kittest's frame step: a quarter second, so `run` settles animations in its 4 frames (a
+/// finer step gets 40).
+const STEP: f32 = 0.25;
+
+/// `harness` stepping `dt` seconds a frame, for a test that watches an animation partway.
+pub fn harness_stepped(st: AppState, dark: bool, dt: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
+    build(st, theme::view_palette(dark), SIZE, 1.0, false, dt)
+}
+
+fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, dt: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(size).with_pixels_per_point(ppp).build_state(
-        move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
-            // Like the app, pick the palette at the start of every frame.
-            color::set_palette(&p);
-            theme::apply_style(ctx, &p);
-            ctx.set_theme(theme::egui_theme(&p));
-            let cache = cache.get_or_insert_with(|| UiCache {
-                avatars: Avatars::default(),
-                speller: Speller::new(),
-                diff_rows: Default::default(),
-                diff_header: Default::default(),
-                history_text: Default::default(),
-                history_preview: Default::default(),
-                blame_rows: Default::default(),
-                diff_images: Default::default(),
-                markdown: Default::default(),
-                ref_upstreams: Default::default(),
-            });
-            // Tests inject working-tree files into the lists; count them as a status read would,
-            // so the WIP row's counts match the files shown. Like the shell and `update`, colour
-            // the graph with the palette's slots near the trunk.
-            st.view.trunk_near = theme::branch_colours::trunk_near(&p);
-            if let Some(snap) = st.snap.as_mut() {
-                snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
-                if snap.graph.colouring.trunk_near != st.view.trunk_near {
-                    let c = Colouring { trunk_near: st.view.trunk_near, ..snap.graph.colouring.clone() };
-                    snap.set_colouring(c);
+    crate::ui::snapshot_check::builder()
+        .with_size(size)
+        .with_pixels_per_point(ppp)
+        .with_step_dt(dt)
+        .with_max_steps(if dt < STEP { 40 } else { 4 })
+        .build_state(
+            move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
+                // Like the app, pick the palette at the start of every frame.
+                color::set_palette(&p);
+                theme::apply_style(ctx, &p);
+                ctx.set_theme(theme::egui_theme(&p));
+                let cache = cache.get_or_insert_with(|| UiCache {
+                    avatars: Avatars::default(),
+                    speller: Speller::new(),
+                    diff_rows: Default::default(),
+                    diff_header: Default::default(),
+                    history_text: Default::default(),
+                    history_preview: Default::default(),
+                    blame_rows: Default::default(),
+                    diff_images: Default::default(),
+                    markdown: Default::default(),
+                    ref_upstreams: Default::default(),
+                });
+                // Tests inject working-tree files into the lists; count them as a status read would,
+                // so the WIP row's counts match the files shown. Like the shell and `update`, colour
+                // the graph with the palette's slots near the trunk.
+                st.view.trunk_near = theme::branch_colours::trunk_near(&p);
+                if let Some(snap) = st.snap.as_mut() {
+                    snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
+                    if snap.graph.colouring.trunk_near != st.view.trunk_near {
+                        let c = Colouring { trunk_near: st.view.trunk_near, ..snap.graph.colouring.clone() };
+                        snap.set_colouring(c);
+                    }
                 }
-            }
-            if keys {
-                crate::ui::shortcuts::input(ctx, st, msgs);
-            }
-            draw(ctx, st, cache, msgs);
-        },
-        (st, Vec::new()),
-    )
+                if keys {
+                    crate::ui::shortcuts::input(ctx, st, msgs);
+                }
+                draw(ctx, st, cache, msgs);
+            },
+            (st, Vec::new()),
+        )
 }
 
 pub fn render(name: &str, st: AppState, dark: bool) {

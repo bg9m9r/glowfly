@@ -73,7 +73,7 @@ Button "Search results page"
 Button "Merge branch 'login-page'"
 Label "2 Commits ausgewählt"
 Button "Cherry-picken" [disabled]
-Button "Cherry-pick-Vorschau" [disabled]
+Button "Vorschau des Cherry-picks" [disabled]
 Button "Reverten"
 Button "Squashen…" [disabled]
 Button "Range-diff der beiden Commits"
