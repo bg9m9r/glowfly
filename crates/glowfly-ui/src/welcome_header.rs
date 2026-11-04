@@ -7,11 +7,11 @@ use super::dialog_frame;
 use super::theme::{self, color};
 use super::welcome_art;
 use super::widgets;
-use crate::state::onboarding::WelcomeStep;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{Align, CornerRadius, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::state::onboarding::WelcomeStep;
 
 /// The band's height, from the dialog's top edge.
 const BAND_H: f32 = 104.0;

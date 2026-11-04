@@ -4,12 +4,12 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
-use crate::state::AppState;
-use crate::state::lines::LineClick::Only;
 use glowfly_core::repo::{self, DiffTarget, HunkOp};
 use glowfly_core::undo::{Action, Discarded};
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::Only;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

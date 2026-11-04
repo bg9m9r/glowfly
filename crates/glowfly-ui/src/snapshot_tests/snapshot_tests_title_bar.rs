@@ -4,18 +4,18 @@
 //! bar or the only tab, resizing from the edges, all of it over a dialog, and the Alt tap. With the system
 //! frame none of it is drawn.
 
-use crate::msg::{AppMsg, Msg, TabsMsg};
-use crate::state::window_chrome::{Chrome, ResizeEdge, WindowCmd, WindowInfo};
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Tab};
-use crate::ui::menu_testing::open_submenu;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness_sized, remove_fixture, with_repo};
-use crate::ui::tabs_tests::pointer;
+use crate::menu_testing::open_submenu;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness_sized, remove_fixture, with_repo};
+use crate::tabs_tests::pointer;
 use eframe::egui::{self, Event, Key, Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{AppMsg, Msg, TabsMsg};
+use glowfly_model::state::window_chrome::{Chrome, ResizeEdge, WindowCmd, WindowInfo};
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Tab};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -176,7 +176,7 @@ fn the_empty_bar_moves_and_maximizes_the_window() {
     h.state_mut().1.clear();
     // A drag that starts on a tab reorders the tabs instead (from the first tab's centre to the
     // second's).
-    let (tab, over) = (crate::ui::tabs_tests::tab_centre(&h, 0), crate::ui::tabs_tests::tab_centre(&h, 1));
+    let (tab, over) = (crate::tabs_tests::tab_centre(&h, 0), crate::tabs_tests::tab_centre(&h, 1));
     pointer(&mut h, tab, Some((PointerButton::Primary, true)));
     h.step();
     pointer(&mut h, tab + vec2(12.0, 0.0), None);
@@ -197,7 +197,7 @@ fn dragging_the_only_tab_moves_the_window() {
         let (mut st, dir) = fixture(chrome, ThemeChoice::Dark, &format!("title-bar-one-tab-{chrome:?}"));
         st.tabs.truncate(1);
         let mut h = open(st, true);
-        let tab = crate::ui::tabs_tests::tab_centre(&h, 0);
+        let tab = crate::tabs_tests::tab_centre(&h, 0);
         drag_from(&mut h, tab);
         let want: &[WindowCmd] = if moves { &[WindowCmd::StartDrag] } else { &[] };
         assert_eq!(sent(&h), want, "{chrome:?}");

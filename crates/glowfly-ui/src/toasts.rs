@@ -12,11 +12,11 @@ use super::theme::color;
 use super::theme::surfaces::Tone;
 use super::theme::tokens::{self, Elevation, radius};
 use super::widgets::{self, buttons};
-use crate::msg::{Msg, NotifyMsg};
-use crate::state::{AppState, Toast};
-use crate::ui::theme::sizes::ControlSize;
+use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Stroke, Vec2, vec2};
 use glowfly_core::settings::Corner;
+use glowfly_model::msg::{Msg, NotifyMsg};
+use glowfly_model::state::{AppState, Toast};
 
 /// Where the window's chrome ends: the bottom of the last top panel and the top of the status
 /// bar, in screen points.
@@ -27,7 +27,7 @@ pub(super) struct ToastBounds {
 }
 
 /// Every toast frame's outer width; its text wraps inside.
-pub const TOAST_W: f32 = 360.0;
+pub(crate) const TOAST_W: f32 = 360.0;
 /// Between a toast and the chrome or window edge beside it.
 const TOAST_MARGIN: f32 = 12.0;
 /// Between two stacked toasts.

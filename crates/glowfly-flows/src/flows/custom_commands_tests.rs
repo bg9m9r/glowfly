@@ -5,13 +5,13 @@
 
 use super::tests::{finish_keeping, scratch_repo, state};
 use super::update;
-use crate::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg};
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord};
-use crate::msg::{Msg, PaletteMsg, RepoMsg, WatchMsg};
-use crate::state::AppState;
-use crate::state::palette::PaletteCommand;
 use glowfly_core::custom_commands::{FileRead, Source, parse};
+use glowfly_model::custom_commands::{CommandRef, CustomCommandEffect, CustomCommandMsg};
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::{BindingId, Chord};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::PaletteCommand;
 use std::path::PathBuf;
 use std::time::Instant;
 

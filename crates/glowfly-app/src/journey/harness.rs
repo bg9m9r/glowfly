@@ -7,11 +7,11 @@ mod actions;
 use super::find::{self, Pick, Region};
 use super::fixture::Fixture;
 use crate::shell::{GlowflyApp, TestStart};
-use crate::state::window_chrome::Chrome;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, TestRenderer};
 use glowfly_core::settings::{LoadProblem, Settings, ThemeChoice};
+use glowfly_model::state::window_chrome::Chrome;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -120,7 +120,7 @@ impl Journey {
 
     /// Builds the app from `start` and waits until it is idle.
     fn launch(fx: Fixture, start: TestStart) -> Self {
-        crate::ui::theme::fonts::use_test_cjk();
+        glowfly_ui::theme::fonts::use_test_cjk();
         let h = Harness::builder().with_size(egui::vec2(1440.0, 900.0)).renderer(NoRender).build_state(
             |ctx, shell: &mut Shell| {
                 if shell.app.is_none() {
@@ -143,7 +143,7 @@ impl Journey {
     }
 
     /// The app's state, for diagnostics.
-    pub fn state(&self) -> &crate::state::AppState {
+    pub fn state(&self) -> &glowfly_model::state::AppState {
         self.app().state()
     }
 

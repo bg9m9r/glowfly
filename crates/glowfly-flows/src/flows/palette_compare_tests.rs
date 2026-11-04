@@ -3,13 +3,13 @@
 //! tag labels beside it.
 
 use super::selection_tests::{fixture, up};
-use crate::effect::Effect;
-use crate::effect::SelectionEffect;
-use crate::msg::{Msg, PaletteMsg, RepoMsg, SelectionMsg};
-use crate::state::palette::{PaletteCommand as C, entries, shown};
-use crate::state::selection_wip::WorkdirCompare;
-use crate::state::{AppState, Selection};
 use git2::Oid;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::SelectionEffect;
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, SelectionMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, entries, shown};
+use glowfly_model::state::selection_wip::WorkdirCompare;
+use glowfly_model::state::{AppState, Selection};
 
 fn label(oid: Oid) -> String {
     format!("Compare {} with working directory", &oid.to_string()[..7])

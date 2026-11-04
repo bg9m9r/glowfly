@@ -8,8 +8,6 @@
 
 mod cli_update;
 #[cfg(test)]
-mod glyph_check;
-#[cfg(test)]
 mod journey;
 mod logging;
 mod platform;
@@ -18,20 +16,9 @@ mod runner_snapshots;
 mod shell;
 mod smoke_probe;
 
-// The model's modules, under the names they had when they lived here, so `crate::state::…` and
-// the like keep resolving.
-#[cfg(test)]
-pub(crate) use glowfly_model::keymap;
-pub(crate) use glowfly_model::{effect, git_env, lfs, logs, msg, onboarding, start_arg, state, terminal, themes, update};
-// The runner, under the name its module had here.
-pub(crate) use glowfly_runner as runner;
-// The views, under the name they had when they lived here, so the shell's `crate::ui::…` paths
-// keep resolving.
-use glowfly_ui as ui;
-
 use eframe::egui;
 use glowfly_core::askpass::{self, HelperError, Outcome};
-use start_arg::StartArg;
+use glowfly_model::start_arg::StartArg;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
@@ -108,19 +95,19 @@ fn main() -> eframe::Result {
     platform::claim_app_id();
     // Read before the window is made: it picks the Windows frame (Preferences > UI).
     let loaded = glowfly_core::settings::Settings::load();
-    let chrome = state::window_chrome::Chrome::chosen(glowfly_core::opens::Os::current(), loaded.0.system_title_bar);
+    let chrome = glowfly_model::state::window_chrome::Chrome::chosen(glowfly_core::opens::Os::current(), loaded.0.system_title_bar);
     // Mica behind the drawn Windows frame needs a transparent window, made only where it shows.
-    let mica = chrome == state::window_chrome::Chrome::Windows && platform::native_window::mica_capable();
+    let mica = chrome == glowfly_model::state::window_chrome::Chrome::Windows && platform::native_window::mica_capable();
     let options = eframe::NativeOptions {
         // The frame Glowfly draws itself, or the system's (`state::window_chrome`).
-        viewport: ui::window_viewport(
+        viewport: glowfly_ui::window_viewport(
             chrome,
             mica,
             egui::ViewportBuilder::default()
                 .with_title("Glowfly")
                 .with_inner_size([1440.0, 880.0])
                 .with_min_inner_size([960.0, 540.0])
-                .with_icon(ui::app_icon())
+                .with_icon(glowfly_ui::app_icon())
                 // The Wayland app id: matches glowfly.desktop (and its StartupWMClass), or the
                 // Flatpak's io.github.bg9m9r.glowfly.desktop.
                 .with_app_id(glowfly_core::app_identity::desktop_entry()),

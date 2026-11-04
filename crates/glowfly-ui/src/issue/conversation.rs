@@ -10,18 +10,18 @@ use super::super::pane_status::{self, Failure};
 use super::super::pull_request::note;
 use super::super::theme::color;
 use super::comment_box;
-use crate::msg::{IssueMsg, Msg};
-use crate::state::AppState;
-use crate::state::issue::{Details, IssueView};
-use crate::state::issue_comment::POSTING;
-use crate::state::pull_request::description_text;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, Frame, Margin, RichText, Ui};
 use glowfly_core::forge::Entry;
 use glowfly_core::settings::Settings;
 use glowfly_core::text::printable;
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::issue::{Details, IssueView};
+use glowfly_model::state::issue_comment::POSTING;
+use glowfly_model::state::pull_request::description_text;
 
 const LOADING: &str = "Loading the issue…";
 
@@ -103,7 +103,7 @@ fn comment(ui: &mut Ui, v: &IssueView, i: usize, c: &Entry, clock: Clock<'_>, md
     ui.horizontal_wrapped(|ui| {
         ui.label(RichText::new(printable(&c.author)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         if c.time > 0 {
-            crate::ui::date_tip::time_label(ui, clock.settings, c.time, clock.now, clock.offset);
+            crate::date_tip::time_label(ui, clock.settings, c.time, clock.now, clock.offset);
         }
         let posting = v.comment.posting;
         if ui.add(buttons::quiet("Reply").size(ControlSize::Small).enabled(!posting).why(posting.then_some(POSTING))).clicked() {

@@ -2,10 +2,10 @@
 //! warnings, an edited form with a refused path, and a job running.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::state::{AppState, PrefPage, PrefsState, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::sparse_ops::{SparseMode, SparseStatus};
+use glowfly_model::state::{AppState, PrefPage, PrefsState, RunningJob};
 use std::path::PathBuf;
 
 /// The fixture repository with the Sparse Checkout page showing `status`, its form filled.
@@ -66,7 +66,7 @@ fn prefs_sparse_edited_error() {
 fn prefs_sparse_busy() {
     let (mut st, dir) = sparse_page(ThemeChoice::Dark, "sparse-busy", on(SparseMode::Cone, &["src", "docs/guide"]));
     st.job = Some(RunningJob {
-        label: crate::state::sparse::SAVE_LABEL.into(),
+        label: glowfly_model::state::sparse::SAVE_LABEL.into(),
         workdir: st.workdir(),
         quiet: false,
         clear_commit: false,

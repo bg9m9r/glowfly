@@ -31,14 +31,14 @@
 //! One level only: a submenu's own submenu rows are rows of the same kind.
 
 use super::menu_submenu_keyed as keyed;
-use crate::ui::menu_keys::{self, Kind};
+use crate::menu_keys::{self, Kind};
 use eframe::egui::{self, Id, InnerResponse, Key, LayerId, Modifiers, Pos2, Rect, Sense, Ui, UiBuilder, UiKind, Vec2, WidgetText, pos2};
 use std::cell::Cell;
 
 /// How long the pointer rests on a row before its submenu opens, in seconds.
-pub const OPEN_DELAY: f64 = 0.25;
+pub(crate) const OPEN_DELAY: f64 = 0.25;
 /// How long a submenu stays open after the pointer leaves both its row and itself, in seconds.
-pub const CLOSE_GRACE: f64 = 0.4;
+pub(crate) const CLOSE_GRACE: f64 = 0.4;
 /// The least distance between a submenu and the window's edges.
 pub const EDGE: f32 = 8.0;
 

@@ -3,16 +3,16 @@
 //! description, the checks (Announcements among them) and the High contrast check's message, Show all shortcuts, the
 //! rows it shares with their own pages, and the keyboard focus holding a toast.
 
-use crate::msg::{Msg, NotifyMsg, PrefsMsg};
-use crate::state::system_a11y::SystemA11y;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_fixtures::{harness_palette_sized, settings};
-use crate::ui::theme::{self, color::Palette};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_fixtures::{harness_palette_sized, settings};
+use crate::theme::{self, color::Palette};
 use eframe::egui::{Key, Vec2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{Settings, ThemeChoice};
+use glowfly_model::msg::{Msg, NotifyMsg, PrefsMsg};
+use glowfly_model::state::system_a11y::SystemA11y;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::time::Instant;
 
 /// Tall enough for the whole page, the Timing section included, without scrolling.
@@ -109,7 +109,8 @@ fn every_control_is_named_and_described() {
     let h = english();
     // The zoom keys in the help are the keymap's, shown as on this OS.
     let keys = &h.state().0.keymap;
-    let zoom = (keys.hint(crate::keymap::BindingId::ZoomIn).unwrap(), keys.hint(crate::keymap::BindingId::ZoomOut).unwrap());
+    let zoom =
+        (keys.hint(glowfly_model::keymap::BindingId::ZoomIn).unwrap(), keys.hint(glowfly_model::keymap::BindingId::ZoomOut).unwrap());
     let zoom_help = format!("Scales all text and controls. {} and {} also change it.", zoom.0, zoom.1);
     let described = [
         (CONTROLS[0], zoom_help.as_str()),
@@ -192,7 +193,7 @@ fn closing_the_sheet_gives_the_focus_back_to_show_all_shortcuts() {
     let mut h = english();
     h.get_by_label(CONTROLS[12]).click();
     h.run();
-    h.state_mut().0.modal = Some(crate::state::Modal::Shortcuts { filter: String::new() });
+    h.state_mut().0.modal = Some(glowfly_model::state::Modal::Shortcuts { filter: String::new() });
     h.run();
     h.state_mut().0.modal = None;
     h.run();

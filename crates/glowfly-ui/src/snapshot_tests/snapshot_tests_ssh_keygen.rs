@@ -3,11 +3,11 @@
 
 use super::snapshot_tests::harness;
 use super::snapshot_tests_ssh::{HOME, listing, ssh_page, two_keys};
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
 
 /// The SSH page with the dialog open over it.
 fn dialog(theme: ThemeChoice) -> AppState {
@@ -19,7 +19,7 @@ fn dialog(theme: ThemeChoice) -> AppState {
     st
 }
 
-fn ssh_mut(st: &mut AppState) -> &mut crate::state::ssh::SshPage {
+fn ssh_mut(st: &mut AppState) -> &mut glowfly_model::state::ssh::SshPage {
     &mut st.prefs.as_mut().unwrap().ssh
 }
 

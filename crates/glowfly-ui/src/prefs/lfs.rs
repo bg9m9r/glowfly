@@ -5,19 +5,19 @@
 //! root file). Every action is a `Msg`.
 
 use super::{help, primary_button, row, text_field, warn};
-use crate::lfs::LfsMsg;
-use crate::msg::FilesMsg;
-use crate::msg::Msg;
-use crate::msg::TrustMsg;
-use crate::state::blocked::BUSY;
-use crate::state::lfs::{INSTALL_URL, LfsPage};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::{LfsCommand, LfsPattern, LfsStatus, PatternSource};
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::TrustMsg;
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::lfs::{INSTALL_URL, LfsPage};
 use std::path::{Path, PathBuf};
 
 /// What the page needs from outside Preferences, cloned before the page borrows its state.

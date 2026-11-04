@@ -10,12 +10,12 @@
 //! Right after it starts, the thread checks that events arrive at all with a probe file in the
 //! git dir (`probe.rs`), reported as `WatchMsg::Probed`.
 
-use crate::effect::WatchTarget;
-use crate::msg::Msg;
-use crate::msg::WatchMsg;
-use crate::runner::Waker;
+use crate::Waker;
 use glowfly_core::watch::{Change, Ignores, MAX_WATCH_PATHS, Touch, WatchPaths};
 use glowfly_core::watch_sweep::Sweep;
+use glowfly_model::effect::WatchTarget;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::WatchMsg;
 use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::collections::BTreeSet;
@@ -32,7 +32,7 @@ use probe::Prober;
 /// A burst fires this long after its last relevant event…
 const QUIET: Duration = Duration::from_millis(300);
 /// …or this long after its first, if events keep coming.
-pub const MAX_WAIT: Duration = Duration::from_secs(2);
+pub(crate) const MAX_WAIT: Duration = Duration::from_secs(2);
 
 /// The single live watcher; a generation guards against a slow start finishing after a newer
 /// request.

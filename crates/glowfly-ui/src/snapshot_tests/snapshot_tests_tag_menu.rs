@@ -10,16 +10,16 @@ use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{GraphMsg, Msg};
-use crate::state::tags::delete_remote_confirm;
-use crate::state::{AppState, Modal};
-use crate::tag::TagMsg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, Pos2, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{FilterOp, GraphFilter, ThemeChoice};
+use glowfly_model::msg::{GraphMsg, Msg};
+use glowfly_model::state::tags::delete_remote_confirm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::tag::TagMsg;
 use std::path::PathBuf;
 
 const ITEMS: [&str; 9] = [
@@ -118,8 +118,8 @@ fn tag_row_menu() {
     open_menu(&mut h);
     h.get_by_label("Copy link").click();
     h.run();
-    let want = crate::deep_link::LinkTarget::Tag("v0.1.0".into());
-    assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
+    let want = glowfly_model::deep_link::LinkTarget::Tag("v0.1.0".into());
+    assert!(pushed(&h, &|m| matches!(m, Msg::DeepLink(glowfly_model::deep_link::DeepLinkMsg::Copy(t)) if *t == want)));
 
     open_menu(&mut h);
     h.get_by_label("Hide in graph").click();

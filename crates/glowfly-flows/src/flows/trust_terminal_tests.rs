@@ -7,14 +7,14 @@ use super::tests::{drive, scratch_repo};
 use super::trust_held_tests::held_repo;
 use super::trust_print_tests::{add_hook, trusted_repo};
 use super::trust_tests::{asking, real, run};
-use crate::effect::{Effect, OsEffect};
-use crate::msg::{Msg, RepoMsg, TabsMsg, TrustMsg};
-use crate::state::terminal::SessionStatus;
-use crate::state::trust::{Standing, TrustPrompt, record};
-use crate::state::{AppState, Modal};
-use crate::terminal::{TerminalEffect as E, TerminalMsg as T};
 use glowfly_core::settings::{RepoTrust, ShellChoice};
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey};
+use glowfly_model::effect::{Effect, OsEffect};
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::terminal::SessionStatus;
+use glowfly_model::state::trust::{Standing, TrustPrompt, record};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::terminal::{TerminalEffect as E, TerminalMsg as T};
 
 fn statuses(st: &AppState) -> Vec<SessionStatus> {
     st.terminal.sessions.iter().map(|s| s.status.clone()).collect()
@@ -64,7 +64,7 @@ fn a_held_repository_makes_tabs_without_shells_until_it_is_trusted() {
     assert_eq!(st.terminal.sessions[0].screen.size(), (30, 100));
     assert!(st.terminal.focus_requested);
     assert_eq!(st.trust_standing(), Some(Standing::Trusted));
-    assert_eq!(crate::state::trust::recorded(&st.settings, &real), Some(RepoTrust::Trusted));
+    assert_eq!(glowfly_model::state::trust::recorded(&st.settings, &real), Some(RepoTrust::Trusted));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

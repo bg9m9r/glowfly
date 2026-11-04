@@ -5,12 +5,7 @@
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_pull_request::{compare, with_pr};
 use super::snapshot_tests_select::click;
-use crate::msg::Msg;
-use crate::state::pull_request::{Files, PrTab, PrView};
-use crate::state::pull_request_checks::ChecksPane;
-use crate::state::pull_request_source::HeadFetch;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::PointerButton;
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
@@ -18,7 +13,12 @@ use git2::{Oid, Repository, Signature, Time};
 use glowfly_core::forge::CheckList;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::{RepoTrust, ThemeChoice};
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::{Files, PrTab, PrView};
+use glowfly_model::state::pull_request_checks::ChecksPane;
+use glowfly_model::state::pull_request_source::HeadFetch;
+use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 
 /// Commits `file` on top of search (2026-01-11), moves search and origin/search to it, and
@@ -165,7 +165,7 @@ fn pull_request_head_failed_light() {
     v.tab = PrTab::Files;
     v.head_fetch = HeadFetch::Failed("could not read Username for 'https://github.com'".into());
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("pull_request_head_failed_light");

@@ -5,13 +5,13 @@
 
 use super::snapshot_tests::{git, harness, harness_palette, remove_fixture, render, with_repo};
 use super::theme;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_painted::bounds;
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_painted::bounds;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ResizableColumn::Refs;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

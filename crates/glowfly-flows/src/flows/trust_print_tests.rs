@@ -5,13 +5,13 @@
 use super::jobs::start_job;
 use super::tests::{finish, finish_keeping, git, state};
 use super::trust_tests::{asking, done, drive, open, real, run, untrusted_repo};
-use crate::effect::Effect;
-use crate::msg::{Msg, PaletteMsg, RepoMsg, StageMsg, TrustMsg};
-use crate::state::job_spec::JobSpec;
-use crate::state::palette::{Palette, PaletteCommand, entries};
-use crate::state::trust::{Standing, TrustPrompt, record};
-use crate::state::{AppState, Modal};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, StageMsg, TrustMsg};
+use glowfly_model::state::job_spec::JobSpec;
+use glowfly_model::state::palette::{Palette, PaletteCommand, entries};
+use glowfly_model::state::trust::{Standing, TrustPrompt, record};
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Duration;
 

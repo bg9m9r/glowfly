@@ -18,25 +18,25 @@
 
 use super::fit;
 use super::menus::repo_menu;
-use crate::msg::{BranchMsg, Msg};
-use crate::state::AppState;
-use crate::state::worktree_branches::Elsewhere;
-use crate::ui::branch_dot;
-use crate::ui::common::{menu_item, short};
-use crate::ui::list_row::{Part, paint_parts, parts_width};
-use crate::ui::menu_anchor;
-use crate::ui::theme::branch_colours::line;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::{self, ControlSize};
-use crate::ui::theme::tokens::{BORDER_W, radius};
-use crate::ui::theme::type_scale::{self, BODY, CAPTION};
-use crate::ui::widgets;
-use crate::ui::widgets::menu::{self, separator};
-use crate::ui::widgets::segment_bar::{BarStyle, Seg, segment_bar};
-use crate::ui::widgets::truncate::{cut_galley, cut_job, middle};
+use crate::branch_dot;
+use crate::common::{menu_item, short};
+use crate::list_row::{Part, paint_parts, parts_width};
+use crate::menu_anchor;
+use crate::theme::branch_colours::line;
+use crate::theme::color;
+use crate::theme::sizes::{self, ControlSize};
+use crate::theme::tokens::{BORDER_W, radius};
+use crate::theme::type_scale::{self, BODY, CAPTION};
+use crate::widgets;
+use crate::widgets::menu::{self, separator};
+use crate::widgets::segment_bar::{BarStyle, Seg, segment_bar};
+use crate::widgets::truncate::{cut_galley, cut_job, middle};
 use eframe::egui::{self, Color32, Galley, Id, Response, WidgetInfo, WidgetType, pos2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::worktree_branches::Elsewhere;
 use std::sync::Arc;
 
 /// The narrowest the repository and branch names are cut to in a small window.
@@ -191,7 +191,7 @@ fn branch_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, msgs: &mut Vec<Msg>)
         // on hover.
         let dot = Some(line(snap.branch_swatch(&b.name)));
         let r = menu::item(b.name.as_str()).current(b.is_head).icon(branch_dot::paint_slot, dot).show(ui);
-        let elsewhere = (!b.is_head).then(|| crate::state::worktree_branches::checkout_elsewhere(t, snap, &b.name)).flatten();
+        let elsewhere = (!b.is_head).then(|| glowfly_model::state::worktree_branches::checkout_elsewhere(t, snap, &b.name)).flatten();
         let r = match &elsewhere {
             _ if b.is_head => r.on_hover_text(t.trf("toolbar.branch_menu.current_blocked", &[("branch", &b.name)])),
             Some(e) => r.on_hover_text(e.tip()),

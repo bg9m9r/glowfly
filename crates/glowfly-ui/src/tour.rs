@@ -5,18 +5,18 @@
 
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::keymap::KeyAction;
-use crate::msg::{LayoutMsg, Msg, PaletteMsg};
-use crate::onboarding::OnboardingMsg;
-use crate::state::AppState;
-use crate::state::layout::{self, Panel};
-use crate::state::onboarding_tour::TourStep;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, Id, LayerId, Layout, Order, Rect, RichText, Stroke, StrokeKind, pos2, vec2,
 };
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{LayoutMsg, Msg, PaletteMsg};
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{self, Panel};
+use glowfly_model::state::onboarding_tour::TourStep;
 
 const CARD_WIDTH: f32 = 320.0;
 const GAP: f32 = 12.0;

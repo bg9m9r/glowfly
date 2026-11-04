@@ -5,10 +5,10 @@
 
 use super::theme::color;
 use super::widgets::chip::{Chip, ChipSize, Look};
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::AppState;
-use crate::state::release_notes::news_chip_text;
 use eframe::egui::{self, Sense, vec2};
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::release_notes::news_chip_text;
 
 /// The chip's size: a Badge, as the update chip beside it.
 const CHIP: ChipSize = ChipSize::Badge;

@@ -6,8 +6,8 @@
 //! tell when the app is idle.
 
 use super::Runner;
-use crate::effect::{Effect, SandboxRule};
-use crate::msg::Msg;
+use glowfly_model::effect::{Effect, SandboxRule};
+use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -95,10 +95,10 @@ pub(super) fn save_into(folder: &Path, effect: Effect) -> Option<Msg> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::effect::{CloneEffect, DesktopNote, NoteKind, OsEffect};
-    use crate::patch::PatchEffect;
-    use crate::profile::ProfileEffect;
-    use crate::runner::Waker;
+    use crate::Waker;
+    use glowfly_model::effect::{CloneEffect, DesktopNote, NoteKind, OsEffect};
+    use glowfly_model::patch::PatchEffect;
+    use glowfly_model::profile::ProfileEffect;
     use std::sync::mpsc;
 
     fn folder(name: &str) -> PathBuf {
@@ -132,7 +132,7 @@ mod tests {
         let msg = rx.recv_timeout(std::time::Duration::from_secs(5)).expect("a message");
         let Msg::Scoped { workdir, msg } = msg else { panic!("scoped to the repository") };
         assert_eq!(workdir, dir);
-        assert!(matches!(*msg, Msg::Watch(crate::msg::WatchMsg::RepoChanged { full: false, paths: None, .. })));
+        assert!(matches!(*msg, Msg::Watch(glowfly_model::msg::WatchMsg::RepoChanged { full: false, paths: None, .. })));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -192,13 +192,13 @@ mod tests {
 
     #[test]
     fn moved_effects_keep_their_sandbox_rule() {
-        use crate::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
+        use glowfly_model::effect::{ConflictEffect, ConflictRead, LfsEffect, MonitorJob, SelectionEffect, SparseEffect, WorktreeEffect};
         let dir = folder("moved");
         let (tx, _rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         assert!(runner.admit(Effect::TurnOnMonitor(MonitorJob { cwd: dir.clone(), then: Vec::new() })).is_none());
         let oid = git2::Oid::zero();
-        let count = crate::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
+        let count = glowfly_model::worktree::CountRequest { workdir: dir.clone(), refs_key: 1, targets: Vec::new() };
         let runs = [
             Effect::Lfs(LfsEffect::Detect),
             Effect::Lfs(LfsEffect::Load { workdir: dir.clone(), generation: 1 }),
@@ -234,9 +234,9 @@ mod tests {
         let settings = glowfly_core::settings::Settings { auto_fetch_minutes: 7, ..Default::default() };
         assert!(runner.admit(Effect::SaveSettings(Box::new(settings))).is_none());
         let recent = std::fs::read_to_string(dir.join("recent.txt")).unwrap();
-        assert_eq!(crate::runner::platform::parse_recent(&recent), std::slice::from_ref(&repo));
+        assert_eq!(crate::platform::parse_recent(&recent), std::slice::from_ref(&repo));
         let tabs = std::fs::read_to_string(dir.join("tabs.txt")).unwrap();
-        assert_eq!(crate::runner::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
+        assert_eq!(crate::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
         let saved = std::fs::read_to_string(dir.join("settings.json")).unwrap();
         assert!(saved.contains("\"auto_fetch_minutes\": 7"), "{saved}");
         assert!(rx.try_recv().is_err(), "nothing failed");

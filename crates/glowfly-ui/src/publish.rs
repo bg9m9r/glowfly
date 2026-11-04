@@ -4,13 +4,13 @@
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::{FieldGroup, TextField, buttons, details};
-use crate::msg::Msg;
-use crate::msg::PublishMsg;
-use crate::state::publish::PublishForm;
-use crate::ui::theme::controls;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::forge;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PublishMsg;
+use glowfly_model::state::publish::PublishForm;
 
 /// Draws the form; returns true when the dialog should close.
 pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &mut Vec<Msg>) -> bool {

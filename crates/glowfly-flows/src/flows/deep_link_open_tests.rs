@@ -7,15 +7,15 @@ use super::branch_tests::with_origin;
 use super::deep_link_tests::{cleanup, link_text, send};
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin};
-use crate::effect::OsEffect;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{FolderPurpose, JobMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::deep_link::{LinkDialog, PickReason, pick_reason};
-use crate::state::{AppState, Modal, Selection, Tab};
 use git2::Oid;
 use glowfly_core::link::find::{Found, TargetState};
 use glowfly_core::link::{Link, Target};
+use glowfly_model::deep_link::{DeepLinkEffect, DeepLinkMsg, FindOrigin};
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{FolderPurpose, JobMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::deep_link::{LinkDialog, PickReason, pick_reason};
+use glowfly_model::state::{AppState, Modal, Selection, Tab};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -198,7 +198,7 @@ fn a_missing_target_offers_fetch_and_looks_again() {
     assert_eq!(fx.len(), 1, "{fx:?}");
     let job = fx.remove(0);
     assert!(matches!(&job, Effect::RunGit { cmds, .. } if cmds[0] == glowfly_core::remote_ops::fetch_cmd("origin")), "{job:?}");
-    let run = crate::runner::testing::execute(job).unwrap();
+    let run = glowfly_runner::testing::execute(job).unwrap();
     assert!(st.job.as_ref().is_some_and(|j| j.then_link));
     let fx = update(&mut st, run, Instant::now());
     let (candidates, origin) = find(&fx).expect("looks again");
@@ -206,7 +206,7 @@ fn a_missing_target_offers_fetch_and_looks_again() {
     assert_eq!(candidates.len(), 1);
     // The real check finds the fetched branch, and selects it.
     let check = fx.into_iter().find(|e| matches!(e, Effect::DeepLink(DeepLinkEffect::Find { .. }))).unwrap();
-    let answered = crate::runner::testing::execute(check).unwrap();
+    let answered = glowfly_runner::testing::execute(check).unwrap();
     let fx = update(&mut st, answered, Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.session.selection, Selection::Commit(tip(&work, "main")));
@@ -258,7 +258,7 @@ fn clone_fills_the_url_and_the_clone_is_checked() {
     update(&mut st, Msg::CloseModal, Instant::now());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(work.clone())), Instant::now());
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
-    let loaded = crate::runner::testing::execute(load).unwrap();
+    let loaded = glowfly_runner::testing::execute(load).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     let (candidates, origin) = find(&fx).expect("the clone is checked");
     assert_eq!(origin, FindOrigin::AfterClone);
@@ -274,7 +274,7 @@ fn a_search_answer_waits_for_a_dialog_opened_meanwhile() {
     let waits = |st: &AppState| {
         assert!(st.deep_link.pending.is_none());
         let toast = st.toasts.last().unwrap();
-        assert_eq!(toast.text, crate::state::deep_link::LINK_WAITING);
+        assert_eq!(toast.text, glowfly_model::state::deep_link::LINK_WAITING);
         let action = toast.action.as_ref().unwrap();
         let Msg::DeepLink(DeepLinkMsg::Open(t)) = &*action.msg else { panic!("expected Open link") };
         assert_eq!(glowfly_core::link::parse(t).unwrap().target, Target::Tag("v1".into()));
@@ -292,7 +292,7 @@ fn a_search_answer_waits_for_a_dialog_opened_meanwhile() {
     // One match: no tab opens under Preferences.
     let mut st = state();
     send(&mut st, DeepLinkMsg::Open(text.clone()));
-    st.prefs = Some(crate::state::PrefsState::new(crate::state::PrefPage::General));
+    st.prefs = Some(glowfly_model::state::PrefsState::new(glowfly_model::state::PrefPage::General));
     let seq = st.deep_link.seq;
     let fx = send(&mut st, DeepLinkMsg::Found { seq, origin: FindOrigin::Search, result: Ok(vec![found(&a, TargetState::Missing)]) });
     assert_eq!(loads(&fx, LoadKind::Open), None);

@@ -6,13 +6,13 @@
 //! selected commits, which cherry-pick them oldest first or revert them newest first.
 
 use super::selection_tests::{fixture, up};
-use crate::effect::{Effect, UiEffect};
-use crate::keymap::{BindingId, KeyAction};
-use crate::msg::{LayoutMsg, Msg, PaletteMsg, RepoMsg, SelectionMsg};
-use crate::state::layout::{Pane, Panel};
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::palette_bindings::command_for;
-use crate::state::{AppState, Selection};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::keymap::{BindingId, KeyAction};
+use glowfly_model::msg::{LayoutMsg, Msg, PaletteMsg, RepoMsg, SelectionMsg};
+use glowfly_model::state::layout::{Pane, Panel};
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::palette_bindings::command_for;
+use glowfly_model::state::{AppState, Selection};
 
 fn key(st: &mut AppState, action: KeyAction) -> Vec<Effect> {
     up(st, Msg::Shortcut(action))

@@ -3,9 +3,9 @@
 //! built-in theme.
 
 use super::*;
-use crate::ui::theme::builtin;
-use crate::ui::theme::contrast::ratio;
-use crate::ui::theme::surfaces::over;
+use crate::theme::builtin;
+use crate::theme::contrast::ratio;
+use crate::theme::surfaces::over;
 use glowfly_core::settings::BuiltinTheme;
 
 #[test]

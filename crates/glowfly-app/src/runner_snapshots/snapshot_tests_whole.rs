@@ -5,14 +5,14 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, harness_sized, remove_fixture, render, with_repo};
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::StageMsg;
-use crate::state::AppState;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget, LoadDiffOptions, LoadOptions};
 use glowfly_core::settings::{DiffLayout, DiffMode, ThemeChoice};
 use glowfly_core::whole_file::{Expanded, folds};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
 const BEFORE: &str = "/// Shapes and their areas.
@@ -59,7 +59,7 @@ fn with_whole(name: &str, theme: ThemeChoice, layout: DiffLayout, commit: bool, 
     };
     let opts = LoadDiffOptions { ignore_whitespace: ignore_ws, whole_file: true };
     let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
-    crate::runner::testing::decorate(target.path(), &mut diff, None);
+    glowfly_runner::testing::decorate(target.path(), &mut diff, None);
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert!(w.diff.highlight.is_some(), "shapes.rs is highlighted as Rust");
@@ -150,7 +150,7 @@ fn with_notes(name: &str, theme: ThemeChoice, layout: DiffLayout) -> (AppState, 
     let target = DiffTarget::Unstaged("notes.txt".into());
     let opts = LoadDiffOptions { ignore_whitespace: false, whole_file: true };
     let mut diff = repo::load_diff_with(&dir, &target, opts).unwrap();
-    crate::runner::testing::decorate(target.path(), &mut diff, None);
+    glowfly_runner::testing::decorate(target.path(), &mut diff, None);
     let w = diff.whole.as_deref().expect("the whole file loads");
     assert_eq!(w.blocks.len(), 2);
     assert_eq!(folds(w).iter().map(|f| f.len()).collect::<Vec<_>>(), [8, 11, 7]);

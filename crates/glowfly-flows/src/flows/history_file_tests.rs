@@ -5,11 +5,11 @@
 use super::history_tests::{entry, oid, with_view};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, FileTextRequest};
-use crate::msg::{HistoryMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::history::{FileTextData, HistoryPane, TextError, TextState};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, FileTextRequest};
+use glowfly_model::msg::{HistoryMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileTextData, HistoryPane, TextError, TextState};
 use std::sync::Arc;
 use std::time::Instant;
 

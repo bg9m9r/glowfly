@@ -57,13 +57,13 @@ pub(super) use form::*;
 
 use super::theme::color;
 use super::widgets::{self, scroll_cue};
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::state::prefs_save;
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::forge::Provider;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::state::prefs_save;
+use glowfly_model::state::{AppState, PrefPage};
 
 pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
@@ -97,7 +97,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let held = st.snap.as_ref().filter(|_| !st.runs_git_unasked()).map(|s| s.real_workdir.clone());
     let lfs_cx = lfs::LfsContext {
         repo_name: repo_name.clone(),
-        remote: st.snap.as_ref().and_then(crate::state::lfs::lfs_remote),
+        remote: st.snap.as_ref().and_then(glowfly_model::state::lfs::lfs_remote),
         job: st.job.as_ref().map(|j| j.label.clone()),
         held: held.clone(),
         patterns: st.snap.as_ref().map(|s| s.lfs_patterns.clone()).unwrap_or_default(),
@@ -110,9 +110,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let gitflow_cx = gitflow::GitFlowContext { snap: st.snap.as_ref(), busy: st.job.is_some(), save_first };
     let ssh_cx = ssh::SshContext {
         use_agent: st.settings.use_ssh_agent,
-        services: crate::state::ssh_service::services(&st.settings.connections)
+        services: glowfly_model::state::ssh_service::services(&st.settings.connections)
             .into_iter()
-            .map(|c| (c.account.clone(), crate::state::ssh_service::service_label(&c.account)))
+            .map(|c| (c.account.clone(), glowfly_model::state::ssh_service::service_label(&c.account)))
             .collect(),
         job: st.job.as_ref().map(|j| j.label.clone()),
         extra: st.settings.ssh_extra_keys.clone(),
@@ -148,7 +148,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let themes = &st.themes;
     let a11y = accessibility::A11yView {
         keys: keymap,
-        sheet_open: matches!(st.modal, Some(crate::state::Modal::Shortcuts { .. })),
+        sheet_open: matches!(st.modal, Some(glowfly_model::state::Modal::Shortcuts { .. })),
         text_size_followable: st.view.system_a11y.text_size_followable,
     };
     egui::CentralPanel::default()

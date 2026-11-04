@@ -3,17 +3,17 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::CloneEffect;
-use crate::effect::Effect;
-use crate::msg::CloneMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::{FolderPurpose, Msg};
-use crate::state::clone::{CloneForm, CloneRequest, LimitKind};
-use crate::state::{AppState, Modal, RunningJob};
 use chrono::NaiveDate;
 use glowfly_core::clone_ops::{CloneOptions, HistoryLimit, Shallow};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::settings::Settings;
+use glowfly_model::effect::CloneEffect;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::CloneMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FolderPurpose, Msg};
+use glowfly_model::state::clone::{CloneForm, CloneRequest, LimitKind};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -81,7 +81,7 @@ fn full_clone_runs_one_job_in_the_parent() {
     assert!(prompts, "a clone can ask for credentials");
     let running = st.job.as_ref().unwrap();
     assert_eq!(running.label, "Clone");
-    assert_eq!(running.then_open, Some((req.parent.join("app"), crate::state::trust::Created::Clone)));
+    assert_eq!(running.then_open, Some((req.parent.join("app"), glowfly_model::state::trust::Created::Clone)));
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let [Effect::Clone(CloneEffect::CheckParent { parent, delay })] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     assert_eq!((parent.clone(), *delay), (dir.display().to_string(), super::clone::PARENT_CHECK_DELAY));
     let answer =
-        crate::runner::testing::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() }))
+        glowfly_runner::testing::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() }))
             .unwrap();
     // An answer for text that has changed since is dropped.
     update(&mut st, Msg::Clone(CloneMsg::ParentChecked { parent: "elsewhere".into(), found: Some("elsewhere".into()) }), now);
@@ -270,7 +270,7 @@ fn the_parent_folder_is_checked_by_an_effect_not_the_view() {
     let fx = update(&mut st, Msg::Clone(CloneMsg::ParentEdited), now);
     let [Effect::Clone(CloneEffect::CheckParent { parent, .. })] = &fx[..] else { panic!("expected a folder check, got {fx:?}") };
     let answer =
-        crate::runner::testing::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() }))
+        glowfly_runner::testing::execute(Effect::Clone(CloneEffect::CheckParent { parent: parent.clone(), delay: Default::default() }))
             .unwrap();
     update(&mut st, answer, now);
     assert_eq!(form(&mut st).problems_now(today()).folder.as_deref(), Some("That folder doesn't exist."));

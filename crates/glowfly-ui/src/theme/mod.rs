@@ -12,10 +12,10 @@
 //! `color::set_palette` at the start of each frame, on the thread that draws it. Tests rendering
 //! different palettes in parallel don't affect each other.
 
-use crate::state::window_native::MicaTint;
-use crate::themes::ThemeState;
 use eframe::egui::{self, Stroke};
 use glowfly_core::settings::{BuiltinTheme, ColourPalette, SystemPair, TerminalColours, ThemeChoice};
+use glowfly_model::state::window_native::MicaTint;
+use glowfly_model::themes::ThemeState;
 
 pub mod a11y;
 pub mod ansi;
@@ -68,14 +68,14 @@ use eframe::egui::CornerRadius;
 use tokens::{Elevation, radius, shadow};
 
 /// egui's light or dark style for a palette.
-pub fn egui_theme(p: &Palette) -> egui::Theme {
+pub(crate) fn egui_theme(p: &Palette) -> egui::Theme {
     if p.dark { egui::Theme::Dark } else { egui::Theme::Light }
 }
 
 /// Styles egui's built-in widgets from `p`, in the egui theme `p` uses, and installs the bundled
 /// fonts (`fonts::install`, a cheap no-op once they are in). The other egui theme gets
 /// DEFAULT_DARK or LIGHT, so a stray switch never shows egui's own defaults.
-pub fn apply_style(ctx: &egui::Context, p: &Palette) {
+pub(crate) fn apply_style(ctx: &egui::Context, p: &Palette) {
     fonts::install(ctx);
     let other = if p.dark { &LIGHT } else { &DEFAULT_DARK };
     for p in [p, other] {
@@ -178,7 +178,7 @@ fn dialog_frame_for(ctx: &egui::Context, p: &Palette) -> egui::Frame {
 
 /// Styles egui from this thread's active palette (tests that draw without the shell).
 #[cfg(test)]
-pub fn apply_theme(ctx: &egui::Context) {
+pub(crate) fn apply_theme(ctx: &egui::Context) {
     apply_style(ctx, &color::current());
 }
 

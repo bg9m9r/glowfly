@@ -7,12 +7,12 @@ use super::push_pr_fork_tests::with_fork;
 use super::push_pr_tests::cleanup;
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{ForgeMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::pr_repos::{UnusablePush, pr_push_target};
-use crate::state::push_pr::{HostBranch, host_branch};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{ForgeMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pr_repos::{UnusablePush, pr_push_target};
+use glowfly_model::state::push_pr::{HostBranch, host_branch};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

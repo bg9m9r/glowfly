@@ -5,9 +5,9 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{Msg, StashMsg};
-use crate::state::stashes::RenameStashForm;
 use eframe::egui;
+use glowfly_model::msg::{Msg, StashMsg};
+use glowfly_model::state::stashes::RenameStashForm;
 
 /// Draws the dialog; returns true when it should close. Its field keeps the keyboard focus unless
 /// `cx.keyboard` is false (a credential prompt is open above it). Rename waits while a job runs

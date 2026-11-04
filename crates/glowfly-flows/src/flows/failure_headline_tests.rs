@@ -5,13 +5,13 @@
 
 use super::auto_stash_tests::up;
 use super::tests::{clean_tree, drive, scratch_repo, state};
-use crate::msg::{AutoStashMsg, JobMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::auto_stash::{AutoStashJob, PendingStash, Phase};
-use crate::worktree::{RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 use glowfly_core::repo::Tracking;
 use glowfly_core::stash_ops::{AutoStashFor, PutBack};
 use glowfly_core::worktree_ops::{RemoveForce, RemoveOutcome};
+use glowfly_model::msg::{AutoStashMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::auto_stash::{AutoStashJob, PendingStash, Phase};
+use glowfly_model::worktree::{RemoteOutcome, RemoveRequest, Removed, WorktreeMsg};
 use std::path::{Path, PathBuf};
 
 const LOCKED: &str = "fatal: Unable to create '/r/.git/index.lock': File exists.";
@@ -30,7 +30,7 @@ pub(super) fn last_toast(st: &AppState) -> &str {
 }
 
 pub(super) fn running(st: &mut AppState, dir: &Path, label: &str) {
-    st.job = Some(crate::state::RunningJob { label: label.into(), ..super::rebase_tests::running_job(dir) });
+    st.job = Some(glowfly_model::state::RunningJob { label: label.into(), ..super::rebase_tests::running_job(dir) });
 }
 
 #[test]

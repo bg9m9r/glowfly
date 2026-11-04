@@ -5,11 +5,10 @@ use super::diff_tests::drive_holding_diffs;
 use super::highlight_tests::{drive_holding_highlights, land, shown};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, StageMsg};
-use crate::runner;
 use glowfly_core::highlight;
 use glowfly_core::repo::{DiffTarget, HunkOp};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg, StageMsg};
 use std::time::Instant;
 
 /// `fn main() {`, 3,000 `let` lines, `}`; lines whose number is in `changed` get `+ 1`.
@@ -36,7 +35,7 @@ fn staging_a_hunk_of_a_big_file_finishes_inline() {
     assert_eq!(d.hunks.len(), 2);
     assert!(d.highlight.as_ref().is_some_and(|h| h.is_pending()), "over {} lines in context", highlight::MAX_LINES);
     assert_eq!(held.len(), 1);
-    let msg = runner::testing::execute(held.remove(0)).expect("finished");
+    let msg = glowfly_runner::testing::execute(held.remove(0)).expect("finished");
     update(&mut st, msg, Instant::now());
     assert!(shown(&st).highlight.as_ref().is_some_and(|h| !h.is_pending() && h.checkpoints() > 0));
 

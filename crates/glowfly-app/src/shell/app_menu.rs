@@ -2,10 +2,10 @@
 //! input it runs the actions of the items chosen there, which do what the drawn items do; after
 //! the frame's messages it hands over the menus as the state now has them.
 
-use crate::msg::Msg;
 use crate::platform::native_menu::NativeMenu;
-use crate::state::AppState;
-use crate::state::menu_model;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_model;
 
 /// Runs the actions of the items chosen since the last frame.
 pub(super) fn picked(menu: &mut NativeMenu, st: &mut AppState, msgs: &mut Vec<Msg>) {

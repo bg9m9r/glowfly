@@ -5,7 +5,7 @@
 //! key). `menu::context_menu` shares the code, at the pointer, and so does
 //! `menu::context_menu_at` for a view drawing its rows under one response (`Opens`).
 
-use crate::ui::menu_keys;
+use crate::menu_keys;
 use eframe::egui::menu::{BarState, MenuRoot};
 use eframe::egui::{Context, Id, InnerResponse, Rect, Response, Ui, Vec2, pos2};
 

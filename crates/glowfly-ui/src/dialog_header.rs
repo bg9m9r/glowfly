@@ -6,10 +6,10 @@
 //! caller reads every frame after showing the dialog. The same box can sit in a header the
 //! caller draws itself (`Dialog::header`, the welcome's band) through `close_button`.
 
-use crate::ui::access;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::{Icon, paint_icon};
+use crate::access;
+use crate::theme::tokens::radius;
+use crate::theme::{color, type_scale};
+use crate::widgets::{Icon, paint_icon};
 use eframe::egui::{self, Color32, CornerRadius, Id, LayerId, Rect, RichText, Sense, TextStyle, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 
@@ -52,7 +52,7 @@ pub(super) fn draw(ui: &mut Ui, t: Lang, title: &str, subtitle: Option<&str>, le
             let (rect, _) = ui.allocate_exact_size(vec2(ICON, ICON), Sense::hover());
             match lead {
                 Lead::Icon(icon) => paint_icon(ui.painter(), rect.center(), icon, color::text()),
-                Lead::Swatch(c) => crate::ui::repo_swatch::paint_slot(ui.painter(), rect, c),
+                Lead::Swatch(c) => crate::repo_swatch::paint_slot(ui.painter(), rect, c),
             }
         }
         ui.add(egui::Label::new(text).wrap());

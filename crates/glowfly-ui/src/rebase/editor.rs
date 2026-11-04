@@ -7,17 +7,17 @@
 
 use super::UiCache;
 use super::rows::{MARGIN, SHA_X};
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::rebase::{Editing, RebasePanel};
-use crate::ui::spell_edit::spell_text_edit;
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::spell_edit::spell_text_edit;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::rebase::{Editing, RebasePanel};
 
 const COMBINED_LABEL: &str = "Message of the combined commit";
 const COMMAND_HINT: &str = "Shell command, e.g. cargo test";

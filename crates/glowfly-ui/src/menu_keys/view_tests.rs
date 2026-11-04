@@ -2,14 +2,12 @@
 //! sidebar row and the selected file of a focused Files list each open their menu below the
 //! row with its first item focused, and Esc gives the focus back to a focused row.
 
-use crate::msg::Msg;
-use crate::state::{AppState, Selection};
-use crate::ui::graph::row_h;
-use crate::ui::snapshot_tests::snapshot_tests_line_counts::with_wip;
-use crate::ui::snapshot_tests::snapshot_tests_select::{click, row_y};
-use crate::ui::snapshot_tests::snapshot_tests_stash::with_stashes;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::ui::wip_keys::focused_list;
+use crate::graph::row_h;
+use crate::snapshot_tests::snapshot_tests_line_counts::with_wip;
+use crate::snapshot_tests::snapshot_tests_select::{click, row_y};
+use crate::snapshot_tests::snapshot_tests_stash::with_stashes;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::wip_keys::focused_list;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Key, Modifiers, Order, PointerButton, pos2};
 use egui_kittest::Harness;
@@ -17,6 +15,8 @@ use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, DiffTarget};
 use glowfly_core::settings::Density;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, Selection};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

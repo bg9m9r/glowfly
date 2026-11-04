@@ -6,19 +6,19 @@
 use super::super::theme::{self, color};
 use super::super::{UiCache, avatars::Avatars, draw, shortcuts};
 use super::snapshot_tests::with_bar;
-use crate::msg::{Msg, PrefsMsg, RebaseMsg, RepoMsg};
-use crate::state::menu_keys::{TopMenu, mnemonics};
-use crate::state::window_chrome::Chrome;
-use crate::state::{AppState, PrefPage, PrefsState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::snapshot_tests_painted::underlined;
-use crate::ui::snapshot_tests::{NOW, remove_fixture};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_painted::underlined;
+use crate::snapshot_tests::{NOW, remove_fixture};
 use eframe::egui::{self, Event, InputState, Key, Modifiers};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{Node, Queryable};
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::{Msg, PrefsMsg, RebaseMsg, RepoMsg};
+use glowfly_model::state::menu_keys::{TopMenu, mnemonics};
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::{AppState, PrefPage, PrefsState, Selection};
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -27,7 +27,7 @@ pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    let mut h = crate::ui::snapshot_check::builder().with_size(size).build_state(
+    let mut h = crate::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&theme::view_palette(true));
             theme::apply_style(ctx, &theme::view_palette(true));

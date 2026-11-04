@@ -7,15 +7,15 @@
 
 use super::fold::{ORDER, Part, is_folded};
 use super::groups::{create_pr, merge_requests};
-use crate::keymap::BindingId;
-use crate::msg::{BranchMsg, JobMsg, Msg, PaletteMsg, PrefsMsg};
-use crate::state::tip::Tip;
-use crate::state::toolbar_tips as rules;
-use crate::state::{AppState, ForgeState, PrefPage};
-use crate::ui::widgets::menu::{self, popup_below, separator, submenu};
-use crate::ui::widgets::{self, Icon};
+use crate::widgets::menu::{self, popup_below, separator, submenu};
+use crate::widgets::{self, Icon};
 use eframe::egui::{self, PopupCloseBehavior};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, PaletteMsg, PrefsMsg};
+use glowfly_model::state::tip::Tip;
+use glowfly_model::state::toolbar_tips as rules;
+use glowfly_model::state::{AppState, ForgeState, PrefPage};
 use glowfly_model::terminal::TerminalMsg;
 
 /// The More menu's least width.
@@ -90,7 +90,7 @@ fn part_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&F
             let why = rules::pop_blocked(st);
             let r = menu::item(t.tr("toolbar.pop.button")).blocked(why.as_deref()).show(ui);
             if r.clicked() {
-                msgs.extend(crate::state::stash_confirm::pop_latest(snap, t));
+                msgs.extend(glowfly_model::state::stash_confirm::pop_latest(snap, t));
             }
         }
         Part::Pr => {
@@ -106,7 +106,7 @@ fn part_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&F
             if menu::item(label).blocked(why.as_deref()).show(ui).clicked() {
                 msgs.extend(create_pr(snap));
             }
-            submenu(ui, options, |ui| crate::ui::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs));
+            submenu(ui, options, |ui| crate::pr_menu_items::pr_menu(ui, t, snap, fs, idle, msgs));
         }
         Part::Files => {
             let open = st.terminal.open;

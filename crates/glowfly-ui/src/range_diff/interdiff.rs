@@ -5,18 +5,18 @@
 //! removed colour. Rows are laid out only where visible and scroll sideways for long lines. A
 //! pair that is the same, dropped or new gets a sentence instead.
 
-use crate::state::AppState;
-use crate::state::journal::short;
-use crate::ui::common::{added_color, removed_color};
-use crate::ui::diff::wrap::{self, RowMetrics};
-use crate::ui::diff::{DiffStyle, LineHover, gutter_sign, paint_header, paint_line};
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::paint_cut_text;
+use crate::common::{added_color, removed_color};
+use crate::diff::wrap::{self, RowMetrics};
+use crate::diff::{DiffStyle, LineHover, gutter_sign, paint_header, paint_line};
+use crate::theme::{color, type_scale};
+use crate::widgets::paint_cut_text;
 use eframe::egui::{self, Align2, Color32, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::diff_rows::{DiffRow, inline_rows};
 use glowfly_core::i18n::Lang;
 use glowfly_core::range_diff::{Pair, Side, Status};
 use glowfly_core::repo::FileDiff;
+use glowfly_model::state::AppState;
+use glowfly_model::state::journal::short;
 
 const INSET: f32 = 16.0;
 const SIDE_ROW_H: f32 = 22.0;

@@ -123,7 +123,7 @@ pub fn shadow(e: Elevation, p: &Palette) -> Shadow {
 
 /// The focus ring's width and its gap outside a standalone control.
 const FOCUS_W: f32 = 2.0;
-pub const FOCUS_GAP: f32 = 2.0;
+pub(crate) const FOCUS_GAP: f32 = 2.0;
 /// The inset ring of a control packed tightly in a row or group, where an outside ring would
 /// reach its neighbour.
 const FOCUS_INSET_W: f32 = 1.5;

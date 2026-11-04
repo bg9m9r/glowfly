@@ -15,12 +15,12 @@
 use super::super::nodes::{self, NodeKind};
 use super::super::row_look::{self, RowLook};
 use super::{FEATHER, extent, head_glow, rim, rim_radius, rim_width};
-use crate::ui::snapshot_check::{SKIP_VAR, skip_requested};
-use crate::ui::theme::branch_colours::{line_in, swatches};
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::contrast::ratio;
-use crate::ui::theme::{self, builtin};
-use crate::ui::widgets::row_fill::HOVER_SHADOW_H;
+use crate::snapshot_check::{SKIP_VAR, skip_requested};
+use crate::theme::branch_colours::{line_in, swatches};
+use crate::theme::color::{self, Palette};
+use crate::theme::contrast::ratio;
+use crate::theme::{self, builtin};
+use crate::widgets::row_fill::HOVER_SHADOW_H;
 use eframe::egui::{Color32, Pos2, Rect, emath::GuiRounding, pos2, vec2};
 use glowfly_core::branch_colour::Swatch;
 use glowfly_core::settings::{BuiltinTheme, ColourPalette, Density};
@@ -129,7 +129,7 @@ fn check(name: &str, p: &Palette, ppp: f32, density: Density, failures: &mut Vec
     let rows = cells.len().div_ceil(COLS);
     let drawn = RefCell::new(Vec::new());
     let pal = *p;
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .with_size(vec2(COLS as f32 * CELL_W, rows as f32 * row_h))
         .with_pixels_per_point(ppp)
         .build_ui(|ui| {
@@ -193,7 +193,7 @@ fn check(name: &str, p: &Palette, ppp: f32, density: Density, failures: &mut Vec
         }
         let plain = at_px(gap);
         let r = ratio(p.lantern, plain);
-        if r < crate::ui::theme::lantern_floor(cell.fill.ends_with("highlighted")) {
+        if r < crate::theme::lantern_floor(cell.fill.ends_with("highlighted")) {
             failures.push(format!("{what}: the rim {r:.2}:1 on the gap pixel"));
         }
         // (c) the glow begins.

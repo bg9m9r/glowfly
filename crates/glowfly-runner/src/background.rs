@@ -3,8 +3,8 @@
 //! closed tab's pooled repository handles.
 
 use super::execute::{Cx, Execute};
-use crate::effect::BackgroundEffect;
-use crate::msg::{GraphMsg, Msg};
+use glowfly_model::effect::BackgroundEffect;
+use glowfly_model::msg::{GraphMsg, Msg};
 
 pub(super) fn run(e: BackgroundEffect) -> Option<Msg> {
     match e {
@@ -13,7 +13,7 @@ pub(super) fn run(e: BackgroundEffect) -> Option<Msg> {
             Some(Msg::Graph(GraphMsg::LaidOut { request, fit: Box::new(fit), layout: Box::new(layout) }))
         }
         BackgroundEffect::Ancestry { request, commits, tip, .. } => {
-            let base = crate::state::ref_rows::reachable_in(&commits.0, tip);
+            let base = glowfly_model::state::ref_rows::reachable_in(&commits.0, tip);
             Some(Msg::Graph(GraphMsg::AncestryFound { request, base }))
         }
         BackgroundEffect::Free(d) => {

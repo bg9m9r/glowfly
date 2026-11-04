@@ -4,19 +4,19 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::git_env::GitEnvMsg;
-use crate::gitflow::GitFlowMsg;
-use crate::lfs::LfsMsg;
-use crate::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg, SparseMsg};
-use crate::profile::ProfileMsg;
-use crate::ssh::SshMsg;
-use crate::state::AppState;
-use crate::state::PrefPage::{self, *};
-use crate::state::prefs::GitConfigValues;
-use crate::tools::ToolsMsg;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::{RepoTrust, Settings, TrackerChoice};
+use glowfly_model::effect::Effect;
+use glowfly_model::git_env::GitEnvMsg;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg, RepoMsg, SparseMsg};
+use glowfly_model::profile::ProfileMsg;
+use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::PrefPage::{self, *};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::tools::ToolsMsg;
 use std::time::Instant;
 
 const PAGES: [PrefPage; 19] = [
@@ -66,7 +66,7 @@ fn opened(name: &str) -> AppState {
     st.settings.connections.push(Connection { account: trello.clone(), user: "Ada".into(), method: "access token".into() });
     drive(&mut st, Msg::Repo(RepoMsg::Open(scratch_repo(name))));
     let real = st.snap.as_ref().expect("opened").real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
     st.settings.set_tracker(&real, TrackerChoice::Trello { account: trello, board: String::new(), board_name: String::new() });
     st
 }

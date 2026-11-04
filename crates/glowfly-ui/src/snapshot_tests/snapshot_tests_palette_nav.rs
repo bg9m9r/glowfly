@@ -5,13 +5,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use super::snapshot_tests_worktrees::H;
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::palette::{Palette, shown};
-use crate::state::palette_nav::Jump;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, Modifiers, pos2};
 use egui_kittest::kittest::{Node, Queryable};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::palette::{Palette, shown};
+use glowfly_model::state::palette_nav::Jump;
 
 /// The one button labelled `label` inside the open palette.
 pub(crate) fn palette_row<'h>(h: &'h H, label: &'h str) -> Node<'h> {
@@ -79,7 +79,7 @@ fn palette_page_and_end_keys() {
 #[test]
 fn palette_free_text_step_keeps_the_keys() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-nav-input");
-    let mode = crate::state::palette::Mode::Input(crate::state::palette::InputKind::StashMessage);
+    let mode = glowfly_model::state::palette::Mode::Input(glowfly_model::state::palette::InputKind::StashMessage);
     st.palette = Some(Palette { mode, ..Default::default() });
     let mut h = harness(st, true);
     h.run();

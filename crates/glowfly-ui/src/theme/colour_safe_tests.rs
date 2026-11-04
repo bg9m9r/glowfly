@@ -108,7 +108,7 @@ fn marks_keep_their_contrast() {
         let p = super::applied(*builtin(t), ColourPalette::ColourBlind);
         let min = if p.high_contrast { 4.5 } else { 3.0 };
         let surfaces = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)].map(|(n, c)| (n.to_owned(), c));
-        let bands = swatches().map(|l| (format!("{l:?} band"), crate::ui::theme::surfaces::band_color(line_in(l, &p), &p)));
+        let bands = swatches().map(|l| (format!("{l:?} band"), crate::theme::surfaces::band_color(line_in(l, &p), &p)));
         let on: Vec<(String, Color32)> = surfaces.into_iter().chain(bands).collect();
         for (name, c) in [("added", p.status.added), ("removed", p.status.removed), ("modified", p.status.modified)] {
             for (sname, s) in &on {
@@ -153,8 +153,8 @@ fn the_standard_preset_changes_nothing() {
 #[test]
 fn the_shell_shows_the_preset_it_is_given() {
     use super::color;
-    use crate::themes::ThemeState;
     use glowfly_core::settings::{SystemPair, ThemeChoice};
+    use glowfly_model::themes::ThemeState;
     let (ctx, themes) = (eframe::egui::Context::default(), ThemeState::default());
     let mut cache = super::ThemeCache::default();
     let pair = SystemPair::default();

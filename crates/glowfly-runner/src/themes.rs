@@ -3,8 +3,8 @@
 //! file and writing its schemes to the themes folder's `terminal` folder).
 
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
 use glowfly_core::settings::{terminal_schemes, themes};
+use glowfly_model::msg::Msg;
 use glowfly_model::themes::{ThemeEffect, ThemeMsg};
 
 pub(super) fn run(effect: ThemeEffect) -> Option<Msg> {

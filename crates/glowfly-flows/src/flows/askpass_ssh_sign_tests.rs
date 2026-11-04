@@ -4,10 +4,10 @@
 
 use super::askpass_gpg_tests::{finish, last_toast, send, start_job};
 use super::tests::state;
-use crate::effect::{Effect, UiEffect};
-use crate::msg::{CredentialMsg, JobMsg, Msg};
-use crate::state::AppState;
 use glowfly_core::askpass::{Prompt, Reply, SshSignAsk};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
+use glowfly_model::state::AppState;
 
 const WRONG: &str = "$ git commit\nLoad key \"/home/ada/.ssh/id_ed25519\": incorrect passphrase supplied to decrypt private key\n\
 fatal: failed to write commit object";

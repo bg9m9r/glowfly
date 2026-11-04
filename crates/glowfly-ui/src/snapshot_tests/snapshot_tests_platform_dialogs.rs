@@ -4,20 +4,20 @@
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::effect::{DeleteMode, FileOp};
-use crate::msg::{FilesMsg, Msg, WorkFileMsg};
-use crate::state::Modal;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{TrashProblem, TrashRefusal};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::effect::{DeleteMode, FileOp};
+use glowfly_model::msg::{FilesMsg, Msg, WorkFileMsg};
+use glowfly_model::state::Modal;
 
 #[test]
 fn confirm_run_program() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "confirm-run-program");
     let workdir = st.workdir().unwrap();
     let found = FilesMsg::OpenNeedsConfirm { workdir, path: "tools/run.bat".into(), kind: "a script" };
-    crate::update::update(&mut st, Msg::Files(found), std::time::Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Files(found), std::time::Instant::now());
     assert!(matches!(&st.modal, Some(Modal::Confirm { .. })));
     let mut h = harness(st, true);
     h.run();
@@ -34,7 +34,11 @@ fn trash_in_use_retry() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-in-use");
     let refusal = TrashRefusal::new(TrashProblem::InUse, "in use");
     let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
-    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op, refusal }), std::time::Instant::now());
+    glowfly_model::update::update(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op, refusal }),
+        std::time::Instant::now(),
+    );
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("trash_in_use_retry");
@@ -52,7 +56,11 @@ fn trash_home_offer() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-home-offer");
     let refusal = TrashRefusal::new(TrashProblem::HomeTrashOnly, "/mnt/usb has no trash folder you can use");
     let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
-    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op, refusal }), std::time::Instant::now());
+    glowfly_model::update::update(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: false, op, refusal }),
+        std::time::Instant::now(),
+    );
     assert!(matches!(&st.modal, Some(Modal::TrashOffer(_))));
     let mut h = harness(st, false);
     h.run();
@@ -78,7 +86,11 @@ fn trash_home_offer_without_a_copy_confirms_first() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "trash-home-offer-large");
     let refusal = TrashRefusal::new(TrashProblem::HomeTrashOnly, "/mnt/usb has no trash folder you can use");
     let op = FileOp::Delete { path: "notes/scratch.txt".into(), mode: DeleteMode::Trash };
-    crate::update::update(&mut st, Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: true, op, refusal }), std::time::Instant::now());
+    glowfly_model::update::update(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::TrashRefused { too_large: true, op, refusal }),
+        std::time::Instant::now(),
+    );
     let mut h = harness(st, false);
     h.run();
     h.get_by_label("Delete permanently").click();
@@ -99,11 +111,11 @@ fn trash_home_offer_without_a_copy_confirms_first() {
 /// for good.
 #[test]
 fn git_too_old_banner() {
-    use crate::git_env::GitEnvMsg;
     use glowfly_core::git_version::GitInfo;
+    use glowfly_model::git_env::GitEnvMsg;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "git-too-old");
     let info = GitInfo { path: Some("C:/Program Files/Git/cmd/git.exe".into()), version: Some((2, 34, 1)), chosen: false };
-    crate::update::update(&mut st, Msg::GitEnv(GitEnvMsg::Detected { generation: 0, info }), std::time::Instant::now());
+    glowfly_model::update::update(&mut st, Msg::GitEnv(GitEnvMsg::Detected { generation: 0, info }), std::time::Instant::now());
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("git_too_old_banner");
@@ -127,16 +139,17 @@ fn git_too_old_banner() {
 
 /// Opens `root` and answers it with git's refusal: owned by `owner` (`admins`: the
 /// Administrators group). The toast-free state the dialog is drawn over.
-fn refused_state(owner: Option<&str>, admins: bool) -> crate::state::AppState {
-    use crate::effect::LoadKind;
-    use crate::git_env::GitEnvMsg;
-    use crate::msg::RepoMsg;
-    let mut st = crate::state::AppState::new(super::snapshot_tests::settings(ThemeChoice::Light), Vec::new(), std::time::Instant::now());
+fn refused_state(owner: Option<&str>, admins: bool) -> glowfly_model::state::AppState {
+    use glowfly_model::effect::LoadKind;
+    use glowfly_model::git_env::GitEnvMsg;
+    use glowfly_model::msg::RepoMsg;
+    let mut st =
+        glowfly_model::state::AppState::new(super::snapshot_tests::settings(ThemeChoice::Light), Vec::new(), std::time::Instant::now());
     let root = std::path::PathBuf::from(if cfg!(windows) { r"\\nas\team\app" } else { "/mnt/nas/team/app" });
-    crate::update::update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), std::time::Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Repo(RepoMsg::Open(root.clone())), std::time::Instant::now());
     let generation = st.load_gen;
     let refusal = glowfly_core::safe_directory::Refusal { root, owner: owner.map(str::to_owned), admins };
-    crate::update::update(
+    glowfly_model::update::update(
         &mut st,
         Msg::GitEnv(GitEnvMsg::NotOwned { generation, kind: LoadKind::Open, refusal }),
         std::time::Instant::now(),

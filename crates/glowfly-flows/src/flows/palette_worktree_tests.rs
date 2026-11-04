@@ -4,11 +4,11 @@
 //! what running each sends.
 
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::palette::{PaletteCommand, entries};
-use crate::state::{AppState, Selection};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::palette::{PaletteCommand, entries};
+use glowfly_model::state::{AppState, Selection};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 
 fn labels(st: &AppState) -> Vec<String> {
@@ -76,7 +76,7 @@ fn worktree_entries() {
     assert_eq!((prune.command, prune.detail.as_deref()), (PaletteCommand::Worktree(Box::new(WorktreeMsg::Prune)), Some("1 record")));
 
     // Running one sends its message: Prune drops the record.
-    drive(&mut st, Msg::Palette(crate::msg::PaletteMsg::RunPaletteCommand(PaletteCommand::Worktree(Box::new(WorktreeMsg::Prune)))));
+    drive(&mut st, Msg::Palette(glowfly_model::msg::PaletteMsg::RunPaletteCommand(PaletteCommand::Worktree(Box::new(WorktreeMsg::Prune)))));
     assert!(!st.snap.as_ref().unwrap().worktrees.iter().any(|w| w.missing), "{:?}", st.log.last().map(|l| &l.text));
     cleanup(&dir, &side, &old);
 }

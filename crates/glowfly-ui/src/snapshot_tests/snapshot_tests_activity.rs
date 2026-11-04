@@ -2,15 +2,15 @@
 //! group of auto-fetches, a failed run opened with its cause, fix, Copy and output, and notes.
 
 use super::snapshot_tests::{NOW, harness_sized, settings};
-use crate::logs::LogsMsg;
-use crate::msg::Msg;
-use crate::state::logs::{EntryId, LogEntry, Persist};
-use crate::state::{AppState, ToastAction};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::logs::RunInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::logs::{EntryId, LogEntry, Persist};
+use glowfly_model::state::{AppState, ToastAction};
 use std::time::Instant;
 
 const PULL_OUTPUT: &str = "$ git pull --ff\nerror: Your local changes to the following files would be overwritten by merge:\n\tf.txt\nhint: Commit or stash them first.\nPlease commit your changes or stash them before you merge.\nAborting";
@@ -18,7 +18,7 @@ const PULL_OUTPUT: &str = "$ git pull --ff\nerror: Your local changes to the fol
 /// A run that ended `minutes` ago.
 fn run(ok: bool, title: &str, summary: &str, took_ms: Option<u64>, minutes: i64, output: &str) -> LogEntry {
     let status = if ok { "done" } else { "FAILED" };
-    let routine = crate::state::activity_rows::is_routine_label(title);
+    let routine = glowfly_model::state::activity_rows::is_routine_label(title);
     let info = RunInfo { title: title.into(), summary: summary.into(), took_ms, routine };
     LogEntry { at: NOW - minutes * 60, run: Some(info), ..LogEntry::new(ok, format!("{title} {status}\n{output}")) }
 }

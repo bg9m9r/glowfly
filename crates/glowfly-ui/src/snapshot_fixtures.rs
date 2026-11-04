@@ -7,17 +7,17 @@ pub mod scenes;
 
 use super::theme::{self, color, color::Palette};
 use super::{UiCache, avatars::Avatars, draw};
-use crate::msg::Msg;
-use crate::state::{AppState, Selection, Tab};
-#[cfg(test)]
-use crate::state::{PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use glowfly_core::branch_colour::Colouring;
 use glowfly_core::repo::{self, ChangeCounts, LoadOptions};
 use glowfly_core::settings::{Settings, ThemeChoice};
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, Selection, Tab};
+#[cfg(test)]
+use glowfly_model::state::{PrefPage, PrefsState};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -174,7 +174,7 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, d
     st.view.now = NOW;
     st.view.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder()
+    crate::snapshot_check::builder()
         .with_size(size)
         .with_pixels_per_point(ppp)
         .with_step_dt(dt)
@@ -209,7 +209,7 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, d
                     }
                 }
                 if keys {
-                    crate::ui::shortcuts::input(ctx, st, msgs);
+                    crate::shortcuts::input(ctx, st, msgs);
                 }
                 draw(ctx, st, cache, msgs);
             },
@@ -275,10 +275,10 @@ fn preferences_ui_customization() {
 
 #[test]
 fn preferences_general() {
-    use crate::state::prefs::GitConfigValues;
+    use glowfly_model::state::prefs::GitConfigValues;
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     let mut prefs = PrefsState::new(PrefPage::General);
-    prefs.git = Some(GitConfigValues { autocrlf: crate::state::prefs::Autocrlf::Input, ..Default::default() });
+    prefs.git = Some(GitConfigValues { autocrlf: glowfly_model::state::prefs::Autocrlf::Input, ..Default::default() });
     st.prefs = Some(prefs);
     let program = if cfg!(windows) { "C:/Program Files/Git/cmd/git.exe" } else { "/opt/homebrew/bin/git" };
     st.git.info = Some(glowfly_core::git_version::GitInfo { path: Some(program.into()), version: Some((2, 45, 1)), chosen: false });
@@ -287,9 +287,9 @@ fn preferences_general() {
 
 #[test]
 fn preferences_commit_signing() {
-    use crate::state::prefs::GitConfigValues;
     use egui_kittest::kittest::Queryable;
     use glowfly_core::signing::SigningKey;
+    use glowfly_model::state::prefs::GitConfigValues;
     let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
     let mut prefs = PrefsState::new(PrefPage::Signing);
     prefs.git = Some(GitConfigValues {
@@ -336,7 +336,7 @@ fn ghost_branch_on_the_current_commit() {
 /// The fixture in the middle of merging `theme-tweaks`, which conflicts with main in `file`
 /// (written by `content` for each side: "base", "ours" or "theirs"). The view is open on it.
 pub fn with_conflict(name: &str, file: &str, content: impl Fn(&str) -> Vec<u8>) -> (AppState, PathBuf) {
-    use crate::state::conflict::ConflictView;
+    use glowfly_model::state::conflict::ConflictView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
     let d = "2026-01-11T10:00:00+00:00";
     for (side, branch) in
@@ -395,9 +395,9 @@ fn conflict_binary() {
 /// edited again; the file history is open on it with entry `select` shown, walked with
 /// `limit` commits per request.
 pub fn with_history(name: &str, theme: ThemeChoice, limit: usize, select: usize) -> (AppState, PathBuf) {
-    use crate::state::history::FileHistoryView;
     use glowfly_core::repo::{DiffTarget, HistoryStart};
     use glowfly_core::{highlight, intraline};
+    use glowfly_model::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(theme, name);
     let lines: Vec<String> = ["app", "fix"].into_iter().map(String::from).chain((3..=12).map(|i| format!("setting_{i} = {i}"))).collect();
     let text = |l: &[String]| l.join("\n") + "\n";

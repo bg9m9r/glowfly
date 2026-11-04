@@ -5,13 +5,13 @@
 use super::journal_tests::{open_loaded, opened};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::{Effect, EffectMeta};
-use crate::journal::{JournalEffect, JournalMsg, LostMsg};
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::journal_lost::JournalTab;
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::journal::{LostCommit, LostCommits, LostKind, Op, Preview};
+use glowfly_model::effect::{Effect, EffectMeta};
+use glowfly_model::journal::{JournalEffect, JournalMsg, LostMsg};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::journal_lost::JournalTab;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -76,8 +76,8 @@ fn entry(n: u8, kind: LostKind) -> LostCommit {
     LostCommit { oid: oid(n), kind, summary: "s".into(), message: "s".into(), author: "T".into(), time: 1 }
 }
 
-fn running() -> crate::state::RunningJob {
-    crate::state::RunningJob {
+fn running() -> glowfly_model::state::RunningJob {
+    glowfly_model::state::RunningJob {
         label: "x".into(),
         workdir: None,
         quiet: false,

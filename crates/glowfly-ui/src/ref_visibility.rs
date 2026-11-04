@@ -4,14 +4,14 @@
 
 use super::common::menu_item;
 use super::theme::color;
-use crate::msg::GraphMsg;
-use crate::msg::Msg;
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{
     self, Align, Color32, CursorIcon, Layout, Painter, Pos2, Rect, Response, RichText, Sense, Shape, Stroke, UiBuilder, pos2, vec2,
 };
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{FilterOp, GraphFilter};
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::Msg;
 
 fn filter_msg(op: FilterOp) -> Msg {
     Msg::Graph(GraphMsg::GraphFilter(op))

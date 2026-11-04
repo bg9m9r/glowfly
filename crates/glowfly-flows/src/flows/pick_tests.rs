@@ -5,18 +5,18 @@
 use super::cherry_pick_tests::feature_repo;
 use super::selection_tests::{fixture, git, head, refresh, up};
 use super::tests::drive;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::pick::PickOp;
-use crate::state::selection::CommitBlock;
-use crate::state::{Modal, Selection};
 use git2::{Oid, RepositoryState};
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::pick_ops::Picking;
 use glowfly_core::undo::{MoveOp, UndoKind};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::pick::PickOp;
+use glowfly_model::state::selection::CommitBlock;
+use glowfly_model::state::{Modal, Selection};
 
-fn last_log(st: &crate::state::AppState) -> Option<&str> {
+fn last_log(st: &glowfly_model::state::AppState) -> Option<&str> {
     st.log.last().map(|l| l.text.as_str())
 }
 
@@ -33,7 +33,7 @@ fn revert_runs_newest_first_in_one_job() {
 }
 
 /// The fixture with `side` merged into main (--no-ff); returns the merge.
-pub(super) fn with_merge(st: &mut crate::state::AppState, f: &super::selection_tests::Fixture) -> Oid {
+pub(super) fn with_merge(st: &mut glowfly_model::state::AppState, f: &super::selection_tests::Fixture) -> Oid {
     git(&f.dir, &["merge", "-q", "--no-ff", "side", "-m", "merge side"]);
     refresh(st);
     head(&f.dir)
@@ -114,7 +114,7 @@ fn a_multi_revert_restores_the_file() {
 }
 
 fn labels(state: RepositoryState) -> Vec<&'static str> {
-    crate::state::op_actions::state_actions(state).unwrap().iter().map(|(l, _)| *l).collect()
+    glowfly_model::state::op_actions::state_actions(state).unwrap().iter().map(|(l, _)| *l).collect()
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn a_stopped_cherry_pick_selects_the_wip_row_and_skips_on() {
     assert_eq!(st.session.selection, Selection::Wip);
     assert!(!st.session.wip_lit && !st.session.wip_drawn_selected(), "selected on its own: not lit");
     assert_eq!(labels(state), ["Continue", "Skip commit", "Abort cherry-pick"]);
-    let (label, skip) = crate::state::op_actions::state_actions(state).unwrap()[1];
+    let (label, skip) = glowfly_model::state::op_actions::state_actions(state).unwrap()[1];
     let recorded = st.session.undo.undo.len();
     drive(&mut st, Msg::git(label, skip));
     assert_eq!(st.session.undo.undo.len(), recorded, "a skip is never recorded for undo");

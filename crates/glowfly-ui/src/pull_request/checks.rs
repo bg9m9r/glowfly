@@ -9,22 +9,22 @@ use super::super::theme::color;
 use super::super::widgets::quiet_target::{self, State};
 use super::super::widgets::{self, paint_cut, paint_cut_text};
 use super::note;
-use crate::msg::Msg;
-use crate::state::pull_request::PrView;
-use crate::state::pull_request_checks::{
-    ChecksPane, FAILED_TITLE, HELD, LOADING, NO_STATUS, build_link, empty_text, header_summary, run_tooltip, time_text, truncated_text,
-};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::chip::{Chip, ChipSize, Look};
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
+use crate::widgets::chip::{Chip, ChipSize, Look};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align2, CornerRadius, CursorIcon, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::forge::{CheckList, CheckRun};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
+use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::PrView;
+use glowfly_model::state::pull_request_checks::{
+    ChecksPane, FAILED_TITLE, HELD, LOADING, NO_STATUS, build_link, empty_text, header_summary, run_tooltip, time_text, truncated_text,
+};
 
 /// The header row's height, and each check row's.
 const HEADER_H: f32 = 28.0;

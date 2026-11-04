@@ -6,18 +6,18 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::CloneMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::{FolderPurpose, Msg};
-use crate::state::PrefPage;
-use crate::state::clone::{CloneForm, LimitKind};
-use crate::state::clone_service::CloneSource;
-use crate::ui::theme::controls;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::widgets::form_message::{self, Message};
 use chrono::NaiveDate;
 use eframe::egui::{self, Id, RichText};
 use glowfly_core::forge::Connection;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::CloneMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FolderPurpose, Msg};
+use glowfly_model::state::PrefPage;
+use glowfly_model::state::clone::{CloneForm, LimitKind};
+use glowfly_model::state::clone_service::CloneSource;
 use std::path::Path;
 
 pub(super) fn note(ui: &mut egui::Ui, text: &str) {

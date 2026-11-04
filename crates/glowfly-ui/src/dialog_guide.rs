@@ -4,8 +4,8 @@
 //! has no room for both, stacked full width above the form. Its text is plain labels, so a
 //! screen reader reads it after the form.
 
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, type_scale};
+use crate::theme::tokens::radius;
+use crate::theme::{color, type_scale};
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use glowfly_core::i18n::Lang;
 
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn height_matches_the_painted_steps() {
-        let mut h = crate::ui::snapshot_check::builder().with_size(vec2(400.0, 600.0)).build_ui_state(
+        let mut h = crate::snapshot_check::builder().with_size(vec2(400.0, 600.0)).build_ui_state(
             |ui, rect: &mut Rect| {
                 let g = Guide { steps: vec!["One short step.", "A second step, a little longer than the first.", "Three.", LAST] };
                 let height = height(ui, Lang::En, &g, PANE_W);

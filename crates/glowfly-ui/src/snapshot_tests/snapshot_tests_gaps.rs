@@ -3,11 +3,11 @@
 //! split. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::super::snapshot_tests::{git, render, with_repo};
-use crate::state::AppState;
 use glowfly_core::diff_rows::gaps;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
 use glowfly_core::{highlight, intraline};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::sync::Arc;
 

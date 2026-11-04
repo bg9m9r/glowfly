@@ -4,17 +4,16 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind, WatchTarget};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::msg::WatchMsg;
-use crate::runner;
-use crate::state::trust::Standing;
-use crate::state::{AppState, Modal, RunningJob};
+use glowfly_model::effect::{Effect, LoadKind, WatchTarget};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::msg::WatchMsg;
+use glowfly_model::state::trust::Standing;
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -130,8 +129,8 @@ fn index_changed(workdir: &Path, paths: &[&str], last_event: Instant) -> Msg {
 
 #[test]
 fn an_index_change_reads_the_index() {
-    use crate::state::refresh::Wanted;
     use glowfly_core::repo::FileEntry;
+    use glowfly_model::state::refresh::Wanted;
     let (mut st, dir, workdir) = opened("watch-index");
     let snap = st.snap.as_mut().unwrap();
     let old = snap.index_memo.clone().expect("a memo");
@@ -177,7 +176,7 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
             if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
-                queue.extend(runner::testing::execute(e));
+                queue.extend(glowfly_runner::testing::execute(e));
             } else {
                 all.push(e);
             }
@@ -249,7 +248,7 @@ fn watch_failure_is_reported_once_per_repository() {
 fn full_report(st: &mut AppState, workdir: &Path) -> bool {
     let fx = update(st, changed(workdir, true, Instant::now()), Instant::now());
     let [Effect::LoadRepo { kind: LoadKind::Refresh, known: Some(_), .. }] = &fx[..] else { panic!("a checked refresh: {fx:?}") };
-    let msgs: Vec<Msg> = fx.into_iter().filter_map(runner::testing::execute).collect();
+    let msgs: Vec<Msg> = fx.into_iter().filter_map(glowfly_runner::testing::execute).collect();
     let full = msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::RepoLoaded { .. })));
     for m in msgs {
         let fx = update(st, m, Instant::now());
@@ -286,7 +285,7 @@ fn outside_config_that_runs_programs_asks_for_trust() {
     // A trusted repository that gains a setting asks again, about that setting.
     let dir = scratch_repo("watch-trust-config-trusted");
     let mut st = state();
-    crate::state::trust::record_as_found(&mut st.settings, &std::fs::canonicalize(&dir).unwrap());
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &std::fs::canonicalize(&dir).unwrap());
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert_eq!(st.trust_standing(), Some(Standing::Trusted));
     // The decision took the first load's print, so the load options changed: load once with them.
@@ -310,12 +309,12 @@ fn a_config_edit_outside_reads_the_identity_again() {
     let git_dir = st.snap.as_ref().unwrap().git_dir.clone();
     git(&dir, &["config", "user.name", "Grace Hopper"]);
     let mut fx = update(&mut st, config_changed(), Instant::now());
-    let [Effect::Profile(crate::profile::ProfileEffect::ReadIdentity { git_dir: g, .. })] = &fx[..] else {
+    let [Effect::Profile(glowfly_model::profile::ProfileEffect::ReadIdentity { git_dir: g, .. })] = &fx[..] else {
         panic!("one identity read: {fx:?}")
     };
     assert_eq!(g, &git_dir);
     // The read only reads git config; the repository's own name comes before any global one.
-    let msg = runner::testing::execute(fx.remove(0)).expect("a result");
+    let msg = glowfly_runner::testing::execute(fx.remove(0)).expect("a result");
     let fx = update(&mut st, msg, Instant::now());
     finish(&mut st, fx);
     assert_eq!(st.identities[&git_dir].name, "Grace Hopper", "the edited config");

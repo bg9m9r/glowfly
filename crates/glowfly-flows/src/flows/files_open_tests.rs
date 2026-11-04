@@ -5,14 +5,14 @@
 use super::tests::{scratch_repo, state};
 use super::update;
 use super::work_files_tests::last_log;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::{FilesMsg, Msg};
-use crate::state::trust::record;
-use crate::state::{AppState, Modal};
 use glowfly_core::opens::Os;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::{FilesMsg, Msg};
+use glowfly_model::state::trust::record;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 

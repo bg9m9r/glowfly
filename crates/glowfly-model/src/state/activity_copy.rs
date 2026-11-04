@@ -13,7 +13,7 @@ use std::time::Duration;
 /// One entry: "<title> · <result> · <time>[ · <duration>]", the run's summary on its own line,
 /// then the whole output as the panel shows it (progress redraws collapsed, blank lines at the
 /// end left out). A note names its result only when it failed.
-pub fn entry_text(e: &LogEntry, t: Lang, utc_offset: i32) -> String {
+pub(crate) fn entry_text(e: &LogEntry, t: Lang, utc_offset: i32) -> String {
     let mut head = vec![title_of(e).to_owned()];
     if e.run.is_some() || !e.ok {
         head.push(if e.ok { t.tr("logs.activity.done") } else { t.tr("logs.activity.failed") }.to_owned());
@@ -65,7 +65,7 @@ pub fn entry_copy(log: &[LogEntry], id: EntryId, t: Lang, utc_offset: i32) -> Op
 
 /// Everything a tab's log shows, oldest first: session headers as a line, each entry and group
 /// as its block, with a blank line between them.
-pub fn activity_text(log: &[LogEntry], t: Lang, utc_offset: i32) -> String {
+pub(crate) fn activity_text(log: &[LogEntry], t: Lang, utc_offset: i32) -> String {
     let blocks: Vec<String> = rows(log)
         .into_iter()
         .map(|row| match row {

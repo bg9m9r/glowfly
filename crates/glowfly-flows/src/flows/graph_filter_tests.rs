@@ -3,16 +3,15 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::GraphMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::runner;
-use crate::state::AppState;
-use crate::state::branches::HEAD_ALWAYS_SHOWN;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{FilterOp, GraphFilter};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::branches::HEAD_ALWAYS_SHOWN;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -48,7 +47,7 @@ fn op(st: &mut AppState, op: FilterOp) -> Vec<Effect> {
 fn run(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx {
         if matches!(e, Effect::LoadRepo { .. })
-            && let Some(m) = runner::testing::execute(e)
+            && let Some(m) = glowfly_runner::testing::execute(e)
         {
             drive(st, m);
         }
@@ -128,7 +127,8 @@ fn checking_out_hidden_branch_shows_it_again() {
     git(&dir, &["checkout", "-q", "feature"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
+    let loaded =
+        fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| glowfly_runner::testing::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
     assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the load already showed it");
@@ -223,7 +223,8 @@ fn deleted_refs_are_pruned() {
     git(&dir, &["branch", "-D", "feature", "other"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
+    let loaded =
+        fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| glowfly_runner::testing::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
@@ -309,7 +310,8 @@ fn deleted_tags_are_pruned() {
     git(&dir, &["tag", "-d", "rel", "keep"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded = fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| runner::testing::execute(e)).flatten()).unwrap();
+    let loaded =
+        fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| glowfly_runner::testing::execute(e)).flatten()).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));

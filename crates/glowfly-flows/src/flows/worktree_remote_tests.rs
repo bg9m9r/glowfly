@@ -6,12 +6,12 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git};
 use super::update;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::worktrees::{WorktreeForm, branch_problem};
-use crate::state::{AppState, ForgeState, Modal};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::forge::{Provider, Target};
 use glowfly_core::worktree_ops::WorktreeBase;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::worktrees::{WorktreeForm, branch_problem};
+use glowfly_model::state::{AppState, ForgeState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

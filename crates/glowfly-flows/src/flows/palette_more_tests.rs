@@ -4,16 +4,16 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::palette::{Entry, PaletteCommand as C, entries, shown};
-use crate::state::palette_commands::SHOW_REPO_FOLDER;
-use crate::state::{AppState, Modal};
 use glowfly_core::settings::DiffLayout;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::palette::{Entry, PaletteCommand as C, entries, shown};
+use glowfly_model::state::palette_commands::SHOW_REPO_FOLDER;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
@@ -65,7 +65,7 @@ fn stash_and_pop_entries() {
 fn undo_redo_entries_follow_history() {
     let (mut st, dir) = repo_with_topic("palette-more-undo");
     super::tests::clean_tree(&dir);
-    drive(&mut st, Msg::Repo(crate::msg::RepoMsg::Refresh));
+    drive(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::Refresh));
     assert!(!has(&st, "Undo"));
     assert!(!has(&st, "Redo"));
 
@@ -144,7 +144,7 @@ fn terminal_panel_entry_toggles() {
     open_palette(&mut st);
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::ToggleTerminal)));
     assert!(st.palette.is_none() && st.terminal.open);
-    assert!(fx.iter().any(|e| matches!(e, Effect::Terminal(crate::terminal::TerminalEffect::Spawn { .. }))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Terminal(glowfly_model::terminal::TerminalEffect::Spawn { .. }))), "{fx:?}");
     assert!(has(&st, "Hide terminal panel"));
     assert!(!has(&st, "Show terminal panel"));
     // The external terminal entry is unchanged.
@@ -247,7 +247,7 @@ fn keywords_match_synonyms() {
 #[test]
 fn tab_rename_move_and_reopen_entries() {
     use super::tabs_close_tests::{fake, fake_tabs, names};
-    use crate::state::tabs::ClosedTab;
+    use glowfly_model::state::tabs::ClosedTab;
     let mut st = fake_tabs(&["a", "b", "c"], 0);
     assert!(!has(&st, "Move tab left"), "the first tab can't move left");
     let right = find(&st, "Move tab right").expect("Move tab right");

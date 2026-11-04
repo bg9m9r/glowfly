@@ -3,11 +3,11 @@
 //! width to `update`, which saves it.
 
 use super::layout::Columns;
-use crate::msg::{GraphMsg, Msg};
-use crate::state::ColumnDrag;
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::{self, CursorIcon, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2};
 use glowfly_core::settings::{ColumnWidths, GraphColumns, ResizableColumn, drag_width};
+use glowfly_model::msg::{GraphMsg, Msg};
+use glowfly_model::state::ColumnDrag;
 
 /// Half the width of a divider's grab area.
 const GRIP_HALF_W: f32 = 4.0;

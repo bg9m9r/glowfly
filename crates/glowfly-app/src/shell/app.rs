@@ -7,24 +7,24 @@
 //! bar's picks and hands it the menus (`app_menu.rs`).
 
 use super::{app_menu, app_native};
-use crate::effect::Effect;
-use crate::msg::AppMsg;
-use crate::msg::AvatarMsg;
-use crate::msg::GraphMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
 use crate::platform::a11y_system;
 use crate::platform::native_menu::NativeMenu;
 use crate::platform::native_window::NativeWindow;
 use crate::platform::primary_selection::PrimarySelection;
-use crate::runner::{Runner, Waker};
-use crate::state::AppState;
-use crate::ui::{UiCache, avatars, build_status, layout, shortcuts, theme};
 use eframe::egui;
 use glowfly_core::settings::{LoadProblem, Settings};
 use glowfly_core::spell::Speller;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::AppMsg;
+use glowfly_model::msg::AvatarMsg;
+use glowfly_model::msg::GraphMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_runner::{Runner, Waker};
+use glowfly_ui::{UiCache, avatars, build_status, layout, shortcuts, theme};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Instant;
@@ -63,7 +63,7 @@ pub struct GlowflyApp {
     /// tests.
     probe: Option<crate::smoke_probe::ProbeWriter>,
     /// How long recent frames took, and where this one's time goes (`state/frame_times.rs`).
-    frames: crate::state::frame_times::FrameTimes,
+    frames: glowfly_model::state::frame_times::FrameTimes,
     /// Results taken from the runner's channel so far (the journeys wait for this to stop
     /// changing).
     #[cfg(test)]
@@ -76,10 +76,10 @@ impl GlowflyApp {
     /// the smoke tests' state file, when `GLOWFLY_SMOKE_PROBE` asked for one.
     pub fn new(
         cc: &eframe::CreationContext<'_>,
-        start: Option<crate::start_arg::StartArg>,
-        logs: crate::runner::LogSetup,
+        start: Option<glowfly_model::start_arg::StartArg>,
+        logs: glowfly_runner::LogSetup,
         loaded: (Settings, Option<LoadProblem>),
-        chrome: crate::state::window_chrome::Chrome,
+        chrome: glowfly_model::state::window_chrome::Chrome,
         mica: bool,
         probe: Option<crate::smoke_probe::ProbeWriter>,
     ) -> Self {
@@ -94,10 +94,10 @@ impl GlowflyApp {
         let (settings, problem) = loaded;
         // The git chosen in Preferences > Git runs from the first git call on (no disk access here).
         glowfly_core::git_program::set(glowfly_core::git_program::from_setting(settings.git_program.as_deref()).as_deref());
-        let recent = crate::runner::platform::load_recent();
+        let recent = glowfly_runner::platform::load_recent();
         // Restore the last session's tabs (or, before tabs were saved, the last repository).
         let (mut paths, labels, active) =
-            if settings.reopen_last_repo { crate::runner::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
+            if settings.reopen_last_repo { glowfly_runner::platform::load_tabs() } else { (Vec::new(), Vec::new(), 0) };
         if paths.is_empty() && settings.reopen_last_repo {
             // Not checked here (a network share may not answer): a folder that is gone fails to
             // load like any other.
@@ -106,11 +106,11 @@ impl GlowflyApp {
         let mut app = Self::assemble(ctx, settings, recent, Runner::new);
         // The build's version; test apps keep the placeholder, so snapshots survive releases.
         app.st.updates.set_version(env!("CARGO_PKG_VERSION"));
-        app.st.updates.build = crate::state::menu_bar::BuildInfo::this();
+        app.st.updates.build = glowfly_model::state::menu_bar::BuildInfo::this();
         // Only the real app draws its own frame where the OS calls for it; test apps keep System.
         app.st.view.chrome = chrome;
         app.st.view.system_title_bar_offered =
-            crate::state::window_chrome::Chrome::offers_system_title_bar(glowfly_core::opens::Os::current());
+            glowfly_model::state::window_chrome::Chrome::offers_system_title_bar(glowfly_core::opens::Os::current());
         app.native = NativeWindow::install(cc, app.st.view.chrome, mica, ctx.clone());
         app.menu = NativeMenu::install(app.st.view.chrome, ctx.clone());
         app.primary = PrimarySelection::install(cc);
@@ -118,13 +118,13 @@ impl GlowflyApp {
         app.a11y.refresh(ctx);
         if probe.is_some() {
             // Before the first frame, so the probe sees named widgets from the start.
-            crate::ui::probe::enable(ctx);
+            glowfly_ui::probe::enable(ctx);
         }
         app.probe = probe;
         // Read now, not through the runner, so the first frame already has the theme's colors;
         // the folder sits next to the settings file just read.
         let themes = glowfly_core::settings::themes::load_all();
-        crate::themes::trace_problems(&themes);
+        glowfly_model::themes::trace_problems(&themes);
         app.start(ctx, themes, Some(logs), problem);
         if !paths.is_empty() {
             app.dispatch(ctx, Msg::Tabs(TabsMsg::RestoreTabs { paths, labels, active }));
@@ -165,7 +165,7 @@ impl GlowflyApp {
             theme: theme::ThemeCache::default(),
             native: None,
             menu: None,
-            a11y: a11y_system::Watch::new(crate::state::system_a11y::SystemA11y::default),
+            a11y: a11y_system::Watch::new(glowfly_model::state::system_a11y::SystemA11y::default),
             primary: PrimarySelection::default(),
             probe: None,
             frames: Default::default(),
@@ -178,7 +178,7 @@ impl GlowflyApp {
         let area = msg.area();
         let _span = tracing::trace_span!("update", area).entered();
         let started = Instant::now();
-        let effects = crate::update::update_sealed(&mut self.st, msg, started);
+        let effects = glowfly_model::update::update_sealed(&mut self.st, msg, started);
         for effect in effects {
             match effect {
                 Effect::Ui(e) => self.ui_effect(ctx, e),
@@ -215,7 +215,7 @@ impl GlowflyApp {
         self.theme.apply(ctx, &self.st.settings, &self.st.themes, self.st.system_contrast());
         layout::apply_zoom(ctx, &self.st);
         self.st.view.focused = ctx.input(|i| i.focused);
-        self.st.view.window = ctx.input(|i| crate::state::window_chrome::WindowInfo {
+        self.st.view.window = ctx.input(|i| glowfly_model::state::window_chrome::WindowInfo {
             maximized: i.viewport().maximized.unwrap_or(false),
             fullscreen: i.viewport().fullscreen.unwrap_or(false),
             ..Default::default()
@@ -255,7 +255,7 @@ impl GlowflyApp {
         }
         self.phase("draw", |app| {
             app.input(ctx, &mut msgs);
-            crate::ui::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
+            glowfly_ui::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
             app.draw_overlay(ctx);
         });
         // Debug builds: warn once about each character drawn as a box.
@@ -286,7 +286,7 @@ impl GlowflyApp {
         // thread (`smoke_probe.rs`), never by a view. A changed one asks for one more frame, so
         // the widgets drawn catch up with the messages just handled.
         if let Some(p) = &mut self.probe
-            && p.offer(crate::ui::probe::snapshot(ctx, &self.st))
+            && p.offer(glowfly_ui::probe::snapshot(ctx, &self.st))
         {
             ctx.request_repaint();
         }

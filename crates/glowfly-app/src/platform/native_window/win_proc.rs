@@ -12,7 +12,7 @@
 //! is enough), with no `RefCell`, unwrap or indexing that can fail.
 
 use super::{NativeFrame, win_system};
-use crate::state::window_native::{BackdropSupport, CaptionButton, CaptionEvent, CaptionGeometry, CaptionHit, PxRect};
+use glowfly_model::state::window_native::{BackdropSupport, CaptionButton, CaptionEvent, CaptionGeometry, CaptionHit, PxRect};
 use std::ffi::c_void;
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicIsize, AtomicU8, Ordering::Relaxed};

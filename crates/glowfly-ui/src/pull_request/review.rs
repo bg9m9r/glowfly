@@ -6,17 +6,17 @@
 
 use super::super::theme::color;
 use super::{heading, note, send_key};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::Msg;
-use crate::state::pull_request::{PrAction, PrView};
-use crate::state::pull_request_actions::{
+use crate::theme::controls;
+use crate::widgets::{buttons, reason};
+use eframe::egui::{self, Ui};
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::Msg;
+use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::{PrAction, PrView};
+use glowfly_model::state::pull_request_actions::{
     error_for, review_blocked, review_button, review_choice_blocked, review_choice_line, review_choice_text, review_choices,
     review_placeholder,
 };
-use crate::ui::theme::controls;
-use crate::ui::widgets::{buttons, reason};
-use eframe::egui::{self, Ui};
-use glowfly_model::pull_request::PullRequestMsg;
 
 /// Shown once the page is loaded. Command+Enter in the summary submits too.
 pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {
@@ -45,7 +45,7 @@ pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Ms
     let hint = review_placeholder(v);
     let summary = egui::TextEdit::multiline(&mut v.forms.review_body).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY);
     let field = controls::field(ui, summary);
-    crate::ui::access::name_field(&field, "Review summary");
+    crate::access::name_field(&field, "Review summary");
     if send_key(ui, &field) && review_blocked(v).is_none() {
         msgs.push(Msg::PullRequest(PullRequestMsg::SubmitReview));
     }

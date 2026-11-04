@@ -3,11 +3,11 @@
 
 use super::custom_commands_tests::{command, file, load, opened};
 use super::tests::state;
-use crate::custom_commands::{CommandRef, CustomCommandMsg, Target};
-use crate::state::AppState;
-use crate::state::palette::{PaletteCommand as C, entries};
 use glowfly_core::custom_commands::Source;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::custom_commands::{CommandRef, CustomCommandMsg, Target};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
 
 /// The custom entries (label, detail), Reload included.
 fn custom(st: &AppState) -> Vec<(String, Option<String>)> {
@@ -38,7 +38,7 @@ fn entries_list_the_users_then_the_repositorys_commands() {
     };
     assert_eq!(custom(&st), want("This repository's command, asks to trust it first"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
     assert_eq!(custom(&st), want("This repository's command"));
     let run = entries(&st).into_iter().find(|e| e.label == "Log").map(|e| e.command);
     let log = CommandRef { source: Source::User, name: "Log".into() };

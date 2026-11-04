@@ -4,9 +4,9 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{Msg, TabsMsg};
-use crate::state::tabs::{MAX_TAB_LABEL, RenameTabForm};
 use eframe::egui;
+use glowfly_model::msg::{Msg, TabsMsg};
+use glowfly_model::state::tabs::{MAX_TAB_LABEL, RenameTabForm};
 
 /// Draws the dialog; returns true when it should close. Its field takes the keyboard focus
 /// whenever nothing else in the dialog has it, unless `cx.keyboard` is false (a credential

@@ -4,11 +4,11 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::drive;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::AppState;
-use crate::state::blame::BlameView;
-use crate::state::palette::{Items, Mode, PaletteCommand, Pick, PickKind, shown};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::palette::{Items, Mode, PaletteCommand, Pick, PickKind, shown};
 use std::time::Instant;
 
 const BLAME: &str = "Blame file…";

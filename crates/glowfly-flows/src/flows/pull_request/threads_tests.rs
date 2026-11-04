@@ -3,16 +3,16 @@
 
 use super::calls_tests::{calls, detail, done, err, opened, reply_msg, run, view};
 use super::tests::{github, pr_target};
-use crate::effect::{Effect, ForgeError};
 use crate::flows::finish_keeping;
-use crate::msg::Msg;
-use crate::pull_request::{PrCall, PrReply, PullRequestMsg};
-use crate::state::AppState;
-use crate::state::pull_request::{Page, PrAction, PrTab};
-use crate::update::update;
 use glowfly_core::diff_rows::{LineSide, row_of_file_line};
 use glowfly_core::forge::{Auth, PrPage, Provider, ReviewThread, ThreadComment};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, ForgeError};
+use glowfly_model::msg::Msg;
+use glowfly_model::pull_request::{PrCall, PrReply, PullRequestMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::pull_request::{Page, PrAction, PrTab};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn comment(id: u64, time: i64) -> ThreadComment {
@@ -253,7 +253,7 @@ fn go_to_thread_with_diff_open_scrolls_without_loading() {
     let (mut st, _, dirs) = opened("prt-goto-open");
     loaded_threads(&mut st, vec![thread("T1", "f.txt", Some(1)), thread("T2", "f.txt", Some(40))], |_| {});
     let target = pr_target(&st, "f.txt");
-    let fx = update(&mut st, Msg::Repo(crate::msg::RepoMsg::OpenDiff(target)), Instant::now());
+    let fx = update(&mut st, Msg::Repo(glowfly_model::msg::RepoMsg::OpenDiff(target)), Instant::now());
     finish_keeping(&mut st, fx);
     run(&mut st, PullRequestMsg::Tab(PrTab::Overview));
     st.view.diff_scroll_to_row = None;

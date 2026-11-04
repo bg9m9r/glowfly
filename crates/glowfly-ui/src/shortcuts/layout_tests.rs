@@ -2,16 +2,16 @@
 //! (typing, the palette, dialogs, the sheet, Preferences, a credential prompt) except a key
 //! being recorded; the panel toggles work only with nothing in the way.
 
-use crate::keymap::{BindingId, Chord, KeyName, Slot};
-use crate::msg::{KeysMsg, LayoutMsg, Msg};
-use crate::state::askpass::PendingPrompt;
-use crate::state::keys_page::Recording;
-use crate::state::layout::Panel;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::askpass::Prompt;
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, Slot};
+use glowfly_model::msg::{KeysMsg, LayoutMsg, Msg};
+use glowfly_model::state::askpass::PendingPrompt;
+use glowfly_model::state::keys_page::Recording;
+use glowfly_model::state::layout::Panel;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 struct Keys {
@@ -29,7 +29,7 @@ fn state() -> AppState {
 
 fn harness(st: AppState, field: bool) -> H {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some((text, focus)) = k.field.as_mut() {

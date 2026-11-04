@@ -116,7 +116,7 @@ fn the_kept_text_is_six_characters_of_the_name() {
 /// A context with the bundled fonts installed (the semibold face among them).
 fn ctx() -> eframe::egui::Context {
     let ctx = eframe::egui::Context::default();
-    ctx.set_fonts(crate::ui::theme::fonts::definitions().clone());
+    ctx.set_fonts(crate::theme::fonts::definitions().clone());
     for _ in 0..2 {
         let _ = ctx.run(eframe::egui::RawInput::default(), |_| {});
     }
@@ -158,7 +158,7 @@ fn the_current_branch_is_measured_in_semibold() {
     let p = Painter::new(ctx.clone(), eframe::egui::LayerId::background(), Rect::EVERYTHING);
     let named = |style, text: &str| ChipSpec { style, text: text.to_owned(), ..spec(false, false) };
     let current = named(ChipStyle::CurrentBranch, "✔ feature/login");
-    let semi = crate::ui::theme::fonts::semibold_in(&ctx, FONT);
+    let semi = crate::theme::fonts::semibold_in(&ctx, FONT);
     assert_eq!(current.font(&p), semi);
     assert_ne!(semi.family, eframe::egui::FontFamily::Proportional, "the bundled semibold face is installed");
     assert_eq!(spec_w(&p, &current), chip_w(&current, text_w(&p, &current.text, &semi)));

@@ -3,9 +3,9 @@
 //! folder (`files::check_clone_parent`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::{CloneEffect, ForgeError};
-use crate::msg::{CloneMsg, Msg};
 use glowfly_core::{clone_ops, forge};
+use glowfly_model::effect::{CloneEffect, ForgeError};
+use glowfly_model::msg::{CloneMsg, Msg};
 
 pub(super) fn run(e: CloneEffect) -> Msg {
     Msg::Clone(match e {

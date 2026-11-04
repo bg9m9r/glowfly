@@ -2,17 +2,17 @@
 //! an amber dot once the shell has ended, and a close slot whose × shows on the active pill and
 //! on hover. Double-clicking renames it in place (`rename_field`).
 
-use crate::msg::Msg;
-use crate::state::terminal::{SessionStatus, TabRename, TermSession};
-use crate::state::tip::Tip;
-use crate::ui::theme::sizes::{self, ControlSize};
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::tab_glyph::{self, TabGlyph};
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{Icon, icon, paint_icon_sized, tooltip};
+use crate::theme::sizes::{self, ControlSize};
+use crate::theme::tokens::radius;
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::tab_glyph::{self, TabGlyph};
+use crate::widgets::truncate::{cut_galley, cut_job};
+use crate::widgets::{Icon, icon, paint_icon_sized, tooltip};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Key, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::terminal::{SessionStatus, TabRename, TermSession};
+use glowfly_model::state::tip::Tip;
 use glowfly_model::terminal::TerminalMsg;
 
 /// The size a pill takes: a quiet Regular control in the 40 px header.
@@ -65,7 +65,7 @@ pub(super) fn show(
     s: &TermSession,
     name: &str,
     active: bool,
-    keys: &crate::keymap::Keymap,
+    keys: &glowfly_model::keymap::Keymap,
     t: Lang,
     msgs: &mut Vec<Msg>,
 ) -> Response {

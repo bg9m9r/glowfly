@@ -4,10 +4,10 @@
 
 use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{LoadMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::load_more::MoreRow;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::load_more::MoreRow;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 

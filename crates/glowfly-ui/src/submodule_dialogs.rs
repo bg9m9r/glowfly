@@ -8,15 +8,15 @@ use super::dialog_frame::{self, Cx, Dialog, Footer};
 use super::dialog_guides;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::Msg;
-use crate::state::submodules::add::{AddForm, Disk, relative_url_hint};
-use crate::state::submodules::edit::EditForm;
-use crate::state::submodules::remove::RemoveForm;
-use crate::submodule::SubmoduleMsg;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::submodule_ops::default_path;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::submodules::add::{AddForm, Disk, relative_url_hint};
+use glowfly_model::state::submodules::edit::EditForm;
+use glowfly_model::state::submodules::remove::RemoveForm;
+use glowfly_model::submodule::SubmoduleMsg;
 
 /// The Add dialog; returns true when Cancel closes it (`update` closes it once the job starts).
 /// The URL field has the keyboard focus unless another field has it, or `focus` is false (a

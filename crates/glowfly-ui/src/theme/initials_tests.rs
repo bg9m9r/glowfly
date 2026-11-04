@@ -4,9 +4,9 @@
 //! marks.
 
 use super::*;
-use crate::ui::theme::branch_colours::{line_in, swatches};
-use crate::ui::theme::builtin;
-use crate::ui::theme::contrast::brownish;
+use crate::theme::branch_colours::{line_in, swatches};
+use crate::theme::builtin;
+use crate::theme::contrast::brownish;
 use glowfly_core::settings::BuiltinTheme;
 
 /// OKLab distance of two colours.

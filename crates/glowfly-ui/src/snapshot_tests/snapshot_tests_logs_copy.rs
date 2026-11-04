@@ -5,15 +5,15 @@
 use super::snapshot_tests::harness;
 use super::snapshot_tests_activity::{session, tall};
 use super::snapshot_tests_select::click;
-use crate::logs::{LogKind, LogsMsg};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::logs::LogFileView;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::logs::{LogKind, LogsMsg};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::logs::LogFileView;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

@@ -22,7 +22,7 @@ fn tints(p: &color::Palette) -> Vec<(String, Color32, Color32)> {
         ("field fill".to_string(), p.input, p.field_fill()),
     ];
     for s in swatches() {
-        v.push((format!("{s:?} band"), p.bg, crate::ui::theme::surfaces::band_color(line_in(s, p), p)));
+        v.push((format!("{s:?} band"), p.bg, crate::theme::surfaces::band_color(line_in(s, p), p)));
     }
     v
 }

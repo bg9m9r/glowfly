@@ -1,14 +1,14 @@
 //! Headless tests for picking single lines, editing the output by hand and Save with markers.
 
-use crate::effect::{Effect, LocalOp};
 use crate::flows::conflict_tests::{conflicted_repo, with_fake};
 use crate::flows::{drive, git, scratch_repo, state};
-use crate::msg::{ConflictMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::update::update;
 use glowfly_core::conflict_pick::{ChunkPick, LineRef};
 use glowfly_core::conflict_rows::Trivial;
 use glowfly_core::repo::{Choice, ConflictContent, Segment, Side, marker_regions};
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -16,7 +16,7 @@ fn send(st: &mut AppState, m: ConflictMsg) -> Vec<Effect> {
     update(st, Msg::Conflict(m), Instant::now())
 }
 
-fn view(st: &AppState) -> &crate::state::conflict::ConflictView {
+fn view(st: &AppState) -> &glowfly_model::state::conflict::ConflictView {
     st.session.conflict.view.as_ref().expect("view open")
 }
 

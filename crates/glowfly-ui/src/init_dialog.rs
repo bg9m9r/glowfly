@@ -7,12 +7,12 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg};
-use crate::state::init::{FolderLine, GITIGNORE_KEPT, InitForm};
-use crate::ui::theme::controls;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, RichText};
 use glowfly_core::init_ops::{GitignoreTemplate, INITIAL_COMMIT, License};
+use glowfly_model::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg};
+use glowfly_model::state::init::{FolderLine, GITIGNORE_KEPT, InitForm};
 
 /// The widest a template or license picker gets.
 const PICKER_W: f32 = 280.0;

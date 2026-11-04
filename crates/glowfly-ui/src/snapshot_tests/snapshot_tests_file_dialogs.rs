@@ -4,15 +4,15 @@
 //! confirmation. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::Msg;
-use crate::msg::WorkFileMsg;
-use crate::state::Modal;
-use crate::state::files::PathForm;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Toggled;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::FileEntry;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::Modal;
+use glowfly_model::state::files::PathForm;
 
 #[test]
 fn new_file_dialog() {
@@ -191,7 +191,7 @@ fn confirm_delete_trash() {
     // The trash confirmation for an untracked file: the longer body wraps and the button fits.
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "confirm-delete-trash");
     st.snap.as_mut().unwrap().unstaged.push(FileEntry::new("notes/scratch.txt", '?'));
-    crate::update::update(
+    glowfly_model::update::update(
         &mut st,
         Msg::WorkFile(WorkFileMsg::DeleteFile { path: "notes/scratch.txt".into(), confirmed: false }),
         std::time::Instant::now(),
@@ -200,7 +200,7 @@ fn confirm_delete_trash() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("confirm_delete_trash");
-    let button = format!("Move to {}", crate::state::files::TRASH);
+    let button = format!("Move to {}", glowfly_model::state::files::TRASH);
     h.get_by_label(&button).click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "the button accepts");

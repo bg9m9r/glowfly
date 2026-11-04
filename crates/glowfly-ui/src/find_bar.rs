@@ -2,13 +2,13 @@
 //! them: laid out right to left, the Line field, the next and previous match arrows, the match
 //! count and the Find field.
 
-use crate::state::blame_find::BlameFind;
-use crate::ui::access::name_field;
-use crate::ui::theme::color;
-use crate::ui::theme::controls::SizedField;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::{Icon, small_icon};
+use crate::access::name_field;
+use crate::theme::color;
+use crate::theme::controls::SizedField;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::{Icon, small_icon};
 use eframe::egui::{self, Key, RichText, Ui};
+use glowfly_model::state::blame_find::BlameFind;
 
 pub(crate) const FIND_HINT: &str = "Find in file";
 pub(crate) const LINE_HINT: &str = "Line";

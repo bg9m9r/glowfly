@@ -6,12 +6,12 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::keymap::{BindingId, Chord, KeyName, Keymap, Slot};
-use crate::msg::{KeysMsg, Msg, PaletteMsg, RepoMsg};
-use crate::state::palette::{InputKind, Mode, PaletteCommand as C, PickKind, shown};
-use crate::state::toolbar_tips;
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection};
+use glowfly_model::effect::Effect;
+use glowfly_model::keymap::{BindingId, Chord, KeyName, Keymap, Slot};
+use glowfly_model::msg::{KeysMsg, Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::palette::{InputKind, Mode, PaletteCommand as C, PickKind, shown};
+use glowfly_model::state::toolbar_tips;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Selection};
 use std::collections::BTreeMap;
 use std::time::Instant;
 

@@ -3,14 +3,14 @@
 
 use super::update;
 use super::updates_tests::{found, offered, saved, send};
-use crate::effect::partial::StopKey;
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::{Msg, PrefsMsg, UpdateMsg as U};
-use crate::state::palette::entries;
-use crate::state::updates::{Transfer, UpdateStatus, progress_text};
-use crate::state::{AppState, PrefPage};
 use glowfly_core::app_update::{InstallKind, Progress, SavedProblem, UpdateError};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::partial::StopKey;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg as U};
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{Transfer, UpdateStatus, progress_text};
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::PathBuf;
 use std::time::Instant;
 

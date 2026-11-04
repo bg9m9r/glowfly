@@ -4,9 +4,9 @@
 //! and recording goes on.
 
 use super::chords::{chord_from_press, mac_press};
-use crate::msg::{KeysMsg, Msg};
-use crate::state::{AppState, PrefPage};
 use eframe::egui::{self, Event, Key};
+use glowfly_model::msg::{KeysMsg, Msg};
+use glowfly_model::state::{AppState, PrefPage};
 
 /// Takes this frame's keys for the recording, if one is going on; returns whether it is.
 pub(super) fn keys(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) -> bool {

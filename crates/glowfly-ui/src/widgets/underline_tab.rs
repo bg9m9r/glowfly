@@ -5,9 +5,9 @@
 //! line, never by a filled block (`docs/COLOUR.md`, "The accent").
 
 use super::quiet_target::{self, State};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{Align2, Rect, Response, Sense, Shape, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 
 /// A tab's height and its padding either side of the label.

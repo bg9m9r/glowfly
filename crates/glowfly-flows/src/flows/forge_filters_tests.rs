@@ -3,15 +3,15 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, FilterCall, FilterResult, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{FilterMsg, ForgeMsg, Msg, RepoMsg};
-use crate::state::forge_filters::{Hint, MeState, issue_view, pr_view};
-use crate::state::{AppState, ForgeState, Status};
 use glowfly_core::forge::{
     Auth, Builtin, Connection, FilterChoice, FilterKind, Issue, IssueFacets, Me, PrFacets, Provider, PullRequest, Target,
 };
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{RepoTrust, Settings};
+use glowfly_model::effect::{Effect, FilterCall, FilterResult, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{FilterMsg, ForgeMsg, Msg, RepoMsg};
+use glowfly_model::state::forge_filters::{Hint, MeState, issue_view, pr_view};
+use glowfly_model::state::{AppState, ForgeState, Status};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -254,7 +254,7 @@ fn a_refresh_runs_the_shown_filters_again() {
 fn untrusted_repositories_and_unconnected_servers_get_no_filter_calls() {
     let (mut st, dir) = open("ff-held");
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(filter_calls(&send(&mut st, choose(FilterKind::Prs, Builtin::MyPrs))).is_empty());
     assert_eq!(fs(&st).filters.me, MeState::Unknown, "not left asking");
     assert!(filter_calls(&send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe))).is_empty());
@@ -283,7 +283,7 @@ fn dropped_replies_are_asked_for_again() {
     let f = st.session.forge.as_mut().unwrap();
     f.replies_dropped();
     assert_eq!(f.filters.me, MeState::Unknown);
-    assert_eq!(f.filters.pr_options, crate::state::forge_filters::OptionsState::NotAsked);
+    assert_eq!(f.filters.pr_options, glowfly_model::state::forge_filters::OptionsState::NotAsked);
     // A reply for an inactive tab is dropped whole.
     let other = Msg::Scoped {
         workdir: dir.join("elsewhere"),

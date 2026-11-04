@@ -3,16 +3,16 @@
 //! `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
-use crate::msg::{JobMsg, Msg};
-use crate::state::conflict_check::{ConflictReport, current_request};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::conflict_check::CheckRequest;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::conflict_check::{ConflictReport, current_request};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 // The chip under the real pointer.

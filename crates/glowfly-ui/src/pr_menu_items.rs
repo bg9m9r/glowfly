@@ -8,26 +8,26 @@
 use super::common::{menu_item, menu_item_if, menu_item_tip};
 use super::widgets::menu;
 use super::widgets::reason::{self, ItemState};
-use crate::msg::Msg;
-use crate::msg::{BranchMsg, ForgeMsg};
-use crate::state::blocked::BUSY;
-use crate::state::push_pr::{self, HostBranch};
-use crate::state::{ForgeState, Selection};
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::forge::PullRequest;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::{BranchMsg, ForgeMsg};
+use glowfly_model::state::blocked::BUSY;
+use glowfly_model::state::push_pr::{self, HostBranch};
+use glowfly_model::state::{ForgeState, Selection};
 
 /// The PULL REQUESTS row's checkout of the source branch: its local branch like any other (Open
 /// <source> in its worktree when another worktree has it, Prune and check out when that
 /// worktree's folder is missing); otherwise a new branch tracking the remote one. Disabled with
 /// the reason for a name git refuses or a branch this repository lacks.
 pub(super) fn checkout_item(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, f: &ForgeState, pr: &PullRequest, msgs: &mut Vec<Msg>) {
-    use crate::state::worktree_branches::{Elsewhere, checkout_elsewhere};
-    use crate::ui::widgets::menu::named;
+    use crate::widgets::menu::named;
+    use glowfly_model::state::worktree_branches::{Elsewhere, checkout_elsewhere};
     let m = BranchMsg::CheckoutPullRequest { id: pr.id };
-    let blocked = crate::state::branches::pr_checkout(snap, &f.remote, &pr.source).err();
+    let blocked = glowfly_model::state::branches::pr_checkout(snap, &f.remote, &pr.source).err();
     let local = snap.locals.iter().any(|b| b.name == pr.source);
     let elsewhere = (local && blocked.is_none()).then(|| checkout_elsewhere(t, snap, &pr.source)).flatten();
     let source = [("branch", pr.source.as_str())];

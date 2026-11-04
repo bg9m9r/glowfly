@@ -4,11 +4,11 @@
 //! runner, so it is the app crate's (`runner_snapshots`).
 
 use super::snapshot_tests::{render, with_conflict};
-use crate::msg::{ConflictMsg, Msg};
 pub(crate) use crate::snapshot_fixtures::scenes::{fill_lists, merging};
-use crate::state::AppState;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::Side;
+use glowfly_model::msg::{ConflictMsg, Msg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -66,7 +66,7 @@ fn theme_settings(side: &str) -> Vec<u8> {
 }
 
 fn send(st: &mut AppState, m: ConflictMsg) {
-    crate::update::update(st, Msg::Conflict(m), Instant::now());
+    glowfly_model::update::update(st, Msg::Conflict(m), Instant::now());
 }
 
 #[test]

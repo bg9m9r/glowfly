@@ -5,17 +5,17 @@
 use super::common::short;
 use super::snapshot_tests::{remove_fixture, render, with_repo};
 use super::snapshot_tests_esc::app_harness;
-use crate::msg::{Msg, RepoMsg, SelectionMsg, StageMsg};
-use crate::state::selection::MultiSelection;
-use crate::state::selection_span::Span;
-use crate::state::selection_wip::WorkdirCompare;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg, StageMsg};
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::selection_span::Span;
+use glowfly_model::state::selection_wip::WorkdirCompare;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 fn commit(st: &AppState, summary: &str) -> Oid {

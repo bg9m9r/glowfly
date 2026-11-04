@@ -4,11 +4,11 @@
 use super::submodule_tests::{PATH, cleanup, deinit, opened};
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::submodule::{Batch, SubmoduleMsg};
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::submodule::{Batch, SubmoduleMsg};
 use std::time::Instant;
 
 fn labels(st: &AppState) -> Vec<String> {

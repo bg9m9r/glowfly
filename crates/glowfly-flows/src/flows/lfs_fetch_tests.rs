@@ -5,15 +5,14 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::runner;
-use crate::state::lfs::LfsInstall;
-use crate::state::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
-use crate::state::trust;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::gitcli::args;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::state::lfs::LfsInstall;
+use glowfly_model::state::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
+use glowfly_model::state::trust;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -59,7 +58,7 @@ fn auto_fetch_in_an_lfs_repository_starts_a_quiet_lfs_download() {
     let tick = st.last_fetch + Duration::from_secs(61);
     let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
     assert!(matches!(&fx[..], [Effect::RunGit { .. }]), "{fx:?}");
-    let done = runner::testing::execute(fx.remove(0)).expect("the fetch's result");
+    let done = glowfly_runner::testing::execute(fx.remove(0)).expect("the fetch's result");
     let fx = update(&mut st, done, Instant::now());
     let quiet = fx.iter().any(|e| matches!(e, Effect::RunGit { cmds, prompts: false, .. } if *cmds == [args(&["lfs", "fetch"])]));
     assert!(quiet, "{fx:?}");

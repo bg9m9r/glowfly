@@ -4,12 +4,12 @@
 
 use super::tests::state;
 use super::update;
-use crate::msg::{AppMsg, BranchMsg, CloneMsg, DialogMsg, Dismiss, InitMsg, Msg, RepoMsg};
-use crate::state::askpass::PendingPrompt;
-use crate::state::{AppState, Modal};
+use glowfly_model::msg::{AppMsg, BranchMsg, CloneMsg, DialogMsg, Dismiss, InitMsg, Msg, RepoMsg};
+use glowfly_model::state::askpass::PendingPrompt;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
-fn run(st: &mut AppState, msg: Msg) -> Vec<crate::effect::Effect> {
+fn run(st: &mut AppState, msg: Msg) -> Vec<glowfly_model::effect::Effect> {
     update(st, msg, Instant::now())
 }
 
@@ -213,8 +213,8 @@ fn a_credential_prompt_keeps_esc_and_clicks() {
     assert!(matches!(st.modal, Some(Modal::About)), "nothing is dismissed under the prompt");
 }
 
-fn copies(fx: &[crate::effect::Effect], text: &str) -> bool {
-    use crate::effect::{Effect, UiEffect};
+fn copies(fx: &[glowfly_model::effect::Effect], text: &str) -> bool {
+    use glowfly_model::effect::{Effect, UiEffect};
     matches!(fx, [Effect::Ui(UiEffect::CopyText(t))] if t == text)
 }
 

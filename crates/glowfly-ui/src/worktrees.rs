@@ -11,20 +11,20 @@ use super::theme::{color, type_scale};
 use super::widgets;
 use super::widgets::empty_state::{self, Action};
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::Selection;
-use crate::state::section_actions::SectionAction;
-use crate::state::worktree_manage::{manage_blocked, open_elsewhere, prune_blocked, remove_blocked, row_prune_blocked};
-use crate::state::worktree_move::move_refused;
-use crate::state::worktrees::{listed, open_blocked, right_text, tooltip};
-use crate::ui::widgets::menu::separator;
-use crate::ui::widgets::row_menu::RowMenuExt;
-use crate::worktree::WorktreeMsg;
+use crate::widgets::menu::separator;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Snapshot, WorktreeInfo};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::Selection;
+use glowfly_model::state::section_actions::SectionAction;
+use glowfly_model::state::worktree_manage::{manage_blocked, open_elsewhere, prune_blocked, remove_blocked, row_prune_blocked};
+use glowfly_model::state::worktree_move::move_refused;
+use glowfly_model::state::worktrees::{listed, open_blocked, right_text, tooltip};
+use glowfly_model::worktree::WorktreeMsg;
 
 /// The share of a worktree row its dim right-hand text (what it has checked out) keeps when the
 /// name and it don't both fit.
@@ -35,7 +35,7 @@ const RIGHT_SHARE: f32 = 0.4;
 pub(super) struct Rows<'a> {
     pub shown: &'a dyn Fn(&str) -> bool,
     pub sel: &'a Selection,
-    pub open_tabs: &'a [crate::state::tabs::Place],
+    pub open_tabs: &'a [glowfly_model::state::tabs::Place],
     pub add: &'a SectionAction,
     pub filtering: bool,
     pub t: Lang,
@@ -76,7 +76,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         let right = (!right.is_empty()).then_some((&parts[..], col));
         let (r, _, cut) = widgets::name_row_cut(ui, widgets::ROW_INDENT, &label, right, 0.0, selected, wt.current);
         if wt.current {
-            crate::ui::access::name_button(&r, true, &t.trf("access.current_worktree", &[("name", &wt.folder_name())]));
+            crate::access::name_button(&r, true, &t.trf("access.current_worktree", &[("name", &wt.folder_name())]));
         }
         if r.hovered() {
             *hover_next = wt.head;

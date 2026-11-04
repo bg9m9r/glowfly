@@ -2,10 +2,10 @@
 
 use super::tests::{drive, same_place, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RecentMsg, RepoMsg};
-use crate::state::repo_lists::is_missing;
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RecentMsg, RepoMsg};
+use glowfly_model::state::repo_lists::is_missing;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -95,7 +95,7 @@ fn unfavorite_removes_and_saves() {
 
 #[test]
 fn starring_a_recent_row_moves_it_to_favorites_and_back() {
-    use crate::state::repo_lists::{favorites, recent_rows};
+    use glowfly_model::state::repo_lists::{favorites, recent_rows};
     let mut st = state();
     st.recent = paths(&["/w/a", "/w/b"]);
     favorite(&mut st, "/w/b", true);
@@ -169,7 +169,7 @@ fn open_favorite_opens_it_or_says_there_is_none() {
 fn open_all_adds_tabs_for_unopened_present_favorites() {
     let mut st = state();
     st.settings.favorite_repos = vec!["/w/a".into(), "/w/b".into(), "/w/c".into()];
-    st.tabs = vec![crate::state::Tab::unloaded(PathBuf::from("/w/a"))];
+    st.tabs = vec![glowfly_model::state::Tab::unloaded(PathBuf::from("/w/a"))];
     st.missing_repos = vec![PathBuf::from("/w/b")];
     let fx = run(&mut st, RecentMsg::OpenAll(paths(&["/w/a", "/w/b", "/w/c"])));
     let tabs: Vec<Option<PathBuf>> = st.tabs.iter().map(|t| t.path.clone()).collect();
@@ -183,7 +183,7 @@ fn open_all_adds_tabs_for_unopened_present_favorites() {
 fn open_all_with_everything_open_switches_to_the_first() {
     let mut st = state();
     st.settings.favorite_repos = vec!["/w/a".into()];
-    st.tabs = vec![crate::state::Tab::empty(), crate::state::Tab::unloaded(PathBuf::from("/w/a"))];
+    st.tabs = vec![glowfly_model::state::Tab::empty(), glowfly_model::state::Tab::unloaded(PathBuf::from("/w/a"))];
     run(&mut st, RecentMsg::OpenAll(paths(&["/w/a"])));
     assert_eq!(st.tabs.len(), 2);
     assert_eq!(st.active_tab, 1);

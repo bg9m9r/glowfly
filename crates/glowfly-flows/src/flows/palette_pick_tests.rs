@@ -5,17 +5,17 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::state::conflict::ConflictView;
-use crate::state::history::FileHistoryView;
-use crate::state::palette::{Items, MAX_PICK_ROWS, Mode, Palette, PaletteCommand, Pick, PickKind, row_count, shown};
-use crate::state::rebase::RebasePanel;
-use crate::state::{AppState, Modal};
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::ListFilesFailed;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::palette::{Items, MAX_PICK_ROWS, Mode, Palette, PaletteCommand, Pick, PickKind, row_count, shown};
+use glowfly_model::state::rebase::RebasePanel;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 const FILE_HISTORY: &str = "File history…";

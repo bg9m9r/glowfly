@@ -1,15 +1,15 @@
 //! Headless tests for per-tab activity logs: failures announced by a toast with Details instead
 //! of opening the panel, lines that follow their tab, and earlier entries handed out at load.
 
-use crate::effect::{Effect, LoadKind};
 use crate::flows::settings_file_tests::{DAMAGED_TEXT, damaged};
 use crate::flows::state;
-use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
-use crate::msg::{JobMsg, Msg, PrefsMsg, RepoMsg, TabsMsg};
-use crate::state::{AppState, RunningJob, Tab};
-use crate::update::update;
 use glowfly_core::gitcli::GitRun;
 use glowfly_core::logs::ActivityEntry;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
+use glowfly_model::msg::{JobMsg, Msg, PrefsMsg, RepoMsg, TabsMsg};
+use glowfly_model::state::{AppState, RunningJob, Tab};
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -36,7 +36,7 @@ fn two_tabs() -> (AppState, PathBuf, PathBuf) {
     (st, a, b)
 }
 
-fn texts(log: &[crate::state::LogEntry]) -> Vec<&str> {
+fn texts(log: &[glowfly_model::state::LogEntry]) -> Vec<&str> {
     log.iter().map(|e| e.text.as_str()).collect()
 }
 
@@ -66,7 +66,7 @@ fn appended(fx: &[Effect]) -> Vec<NewLine> {
 }
 
 /// The tab a toast's Details selects.
-fn details_tab(st: &AppState) -> Option<crate::state::tabs::TabId> {
+fn details_tab(st: &AppState) -> Option<glowfly_model::state::tabs::TabId> {
     st.toasts.iter().find_map(|t| match t.action.as_ref().map(|a| &*a.msg) {
         Some(Msg::Logs(LogsMsg::Details { tab, .. })) => Some(*tab),
         _ => None,

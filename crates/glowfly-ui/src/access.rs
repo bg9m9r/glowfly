@@ -112,7 +112,7 @@ mod tests {
     fn fields_and_painted_buttons_get_their_names() {
         let mut text = String::new();
         let left = std::cell::Cell::new(None);
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             let r = ui.add(egui::TextEdit::singleline(&mut text).hint_text("Type here"));
             name_field(&r, "Search text");
             let (_, b) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn an_announced_label_whose_id_passes_to_another_keeps_the_tree_whole() {
         let shifted = std::cell::Cell::new(false);
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             if shifted.get() {
                 ui.label("Plain");
             }
@@ -168,17 +168,17 @@ mod tests {
     #[test]
     fn a_label_names_only_the_unnamed_controls_drawn_under_it() {
         let (mut a, mut b, mut on) = (String::new(), String::new(), false);
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             let label = ui.label("Editor").id;
             with_label(&ui.ctx().clone(), Some(label), || {
-                crate::ui::theme::controls::field(ui, egui::TextEdit::singleline(&mut a));
-                let named = crate::ui::theme::controls::field(ui, egui::TextEdit::singleline(&mut b));
+                crate::theme::controls::field(ui, egui::TextEdit::singleline(&mut a));
+                let named = crate::theme::controls::field(ui, egui::TextEdit::singleline(&mut b));
                 name_field(&named, "Arguments");
-                ui.add(crate::ui::theme::controls::Check::without_text(&mut on));
+                ui.add(crate::theme::controls::Check::without_text(&mut on));
             });
             // Outside: nothing names it.
             let mut c = String::new();
-            let after = crate::ui::theme::controls::field(ui, egui::TextEdit::singleline(&mut c));
+            let after = crate::theme::controls::field(ui, egui::TextEdit::singleline(&mut c));
             name_if_unnamed(&after, "Hint");
             name_if_unnamed(&after, "Second");
         });
@@ -192,9 +192,9 @@ mod tests {
     #[test]
     fn a_section_header_is_a_button_that_says_whether_it_is_open() {
         let seen = std::cell::Cell::new(None);
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             let mut open = true;
-            let r = crate::ui::widgets::section_header(ui, "Local", Some(3), &mut open);
+            let r = crate::widgets::section_header(ui, "Local", Some(3), &mut open);
             seen.set(ui.ctx().accesskit_node_builder(r.id, |n| n.is_expanded()).flatten());
         });
         h.run();

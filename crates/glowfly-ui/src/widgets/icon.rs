@@ -171,7 +171,7 @@ pub fn paint_icon_stroked(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: 
         return;
     }
     if icon == Icon::FileAdd {
-        crate::ui::icons::paint_file_add(p, c, Stroke::new(STROKE, col), size / SIZE_SM);
+        crate::icons::paint_file_add(p, c, Stroke::new(STROKE, col), size / SIZE_SM);
         return;
     }
     if icon == Icon::Minus {
@@ -192,10 +192,7 @@ pub fn paint_icon_stroked(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: 
 
 fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
     let col = s.color;
-    if crate::ui::icons::paint(p, c, icon, s)
-        || crate::ui::icons_panel::paint(p, c, icon, s)
-        || crate::ui::icons::lists::paint(p, c, icon, s)
-    {
+    if crate::icons::paint(p, c, icon, s) || crate::icons_panel::paint(p, c, icon, s) || crate::icons::lists::paint(p, c, icon, s) {
         return;
     }
     let line = |a: Pos2, b: Pos2| p.line_segment([a, b], s);

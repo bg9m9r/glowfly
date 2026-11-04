@@ -23,7 +23,7 @@ use super::widgets::quiet_target::{self, State};
 use super::widgets::row_menu::RowMenuExt;
 use super::widgets::truncate::{cut_path_in, paint_cut_text};
 use super::widgets::{self, Icon, menu, menu_columns};
-use crate::ui::theme::tokens::radius;
+use crate::theme::tokens::radius;
 use eframe::egui::{self, Color32, CornerRadius, Id, Key, Painter, Pos2, Rect, Response, Sense, Ui, pos2, vec2};
 use std::path::PathBuf;
 

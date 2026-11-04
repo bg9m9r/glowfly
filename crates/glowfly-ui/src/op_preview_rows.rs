@@ -6,9 +6,9 @@
 use super::op_preview_dialog::Env;
 use super::theme::{color, type_scale};
 use super::widgets::{Icon, paint_cut_text, paint_icon_sized};
-use crate::state::op_preview::{gone_tag, stop_tag};
 use eframe::egui::{self, Align2, Color32, Pos2, Sense, Ui, pos2, vec2};
 use glowfly_core::op_preview::{AfterRow, CommitLine, Gone, OpPreview};
+use glowfly_model::state::op_preview::{gone_tag, stop_tag};
 
 const ROW_H: f32 = 28.0;
 /// The lane's x, from the rows' left edge.

@@ -4,17 +4,17 @@
 
 use super::controls::ICON;
 use super::fit::{Plan, Widths};
-use crate::state::diff_header::{ChangeText, Context, FileKind, HeaderModel};
-use crate::ui::common::{added_color, removed_color, status_color};
-use crate::ui::theme::sizes::text_pos;
-use crate::ui::theme::type_scale;
-use crate::ui::theme::{color, fonts};
-use crate::ui::widgets::chip::{self, ChipSize};
-use crate::ui::widgets::truncate::cut_left;
-use crate::ui::widgets::{Icon, paint_icon_sized};
+use crate::common::{added_color, removed_color, status_color};
+use crate::theme::sizes::text_pos;
+use crate::theme::type_scale;
+use crate::theme::{color, fonts};
+use crate::widgets::chip::{self, ChipSize};
+use crate::widgets::truncate::cut_left;
+use crate::widgets::{Icon, paint_icon_sized};
 use eframe::egui::{self, Color32, FontId, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
+use glowfly_model::state::diff_header::{ChangeText, Context, FileKind, HeaderModel};
 
 /// The gap between the left-hand parts.
 pub(super) const GAP: f32 = 8.0;
@@ -136,7 +136,7 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, t: Lang, w: &Widths, plan: &Pla
     }
     let name = egui::RichText::new(&m.name).font(fonts::semibold(ui, PATH_PX)).color(color::text());
     if plan.name_w + 0.5 < w.name {
-        let (r, cut) = crate::ui::widgets::cut_label(ui, name, plan.name_w);
+        let (r, cut) = crate::widgets::cut_label(ui, name, plan.name_w);
         if cut {
             r.on_hover_text(&m.path);
         }

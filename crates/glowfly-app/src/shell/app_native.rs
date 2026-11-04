@@ -4,14 +4,14 @@
 //! messages; after drawing it
 //! hands the OS the caption geometry the views recorded.
 
-use crate::msg::{AppMsg, Msg};
 use crate::platform::native_window::{NativeFrame, NativeWindow};
-use crate::state::AppState;
-use crate::state::window_chrome::{WindowCmd, WindowInfo};
-use crate::state::window_native::{self, Backdrop, MicaTint};
-use crate::ui::theme::color;
-use crate::ui::window_frame;
 use eframe::egui::{self, Color32};
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::window_chrome::{WindowCmd, WindowInfo};
+use glowfly_model::state::window_native::{self, Backdrop, MicaTint};
+use glowfly_ui::theme::color;
+use glowfly_ui::window_frame;
 
 /// Takes the OS's news into `st` and `msgs`; `tint` is the palette's Mica tint. Returns whether
 /// the system reported a settings change.

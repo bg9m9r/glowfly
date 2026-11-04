@@ -13,10 +13,10 @@
 use super::backdrop::{self, Surface};
 use super::theme::color;
 use super::widgets::{self, Icon, tooltip::attach};
-use crate::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
-use crate::state::{AppState, PrefPage};
 use eframe::egui::{self, Align, Id, Layout};
 use fold::{ORDER, Part, is_folded};
+use glowfly_model::msg::{Msg, PaletteMsg, PrefsMsg, RepoMsg};
+use glowfly_model::state::{AppState, PrefPage};
 
 #[path = "toolbar_fit.rs"]
 mod fit;

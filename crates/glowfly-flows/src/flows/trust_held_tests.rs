@@ -4,17 +4,17 @@
 use super::jobs::{Started, begin_job, start_job};
 use super::tests::{clean_tree, scratch_repo, state};
 use super::trust_tests::{asking, drive, open, real, run, untrusted_repo};
-use crate::effect::{Effect, InitEffect, StashEffect};
-use crate::msg::{CloneMsg, CommitMsg, InitMsg, Msg, TrustMsg};
-use crate::patch::PatchMsg;
-use crate::state::clone::CloneRequest;
-use crate::state::init::InitRequest;
-use crate::state::job_spec::JobSpec;
-use crate::state::trust::{TrustPrompt, record, recorded};
-use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::gitcli::args;
 use glowfly_core::init_ops::InitPlan;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{Effect, InitEffect, StashEffect};
+use glowfly_model::msg::{CloneMsg, CommitMsg, InitMsg, Msg, TrustMsg};
+use glowfly_model::patch::PatchMsg;
+use glowfly_model::state::clone::CloneRequest;
+use glowfly_model::state::init::InitRequest;
+use glowfly_model::state::job_spec::JobSpec;
+use glowfly_model::state::trust::{TrustPrompt, record, recorded};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 
 /// `untrusted_repo` with a clean tree (so pulls and checkouts don't stop at the auto-stash
@@ -213,7 +213,7 @@ fn a_trusted_or_clean_repository_runs_at_once() {
     clean_tree(&dir);
     let mut st = state();
     let canonical = std::fs::canonicalize(&dir).unwrap();
-    crate::state::trust::record_as_found(&mut st.settings, &canonical);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &canonical);
     open(&mut st, &dir);
     assert!(!st.held(), "trusted before it opened");
     assert!(st.modal.is_none());
@@ -315,8 +315,8 @@ fn dropping_clears_job_trackers() {
     let (mut st, dir) = held_repo("held-patch");
     let workdir = st.workdir().unwrap();
     let path = dir.join("fix.patch");
-    let how = crate::patch::ApplyHow::Changes(Default::default());
-    run(&mut st, Msg::Patch(PatchMsg::Apply(crate::patch::ApplyRequest { workdir, path, how, commits: 0 })));
+    let how = glowfly_model::patch::ApplyHow::Changes(Default::default());
+    run(&mut st, Msg::Patch(PatchMsg::Apply(glowfly_model::patch::ApplyRequest { workdir, path, how, commits: 0 })));
     assert!(st.trust.held.is_some());
     assert!(st.patch_apply.is_some(), "tracked while held");
     run(&mut st, Msg::CloseModal);

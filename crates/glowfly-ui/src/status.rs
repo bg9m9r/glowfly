@@ -14,11 +14,11 @@ use super::common::status_label_ui;
 use super::theme::color;
 use super::theme::sizes::ControlSize;
 use super::widgets::{buttons, dots};
-use crate::msg::{JobMsg, Msg};
-use crate::state::AppState;
-use crate::state::status_counts::{issues_text, prs_text};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::status_counts::{issues_text, prs_text};
 
 /// The job's text's accessibility key while it is announced.
 pub(crate) fn job_key() -> egui::Id {
@@ -109,7 +109,7 @@ fn busy_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) -> bool {
 fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(job) = &st.job else { return };
     let t = st.settings.lang();
-    let label = crate::state::job_spec::labels::shown(t, &job.label);
+    let label = glowfly_model::state::job_spec::labels::shown(t, &job.label);
     let named: [(&str, &dyn std::fmt::Display); 1] = [("job", &label)];
     dots::show(ui, color::accent(), st.motion_reduced(), DOTS_PAD);
     let text = if st.job_cancelling() { t.trf("status.job.cancelling", &named) } else { format!("{label}…") };
@@ -119,7 +119,7 @@ fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
         access::announce(&line, job_key(), Live::Polite);
     }
     if let Some(p) = st.job_progress() {
-        ui.label(RichText::new(crate::state::job_stop::progress_text(t, p)).color(color::faint()));
+        ui.label(RichText::new(glowfly_model::state::job_stop::progress_text(t, p)).color(color::faint()));
     }
     if st.job_cancellable() {
         let step = st.job_stop.as_ref().map(|s| s.step).unwrap_or_default();
@@ -135,8 +135,8 @@ fn job_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 }
 
 /// What Cancel says while the job runs `step`: what a stop does, or why it can't stop now.
-fn cancel_tip(t: glowfly_core::i18n::Lang, step: crate::state::job_stop::Step, job: &[(&str, &dyn std::fmt::Display)]) -> String {
-    use crate::state::job_stop::Step;
+fn cancel_tip(t: glowfly_core::i18n::Lang, step: glowfly_model::state::job_stop::Step, job: &[(&str, &dyn std::fmt::Display)]) -> String {
+    use glowfly_model::state::job_stop::Step;
     match step {
         Step::Fetch => t.trf("status.job.cancel.tip", job),
         Step::Push => t.trf("status.job.cancel.push_tip", job),

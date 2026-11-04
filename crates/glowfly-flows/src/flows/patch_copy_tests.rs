@@ -1,20 +1,20 @@
 //! Headless tests for one file of a commit saved as a patch, a commit's patch copied to the
 //! clipboard, and the palette's patch entries.
 
-use crate::effect::{Effect, UiEffect};
 use crate::flows::patch_tests::{cleanup, commit, last_log, last_toast, run, three_commits};
 use crate::flows::{drive, finish_keeping, git};
-use crate::msg::{Msg, PaletteMsg, RepoMsg};
-use crate::patch::{PatchEffect, PatchMsg};
-use crate::state::AppState;
-use crate::state::Selection;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::selection::CommitBlock;
-use crate::state::selection::MultiSelection;
-use crate::update::update;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::patch_ops::{ExportReport, PatchSource, WipScope};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::patch::{PatchEffect, PatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::Selection;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::selection::CommitBlock;
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::update::update;
 use std::time::Instant;
 
 /// `three_commits` plus a side branch merged into main as "Merge side".
@@ -121,6 +121,6 @@ fn palette_patch_entries() {
         Msg::Palette(PaletteMsg::RunPaletteCommand(C::Patch(PatchMsg::ChangesDialog { scope: WipScope::All, path: None }))),
         Instant::now(),
     );
-    assert!(fx.is_empty() && matches!(st.modal, Some(crate::state::Modal::SavePatch(_))));
+    assert!(fx.is_empty() && matches!(st.modal, Some(glowfly_model::state::Modal::SavePatch(_))));
     cleanup(&dir);
 }

@@ -5,11 +5,6 @@
 
 use super::snapshot_tests::{remove_fixture, settings, with_repo};
 use super::{UiCache, avatars::Avatars, draw, escape_key, theme::color};
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::terminal::{SessionStatus, TermSession};
-use crate::state::{AppState, PrefPage, PrefsState};
 use eframe::egui::{self, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -17,10 +12,15 @@ use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::spell::Speller;
 use glowfly_core::terminal::TermScreen;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::terminal::{SessionStatus, TermSession};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 
 pub(crate) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)> {
     let mut cache: Option<UiCache> = None;
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(1400.0, 820.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_dark(true);
             escape_key(ctx, st, msgs);
@@ -106,16 +106,16 @@ fn esc_closes_the_git_flow_panel() {
     let mut h = app_harness(st);
     h.run();
     let msgs = esc(&mut h);
-    assert!(msgs.iter().any(|m| matches!(m, Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel))));
+    assert!(msgs.iter().any(|m| matches!(m, Msg::GitFlow(glowfly_model::gitflow::GitFlowMsg::ClosePanel))));
     drop(h);
     remove_fixture(&dir);
 }
 
 #[test]
 fn esc_closes_blame_before_history() {
-    use crate::msg::{BlameMsg, HistoryMsg};
-    use crate::state::blame::BlameView;
-    use crate::state::history::FileHistoryView;
+    use glowfly_model::msg::{BlameMsg, HistoryMsg};
+    use glowfly_model::state::blame::BlameView;
+    use glowfly_model::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-blame");
     st.session.history.view = Some(FileHistoryView::loading("README.md".into(), None));
     st.session.blame.view = Some(BlameView::loading("README.md".into(), None));
@@ -130,8 +130,8 @@ fn esc_closes_blame_before_history() {
 
 #[test]
 fn esc_closes_the_tour_and_leaves_the_welcome_to_itself() {
-    use crate::onboarding::OnboardingMsg;
-    use crate::state::onboarding_tour::TourStep;
+    use glowfly_model::onboarding::OnboardingMsg;
+    use glowfly_model::state::onboarding_tour::TourStep;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-tour");
     st.onboarding.tour = Some(TourStep::Graph);
     st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
@@ -142,7 +142,7 @@ fn esc_closes_the_tour_and_leaves_the_welcome_to_itself() {
     assert!(!msgs.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::CloseDiff))));
 
     h.state_mut().0.onboarding.tour = None;
-    let mut w = crate::state::onboarding::Welcome::new();
+    let mut w = glowfly_model::state::onboarding::Welcome::new();
     w.identity.reading = false;
     h.state_mut().0.onboarding.welcome = Some(w);
     h.run();
@@ -160,9 +160,9 @@ fn empty_diff() -> FileDiff {
 #[test]
 fn esc_cancels_a_tab_drag() {
     use super::tabs_tests::{pointer, tab_centre};
-    use crate::msg::TabsMsg;
-    use crate::ui::snapshot_check::CheckSnapshot;
+    use crate::snapshot_check::CheckSnapshot;
     use eframe::egui::PointerButton;
+    use glowfly_model::msg::TabsMsg;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-tab-drag");
     st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), empty_diff().into()));
     let mut h = app_harness(st);
@@ -192,8 +192,8 @@ fn esc_cancels_a_tab_drag() {
 
 #[test]
 fn esc_in_file_history_clears_a_line_selection_first() {
-    use crate::msg::{DiffMsg, HistoryMsg};
-    use crate::state::history::FileHistoryView;
+    use glowfly_model::msg::{DiffMsg, HistoryMsg};
+    use glowfly_model::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-history-lines");
     st.session.history.view = Some(FileHistoryView::loading("README.md".into(), None));
     st.view.diff_lines.target = Some(DiffTarget::Commit(git2::Oid::zero(), "README.md".into()));

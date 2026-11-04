@@ -19,22 +19,8 @@
 use super::common::{menu_danger, menu_item, menu_item_if, menu_item_tip, menu_row, menu_row_preview};
 use super::ref_visibility;
 use super::theme::color;
-use crate::custom_commands::Target;
-use crate::deep_link::{DeepLinkMsg, LinkTarget};
-use crate::msg::BranchMsg;
-use crate::msg::Msg;
-use crate::msg::OpPreviewMsg;
-use crate::msg::RebaseMsg;
-use crate::state::branches;
-use crate::state::branches::push as branch_push;
-use crate::state::commit_menu::menu_trim;
-use crate::state::custom_commands::MenuCommands;
-use crate::state::gitflow_base::{Deleting, guard};
-use crate::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, fast_forward_blocked, held_blocked};
-use crate::state::{ForgeState, Selection};
-use crate::ui::widgets::menu::{item, item_named, named, separator, submenu};
-use crate::ui::widgets::reason::ItemState;
-use crate::worktree::WorktreeMsg;
+use crate::widgets::menu::{item, item_named, named, separator, submenu};
+use crate::widgets::reason::ItemState;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
 use glowfly_core::custom_commands::Place;
@@ -45,7 +31,21 @@ use glowfly_core::repo::{BranchInfo, Snapshot};
 use glowfly_core::settings::GraphFilter;
 use glowfly_core::worktree_ops::WorktreeBase;
 use glowfly_model::conflict_check::ConflictCheckMsg;
+use glowfly_model::custom_commands::Target;
+use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
+use glowfly_model::msg::BranchMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::OpPreviewMsg;
+use glowfly_model::msg::RebaseMsg;
 use glowfly_model::range_diff::RangeDiffMsg;
+use glowfly_model::state::branches;
+use glowfly_model::state::branches::push as branch_push;
+use glowfly_model::state::commit_menu::menu_trim;
+use glowfly_model::state::custom_commands::MenuCommands;
+use glowfly_model::state::gitflow_base::{Deleting, guard};
+use glowfly_model::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, fast_forward_blocked, held_blocked};
+use glowfly_model::state::{ForgeState, Selection};
+use glowfly_model::worktree::WorktreeMsg;
 
 #[allow(clippy::too_many_arguments)]
 pub fn local_branch_menu(

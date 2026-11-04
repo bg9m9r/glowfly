@@ -2,20 +2,20 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::ConflictEffect;
-use crate::effect::{Effect, LocalOp};
-use crate::msg::ConflictMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::AppState;
-use crate::state::conflict::ConflictView;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::conflict_rows::Trivial;
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::{
     Choice, Chunk, ConflictContent, ConflictFile, ConflictIds, DiffTarget, FileDiff, Operation, Segment, Side, SideLabels,
 };
+use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::ConflictView;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -225,7 +225,7 @@ fn a_failed_save_reenables_save() {
     assert_eq!(fx.len(), 1);
     // The write is refused and saving ends (the status reload that follows isn't run here).
     for effect in fx {
-        if let Some(m) = crate::runner::testing::execute(effect) {
+        if let Some(m) = glowfly_runner::testing::execute(effect) {
             update(&mut st, m, Instant::now());
         }
     }

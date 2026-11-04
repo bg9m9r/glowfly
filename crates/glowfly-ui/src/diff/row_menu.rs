@@ -8,16 +8,16 @@
 
 use super::DiffView;
 use super::text_sel::{self, Hit, TextMut};
-use crate::keymap::{Chord, KeyName};
-use crate::msg::{DiffMsg, Msg, StageMsg};
-use crate::state::diff_text::{self, LineRef, TextSel, TextSide};
-use crate::state::lines::LineClick;
-use crate::ui::widgets::menu;
-use crate::ui::widgets::reason::ItemState;
+use crate::widgets::menu;
+use crate::widgets::reason::ItemState;
 use eframe::egui::{Pos2, Response, Ui};
 use glowfly_core::repo::{DiffTarget, HunkOp};
+use glowfly_model::keymap::{Chord, KeyName};
+use glowfly_model::msg::{DiffMsg, Msg, StageMsg};
 use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::pull_request::line_comment::LineCommentMsg;
+use glowfly_model::state::diff_text::{self, LineRef, TextSel, TextSide};
+use glowfly_model::state::lines::LineClick;
 
 /// The line the menu is for: where the right-click landed, or the line Shift+F10 opened it at.
 type At = Option<(TextSide, LineRef)>;

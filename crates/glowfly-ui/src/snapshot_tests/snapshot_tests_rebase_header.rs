@@ -6,15 +6,15 @@
 use super::snapshot_tests::remove_fixture;
 use super::snapshot_tests::{harness_sized, harness_stepped};
 use super::snapshot_tests_rebase::{pointer, with_panel};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, Shape, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::RebaseAction;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 #[test]
 fn rebase_header_narrow_light() {

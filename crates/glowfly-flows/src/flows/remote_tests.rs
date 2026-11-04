@@ -6,18 +6,18 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::remote::RemoteMsg;
-use crate::state::palette::{PaletteCommand, entries};
-use crate::state::remotes::RemoteForm;
-use crate::state::{AppState, Modal};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::undo::Action;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::palette::{PaletteCommand, entries};
+use glowfly_model::state::remotes::RemoteForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Instant;
 

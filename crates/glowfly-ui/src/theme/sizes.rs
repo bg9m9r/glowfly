@@ -8,7 +8,7 @@
 
 use super::tokens::radius;
 use super::type_scale::{BODY, CAPTION, SMALL};
-use crate::ui::widgets::icon::{SIZE_MD, SIZE_SM};
+use crate::widgets::icon::{SIZE_MD, SIZE_SM};
 use eframe::egui::{Galley, Pos2, Rect, pos2};
 
 /// A control's size. Compact is for quiet controls only (`allows_frame`).

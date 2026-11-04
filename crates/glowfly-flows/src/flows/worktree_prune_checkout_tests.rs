@@ -7,13 +7,13 @@ use super::auto_stash_guard_tests::pull_request;
 use super::auto_stash_tests::{ask, git_cmds, up};
 use super::push_pr_tests::with_host;
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
-use crate::effect::Effect;
-use crate::msg::{AutoStashMsg, BranchMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::branches::checkout_local;
 use glowfly_core::stash_ops::AutoStashFor;
 use glowfly_core::undo::UndoKind;
 use glowfly_core::worktree_ops::prune_cmd;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{AutoStashMsg, BranchMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::branches::checkout_local;
 use std::path::{Path, PathBuf};
 
 /// Adds a worktree for `branch` in `<work>-wt`, deletes its folder and refreshes `st`. Returns
@@ -27,7 +27,7 @@ fn missing_worktree(st: &mut AppState, work: &Path, branch: &str, new: bool) -> 
     git(work, &add);
     std::fs::remove_dir_all(&wt).unwrap();
     drive(st, Msg::Repo(RepoMsg::Refresh));
-    assert!(crate::state::worktree_branches::elsewhere(st.snap.as_ref().unwrap(), branch).is_some_and(|w| w.missing));
+    assert!(glowfly_model::state::worktree_branches::elsewhere(st.snap.as_ref().unwrap(), branch).is_some_and(|w| w.missing));
     wt
 }
 

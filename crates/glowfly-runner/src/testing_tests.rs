@@ -3,7 +3,7 @@
 //! folder.
 
 use super::*;
-use crate::effect::DeleteMode;
+use glowfly_model::effect::DeleteMode;
 
 /// Whether `s` is the tests' stand-ins (its kind, and `cp` as the editor). That the stand-in
 /// trash is what a delete reaches is checked by running one
@@ -86,7 +86,7 @@ fn saves_run_by_a_test_land_in_the_test_folder_not_the_config_folder() {
 
 #[test]
 fn effects_reaching_outside_the_test_are_refused() {
-    use crate::effect::{ConfigWrite, PrefsEffect, UpdateEffect};
+    use glowfly_model::effect::{ConfigWrite, PrefsEffect, UpdateEffect};
     use glowfly_model::git_env::GitEnvEffect;
     use glowfly_model::onboarding::OnboardingEffect;
     use glowfly_model::profile::ProfileEffect;
@@ -127,7 +127,7 @@ fn effects_reaching_outside_the_test_are_refused() {
             workdir: here.clone(),
             real: here.clone(),
             saved: None,
-            sealed: crate::effect::Sealed::Read,
+            sealed: glowfly_model::effect::Sealed::Read,
             accepted: None,
             lang: Default::default(),
         };

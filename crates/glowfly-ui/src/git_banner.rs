@@ -6,14 +6,14 @@
 //! download page for this OS) and Don't show again, which hides it for good while that version
 //! runs; a git that can't run has neither, since commits fail without it.
 
-use crate::git_env::GitEnvMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::widgets::banner::{self, Banner, BannerKind};
-use crate::ui::widgets::buttons;
+use crate::widgets::banner::{self, Banner, BannerKind};
+use crate::widgets::buttons;
 use eframe::egui;
 use glowfly_core::git_version::{self, show as show_version};
 use glowfly_core::native_path::shown;
+use glowfly_model::git_env::GitEnvMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(text) = st.git_banner() else { return };

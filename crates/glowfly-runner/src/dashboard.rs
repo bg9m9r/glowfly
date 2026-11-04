@@ -3,11 +3,11 @@
 //! repository and asking its targets, a few calls at a time.
 
 use super::execute::{Cx, Execute};
-use crate::effect::{AccountJob, AccountReply, DashboardEffect, FetchJob, FetchReply, ForgeError, TargetJob, TargetReply};
-use crate::msg::{DashboardMsg, Msg};
 use glowfly_core::error::Error;
 use glowfly_core::forge::dashboard::{CONCURRENCY, fetch_target, read_repo, run_bounded, unreadable_reason};
 use glowfly_core::forge::{self, Auth, filters};
+use glowfly_model::effect::{AccountJob, AccountReply, DashboardEffect, FetchJob, FetchReply, ForgeError, TargetJob, TargetReply};
+use glowfly_model::msg::{DashboardMsg, Msg};
 use std::path::Path;
 
 pub(super) fn run(e: DashboardEffect) -> Msg {

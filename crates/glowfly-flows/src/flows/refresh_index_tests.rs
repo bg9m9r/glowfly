@@ -1,14 +1,13 @@
 //! Status reads after an index change made outside Glowfly: what asks for them, how they are
 //! applied to the lists, counts and open diff, and when they fall back to a whole read.
 
-use crate::effect::{Effect, StatusRead};
 use crate::flows::{drive, finish, git, scratch_repo, state};
-use crate::msg::{LoadMsg, Msg, RepoMsg, WatchMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::refresh::Wanted;
-use crate::update::update;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::refresh::Wanted;
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -30,7 +29,7 @@ fn index_changed(workdir: &Path, paths: &[&str]) -> Msg {
 /// Runs the one status read in `fx` and returns its result message, unscoped.
 fn result_of(fx: Vec<Effect>) -> Msg {
     let read = fx.into_iter().find(|e| matches!(e, Effect::LoadIndexStatus { .. } | Effect::LoadStatus { .. })).expect("a status read");
-    match runner::testing::execute(read).expect("a result") {
+    match glowfly_runner::testing::execute(read).expect("a result") {
         Msg::Scoped { msg, .. } => *msg,
         other => other,
     }

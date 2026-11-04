@@ -6,17 +6,17 @@
 //! with the warning tone while hooks are skipped, so the choice stays visible with the menu
 //! closed.
 
-use crate::msg::{CommitMsg, Msg};
-use crate::state::CommitDraft;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::surfaces::Tone;
-use crate::ui::widgets::button_split::CARET_W;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::menu::{self, popup_above_or_below};
-use crate::ui::widgets::menu_row;
-use crate::ui::widgets::reason::{ItemState, menu_button};
+use crate::theme::sizes::ControlSize;
+use crate::theme::surfaces::Tone;
+use crate::widgets::button_split::CARET_W;
+use crate::widgets::buttons;
+use crate::widgets::menu::{self, popup_above_or_below};
+use crate::widgets::menu_row;
+use crate::widgets::reason::{ItemState, menu_button};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{CommitMsg, Msg};
+use glowfly_model::state::CommitDraft;
 
 /// The least width of the caret's menu.
 const MENU_W: f32 = 160.0;

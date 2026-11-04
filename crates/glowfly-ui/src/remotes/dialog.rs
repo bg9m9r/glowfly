@@ -6,14 +6,14 @@ use super::super::dialog_frame::{Cx, Dialog, Footer};
 use super::super::theme::color;
 use super::super::widgets::text_field::{self, TextField};
 use super::super::widgets::{FieldGroup, buttons};
-use crate::msg::Msg;
-use crate::remote::RemoteMsg;
-use crate::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
-use crate::ui::theme::controls;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, Id, RichText};
 use glowfly_core::remote_ops::{RemoteNameProblem, UrlProblem};
 use glowfly_core::repo::Snapshot;
+use glowfly_model::msg::Msg;
+use glowfly_model::remote::RemoteMsg;
+use glowfly_model::state::remotes::{RemoteForm, extra_push_urls, name_problem, push_problem, push_same_as_fetch, url_problem};
 
 /// A field in `group` (its label, help and problem); returns whether Enter left it.
 pub(super) fn field(ui: &mut egui::Ui, group: FieldGroup, text: &mut String, id: &str, hint: &str) -> (egui::Response, bool) {

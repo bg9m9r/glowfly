@@ -6,10 +6,10 @@
 
 use super::prefs_save_tests::{edited, run, writes};
 use super::profiles_tests::{PERSONAL, WORK, two_profiles, values};
-use crate::effect::Effect;
-use crate::msg::Msg;
-use crate::profile::{ProfileEffect, ProfileMsg};
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::{ProfileEffect, ProfileMsg};
+use glowfly_model::state::{AppState, Modal};
 
 fn asking(st: &AppState) -> bool {
     matches!(st.modal, Some(Modal::ConfirmChoice { .. }))

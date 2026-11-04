@@ -8,13 +8,13 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_repo_list::{H, abs, api, last, lists, old, shown, web};
 use super::snapshot_tests_select::click;
-use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
-use crate::state::repo_sync::{SyncKind, SyncScope};
-use crate::state::{AppState, Tab};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{RepoColour, ThemeChoice};
+use glowfly_model::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
+use glowfly_model::state::repo_sync::{SyncKind, SyncScope};
+use glowfly_model::state::{AppState, Tab};
 use std::path::{Path, PathBuf};
 
 /// Opens the toolbar's repository menu: the button named by the repository, in the toolbar.

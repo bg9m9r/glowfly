@@ -3,12 +3,12 @@
 //! repository with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::state::AppState;
-use crate::state::rebase::RebasePanel;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::rebase::{self, RebaseAction, RebaseBase, TodoStep};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::AppState;
+use glowfly_model::state::rebase::RebasePanel;
 use std::path::PathBuf;
 
 /// The panel for the fixture from "Add app skeleton" up: the login-page line, main's line and

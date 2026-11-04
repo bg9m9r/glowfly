@@ -4,13 +4,13 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::work_files_tests::{empty_diff, entry, loaded, new_form, rename_form, run, work_ops};
-use crate::effect::{Effect, FileOp, WorkFileOk};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::Modal;
-use crate::state::files::{PathForm, folder_prefill};
 use glowfly_core::repo::{DiffTarget, FileEntry};
+use glowfly_model::effect::{Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::Modal;
+use glowfly_model::state::files::{PathForm, folder_prefill};
 
 #[test]
 fn rename_stages_only_tracked_files() {

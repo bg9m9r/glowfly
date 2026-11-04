@@ -5,10 +5,10 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, WatchMsg};
-use crate::state::AppState;
-use crate::state::watch::{LiveUpdates, Probe, REMOTE_POLL, WINDOWS_POLL};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::watch::{LiveUpdates, Probe, REMOTE_POLL, WINDOWS_POLL};
 use std::time::{Duration, Instant};
 
 fn statuses(fx: &[Effect]) -> usize {

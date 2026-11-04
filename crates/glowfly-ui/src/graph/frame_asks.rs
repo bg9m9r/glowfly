@@ -2,10 +2,10 @@
 //! commits whose change counts are wanted (`RepoMsg::WantStats`), the commit whose ref chip the
 //! pointer is over (its tip shows next frame) and the branch tips whose build checks were shown.
 
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::build_status::MAX_SEEN;
 use git2::Oid;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::build_status::MAX_SEEN;
 
 /// The rows' asks this frame.
 #[derive(Default)]

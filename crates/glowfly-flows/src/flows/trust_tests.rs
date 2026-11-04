@@ -3,13 +3,13 @@
 
 use super::tests::{finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, KnownRepo};
-use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StageMsg, TabsMsg, TrustMsg};
-use crate::state::palette::{Palette, PaletteCommand, entries};
-use crate::state::trust::{Created, recorded};
-use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::gitcli::args;
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{Effect, KnownRepo};
+use glowfly_model::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StageMsg, TabsMsg, TrustMsg};
+use glowfly_model::state::palette::{Palette, PaletteCommand, entries};
+use glowfly_model::state::trust::{Created, recorded};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -244,7 +244,7 @@ fn only_a_new_repository_from_init_is_trusted() {
 }
 
 /// The open trust prompt.
-fn prompt(st: &AppState) -> &crate::state::trust::TrustPrompt {
+fn prompt(st: &AppState) -> &glowfly_model::state::trust::TrustPrompt {
     let Some(Modal::Trust(p)) = &st.modal else { panic!("expected the trust prompt") };
     p
 }

@@ -2,13 +2,13 @@
 //! services without an API, sending, and each kind of answer.
 
 use super::ssh_tests::{loaded, page, page_mut, pair, ssh};
-use crate::effect::OsEffect;
-use crate::effect::{Effect, UiEffect};
-use crate::ssh::{ServiceKeyError, SshEffect, SshMsg};
-use crate::state::AppState;
-use crate::state::ssh_service::UploadState;
 use glowfly_core::forge::{Account, AddKeyOutcome, Connection, Provider};
 use glowfly_core::ssh_keys::SshKeyPair;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::ssh::{ServiceKeyError, SshEffect, SshMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::ssh_service::UploadState;
 
 fn key() -> SshKeyPair {
     pair("id_ed25519", "ada@laptop")

@@ -3,11 +3,11 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LineCountsEffect};
-use crate::msg::{Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::state::AppState;
 use git2::Oid;
 use glowfly_core::repo::{LineCount, WipLineCounts};
+use glowfly_model::effect::{Effect, LineCountsEffect};
+use glowfly_model::msg::{Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
 use std::path::Path;
 use std::time::Instant;
 
@@ -93,7 +93,7 @@ fn commit_counts_survive_refresh_and_tab_switch_but_not_open() {
 
     // Opening a repository in this tab starts from nothing.
     let mut fx = Vec::new();
-    super::refresh::load(&mut st, dir.clone(), crate::effect::LoadKind::Open, &mut fx);
+    super::refresh::load(&mut st, dir.clone(), glowfly_model::effect::LoadKind::Open, &mut fx);
     finish(&mut st, fx);
     assert!(st.session.reads.line_counts.commit(oid).is_none(), "an Open clears them");
     let _ = std::fs::remove_dir_all(&dir);

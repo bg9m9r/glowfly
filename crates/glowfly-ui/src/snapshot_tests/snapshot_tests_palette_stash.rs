@@ -3,16 +3,16 @@
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::state::AppState;
-use crate::state::palette::{InputKind, Mode, Palette, PaletteCommand, Pick, StashAction};
 use eframe::egui::Key;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::StashInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{InputKind, Mode, Palette, PaletteCommand, Pick, StashAction};
 
 fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) -> bool {
     h.state().1.iter().any(want)
@@ -41,7 +41,7 @@ fn message_step(query: &str) -> Palette {
 
 fn queue_prompt(st: &mut AppState) {
     let prompt = glowfly_core::askpass::Prompt::new("Password for 'https://example.com': ", None);
-    st.askpass.queue.push_back(crate::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
+    st.askpass.queue.push_back(glowfly_model::state::askpass::PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
 }
 
 #[test]

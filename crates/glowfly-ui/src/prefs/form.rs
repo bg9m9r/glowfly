@@ -4,10 +4,10 @@
 //! and the page's primary button. Help lines are in form_help.rs; the search's revealed row is
 //! tinted by reveal.rs.
 
-use crate::ui::access;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, controls, type_scale};
-use crate::ui::widgets::{self, buttons};
+use crate::access;
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, controls, type_scale};
+use crate::widgets::{self, buttons};
 use eframe::egui::{self, Color32, RichText, Sense, Stroke, Ui, pos2, vec2};
 
 pub use super::form_help::help;

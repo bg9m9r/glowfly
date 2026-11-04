@@ -3,10 +3,10 @@
 //! job running.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use crate::state::{AppState, PrefPage, PrefsState, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use glowfly_core::lfs::{LfsPattern, LfsStatus, PatternSource};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::{AppState, PrefPage, PrefsState, RunningJob};
 use std::path::PathBuf;
 
 fn pattern(raw: &str, lockable: bool) -> LfsPattern {

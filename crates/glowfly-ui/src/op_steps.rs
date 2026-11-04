@@ -15,20 +15,20 @@ use super::details_wip::{OpenFile, Reveal, RowContext, file_list};
 use super::theme::{color, type_scale};
 use super::widgets::reason::ItemState;
 use super::widgets::{Icon, buttons, paint_icon};
-use crate::msg::{ConflictMsg, LayoutMsg, Msg, RebaseMsg};
-use crate::state::AppState;
-use crate::state::op_actions::action_text;
-use crate::state::op_confirm::{Risky, banner_msg};
-use crate::state::op_steps::{self, OpKind, OpStep, StepState, step_state};
-use crate::state::rebase_banner::action_msg;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::menu::{popup_above_or_below, separator};
+use crate::theme::sizes::ControlSize;
+use crate::widgets::menu::{popup_above_or_below, separator};
 use eframe::egui::{self, Align, Layout, Rect, RichText, Sense, Stroke, Ui, vec2};
 use git2::RepositoryState;
 use glowfly_core::git_version::Feature;
 use glowfly_core::i18n::Lang;
 use glowfly_core::pick_ops::{CHERRY_PICK_SKIP, REVERT_SKIP};
 use glowfly_core::repo::{FileEntry, ResolvedFile, Snapshot};
+use glowfly_model::msg::{ConflictMsg, LayoutMsg, Msg, RebaseMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::op_actions::action_text;
+use glowfly_model::state::op_confirm::{Risky, banner_msg};
+use glowfly_model::state::op_steps::{self, OpKind, OpStep, StepState, step_state};
+use glowfly_model::state::rebase_banner::action_msg;
 
 /// The step marker's circle.
 const MARKER: f32 = 28.0;
@@ -107,7 +107,7 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
     };
     let repo_state = snap.state;
     // At a stop to edit, the form's Amend and continue leads and Continue steps back.
-    let editing = crate::state::commit::stop::edit_stop(snap).is_some();
+    let editing = glowfly_model::state::commit::stop::edit_stop(snap).is_some();
     let skip_blocked = st.git.blocked(Feature::SequencerSkip);
     ui.add_space(8.0);
     ui.separator();
@@ -230,11 +230,11 @@ fn heading(ui: &mut Ui, st: &AppState, snap: &Snapshot, conflicts_left: bool, ms
         super::rebase::banner::details(ui, t, p, conflicts_left, msgs);
     }
     super::am_banner::lines(ui, t, snap, conflicts_left);
-    if let Some(note) = crate::state::auto_stash::banner_note(st) {
+    if let Some(note) = glowfly_model::state::auto_stash::banner_note(st) {
         ui.add(egui::Label::new(RichText::new(note).size(type_scale::SMALL).color(color::weak())).wrap());
     }
     if let Some(r) = st.session.gitflow_resume.as_ref().filter(|r| r.resume.merging(snap)) {
-        let text = crate::state::gitflow_resume::waiting_text(t, &r.resume);
+        let text = glowfly_model::state::gitflow_resume::waiting_text(t, &r.resume);
         ui.add(egui::Label::new(RichText::new(text).size(type_scale::SMALL).color(color::weak())).wrap());
     }
     ui.add_space(12.0);

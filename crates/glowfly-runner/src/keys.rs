@@ -1,7 +1,7 @@
 //! Signing keys for the Preferences signing page: listing, generating and exporting them.
 
-use crate::msg::{Msg, PrefsMsg};
 use glowfly_core::signing::{self, SigningFormat};
+use glowfly_model::msg::{Msg, PrefsMsg};
 
 pub(super) fn list(format: SigningFormat, program: &str) -> Msg {
     let now = chrono::Utc::now().timestamp();

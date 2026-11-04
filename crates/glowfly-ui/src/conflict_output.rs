@@ -8,15 +8,15 @@ use super::conflict_fold::fold_row;
 use super::diff::wrap::RowMetrics;
 use super::diff::{ROW_H, mono};
 use super::theme::color;
-use crate::msg::{ConflictMsg, DiffMsg, Msg};
-use crate::state::conflict::{ConflictView, OutputEdit};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
+use crate::theme::controls;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Layout, RichText, Sense, Stroke, Ui, UiBuilder, vec2};
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::conflict_rows::{OutRow, output_rows, scroll_target};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Chunk, Segment};
+use glowfly_model::msg::{ConflictMsg, DiffMsg, Msg};
+use glowfly_model::state::conflict::{ConflictView, OutputEdit};
 
 /// The tint of text typed in the output.
 fn typed() -> Color32 {

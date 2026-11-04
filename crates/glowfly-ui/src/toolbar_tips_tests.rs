@@ -3,7 +3,7 @@
 //! count in Push's title, the pull mode in Pull's).
 
 use super::*;
-use crate::state::toolbar_tips::tests::state;
+use glowfly_model::state::toolbar_tips::tests::state;
 
 #[test]
 fn undo_with_nothing_recorded_says_so() {
@@ -43,7 +43,7 @@ fn push_and_pull_name_the_upstream() {
     let mut st = state("tip-sync");
     let push_tip = push(&st);
     assert_eq!(push_tip.title, "Publish this repository", "no remote at all");
-    crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 2, 0, true);
+    glowfly_model::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 2, 0, true);
     let tip = push(&st);
     assert_eq!(tip.title, "Push main to origin/main · 2 commits");
     assert_eq!(tip.state.as_deref(), Some("main is 2 ahead, 0 behind origin/main"));
@@ -60,11 +60,11 @@ fn push_and_pull_name_the_upstream() {
 #[test]
 fn pull_names_the_configured_mode_and_push_drops_a_zero_count() {
     let mut st = state("tip-sync-mode");
-    crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 0, 3, true);
+    glowfly_model::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 0, 3, true);
     assert_eq!(push(&st).title, "Push main to origin/main", "nothing to send: no count");
     st.snap.as_mut().unwrap().pull_rebase = true;
     assert_eq!(pull(&st).title, "Pull origin/main into main (rebase)");
-    crate::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 1, 0, true);
+    glowfly_model::state::toolbar_tips::tests::diverge(st.snap.as_mut().unwrap(), 1, 0, true);
     assert_eq!(push(&st).title, "Push main to origin/main · 1 commit");
 }
 
@@ -72,7 +72,7 @@ fn pull_names_the_configured_mode_and_push_drops_a_zero_count() {
 fn push_names_the_remote_config_pushes_to() {
     let mut st = state("tip-push-fork");
     let snap = st.snap.as_mut().unwrap();
-    crate::state::toolbar_tips::tests::diverge(snap, 2, 0, true);
+    glowfly_model::state::toolbar_tips::tests::diverge(snap, 2, 0, true);
     let upstream = snap.remotes[0].1[0].1;
     // remote.pushDefault=fork, which has no main yet: named, without origin's count.
     snap.push_remotes.default = Some("fork".into());
@@ -80,7 +80,7 @@ fn push_names_the_remote_config_pushes_to() {
     let tip = push(&st);
     assert_eq!(tip.title, "Push main to fork/main");
     assert_eq!((tip.body, tip.preview), (None, None), "origin's preview isn't what a push to fork sends");
-    assert_eq!(crate::state::toolbar_tips::push_ahead(st.snap.as_ref().unwrap()), Some(("fork/main".into(), None)));
+    assert_eq!(glowfly_model::state::toolbar_tips::push_ahead(st.snap.as_ref().unwrap()), Some(("fork/main".into(), None)));
     // fork/main known: counted against it.
     let snap = st.snap.as_mut().unwrap();
     snap.remotes[1].1 = vec![("main".into(), upstream)];

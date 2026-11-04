@@ -9,13 +9,13 @@
 use super::theme::color;
 use super::widgets::truncate::{cut_job, paint_cut};
 use super::widgets::{self, Icon};
-use crate::msg::{Msg, PrefsMsg, UpdateMsg};
-use crate::state::updates::{ChipKind, UpdateStatus, download_failed_text, stale_text};
-use crate::state::{AppState, PrefPage};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::chip::{self, ChipSize, Look};
+use crate::theme::type_scale;
+use crate::widgets::chip::{self, ChipSize, Look};
 use eframe::egui::{self, RichText, Sense, pos2, vec2};
 use glowfly_core::app_update::InstallMethod;
+use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg};
+use glowfly_model::state::updates::{ChipKind, UpdateStatus, download_failed_text, stale_text};
+use glowfly_model::state::{AppState, PrefPage};
 
 /// The chip's size: a Badge, its icon in the glyph slot.
 const CHIP: ChipSize = ChipSize::Badge;

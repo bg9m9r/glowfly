@@ -5,19 +5,19 @@
 //! has no filled button (`docs/COLOUR.md`, "The accent").
 
 use super::controls::{self, ghost, icon_tip};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::{FilesMsg, Msg, RepoMsg, StageMsg};
-use crate::state::diff_header::{Actions, HeaderModel, Primary};
-use crate::state::files::show_in_folder;
-use crate::state::tip::Tip;
-use crate::tools::ToolsMsg;
-use crate::ui::common::{menu_item_if, menu_item_setup};
-use crate::ui::file_menu::restore_msg;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::menu::{self, popup_below};
-use crate::ui::widgets::{Icon, buttons};
+use crate::common::{menu_item_if, menu_item_setup};
+use crate::file_menu::restore_msg;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::menu::{self, popup_below};
+use crate::widgets::{Icon, buttons};
 use eframe::egui::{PopupCloseBehavior, Ui};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::{FilesMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::diff_header::{Actions, HeaderModel, Primary};
+use glowfly_model::state::files::show_in_folder;
+use glowfly_model::state::tip::Tip;
+use glowfly_model::tools::ToolsMsg;
 
 /// The space between Stage file and ×.
 pub(super) const TRAILING_GAP: f32 = 8.0;
@@ -103,7 +103,7 @@ pub(super) fn show_primary(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang,
 }
 
 pub(super) fn show_close(ui: &mut Ui, keys: &Keymap, t: Lang, msgs: &mut Vec<Msg>) {
-    let r = crate::ui::widgets::ghost::close_view(ui, keys, t, t.tr("diff.header.close.name"));
+    let r = crate::widgets::ghost::close_view(ui, keys, t, t.tr("diff.header.close.name"));
     if r.clicked() {
         msgs.push(Msg::Repo(RepoMsg::CloseDiff));
     }

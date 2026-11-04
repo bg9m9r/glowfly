@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn menu_items_and_their_setup_state_are_reachable_from_here() {
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
             menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
         });
         h.run();
@@ -138,8 +138,8 @@ mod tests {
     fn a_long_reason_wraps_whole_onto_more_lines() {
         let reason = "Noch ist nichts bereitgestellt. Stelle zuerst eine Datei oder einen Hunk bereit.";
         let mut seen = Vec::new();
-        let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
-            crate::ui::theme::apply_theme(ui.ctx());
+        let mut h = crate::snapshot_check::builder().build_ui(|ui| {
+            crate::theme::apply_theme(ui.ctx());
             assert_eq!(lines(ui, None, 300.0), 1, "no reason keeps one line");
             assert_eq!(lines(ui, Some("Enter a summary"), 300.0), 1);
             let n = lines(ui, Some(reason), 300.0);
@@ -162,7 +162,7 @@ mod tests {
     fn a_line_keeps_its_height_without_a_reason() {
         let mut heights = Vec::new();
         for why in [None, Some("Enter a summary")] {
-            let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+            let mut h = crate::snapshot_check::builder().build_ui(|ui| {
                 let top = ui.cursor().top();
                 line(ui, why, Align::Center);
                 heights.push(ui.cursor().top() - top);

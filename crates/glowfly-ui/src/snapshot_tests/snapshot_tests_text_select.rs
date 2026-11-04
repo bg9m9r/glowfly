@@ -8,15 +8,15 @@
 
 use super::super::snapshot_tests::{harness, harness_palette, keys_harness, remove_fixture};
 use super::super::snapshot_tests_revert::with_line_diff;
-use crate::msg::{DiffMsg, Msg, SelectionMsg};
-use crate::state::AppState;
-use crate::state::diff_text::TextSide;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Color32, Event, Modifiers, PointerButton, Pos2, Shape, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::{DiffMsg, Msg, SelectionMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_text::TextSide;
 
 pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -42,7 +42,7 @@ pub(super) struct Grid {
 impl Grid {
     pub(super) fn of(h: &H, layout: DiffLayout) -> Self {
         let st = &h.state().0;
-        let style = crate::ui::diff::DiffStyle::new(&st.settings);
+        let style = crate::diff::DiffStyle::new(&st.settings);
         // The hunk's action at the row's right end, which names the lines once some are picked.
         let action = h.query_by_label("Revert hunk").or_else(|| h.query_by_label("Revert 1 line")).expect("the hunk's action");
         let b = action.bounding_box().expect("the button has bounds");
@@ -135,7 +135,7 @@ pub(super) fn open(
     theme: ThemeChoice,
     layout: DiffLayout,
     selected: &[usize],
-    palette: Option<crate::ui::theme::color::Palette>,
+    palette: Option<crate::theme::color::Palette>,
 ) -> (H, std::path::PathBuf) {
     let dark = theme != ThemeChoice::Light;
     let (st, dir) = with_line_diff(name, theme, layout, selected);
@@ -208,7 +208,7 @@ fn a_diff_gone_from_the_screen_lets_the_keyboard_go() {
     let (mut h, dir) = open("text-stale-focus", ThemeChoice::Dark, DiffLayout::Inline, &[], None);
     let g = Grid::of(&h, DiffLayout::Inline);
     drag(&mut h, g.at(0, 1), g.at(3, 2));
-    let p = crate::ui::theme::view_palette(true);
+    let p = crate::theme::view_palette(true);
     assert!(painted(&h, p.code_sel));
     // The diff isn't drawn for a while (another view in front), then comes back.
     let shown = h.state_mut().0.session.diff.view.take();
@@ -258,7 +258,7 @@ fn a_press_in_a_text_field_keeps_the_selection_painted_quieter() {
     let g = Grid::of(&h, DiffLayout::Inline);
     drag(&mut h, g.at(0, 1), g.at(3, 2));
     // The harness's dark palette.
-    let p = crate::ui::theme::view_palette(true);
+    let p = crate::theme::view_palette(true);
     assert!(painted(&h, p.code_sel) && !painted(&h, p.code_sel_dim), "the diff has the keyboard");
     let before = h.state().0.view.diff_text.clone();
     press_in_a_text_field(&mut h);
@@ -274,7 +274,7 @@ fn a_press_in_a_text_field_keeps_the_selection_painted_quieter() {
 /// A drag across the code from `app` to `on Windows`, with `-fix` picked in the gutter: the
 /// text selection's wash and nubs beside the line selection's tint, bar and check.
 /// With `unfocused`, a press in a text field then takes the keyboard from the diff.
-fn golden(name: &str, theme: ThemeChoice, layout: DiffLayout, palette: Option<crate::ui::theme::color::Palette>, unfocused: bool) {
+fn golden(name: &str, theme: ThemeChoice, layout: DiffLayout, palette: Option<crate::theme::color::Palette>, unfocused: bool) {
     let (mut h, dir) = open(name, theme, layout, &[1], palette);
     let g = Grid::of(&h, layout);
     drag(&mut h, g.at(0, 1), g.at(3, 2));
@@ -299,13 +299,7 @@ fn diff_text_selection_light() {
 
 #[test]
 fn diff_text_selection_hc_dark() {
-    golden(
-        "diff_text_selection_hc_dark",
-        ThemeChoice::HighContrastDark,
-        DiffLayout::Inline,
-        Some(crate::ui::theme::HIGH_CONTRAST_DARK),
-        false,
-    );
+    golden("diff_text_selection_hc_dark", ThemeChoice::HighContrastDark, DiffLayout::Inline, Some(crate::theme::HIGH_CONTRAST_DARK), false);
 }
 
 #[test]

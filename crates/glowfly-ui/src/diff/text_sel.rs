@@ -15,14 +15,14 @@
 use super::DiffView;
 use super::rows_cache::LineIndex;
 use super::syntax::{Laid, SegSel};
-use crate::msg::{DiffMsg, Msg};
-use crate::state::diff_text::{self, LineRef, ShownLine, Span, TextPos, TextSel, TextSide, Unit};
-use crate::ui::theme::color;
+use crate::theme::color;
 use eframe::egui::text::CCursor;
 use eframe::egui::{
     Color32, Context, CursorIcon, Event, FontId, Galley, Id, Key, KeyboardShortcut, Modifiers, Painter, Pos2, Rangef, Rect, Response,
     Sense, Ui, pos2, vec2,
 };
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::diff_text::{self, LineRef, ShownLine, Span, TextPos, TextSel, TextSide, Unit};
 use std::ops::Range;
 
 /// How far past the view's edge a drag scrolls fastest, in points.

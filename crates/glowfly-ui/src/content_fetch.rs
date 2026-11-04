@@ -6,11 +6,11 @@ use super::empty_state::{EmptyIcon, Glyph, PaneButton, block};
 use super::pane_status::{self, Failure};
 use super::theme::color;
 use super::widgets::severity::Severity;
-use crate::msg::{Msg, PartialMsg};
-use crate::state::AppState;
-use crate::state::partial::{ContentPhase, PendingContent, Wait};
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{RichText, Ui};
+use glowfly_model::msg::{Msg, PartialMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::partial::{ContentPhase, PendingContent, Wait};
 
 /// Draws `p`'s pane, centred in what is left of `ui`.
 pub fn show(ui: &mut Ui, st: &AppState, p: &PendingContent, msgs: &mut Vec<Msg>) {

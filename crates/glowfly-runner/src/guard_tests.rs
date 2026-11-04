@@ -2,11 +2,11 @@
 //! ends its job or loading state.
 
 use super::*;
-use crate::state::{AppState, RunningJob};
-use crate::update::update;
 use glowfly_core::settings::Settings;
 use glowfly_core::undo::UndoKind;
 use glowfly_model::ssh::SshMsg;
+use glowfly_model::state::{AppState, RunningJob};
+use glowfly_model::update::update;
 use std::time::Instant;
 
 #[test]
@@ -46,7 +46,7 @@ fn a_panicking_job_finishes_failed_and_frees_the_job_slot() {
 
 #[test]
 fn a_panicking_fork_request_ends_the_dialogs_spinner() {
-    use crate::remote::ForkRequest;
+    use glowfly_model::remote::ForkRequest;
     let target = glowfly_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
     let req = ForkRequest { workdir: "C:/r".into(), target: target.clone(), auth: None, connected: false };
     let effect = Effect::Remote(RemoteEffect::ListForks(req));
@@ -84,8 +84,8 @@ fn a_panicking_merge_tool_ends_its_job() {
 
 #[test]
 fn a_panicking_sparse_monitor_or_worktree_job_ends_its_job() {
-    use crate::effect::{MonitorJob, MonitorOff};
-    use crate::worktree::{MoveRequest, RemoveRequest};
+    use glowfly_model::effect::{MonitorJob, MonitorOff};
+    use glowfly_model::worktree::{MoveRequest, RemoveRequest};
     let sparse = Effect::Sparse(SparseEffect::Checkout { cwd: "C:/r".into(), command: glowfly_core::sparse_ops::SparseCommand::Disable });
     let monitor = Effect::TurnOnMonitor(MonitorJob { cwd: "C:/r".into(), then: vec![] });
     let remove = Effect::Worktree(WorktreeEffect::Remove(RemoveRequest {
@@ -148,7 +148,7 @@ fn panicking_clone_and_init_effects_end_their_job_or_spinner() {
 
 #[test]
 fn a_panicking_blame_ends_the_views_loading() {
-    let r = crate::effect::BlameRequest {
+    let r = glowfly_model::effect::BlameRequest {
         workdir: "C:/r".into(),
         path: "a.txt".into(),
         at: None,
@@ -167,7 +167,7 @@ fn a_panicking_blame_ends_the_views_loading() {
 
 #[test]
 fn a_panicking_line_count_reports_a_failed_result() {
-    use crate::effect::LineCountsEffect;
+    use glowfly_model::effect::LineCountsEffect;
     let effect = Effect::LineCounts(LineCountsEffect::Wip { workdir: "r".into(), generation: 3 });
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
@@ -182,7 +182,7 @@ fn a_panicking_line_count_reports_a_failed_result() {
 
 #[test]
 fn a_panicking_local_op_reports_to_its_repository() {
-    let effect = Effect::LocalOp { workdir: "C:/r".into(), op: crate::effect::LocalOp::StageAll };
+    let effect = Effect::LocalOp { workdir: "C:/r".into(), op: glowfly_model::effect::LocalOp::StageAll };
     let msg = guarded(Recovery::of(&effect, "local-op"), || panic!("static")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
     assert!(matches!(*msg, Msg::Stage(StageMsg::LocalOpDone(Err(ref e))) if e.contains("static")));
@@ -207,7 +207,7 @@ fn a_panicking_load_ends_the_load() {
     assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));
 
     let old = std::sync::Arc::new(glowfly_core::repo::IndexMemo::of(&git2::Index::new().unwrap()).unwrap());
-    let read = crate::effect::IndexRequest { old, partners: Vec::new(), paths: Vec::new() };
+    let read = glowfly_model::effect::IndexRequest { old, partners: Vec::new(), paths: Vec::new() };
     let effect = Effect::LoadIndexStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None, git_status: true, read };
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
@@ -216,9 +216,9 @@ fn a_panicking_load_ends_the_load() {
 
 #[test]
 fn a_panicking_ssh_effect_ends_the_page_state() {
-    use crate::state::{PrefPage, PrefsState};
     use glowfly_core::ssh_keys::NewKey;
     use glowfly_model::ssh::{GenerateFailure, SshEffect};
+    use glowfly_model::state::{PrefPage, PrefsState};
     let key = NewKey { path: "C:/h/.ssh/id".into(), comment: String::new(), passphrase: "s3cret".into() };
     let effect = Effect::Ssh(SshEffect::Generate { keygen: "C:/ssh-keygen.exe".into(), key, overwrite: false });
     assert!(effect.scope().is_none(), "unscoped: the page gets its answer whichever tab is active");
@@ -241,11 +241,11 @@ fn a_panicking_ssh_effect_ends_the_page_state() {
 
 #[test]
 fn panicking_key_choice_agent_and_upload_effects_report_failures() {
-    use crate::state::ssh_service::{UploadForm, UploadState};
-    use crate::state::{PrefPage, PrefsState};
     use glowfly_core::forge::{Account, Provider};
     use glowfly_core::ssh_keys::AgentReach;
     use glowfly_model::ssh::SshEffect;
+    use glowfly_model::state::ssh_service::{UploadForm, UploadState};
+    use glowfly_model::state::{PrefPage, PrefsState};
     let prefs_busy = |st: &mut AppState| st.prefs.as_mut().unwrap().ssh.choice_busy = true;
     let panicked = |effect: Effect| {
         assert!(effect.scope().is_none(), "unscoped");
@@ -290,7 +290,7 @@ fn panicking_key_choice_agent_and_upload_effects_report_failures() {
 
 #[test]
 fn a_panicking_restart_reports_a_failed_restart() {
-    let job = crate::effect::RestartJob {
+    let job = glowfly_model::effect::RestartJob {
         file: glowfly_core::paths::temp_dir().join("glowfly.msi"),
         sha256: [0; 32],
         method: glowfly_core::app_update::InstallMethod::RunMsi,

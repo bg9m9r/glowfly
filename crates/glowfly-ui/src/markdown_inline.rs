@@ -7,11 +7,11 @@
 //! draws past the run's end, and a code run's background keeps `CODE_ROOM` from text it touches.
 
 use super::theme::{color, type_scale};
-use crate::msg::Msg;
 use eframe::egui::{self, Color32, CursorIcon, FontId, FontSelection, RichText, TextWrapMode, Ui, WidgetText};
 use glowfly_core::forge;
 use glowfly_core::i18n::Lang;
 use glowfly_core::markdown::Inline;
+use glowfly_model::msg::Msg;
 
 pub(crate) const ONLY_HTTPS: &str = "Only https links open in the browser";
 /// Between a code run's background and punctuation or a letter right against it ("`x`.").

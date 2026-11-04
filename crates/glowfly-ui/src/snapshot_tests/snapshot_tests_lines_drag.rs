@@ -5,13 +5,13 @@
 use super::super::snapshot_tests::{harness, remove_fixture};
 use super::super::snapshot_tests_revert::with_line_diff;
 use super::with_diff;
-use crate::msg::{DiffMsg, Msg};
-use crate::state::AppState;
-use crate::state::lines::LineClick;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick;
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -32,7 +32,7 @@ fn frame(h: &mut H) -> Vec<DiffMsg> {
                 DiffMsg::ClearLineSelection => DiffMsg::ClearLineSelection,
                 _ => continue,
             };
-            assert!(crate::update::update(st, Msg::Diff(d), Instant::now()).is_empty());
+            assert!(glowfly_model::update::update(st, Msg::Diff(d), Instant::now()).is_empty());
             sent.push(copy);
         }
     }
@@ -67,7 +67,7 @@ fn drag_test(layout: DiffLayout, from_x: f32, to_x: f32) {
     let lines = &st.session.diff.view.as_ref().unwrap().1.hunks[0].lines;
     let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
     let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
-    let style = crate::ui::diff::DiffStyle::new(&st.settings);
+    let style = crate::diff::DiffStyle::new(&st.settings);
     let row_h = style.row_h;
     let mut h = harness(st, true);
     h.run();
@@ -132,7 +132,7 @@ fn code_drag_test(layout: DiffLayout, name: &str) {
     d.intraline = Default::default();
     st.session.diff.view = Some((target.clone(), d.into()));
     let (first, last) = (1, 3);
-    let style = crate::ui::diff::DiffStyle::new(&st.settings);
+    let style = crate::diff::DiffStyle::new(&st.settings);
     let row_h = style.row_h;
     let mut h = harness(st, true);
     h.run();

@@ -8,10 +8,10 @@ use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::pane_status::loading_line;
 use super::widgets::buttons;
 use super::widgets::form_message::{self, Message};
-use crate::msg::Msg;
-use crate::state::branch_delete::{DeleteForm, Lost};
-use crate::state::gitflow_base;
 use eframe::egui::{self, Ui};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::branch_delete::{DeleteForm, Lost};
+use glowfly_model::state::gitflow_base;
 
 /// Draws the dialog; returns true when it should close (Cancel).
 pub(super) fn show(ui: &mut Ui, cx: Cx, form: &DeleteForm, msgs: &mut Vec<Msg>) -> bool {

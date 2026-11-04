@@ -43,10 +43,10 @@ const NAVY_TEXT: Color32 = hex(0x17397b);
 pub const FOREST_LINE: Color32 = hex(0x2c6b27);
 pub const FOREST_TEXT: Color32 = hex(0x1d4f19);
 /// The light slots that take another hue than the dark tones': Olive (Wine) and Gold (Navy).
-pub const LIGHT_WINE_SLOT: usize = 6;
+pub(crate) const LIGHT_WINE_SLOT: usize = 6;
 pub const LIGHT_NAVY_SLOT: usize = 11;
 /// The Orange slot, whose light tones turn to hue 62.
-pub const ORANGE_SLOT: usize = 3;
+pub(crate) const ORANGE_SLOT: usize = 3;
 
 /// Lines and chips on dark themes.
 pub const DARK_TONES: [Color32; LANE_COUNT] = [
@@ -130,7 +130,7 @@ pub const LIGHT_NAMES: [Hue; LANE_COUNT] = {
 
 /// Lines on High contrast light and Sand: the text tones, with the amber line for Orange (a
 /// text-strength amber reads brown).
-pub const LIGHT_STRONG_LINES: [Color32; LANE_COUNT] = {
+pub(crate) const LIGHT_STRONG_LINES: [Color32; LANE_COUNT] = {
     let mut t = LIGHT_TEXT;
     t[ORANGE_SLOT] = AMBER_LINE;
     t

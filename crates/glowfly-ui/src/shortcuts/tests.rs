@@ -1,16 +1,16 @@
 //! Matching the newer keys: which presses become `Msg::Shortcut`, and when nothing does
 //! (dialogs, the palette, Preferences, a credential prompt, a focused text field).
 
-use crate::keymap::KeyAction;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::askpass::PendingPrompt;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::askpass::Prompt;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::askpass::PendingPrompt;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 struct Keys {
@@ -35,7 +35,7 @@ fn unstaged() -> AppState {
 
 fn harness(st: AppState, field: bool) -> H {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             // Like the shell: keys before the views draw.
             super::input(ctx, &mut k.st, &mut k.msgs);
@@ -199,7 +199,7 @@ fn shortcuts_are_blocked_under_the_welcome() {
 
 /// A state with a loaded blame of one line open.
 fn blamed() -> AppState {
-    use crate::state::blame::{BlameData, BlameView};
+    use glowfly_model::state::blame::{BlameData, BlameView};
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     let blame = glowfly_core::repo::Blame {
         path: "a.txt".into(),
@@ -231,7 +231,7 @@ fn press_msgs(h: &mut H, modifiers: Modifiers, key: Key) -> Vec<Msg> {
 
 #[test]
 fn run_keys_and_find_in_the_blame_view() {
-    use crate::msg::BlameMsg;
+    use glowfly_model::msg::BlameMsg;
     let step = |m: &[Msg]| match m {
         [Msg::Blame(BlameMsg::StepRun(d))] => Some(*d),
         _ => None,
@@ -258,7 +258,7 @@ fn run_keys_and_find_in_the_blame_view() {
 
 #[test]
 fn move_tab_keys() {
-    use crate::msg::TabsMsg;
+    use glowfly_model::msg::TabsMsg;
     let moved = |m: &[Msg]| match m {
         [Msg::Tabs(TabsMsg::MoveActiveTab(d))] => Some(*d),
         _ => None,
@@ -281,8 +281,8 @@ fn move_tab_keys() {
 
 #[test]
 fn find_and_stepping_in_a_history_s_file_pane() {
-    use crate::msg::{BlameMsg, DiffMsg, HistoryMsg};
-    use crate::state::history::{FileHistoryView, HistoryKind, HistoryPane};
+    use glowfly_model::msg::{BlameMsg, DiffMsg, HistoryMsg};
+    use glowfly_model::state::history::{FileHistoryView, HistoryKind, HistoryPane};
     let with_history = |pane: HistoryPane| {
         let mut st = diff(DiffTarget::Commit(git2::Oid::zero(), "src/a.rs".into()));
         let mut view = FileHistoryView::loading_kind("src".into(), None, HistoryKind::Folder);

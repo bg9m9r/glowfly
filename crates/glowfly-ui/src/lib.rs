@@ -2,16 +2,6 @@
 //! feeds those messages and background results through `update`, runs the resulting effects, and
 //! handles the few effects that need the window. `draw` and `UiCache` are what it draws with.
 
-// The views lived in the app crate's `ui` module: the alias keeps their `crate::ui::…` paths
-// working, and the model's modules are re-exported under the names they have there.
-use crate as ui;
-#[cfg(any(test, feature = "test-support"))]
-pub(crate) use glowfly_model::update;
-pub(crate) use glowfly_model::{
-    custom_commands, deep_link, effect, git_env, gitflow, keymap, lfs, logs, msg, onboarding, patch, profile, remote, ssh, state,
-    submodule, tag, themes, tools, worktree,
-};
-
 mod access;
 mod activity_fold;
 mod activity_log;
@@ -208,6 +198,8 @@ mod worktree_move_dialog;
 mod worktrees;
 
 #[cfg(test)]
+mod glyph_check;
+#[cfg(test)]
 mod hint_tests;
 #[cfg(test)]
 mod menu_testing;
@@ -230,12 +222,12 @@ mod tabs_list_tests;
 #[cfg(test)]
 mod tabs_tests;
 
-use crate::msg::Msg;
-use crate::state::AppState;
 #[cfg(test)]
 use central::escape_key;
 use eframe::egui;
 use glowfly_core::spell::Speller;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 mod app_icon;
 mod app_mark;
@@ -251,7 +243,7 @@ pub struct UiCache {
     pub speller: Speller,
     pub diff_rows: diff::rows_cache::DiffRowsCache,
     /// The diff header's change rows, line counts and file order.
-    pub diff_header: crate::state::diff_header::cache::HeaderCache,
+    pub diff_header: glowfly_model::state::diff_header::cache::HeaderCache,
     /// The file history File view's line widths and wrapped row heights.
     pub history_text: history_text_cache::HistoryTextCache,
     /// The blame view's line widths and wrapped row heights.

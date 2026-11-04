@@ -4,9 +4,9 @@
 //! Each run is drawn in the row's full ink on the find fill (`Palette::find_fill`), which hugs
 //! the glyphs 2 px across and 1 px up and down and stops where a cut line's "…" starts.
 
-use crate::ui::theme::tokens::radius;
-use crate::ui::widgets::Cut;
-use crate::ui::widgets::truncate::cut_galley;
+use crate::theme::tokens::radius;
+use crate::widgets::Cut;
+use crate::widgets::truncate::cut_galley;
 use eframe::egui::text::LayoutJob;
 use eframe::egui::{Color32, CornerRadius, Painter, Pos2, Rect, pos2, vec2};
 use glowfly_core::commit_query::CommitQuery;
@@ -122,7 +122,7 @@ pub(super) fn ink_runs(job: LayoutJob, runs: &[Range<usize>], ink: Color32) -> L
 /// `max_w` with "…"), first filling the chars in `runs` with `mark`'s fill and inking them.
 pub(super) fn paint_cut_marked(p: &Painter, at: Pos2, job: LayoutJob, max_w: f32, runs: &[Range<usize>], mark: Option<Mark>) -> Cut {
     let Some(mark) = mark.filter(|_| !runs.is_empty() && !job.sections.is_empty() && max_w > 0.0) else {
-        return crate::ui::widgets::paint_cut(p, at, job, max_w);
+        return crate::widgets::paint_cut(p, at, job, max_w);
     };
     let fallback = job.sections[0].format.color;
     let galley = cut_galley(p.ctx(), ink_runs(job, runs, mark.ink), max_w);

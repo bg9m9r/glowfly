@@ -3,14 +3,14 @@
 //! repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, try_git, with_repo};
-use crate::state::pick::{MainlineForm, PickOp};
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::pick::{MainlineForm, PickOp};
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 
 #[test]
@@ -29,7 +29,7 @@ fn mainline_dialog() {
 /// still runs the pick, with the parent chosen.
 #[test]
 fn mainline_radio_then_enter() {
-    use crate::msg::{Msg, SelectionMsg};
+    use glowfly_model::msg::{Msg, SelectionMsg};
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "mainline-enter");
     let snap = st.snap.as_ref().unwrap();
     let merge = snap.commits.iter().find(|c| c.summary == "Merge branch 'login-page'").unwrap().oid;

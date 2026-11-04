@@ -2,18 +2,18 @@
 //! drawn hovered and pressed from the OS's tracking (Snap Layouts), and a right-click on the
 //! empty title bar (or the drag zone over a dialog) asking for the system menu.
 
-use crate::msg::{AppMsg, Msg};
-use crate::state::window_chrome::{Chrome, WindowCmd};
-use crate::state::window_native::CaptionButton;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_tests::snapshot_tests_painted::{bounds, fills_inside};
-use crate::ui::snapshot_tests::{harness_sized, remove_fixture, with_repo};
-use crate::ui::tabs_tests::pointer;
-use crate::ui::theme::color;
+use crate::snapshot_tests::snapshot_tests_painted::{bounds, fills_inside};
+use crate::snapshot_tests::{harness_sized, remove_fixture, with_repo};
+use crate::tabs_tests::pointer;
+use crate::theme::color;
 use eframe::egui::{Color32, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::window_chrome::{Chrome, WindowCmd};
+use glowfly_model::state::window_native::CaptionButton;
+use glowfly_model::state::{AppState, Modal};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
@@ -83,7 +83,7 @@ fn right_click_on_the_empty_bar_opens_the_system_menu() {
     remove_fixture(&dir);
     // A tab keeps its own right-click.
     let (mut h, dir) = open("system-menu-tab", Chrome::Windows, ThemeChoice::Dark, |_| {});
-    let tab = crate::ui::tabs_tests::tab_centre(&h, 0);
+    let tab = crate::tabs_tests::tab_centre(&h, 0);
     right_click(&mut h, tab);
     assert_eq!(menus_sent(&h), 0, "on a tab");
     drop(h);

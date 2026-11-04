@@ -4,13 +4,13 @@
 //! (in either view), which folds it again.
 
 use super::DiffView;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
+use crate::theme::color;
+use crate::theme::tokens::radius;
 use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::diff_rows::GapSpan;
 use glowfly_core::whole_file::Fold;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
 
 /// The row's text for a fold of `n` lines.
 fn label(n: usize) -> String {

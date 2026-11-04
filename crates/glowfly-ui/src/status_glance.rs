@@ -11,11 +11,11 @@
 use super::status::CONTROL;
 use super::theme::{color, type_scale};
 use super::widgets::{Icon, buttons, paint_icon_sized};
-use crate::logs::LogsMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::tabs::glance_fetch;
 use eframe::egui::{self, RichText, Sense, vec2};
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::tabs::glance_fetch;
 use std::time::Duration;
 
 /// The warning triangle's size before the failure's text.
@@ -54,7 +54,7 @@ pub(super) fn fetch_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) 
         ui.ctx().request_repaint_after(Duration::from_secs(secs));
     }
     let tip = glance_fetch::tip(t, &st.settings, snap, now, offset);
-    let blocked = crate::state::toolbar_tips::fetch_blocked(st);
+    let blocked = glowfly_model::state::toolbar_tips::fetch_blocked(st);
     let button = egui::Button::new(RichText::new(text).color(color::weak())).frame(false);
     let r = ui.add_enabled(blocked.is_none(), button).on_hover_text(&tip);
     let r = match &blocked {

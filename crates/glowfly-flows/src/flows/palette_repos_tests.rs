@@ -4,11 +4,11 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::state;
 use super::update;
-use crate::keymap::BindingId;
-use crate::msg::{Msg, PaletteMsg, RecentMsg, ReposMsg};
-use crate::state::palette::{PaletteCommand as C, shown};
-use crate::state::palette_commands::RepoListCommand as R;
-use crate::state::{AppState, Modal};
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{Msg, PaletteMsg, RecentMsg, ReposMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, shown};
+use glowfly_model::state::palette_commands::RepoListCommand as R;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -88,7 +88,7 @@ fn list_commands_show_when_they_apply() {
 
 #[test]
 fn fetch_and_pull_across_repositories() {
-    use crate::state::repo_sync::{SyncKind, SyncScope};
+    use glowfly_model::state::repo_sync::{SyncKind, SyncScope};
     let mut st = state();
     assert!(!has(&st, "Fetch all favorites") && !has(&st, "Fetch all listed repositories"), "nothing listed");
     st.recent = vec![PathBuf::from("/w/gone")];

@@ -5,14 +5,14 @@
 //! or ssh-keygen.
 
 use super::snapshot_tests::{harness, settings};
-use crate::state::ssh_service::{UploadForm, UploadState};
-use crate::state::ssh_use::{Choices, RepoTarget};
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::ssh_keys::{AgentKey, AgentReach, AgentStatus, KeyChoice, KeyFileProblem, SshKeyPair, SshListing, WinService};
+use glowfly_model::state::ssh_service::{UploadForm, UploadState};
+use glowfly_model::state::ssh_use::{Choices, RepoTarget};
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -68,7 +68,7 @@ pub(crate) fn ssh_page(theme: ThemeChoice, listing: Option<SshListing>) -> AppSt
 }
 
 /// A harness with a window tall enough for the whole page.
-pub(crate) fn tall(st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<crate::msg::Msg>)> {
+pub(crate) fn tall(st: AppState, dark: bool) -> egui_kittest::Harness<'static, (AppState, Vec<glowfly_model::msg::Msg>)> {
     let mut h = harness(st, dark);
     h.set_size(eframe::egui::vec2(1400.0, 1180.0));
     h.run();
@@ -86,7 +86,7 @@ pub(crate) fn listing(keys: Vec<SshKeyPair>, keygen: bool) -> SshListing {
     }
 }
 
-pub(crate) fn ssh_mut(st: &mut AppState) -> &mut crate::state::ssh::SshPage {
+pub(crate) fn ssh_mut(st: &mut AppState) -> &mut glowfly_model::state::ssh::SshPage {
     &mut st.prefs.as_mut().unwrap().ssh
 }
 
@@ -273,7 +273,7 @@ fn prefs_ssh_add_to_service() {
 
 #[test]
 fn prefs_ssh_service_fallback() {
-    let message = crate::state::ssh_service::fallback_note(glowfly_core::i18n::Lang::En, "GitHub");
+    let message = glowfly_model::state::ssh_service::fallback_note(glowfly_core::i18n::Lang::En, "GitHub");
     let st = with_form(ThemeChoice::Light, UploadState::Failed { message, fallback: true }, "");
     let mut h = tall(st, false);
     assert!(h.query_by_label("Copy key and open settings").is_some());

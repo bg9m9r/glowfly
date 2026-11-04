@@ -3,15 +3,15 @@
 //! Retry; and the list loading.
 
 use super::snapshot_tests::{harness, render, settings};
-use crate::effect::ForgeError;
-use crate::msg::{CloneMsg, Msg, PrefsMsg};
-use crate::state::clone::CloneForm;
-use crate::state::clone_service::{CloneSource, ServicePicker};
-use crate::state::{AppState, Modal, PrefPage};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, HostedRepo, MyRepos, Provider};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::effect::ForgeError;
+use glowfly_model::msg::{CloneMsg, Msg, PrefsMsg};
+use glowfly_model::state::clone::CloneForm;
+use glowfly_model::state::clone_service::{CloneSource, ServicePicker};
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
 
 fn account(provider: Provider, host: &str) -> Account {

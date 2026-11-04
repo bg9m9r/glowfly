@@ -6,15 +6,15 @@
 use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, center, p, pushed, with_worktrees};
-use crate::msg::Msg;
-use crate::state::worktree_manage::{LockForm, RemoveForm};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::Refusal;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::worktree_manage::{LockForm, RemoveForm};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::PathBuf;
 
 /// The fixture with the Remove dialog open for the worktree named `name`, changed by `edit`.
@@ -103,7 +103,7 @@ fn worktree_remove_locked() {
     h.run();
     assert!(!h.get_by_label("Force remove").is_disabled());
     // While a job runs the button waits (a spinner keeps repainting, so step instead of run).
-    h.state_mut().0.job = Some(crate::state::RunningJob {
+    h.state_mut().0.job = Some(glowfly_model::state::RunningJob {
         label: "Fetch".into(),
         workdir: None,
         quiet: false,
@@ -183,7 +183,7 @@ fn worktree_menu_manage() {
     // Nothing prunable, and feature-login open in another tab.
     let (mut st, _) = with_worktrees(ThemeChoice::Dark, "worktree-menu-manage");
     st.snap.as_mut().unwrap().worktrees.retain(|w| !w.missing);
-    st.tabs.push(crate::state::tabs::Tab::unloaded(p("C:/work/app-worktrees/feature-login")));
+    st.tabs.push(glowfly_model::state::tabs::Tab::unloaded(p("C:/work/app-worktrees/feature-login")));
     let mut h = harness(st, true);
     h.run();
     let row = center(&h, "app, current");

@@ -11,11 +11,11 @@
 use super::button_look::{self, InsetRing, Press, Target};
 use super::buttons::{Kind, StyledButton};
 use super::segment_bar::{Seg, lay_out};
-use crate::ui::access;
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::surfaces::Tone;
-use crate::ui::theme::tokens::{BORDER_W, radius};
+use crate::access;
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::surfaces::Tone;
+use crate::theme::tokens::{BORDER_W, radius};
 use eframe::egui::{CornerRadius, CursorIcon, Response, Stroke, StrokeKind, Ui, pos2};
 
 /// The caret half's width.

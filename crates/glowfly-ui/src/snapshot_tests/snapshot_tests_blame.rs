@@ -9,14 +9,8 @@ use super::file_view_switch::{DIFF, FILE};
 use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
 use super::snapshot_tests_file_menu::menu_style;
 use super::theme::{apply_theme, color};
-use crate::msg::BlameMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::blame::{BlameData, BlameView};
-use crate::state::history::{FileHistoryView, HistoryPane};
-use crate::ui::common::short;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::common::short;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use eframe::egui::accesskit::Toggled;
 use egui_kittest::Harness;
@@ -25,6 +19,12 @@ use git2::Oid;
 use glowfly_core::highlight::{self, SyntaxHint};
 use glowfly_core::repo::{self, BlameOptions, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::BlameMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BlameData, BlameView};
+use glowfly_model::state::history::{FileHistoryView, HistoryPane};
 use std::path::PathBuf;
 
 const FOLDER_HISTORY: &str = "History of this folder";
@@ -144,7 +144,7 @@ fn menu(blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
 
 /// `menu` for the file at `path`.
 fn menu_for(path: &'static str, blocked: Option<&'static str>) -> Harness<'static, Vec<Msg>> {
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(260.0, 136.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(260.0, 136.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

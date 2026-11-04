@@ -3,12 +3,12 @@
 //! draws them, and a hidden side panel's edge strip is in `panel_rails.rs`.
 
 use super::theme::color;
-use crate::keymap::BindingId;
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::layout::Panel;
 use eframe::egui::{self, RichText};
 use glowfly_core::settings::DEFAULT_ZOOM_PERCENT;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::Panel;
 
 /// At start-up, before the first frame: hands the zoom keys to the keymap (egui's own would
 /// still zoom on Ctrl+-/Ctrl+= after they are rebound) and applies the saved zoom.

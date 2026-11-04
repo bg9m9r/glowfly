@@ -4,19 +4,19 @@
 //! the header's buttons. The + and the caret are painted (the fonts lack the caret glyph).
 
 use super::pill;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::terminal::TermSession;
-use crate::state::terminal_names::tab_names;
-use crate::ui::prefs::terminal::choice_label;
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::widgets::chevron;
-use crate::ui::widgets::menu::popup_below;
-use crate::ui::widgets::tab_glyph::{self, TabGlyph};
+use crate::prefs::terminal::choice_label;
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::widgets::chevron;
+use crate::widgets::menu::popup_below;
+use crate::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Layout, PopupCloseBehavior, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ShellChoice, TerminalPrefs};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::terminal::TermSession;
+use glowfly_model::state::terminal_names::tab_names;
 use glowfly_model::terminal::TerminalMsg;
 
 /// Between pills.

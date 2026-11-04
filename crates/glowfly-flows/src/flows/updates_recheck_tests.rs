@@ -3,14 +3,14 @@
 //! check doesn't lose the offer.
 
 use super::updates_tests::{NOW, app, checks, found, offered, saved, send, tick};
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::UpdateMsg as U;
-use crate::state::AppState;
-use crate::state::palette::entries;
-use crate::state::updates::{STARTUP_DELAY, UpdateStatus};
 use glowfly_core::app_update::{InstallKind, InstallMethod, UpdateError};
 use glowfly_core::forge::ServiceError;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::UpdateMsg as U;
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{STARTUP_DELAY, UpdateStatus};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 

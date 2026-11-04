@@ -70,7 +70,7 @@ pub fn pr_layers(snap: &Snapshot, fs: &ForgeState, branch: &str) -> Vec<PrLayer>
 /// The base the bottom layer `bottom` is built on, among the code host's default branch, the
 /// main branch and Git Flow's development and production branches that are on the host's
 /// remote: the one with the fewest commits between it and `bottom` (the first on a tie).
-pub fn base_for(snap: &Snapshot, fs: &ForgeState, bottom: &str) -> Option<String> {
+pub(crate) fn base_for(snap: &Snapshot, fs: &ForgeState, bottom: &str) -> Option<String> {
     let mut names: Vec<String> = fs.default_branch.iter().cloned().chain(snap.mainline()).collect();
     if let Some(flow) = snap.gitflow.settings() {
         names.extend([flow.development, flow.production]);

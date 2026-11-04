@@ -6,13 +6,13 @@ use super::palette_tests::repo_with_topic;
 use super::tests::{drive, git, scratch_repo, state};
 use super::trust_held_tests::held_repo_with;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
-use crate::state::palette::{PaletteCommand as C, shown};
-use crate::state::stashes::{NO_FILES, NOTHING, StashPushForm, wip_files};
-use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::repo::{FileEntry, Hazard};
 use glowfly_core::stash_ops::{STAGED_MIN_GIT, StashScope};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{JobMsg, Msg, PaletteMsg, RepoMsg, StashMsg, TrustMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, shown};
+use glowfly_model::state::stashes::{NO_FILES, NOTHING, StashPushForm, wip_files};
+use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 

@@ -6,12 +6,12 @@
 use super::history_index_tests::{opened_long, run_build};
 use super::tests::finish;
 use super::update;
-use crate::effect::{Effect, IndexEffect, LoadKind};
-use crate::msg::{LoadMsg, Msg, SearchMsg};
-use crate::state::history_index::{HistoryCount, IndexAnswer};
-use crate::state::load_more::Reach;
-use crate::state::{AppState, Selection};
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
+use glowfly_model::effect::{Effect, IndexEffect, LoadKind};
+use glowfly_model::msg::{LoadMsg, Msg, SearchMsg};
+use glowfly_model::state::history_index::{HistoryCount, IndexAnswer};
+use glowfly_model::state::load_more::Reach;
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -52,7 +52,7 @@ fn answer(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx {
         if matches!(e, Effect::Index(IndexEffect::Query { .. })) {
-            let msg = crate::runner::testing::execute(e).unwrap();
+            let msg = glowfly_runner::testing::execute(e).unwrap();
             out.extend(update(st, msg, Instant::now()));
         }
     }

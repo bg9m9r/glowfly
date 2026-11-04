@@ -2,9 +2,9 @@
 //! conflicted files' working copies for markers, and the resolved files.
 
 use super::execute::{Cx, Execute, err};
-use crate::effect::{ConflictEffect, ConflictRead};
-use crate::msg::{ConflictMsg, Msg};
 use glowfly_core::repo;
+use glowfly_model::effect::{ConflictEffect, ConflictRead};
+use glowfly_model::msg::{ConflictMsg, Msg};
 use std::path::Path;
 
 impl Execute for ConflictEffect {

@@ -2,10 +2,10 @@
 //! are drawn as a disabled item (greyed with an info mark, the reason in a tooltip on hover or
 //! focus) that can't open.
 
-use crate::keymap::Chord;
-use crate::ui::widgets::menu::submenu;
-use crate::ui::widgets::reason::{self, ItemState};
+use crate::widgets::menu::submenu;
+use crate::widgets::reason::{self, ItemState};
 use eframe::egui;
+use glowfly_model::keymap::Chord;
 
 /// The key text an item shows for its `chord` (the binding's first key, `menu_model::Item`), or
 /// nothing.

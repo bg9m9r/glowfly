@@ -7,9 +7,9 @@
 //! Views draw avatars only while `shown` (lookups turned on, and a publicly hosted repository);
 //! otherwise initials.
 
-use crate::state::AppState;
 use eframe::egui::{self, ColorImage, TextureHandle, TextureOptions};
 use glowfly_core::avatars::Image;
+use glowfly_model::state::AppState;
 use std::borrow::Cow;
 use std::collections::HashMap;
 

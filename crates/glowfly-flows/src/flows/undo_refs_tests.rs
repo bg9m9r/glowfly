@@ -3,11 +3,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, UndoOpts};
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::state::{AppState, Modal};
-use crate::tag::TagMsg;
 use glowfly_core::undo::{Action, HeadPos};
+use glowfly_model::effect::{Effect, UndoOpts};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::tag::TagMsg;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

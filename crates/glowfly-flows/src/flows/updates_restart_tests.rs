@@ -7,17 +7,17 @@ use super::askpass_gpg_tests::start_job;
 use super::tabs_close_tests::fake;
 use super::updates_tests::{app, offered, saved, send};
 use super::{prefs_save_tests, update};
-use crate::effect::{Effect, OsEffect, RestartJob, UiEffect, UpdateEffect};
-use crate::msg::{CheckedRelease, Msg, PrefsMsg, UpdateMsg as U};
-use crate::state::palette::entries;
-use crate::state::prefs::GitConfigValues;
-use crate::state::tabs::Tab;
-use crate::state::updates::UpdateStatus;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use glowfly_core::app_update::{
     Arch, Asset, InstallKind, InstallMethod, InstallProblem, LastInstall, Platform, Release, TargetOs, UpdateError,
 };
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{Effect, OsEffect, RestartJob, UiEffect, UpdateEffect};
+use glowfly_model::msg::{CheckedRelease, Msg, PrefsMsg, UpdateMsg as U};
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::tabs::Tab;
+use glowfly_model::state::updates::UpdateStatus;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 

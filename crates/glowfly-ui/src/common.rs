@@ -3,16 +3,16 @@
 use super::theme::color;
 use super::widgets;
 use super::widgets::reason::{self, ItemState};
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::state::{AppState, ForgeState, PrefPage, Status};
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::{self, separator};
+use crate::theme::type_scale;
+use crate::widgets::menu::{self, separator};
 use eframe::egui::{self, Color32, RichText, pos2, vec2};
 use git2::Oid;
 use glowfly_core::forge::{self, RefStyle};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::state::{AppState, ForgeState, PrefPage, Status};
 
 /// The height of a `ui.horizontal` row of labels and buttons, for lists drawn with
 /// `ScrollArea::show_rows` (only the rows in view are laid out).
@@ -114,7 +114,7 @@ pub fn menu_header_note(ui: &mut egui::Ui, title: &str, note: &str) {
 /// A commit menu's title: the summary in bold (cut to 80 characters), then the short SHA, weak
 /// and monospace; just the SHA when there is no summary.
 pub fn commit_menu_header(ui: &mut egui::Ui, summary: &str, oid: Oid) {
-    let cut = crate::state::commit_menu::header_summary(summary);
+    let cut = glowfly_model::state::commit_menu::header_summary(summary);
     let mut job = egui::text::LayoutJob::default();
     let (style, align) = (ui.style().clone(), egui::Align::Center);
     let sha = if cut.is_empty() {
@@ -300,7 +300,7 @@ pub fn capitalize(s: &str) -> String {
     c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
 }
 
-pub use crate::state::op_actions::state_actions;
+pub use glowfly_model::state::op_actions::state_actions;
 
 /// Shown when no repository is open.
 pub fn welcome(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {

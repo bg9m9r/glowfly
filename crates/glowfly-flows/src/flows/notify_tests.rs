@@ -4,13 +4,12 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, finish, git, same_place};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
-use crate::runner;
-use crate::state::lfs::LfsInstall;
-use crate::state::notify::BehindWatch;
-use crate::state::{AppState, ToastAction};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::lfs::LfsInstall;
+use glowfly_model::state::notify::BehindWatch;
+use glowfly_model::state::{AppState, ToastAction};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -105,7 +104,7 @@ fn no_alert_for_a_tab_switched_away() {
     let run = fx.remove(0);
     let fx = update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     finish(&mut st, fx);
-    let done = runner::testing::execute(run).expect("the job's result");
+    let done = glowfly_runner::testing::execute(run).expect("the job's result");
     let fx = update(&mut st, done, Instant::now());
     finish(&mut st, fx);
     assert!(st.behind_watch.is_none());
@@ -207,7 +206,7 @@ fn a_failed_lfs_download_after_auto_fetch_keeps_the_behind_alert() {
     st.settings.auto_fetch_minutes = 1;
     let tick = st.last_fetch + Duration::from_secs(61);
     let mut fx = update(&mut st, Msg::Tick(tick), Instant::now());
-    let done = runner::testing::execute(fx.remove(0)).expect("the fetch's result");
+    let done = glowfly_runner::testing::execute(fx.remove(0)).expect("the fetch's result");
     let (lfs, mut rest): (Vec<_>, Vec<_>) = update(&mut st, done, Instant::now()).into_iter().partition(is_lfs_fetch);
     assert_eq!(lfs.len(), 1, "the LFS download started");
     let failed = Msg::Job(JobMsg::JobDone { ok: false, output: "$ git lfs fetch\nfailed".into(), undo: None });

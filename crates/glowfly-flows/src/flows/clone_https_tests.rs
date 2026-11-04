@@ -4,15 +4,15 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{CloneMsg, JobMsg, Msg, PrefsMsg};
-use crate::state::AppState;
-use crate::state::clone::CloneRequest;
-use crate::state::prefs::PrefPage;
-use crate::state::toasts::{Toast, ToastAction};
 use glowfly_core::clone_ops::CloneOptions;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CloneMsg, JobMsg, Msg, PrefsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::clone::CloneRequest;
+use glowfly_model::state::prefs::PrefPage;
+use glowfly_model::state::toasts::{Toast, ToastAction};
 use std::time::Instant;
 
 const REWRITES: [&str; 4] =
@@ -51,8 +51,8 @@ fn fail<'a>(st: &'a mut AppState, output: &str) -> &'a Toast {
 /// The message a toast button runs: the fix behind a `LogsMsg::Fix` or `AltFix` proxy.
 fn runs<'a>(st: &'a AppState, a: &'a ToastAction) -> &'a Msg {
     match *a.msg {
-        Msg::Logs(crate::logs::LogsMsg::Fix(id)) => &st.logs.fix(id).expect("the fix is kept").msg,
-        Msg::Logs(crate::logs::LogsMsg::AltFix(id)) => &st.logs.alt_fix(id).expect("the second fix is kept").msg,
+        Msg::Logs(glowfly_model::logs::LogsMsg::Fix(id)) => &st.logs.fix(id).expect("the fix is kept").msg,
+        Msg::Logs(glowfly_model::logs::LogsMsg::AltFix(id)) => &st.logs.alt_fix(id).expect("the second fix is kept").msg,
         _ => &a.msg,
     }
 }

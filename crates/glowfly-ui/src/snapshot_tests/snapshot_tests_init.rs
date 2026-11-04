@@ -3,11 +3,11 @@
 //! and an invalid branch name with an empty copyright holder (red lines, Create disabled).
 
 use super::snapshot_tests::{render, settings};
-use crate::state::init::InitForm;
-use crate::state::touched::Touched;
-use crate::state::{AppState, Modal};
 use glowfly_core::init_ops::{FolderFacts, GitignoreTemplate, License};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::init::InitForm;
+use glowfly_model::state::touched::Touched;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 

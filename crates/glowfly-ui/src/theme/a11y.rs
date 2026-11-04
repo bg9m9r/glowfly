@@ -6,8 +6,8 @@
 //! setting changed since the last frame (egui's own default is to blink, and the view tests'
 //! harness turns it off, which a setting left on keeps).
 
-use crate::ui::theme::tokens::{self, motion};
-use crate::ui::widgets::tooltip_motion;
+use crate::theme::tokens::{self, motion};
+use crate::widgets::tooltip_motion;
 use eframe::egui;
 use glowfly_core::settings::Settings;
 

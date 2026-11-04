@@ -6,11 +6,11 @@ use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::double_click;
 use super::snapshot_tests_terminal::{pushed, with_session};
 use super::snapshot_tests_terminal_select::{H, cell, with_history};
-use crate::state::terminal::SessionStatus;
 use eframe::egui::{Event, Modifiers, MouseWheelUnit, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey};
+use glowfly_model::state::terminal::SessionStatus;
 use glowfly_model::terminal::TerminalMsg;
 
 /// The text of session 0's selection.
@@ -77,7 +77,7 @@ fn drag_to(h: &mut H, row: u16, col: u16, to: Pos2, frames: usize) {
 }
 
 fn scrolled(h: &H) -> i32 {
-    h.state().1.iter().filter_map(|m| if let crate::msg::Msg::Terminal(TerminalMsg::Scroll(n)) = m { Some(*n) } else { None }).sum()
+    h.state().1.iter().filter_map(|m| if let glowfly_model::msg::Msg::Terminal(TerminalMsg::Scroll(n)) = m { Some(*n) } else { None }).sum()
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn sent_keys(h: &H) -> Vec<TermInput> {
     h.state()
         .1
         .iter()
-        .filter_map(|m| if let crate::msg::Msg::Terminal(TerminalMsg::Input(v)) = m { Some(v.clone()) } else { None })
+        .filter_map(|m| if let glowfly_model::msg::Msg::Terminal(TerminalMsg::Input(v)) = m { Some(v.clone()) } else { None })
         .flatten()
         .collect()
 }

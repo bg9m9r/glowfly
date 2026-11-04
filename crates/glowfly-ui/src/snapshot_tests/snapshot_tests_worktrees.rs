@@ -6,12 +6,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::state::worktrees::WorktreeForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
@@ -20,6 +15,11 @@ use git2::Oid;
 use glowfly_core::repo::{ChangeCounts, ChangesRead, WorktreeInfo};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::worktree_ops::{FolderProblem, WorktreeBase};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::state::worktrees::WorktreeForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -225,7 +225,7 @@ fn worktree_dialog_branch() {
     assert!(pushed(&h, &|m| matches!(m, Msg::Worktree(WorktreeMsg::Submit))));
     h.get_by_label("Browse…").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Prefs(PrefsMsg::PickFolder(crate::msg::FolderPurpose::WorktreeParent)))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Prefs(PrefsMsg::PickFolder(glowfly_model::msg::FolderPurpose::WorktreeParent)))));
     drop(h);
     remove_fixture(&dir);
 }

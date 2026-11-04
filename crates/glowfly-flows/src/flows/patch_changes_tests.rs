@@ -2,17 +2,17 @@
 //! each scope and its refusals, the trust prompt in an untrusted repository, and an end-to-end
 //! save whose toast shows the file in the file manager.
 
-use crate::effect::Effect;
-use crate::effect::OsEffect;
 use crate::flows::patch_tests::{beside, cleanup, last_log, last_toast, run, three_commits};
 use crate::flows::{drive, git};
-use crate::msg::{Msg, RepoMsg};
-use crate::patch::{PatchEffect, PatchMsg};
-use crate::state::patch::changes::{NO_PICK, NOTHING_STAGED, RESOLVE_FIRST, SaveChangesForm};
-use crate::state::{AppState, Modal};
-use crate::update::update;
 use glowfly_core::patch_ops::{ChangesRequest, NO_CHANGES, PatchSource, WipScope};
 use glowfly_core::repo::{FileEntry, Hazard};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::patch::{PatchEffect, PatchMsg};
+use glowfly_model::state::patch::changes::{NO_PICK, NOTHING_STAGED, RESOLVE_FIRST, SaveChangesForm};
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -92,11 +92,11 @@ fn save_refusals() {
 fn an_untrusted_repository_asks_first() {
     let (mut st, dir) = dirty("patch-wip-trust");
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, glowfly_core::settings::RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, glowfly_core::settings::RepoTrust::NotTrusted);
     assert!(st.held());
     let fx = save(&mut st, WipScope::All, None, true);
     assert!(!fx.iter().any(|e| matches!(e, Effect::Patch(_))), "{fx:?}");
-    assert_eq!(last_log(&st), crate::update::patch::changes::HELD);
+    assert_eq!(last_log(&st), glowfly_model::update::patch::changes::HELD);
     assert!(matches!(st.modal, Some(Modal::Trust(_))), "the trust prompt");
     cleanup(&dir);
 }

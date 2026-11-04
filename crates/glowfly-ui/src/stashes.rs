@@ -9,15 +9,15 @@ use super::widgets;
 use super::widgets::empty_state::{self, Action};
 use super::widgets::menu::separator;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
-use crate::msg::{Msg, RepoMsg, StashMsg};
-use crate::state::Selection;
-use crate::state::palette::StashAction;
-use crate::state::section_actions::SectionAction;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops;
+use glowfly_model::msg::{Msg, RepoMsg, StashMsg};
+use glowfly_model::state::Selection;
+use glowfly_model::state::palette::StashAction;
+use glowfly_model::state::section_actions::SectionAction;
 
 /// The selection, the left-panel filter, and whether it has text.
 type Filtered<'a> = (&'a Selection, &'a dyn Fn(&str) -> bool, bool);
@@ -65,8 +65,8 @@ pub(super) fn section(
         if auto {
             r = r.on_hover_text(t.tr("sidebar.stashes.auto.tip"));
         }
-        let stash = |action| crate::state::stash_confirm::stash_msg(snap, t, action, s);
-        let blocked = crate::state::stash_confirm::apply_blocked(snap, t);
+        let stash = |action| glowfly_model::state::stash_confirm::stash_msg(snap, t, action, s);
+        let blocked = glowfly_model::state::stash_confirm::apply_blocked(snap, t);
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
         }

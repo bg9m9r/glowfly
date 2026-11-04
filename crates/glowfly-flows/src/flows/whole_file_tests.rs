@@ -4,20 +4,20 @@
 use super::diff_tests::drive_holding_diffs;
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::msg::DiffMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::state::history::FileHistoryView;
-use crate::state::lines::LineClick::Only;
-use crate::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use glowfly_core::diff_rows::header_rows;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileHistory, HistoryEntry, Hunk, HunkOp, LoadOptions};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::{Expanded, WholeFile, block_rows};
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::lines::LineClick::Only;
+use glowfly_model::state::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -243,7 +243,7 @@ fn whole_file_stage_block_end_to_end() {
         "{held:?}"
     );
     for e in held {
-        if let Some(msg) = crate::runner::testing::execute(e) {
+        if let Some(msg) = glowfly_runner::testing::execute(e) {
             drive(&mut st, msg);
         }
     }

@@ -3,13 +3,13 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::effect::OsEffect;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::themes::{ThemeEffect, ThemeMsg};
 use glowfly_core::settings::themes::parse;
 use glowfly_core::settings::{BuiltinTheme, ThemeCatalog, ThemeChoice, ThemeFile};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::themes::{ThemeEffect, ThemeMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

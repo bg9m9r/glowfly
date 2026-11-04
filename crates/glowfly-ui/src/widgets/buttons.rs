@@ -29,7 +29,7 @@
 
 use super::button_look::{self, Press, Target};
 use super::icon::{self, Icon};
-use crate::ui::theme::sizes::{ControlSize, Metrics};
+use crate::theme::sizes::{ControlSize, Metrics};
 use eframe::egui::{self, Color32, CornerRadius, Rect, Response, Sense, TextStyle, Ui, Widget, WidgetText, pos2, vec2};
 use std::borrow::Cow;
 
@@ -89,7 +89,7 @@ pub fn primary<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
 /// An important action that isn't the view's main one. Part of the family before a view needs
 /// it again (the WIP lists' header actions became quiet).
 #[allow(dead_code)]
-pub fn tonal<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
+pub(crate) fn tonal<'a>(text: impl Into<Cow<'a, str>>) -> StyledButton<'a> {
     StyledButton::new(text.into(), Kind::Tonal)
 }
 

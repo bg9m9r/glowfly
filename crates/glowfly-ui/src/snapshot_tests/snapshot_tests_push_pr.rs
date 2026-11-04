@@ -4,10 +4,7 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
-use crate::msg::ForgeMsg;
-use crate::msg::Msg;
-use crate::state::{AppState, ForgeState, Modal, Selection, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -15,6 +12,9 @@ use git2::Oid;
 use glowfly_core::forge::{Provider, PullRequest, Target};
 use glowfly_core::repo::{BranchInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::ForgeMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, ForgeState, Modal, Selection, Status};
 use std::path::PathBuf;
 
 pub(crate) fn tip(st: &AppState, name: &str) -> Oid {
@@ -313,7 +313,7 @@ fn toolbar_push_menu_long_names() {
     st.snap.as_mut().unwrap().head_branch = Some(long.into());
     let push = format!("Push {long} to origin/{long}");
     let pr = format!("Push {long} and create a pull request…");
-    let shown = crate::ui::widgets::menu::named(
+    let shown = crate::widgets::menu::named(
         glowfly_core::i18n::Lang::En.tr("toolbar.tip.push_title"),
         &[("branch", long), ("upstream", &format!("origin/{long}"))],
     );

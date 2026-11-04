@@ -7,16 +7,16 @@
 use super::file_list_keys::focused;
 use super::snapshot_tests::{harness, keys_harness, remove_fixture};
 use super::snapshot_tests_wip_keys::{H, click_row};
-use crate::keymap::KeyAction;
-use crate::msg::{Msg, RebaseMsg};
-use crate::state::list_keys::{FileList, ListMove};
-use crate::state::pull_request::PrTab;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, Modifiers};
 use glowfly_core::rebase::QuickEdit;
 use glowfly_core::repo::{self, DiffTarget};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::state::list_keys::{FileList, ListMove};
+use glowfly_model::state::pull_request::PrTab;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 
 const DOWN: ListMove = ListMove::Step { down: true };

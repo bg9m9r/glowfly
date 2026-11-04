@@ -4,14 +4,14 @@
 
 use super::integrations_form::{account_card, aligned, sign_in_form};
 use super::{help, row, text_field, trello};
-use crate::msg::{ForgeMsg, Msg, PrefsMsg};
-use crate::state::profiles::accounts_owner;
-use crate::state::{ForgeState, PrefsState};
-use crate::ui::theme::controls;
-use crate::ui::widgets::buttons;
+use crate::theme::controls;
+use crate::widgets::buttons;
 use eframe::egui::Ui;
 use glowfly_core::forge::{Account, Provider, RefStyle};
 use glowfly_core::settings::{Settings, TrackerChoice};
+use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg};
+use glowfly_model::state::profiles::accounts_owner;
+use glowfly_model::state::{ForgeState, PrefsState};
 use std::path::Path;
 
 pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {

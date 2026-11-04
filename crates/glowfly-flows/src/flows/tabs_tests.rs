@@ -3,18 +3,18 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::ConflictEffect;
-use crate::effect::{Effect, LoadKind, UiEffect};
-use crate::msg::CommitMsg;
-use crate::msg::ConflictMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::state::tabs::MAX_CLOSED_TABS;
-use crate::state::{AppState, Tab};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::ConflictEffect;
+use glowfly_model::effect::{Effect, LoadKind, UiEffect};
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::tabs::MAX_CLOSED_TABS;
+use glowfly_model::state::{AppState, Tab};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -135,11 +135,11 @@ fn close_and_reopen_tabs() {
 fn an_os_folder_opens_as_a_tab() {
     let (a, b) = (scratch_repo("tabs-os-a"), scratch_repo("tabs-os-b"));
     let mut st = state();
-    drive(&mut st, crate::start_arg::StartArg::Path(a.clone()).into_msg());
-    drive(&mut st, crate::start_arg::StartArg::Path(b.clone()).into_msg());
+    drive(&mut st, glowfly_model::start_arg::StartArg::Path(a.clone()).into_msg());
+    drive(&mut st, glowfly_model::start_arg::StartArg::Path(b.clone()).into_msg());
     assert_eq!((st.tabs.len(), st.active_tab), (2, 1));
     assert!(active_is(&st, &b), "the last folder ends up active");
-    drive(&mut st, crate::start_arg::StartArg::Path(a.clone()).into_msg());
+    drive(&mut st, glowfly_model::start_arg::StartArg::Path(a.clone()).into_msg());
     assert_eq!((st.tabs.len(), st.active_tab), (2, 0), "an open folder selects its tab");
     assert!(active_is(&st, &a));
     cleanup(&[&a, &b]);

@@ -2,7 +2,7 @@
 //! before its count, and last a button moves into the more-actions menu.
 
 use super::*;
-use crate::ui::widgets::truncate::counted_galley;
+use crate::widgets::truncate::counted_galley;
 
 /// A room `avail` wide for a title `title_w` wide (cut to 72), buttons 8 apart, a 32 px
 /// more-actions button and 24 px icon-only squares.
@@ -55,8 +55,8 @@ fn a_short_title_is_never_cut_below_itself() {
 /// Runs `f` with the app's theme in a kittest frame.
 fn with_ui(f: impl FnOnce(&mut Ui)) {
     let mut f = Some(f);
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
-        crate::ui::theme::apply_theme(ui.ctx());
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
+        crate::theme::apply_theme(ui.ctx());
         if let Some(f) = f.take() {
             f(ui);
         }

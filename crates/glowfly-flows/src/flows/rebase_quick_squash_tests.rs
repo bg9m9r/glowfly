@@ -5,10 +5,10 @@ use super::rebase_quick_tests::{form, log, make_dirty, prepare, short, started, 
 use super::rebase_tests::repo;
 use super::selection_tests::{commit_on, git, head};
 use super::tests::drive;
-use crate::msg::{Msg, RebaseMsg, RepoMsg};
-use crate::state::Modal;
-use crate::state::rebase_quick::{self, BLANK};
 use glowfly_core::rebase::{QuickEdit, RebaseAction};
+use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg};
+use glowfly_model::state::Modal;
+use glowfly_model::state::rebase_quick::{self, BLANK};
 
 #[test]
 fn squash_opens_its_message_dialog() {

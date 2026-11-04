@@ -4,10 +4,10 @@
 use super::color::{self, Palette};
 use super::contrast::{self, ratio};
 use super::*;
-use crate::themes::ThemeState;
 use eframe::egui::Color32;
 use glowfly_core::settings::themes::COLOR_KEYS;
 use glowfly_core::settings::{BuiltinTheme, ColorValue, ThemeCatalog, ThemeChoice, ThemeFile};
+use glowfly_model::themes::ThemeState;
 use std::collections::BTreeMap;
 
 #[test]
@@ -132,7 +132,7 @@ fn change_colors_are_readable() {
     for (t, p) in palettes() {
         let min = if high_contrast(p) { 4.5 } else { 3.0 };
         let lanes = super::branch_colours::swatches()
-            .map(|l| (format!("{l:?}"), crate::ui::theme::surfaces::band_color(super::branch_colours::line_in(l, p), p)));
+            .map(|l| (format!("{l:?}"), crate::theme::surfaces::band_color(super::branch_colours::line_in(l, p), p)));
         let bgs: Vec<(String, Color32)> = [("bg", p.bg), ("panel", p.panel), ("hover", p.hover), ("selected", p.selected)]
             .map(|(n, c)| (n.to_owned(), c))
             .into_iter()

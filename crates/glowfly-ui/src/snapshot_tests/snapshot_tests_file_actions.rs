@@ -10,18 +10,18 @@ use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_history
 use super::snapshot_tests_file_menu::menu_style;
 use super::snapshot_tests_revert::with_commit_diff;
 use super::theme::{apply_theme, color};
-use crate::msg::BlameMsg;
-use crate::msg::FilesMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{self, DiffTarget, HistoryEntry, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::BlameMsg;
+use glowfly_model::msg::FilesMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 use std::path::Path;
 
 const RESTORE: &str = "Restore this version…";
@@ -133,7 +133,7 @@ fn history_entry(status: char) -> HistoryEntry {
 
 /// A small window drawing a history row's menu body for `e`, as the popup would.
 fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>> {
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 230.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(440.0, 230.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
@@ -141,7 +141,15 @@ fn menu_harness(e: HistoryEntry, in_workdir: bool) -> Harness<'static, Vec<Msg>>
             egui::Frame::menu(ui.style()).show(ui, |ui| {
                 menu_style(ui.style_mut());
                 let en = glowfly_core::i18n::Lang::En;
-                entry_menu(ui, en, msgs, &e, "src/app.txt", in_workdir, crate::state::tool_compare::ToolSetup::of(en, &Default::default()));
+                entry_menu(
+                    ui,
+                    en,
+                    msgs,
+                    &e,
+                    "src/app.txt",
+                    in_workdir,
+                    glowfly_model::state::tool_compare::ToolSetup::of(en, &Default::default()),
+                );
             });
         },
         Vec::new(),
@@ -170,7 +178,7 @@ fn history_entry_menu() {
     h.get_by_label(REVERT_FILE).click();
     h.run();
     let want = DiffTarget::Commit(e.oid, e.path.clone());
-    assert!(matches!(&h.state()[..], [Msg::Stage(crate::msg::StageMsg::RevertFile(t))] if *t == want), "the entry's change");
+    assert!(matches!(&h.state()[..], [Msg::Stage(glowfly_model::msg::StageMsg::RevertFile(t))] if *t == want), "the entry's change");
     drop(h);
 
     let mut h = menu_harness(history_entry('M'), false);

@@ -3,10 +3,10 @@
 //! request calls do, in the dialog's repository.
 
 use super::execute::{Cx, Execute};
-use crate::effect::ForgeError;
-use crate::msg::Msg;
-use crate::remote::{ForkRequest, RemoteEffect, RemoteMsg};
 use glowfly_core::forge::{self, Auth, Wait};
+use glowfly_model::effect::ForgeError;
+use glowfly_model::msg::Msg;
+use glowfly_model::remote::{ForkRequest, RemoteEffect, RemoteMsg};
 
 fn auth(req: &mut ForkRequest) -> Result<Auth, ForgeError> {
     match req.auth.take() {

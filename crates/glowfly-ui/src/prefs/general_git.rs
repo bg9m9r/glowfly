@@ -3,15 +3,15 @@
 //! line endings. Those two are edited in place and written by the Save / Revert bar.
 
 use super::{check_row, help, row, text_field};
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::PrefPage;
-use crate::state::prefs::{Autocrlf, GitConfigValues};
-use crate::ui::theme::color;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::PrefPage;
+use glowfly_model::state::prefs::{Autocrlf, GitConfigValues};
 
 pub fn git_section(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValues>, program: Option<&GitInfo>, msgs: &mut Vec<Msg>) {
     let t = s.lang();
@@ -39,7 +39,7 @@ pub fn git_section(ui: &mut Ui, s: &mut Settings, git: Option<&mut GitConfigValu
                     ui.selectable_value(&mut git.autocrlf, choice, label);
                 }
             });
-        crate::ui::access::from_label(&combo.response);
+        crate::access::from_label(&combo.response);
         help(ui, t.tr("prefs.general.autocrlf.help"));
     });
 }

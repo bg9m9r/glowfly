@@ -5,17 +5,17 @@
 
 use super::find_marks::{Mark, RowRuns, Runs, paint_cut_marked};
 use super::layout::Columns;
-use crate::state::ForgeState;
-use crate::ui::common::{added_color, removed_color};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{Cut, chip, paint_cut_text};
+use crate::common::{added_color, removed_color};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::truncate::{cut_galley, cut_job};
+use crate::widgets::{Cut, chip, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
 use glowfly_core::repo::{CommitInfo, RefLabel};
 use glowfly_core::settings::{GraphColumns, Settings};
+use glowfly_model::state::ForgeState;
 use std::collections::HashMap;
 
 /// The widest the hover with a cut message gets before it wraps.
@@ -81,10 +81,10 @@ impl Inks {
 /// Names commit row `resp` by `c`'s summary, and describes it by what the row shows after it:
 /// "Ada Lovelace, 222c0ad, Jan 10, main" (author, short SHA, `date`, then its refs).
 pub(super) fn name_row(resp: &egui::Response, c: &CommitInfo, refs: Option<&Vec<RefLabel>>, date: String) {
-    crate::ui::access::name_button(resp, true, &c.summary);
-    let mut parts = vec![c.author.name().to_owned(), crate::ui::common::short(c.oid), date];
+    crate::access::name_button(resp, true, &c.summary);
+    let mut parts = vec![c.author.name().to_owned(), crate::common::short(c.oid), date];
     parts.extend(refs.into_iter().flatten().map(|r| r.name.clone()));
-    crate::ui::access::describe(resp, &parts.join(", "));
+    crate::access::describe(resp, &parts.join(", "));
 }
 
 /// Each open pull request's chip label ("PR #12", "Draft #3") and whether it is a draft, by
@@ -230,7 +230,7 @@ mod tests {
     #[test]
     fn date_figures_are_tabular() {
         let ctx = egui::Context::default();
-        crate::ui::theme::fonts::install(&ctx);
+        crate::theme::fonts::install(&ctx);
         // The fonts arrive on the pass after they are set.
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         let _ = ctx.run(egui::RawInput::default(), |ctx| {

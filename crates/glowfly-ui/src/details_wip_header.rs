@@ -6,20 +6,20 @@
 //! button that doesn't fit beside the shortest title moves into the menu, so none is ever cut.
 
 use super::{RowContext, discard_all_text};
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::{Msg, StageMsg, WorkFileMsg};
-use crate::ui::access;
-use crate::ui::common::{menu_danger, menu_item};
-use crate::ui::theme::color;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons::{self, StyledButton};
-use crate::ui::widgets::menu::{self, separator};
-use crate::ui::widgets::{Icon, truncate};
+use crate::access;
+use crate::common::{menu_danger, menu_item};
+use crate::theme::color;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::buttons::{self, StyledButton};
+use crate::widgets::menu::{self, separator};
+use crate::widgets::{Icon, truncate};
 use eframe::egui::{self, Align, Color32, Layout, Response, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::FileListMode;
 use glowfly_core::undo::DISCARD_STASH_MESSAGE;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::{Msg, StageMsg, WorkFileMsg};
 
 /// The size of the header's buttons, the more-actions button and the icon-only squares.
 const SIZE: ControlSize = ControlSize::Small;
@@ -202,7 +202,7 @@ pub(super) fn header(ui: &mut Ui, title: String, staged: bool, count: usize, ctx
     let scope = ui.scope_builder(egui::UiBuilder::new().sense(sense), |ui| {
         frame(ui, |ui| {
             // Rightmost; the buttons measure the room left after it.
-            let toggle = crate::ui::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
+            let toggle = crate::list_row::file_tree::mode_toggle(ui, ctx.lang, ctx.mode, msgs);
             // Two lists show the toggle: the name says which one it changes.
             let name = match (staged, ctx.mode) {
                 (false, FileListMode::List) => ctx.lang.tr("files.tree.unstaged.show_tree.name"),

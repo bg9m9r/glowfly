@@ -5,10 +5,10 @@
 
 use super::super::theme::color;
 use super::severity::{self, Severity};
-use crate::state::touched::Touched;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, CornerRadius, FontId, Response, RichText, Sense, Stroke, Ui, vec2};
+use glowfly_model::state::touched::Touched;
 use std::borrow::Cow;
 
 /// A field message's mark and text size.

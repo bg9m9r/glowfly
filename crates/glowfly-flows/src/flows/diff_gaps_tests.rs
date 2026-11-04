@@ -4,14 +4,13 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{DiffMsg, Msg, RepoMsg};
-use crate::runner;
-use crate::state::AppState;
 use glowfly_core::diff_rows::{DiffRow, GapSpan, GapText, gaps, header_rows_filled, inline_rows, inline_rows_filled};
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -63,7 +62,7 @@ fn loads(fx: &[Effect]) -> usize {
 /// Runs the LoadDiffGaps effects among `fx` and applies their results.
 pub(super) fn land(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadDiffGaps { .. })) {
-        let msg = runner::testing::execute(e).expect("a result");
+        let msg = glowfly_runner::testing::execute(e).expect("a result");
         run(st, msg);
     }
 }

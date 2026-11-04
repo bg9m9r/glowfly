@@ -2,9 +2,9 @@
 //! status.
 
 use super::execute::{Cx, Execute, err};
-use crate::effect::LfsEffect;
-use crate::msg::Msg;
+use glowfly_model::effect::LfsEffect;
 use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::Msg;
 
 impl Execute for LfsEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {

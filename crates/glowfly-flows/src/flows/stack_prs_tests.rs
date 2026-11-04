@@ -7,10 +7,10 @@ use super::push_pr_tests::{cleanup, with_host};
 use super::stack_push_tests::{commit, refresh};
 use super::tests::{drive, git};
 use super::update;
-use crate::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
-use crate::msg::{DialogMsg, Dismiss, ForgeMsg, Msg, StackMsg, TabsMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::forge::{NewPullRequest, PullRequest};
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::msg::{DialogMsg, Dismiss, ForgeMsg, Msg, StackMsg, TabsMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

@@ -4,13 +4,10 @@
 
 use super::general_git::git_program_text;
 use super::{help, row, warn};
-use crate::git_env::GitEnvMsg;
-use crate::msg::Msg;
-use crate::state::git_env::GitState;
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::git_program::{Candidate, from_setting};
 use glowfly_core::git_version::{Feature, Version, full_support, missing_for, show};
@@ -18,6 +15,9 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::Settings;
+use glowfly_model::git_env::GitEnvMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::git_env::GitState;
 use std::path::PathBuf;
 
 pub fn git_program_page(ui: &mut Ui, s: &Settings, git: &GitState, msgs: &mut Vec<Msg>) {

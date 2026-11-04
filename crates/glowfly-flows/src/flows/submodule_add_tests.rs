@@ -8,16 +8,15 @@ use super::tests::{drive, finish, scratch_repo, state};
 use super::trust_held_tests::held_repo;
 use super::trust_tests::real;
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{Msg, PaletteMsg, RepoMsg, TrustMsg};
-use crate::runner;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::submodules::add::{AddForm, TAB_GONE};
-use crate::state::{AppState, Modal, RunningJob};
-use crate::submodule::SubmoduleMsg;
 use git2::Oid;
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::submodule_ops::add_cmd;
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg, TrustMsg};
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::submodules::add::{AddForm, TAB_GONE};
+use glowfly_model::state::{AppState, Modal, RunningJob};
+use glowfly_model::submodule::SubmoduleMsg;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -236,7 +235,7 @@ fn adds_a_local_repository_end_to_end() {
     f.path_edited = true;
     let fx = run(&mut st, sm(SubmoduleMsg::AddEdited));
     for e in fx {
-        let m = runner::testing::execute(e).expect("the check answers");
+        let m = glowfly_runner::testing::execute(e).expect("the check answers");
         drive(&mut st, m);
     }
     assert_eq!(form(&mut st).checked, Some(("libs/lib".into(), Ok(Vec::new()))));

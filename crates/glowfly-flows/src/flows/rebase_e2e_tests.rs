@@ -4,12 +4,12 @@
 use super::rebase_tests::{repo, with_panel};
 use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, state};
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::state::{AppState, Selection};
 use git2::{Oid, RepositoryState};
 use glowfly_core::rebase::{RebaseAction, RebaseBase};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 
 fn short(o: Oid) -> String {
@@ -30,9 +30,9 @@ fn last_toast(st: &AppState) -> (bool, &str) {
 
 /// Runs the banner action labelled `label` for the operation in progress.
 fn banner_action(st: &mut AppState, label: &str) {
-    let actions = crate::state::op_actions::state_actions(repo_state(st)).expect("an operation in progress");
+    let actions = glowfly_model::state::op_actions::state_actions(repo_state(st)).expect("an operation in progress");
     let (l, a) = actions.iter().find(|(l, _)| *l == label).expect("the action is offered");
-    drive(st, crate::state::rebase_banner::action_msg(repo_state(st), l, a));
+    drive(st, glowfly_model::state::rebase_banner::action_msg(repo_state(st), l, a));
 }
 
 #[test]
@@ -71,8 +71,8 @@ fn an_edit_step_pauses_and_continue_finishes() {
     assert!(!st.session.wip_drawn_selected(), "selected on its own: not lit");
     let text = format!("Interactive rebase paused at {} (step 1 of 3) so you can edit it. Use Continue when you're done.", short(c[0]));
     assert_eq!(last_toast(&st), (true, text.as_str()));
-    let actions = crate::state::op_actions::state_actions(repo_state(&st)).unwrap();
-    let title = crate::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, st.snap.as_ref().unwrap()).unwrap();
+    let actions = glowfly_model::state::op_actions::state_actions(repo_state(&st)).unwrap();
+    let title = glowfly_model::state::op_actions::banner_title(glowfly_core::i18n::Lang::En, st.snap.as_ref().unwrap()).unwrap();
     assert!(title.starts_with("Interactive rebase in progress"), "{title}");
     assert_eq!(actions.iter().map(|(l, _)| *l).collect::<Vec<_>>(), ["Continue", "Skip commit", "Abort rebase"]);
 
@@ -119,7 +119,7 @@ fn a_finished_rebase_is_undone_in_one_step() {
     assert_eq!(log(&dir)[..3], ["c1", "c3", "c2"]);
     assert_ne!(head(&dir), tip);
     assert_eq!(st.session.undo.undo_entry(st.settings.lang(), true).0, "Undo interactive rebase of main");
-    drive(&mut st, Msg::Job(crate::msg::JobMsg::Undo));
+    drive(&mut st, Msg::Job(glowfly_model::msg::JobMsg::Undo));
     assert_eq!(head(&dir), tip, "the branch is back at its old tip");
     assert_eq!(log(&dir)[..3], ["c3", "c2", "c1"]);
     assert!(!st.session.undo.redo.is_empty(), "and can be redone");

@@ -3,9 +3,9 @@
 
 use super::LANE_W;
 use super::lane_colours::RowColours;
-use crate::ui::avatars::Avatars;
-use crate::ui::theme::initials::initials_tones;
-use crate::ui::widgets;
+use crate::avatars::Avatars;
+use crate::theme::initials::initials_tones;
+use crate::widgets;
 use eframe::egui::{self, Align2, Color32, CornerRadius, FontId, Rect, Stroke, epaint::CubicBezierShape, epaint::RectShape, pos2, vec2};
 use glowfly_core::graph::GraphRow;
 

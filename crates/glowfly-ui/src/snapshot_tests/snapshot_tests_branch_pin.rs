@@ -7,9 +7,7 @@ use super::snapshot_tests::{git, harness, harness_palette, reload, remove_fixtur
 use super::snapshot_tests_branch_colour::with_branches;
 use super::snapshot_tests_select::click;
 use super::theme::{self, branch_names, color, initials::initials_tones};
-use crate::msg::{GraphMsg, Msg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -17,6 +15,8 @@ use glowfly_core::branch_colour::Swatch;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::{ColourPalette, ThemeChoice};
+use glowfly_model::msg::{GraphMsg, Msg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::Path;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;

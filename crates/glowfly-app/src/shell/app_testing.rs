@@ -3,11 +3,11 @@
 //! folders, and accessors that tell a test when the app has gone idle.
 
 use super::GlowflyApp;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::window_chrome::Chrome;
 use eframe::egui;
 use glowfly_core::settings::{LoadProblem, RepoTrust, Settings, ThemeCatalog};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::window_chrome::Chrome;
 use std::path::PathBuf;
 
 /// How a test app starts.
@@ -46,9 +46,9 @@ impl GlowflyApp {
     pub(crate) fn for_test(ctx: &egui::Context, start: TestStart) -> Self {
         let TestStart { mut settings, files, trusted, open, chrome, problem } = start;
         for path in &trusted {
-            crate::state::trust::record(&mut settings, path, RepoTrust::Trusted);
+            glowfly_model::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
-        let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| crate::runner::testing::sandboxed(tx, waker, files));
+        let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| glowfly_runner::testing::sandboxed(tx, waker, files));
         app.st.view.chrome = chrome;
         app.start(ctx, ThemeCatalog::default(), None, problem);
         if let Some(path) = open {

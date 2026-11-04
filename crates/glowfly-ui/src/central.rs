@@ -8,20 +8,20 @@ use super::{
     blame, common, conflict, dashboard, diff, getting_started, gitflow_panel, graph, history, issue, journal, pull_request, range_diff,
     rebase,
 };
-use crate::msg::BlameMsg;
-use crate::msg::ConflictMsg;
-use crate::msg::DiffMsg;
-use crate::msg::HistoryMsg;
-use crate::msg::IssueMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RebaseMsg;
-use crate::msg::RepoMsg;
-use crate::msg::SelectionMsg;
-use crate::state::AppState;
-use crate::state::layout::Pane;
 use eframe::egui::{self, Key};
+use glowfly_model::msg::BlameMsg;
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::HistoryMsg;
+use glowfly_model::msg::IssueMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::Pane;
 
 /// Esc closes the innermost thing open: a maximised terminal panel (restored first, while the
 /// keyboard is outside the shell), Preferences (on the Save / Revert bar's buttons, the
@@ -61,7 +61,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     if super::pane_focus::escape_to_graph(ctx, st) {
         return;
     }
-    if crate::state::terminal::maximized_shown(st) {
+    if glowfly_model::state::terminal::maximized_shown(st) {
         msgs.push(Msg::Terminal(glowfly_model::terminal::TerminalMsg::ToggleMaximize));
         return;
     }
@@ -69,16 +69,16 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
         // Nothing while the page's save is written. On the Save / Revert bar's buttons it
         // reverts the page; anywhere else it closes Preferences, which asks first about
         // unsaved edits (update/prefs_leave.rs).
-        let edited = crate::state::prefs_save::unsaved(p, &st.settings, st.snap.as_ref());
-        if !crate::state::prefs_save::saving(p) {
+        let edited = glowfly_model::state::prefs_save::unsaved(p, &st.settings, st.snap.as_ref());
+        if !glowfly_model::state::prefs_save::saving(p) {
             msgs.push(Msg::Prefs(if edited && st.view.prefs_bar_focused { PrefsMsg::RevertPage } else { PrefsMsg::ClosePrefs }));
         }
     } else if st.onboarding.tour.is_some() {
-        msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseTour));
+        msgs.push(Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::CloseTour));
     } else if st.dashboard.open {
-        msgs.push(Msg::Dashboard(crate::msg::DashboardMsg::Close));
+        msgs.push(Msg::Dashboard(glowfly_model::msg::DashboardMsg::Close));
     } else if st.onboarding.getting_started.is_some() {
-        msgs.push(Msg::Onboarding(crate::onboarding::OnboardingMsg::CloseGettingStarted));
+        msgs.push(Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::CloseGettingStarted));
     } else if st.session.conflict.view.is_some() {
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     } else if st.session.blame.view.is_some() {
@@ -86,7 +86,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     } else if st.view.diff_text.is_some() && (st.diff_or_download() || st.session.history.view.is_some()) {
         // In a diff, Esc first drops the text selected in its code, then its lines, then the rest.
         msgs.push(Msg::Diff(DiffMsg::ClearTextSelection));
-    } else if crate::state::pull_request_line_comment::esc_cancels(st) {
+    } else if glowfly_model::state::pull_request_line_comment::esc_cancels(st) {
         msgs.push(Msg::PullRequest(PullRequestMsg::LineComment(glowfly_model::pull_request::line_comment::LineCommentMsg::Cancel)));
     } else if st.session.history.view.is_some() && !st.view.diff_lines.is_empty() {
         // In File history too, Esc first drops a line selection of the entry's diff.
@@ -108,8 +108,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<
     } else if st.session.journal.view.is_some() {
         msgs.push(Msg::Journal(glowfly_model::journal::JournalMsg::Close));
     } else if st.session.gitflow_panel {
-        msgs.push(Msg::GitFlow(crate::gitflow::GitFlowMsg::ClosePanel));
-    } else if matches!(st.session.selection, crate::state::Selection::Commits(_) | crate::state::Selection::VsWorkdir(_)) {
+        msgs.push(Msg::GitFlow(glowfly_model::gitflow::GitFlowMsg::ClosePanel));
+    } else if matches!(st.session.selection, glowfly_model::state::Selection::Commits(_) | glowfly_model::state::Selection::VsWorkdir(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
         st.view.show_search = false;

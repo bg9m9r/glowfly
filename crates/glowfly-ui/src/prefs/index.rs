@@ -2,8 +2,8 @@
 //! translated label, and what a query matches in it. A test below scans `prefs/*.rs` for row
 //! label keys and fails on any missing here.
 
-use crate::state::PrefPage;
 use glowfly_core::i18n::Lang;
+use glowfly_model::state::PrefPage;
 
 /// Every searchable row: its page, its label's key and its help's key.
 const INDEX: &[(PrefPage, &str, Option<&str>)] = &[

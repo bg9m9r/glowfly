@@ -3,15 +3,15 @@
 //! bar, which only the system frame has.
 
 use super::snapshot_tests::with_bar;
-use crate::msg::{Msg, SearchMsg};
-use crate::state::window_chrome::Chrome;
-use crate::state::{AppState, PrefPage, PrefsState};
-use crate::ui::menu_testing::open_submenu;
-use crate::ui::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::menu_testing::open_submenu;
+use crate::snapshot_tests::{harness, remove_fixture, with_repo};
 use egui_kittest::Harness;
 use egui_kittest::kittest::{Node, Queryable};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, SearchMsg};
+use glowfly_model::state::window_chrome::Chrome;
+use glowfly_model::state::{AppState, PrefPage, PrefsState};
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

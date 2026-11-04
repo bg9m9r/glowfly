@@ -3,14 +3,14 @@
 //! the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{render, with_conflict};
-use crate::msg::{ConflictMsg, Msg};
-use crate::state::AppState;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::repo::{self, Choice, Segment};
+use glowfly_model::msg::{ConflictMsg, Msg};
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 fn send(st: &mut AppState, m: ConflictMsg) {
-    crate::update::update(st, Msg::Conflict(m), Instant::now());
+    glowfly_model::update::update(st, Msg::Conflict(m), Instant::now());
 }
 
 /// A 60-line settings file whose sides set lines 5 and 50 differently.

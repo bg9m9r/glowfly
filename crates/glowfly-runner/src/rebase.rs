@@ -4,11 +4,11 @@
 
 use super::err;
 use super::execute::{Cx, Execute};
-use crate::effect::{RebaseEffect, UndoResult};
-use crate::msg::Msg;
-use crate::msg::RebaseMsg;
 use glowfly_core::rebase::{self, Outcome, SequenceEditor};
 use glowfly_core::undo::{self, RebaseStart};
+use glowfly_model::effect::{RebaseEffect, UndoResult};
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RebaseMsg;
 use std::path::Path;
 
 /// Runs `e`; a rebase installs its prepared todo with `sequence_editor` (the runner's `Seams`:

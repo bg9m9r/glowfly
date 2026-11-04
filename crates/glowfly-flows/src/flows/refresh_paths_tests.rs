@@ -1,15 +1,14 @@
 //! Status reads of only the paths the file watcher reported: what asks for them, how they queue
 //! and merge, when they fall back to a whole read, and when the open diff is read again.
 
-use crate::effect::{Effect, StatusRead};
 use crate::flows::{drive, finish, git, scratch_repo, state};
-use crate::msg::{LoadMsg, Msg, RepoMsg, StageMsg, WatchMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::refresh::Wanted;
-use crate::update::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::watch::MAX_WATCH_PATHS;
+use glowfly_model::effect::{Effect, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, StageMsg, WatchMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::refresh::Wanted;
+use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -43,7 +42,7 @@ fn read_paths(fx: &[Effect]) -> Option<Vec<String>> {
 /// Runs the one status read in `fx` and hands its result to `update`.
 fn run_read(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let read = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).expect("a status read");
-    let msg = runner::testing::execute(read).expect("a result");
+    let msg = glowfly_runner::testing::execute(read).expect("a result");
     update(st, msg, Instant::now())
 }
 
@@ -141,7 +140,7 @@ fn paths_that_cannot_be_read_alone_read_everything_in_the_same_effect() {
         git_status: true,
         paths: Some(owned(&[".gitignore"])),
     };
-    let msg = runner::testing::execute(read).expect("a result");
+    let msg = glowfly_runner::testing::execute(read).expect("a result");
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped") };
     assert!(matches!(&*msg, Msg::Load(LoadMsg::StatusLoaded { result: Ok(StatusRead::Whole(..)), .. })), "a whole read");
     st.refresh.status_busy = true;
@@ -256,7 +255,7 @@ fn glowfly_s_own_operations_and_polls_read_everything() {
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());
     let op = fx.into_iter().find(|e| matches!(e, Effect::LocalOp { .. })).expect("a local op");
-    let done = runner::testing::execute(op).expect("a result");
+    let done = glowfly_runner::testing::execute(op).expect("a result");
     let fx = update(&mut st, done, Instant::now());
     assert_eq!(read_paths(&fx), None, "staging reads the whole status");
     finish(&mut st, fx);
@@ -276,7 +275,7 @@ fn a_path_read_of_an_older_load_is_dropped() {
     let (mut st, dir, workdir) = opened("paths-stale");
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
     let ask = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
-    let msg = runner::testing::execute(ask.into_iter().next().unwrap()).unwrap();
+    let msg = glowfly_runner::testing::execute(ask.into_iter().next().unwrap()).unwrap();
     st.load_gen += 1;
     assert!(update(&mut st, msg, Instant::now()).is_empty());
     assert!(st.snap.as_ref().unwrap().unstaged.is_empty(), "not applied");

@@ -4,18 +4,18 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::LfsEffect;
-use crate::lfs::LfsMsg;
-use crate::msg::Msg;
-use crate::msg::PrefsMsg;
-use crate::msg::RepoMsg;
-use crate::state::lfs::{LfsInstall, TrackContext, track_items as track_items_in};
-use crate::state::{AppState, PrefPage};
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::{LfsPattern, LfsStatus, TrackTarget, track_filename_args};
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::LfsEffect;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::lfs::{LfsInstall, TrackContext, track_items as track_items_in};
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -24,7 +24,7 @@ const NOT_INSTALLED_MENU: &str = "Git LFS isn't installed. See Preferences > Git
 const ONLY_THIS_FILE: &str = "Only this file";
 
 /// The entries in English.
-fn track_items(path: &str, cx: TrackContext) -> Vec<crate::state::lfs::TrackItem> {
+fn track_items(path: &str, cx: TrackContext) -> Vec<glowfly_model::state::lfs::TrackItem> {
     track_items_in(Lang::En, path, cx)
 }
 

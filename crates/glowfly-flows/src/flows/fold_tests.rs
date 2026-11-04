@@ -5,16 +5,16 @@
 use super::tests::{drive, scratch_repo, state};
 use super::update;
 use super::whole_file_tests::{blocks, three_changes, with_diff};
-use crate::effect::Effect;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
 use glowfly_core::diff_rows::{DiffRow, SplitRow};
 use glowfly_core::repo::{DiffLine, DiffTarget, FileDiff, Hunk};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::{Expanded, Fold, WholeFile, block_rows, folds, inline_rows, row_of_line, split_rows};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {

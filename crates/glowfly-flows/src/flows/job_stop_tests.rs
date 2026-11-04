@@ -4,14 +4,14 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::effect::partial::StopKey;
-use crate::msg::{CloneMsg, JobMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::clone::CloneRequest;
-use crate::state::job_stop::Step;
 use glowfly_core::clone_ops::CloneOptions;
 use glowfly_core::gitcli::args;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::partial::StopKey;
+use glowfly_model::msg::{CloneMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::clone::CloneRequest;
+use glowfly_model::state::job_stop::Step;
 use std::path::PathBuf;
 use std::time::Instant;
 

@@ -6,12 +6,12 @@
 use super::snapshot_tests::{harness_sized, remove_fixture};
 use super::snapshot_tests_pull_request::with_pr;
 use super::snapshot_tests_pull_request_review::{detail, entry, load};
-use crate::msg::Msg;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{EntryKind, Verdict};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
 
 const RELEASE: &str = "\
 :robot: I have created a release *beep* *boop*

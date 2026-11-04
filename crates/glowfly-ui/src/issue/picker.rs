@@ -5,13 +5,13 @@
 
 use super::super::theme::color;
 use super::super::widgets::chip::{Chip, ChipSize};
-use crate::state::issue_form::too_many;
-use crate::ui::theme::controls;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
+use crate::theme::controls;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
 use eframe::egui::{self, CornerRadius, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::matching::contains_lower;
 use glowfly_core::text::printable;
+use glowfly_model::state::issue_form::too_many;
 
 /// The most matches listed under the search field.
 const MAX_ROWS: usize = 6;
@@ -50,7 +50,7 @@ pub(super) fn multi(ui: &mut Ui, p: &Picker, query: &mut String, chosen: &mut Ve
         }
     }
     let field = controls::field(ui, egui::TextEdit::singleline(query).hint_text(p.hint).desired_width(f32::INFINITY));
-    crate::ui::access::name_if_unnamed(&field, p.hint);
+    crate::access::name_if_unnamed(&field, p.hint);
     let list_id = ui.make_persistent_id((p.id_salt, "matches"));
     let last: Option<Rect> = ui.data(|d| d.get_temp(list_id));
     // Still shown while the pointer is over it, so a click that takes the focus off the field lands.

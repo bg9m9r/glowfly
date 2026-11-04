@@ -18,14 +18,14 @@ pub(crate) use picker::chip as picker_chip;
 use super::markdown_cache::MarkdownCache;
 use super::theme::color;
 use super::widgets::{self, Icon};
-use crate::keymap::Keymap;
-use crate::msg::{IssueMsg, Msg};
-use crate::state::AppState;
-use crate::state::issue::IssueView;
-use crate::ui::theme::type_scale;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Margin, RichText, Sense, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::{IssueMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::issue::IssueView;
 
 pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.issue.view else { return };
@@ -51,7 +51,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut V
     ui.add_space(2.0);
     ui.separator();
     let room = ui.available_width();
-    crate::ui::panel_size::inner_side(egui::SidePanel::left("issue-side"), crate::state::panel_layout::ISSUE_SIDE, room)
+    crate::panel_size::inner_side(egui::SidePanel::left("issue-side"), glowfly_model::state::panel_layout::ISSUE_SIDE, room)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(Margin::same(super::theme::spacing::PANEL_PAD)))
         .show_inside(ui, |ui| {
             egui::ScrollArea::vertical().id_salt("issue-side-scroll").auto_shrink([false, false]).show(ui, |ui| info::show(ui, st, msgs));
@@ -72,9 +72,9 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, v: &IssueView, open_label: &str, 
                 msgs.push(Msg::Issue(IssueMsg::Close));
             }
             let no_link = format!("The service sent no link for this {}.", v.noun);
-            let lead_w = crate::ui::panel_header::text_w(ui, &v.mention);
-            let links = crate::ui::panel_header::Links { url, open_label, no_link: &no_link, lead_w };
-            crate::ui::panel_header::show(ui, t, keys, links, msgs);
+            let lead_w = crate::panel_header::text_w(ui, &v.mention);
+            let links = crate::panel_header::Links { url, open_label, no_link: &no_link, lead_w };
+            crate::panel_header::show(ui, t, keys, links, msgs);
             if v.reloading {
                 ui.label(RichText::new("Updating…").color(color::weak()));
             }

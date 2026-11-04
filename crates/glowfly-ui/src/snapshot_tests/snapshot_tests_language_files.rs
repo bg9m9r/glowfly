@@ -14,12 +14,7 @@ use super::snapshot_tests_language_main::german;
 use super::snapshot_tests_select::{click, row_y};
 use super::snapshot_tests_signature::{checked, ssh, with_signed_head};
 use super::theme::{apply_theme, color};
-use crate::msg::Msg;
-use crate::state::blame::BlameStep;
-use crate::state::lfs::{LfsInstall, TrackContext, track_items};
-use crate::state::selection::MultiSelection;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -28,6 +23,11 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BlameCommit, FileEntry};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
 use glowfly_core::signing::SigningFormat;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::blame::BlameStep;
+use glowfly_model::state::lfs::{LfsInstall, TrackContext, track_items};
+use glowfly_model::state::selection::MultiSelection;
+use glowfly_model::state::{AppState, Selection};
 
 /// What these areas showed in English. A `*` stands for a name or number.
 const ENGLISH: &[&str] = &[
@@ -127,7 +127,7 @@ fn shows_containing<S>(h: &Harness<'_, S>, text: &str) -> bool {
 fn lfs_menu(t: Lang, path: &str) -> Harness<'static, Vec<Msg>> {
     let install = LfsInstall::Installed("3.7.1".into());
     let items = track_items(t, path, TrackContext { install: &install, patterns: &[], submodules: &[] });
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(440.0, 120.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());
@@ -227,7 +227,7 @@ fn blame_german() {
         summary: "Make Point public with float fields".into(),
         body: String::new(),
     };
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(440.0, 190.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_dark(true);
             apply_theme(ui.ctx());

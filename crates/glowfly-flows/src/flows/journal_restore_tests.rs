@@ -5,13 +5,13 @@
 use super::journal_tests::{open_loaded, opened};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::Effect;
-use crate::journal::JournalMsg;
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::journal::{Op, Row, Subject, notes};
 use glowfly_core::undo::{ResetMode, UndoKind};
+use glowfly_model::effect::Effect;
+use glowfly_model::journal::JournalMsg;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::Path;
 use std::time::Instant;
 
@@ -191,7 +191,7 @@ fn refusals_say_why_and_open_nothing() {
     let current = row(&st, &Subject::Branch("main".into()), second);
     refused(&mut st, &current, "main is already at this commit.");
     let old = row(&st, &Subject::Branch("main".into()), first);
-    st.job = Some(crate::state::RunningJob {
+    st.job = Some(glowfly_model::state::RunningJob {
         label: "x".into(),
         workdir: None,
         quiet: false,
@@ -207,7 +207,7 @@ fn refusals_say_why_and_open_nothing() {
     refused(&mut st, &old, "Another operation is still running.");
     st.job = None;
     let gone = Row { summary: None, ..old.clone() };
-    let why = crate::state::journal_restore::plan(st.snap.as_ref().unwrap(), &gone, false, st.settings.lang()).unwrap_err();
+    let why = glowfly_model::state::journal_restore::plan(st.snap.as_ref().unwrap(), &gone, false, st.settings.lang()).unwrap_err();
     assert_eq!(why, "This commit is no longer in the repository.");
 
     let wt = glowfly_core::paths::temp_dir().join(format!("glowfly-journal-wt-{}", std::process::id()));

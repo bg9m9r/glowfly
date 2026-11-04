@@ -6,15 +6,15 @@
 
 use super::profiles_tests::{PERSONAL, WORK, profile, run, saves, two_profiles};
 use super::tests::{finish_keeping, scratch_repo};
-use crate::effect::Effect;
-use crate::effect::{OsEffect, PrefsEffect};
-use crate::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg};
-use crate::profile::{IdentityField, ProfileEffect, ProfileMsg};
-use crate::state::{AppState, Modal};
 use glowfly_core::paths;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::repo_identity::{IdentitySource, RepoIdentity};
 use glowfly_core::settings::FolderRule;
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::{OsEffect, PrefsEffect};
+use glowfly_model::msg::{FolderPurpose, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::profile::{IdentityField, ProfileEffect, ProfileMsg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -224,12 +224,12 @@ fn a_rule_git_didnt_apply_is_placed_again_once() {
     assert_eq!(reads(&fx).len(), 1, "read again after the sync");
     assert!(syncs(&profile(&mut st, read)).is_empty(), "only once");
     let now = &st.identities[&gd];
-    assert!(crate::state::repo_identity::not_applied(now, &st.settings, true));
+    assert!(glowfly_model::state::repo_identity::not_applied(now, &st.settings, true));
     // The repository's own identity is the user's: reported, never removed unasked.
     let own = RepoIdentity { local_email: Some("x@y.example".into()), ..identity(IdentitySource::Repository, Some(WORK)) };
     let fx = profile(&mut st, ProfileMsg::IdentityRead { git_dir: gd.clone(), result: Ok(own) });
     assert!(fx.is_empty(), "{fx:?}");
-    assert_eq!(crate::state::repo_identity::shadowed(&st.identities[&gd], &st.settings), Some(WORK));
+    assert_eq!(glowfly_model::state::repo_identity::shadowed(&st.identities[&gd], &st.settings), Some(WORK));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -287,8 +287,8 @@ fn rule_results_are_dropped_for_an_inactive_tab() {
 
 #[test]
 fn identity_variables_in_the_environment_are_warned_about_one_by_one() {
-    use crate::state::repo_identity::{commit_identity_line, env_tip, env_warnings};
     use glowfly_core::repo_identity::{ENV_VARS, EnvOverride};
+    use glowfly_model::state::repo_identity::{commit_identity_line, env_tip, env_warnings};
     let (mut st, dir) = with_repo("rules-env");
     let gd = git_dir(&st);
     let t = glowfly_core::i18n::Lang::En;
@@ -317,8 +317,8 @@ fn identity_variables_in_the_environment_are_warned_about_one_by_one() {
 
 #[test]
 fn an_empty_name_variable_says_git_wont_commit_and_values_are_made_printable() {
-    use crate::state::repo_identity::{commit_identity_line, env_tip, env_warnings};
     use glowfly_core::repo_identity::EnvOverride;
+    use glowfly_model::state::repo_identity::{commit_identity_line, env_tip, env_warnings};
     let (mut st, dir) = with_repo("rules-env-empty");
     let gd = git_dir(&st);
     let t = glowfly_core::i18n::Lang::En;

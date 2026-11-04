@@ -5,10 +5,10 @@ use super::{
     diff_gaps, expect, files, forge_calls, git_ops, highlight, history, job_steps, journal, load, op_stops, path_search, revert,
     signatures, status, undo_run,
 };
-use crate::effect::areas::{effect_areas, effect_match};
-use crate::effect::{Effect, UndoResult};
-use crate::msg::{AvatarMsg, DiffMsg, ForgeMsg, JobMsg, Msg, RecentMsg, RepoMsg};
 use glowfly_core::{avatars, gitcli, repo, undo};
+use glowfly_model::effect::areas::{effect_areas, effect_match};
+use glowfly_model::effect::{Effect, UndoResult};
+use glowfly_model::msg::{AvatarMsg, DiffMsg, ForgeMsg, JobMsg, Msg, RecentMsg, RepoMsg};
 
 pub(super) fn err(e: glowfly_core::error::Error) -> String {
     e.to_string()
@@ -24,7 +24,7 @@ pub(super) struct Cx<'a> {
     pub stop: Option<&'a gitcli::Stop>,
     /// The trust gate a job's git commands go through one by one, with the check it passed
     /// (runner/trust.rs), where hooks follow the working tree.
-    pub gate: Option<(&'a super::trust_gate::Gate, &'a crate::effect::TrustCheck)>,
+    pub gate: Option<(&'a super::trust_gate::Gate, &'a glowfly_model::effect::TrustCheck)>,
     /// Sends a message before the effect's result and wakes the UI (an update download's
     /// progress); tests drop them.
     pub send: &'a dyn Fn(Msg),
@@ -144,7 +144,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                                 return match super::trust::halted(now, halt) {
                                     super::trust::Verdict::Stale(f) => super::trust::stale(check, job, f.0, f.1, None),
                                     super::trust::Verdict::Unchecked(f) => {
-                                        let accepted = crate::effect::Accepted { at: Some(at), reason: f.1 };
+                                        let accepted = glowfly_model::effect::Accepted { at: Some(at), reason: f.1 };
                                         super::trust::stale(check, job, f.0, None, Some(accepted))
                                     }
                                     _ => unreachable!("halted is held or unchecked"),
@@ -213,7 +213,7 @@ fn execute_unscoped(effect: Effect, cx: &Cx<'_>) -> Option<Msg> {
                     (p, common)
                 })
                 .collect();
-            Some(Msg::Tabs(crate::msg::TabsMsg::GroupsRead(read)))
+            Some(Msg::Tabs(glowfly_model::msg::TabsMsg::GroupsRead(read)))
         }
         // `Runner::run` stops it; there is nothing running here to stop.
         Effect::StopGit(_) => None,

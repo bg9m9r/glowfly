@@ -3,9 +3,9 @@
 //! `RunGit` job.
 
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
-use crate::patch::{PatchEffect, PatchMsg};
 use glowfly_core::patch_ops;
+use glowfly_model::msg::Msg;
+use glowfly_model::patch::{PatchEffect, PatchMsg};
 
 const PATCH_FILES: (&str, &[&str]) = ("Patch files", &["patch", "diff", "mbox"]);
 

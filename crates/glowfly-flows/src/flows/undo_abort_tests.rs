@@ -5,11 +5,11 @@
 
 use super::tests::{drive, git};
 use super::undo_continue_tests::merge_repo;
-use crate::msg::{JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
-use crate::state::AppState;
 use git2::RepositoryState;
 use glowfly_core::gitcli::args;
 use glowfly_core::undo::Action;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, SelectionMsg, StageMsg};
+use glowfly_model::state::AppState;
 
 fn head_summary(st: &AppState) -> String {
     let snap = st.snap.as_ref().expect("a repository is open");

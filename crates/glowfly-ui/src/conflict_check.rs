@@ -11,17 +11,17 @@ use super::widgets::icon::Icon;
 use super::widgets::menu::cut_name;
 use super::widgets::popover;
 use super::widgets::truncate::{cut_middle_in, truncate_label};
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::conflict_check::{self as cc, ConflictReport};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::menu::popover_below;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::menu::popover_below;
 use eframe::egui::{self, Align, Id, Layout, RichText, Sense};
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_core::i18n::Lang;
 use glowfly_model::conflict_check::ConflictCheckMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict_check::{self as cc, ConflictReport};
 
 /// The chip's click target and its popover (one of each per window).
 const CHIP_ID: &str = "conflict-chip";
@@ -106,7 +106,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String]
                     .tip(&a.tip)
                     .tip_width(TIP_W)
                     .enabled(idle)
-                    .why(Some(crate::state::blocked::busy(t)));
+                    .why(Some(glowfly_model::state::blocked::busy(t)));
                 if ui.add(b).clicked() {
                     ui.memory_mut(|mem| mem.close_popup());
                     msgs.push(a.msg);
@@ -187,7 +187,7 @@ pub fn report_modal(
                 .tip(&a.tip)
                 .tip_width(TIP_W)
                 .enabled(idle)
-                .why(Some(crate::state::blocked::busy(t))),
+                .why(Some(glowfly_model::state::blocked::busy(t))),
         );
     }
     let out = d.finish(ui, footer);

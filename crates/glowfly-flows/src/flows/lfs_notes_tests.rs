@@ -6,17 +6,17 @@
 use super::diff_tests::three_hunks;
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::lfs::LfsMsg;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
-use crate::state::diff_nav::{self, Step};
-use crate::state::lfs::LfsInstall;
-use crate::state::lfs_notes::{banner_workdir, pointer_shown, summary};
-use crate::state::lines::LineClick;
-use crate::state::{AppState, PrefPage};
 use git2::Oid;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer};
 use glowfly_core::lfs::{LfsPattern, LfsStatus, PatternSource};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
+use glowfly_model::state::diff_nav::{self, Step};
+use glowfly_model::state::lfs::LfsInstall;
+use glowfly_model::state::lfs_notes::{banner_workdir, pointer_shown, summary};
+use glowfly_model::state::lines::LineClick;
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

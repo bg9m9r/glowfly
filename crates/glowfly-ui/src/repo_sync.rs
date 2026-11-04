@@ -6,14 +6,14 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{buttons, truncate};
-use crate::msg::{Msg, RepoMsg, ReposMsg};
-use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, can_open, can_retry, failure_tip, outcome_text};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, RichText};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
 use glowfly_core::repo_sync::Outcome;
+use glowfly_model::msg::{Msg, RepoMsg, ReposMsg};
+use glowfly_model::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, can_open, can_retry, failure_tip, outcome_text};
 
 /// Why some repositories may fail where an open one would ask.
 const NO_PROMPTS_NOTE: &str = "Git doesn't ask for passwords here: a repository whose remote needs one that isn't saved fails.";

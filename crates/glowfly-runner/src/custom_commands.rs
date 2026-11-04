@@ -2,9 +2,9 @@
 //! as the job (its end is an ordinary `JobDone`, finished by `ops::finish_job`).
 
 use super::execute::{Cx, Execute};
-use crate::msg::{JobMsg, Msg};
 use glowfly_core::custom_commands;
 use glowfly_model::custom_commands::{CustomCommandEffect, CustomCommandMsg};
+use glowfly_model::msg::{JobMsg, Msg};
 
 pub(super) fn run(e: CustomCommandEffect) -> Msg {
     match e {

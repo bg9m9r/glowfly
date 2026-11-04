@@ -4,7 +4,7 @@
 //! them from; and a hosting service's refusal (`hosting`), for every call that shows one. Pure.
 //! The typed errors of result messages are worded in `typed`.
 
-pub mod typed;
+pub(crate) mod typed;
 
 use crate::effect::ForgeError;
 use glowfly_core::auth_failure::AuthNeed;

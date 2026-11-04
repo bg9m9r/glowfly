@@ -4,15 +4,15 @@
 
 use super::rebase_tests::{repo, with_panel};
 use super::update;
-use crate::effect::{Effect, RebaseEffect};
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::palette::shown;
-use crate::state::palette_commands::PaletteCommand;
-use crate::state::palette_commands::palette_commands_rebase::RebaseCommand;
-use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use glowfly_core::rebase::{QuickEdit, RebaseBase, Resume};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::effect::{Effect, RebaseEffect};
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::palette::shown;
+use glowfly_model::state::palette_commands::PaletteCommand;
+use glowfly_model::state::palette_commands::palette_commands_rebase::RebaseCommand;
+use glowfly_model::state::{AppState, Selection};
 use std::time::Instant;
 
 /// Each shown entry's label and key hint.
@@ -30,7 +30,7 @@ fn edits_of_the_selected_commit() {
     st.session.selection = Selection::Commit(c[1]);
     let sha = &c[1].to_string()[..7];
     let all = entries(&st);
-    use crate::keymap::BindingId as I;
+    use glowfly_model::keymap::BindingId as I;
     let hint = |id| st.keymap.hint(id).map(str::to_owned);
     assert_eq!(find(&all, &format!("Reword commit {sha}…")), Some(&hint(I::RewordCommit)));
     assert_eq!(find(&all, &format!("Squash {sha} into parent")), Some(&hint(I::SquashCommit)));
@@ -57,12 +57,12 @@ fn entries_while_rebasing() {
     st.session.selection = Selection::Wip;
     st.snap.as_mut().unwrap().state = RepositoryState::RebaseInteractive;
     let all = entries(&st);
-    use crate::keymap::BindingId as I;
+    use glowfly_model::keymap::BindingId as I;
     assert_eq!(find(&all, "Continue rebase"), Some(&st.keymap.hint(I::RebaseContinue).map(str::to_owned)));
     assert_eq!(find(&all, "Skip commit (rebase)"), Some(&st.keymap.hint(I::RebaseSkip).map(str::to_owned)));
     assert!(find(&all, "Edit remaining rebase steps…").is_some());
 
-    use crate::msg::RebaseMsg as R;
+    use glowfly_model::msg::RebaseMsg as R;
     assert!(matches!(RebaseCommand::Resume(Resume::Continue).msg(), Msg::Rebase(R::Resume(Resume::Continue))));
     assert!(matches!(RebaseCommand::Resume(Resume::Skip).msg(), Msg::Rebase(R::Resume(Resume::Skip))));
     assert!(matches!(RebaseCommand::EditRemaining.msg(), Msg::Rebase(R::OpenRemaining)));
@@ -79,8 +79,8 @@ fn entries_while_rebasing() {
 #[test]
 fn rebase_onto_the_selected_commit() {
     use super::selection_tests::{commit_on, git};
-    use crate::msg::{JobMsg, RepoMsg};
     use glowfly_core::rebase::RebaseBase;
+    use glowfly_model::msg::{JobMsg, RepoMsg};
     let (mut st, dir, c) = repo("palette-rebase-onto");
     git(&dir, &["checkout", "-q", "-b", "other", &c[0].to_string()]);
     std::fs::write(dir.join("o.txt"), "o\n").unwrap();
@@ -123,10 +123,10 @@ fn restore_original_order_while_the_panel_is_open() {
 
     let (mut st, dir, _) = with_panel("palette-rebase-restore", RebaseBase::FromCommit(git2::Oid::zero()));
     assert_eq!(find(&entries(&st), "Restore original order"), Some(&None));
-    assert!(matches!(RebaseCommand::RestoreOrder.msg(), Msg::Rebase(crate::msg::RebaseMsg::RebaseReset)));
+    assert!(matches!(RebaseCommand::RestoreOrder.msg(), Msg::Rebase(glowfly_model::msg::RebaseMsg::RebaseReset)));
     let order = |st: &AppState| st.session.rebase.view.as_ref().unwrap().items.iter().filter_map(|s| s.oid()).collect::<Vec<_>>();
     let original = order(&st);
-    update(&mut st, Msg::Rebase(crate::msg::RebaseMsg::RebaseMove { from: 0, to: 2 }), Instant::now());
+    update(&mut st, Msg::Rebase(glowfly_model::msg::RebaseMsg::RebaseMove { from: 0, to: 2 }), Instant::now());
     assert_ne!(order(&st), original);
     let run = Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::Rebase(RebaseCommand::RestoreOrder)));
     update(&mut st, run, Instant::now());

@@ -2,14 +2,14 @@
 //! date, and its controls (the action combo box, Edit message, Move up and Move down).
 
 use super::rows::{BUTTONS_W, COMBO_W, COMBO_X, GAP, GRIP_X, INDENT, Look, META_W, Place, ROW_H, SHA_X, Shade, fill};
-use crate::msg::{Msg, RebaseMsg};
-use crate::ui::theme::color;
-use crate::ui::theme::tokens::radius;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
+use crate::theme::color;
+use crate::theme::tokens::radius;
+use crate::theme::type_scale;
+use crate::widgets::{Icon, icon_button, paint_cut_text, paint_icon};
 use eframe::egui::{self, Align, Align2, Color32, CornerRadius, Layout, Rect, RichText, Stroke, StrokeKind, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::rebase::{RebaseAction, TodoItem};
+use glowfly_model::msg::{Msg, RebaseMsg};
 
 pub(super) fn action_color(a: RebaseAction) -> Color32 {
     match a {
@@ -124,7 +124,7 @@ pub(super) fn controls(ui: &mut Ui, t: Lang, rect: Rect, at: Place, item: &TodoI
             }
         },
     );
-    crate::ui::access::name_if_unnamed(&combo.response, &t.trf("rebase.row.action.name", &[("summary", &item.summary)]));
+    crate::access::name_if_unnamed(&combo.response, &t.trf("rebase.row.action.name", &[("summary", &item.summary)]));
     if action != item.action {
         msgs.push(Msg::Rebase(RebaseMsg::RebaseSetAction { index: i, action }));
     }

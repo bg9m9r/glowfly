@@ -6,13 +6,13 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{BranchEffect, Effect};
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::branch_delete::{DeleteForm, Lost};
-use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{BranchEffect, Effect};
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::branch_delete::{DeleteForm, Lost};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

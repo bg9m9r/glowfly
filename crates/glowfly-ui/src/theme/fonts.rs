@@ -46,7 +46,7 @@ pub fn use_test_cjk() {
 }
 
 /// The name of the semibold family (`FontFamily::Name`).
-pub const SEMIBOLD: &str = "semibold";
+pub(crate) const SEMIBOLD: &str = "semibold";
 
 /// egui's default fonts with the bundled ones in front: Proportional starts with Noto Sans,
 /// Monospace with JetBrains Mono (then egui's Hack, then Noto Sans for what neither has), and

@@ -6,10 +6,10 @@ use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{clean_tree, git};
 use super::trust_held_tests::held_repo;
 use super::trust_tests::{asking, drive, open, real, run};
-use crate::effect::{Effect, Seal, Sealed, TrustCheck};
-use crate::msg::{Msg, TrustMsg};
-use crate::state::trust::TrustPrompt;
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::{Effect, Seal, Sealed, TrustCheck};
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::state::trust::TrustPrompt;
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 
 pub(super) fn prompt(st: &AppState) -> &TrustPrompt {
@@ -24,7 +24,7 @@ pub(super) fn trust_and_run(st: &mut AppState) -> Vec<Effect> {
 
 /// `run`, keeping each effect's trust check (`Effect::Checked`).
 pub(super) fn sealed(st: &mut AppState, msg: Msg) -> Vec<Effect> {
-    crate::update::update_sealed(st, msg, std::time::Instant::now())
+    glowfly_model::update::update_sealed(st, msg, std::time::Instant::now())
 }
 
 /// The job effect of `fx`, which carries its check.
@@ -37,8 +37,8 @@ pub(super) fn checked_job(fx: Vec<Effect>) -> Effect {
 /// whether it ran.
 pub(super) fn recheck(st: &mut AppState, job: Effect) -> bool {
     let Effect::Checked(c) = job else { panic!("checked") };
-    let crate::effect::Checked { effect, check } = *c;
-    match crate::runner::testing::execute_checked(check, effect).expect("a message") {
+    let glowfly_model::effect::Checked { effect, check } = *c;
+    match glowfly_runner::testing::execute_checked(check, effect).expect("a message") {
         msg @ Msg::Trust(TrustMsg::Stale(_)) => {
             drive(st, msg);
             false
@@ -134,14 +134,14 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
         lang: Default::default(),
     };
     let save = || Effect::SaveRecent(Vec::new());
-    let shell = || Effect::Os(crate::effect::OsEffect::OpenTerminal(dir.clone()));
+    let shell = || Effect::Os(glowfly_model::effect::OsEffect::OpenTerminal(dir.clone()));
     // At its place; a seal whose place another effect took checks every effect of its name,
     // so none runs unchecked; one whose effect is gone is dropped.
     st.trust.seals.push(Seal { at: 1, name: shell().name(), check: check("a") });
     st.trust.seals.push(Seal { at: 1, name: shell().name(), check: check("b") });
     st.trust.seals.push(Seal { at: 0, name: "missing", check: check("c") });
     let mut fx = vec![shell(), shell(), save()];
-    crate::update::trust_seal_wrap(&mut st, &mut fx, 0);
+    glowfly_model::update::trust_seal_wrap(&mut st, &mut fx, 0);
     let labels: Vec<Option<String>> = fx
         .iter()
         .map(|e| e.trust_check().map(|c| if let Sealed::Job { label } = &c.sealed { label.clone() } else { String::new() }))
@@ -162,7 +162,7 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
     };
     st.trust.seals.push(Seal { at: 0, name: job("w").name(), check: check("w") });
     let mut fx = vec![job("other"), job("w")];
-    crate::update::trust_seal_wrap(&mut st, &mut fx, 0);
+    glowfly_model::update::trust_seal_wrap(&mut st, &mut fx, 0);
     let workdirs: Vec<Option<PathBuf>> = fx.iter().map(|e| e.trust_check().map(|c| c.workdir.clone())).collect();
     assert_eq!(workdirs, [None, Some(dir.clone())]);
 }
@@ -183,7 +183,7 @@ fn a_read_that_lets_git_run_carries_a_check() {
             generation: 1,
         },
     ];
-    crate::update::trust_seal_wrap(&mut st, &mut fx, 0);
+    glowfly_model::update::trust_seal_wrap(&mut st, &mut fx, 0);
     let sealed: Vec<Option<Sealed>> = fx.iter().map(|e| e.trust_check().map(|c| c.sealed.clone())).collect();
     assert_eq!(sealed, [Some(Sealed::Read), None, Some(Sealed::Read)], "a status read by libgit2 runs nothing");
 }
@@ -195,8 +195,8 @@ fn trust_and_run_on_a_prompt_that_couldnt_compare_runs_without_comparing() {
     let Effect::Checked(c) = checked_job(sealed(&mut st, pull())) else { unreachable!() };
     assert!(c.check.accepted.is_none());
     let now = st.snap.as_ref().unwrap().trust_scan.clone();
-    let unchecked = Some(crate::effect::Accepted { at: Some(1), reason: Unchecked::Unresolved("@{push}".into()) });
-    let stale = crate::msg::Stale { check: c.check, effect: c.effect, now, incoming: None, unchecked: unchecked.clone() };
+    let unchecked = Some(glowfly_model::effect::Accepted { at: Some(1), reason: Unchecked::Unresolved("@{push}".into()) });
+    let stale = glowfly_model::msg::Stale { check: c.check, effect: c.effect, now, incoming: None, unchecked: unchecked.clone() };
     drive(&mut st, Msg::Trust(TrustMsg::Stale(Box::new(stale))));
     assert_eq!(prompt(&st).unchecked.as_deref(), unchecked.as_ref(), "the prompt says why");
     let job = checked_job(trust_and_run(&mut st));

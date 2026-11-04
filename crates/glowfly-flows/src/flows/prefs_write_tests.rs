@@ -4,12 +4,12 @@
 //! Save / Revert bar. (The Ctrl/Cmd+S and Esc keys are matched in `ui/shortcuts/prefs_key_tests.rs`.)
 
 use super::prefs_save_tests::{edited, git_mut, identity, on_page, prefs, writes};
-use crate::effect::{Effect, PrefsEffect};
-use crate::msg::{FilePurpose, PrefsMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::tab_losses::quit_lines;
-use crate::state::{AppState, PrefPage};
 use glowfly_core::identity::ConfigWriteFailed;
+use glowfly_model::effect::{Effect, PrefsEffect};
+use glowfly_model::msg::{FilePurpose, PrefsMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::tab_losses::quit_lines;
+use glowfly_model::state::{AppState, PrefPage};
 
 /// The ticket of the one batched config write among `fx`.
 fn ticket(fx: &[Effect]) -> u64 {
@@ -38,7 +38,7 @@ fn tick_pending(st: &AppState) -> bool {
 }
 
 fn error(st: &AppState) -> Option<String> {
-    crate::state::prefs_save::save_error(st.prefs.as_ref().unwrap()).map(str::to_owned)
+    glowfly_model::state::prefs_save::save_error(st.prefs.as_ref().unwrap()).map(str::to_owned)
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn saved_waits_for_the_write_to_succeed() {
     assert!(!tick_pending(&st), "nothing is saved yet");
     assert!(edited(&st), "still edited while the write runs");
     let p = st.prefs.as_ref().unwrap();
-    assert!(crate::state::prefs_save::saving(p), "the bar waits");
+    assert!(glowfly_model::state::prefs_save::saving(p), "the bar waits");
     // Saving again while it runs writes nothing more.
     assert!(writes(&prefs(&mut st, PrefsMsg::SavePage)).is_empty());
 
@@ -183,6 +183,6 @@ fn leaving_a_signing_page_with_edits_asks_first() {
     let mut st = on_page(PrefPage::Signing, GitConfigValues::default());
     git_mut(&mut st).gpg_program = "gpg2".into();
     prefs(&mut st, PrefsMsg::Navigate(PrefPage::General));
-    assert!(matches!(st.modal, Some(crate::state::Modal::ConfirmChoice { .. })));
+    assert!(matches!(st.modal, Some(glowfly_model::state::Modal::ConfirmChoice { .. })));
     assert_eq!(st.prefs.as_ref().unwrap().page, PrefPage::Signing);
 }

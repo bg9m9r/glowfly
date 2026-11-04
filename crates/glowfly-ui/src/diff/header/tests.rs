@@ -1,19 +1,21 @@
 //! Layout and message tests of the diff header, drawn alone from a `HeaderModel`.
 
 use super::*;
-use crate::keymap::BindingId;
-use crate::msg::{DiffMsg, FilesMsg, RepoMsg, StageMsg};
-use crate::state::diff_header::{Actions, ChangeText, Context, FileKind, FoldCounts, OpenAction, Primary, RestoreAction, ViewGroup};
-use crate::state::diff_nav::{Counter, StepKind};
-use crate::state::tool_compare::OPEN_IN_DIFF_TOOL;
-use crate::tools::ToolsMsg;
-use crate::ui::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER};
+use crate::file_menu::{OPEN_DEFAULT, SHOW_IN_FOLDER};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{DiffLayout, DiffMode};
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{DiffMsg, FilesMsg, RepoMsg, StageMsg};
+use glowfly_model::state::diff_header::{
+    Actions, ChangeText, Context, FileKind, FoldCounts, OpenAction, Primary, RestoreAction, ViewGroup,
+};
+use glowfly_model::state::diff_nav::{Counter, StepKind};
+use glowfly_model::state::tool_compare::OPEN_IN_DIFF_TOOL;
+use glowfly_model::tools::ToolsMsg;
 
 // The English texts, pinned: the header reads them from the catalog.
 const CLOSE_NAME: &str = "Close diff";
@@ -82,7 +84,7 @@ fn harness(m: HeaderModel, width: f32) -> Harness<'static, Vec<Msg>> {
 
 fn harness_in(m: HeaderModel, width: f32, t: Lang) -> Harness<'static, Vec<Msg>> {
     let keys = Keymap::default();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(width, 360.0)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             let top = ui.cursor().top();
             show(ui, &m, &keys, t, msgs);
@@ -210,9 +212,9 @@ fn the_row_runs_file_nav_view_more_then_stage_and_close() {
     assert!(more.x1 + 100.0 < stage.x0, "Stage file sits apart, at the trailing edge");
     assert!((close.x0 - stage.x1 - 8.0).abs() < 0.5, "8 px between Stage file and ×");
     // The harness's frame takes 8 px, the header's padding the rest.
-    let edge = f64::from(1400.0 - 8.0 - crate::ui::theme::spacing::PANEL_PAD_F);
+    let edge = f64::from(1400.0 - 8.0 - crate::theme::spacing::PANEL_PAD_F);
     assert!((edge - close.x1).abs() < 0.5, "× at the edge: {close:?}, edge {edge}");
-    assert_eq!(stage.y1 - stage.y0, f64::from(crate::ui::theme::sizes::ControlSize::Small.metrics().h), "Stage file is Small");
+    assert_eq!(stage.y1 - stage.y0, f64::from(crate::theme::sizes::ControlSize::Small.metrics().h), "Stage file is Small");
 }
 
 #[test]
@@ -293,7 +295,7 @@ fn chips_show_the_change_and_context() {
 fn step_tips_follow_the_keymap() {
     let mut keys = Keymap::default();
     assert_eq!(step_tip(&keys, Lang::En, true, StepKind::Change), "Next change (F7)");
-    keys.set(BindingId::NextChange, vec![crate::keymap::Chord::plain(crate::keymap::KeyName::F(8))]);
+    keys.set(BindingId::NextChange, vec![glowfly_model::keymap::Chord::plain(glowfly_model::keymap::KeyName::F(8))]);
     assert_eq!(step_tip(&keys, Lang::En, true, StepKind::File), "Next change, in the next file (F8)");
     keys.set(BindingId::PrevChange, Vec::new());
     assert_eq!(step_tip(&keys, Lang::En, false, StepKind::End), "No changes before this file", "no key, no parentheses");
@@ -318,9 +320,9 @@ fn primary_tips_follow_the_language_and_keymap() {
 
 /// The header alone, `width` wide, in the dark palette over the app's background, for snapshots.
 fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>> {
-    use crate::ui::theme::{self, color};
+    use crate::theme::{self, color};
     let keys = Keymap::default();
-    let mut h = crate::ui::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(
+    let mut h = crate::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(
         move |ui, msgs: &mut Vec<Msg>| {
             color::set_palette(&theme::view_palette(true));
             theme::apply_style(ui.ctx(), &theme::view_palette(true));
@@ -336,7 +338,7 @@ fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>>
 
 #[test]
 fn file_header_snapshots() {
-    use crate::ui::snapshot_check::CheckSnapshot;
+    use crate::snapshot_check::CheckSnapshot;
     let mut h = themed(commit(), 520.0, 48.0);
     assert!(h.query_by_label(MORE).is_some());
     h.check_snapshot("file_header_narrow");

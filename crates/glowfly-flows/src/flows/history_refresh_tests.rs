@@ -4,12 +4,12 @@
 use super::history_tests::{empty_diff, entry, loaded, oid, opened, selected_target, with_view};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{HistoryMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::history::FileHistoryView;
 use git2::Oid;
 use glowfly_core::repo::{self, DiffTarget, FileHistory, HistoryStart, LoadOptions};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{HistoryMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::FileHistoryView;
 use std::time::Instant;
 
 /// A refresh whose snapshot has HEAD at `head` (the repository's own state otherwise).
@@ -196,7 +196,7 @@ fn revert_dest_is_the_head_name_after_a_rename_forwards() {
     view.entries = vec![entry(1, "a.txt"), entry(5, "old.txt")];
     assert_eq!(view.revert_dest(&DiffTarget::Commit(oid(5), "old.txt".into())).as_deref(), Some("a.txt"));
     assert_eq!(view.revert_dest(&DiffTarget::Commit(oid(1), "a.txt".into())), None, "already under its name");
-    view.kind = crate::state::history::HistoryKind::Folder;
+    view.kind = glowfly_model::state::history::HistoryKind::Folder;
     assert_eq!(view.revert_dest(&DiffTarget::Commit(oid(5), "old.txt".into())), None, "folder files keep their path");
 }
 

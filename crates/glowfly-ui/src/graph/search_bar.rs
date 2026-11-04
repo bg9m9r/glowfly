@@ -3,19 +3,19 @@
 //! doesn't move as it changes) and Close. It edits only the query and author filter text;
 //! everything else is a `SearchMsg` for update/search.rs.
 
-use crate::keymap::BindingId;
-use crate::msg::{Msg, SearchMsg};
-use crate::state::history_index::HistoryCount;
-use crate::state::{AppState, Selection};
-use crate::ui::access;
-use crate::ui::theme::color;
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::segmented::segmented;
-use crate::ui::widgets::{self, Icon, truncate};
+use crate::access;
+use crate::theme::color;
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::buttons;
+use crate::widgets::segmented::segmented;
+use crate::widgets::{self, Icon, truncate};
 use eframe::egui::{self, Align, CursorIcon, Key, Layout, PopupCloseBehavior, Rect, RichText, Sense, pos2, vec2};
 use glowfly_core::matching::contains_lower;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::msg::{Msg, SearchMsg};
+use glowfly_model::state::history_index::HistoryCount;
+use glowfly_model::state::{AppState, Selection};
 
 /// How many authors the picker lists before asking for a narrower filter.
 const MAX_AUTHORS: usize = 200;

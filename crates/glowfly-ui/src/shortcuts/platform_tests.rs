@@ -3,13 +3,13 @@
 //! these run anywhere: Cmd-or-Ctrl chords answer to the first two, Ctrl-only ones (tab cycling,
 //! the terminal) to real Ctrl on both.
 
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::TabsMsg;
-use crate::state::{AppState, Tab};
 use eframe::egui::{Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::{AppState, Tab};
 use glowfly_model::terminal::TerminalMsg;
 use std::time::Instant;
 
@@ -33,7 +33,7 @@ fn harness() -> Harness<'static, Keys> {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     // Three tabs, so the last one is tab 2.
     st.tabs = vec![Tab::empty(), Tab::empty(), Tab::empty()];
-    let mut h = crate::ui::snapshot_check::builder()
+    let mut h = crate::snapshot_check::builder()
         .build_state(|ctx, k: &mut Keys| super::input(ctx, &mut k.st, &mut k.msgs), Keys { st, msgs: Vec::new() });
     h.run();
     h

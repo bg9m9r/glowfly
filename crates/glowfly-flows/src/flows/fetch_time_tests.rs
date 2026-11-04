@@ -2,9 +2,9 @@
 //! one, or a job that doesn't fetch, leaves it alone.
 
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::{JobMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::update::update;
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::time::{Duration, Instant};
 
 fn done(st: &mut AppState, ok: bool) {

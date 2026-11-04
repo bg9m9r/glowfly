@@ -6,16 +6,16 @@ use super::snapshot_tests::{harness, remove_fixture};
 use super::snapshot_tests_select::{click, row_y};
 use super::snapshot_tests_worktree_wip::{commit_row, with_wips};
 use super::snapshot_tests_worktrees::{p, pushed, with_worktrees};
-use crate::msg::Msg;
-use crate::state::worktree_manage::{RemoteDelete, RemoveForm};
-use crate::state::worktree_move::MoveForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::worktree::WorktreeMsg;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::Tracking;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::worktree_manage::{RemoteDelete, RemoveForm};
+use glowfly_model::state::worktree_move::MoveForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::PathBuf;
 
 /// The worktrees fixture with `modal` built for the feature-login worktree.

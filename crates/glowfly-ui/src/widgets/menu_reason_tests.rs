@@ -7,7 +7,7 @@ const UNLOCK_WHY: &str = "It is locked. Unlock it first.";
 
 #[test]
 fn menu_items_keep_their_label_as_name() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
         menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
     });
@@ -18,7 +18,7 @@ fn menu_items_keep_their_label_as_name() {
 
 #[test]
 fn blocked_items_take_focus_and_show_why() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
     });
     h.run();
@@ -33,7 +33,7 @@ fn blocked_items_take_focus_and_show_why() {
 
 #[test]
 fn blocked_items_stay_inert() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+    let mut h = crate::snapshot_check::builder().build_ui_state(
         |ui, n: &mut u32| {
             if menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY)).clicked() {
                 *n += 1;
@@ -61,7 +61,7 @@ fn blocked_items_stay_inert() {
 
 #[test]
 fn blocked_items_describe_why() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Unlock", "", ItemState::Blocked(UNLOCK_WHY));
         menu_button(ui, "Copy", "", ItemState::Ready);
     });
@@ -75,7 +75,7 @@ fn a_long_reason_does_not_widen_the_item() {
     let reason = "x ".repeat(60).trim_end().to_owned();
     assert!(reason.chars().count() >= 119);
     let mut widths = Vec::new();
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         let w = |r: Response| r.rect.width();
         let short = w(menu_button(ui, "Compare…", "", ItemState::Blocked("No")));
         let long = w(menu_button(ui, "Compare…", "", ItemState::Blocked(&reason)));
@@ -86,13 +86,13 @@ fn a_long_reason_does_not_widen_the_item() {
     drop(h);
     let [short, long, ready] = widths[..] else { panic!("{widths:?}") };
     assert_eq!(short, long, "the reason isn't in the menu");
-    let room = crate::ui::widgets::menu_columns::LABEL_GAP + crate::ui::widgets::menu_columns::INFO_SLOT;
+    let room = crate::widgets::menu_columns::LABEL_GAP + crate::widgets::menu_columns::INFO_SLOT;
     assert!(short >= ready + room - 0.5, "the info mark's room: {short} vs {ready}");
 }
 
 #[test]
 fn setup_items_explain_on_focus() {
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Open", "", ItemState::setup(Lang::En, "Opens the page"));
     });
     h.run();
@@ -109,7 +109,7 @@ fn setup_items_say_set_up_in_the_language() {
     assert_eq!(note, "x");
     assert_eq!(suffix, Lang::De.tr("common.set_up.suffix"));
     assert_ne!(suffix, Lang::En.tr("common.set_up.suffix"));
-    let mut h = crate::ui::snapshot_check::builder().build_ui(|ui| {
+    let mut h = crate::snapshot_check::builder().build_ui(|ui| {
         menu_button(ui, "Öffnen", "", de);
     });
     h.run();
@@ -120,7 +120,7 @@ fn setup_items_say_set_up_in_the_language() {
 fn danger_items_click_unless_blocked() {
     assert_eq!(ItemState::danger_unless(None), ItemState::Danger);
     assert_eq!(ItemState::danger_unless(Some(UNLOCK_WHY)), ItemState::Blocked(UNLOCK_WHY));
-    let mut h = crate::ui::snapshot_check::builder().build_ui_state(
+    let mut h = crate::snapshot_check::builder().build_ui_state(
         |ui, clicked: &mut bool| {
             if menu_button(ui, "Delete…", "", ItemState::Danger).clicked() {
                 *clicked = true;

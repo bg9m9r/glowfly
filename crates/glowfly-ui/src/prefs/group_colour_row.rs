@@ -4,13 +4,13 @@
 //! menu applies it to the groups already made.
 
 use super::{help, row};
-use crate::state::repo_colours::hue_name;
-use crate::ui::repo_swatch;
-use crate::ui::theme::color;
-use crate::ui::widgets::menu_columns;
+use crate::repo_swatch;
+use crate::theme::color;
+use crate::widgets::menu_columns;
 use eframe::egui::{self, Color32, FontId, Rect, Ui, pos2, text::LayoutJob, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{GroupColourDefault, RepoColour, Settings};
+use glowfly_model::state::repo_colours::hue_name;
 
 /// The room before an option's name: a menu's icon column and the gap after it, as the Color
 /// submenu lays out its swatches.

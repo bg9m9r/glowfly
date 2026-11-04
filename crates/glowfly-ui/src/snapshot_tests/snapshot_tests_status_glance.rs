@@ -3,19 +3,19 @@
 //! disabled with the reason while a job runs, and the running job's dots, text and Cancel at
 //! the left with the failure making way for it.
 
-use crate::logs::LogsMsg;
-use crate::msg::{JobMsg, Msg};
-use crate::state::job_stop::{JobStop, Step};
-use crate::state::{AppState, LogEntry, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{NOW, remove_fixture, with_repo};
-use crate::ui::theme::{self, color};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{NOW, remove_fixture, with_repo};
+use crate::theme::{self, color};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::logs::RunInfo;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::job_stop::{JobStop, Step};
+use glowfly_model::state::{AppState, LogEntry, RunningJob};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -28,13 +28,13 @@ fn bar(st: AppState, dark: bool) -> H {
 /// [`bar`] at `width`.
 fn bar_sized(st: AppState, dark: bool, width: f32) -> H {
     let p = theme::view_palette(dark);
-    let size = egui::vec2(width, crate::ui::status::BAR_H);
-    crate::ui::snapshot_check::builder().with_size(size).build_state(
+    let size = egui::vec2(width, crate::status::BAR_H);
+    crate::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);
             ctx.set_theme(theme::egui_theme(&p));
-            crate::ui::status::status_bar(ctx, st, msgs);
+            crate::status::status_bar(ctx, st, msgs);
         },
         (st, Vec::new()),
     )
@@ -138,7 +138,7 @@ fn while_a_job_runs_the_job_shows_and_the_fetch_item_waits() {
     item.hover();
     h.run();
     h.run();
-    let why = crate::state::toolbar_tips::fetch_blocked(&h.state().0).unwrap();
+    let why = glowfly_model::state::toolbar_tips::fetch_blocked(&h.state().0).unwrap();
     assert!(h.query_by_label_contains(&why).is_some(), "with the reason: {why}");
     h.get_by_label("Fetching…").click();
     h.run();

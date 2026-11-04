@@ -1,14 +1,14 @@
 //! The banner under the toolbar once the merge a stopped Finish was waiting for is committed:
 //! what is still to do, with Continue finish and Forget (also used by the Git Flow panel's row).
 
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::gitflow_resume::{offered, ready_text};
-use crate::ui::widgets::banner::{self, Banner, BannerKind};
-use crate::ui::widgets::buttons;
+use crate::widgets::banner::{self, Banner, BannerKind};
+use crate::widgets::buttons;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::gitflow_resume::{offered, ready_text};
 
 pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(r) = offered(st) else { return };

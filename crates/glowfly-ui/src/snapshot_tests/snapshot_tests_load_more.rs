@@ -3,11 +3,11 @@
 //! failed.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{LoadMsg, Msg, SearchMsg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{LoadMsg, Msg, SearchMsg};
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
@@ -35,7 +35,7 @@ fn graph_end_row_offers_more_commits() {
     let (mut st, _) = with_repo(ThemeChoice::Dark, "load-more");
     let snap = st.snap.as_mut().unwrap();
     snap.truncated = true;
-    snap.loaded_with.max_commits = crate::state::MAX_COMMITS;
+    snap.loaded_with.max_commits = glowfly_model::state::MAX_COMMITS;
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label(&sentence).is_some());
@@ -100,8 +100,8 @@ fn graph_near_the_end_asks_for_more() {
     let (mut st, _) = truncated("near-end");
     st.view.show_search = true;
     st.session.tab_view.search = "page".into();
-    crate::update::update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now());
-    crate::update::update(&mut st, Msg::Search(SearchMsg::ToggleFilter), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Search(SearchMsg::QueryChanged), Instant::now());
+    glowfly_model::update::update(&mut st, Msg::Search(SearchMsg::ToggleFilter), Instant::now());
     assert!(st.session.search.filter && !st.session.search.matches.is_empty());
     assert!(st.searching_older());
     let mut h = harness(st, true);

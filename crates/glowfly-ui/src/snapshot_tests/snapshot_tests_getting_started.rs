@@ -5,14 +5,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture, settings, with_repo};
 use super::snapshot_tests_esc::{app_harness, esc};
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::AppState;
-use crate::state::onboarding::getting_started::{Card, GettingStarted};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::{Account, Connection, Provider};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::onboarding::getting_started::{Card, GettingStarted};
 use std::time::Instant;
 
 fn connect(st: &mut AppState) {

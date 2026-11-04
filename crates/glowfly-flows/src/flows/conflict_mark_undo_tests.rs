@@ -9,12 +9,12 @@ use super::conflict_tests::conflicted_repo;
 use super::conflict_undo_tests::two_chunks;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::msg::{ConflictMsg, JobMsg, Msg, PaletteMsg, RepoMsg};
-use crate::state::AppState;
-use crate::state::palette::PaletteCommand as C;
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::Side;
 use glowfly_core::undo::{Action, ConflictChange};
+use glowfly_model::msg::{ConflictMsg, JobMsg, Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::PaletteCommand as C;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

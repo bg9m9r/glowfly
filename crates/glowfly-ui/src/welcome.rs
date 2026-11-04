@@ -10,13 +10,13 @@ use super::dialog_frame::{self, Cx, Dialog, Footer, Outcome};
 use super::theme;
 use super::welcome_header;
 use super::welcome_steps;
-use crate::msg::Msg;
-use crate::onboarding::OnboardingMsg;
-use crate::state::AppState;
-use crate::state::onboarding::{Welcome, WelcomeStep};
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::{self, Id};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::onboarding::OnboardingMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
 
 /// The whole dialog's width, padding included (clamped to the window like any dialog).
 const WIDTH: f32 = 760.0;
@@ -37,7 +37,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Under a credential prompt or another dialog the welcome reads no keys.
     let cx = Cx { t, keyboard: !prompting && !covered, key: Id::new("glowfly-welcome-dialog") };
     let no_connections = settings.connections.is_empty();
-    let gs_hidden = crate::state::onboarding::getting_started::hidden(settings);
+    let gs_hidden = glowfly_model::state::onboarding::getting_started::hidden(settings);
     let resp = theme::show_modal(ctx, theme::dialog(ctx, Id::new("glowfly-welcome")), |ui| {
         let step = w.step;
         let greeting = w.greeting_name().map(str::to_owned);

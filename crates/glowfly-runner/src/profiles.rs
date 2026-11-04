@@ -5,11 +5,11 @@
 
 use super::config;
 use super::execute::{Cx, Execute};
-use crate::msg::Msg;
-use crate::profile::{ProfileEffect, ProfileMsg};
 use glowfly_core::repo_identity::RepoIdentity;
 use glowfly_core::settings::{FolderRule, ProfileId};
 use glowfly_core::{identity, profile_includes, repo_identity};
+use glowfly_model::msg::Msg;
+use glowfly_model::profile::{ProfileEffect, ProfileMsg};
 use std::path::Path;
 
 pub(super) fn run(e: ProfileEffect) -> Msg {

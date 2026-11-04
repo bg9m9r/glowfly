@@ -3,8 +3,8 @@
 
 use super::labels::{ChipSpec, draw_chip, spec_w};
 use super::ref_group::Chip;
-use crate::ui::theme::color;
-use crate::ui::theme::ref_chip::BranchTone;
+use crate::theme::color;
+use crate::theme::ref_chip::BranchTone;
 use eframe::egui::{Painter, Rect};
 use glowfly_core::repo::{RefKind, RefLabel, Snapshot};
 

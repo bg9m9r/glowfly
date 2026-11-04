@@ -3,16 +3,16 @@
 //! watched.
 
 use super::status_item;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::watch::Probe;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::settings;
-use crate::ui::theme::{self, color};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::settings;
+use crate::theme::{self, color};
 use eframe::egui::{self, Align, Layout, RichText, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::watch::Probe;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -40,7 +40,7 @@ fn watching(probe: Option<Probe>, failed: bool) -> AppState {
 fn harness(st: AppState, size: egui::Vec2, draw: impl FnMut(&egui::Context, &mut AppState, &mut Vec<Msg>) + 'static) -> H {
     let p = theme::view_palette(true);
     let mut draw = draw;
-    crate::ui::snapshot_check::builder().with_size(size).build_state(
+    crate::snapshot_check::builder().with_size(size).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);
@@ -66,7 +66,7 @@ fn live_updates_states() {
                 if failed {
                     st.watch.down.insert(repo());
                 }
-                let _ = ui.allocate_ui_with_layout(vec2(300.0, crate::ui::status::BAR_H), Layout::right_to_left(Align::Center), |ui| {
+                let _ = ui.allocate_ui_with_layout(vec2(300.0, crate::status::BAR_H), Layout::right_to_left(Align::Center), |ui| {
                     ui.label(RichText::new("Glowfly 1.0.0").color(color::faint()));
                     status_item(ui, st, msgs);
                 });
@@ -82,7 +82,7 @@ fn live_updates_states() {
 }
 
 fn bar(st: AppState) -> H {
-    harness(st, vec2(720.0, crate::ui::status::BAR_H), |ctx, st, msgs| crate::ui::status::status_bar(ctx, st, msgs))
+    harness(st, vec2(720.0, crate::status::BAR_H), |ctx, st, msgs| crate::status::status_bar(ctx, st, msgs))
 }
 
 #[test]

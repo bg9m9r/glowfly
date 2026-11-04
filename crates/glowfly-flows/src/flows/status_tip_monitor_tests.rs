@@ -1,15 +1,15 @@
 //! The slow-status note's file system monitor: what it offers on each OS and git, the job its
 //! button starts, and what that job's end says.
 
-use crate::effect::Effect;
-use crate::effect::MonitorJob;
 use crate::flows::status_tip_tests::{check_on, marked, opened, speedups};
-use crate::msg::{LoadMsg, Msg};
-use crate::state::AppState;
-use crate::update::update;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::opens::Os;
 use glowfly_core::repo::{self, MonitorOutcome, MonitorTrouble, StatusSpeedups};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::MonitorJob;
+use glowfly_model::msg::{LoadMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::update::update;
 use std::time::Instant;
 
 fn with_git(st: &mut AppState, version: (u32, u32, u32)) {

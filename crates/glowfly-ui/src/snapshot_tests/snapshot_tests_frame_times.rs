@@ -2,15 +2,15 @@
 //! Preferences > General > Diagnostics turns it on, and not at all by default.
 
 use super::show;
-use crate::state::AppState;
-use crate::state::frame_times::FrameSummary;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::settings;
-use crate::ui::theme::{self, color};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::settings;
+use crate::theme::{self, color};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::AppState;
+use glowfly_model::state::frame_times::FrameSummary;
 use std::time::Instant;
 
 const SHOWN: &str = "Frame 3.2 ms · average 2.1 ms · slowest 12.0 ms";
@@ -22,7 +22,7 @@ fn harness(on: bool) -> Harness<'static, AppState> {
     st.settings.show_frame_times = on;
     st.view.frame_times = FrameSummary { last_ms: 3.2, avg_ms: 2.1, max_ms: 12.0 };
     let p = theme::view_palette(true);
-    crate::ui::snapshot_check::builder().with_size(egui::vec2(440.0, 90.0)).build_state(
+    crate::snapshot_check::builder().with_size(egui::vec2(440.0, 90.0)).build_state(
         move |ctx, st: &mut AppState| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);

@@ -1,14 +1,14 @@
 //! The fold keys: E and Shift+E open and fold back unchanged lines only while a diff is shown
 //! and no text field has the keyboard, and not in the conflict view, blame or a dialog.
 
-use crate::msg::{DiffMsg, Msg};
-use crate::state::blame::BlameView;
-use crate::state::conflict::ConflictView;
-use crate::state::{AppState, Modal};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 struct Keys {
@@ -19,7 +19,7 @@ struct Keys {
 
 fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             if let Some((text, focus)) = k.field.as_mut() {

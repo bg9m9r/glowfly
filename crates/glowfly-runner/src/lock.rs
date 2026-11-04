@@ -2,9 +2,9 @@
 //! (`glowfly_core::lock_file`, which refuses unless no git process runs).
 
 use super::execute::{Cx, Execute};
-use crate::effect::LockEffect;
-use crate::msg::{LockMsg, Msg};
 use glowfly_core::lock_file;
+use glowfly_model::effect::LockEffect;
+use glowfly_model::msg::{LockMsg, Msg};
 
 impl Execute for LockEffect {
     fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {

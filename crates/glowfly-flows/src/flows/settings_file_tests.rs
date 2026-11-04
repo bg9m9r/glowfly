@@ -3,14 +3,14 @@
 //! (the startup steps' too) until Try again reads it, and the settings read then replace the
 //! defaults, the git they name included.
 
-use crate::effect::{Effect, OsEffect, PrefsEffect};
 use crate::flows::state;
-use crate::git_env::{GitEnvEffect, GitEnvMsg};
-use crate::msg::{Msg, PrefsMsg, UpdateMsg};
-use crate::state::AppState;
-use crate::state::git_env::Checking;
-use crate::update::update;
 use glowfly_core::settings::{LoadProblem, Settings};
+use glowfly_model::effect::{Effect, OsEffect, PrefsEffect};
+use glowfly_model::git_env::{GitEnvEffect, GitEnvMsg};
+use glowfly_model::msg::{Msg, PrefsMsg, UpdateMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::git_env::Checking;
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -74,7 +74,7 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     assert_eq!(saves(&fx), 0, "{fx:?}");
     assert_ne!(st.settings.toolbar_labels, labels, "the change still applies");
     assert_eq!(st.settings_file.saved(), before, "not recorded as saved");
-    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::General)));
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(glowfly_model::state::PrefPage::General)));
     st.settings.auto_fetch_minutes = 42;
     assert_eq!(saves(&run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited))), 0, "Preferences doesn't save either");
     run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
@@ -257,9 +257,12 @@ fn a_users_edit_while_held_is_said_to_be_dropped() {
 #[test]
 fn the_profile_page_seeds_no_profile_into_held_defaults() {
     let mut st = started_held();
-    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(crate::state::PrefPage::Profile)));
-    let values =
-        crate::state::prefs::GitConfigValues { user_name: "Ada".into(), user_email: "ada@example.com".into(), ..Default::default() };
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(glowfly_model::state::PrefPage::Profile)));
+    let values = glowfly_model::state::prefs::GitConfigValues {
+        user_name: "Ada".into(),
+        user_email: "ada@example.com".into(),
+        ..Default::default()
+    };
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::GitConfigLoaded(values)));
     assert!(st.settings.profiles.is_empty(), "no profile seeded from git");
     assert_eq!(saves(&fx), 0);

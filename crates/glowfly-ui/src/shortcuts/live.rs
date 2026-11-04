@@ -1,10 +1,10 @@
 //! What is open this frame (`Live`) and which bindings that lets through (`allowed`), for the
 //! shortcut matching in `global.rs`.
 
-use crate::keymap::BindingId;
-use crate::state::layout::Pane;
-use crate::state::{AppState, Modal};
 use eframe::egui;
+use glowfly_model::keymap::BindingId;
+use glowfly_model::state::layout::Pane;
+use glowfly_model::state::{AppState, Modal};
 
 /// What is open this frame, for deciding which bindings apply.
 pub(super) struct Live {
@@ -51,9 +51,9 @@ impl Live {
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
             // A focused list, the graph or a pane's own focus target isn't typing.
             typing: ctx.wants_keyboard_input()
-                && crate::ui::wip_keys::focused_list(ctx).is_none()
-                && crate::ui::file_list_keys::focused(ctx).is_none()
-                && !crate::ui::pane_focus::target_focused(ctx),
+                && crate::wip_keys::focused_list(ctx).is_none()
+                && crate::file_list_keys::focused(ctx).is_none()
+                && !crate::pane_focus::target_focused(ctx),
             working_diff: st
                 .view
                 .diff_opening
@@ -69,8 +69,8 @@ impl Live {
             blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
             terminal: st.terminal.focused,
-            rebasing: crate::state::conflict::keys::rebasing(st),
-            pane: crate::ui::pane_focus::focused_pane(ctx),
+            rebasing: glowfly_model::state::conflict::keys::rebasing(st),
+            pane: crate::pane_focus::focused_pane(ctx),
         }
     }
 }

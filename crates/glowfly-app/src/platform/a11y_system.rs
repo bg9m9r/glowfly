@@ -14,8 +14,8 @@
 //! Windows and macOS, where the reads are cheap system calls, and on its own thread on Linux,
 //! where gsettings is a child process. The shell takes the result at the start of a frame.
 
-use crate::state::system_a11y::SystemA11y;
 use eframe::egui;
+use glowfly_model::state::system_a11y::SystemA11y;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::mpsc::{self, Receiver, Sender};

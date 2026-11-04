@@ -21,20 +21,20 @@ use super::UiCache;
 use super::common::issue_chip;
 use super::spell_edit::{spell_text_edit, spell_text_edit_trailing};
 use super::theme::color;
-use crate::keymap::{BindingId, Keymap};
-use crate::msg::CommitMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::commit::stop::{amend_blocked_in, edit_stop, rebase_stopped};
-use crate::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, commit_label, summary_length};
-use crate::state::repo_identity::{commit_identity_line, env_tip};
-use crate::ui::theme::controls::{self, FIELD_PAD_X};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::{buttons, reason, truncate_label};
+use crate::theme::controls::{self, FIELD_PAD_X};
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
+use crate::widgets::{buttons, reason, truncate_label};
 use button::{Act, MenuAction};
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::{BindingId, Keymap};
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::commit::stop::{amend_blocked_in, edit_stop, rebase_stopped};
+use glowfly_model::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, commit_label, summary_length};
+use glowfly_model::state::repo_identity::{commit_identity_line, env_tip};
 
 /// Height the commit box needs below the file lists (the lists share what is left), with its
 /// caption taking `lines` lines.
@@ -71,7 +71,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     let Some(snap) = &st.snap else { return };
     // The commit message pane: from here to the bottom of the panel (`pane_focus.rs`).
     let pane = egui::Rect::from_min_max(ui.cursor().min, ui.max_rect().max);
-    super::pane_focus::drawn_at(ui.ctx(), crate::state::layout::Pane::Message, pane);
+    super::pane_focus::drawn_at(ui.ctx(), glowfly_model::state::layout::Pane::Message, pane);
     let t = st.settings.lang();
     if style.titled {
         ui.add_space(8.0);

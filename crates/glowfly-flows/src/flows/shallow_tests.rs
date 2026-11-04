@@ -4,15 +4,14 @@
 use super::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::partial::PartialEffect;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{JobMsg, Msg, PaletteMsg, RepoMsg};
-use crate::runner;
-use crate::state::AppState;
-use crate::state::Selection;
-use crate::state::palette::{InputKind, Mode, PaletteCommand as C, entries};
 use glowfly_core::clone_ops::DepthProblem;
 use glowfly_core::shallow_ops::Deepen;
+use glowfly_model::effect::partial::PartialEffect;
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{JobMsg, Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::Selection;
+use glowfly_model::state::palette::{InputKind, Mode, PaletteCommand as C, entries};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -107,7 +106,7 @@ fn fetch_full_history_job() {
     }
     assert!(st.partial.sizing.is_some() && st.job.is_none());
     assert!(run(&mut st, deepen(Deepen::Full)).is_empty(), "a second click waits for the first check");
-    let sized = runner::testing::execute(fx.pop().unwrap()).expect("the size");
+    let sized = glowfly_runner::testing::execute(fx.pop().unwrap()).expect("the size");
     let fx = run(&mut st, sized);
     assert!(st.partial.sizing.is_none() && st.modal.is_none(), "a small history doesn't ask");
     match &fx[..] {
@@ -199,10 +198,10 @@ fn deepen_drops_stats_of_old_boundary() {
     // Step through the job by hand to see the effects of the reload that follows it.
     let fx = run(&mut st, deepen(Deepen::By(1)));
     let [Effect::RunGit { .. }] = &fx[..] else { panic!("expected one RunGit") };
-    let done = runner::testing::execute(fx.into_iter().next().unwrap()).expect("a job result");
+    let done = glowfly_runner::testing::execute(fx.into_iter().next().unwrap()).expect("a job result");
     let fx = run(&mut st, done);
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })).expect("a refresh");
-    let loaded = runner::testing::execute(load).expect("a load result");
+    let loaded = glowfly_runner::testing::execute(load).expect("a load result");
     let fx = run(&mut st, loaded);
     assert!(!st.session.reads.stats.contains_key(&root), "line counts made as a root commit are dropped");
     assert!(fx.iter().any(|e| matches!(e, Effect::LoadDetail { oid, .. } if *oid == root)), "the selected commit's detail reloads");

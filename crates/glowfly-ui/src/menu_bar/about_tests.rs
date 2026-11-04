@@ -2,15 +2,15 @@
 //! unknown git. Closing it through the window is in `snapshot_tests.rs`.
 
 use super::snapshot_tests::{dialog_harness, dialog_harness_in};
-use crate::msg::{AppMsg, Msg};
-use crate::state::git_env::GitState;
-use crate::state::menu_bar::{BuildInfo, PRIVACY, WEBSITE};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::git_env::GitState;
+use glowfly_model::state::menu_bar::{BuildInfo, PRIVACY, WEBSITE};
 
 /// The About dialog alone, as `modals.rs` draws it, with a fixed version and the sample build
 /// so a release or the CI system doesn't change the image.
@@ -18,7 +18,7 @@ fn about_harness(git: GitState) -> Harness<'static, (GitState, Vec<Msg>)> {
     dialog_harness(git, draw_about)
 }
 
-fn draw_about(ui: &mut egui::Ui, cx: crate::ui::dialog_frame::Cx, git: &GitState, msgs: &mut Vec<Msg>) -> bool {
+fn draw_about(ui: &mut egui::Ui, cx: crate::dialog_frame::Cx, git: &GitState, msgs: &mut Vec<Msg>) -> bool {
     super::about(ui, cx, git, super::ThisCopy { version: "1.2.3", build: &BuildInfo::SAMPLE }, msgs)
 }
 

@@ -3,8 +3,8 @@
 //! row's), graph rows by their summary ("Uncommitted changes" for
 //! the working tree) and the commit box's fields by their hint. No image comparison.
 
-use crate::ui::snapshot_tests::snapshot_tests_remotes::with_remotes;
-use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
+use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
+use crate::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
 use eframe::egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
@@ -15,7 +15,7 @@ const REDO: &str = "Redo the undone action";
 const PULL: &str = "Pull the current branch";
 
 /// Whether the toolbar's button `label` is disabled; panics unless exactly one button has it.
-fn disabled(h: &egui_kittest::Harness<'_, (crate::state::AppState, Vec<crate::msg::Msg>)>, label: &str) -> bool {
+fn disabled(h: &egui_kittest::Harness<'_, (glowfly_model::state::AppState, Vec<glowfly_model::msg::Msg>)>, label: &str) -> bool {
     let buttons: Vec<_> = h.query_all_by_role_and_label(Role::Button, label).collect();
     assert_eq!(buttons.len(), 1, "one {label:?} button");
     buttons[0].is_disabled()
@@ -73,7 +73,7 @@ fn tool_buttons_are_named_and_report_whether_they_work() {
 #[test]
 fn toolbar_names_differ_from_palette_rows() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "toolbar-palette-names");
-    let rows: Vec<String> = crate::state::palette::shown(&st, "").into_iter().map(|s| s.entry.label).collect();
+    let rows: Vec<String> = glowfly_model::state::palette::shown(&st, "").into_iter().map(|s| s.entry.label).collect();
     let mut h = harness(st, true);
     h.run();
     let bar = eframe::egui::containers::panel::PanelState::load(&h.ctx, eframe::egui::Id::new("toolbar")).expect("the toolbar").rect;
@@ -113,9 +113,9 @@ fn graph_rows_and_commit_fields_are_named() {
 /// button by the word it shows ("click PR", "click Commands").
 #[test]
 fn tool_button_names_hold_their_captions() {
-    use crate::state::ForgeState;
     use glowfly_core::forge::{Provider, Target};
     use glowfly_core::i18n::Lang;
+    use glowfly_model::state::ForgeState;
     for lang in Lang::ALL {
         let (mut st, dir) = with_repo(ThemeChoice::Dark, &format!("toolbar-captions-{}", lang.code()));
         st.settings.language = lang.code().into();

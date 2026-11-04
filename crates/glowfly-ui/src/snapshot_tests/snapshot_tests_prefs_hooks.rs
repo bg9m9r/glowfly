@@ -2,14 +2,14 @@
 //! is on, Turn on only where this OS and git have the daemon, and neither while a job runs.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::msg::{LoadMsg, Msg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::{AppState, PrefPage, PrefsState, RunningJob};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::opens::Os;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{LoadMsg, Msg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::{AppState, PrefPage, PrefsState, RunningJob};
 
 /// The Hooks page of a repository whose core.fsmonitor is `on`, with a git 2.45 that has the
 /// daemon.

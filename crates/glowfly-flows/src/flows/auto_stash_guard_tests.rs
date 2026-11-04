@@ -9,16 +9,16 @@ use super::jobs::start_job;
 use super::push_pr_tests::with_host;
 use super::submodule_tests::{PATH, opened};
 use super::tests::{clean_tree, drive, finish, git};
-use crate::gitflow::GitFlowMsg;
-use crate::msg::{AutoStashMsg, BranchMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::auto_stash::{blocks, body, button, changed_files};
-use crate::state::branches::checkout_local;
-use crate::state::job_spec::JobSpec;
 use glowfly_core::forge::PullRequest;
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::stash_ops::AutoStashFor;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::{AutoStashMsg, BranchMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::auto_stash::{blocks, body, button, changed_files};
+use glowfly_model::state::branches::checkout_local;
+use glowfly_model::state::job_spec::JobSpec;
 use std::path::Path;
 
 fn start_login() -> Msg {
@@ -157,8 +157,8 @@ fn pull_request_checkout_asks_with_its_own_op() {
 }
 
 /// Nothing ran (and no prompt opened).
-fn nothing_ran(fx: &[crate::effect::Effect]) -> bool {
-    !fx.iter().any(|e| matches!(e, crate::effect::Effect::RunGit { .. }))
+fn nothing_ran(fx: &[glowfly_model::effect::Effect]) -> bool {
+    !fx.iter().any(|e| matches!(e, glowfly_model::effect::Effect::RunGit { .. }))
 }
 
 fn last_log(st: &AppState) -> &str {

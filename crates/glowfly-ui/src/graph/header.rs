@@ -9,15 +9,15 @@ use super::LANE_W;
 use super::fit::{self, Fitted};
 use super::layout::{CELL_PAD, Columns, EDGE_INSET};
 use super::resize;
-use crate::msg::Msg;
-use crate::state::ColumnDrag;
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::truncate::{cut_galley, cut_job};
-use crate::ui::widgets::{Icon, paint_cut_text, paint_icon};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::truncate::{cut_galley, cut_job};
+use crate::widgets::{Icon, paint_cut_text, paint_icon};
 use eframe::egui::{self, Align2, FontId, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ColumnWidths, GraphColumns, ResizableColumn};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::ColumnDrag;
 
 /// Height of the header row.
 const ROW_H: f32 = 22.0;
@@ -214,7 +214,7 @@ fn titles(ui: &egui::Ui, hdr: Rect, cols: &Columns, cols_cfg: &GraphColumns, fon
             let rect = Align2::RIGHT_CENTER.anchor_size(pos2(col.1, hdr.center().y), g.size());
             let cut = g.elided;
             clip.galley(rect.min, g, weak);
-            crate::ui::widgets::Cut { rect, cut }
+            crate::widgets::Cut { rect, cut }
         } else {
             paint_cut_text(&clip, pos2(col.0, hdr.center().y), text, font.clone(), weak, max_w)
         };
@@ -299,7 +299,7 @@ mod tests {
         // 2026-02-01 12:00 UTC; the commit is from the last day of 2025.
         let (now, then) = (1_769_947_200, 1_767_225_600 - 3600);
         let ctx = egui::Context::default();
-        crate::ui::theme::fonts::install(&ctx);
+        crate::theme::fonts::install(&ctx);
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         let _ = ctx.run(egui::RawInput::default(), |ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {

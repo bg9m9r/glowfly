@@ -5,15 +5,15 @@
 use super::ssh_tests::{listing, loaded, page, page_mut, pair, run, ssh};
 use super::tests::{drive, finish, scratch_repo, state};
 use super::trust_tests::untrusted_repo;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg, RepoMsg};
-use crate::ssh::{SshEffect, SshMsg};
-use crate::state::ssh_use::{Choices, RepoTarget, not_trusted};
-use crate::state::trust::{Standing, record};
-use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoTrust;
 use glowfly_core::ssh_keys::{KeyChoice, SshKeyPair};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
+use glowfly_model::ssh::{SshEffect, SshMsg};
+use glowfly_model::state::ssh_use::{Choices, RepoTarget, not_trusted};
+use glowfly_model::state::trust::{Standing, record};
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::path::PathBuf;
 
 fn key() -> SshKeyPair {

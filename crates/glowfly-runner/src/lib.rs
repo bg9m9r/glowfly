@@ -11,17 +11,9 @@
 //! line for the flat variants (`files`, `highlight`, …); the git, file and network code itself
 //! lives in `glowfly-core`.
 
-// `crate::runner::…` names this crate, as it did the app's `runner` module.
-use crate as runner;
-// The model's modules this crate names by their old `crate::…` paths. (Those that share a name
-// with one of the runner's own modules are named `glowfly_model::…`.)
-#[cfg(test)]
-use glowfly_model::update;
-use glowfly_model::{effect, msg, patch, profile, remote, start_arg, state, submodule, worktree};
-
-use crate::effect::Effect;
-use crate::msg::Msg;
 use glowfly_core::repo;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::Msg;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -234,14 +226,14 @@ impl Runner {
     pub fn run(&self, effect: Effect) {
         match effect {
             Effect::Checked(c) => {
-                let crate::effect::Checked { effect, check } = *c;
+                let glowfly_model::effect::Checked { effect, check } = *c;
                 self.run_checked(effect, Some(check))
             }
             e => self.run_checked(e, None),
         }
     }
 
-    fn run_checked(&self, effect: Effect, check: Option<crate::effect::TrustCheck>) {
+    fn run_checked(&self, effect: Effect, check: Option<glowfly_model::effect::TrustCheck>) {
         let Some(effect) = self.admit(effect) else { return };
         let effect = match effect {
             Effect::Watch(target) => return self.watch.set(target, self.tx.clone(), self.waker.clone()),
@@ -333,7 +325,7 @@ impl Runner {
         if self.watch.sweep(&workdir) {
             return;
         }
-        let msg = crate::msg::WatchMsg::RepoChanged { full: false, paths: None, last_event: std::time::Instant::now() };
+        let msg = glowfly_model::msg::WatchMsg::RepoChanged { full: false, paths: None, last_event: std::time::Instant::now() };
         if self.tx.send(Msg::Scoped { workdir, msg: Box::new(Msg::Watch(msg)) }).is_ok() {
             self.waker.wake();
         }

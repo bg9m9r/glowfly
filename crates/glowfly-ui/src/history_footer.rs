@@ -6,11 +6,11 @@ use super::common::short;
 use super::empty_state::{EmptyIcon, empty_state};
 use super::pane_status::{self, Failure};
 use super::theme::color;
-use crate::msg::{HistoryMsg, Msg};
-use crate::state::AppState;
-use crate::state::history::{FileHistoryView, HistoryKind};
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::{self, RichText, Ui};
+use glowfly_model::msg::{HistoryMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileHistoryView, HistoryKind};
 
 pub(super) const LOADING_HISTORY: &str = "Loading the history…";
 pub(super) const FAILED_FILE: &str = "Couldn't load the history of this file";

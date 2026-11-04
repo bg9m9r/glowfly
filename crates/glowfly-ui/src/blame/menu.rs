@@ -1,12 +1,12 @@
 //! A blame line's menu: blame before its commit or skip it, the file history and the graph, and
 //! copying the line or the commit's SHA.
 
-use crate::msg::{BlameMsg, Msg};
-use crate::ui::common::menu_item_if;
-use crate::ui::widgets::menu::separator;
+use crate::common::menu_item_if;
+use crate::widgets::menu::separator;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::BlameCommit;
+use glowfly_model::msg::{BlameMsg, Msg};
 
 /// The line a menu acts on.
 pub(crate) struct LineTarget<'a> {

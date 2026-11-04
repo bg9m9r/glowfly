@@ -6,15 +6,15 @@ use super::snapshot_tests::{harness, harness_sized, remove_fixture};
 use super::snapshot_tests_select::{click, row_y};
 use super::snapshot_tests_stash::with_stashes;
 use super::snapshot_tests_submodules::with_submodules;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::graph::row_h;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::graph::row_h;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{self, PointerButton, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::Density;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

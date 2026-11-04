@@ -3,21 +3,21 @@
 
 use super::snapshot_tests::scenes::{send, with_two_authors};
 use super::snapshot_tests::{harness, remove_fixture};
-use crate::msg::{Msg, SearchMsg};
-use crate::state::AppState;
-use crate::ui::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, SearchMsg};
+use glowfly_model::state::AppState;
+use glowfly_ui::snapshot_check::CheckSnapshot;
 use std::time::Instant;
 
 /// Sends `msg`, runs the path searches it asks for and feeds their reports back.
 fn send_and_search(st: &mut AppState, msg: SearchMsg) {
-    let fx = crate::update::update(st, Msg::Search(msg), Instant::now());
+    let fx = glowfly_model::update::update(st, Msg::Search(msg), Instant::now());
     for effect in fx {
-        if matches!(effect, crate::effect::Effect::SearchPaths { .. })
-            && let Some(reply) = crate::runner::testing::execute(effect)
+        if matches!(effect, glowfly_model::effect::Effect::SearchPaths { .. })
+            && let Some(reply) = glowfly_runner::testing::execute(effect)
         {
-            crate::update::update(st, reply, Instant::now());
+            glowfly_model::update::update(st, reply, Instant::now());
         }
     }
 }

@@ -5,11 +5,11 @@
 use super::search_loaded_tests::{large_state, oid_of};
 use super::tests::finish;
 use super::update;
-use crate::effect::{BackgroundEffect, Effect};
-use crate::msg::{GraphMsg, Msg};
-use crate::state::AppState;
-use crate::state::refresh::LARGE_HISTORY;
 use glowfly_core::repo::{FileEntry, Snapshot};
+use glowfly_model::effect::{BackgroundEffect, Effect};
+use glowfly_model::msg::{GraphMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::refresh::LARGE_HISTORY;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -90,7 +90,7 @@ fn a_layout_that_no_longer_fits_is_ignored() {
 fn finish_one(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let mut out = Vec::new();
     for e in fx {
-        if let Some(m) = crate::runner::testing::execute(e) {
+        if let Some(m) = glowfly_runner::testing::execute(e) {
             out.extend(update(st, m, Instant::now()));
         }
     }
@@ -120,9 +120,9 @@ fn hovering_waits_for_the_ancestry_then_highlights_as_on_the_ui_thread() {
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now());
     let (shown, rows) = st.view.highlight.clone().expect("highlighted once the ancestry is in");
     let snap = st.snap.as_ref().unwrap();
-    let base = crate::state::ref_rows::default_ancestry(snap).1;
+    let base = glowfly_model::state::ref_rows::default_ancestry(snap).1;
     assert_eq!(st.view.ref_rows.base.as_ref(), Some(&base), "the same ancestry as on the UI thread");
-    assert_eq!((shown, &*rows), (tip, &crate::state::ref_rows::branch_rows(snap, tip, &base)));
+    assert_eq!((shown, &*rows), (tip, &glowfly_model::state::ref_rows::branch_rows(snap, tip, &base)));
     // Hovering it again reuses its rows.
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(None)), Instant::now());
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now());
@@ -143,13 +143,13 @@ fn hovering_waits_for_the_ancestry_then_highlights_as_on_the_ui_thread() {
 fn a_replaced_large_snapshot_is_freed_on_a_worker() {
     let (mut st, dir) = large_state("graph-free", LARGE_HISTORY);
     let frees = |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Background(BackgroundEffect::Free(_)))).count();
-    let small = crate::state::op_fixture::snapshot("graph-free-small");
+    let small = glowfly_model::state::op_fixture::snapshot("graph-free-small");
     let small_dir = small.workdir.clone();
     let mut fx = Vec::new();
     super::large_graph::show(&mut st, small, &mut fx);
     assert_eq!(frees(&fx), 1, "the large one goes to a worker");
     let mut fx = Vec::new();
-    super::large_graph::show(&mut st, crate::state::op_fixture::snapshot("graph-free-small"), &mut fx);
+    super::large_graph::show(&mut st, glowfly_model::state::op_fixture::snapshot("graph-free-small"), &mut fx);
     assert_eq!(frees(&fx), 0, "a small one is freed at once");
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&small_dir);

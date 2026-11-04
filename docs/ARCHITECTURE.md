@@ -29,7 +29,7 @@ the forge APIs.
 file watcher and the OS helpers effects need, with no egui.
 
 `glowfly-ui` is a library with the egui views (`ui/` in these docs, `crates/glowfly-ui/src/`): it
-depends on the model and never on the runner, and the app names it `crate::ui`. Its approved
+depends on the model and never on the runner, and the app names it `glowfly_ui`. Its approved
 snapshots are in `crates/glowfly-ui/tests/snapshots/`; its `test-support` feature lends the app's
 tests the snapshot builder, the fixtures and the test fonts.
 
@@ -49,7 +49,7 @@ source file, update its line in the matching file.
 - [core-display.md](architecture/core-display.md): the commit graph and branch colours, diff, whole-file and conflict rows, syntax highlighting, image and Markdown previews, search and the history index, watching for changes.
 - [core-system.md](architecture/core-system.md): which git runs, paths and errors, credentials and signing, SSH keys, one window and `glowfly://` links, the terminal, settings, identity and profiles, files and logs, translations and dates, external tools, Glowfly's own updates.
 - [core-forge.md](architecture/core-forge.md): hosting services (`forge/`).
-- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s and `glowfly-model`'s entry points (`main.rs`, `start_arg.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform/` (window glue) and `runner/platform.rs` (OS helpers), `keymap/`, and the test-only modules (`journey/`, `glyph_check/`, the smoke probe).
+- [app-layers.md](architecture/app-layers.md): `glowfly-app`'s and `glowfly-model`'s entry points (`main.rs`, `start_arg.rs`, `cli_update.rs`, `logging.rs`, `build.rs`) and its layers: `msg/`, `effect/`, `state/`, `update/`, `runner/`, `platform/` (window glue) and `runner/platform.rs` (OS helpers), `keymap/`, and the test-only modules (`journey/`, the smoke probe).
 - [app-features.md](architecture/app-features.md): features whose files span every layer: updates, the journal, custom commands, partial clones, the history index, range-diff, profile folder rules, multi-commit selection.
 - [ui-shell.md](architecture/ui-shell.md): the shell (`shell/`), window layout, toolbar, repository tabs, terminal panel.
 - [ui-views.md](architecture/ui-views.md): dialogs with their own files, blame and the File view, Markdown, the graph, commit details and the WIP panel, the diff, object menus, snapshot tests.

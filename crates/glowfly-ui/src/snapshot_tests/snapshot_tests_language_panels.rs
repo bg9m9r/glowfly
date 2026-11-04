@@ -12,17 +12,17 @@ use super::snapshot_tests_compare::{compared, selected};
 use super::snapshot_tests_onboarding::{ada, on};
 use super::snapshot_tests_repo_finder::finder;
 use super::snapshot_tests_repo_list::welcome_state;
-use crate::msg::{Msg, ReposMsg};
-use crate::state::onboarding::{EMAIL_FIELD, WelcomeStep};
-use crate::state::onboarding_tour::TourStep;
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, ReposMsg};
+use glowfly_model::state::onboarding::{EMAIL_FIELD, WelcomeStep};
+use glowfly_model::state::onboarding_tour::TourStep;
+use glowfly_model::state::{AppState, Selection};
 
 /// Clicks the WIP header's button `label`, or its item `item` in the more-actions menu (`more`)
 /// when the button moved there.
@@ -141,7 +141,7 @@ fn details_commit_german() {
     st.session.detail = Some(detail);
     let mut h = harness(st, true);
     h.run();
-    let short = crate::ui::common::short(oid);
+    let short = crate::common::short(oid);
     for text in [Lang::De.trn("details.commit.changed_files", n, &[]), Lang::De.trf("details.commit.sha", &[("sha", &short)])] {
         assert!(h.query_all_by_label(&text).next().is_some(), "{text} is shown");
     }

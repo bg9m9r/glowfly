@@ -9,14 +9,14 @@
 use super::conflict_cells::side_color;
 use super::diff::mono;
 use super::theme::color;
-use crate::msg::{ConflictMsg, Msg};
-use crate::state::conflict::ConflictView;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
+use crate::theme::controls;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align2, FontId, Rect, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Chunk, Side};
+use glowfly_model::msg::{ConflictMsg, Msg};
+use glowfly_model::state::conflict::ConflictView;
 
 /// The width of a band's Take checkbox and of its Discard edit button, for their English text;
 /// a longer translation widens them by the difference.
@@ -180,7 +180,7 @@ impl Order {
         }
         p.text(rect.center(), Align2::CENTER_CENTER, self.swap, FontId::proportional(type_scale::SMALL), color::text());
         if resp.has_focus() {
-            crate::ui::theme::tokens::focus_ring(ui.painter(), rect, 4);
+            crate::theme::tokens::focus_ring(ui.painter(), rect, 4);
         }
         if resp.on_hover_text(self.tip).on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
             msgs.push(Msg::Conflict(ConflictMsg::ConflictSwap(k)));

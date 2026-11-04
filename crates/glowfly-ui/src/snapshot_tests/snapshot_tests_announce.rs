@@ -4,14 +4,14 @@
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_partial::job;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::{status, toasts};
+use crate::{status, toasts};
 use eframe::egui::Id;
 use eframe::egui::accesskit::{Live, NodeId};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -76,7 +76,7 @@ fn a_failure_shown_again_is_announced_again_and_a_success_is_not() {
 #[test]
 fn a_quiet_job_is_not_announced() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "announce-quiet");
-    st.job = Some(crate::state::RunningJob { quiet: true, ..job("Fetch") });
+    st.job = Some(glowfly_model::state::RunningJob { quiet: true, ..job("Fetch") });
     assert!(st.settings.a11y.announce_jobs);
     let mut h = harness(st, true);
     h.run_steps(4);

@@ -91,9 +91,9 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
     // tones are checked in `initials_tests.rs`.
     for s in swatches() {
         let lane = line_in(s, p);
-        let band = crate::ui::theme::surfaces::band_color(lane, p);
+        let band = crate::theme::surfaces::band_color(lane, p);
         add(&format!("{s:?} band"), band);
-        add(&format!("{s:?} band highlighted"), crate::ui::theme::surfaces::highlight_color(band, lane));
+        add(&format!("{s:?} band highlighted"), crate::theme::surfaces::highlight_color(band, lane));
         for style in ChipStyle::ALL {
             let look = ref_chip(style, BranchTone::of(s, p), p);
             if let Some(fill) = look.fill {
@@ -105,11 +105,11 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
         }
         if !p.high_contrast {
             glow_fills(p, &format!("{s:?} band"), band, &mut add);
-            glow_fills(p, &format!("{s:?} band highlighted"), crate::ui::theme::surfaces::highlight_color(band, lane), &mut add);
+            glow_fills(p, &format!("{s:?} band highlighted"), crate::theme::surfaces::highlight_color(band, lane), &mut add);
         }
     }
     if !p.high_contrast {
-        let selected_inactive = crate::ui::theme::tokens::selected_inactive(p);
+        let selected_inactive = crate::theme::tokens::selected_inactive(p);
         for (k, s) in [("bg", p.bg), ("hover", p.hover), ("selected", p.selected), ("selected inactive", selected_inactive)] {
             glow_fills(p, k, s, &mut add);
         }
@@ -121,7 +121,7 @@ pub(super) fn fills(p: &Palette) -> Vec<(String, Color32)> {
 /// from either peak (standard and colour-blind safe).
 fn glow_fills(p: &Palette, what: &str, s: Color32, add: &mut impl FnMut(&str, Color32)) {
     for safe in [false, true] {
-        let peak = crate::ui::graph::lantern_peak(p.dark, safe);
+        let peak = crate::graph::lantern_peak(p.dark, safe);
         for k in [1.0, 0.75, 0.5, 0.25] {
             add(&format!("lantern glow {k} of {peak} on {what}"), contrast::tint(s, p.lantern, peak * k, p.dark));
         }

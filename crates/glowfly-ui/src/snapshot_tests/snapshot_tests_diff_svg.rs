@@ -6,14 +6,14 @@
 
 use super::super::snapshot_tests::{git, harness, harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_language_check::shown_texts;
-use crate::state::AppState;
-use crate::state::diff_preview::DiffPreview;
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::vec2;
 use glowfly_core::i18n::Lang;
 use glowfly_core::preview_svg::SVG_MAX_BYTES;
 use glowfly_core::repo::{self, BinarySide, BinarySides, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_preview::DiffPreview;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -80,7 +80,7 @@ fn diff_svg_text_light() {
 #[test]
 fn diff_svg_preview() {
     let (st, dir) = with_svg("diff-svg-preview", ThemeChoice::Light, Some(BEFORE), AFTER, true);
-    let s = crate::state::diff_preview::shown(&st).unwrap();
+    let s = glowfly_model::state::diff_preview::shown(&st).unwrap();
     assert!(s.old.iter().chain(&s.new).all(|s| s.image.is_some()), "both sides drawn");
     render(st, false, "diff_svg_preview_light", &["Before", "After", "64 \u{d7} 64 px"]);
     remove_fixture(&dir);

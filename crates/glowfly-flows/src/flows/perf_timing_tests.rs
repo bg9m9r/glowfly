@@ -5,8 +5,8 @@
 //! `scripts/make-perf-repos.ps1` builds large repositories to run it on (docs/PERF_REPOS.md).
 
 use super::tests::state;
-use crate::msg::{GraphMsg, Msg, SearchMsg};
 use glowfly_core::repo::{LoadOptions, Snapshot, load};
+use glowfly_model::msg::{GraphMsg, Msg, SearchMsg};
 use std::time::{Duration, Instant};
 
 fn snapshot() -> Snapshot {
@@ -78,16 +78,16 @@ fn perf_timing() {
     // default branch's ancestry, which is then delivered.
     let tips: Vec<git2::Oid> = st.snap.as_ref().unwrap().locals.iter().filter_map(|b| b.oid).take(3).collect();
     let snap = st.snap.as_ref().unwrap();
-    let tip = crate::state::ref_rows::default_tip(snap);
-    let worker = median(3, || drop(crate::state::ref_rows::reachable_in(&snap.commits, tip)));
-    let before = median(3, || drop(crate::state::ref_rows::default_ancestry(snap)));
+    let tip = glowfly_model::state::ref_rows::default_tip(snap);
+    let worker = median(3, || drop(glowfly_model::state::ref_rows::reachable_in(&snap.commits, tip)));
+    let before = median(3, || drop(glowfly_model::state::ref_rows::default_ancestry(snap)));
     println!("ancestry: worker {worker:?} (UI thread before: {before:?})");
     for (n, &tip) in tips.iter().chain(tips.first()).enumerate() {
         let t = Instant::now();
         let fx = super::update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), now);
         println!("hover #{n}: {:?}", t.elapsed());
         for e in fx {
-            if let Some(m) = crate::runner::testing::execute(e) {
+            if let Some(m) = glowfly_runner::testing::execute(e) {
                 let t = Instant::now();
                 let _ = super::update(&mut st, m, now);
                 println!("  ancestry delivered: {:?}", t.elapsed());

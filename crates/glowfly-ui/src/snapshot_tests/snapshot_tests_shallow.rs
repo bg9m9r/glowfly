@@ -3,14 +3,14 @@
 //! fetching more.
 
 use super::snapshot_tests::{harness, harness_sized, remove_fixture, render, with_repo};
-use crate::msg::{JobMsg, Msg};
-use crate::state::AppState;
-use crate::state::palette::{InputKind, Mode, Palette};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::shallow_ops::Deepen;
+use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::{InputKind, Mode, Palette};
 
 /// Marks the fixture shallow at its oldest commit, with an origin remote.
 fn make_shallow(st: &mut AppState) {
@@ -64,7 +64,7 @@ fn graph_end_row_shallow_and_truncated() {
 }
 
 /// The end row (named by its sentence) after the last commit's row, with `button` in it.
-fn assert_sentence_and_button(h: &egui_kittest::Harness<'_, (AppState, Vec<crate::msg::Msg>)>, sentence: &str, button: &str) {
+fn assert_sentence_and_button(h: &egui_kittest::Harness<'_, (AppState, Vec<glowfly_model::msg::Msg>)>, sentence: &str, button: &str) {
     let last = h.state().0.snap.as_ref().unwrap().commits.last().unwrap().summary.clone();
     let row = h.get_by_label(sentence).bounding_box().expect("the end row is laid out");
     let b = h.get_by_label(button).bounding_box().expect("the button is laid out");

@@ -4,10 +4,7 @@
 //! with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, remove_fixture, with_history, with_repo};
-use crate::msg::{HistoryMsg, Msg};
-use crate::state::AppState;
-use crate::state::history::{FileHistoryView, FileText, FileTextData, HistoryKind, HistoryPane, TextError, TextState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Toggled;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
@@ -15,6 +12,9 @@ use glowfly_core::highlight::{self, SyntaxHint};
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, HistoryStart, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{HistoryMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::history::{FileHistoryView, FileText, FileTextData, HistoryKind, HistoryPane, TextError, TextState};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

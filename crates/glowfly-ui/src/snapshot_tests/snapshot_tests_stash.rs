@@ -9,15 +9,15 @@ use super::snapshot_tests_palette_stash::fixture_stashes;
 use super::snapshot_tests_remotes::running;
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{JobMsg, Msg, StashMsg};
-use crate::state::palette::StashAction;
-use crate::state::palette::{Mode, Palette, Pick};
-use crate::state::stashes::RenameStashForm;
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{JobMsg, Msg, StashMsg};
+use glowfly_model::state::palette::StashAction;
+use glowfly_model::state::palette::{Mode, Palette, Pick};
+use glowfly_model::state::stashes::RenameStashForm;
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
 /// The fixture with the made-up stashes in its snapshot and STASHES in view.
@@ -131,11 +131,11 @@ fn stash_apply_confirm_light() {
     let (mut st, dir) = with_stashes(ThemeChoice::Light, "stash-apply-confirm");
     let snap = st.snap.as_ref().unwrap();
     let t = st.settings.lang();
-    let msg = crate::state::stash_confirm::stash_msg(snap, t, StashAction::Apply, &snap.stashes[0]);
-    let Msg::Stash(crate::msg::StashMsg::Ask(ask)) = msg else { panic!("a question on a dirty tree") };
+    let msg = glowfly_model::state::stash_confirm::stash_msg(snap, t, StashAction::Apply, &snap.stashes[0]);
+    let Msg::Stash(glowfly_model::msg::StashMsg::Ask(ask)) = msg else { panic!("a question on a dirty tree") };
     // The stash changes one of the working tree's files and one it leaves alone.
     let paths = vec![snap.unstaged[0].path.clone(), "untouched.txt".to_owned()];
-    let msg = crate::state::stash_confirm::ask_confirm(snap, t, &ask, Some(&paths));
+    let msg = glowfly_model::state::stash_confirm::ask_confirm(snap, t, &ask, Some(&paths));
     let Msg::Confirm { title, body, button, then } = msg else { panic!("a confirmation on a dirty tree") };
     assert!(body.contains(&paths[0]) && !body.contains("untouched.txt"), "{body}");
     st.modal = Some(Modal::Confirm { title, body, button, then });

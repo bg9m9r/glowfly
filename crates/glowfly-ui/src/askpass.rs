@@ -6,16 +6,16 @@ use super::dialog_frame::{self, Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{self, FieldGroup, Icon, buttons};
-use crate::msg::CredentialMsg;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::askpass::PendingPrompt;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::Message;
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::form_message::Message;
 use eframe::egui::{self, Id, Key, RichText};
 use glowfly_core::askpass::{PromptKind, host, user_and_host};
 use glowfly_core::git_credential::is_http_url;
+use glowfly_model::msg::CredentialMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::askpass::PendingPrompt;
 
 /// The wording and fields for one kind of prompt.
 struct Layout {

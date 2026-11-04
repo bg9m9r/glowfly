@@ -7,12 +7,12 @@ use super::menu_testing::open_submenu;
 use super::snapshot_tests::{harness, harness_sized};
 use super::snapshot_tests_repo_list::{H, abs, api, last, shown, web, welcome_state};
 use super::snapshot_tests_select::click;
-use crate::msg::{GroupMsg, Msg};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Event, Modifiers, PointerButton, Pos2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{RepoColour, RepoGroup, ThemeChoice};
+use glowfly_model::msg::{GroupMsg, Msg};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -37,7 +37,7 @@ fn picker_state(theme: ThemeChoice) -> AppState {
 
 /// Opens Work's picker through `update`, with the rows named in `tick` ticked.
 fn open_picker(st: &mut AppState, tick: &[&str]) {
-    crate::update::update(st, Msg::Groups(GroupMsg::AddDialog(0)), Instant::now());
+    glowfly_model::update::update(st, Msg::Groups(GroupMsg::AddDialog(0)), Instant::now());
     let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
     p.ticked = tick.iter().map(|r| PathBuf::from(abs(r))).collect();
 }

@@ -19,12 +19,12 @@ mod snapshot_tests_lines_gutter;
 mod snapshot_tests_reveal;
 #[path = "snapshot_tests_text_select.rs"]
 mod snapshot_tests_text_select;
-use crate::msg::DiffMsg;
-use crate::state::AppState;
 use glowfly_core::highlight;
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -54,8 +54,8 @@ fn diff_inline_and_split() {
 
 #[test]
 fn diff_line_selection() {
-    use crate::msg::Msg;
-    use crate::state::lines::LineClick;
+    use glowfly_model::msg::Msg;
+    use glowfly_model::state::lines::LineClick;
     for (layout, name) in [(DiffLayout::Inline, "diff_lines_inline"), (DiffLayout::Split, "diff_lines_split")] {
         let (mut st, dir) = with_diff(layout, "diff-lines");
         // Select `-fix` and `+new line`, as a click and a Ctrl-click would.
@@ -63,7 +63,7 @@ fn diff_line_selection() {
         let at = |origin: char, text: &str| lines.iter().position(|l| l.origin == origin && l.text == text).unwrap();
         let (fix, new_line) = (at('-', "fix"), at('+', "new line"));
         for (line, how) in [(fix, LineClick::Only), (new_line, LineClick::Toggle)] {
-            crate::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
+            glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), Instant::now());
         }
         assert_eq!(st.view.diff_lines.count_in(&DiffTarget::Unstaged("app.txt".into()), 0), 2);
         render(name, st, true);
@@ -162,7 +162,7 @@ fn diff_hunk_context() {
 #[test]
 fn diff_hunk_header_narrow() {
     use super::snapshot_tests::{harness_palette_sized, remove_fixture};
-    use crate::ui::snapshot_check::CheckSnapshot;
+    use crate::snapshot_check::CheckSnapshot;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "diff-hunk-header-narrow");
     let before = "/// Greets everyone who signs in.
 fn greet_every_returning_visitor_by_name(visitor_name: &str, unread_count: u32) -> String {
@@ -187,7 +187,7 @@ fn greet_every_returning_visitor_by_name(visitor_name: &str, unread_count: u32) 
     assert!(diff.hunks[0].header.contains("fn greet_every"), "{}", diff.hunks[0].header);
     st.session.diff.view = Some((target, diff.into()));
     st.settings.diff_layout = DiffLayout::Split;
-    let mut h = harness_palette_sized(st, crate::ui::theme::DUSK, eframe::egui::vec2(1100.0, 600.0));
+    let mut h = harness_palette_sized(st, crate::theme::DUSK, eframe::egui::vec2(1100.0, 600.0));
     h.run();
     h.check_snapshot("diff_hunk_header_narrow");
     drop(h);
@@ -284,7 +284,7 @@ fn diff_nav_first_file() {
     let mut diff = repo::load_diff(&dir, &target).unwrap();
     diff.intraline = intraline::intraline(&diff);
     st.session.diff.view = Some((target, diff.into()));
-    use crate::state::diff_nav::{StepKind, step};
+    use glowfly_model::state::diff_nav::{StepKind, step};
     assert_eq!([step(&st, -1).kind(), step(&st, 1).kind()], [StepKind::End, StepKind::File]);
     render("diff_nav_first_file", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());

@@ -3,19 +3,19 @@
 //! lists write at once; the program and the allowed signers file wait for the Save / Revert bar.
 
 use super::{check_row, help, row, secondary_button, text_field, warn, warn_then};
-use crate::msg::PrefsMsg;
-use crate::msg::{FilePurpose, Msg};
-use crate::state::PrefsState;
-use crate::state::prefs::SigningState;
-use crate::ui::theme::controls;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, type_scale};
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::{self, Icon};
+use crate::theme::controls;
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, type_scale};
+use crate::widgets::buttons;
+use crate::widgets::{self, Icon};
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use glowfly_core::signing::SigningFormat;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FilePurpose, Msg};
+use glowfly_model::state::PrefsState;
+use glowfly_model::state::prefs::SigningState;
 
 /// The fallback when Extend by 2 years fails: how to extend a key by hand.
 const RENEW_HELP: &str = "https://docs.github.com/en/authentication/managing-commit-signature-verification/updating-an-expired-gpg-key";
@@ -42,7 +42,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                 ui.selectable_value(&mut chosen, f, f.label());
             }
         });
-        crate::ui::access::from_label(&combo.response);
+        crate::access::from_label(&combo.response);
         if chosen != format {
             git.signing_format = chosen.config_value().to_owned();
             set(msgs, "gpg.format", chosen.config_value());
@@ -99,7 +99,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
                     }
                 }
             });
-            crate::ui::access::from_label(&combo.response);
+            crate::access::from_label(&combo.response);
             if let Some(id) = chosen {
                 git.signing_key = id.clone();
                 set(msgs, "user.signingkey", &id);

@@ -3,12 +3,12 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{CredentialEffect, Effect};
-use crate::msg::{CredentialMsg, JobMsg, Msg};
-use crate::state::trust::Created;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::askpass::Prompt;
 use glowfly_core::git_credential::{CredentialError, Remembered};
+use glowfly_model::effect::{CredentialEffect, Effect};
+use glowfly_model::msg::{CredentialMsg, JobMsg, Msg};
+use glowfly_model::state::trust::Created;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::PathBuf;
 use std::time::Instant;
 

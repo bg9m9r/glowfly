@@ -4,15 +4,15 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::Effect;
-use crate::effect::PrefsEffect;
-use crate::msg::{Msg, PrefsMsg};
-use crate::profile::{IdentityField, ProfileEffect, ProfileMsg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::profiles::{AddForm, ProfilesPage, RenameForm, STILL_SWITCHING};
-use crate::state::{AppState, Modal, PrefPage};
 use glowfly_core::identity::Identity;
 use glowfly_core::settings::{Profile, ProfileId};
+use glowfly_model::effect::Effect;
+use glowfly_model::effect::PrefsEffect;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::profile::{IdentityField, ProfileEffect, ProfileMsg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::profiles::{AddForm, ProfilesPage, RenameForm, STILL_SWITCHING};
+use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::time::Instant;
 
 pub(super) const WORK: ProfileId = ProfileId(1);

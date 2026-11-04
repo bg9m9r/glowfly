@@ -3,15 +3,15 @@
 //! for an unsigned commit. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, with_repo};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::{AppState, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::signature_check::{SignatureCheck, parse_check};
 use glowfly_core::signing::SigningFormat;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
 
 const KEY: &str = "SHA256:nu3mXdiXjT/P69lIp2s2NqrOSBxSCmevSqfmgZp4JuA";

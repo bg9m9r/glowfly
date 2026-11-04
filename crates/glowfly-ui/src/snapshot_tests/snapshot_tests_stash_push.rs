@@ -7,16 +7,16 @@ use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::running;
 use super::snapshot_tests_select::click;
 use super::snapshot_tests_worktrees::{H, pushed};
-use crate::msg::{Msg, StageMsg, StashMsg};
-use crate::state::stashes::StashPushForm;
-use crate::state::{AppState, Modal, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::accesskit::Role;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::{By, Queryable};
 use glowfly_core::repo::FileEntry;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::stash_ops::StashScope;
+use glowfly_model::msg::{Msg, StageMsg, StashMsg};
+use glowfly_model::state::stashes::StashPushForm;
+use glowfly_model::state::{AppState, Modal, Selection};
 use std::path::PathBuf;
 
 fn files(list: &[(&str, char)]) -> Vec<FileEntry> {

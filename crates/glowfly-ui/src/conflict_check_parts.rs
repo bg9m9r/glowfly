@@ -8,10 +8,10 @@ use super::theme::color;
 use super::theme::type_scale;
 use super::widgets::icon::{Icon, paint_icon_sized};
 use super::widgets::truncate::{cut_left_in, middle};
-use crate::state::conflict_check::{self as cc, ConflictReport};
 use eframe::egui::{self, Align2, FontId, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::conflict_check::TargetKind;
 use glowfly_core::i18n::Lang;
+use glowfly_model::state::conflict_check::{self as cc, ConflictReport};
 
 /// A names, file or header row's height.
 pub(super) const ROW_H: f32 = 24.0;

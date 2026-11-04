@@ -3,9 +3,9 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::msg::{Msg, RepoMsg, SearchMsg, TabsMsg};
-use crate::state::{AppState, Selection};
 use git2::Oid;
+use glowfly_model::msg::{Msg, RepoMsg, SearchMsg, TabsMsg};
+use glowfly_model::state::{AppState, Selection};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

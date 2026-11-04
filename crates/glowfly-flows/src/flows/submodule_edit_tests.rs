@@ -4,13 +4,13 @@
 use super::submodule_tests::{PATH, cleanup, last_log, opened, sub};
 use super::tests::{drive, finish, git};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg};
-use crate::state::submodules::edit::EditForm;
-use crate::state::{AppState, Modal};
-use crate::submodule::SubmoduleMsg;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::submodule_ops::{set_branch_cmd, set_url_cmds};
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::submodules::edit::EditForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::submodule::SubmoduleMsg;
 use std::time::Instant;
 
 fn dialog(st: &mut AppState) {

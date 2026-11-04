@@ -5,14 +5,14 @@
 use super::clone::PARENT_CHECK_DELAY;
 use super::tests::{drive, state};
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, InitEffect};
-use crate::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg, RepoMsg};
-use crate::state::init::{InitForm, InitRequest};
-use crate::state::trust::{Created, recorded};
-use crate::state::{AppState, Modal};
 use glowfly_core::init_ops::{FolderFacts, GitignoreTemplate, INITIAL_COMMIT, InitOutcome, InitPlan, License};
 use glowfly_core::settings::{RepoTrust, Settings};
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, InitEffect};
+use glowfly_model::msg::{FolderPurpose, InitMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::state::init::{InitForm, InitRequest};
+use glowfly_model::state::trust::{Created, recorded};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 

@@ -10,16 +10,16 @@ use super::conflict_fold::{fold_back, fold_row};
 use super::diff::ROW_H;
 use super::diff::wrap::{RowMetrics, Wrap};
 use super::theme::color;
-use crate::msg::ConflictMsg;
-use crate::msg::Msg;
-use crate::state::conflict::ConflictView;
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
+use crate::theme::controls;
+use crate::theme::type_scale;
 use eframe::egui::{Align, Color32, Direction, Layout, Rect, RichText, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::conflict_folds::clean_fold;
 use glowfly_core::conflict_rows::{PaneRow, pane_rows, scroll_target};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Chunk, ConflictFile, Segment, Side};
+use glowfly_model::msg::ConflictMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::conflict::ConflictView;
 
 /// A line checkbox's hit area's width, from the pane's edge; it is as tall as the row, so a click
 /// always goes to the row under the pointer. Its painted box stays 14 px.
@@ -87,7 +87,7 @@ pub(super) fn panes(
                     Side::Ours => t.trf("conflict.panes.take_all.ours.name", &[("branch", name)]),
                     Side::Theirs => t.trf("conflict.panes.take_all.theirs.name", &[("branch", name)]),
                 };
-                crate::ui::access::name_button(&all, true, &spoken);
+                crate::access::name_button(&all, true, &spoken);
                 if all.on_hover_text(take_tip).clicked() {
                     msgs.push(Msg::Conflict(ConflictMsg::ConflictTakeAll(side)));
                 }

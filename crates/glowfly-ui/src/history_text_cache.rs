@@ -2,7 +2,7 @@
 //! widest line (for the sideways scroll) and, with wrapping on, where each row starts.
 
 use super::diff::wrap::{self, Wrap};
-use crate::state::history::FileTextData;
+use glowfly_model::state::history::FileTextData;
 use std::sync::Arc;
 
 #[derive(Default)]

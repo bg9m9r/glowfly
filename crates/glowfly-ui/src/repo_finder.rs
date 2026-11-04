@@ -5,15 +5,15 @@
 use super::dialog_frame::{Cx, Dialog, Footer, Size};
 use super::theme::color;
 use super::widgets::{self, Icon, TextField, buttons};
-use crate::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
-use crate::state::repo_lists::favorite_label;
-use crate::state::repo_scan::{FinderRow, RepoScan, matches};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, Align, Layout, Response, RichText, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path::shown;
 use glowfly_core::paths::same_spelling;
+use glowfly_model::msg::{Msg, RecentMsg, RepoMsg, ReposMsg};
+use glowfly_model::state::repo_lists::favorite_label;
+use glowfly_model::state::repo_scan::{FinderRow, RepoScan, matches};
 use std::path::PathBuf;
 
 /// What the dialog lists: the repositories found, the scan's state and the project folders.

@@ -2,11 +2,11 @@
 //! label with something else on screen (a REMOTE group row named "origin", the graph's "SHA"
 //! column header), so an item is found by where it sits: right of its parent, nearest to it.
 
-use crate::msg::Msg;
-use crate::state::AppState;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Node;
 use egui_kittest::kittest::Queryable;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 

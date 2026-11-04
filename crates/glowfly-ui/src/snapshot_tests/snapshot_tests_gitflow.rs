@@ -6,11 +6,7 @@
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
 use super::snapshot_tests_select::click;
-use crate::gitflow::GitFlowMsg;
-use crate::msg::Msg;
-use crate::state::gitflow::{FinishForm, StartForm};
-use crate::state::{AppState, ForgeState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -18,6 +14,10 @@ use glowfly_core::forge::{Issue, Provider, Target};
 use glowfly_core::gitflow::FlowKind;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::gitflow::GitFlowMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::gitflow::{FinishForm, StartForm};
+use glowfly_model::state::{AppState, ForgeState, Modal, PrefPage, PrefsState};
 use std::path::PathBuf;
 
 /// Opens the Git Flow page with its form filled from the snapshot.
@@ -170,7 +170,7 @@ fn gitflow_section() {
     assert!(pushed(&h, &|m| matches!(m, Msg::GitFlow(GitFlowMsg::StartDialog(FlowKind::Hotfix)))));
     h.get_by_label("1.0.0").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Repo(crate::msg::RepoMsg::JumpTo(_)))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Repo(glowfly_model::msg::RepoMsg::JumpTo(_)))));
 
     // The row menu: Finish first, then the local branch actions.
     let at = center(&h, "1.0.0");

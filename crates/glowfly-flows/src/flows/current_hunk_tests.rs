@@ -4,10 +4,10 @@
 
 use super::diff_tests::three_hunks;
 use super::tests::{git, scratch_repo, state};
-use crate::state::AppState;
-use crate::state::diff_nav::{change_rows_of, current_hunk};
 use glowfly_core::repo::{self, DiffTarget, FileDiff, LoadDiffOptions};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_nav::{change_rows_of, current_hunk};
 
 fn rows(st: &AppState) -> Vec<usize> {
     change_rows_of(&st.session.diff.view.as_ref().unwrap().1, &st.settings, &st.session.tab_view.diff_expanded)

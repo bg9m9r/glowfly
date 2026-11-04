@@ -1,7 +1,7 @@
 //! A small Rust lexer for the source checks: it splits a file into code, comments and string or
 //! char literals, so a `//` inside `"https://…"` is not a comment and a `{` inside a string is not
 //! a brace. Shared by glowfly-ui's view checks, the app crate's `source_checks` binary
-//! (`hygiene`, `layering`, `i18n_keys`, `dead_pub`) and its `glyph_check`, which include this file.
+//! (`hygiene`, `layering`, `i18n_keys`, `dead_pub`) and glowfly-ui's `glyph_check`, which include this file.
 //!
 //! The usual entry points: `code_lines` (comments and inline test modules blanked, literals kept),
 //! `bare_lines` (literal text blanked too), `literals` (each string or char literal with its line)

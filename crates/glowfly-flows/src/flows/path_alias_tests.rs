@@ -4,14 +4,14 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::trust_tests::{done, job, untrusted_repo};
-use crate::msg::{GraphMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::palette::entries;
-use crate::state::repo_lists::is_missing;
-use crate::state::tabs::is_repo_at;
-use crate::state::trust::{Created, recorded};
-use crate::worktree::WorktreeMsg;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::{FilterOp, RepoTrust};
+use glowfly_model::msg::{GraphMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::repo_lists::is_missing;
+use glowfly_model::state::tabs::is_repo_at;
+use glowfly_model::state::trust::{Created, recorded};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 
 /// A second name for `dir`, made next to it: a symlink, or on Windows a junction where the
@@ -134,7 +134,7 @@ fn a_worktree_open_by_another_name_closes_that_tab_on_remove() {
     drive(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     drive(&mut st, Msg::Worktree(WorktreeMsg::RemoveDialog(linked.clone())));
     match &st.modal {
-        Some(crate::state::Modal::RemoveWorktree(f)) => assert!(f.close_tabs, "the tab is found by its identity"),
+        Some(glowfly_model::state::Modal::RemoveWorktree(f)) => assert!(f.close_tabs, "the tab is found by its identity"),
         _ => panic!("no Remove dialog: {:?}", st.log.last().map(|l| &l.text)),
     }
     drive(&mut st, Msg::Worktree(WorktreeMsg::Remove));

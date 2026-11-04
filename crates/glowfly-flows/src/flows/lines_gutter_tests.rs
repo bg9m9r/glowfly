@@ -4,8 +4,8 @@
 //! applies to one hunk.
 
 use super::lines_tests::{click, run, selected, unstaged, with_diff};
-use crate::msg::{DiffMsg, Msg};
-use crate::state::lines::LineClick::{Only, Range, Toggle};
+use glowfly_model::msg::{DiffMsg, Msg};
+use glowfly_model::state::lines::LineClick::{Only, Range, Toggle};
 
 #[test]
 fn gutter_clicks_add_and_remove_lines() {

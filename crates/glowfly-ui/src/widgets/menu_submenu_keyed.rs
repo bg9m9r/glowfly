@@ -11,7 +11,7 @@
 //! parent menu (`menu_keys::note_keyed`).
 
 use super::menu_submenu::placement;
-use crate::ui::menu_keys;
+use crate::menu_keys;
 use eframe::egui::menu::MenuRoot;
 use eframe::egui::{self, Frame, Id, LayerId, Order, Rect, Response, Ui};
 

@@ -3,11 +3,11 @@
 //! the list `update` asked to give the focus to, and whether a list has it
 //! (`ui/shortcuts/global.rs` doesn't count it as typing).
 
-use crate::keymap::KeyAction;
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::list_keys::KeySet;
 use eframe::egui;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::list_keys::KeySet;
 
 /// The focus target of the Unstaged (`staged: false`) or Staged Files list.
 pub(crate) fn list_id(staged: bool) -> egui::Id {

@@ -4,8 +4,8 @@
 //! Read again when the watcher starts and after every burst that reloads everything, so an
 //! include added, removed or switched by a branch change is followed.
 
-use crate::effect::WatchTarget;
 use glowfly_core::watch::WatchPaths;
+use glowfly_model::effect::WatchTarget;
 use notify::{RecursiveMode, Watcher};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};

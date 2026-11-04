@@ -15,34 +15,34 @@
 use super::chords::take_press;
 use super::live::{Live, allowed};
 use super::record;
-use crate::custom_commands::{CustomCommandMsg, Target};
-use crate::keymap::{BindingId, Chord, KeyAction, KeyName, runs_command};
-use crate::msg::{
+use crate::central;
+use eframe::egui;
+use glowfly_core::rebase::{QuickEdit, Resume};
+use glowfly_model::custom_commands::{CustomCommandMsg, Target};
+use glowfly_model::keymap::{BindingId, Chord, KeyAction, KeyName, runs_command};
+use glowfly_model::msg::{
     AppMsg, BlameMsg, ConflictMsg, DiffMsg, HistoryMsg, JobMsg, LayoutMsg, Msg, PaletteMsg, PrefsMsg, RebaseMsg, RecentMsg, RepoMsg,
     SearchMsg, SelectionMsg, TabsMsg,
 };
-use crate::state::graph_rows::GraphKey;
-use crate::state::history::HistoryPane;
-use crate::state::layout::{Pane, Panel};
-use crate::state::{AppState, PrefPage, Selection};
-use crate::ui::central;
-use eframe::egui;
-use glowfly_core::rebase::{QuickEdit, Resume};
+use glowfly_model::state::graph_rows::GraphKey;
+use glowfly_model::state::history::HistoryPane;
+use glowfly_model::state::layout::{Pane, Panel};
+use glowfly_model::state::{AppState, PrefPage, Selection};
 use glowfly_model::terminal::TerminalMsg;
 
 /// Turns this frame's shortcut presses into messages (or view-state changes, for the search
 /// bar). While Preferences > Keyboard records a key, it gets every key press instead.
 pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // An open menu's keys are its own: no binding sees them.
-    crate::ui::menu_keys::capture(ctx);
+    crate::menu_keys::capture(ctx);
     if record::keys(ctx, st, msgs) {
         return;
     }
     let live = Live::now(ctx, st);
     // A focused file list takes its own keys before any binding.
     let covered = live.prefs || live.askpass || live.palette || live.dialog || live.sheet;
-    crate::ui::wip_keys::input(ctx, covered, msgs);
-    crate::ui::file_list_keys::input(ctx, covered, msgs);
+    crate::wip_keys::input(ctx, covered, msgs);
+    crate::file_list_keys::input(ctx, covered, msgs);
     // Ctrl+C reaches egui as a Copy event: a binding of it (Copy commit IDs) gets it as a key,
     // while the graph takes the keys and no label text (a commit message) is selected.
     if copy_is_the_graphs(ctx) {
@@ -66,8 +66,8 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     st.view.menu_keys.request = None;
     let bar = st.view.chrome.drawn() || st.settings.show_menu_bar;
     if st.view.chrome.mnemonics() && bar && !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.terminal) {
-        let marks = crate::ui::menu_bar::marks(st);
-        st.view.menu_keys.request = ctx.input_mut(|i| crate::ui::menu_bar::take(i, &marks));
+        let marks = crate::menu_bar::marks(st);
+        st.view.menu_keys.request = ctx.input_mut(|i| crate::menu_bar::take(i, &marks));
     }
     central::escape_key(ctx, st, msgs);
 }
@@ -139,7 +139,7 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         I::FocusCommitMessage => Msg::Shortcut(KeyAction::FocusPane(Pane::Message)),
         I::NextPane | I::PrevPane => {
             let step = if id == I::NextPane { 1 } else { -1 };
-            Msg::Shortcut(KeyAction::FocusPane(Pane::cycle(pane, step, |p| crate::ui::pane_focus::drawn(st, p))))
+            Msg::Shortcut(KeyAction::FocusPane(Pane::cycle(pane, step, |p| crate::pane_focus::drawn(st, p))))
         }
         I::CopyCommitIds => Msg::Selection(SelectionMsg::CopyIds),
         // The graph applies these with its rows.
@@ -195,7 +195,7 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         | I::CherryPick
         | I::RevertCommit
         | I::SwitchBranch
-        | I::OpenDashboard => match crate::state::palette_bindings::command_for(id) {
+        | I::OpenDashboard => match glowfly_model::state::palette_bindings::command_for(id) {
             Some(cmd) => Msg::Palette(PaletteMsg::RunBoundCommand(cmd)),
             None => return,
         },
@@ -206,7 +206,7 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
         | I::ConflictTakeBoth
         | I::ConflictTakeBothTheirsFirst
         | I::ConflictClear
-        | I::ConflictMarkResolved => match crate::state::conflict::keys::conflict_key(st, id) {
+        | I::ConflictMarkResolved => match glowfly_model::state::conflict::keys::conflict_key(st, id) {
             Some(m) => m,
             None => return,
         },
@@ -272,5 +272,5 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &mut AppState, msgs
 /// Whether this frame's Copy is the graph's: it has the keyboard focus or nothing has, and no
 /// label text is selected (that selection copies its own text).
 fn copy_is_the_graphs(ctx: &egui::Context) -> bool {
-    crate::ui::pane_focus::graph_active(ctx) && !egui::text_selection::LabelSelectionState::load(ctx).has_selection()
+    crate::pane_focus::graph_active(ctx) && !egui::text_selection::LabelSelectionState::load(ctx).has_selection()
 }

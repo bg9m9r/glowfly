@@ -3,17 +3,17 @@
 //! and pointer text.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
-use crate::lfs::LfsMsg;
-use crate::msg::{Msg, PrefsMsg};
-use crate::state::lfs::{LfsDiffNote, LfsInstall};
-use crate::state::lfs_notes::{BANNER_TEXT, POINTER_BAR};
-use crate::state::{AppState, PrefPage, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::lfs::LfsPattern;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer};
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::{Msg, PrefsMsg};
+use glowfly_model::state::lfs::{LfsDiffNote, LfsInstall};
+use glowfly_model::state::lfs_notes::{BANNER_TEXT, POINTER_BAR};
+use glowfly_model::state::{AppState, PrefPage, Selection};
 use std::path::PathBuf;
 
 fn pushed(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) -> bool {

@@ -1,15 +1,15 @@
 //! Headless tests for the dashboard's Assigned: pull requests assigned to the signed-in user,
 //! beside the assigned issues.
 
-use crate::effect::{AccountReply, ForgeError, TargetReply};
 use crate::flows::dashboard_tests::{deliver, fetch_of, gh, issue, path, pr, reply, run, scanned, token};
 use crate::flows::state;
-use crate::msg::DashboardMsg;
-use crate::state::AppState;
-use crate::state::dashboard::DashShow;
-use crate::state::dashboard_rows::{Row, counts, sections};
 use glowfly_core::forge::{Account, Issue, Me, Provider, PullRequest, Target};
 use glowfly_core::settings::TrackerChoice;
+use glowfly_model::effect::{AccountReply, ForgeError, TargetReply};
+use glowfly_model::msg::DashboardMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::dashboard::DashShow;
+use glowfly_model::state::dashboard_rows::{Row, counts, sections};
 
 fn assigned(mut p: PullRequest, ids: &[&str]) -> PullRequest {
     p.facets.assignee_ids = ids.iter().map(|s| s.to_string()).collect();

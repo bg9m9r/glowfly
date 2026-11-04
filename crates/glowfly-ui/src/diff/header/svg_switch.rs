@@ -2,11 +2,11 @@
 //! changed lines, Preview the drawing before and after (`diff::preview`). The choice is kept in
 //! the settings for every SVG (`DiffMsg::SetSvgPreview`).
 
-use crate::msg::{DiffMsg, Msg};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::segmented::{Segment, segmented_opts, track_width};
+use crate::theme::sizes::ControlSize;
+use crate::widgets::segmented::{Segment, segmented_opts, track_width};
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{DiffMsg, Msg};
 
 /// The switch's width, or 0 without one.
 pub(super) fn width(ui: &Ui, t: Lang, svg: Option<bool>) -> f32 {

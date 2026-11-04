@@ -4,8 +4,8 @@
 //! read back from painted pixels.
 
 use super::*;
-use crate::ui::snapshot_check::{SKIP_VAR, skip_requested};
-use crate::ui::theme::{self, color};
+use crate::snapshot_check::{SKIP_VAR, skip_requested};
+use crate::theme::{self, color};
 use contrast::{brownish, ratio};
 use glowfly_core::settings::BuiltinTheme;
 
@@ -122,7 +122,7 @@ fn the_art_stays_inside_the_band() {
 fn rendered(p: &Palette) -> (image::RgbaImage, ArtStyle) {
     let pal = *p;
     let s = art_style(p);
-    let mut h = crate::ui::snapshot_check::builder().with_size(art_rect().size()).build_ui(move |ui| {
+    let mut h = crate::snapshot_check::builder().with_size(art_rect().size()).build_ui(move |ui| {
         color::set_palette(&pal);
         let r = art_rect();
         ui.painter().rect_filled(r, 0.0, s.band);

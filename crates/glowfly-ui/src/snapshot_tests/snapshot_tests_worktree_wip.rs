@@ -5,14 +5,14 @@
 use super::snapshot_tests::{harness, remove_fixture, render};
 use super::snapshot_tests_select::{click, row_y};
 use super::snapshot_tests_worktrees::{p, with_worktrees};
-use crate::msg::{Msg, RepoMsg};
-use crate::state::graph_rows::{DisplayRow, GraphRows};
-use crate::state::{AppState, Selection};
-use crate::worktree::WorktreeMsg;
 use eframe::egui::{Key, PointerButton, pos2};
 use glowfly_core::repo::ChangeCounts;
 use glowfly_core::settings::ResizableColumn::{Commit, Date, Refs};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::graph_rows::{DisplayRow, GraphRows};
+use glowfly_model::state::{AppState, Selection};
+use glowfly_model::worktree::WorktreeMsg;
 use std::path::PathBuf;
 
 fn counts(modified: usize, added: usize, deleted: usize) -> ChangeCounts {

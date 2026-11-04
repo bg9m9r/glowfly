@@ -4,10 +4,10 @@
 
 use super::tests::{drive, finish, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LoadKind};
-use crate::msg::{LoadMsg, Msg, RepoMsg, SelectionMsg};
-use crate::state::refresh::Depth;
-use crate::state::{AppState, MAX_COMMITS, Selection};
+use glowfly_model::effect::{Effect, LoadKind};
+use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::refresh::Depth;
+use glowfly_model::state::{AppState, MAX_COMMITS, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -106,7 +106,7 @@ fn scrolling_while_a_refresh_runs_queues_one_load() {
 
     // The first load finishes: the queued one runs, once, with the higher limit.
     let load = running.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
-    let msg = crate::runner::testing::execute(load).unwrap();
+    let msg = glowfly_runner::testing::execute(load).unwrap();
     let fx = update(&mut st, msg, Instant::now());
     assert_eq!(one_full_load(&fx), 2 * limit);
     finish(&mut st, fx);

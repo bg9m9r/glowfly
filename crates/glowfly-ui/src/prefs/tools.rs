@@ -8,16 +8,16 @@
 //! dialog.
 
 use super::{help, row, section, text_field, warn};
-use crate::msg::Msg;
-use crate::state::tool_git::page_hint;
-use crate::state::tools::{bundle_warning, missing_warnings, template_warnings};
-use crate::tools::{ToolKind, ToolsMsg};
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::Ui;
 use glowfly_core::external_tools::git_config::{GitTools, ToolMode};
 use glowfly_core::external_tools::{self, DIFF_PLACEHOLDERS, EDITOR_PLACEHOLDERS, MERGE_PLACEHOLDERS};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ExternalTools, Settings};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::tool_git::page_hint;
+use glowfly_model::state::tools::{bundle_warning, missing_warnings, template_warnings};
+use glowfly_model::tools::{ToolKind, ToolsMsg};
 
 const DIFF_TOOL_ARGS: &str = ExternalTools::DIFF_TOOL_ARGS;
 const MERGE_TOOL_ARGS: &str = ExternalTools::MERGE_TOOL_ARGS;

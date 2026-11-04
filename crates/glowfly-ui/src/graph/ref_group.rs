@@ -5,11 +5,11 @@
 //! the copies; tags, HEAD and every other ref keep their own labels. What grouping asks of the
 //! local branches is indexed once per snapshot (`UpstreamsCache`), not scanned per label.
 
-use crate::state::branches::default_remote;
-use crate::state::remote_branch::split_among;
-use crate::state::tags::remote_list_in;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, RefKind, RefLabel, Snapshot};
+use glowfly_model::state::branches::default_remote;
+use glowfly_model::state::remote_branch::split_among;
+use glowfly_model::state::tags::remote_list_in;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 

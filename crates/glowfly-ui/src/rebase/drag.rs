@@ -2,8 +2,8 @@
 //! the `RebaseMove` sent on release.
 
 use super::rows::{GRIP_X, ROW_H, Slot};
-use crate::msg::{Msg, RebaseMsg};
 use eframe::egui::{CursorIcon, Id, PointerButton, Rect, Ui, pos2, vec2};
+use glowfly_model::msg::{Msg, RebaseMsg};
 
 /// A row being dragged: its index and where on it the pointer grabbed it (from its top edge).
 /// Kept in egui's temporary memory, since the press position is gone by the release frame.

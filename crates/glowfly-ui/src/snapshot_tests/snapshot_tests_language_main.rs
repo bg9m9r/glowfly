@@ -8,14 +8,14 @@ use super::snapshot_tests::{NOW, harness, remove_fixture};
 use super::snapshot_tests_forge_filters::target;
 use super::snapshot_tests_language_check::{self as check, matches, starred};
 use super::snapshot_tests_remotes::with_remotes;
-use crate::msg::Msg;
-use crate::state::{AppState, ForgeState, Status};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::forge::Provider;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::{AppState, ForgeState, Status};
 use std::path::PathBuf;
 
 pub(crate) type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -213,9 +213,10 @@ pub(crate) fn panels(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_remotes(ThemeChoice::Dark, name);
     german(&mut st);
     st.view.sections.tags = true;
-    for which in
-        [crate::state::session_view::empty_sections::Folding::Worktrees, crate::state::session_view::empty_sections::Folding::Submodules]
-    {
+    for which in [
+        glowfly_model::state::session_view::empty_sections::Folding::Worktrees,
+        glowfly_model::state::session_view::empty_sections::Folding::Submodules,
+    ] {
         super::snapshot_tests_empty_states::expand(&mut st, which);
     }
     (st, dir)

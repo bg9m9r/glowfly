@@ -7,13 +7,13 @@
 use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, drive_seeing, finish, git};
 use super::update;
-use crate::effect::Effect;
-use crate::logs::LogsMsg;
-use crate::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
-use crate::state::branches::push::{force_blocked, force_confirm, head_force_confirm};
-use crate::state::{AppState, ToastAction};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::BranchInfo;
+use glowfly_model::effect::Effect;
+use glowfly_model::logs::LogsMsg;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::state::branches::push::{force_blocked, force_confirm, head_force_confirm};
+use glowfly_model::state::{AppState, ToastAction};
 use std::path::Path;
 use std::time::Instant;
 
@@ -31,7 +31,7 @@ fn cleanup(dirs: &[&Path]) {
 
 /// Checks out feature (main, the default branch, is never force pushed) and rewrites its last
 /// commit locally, so the push needs force; reloads the snapshot.
-fn rewrite_feature(st: &mut crate::state::AppState, work: &Path) {
+fn rewrite_feature(st: &mut glowfly_model::state::AppState, work: &Path) {
     git(work, &["switch", "-q", "feature"]);
     git(work, &["commit", "-q", "--amend", "-m", "rewritten"]);
     drive(st, Msg::Repo(RepoMsg::Refresh));

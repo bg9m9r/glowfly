@@ -4,16 +4,16 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, UpdateEffect};
-use crate::msg::{CheckedRelease, Msg, PaletteMsg, UpdateMsg as U};
-use crate::state::AppState;
-use crate::state::palette::PaletteCommand as C;
-use crate::state::palette::entries;
-use crate::state::updates::{RETRY_AFTER, STARTUP_DELAY, UpdateStatus};
 use glowfly_core::app_update::{Arch, Asset, InstallKind, InstallMethod, Platform, Release, Saved, TargetOs, UpdateError, Version};
 use glowfly_core::forge::ServiceError;
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, UpdateEffect};
+use glowfly_model::msg::{CheckedRelease, Msg, PaletteMsg, UpdateMsg as U};
+use glowfly_model::state::AppState;
+use glowfly_model::state::palette::PaletteCommand as C;
+use glowfly_model::state::palette::entries;
+use glowfly_model::state::updates::{RETRY_AFTER, STARTUP_DELAY, UpdateStatus};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 

@@ -4,10 +4,10 @@
 //! id from then on) and stops one being matched.
 
 use super::Waker;
-use crate::msg::{Msg, SearchMsg};
 use glowfly_core::commit_index::CommitIndex;
 use glowfly_core::commit_query::CommitQuery;
 use glowfly_core::repo::CommitInfo;
+use glowfly_model::msg::{Msg, SearchMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;

@@ -10,13 +10,13 @@ mod demo_files;
 mod pull_request;
 mod shots;
 
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::ui::snapshot_check::{SKIP_VAR, crop_image, skip_requested};
-use crate::ui::snapshot_fixtures::harness_scaled;
-use crate::ui::theme;
+use crate::snapshot_check::{SKIP_VAR, crop_image, skip_requested};
+use crate::snapshot_fixtures::harness_scaled;
+use crate::theme;
 use eframe::egui;
 use egui_kittest::Harness;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
 use std::path::Path;
 
 /// Where the screenshots are kept: the repository's `docs/screenshots`.

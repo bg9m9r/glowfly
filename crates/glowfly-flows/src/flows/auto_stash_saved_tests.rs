@@ -7,12 +7,11 @@ use super::auto_stash_flow_tests::{mine_is_back, stopped_merge};
 use super::auto_stash_tests::up;
 use super::cherry_pick_tests::feature_repo;
 use super::tests::{drive, git, skipped, state};
-use crate::effect::{Effect, StashEffect};
-use crate::msg::{AutoStashMsg, Msg, RepoMsg};
-use crate::runner;
-use crate::state::auto_stash::{saved_gone, saved_left, saved_title};
-use crate::state::{AppState, Modal};
 use glowfly_core::i18n::Lang;
+use glowfly_model::effect::{Effect, StashEffect};
+use glowfly_model::msg::{AutoStashMsg, Msg, RepoMsg};
+use glowfly_model::state::auto_stash::{saved_gone, saved_left, saved_title};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -139,7 +138,7 @@ fn finish_naming(st: &mut AppState, fx: Vec<Effect>) -> Vec<&'static str> {
         for effect in fx {
             names.push(effect.name());
             if !skipped(&effect) {
-                queue.extend(runner::testing::execute(effect));
+                queue.extend(glowfly_runner::testing::execute(effect));
             }
         }
         let Some(m) = queue.pop() else { return names };
@@ -153,7 +152,7 @@ fn the_common_case_writes_nothing() {
     std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(up(&mut st, Msg::git("Checkout", &["checkout", "feature", "--"])).is_empty());
-    let fx = up(&mut st, Msg::AutoStash(crate::msg::AutoStashMsg::Stash));
+    let fx = up(&mut st, Msg::AutoStash(glowfly_model::msg::AutoStashMsg::Stash));
     let names = finish_naming(&mut st, fx);
     mine_is_back(&st, &dir);
     let save = Effect::Stash(StashEffect::SaveAutoStashes { cwd: dir.clone(), saved: Vec::new() }).name();

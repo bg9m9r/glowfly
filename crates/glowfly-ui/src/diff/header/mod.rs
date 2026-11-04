@@ -17,13 +17,13 @@ mod view_menu;
 #[cfg(test)]
 use nav::step_tip;
 
-use crate::keymap::Keymap;
-use crate::msg::Msg;
-use crate::state::diff_header::HeaderModel;
-use crate::ui::theme::{color, spacing};
+use crate::theme::{color, spacing};
 use eframe::egui::{Align, Layout, Rect, Sense, Stroke, Ui, UiBuilder, pos2, vec2};
 use fit::Widths;
 use glowfly_core::i18n::Lang;
+use glowfly_model::keymap::Keymap;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::diff_header::HeaderModel;
 
 /// The header's height.
 pub(super) const HEIGHT: f32 = 48.0;

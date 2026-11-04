@@ -9,19 +9,19 @@ use super::file_menu::{self, RowSource};
 use super::panel_size;
 use super::theme::{color, spacing};
 use super::widgets;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::custom_commands::MenuCommands;
-use crate::state::layout::Pane;
-use crate::state::lfs::{TrackContext, track_items};
-use crate::state::panel_layout::Fit;
-use crate::state::{AppState, Selection};
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, RichText};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, LineCount};
 use glowfly_core::settings::SizedPanel;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::custom_commands::MenuCommands;
+use glowfly_model::state::layout::Pane;
+use glowfly_model::state::lfs::{TrackContext, track_items};
+use glowfly_model::state::panel_layout::Fit;
+use glowfly_model::state::{AppState, Selection};
 
 // Declared here rather than beside the other views: the file lists that use it are these panels.
 #[path = "file_reveal.rs"]
@@ -68,7 +68,7 @@ pub(super) struct RowActions<'a> {
     pub history_at: Oid,
     pub in_workdir: bool,
     pub lfs: TrackContext<'a>,
-    pub tools: crate::state::tool_compare::ToolSetup,
+    pub tools: glowfly_model::state::tool_compare::ToolSetup,
     /// Why Create patch from this file… is unavailable (a merge commit).
     pub patch_blocked: Option<&'a str>,
     /// The file's lines added and removed, and the largest change in its list (the bar's

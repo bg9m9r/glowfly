@@ -3,15 +3,15 @@
 //! back to the list of five (then closes), an Alt tap opens the list with File focused, and a
 //! click on the menu button always shows the list.
 
-use crate::state::AppState;
-use crate::state::menu_keys::TopMenu;
-use crate::state::window_chrome::Chrome;
-use crate::ui::menu_bar::keys_tests::{H, focused, key, keys_harness, press, widest};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{remove_fixture, with_repo};
+use crate::menu_bar::keys_tests::{H, focused, key, keys_harness, press, widest};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{remove_fixture, with_repo};
 use eframe::egui::{Key, Modifiers, vec2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::state::AppState;
+use glowfly_model::state::menu_keys::TopMenu;
+use glowfly_model::state::window_chrome::Chrome;
 use std::path::PathBuf;
 
 fn fixture(name: &str) -> (AppState, PathBuf) {

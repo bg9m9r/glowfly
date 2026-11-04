@@ -2,16 +2,16 @@
 //! or Tree mode; their headers are in `details_wip_header.rs`, their rows in `details_wip.rs`.
 
 use super::{OpenFile, Reveal, RowContext, header, wip_file_row};
-use crate::msg::Msg;
-use crate::state::file_folds::FileListId;
-use crate::state::file_tree::under;
-use crate::ui::file_menu;
-use crate::ui::file_menu::folder_menu::{self, FolderStage};
-use crate::ui::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row};
-use crate::ui::theme::color;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::file_menu;
+use crate::file_menu::folder_menu::{self, FolderStage};
+use crate::list_row::file_tree::{FilesKey, ListRows, Shown, folder_row};
+use crate::theme::color;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, RichText};
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot};
+use glowfly_model::msg::Msg;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::file_tree::under;
 
 /// The Unstaged or Staged Files list of the working tree. Conflicted files have their own list
 /// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
@@ -50,20 +50,20 @@ pub(crate) fn file_list(
     let paths = || (0..count).map(|i| entry(i).path.as_str()).collect();
     let files = FilesKey::of(list, all, snap.status_stamp);
     let rows = ListRows::of(ui, ctx.mode, count, files, &paths, ctx.folds.closed(list));
-    let row_h = crate::ui::widgets::LIST_ROW_H;
+    let row_h = crate::widgets::LIST_ROW_H;
     // The list's area, for its focus target: registered before the rows, after the header.
     let h = if count == 0 { row_h } else { (rows.len() as f32 * (row_h + ui.spacing().item_spacing.y)).min(max_h) };
     let area_rect = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), h));
     let pitch = row_h + ui.spacing().item_spacing.y;
     // A page keeps one row of the last in view.
     let page = ((max_h / pitch).floor() as usize).saturating_sub(1);
-    let focus = crate::ui::wip_keys::target(ui, staged, area_rect, &title, page, count > 0);
+    let focus = crate::wip_keys::target(ui, staged, area_rect, &title, page, count > 0);
     let focused = focus.has_focus();
     let area = egui::ScrollArea::vertical().id_salt(id).max_height(max_h).auto_shrink([false, true]);
     if count == 0 {
         let shown = area.show(ui, |ui| ui.label(RichText::new(t.tr("details.wip.none")).color(color::faint())));
         if focused {
-            crate::ui::widgets::file_row_focus(ui, shown_rect(&shown));
+            crate::widgets::file_row_focus(ui, shown_rect(&shown));
         }
         return;
     }
@@ -81,7 +81,7 @@ pub(crate) fn file_list(
     let ctx = RowContext { keyed: true, ..ctx };
     // Only the rows in view are drawn: a working tree can have thousands of changed files.
     let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
-        crate::ui::details::file_reveal::reveal(ui, id, want, index, &range, row_h);
+        crate::details::file_reveal::reveal(ui, id, want, index, &range, row_h);
         for row in range {
             let r = match rows.get(row) {
                 Shown::File { index, depth } => {
@@ -103,15 +103,15 @@ pub(crate) fn file_list(
                 }
             };
             if r.clicked() {
-                crate::ui::wip_keys::request(ui.ctx(), staged);
+                crate::wip_keys::request(ui.ctx(), staged);
             }
             if focused && current == Some(row) {
-                crate::ui::widgets::file_row_focus(ui, r.rect);
+                crate::widgets::file_row_focus(ui, r.rect);
             }
         }
     });
     if focused && current.is_none() {
-        crate::ui::widgets::file_row_focus(ui, shown_rect(&shown));
+        crate::widgets::file_row_focus(ui, shown_rect(&shown));
     }
 }
 

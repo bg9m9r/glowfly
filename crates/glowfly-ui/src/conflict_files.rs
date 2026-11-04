@@ -11,18 +11,18 @@ use super::file_list_keys;
 use super::file_menu;
 use super::theme::color;
 use super::widgets::{Icon, paint_icon};
-use crate::msg::{ConflictMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::conflict_files::{mark_conflicted_body, restorable_paths};
-use crate::state::list_keys::FileList;
-use crate::state::path_hazards::hazard_of;
-use crate::state::tool_compare::merging;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::widgets::buttons;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::sizes::ControlSize;
+use crate::widgets::buttons;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Sense, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, FileEntry, Hazard, ResolvedFile, Snapshot};
+use glowfly_model::msg::{ConflictMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::conflict_files::{mark_conflicted_body, restorable_paths};
+use glowfly_model::state::list_keys::FileList;
+use glowfly_model::state::path_hazards::hazard_of;
+use glowfly_model::state::tool_compare::merging;
 
 /// The rows of both lists and the height each may take.
 pub(super) struct Lists<'a> {

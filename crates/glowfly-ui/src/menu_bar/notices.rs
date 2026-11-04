@@ -2,14 +2,14 @@
 //! syntax definitions and libraries, one folded header each (a block covering many crates names
 //! a few and lists them all inside). Back returns to About; the dialog can be resized.
 
-use crate::msg::{AppMsg, Msg};
-use crate::state::menu_bar::reflow;
-use crate::ui::dialog_frame::{Cx, Dialog, Footer, Size};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::buttons;
+use crate::dialog_frame::{Cx, Dialog, Footer, Size};
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::buttons;
 use eframe::egui::{self, CollapsingHeader, Label, RichText};
 use glowfly_core::notices;
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::menu_bar::reflow;
 
 /// Draws the dialog in `cx.t`; true when it should close.
 pub(crate) fn notices(ui: &mut egui::Ui, cx: Cx, msgs: &mut Vec<Msg>) -> bool {

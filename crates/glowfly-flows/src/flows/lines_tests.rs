@@ -3,15 +3,15 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::msg::TabsMsg;
-use crate::state::AppState;
-use crate::state::lines::LineClick::{self, Only, Range, Toggle};
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::msg::TabsMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::lines::LineClick::{self, Only, Range, Toggle};
 use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::time::Instant;

@@ -5,9 +5,9 @@
 
 use super::selection_tests::refresh;
 use super::{clean_tree, drive, git, scratch_repo, state};
-use crate::keymap::KeyAction;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::Selection;
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::Selection;
 
 #[test]
 fn opening_a_clean_repository_selects_nothing() {

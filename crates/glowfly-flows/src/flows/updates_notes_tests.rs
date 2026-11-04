@@ -4,11 +4,11 @@
 
 use super::update;
 use super::updates_tests::{app, release, send};
-use crate::effect::Effect;
-use crate::msg::{CheckedRelease, Msg, UpdateMsg as U};
-use crate::state::{AppState, Modal};
 use glowfly_core::app_update::{InstallKind, Version};
 use glowfly_core::settings::WhatsNew;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{CheckedRelease, Msg, UpdateMsg as U};
+use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
 pub(super) const NOTES: &str = "# Changelog
@@ -46,7 +46,7 @@ pub(super) fn saves(fx: &[Effect]) -> bool {
     fx.iter().any(|e| matches!(e, Effect::SaveSettings(_)))
 }
 
-pub(super) fn dialog(st: &AppState) -> Option<&crate::state::release_notes::NotesDialog> {
+pub(super) fn dialog(st: &AppState) -> Option<&glowfly_model::state::release_notes::NotesDialog> {
     match &st.modal {
         Some(Modal::ReleaseNotes(d)) => Some(d),
         _ => None,
@@ -81,7 +81,7 @@ fn releases_since_the_last_seen_are_new() {
 fn a_new_install_only_records_the_version() {
     let mut st = upgraded(None);
     st.settings.welcome_done = false;
-    update(&mut st, Msg::Onboarding(crate::onboarding::OnboardingMsg::Startup), Instant::now());
+    update(&mut st, Msg::Onboarding(glowfly_model::onboarding::OnboardingMsg::Startup), Instant::now());
     assert!(st.onboarding.welcome.is_some());
     let fx = send(&mut st, U::Startup, Instant::now());
     assert!(dialog(&st).is_none() && st.updates.notes_pending.is_none());

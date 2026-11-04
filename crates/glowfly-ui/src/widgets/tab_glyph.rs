@@ -8,7 +8,7 @@
 use super::button_look::{self, Press};
 use super::icon_snap;
 use super::quiet_target::State;
-use crate::ui::theme::tokens::{self, HIT_MIN};
+use crate::theme::tokens::{self, HIT_MIN};
 use eframe::egui::{self, Color32, CornerRadius, Id, Painter, Pos2, Rect, Response, Sense, Stroke, Ui, vec2};
 
 #[derive(Clone, Copy, PartialEq, Debug)]

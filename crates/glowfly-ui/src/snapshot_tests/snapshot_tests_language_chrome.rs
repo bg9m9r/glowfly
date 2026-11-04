@@ -3,16 +3,16 @@
 //! in Spanish (its labels must fit their column); and the tab menu, release notes and About
 //! follow the language.
 
-use crate::msg::{Msg, UpdateMsg};
-use crate::state::release_notes::NotesDialog;
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{harness, harness_sized, remove_fixture, settings, with_repo};
 use eframe::egui::{self, Event, Modifiers, PointerButton};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::app_update::Version;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, UpdateMsg};
+use glowfly_model::state::release_notes::NotesDialog;
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -86,7 +86,7 @@ fn tab_menu_and_release_notes_in_german() {
     let mut h = harness(st, true);
     h.run();
     // Right-click the second tab.
-    let at = crate::ui::tabs_tests::tab_centre(&h, 1);
+    let at = crate::tabs_tests::tab_centre(&h, 1);
     for pressed in [true, false] {
         let events = &mut h.input_mut().events;
         events.push(Event::PointerMoved(at));

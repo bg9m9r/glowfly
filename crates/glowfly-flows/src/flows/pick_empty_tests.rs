@@ -4,12 +4,12 @@
 
 use super::selection_tests::{Fixture, commit_on, fixture, git, head, refresh};
 use super::tests::drive;
-use crate::effect::Effect;
-use crate::msg::{Msg, RepoMsg, SelectionMsg};
-use crate::state::journal::short;
-use crate::state::{AppState, Selection};
 use git2::{Oid, RepositoryState};
 use glowfly_core::git_version::GitInfo;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, RepoMsg, SelectionMsg};
+use glowfly_model::state::journal::short;
+use glowfly_model::state::{AppState, Selection};
 
 fn toasts(st: &AppState) -> Vec<(bool, &str)> {
     st.toasts.iter().map(|t| (t.ok, t.text.as_str())).collect()

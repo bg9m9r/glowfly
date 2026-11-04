@@ -1,16 +1,16 @@
 //! Headless tests for the dashboard: which repositories a refresh reads, how their scans plan
 //! the service calls, replies filling the rows, sign-in, staleness and connection changes.
 
-use crate::effect::{AccountReply, DashboardEffect, Effect, FetchJob, FetchReply, ForgeError, TargetReply};
 use crate::flows::state;
-use crate::msg::{DashboardMsg, ForgeMsg, Msg};
-use crate::state::AppState;
-use crate::state::dashboard::{AccountRow, AccountState, DashShow, Phase};
-use crate::state::dashboard_rows::{counts, sections};
-use crate::update::update;
 use glowfly_core::forge::dashboard::{ScannedRepo, code_host, recognized};
 use glowfly_core::forge::{Account, Auth, Connection, Issue, Me, PrFacets, Provider, PullRequest, Target};
 use glowfly_core::settings::TrackerChoice;
+use glowfly_model::effect::{AccountReply, DashboardEffect, Effect, FetchJob, FetchReply, ForgeError, TargetReply};
+use glowfly_model::msg::{DashboardMsg, ForgeMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::dashboard::{AccountRow, AccountState, DashShow, Phase};
+use glowfly_model::state::dashboard_rows::{counts, sections};
+use glowfly_model::update::update;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -98,7 +98,7 @@ fn fresh_results_are_kept_until_stale_and_refresh_always_asks() {
     fresh(&mut st);
     run(&mut st, DashboardMsg::Close);
     assert!(!open(&mut st, now), "fresh");
-    assert!(open(&mut st, now + crate::state::FORGE_REFRESH_INTERVAL), "too old");
+    assert!(open(&mut st, now + glowfly_model::state::FORGE_REFRESH_INTERVAL), "too old");
     // Another connection, or another repository, makes it stale too.
     fresh(&mut st);
     st.settings.connections.push(conn(gh("o", "r").account()));

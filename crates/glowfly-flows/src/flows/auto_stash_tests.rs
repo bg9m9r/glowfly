@@ -4,14 +4,14 @@
 
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, StashEffect};
-use crate::msg::{AutoStashMsg, JobMsg, Msg, RepoMsg, TabsMsg};
-use crate::state::auto_stash::{AutoStashAsk, AutoStashJob, PendingStash, Phase, button};
-use crate::state::{AppState, Modal, RunningJob, Selection};
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::stash_ops::AutoStashFor;
+use glowfly_model::effect::{Effect, StashEffect};
+use glowfly_model::msg::{AutoStashMsg, JobMsg, Msg, RepoMsg, TabsMsg};
+use glowfly_model::state::auto_stash::{AutoStashAsk, AutoStashJob, PendingStash, Phase, button};
+use glowfly_model::state::{AppState, Modal, RunningJob, Selection};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -90,7 +90,7 @@ fn dirty_tree_asks_naming_operation_and_count() {
     assert_eq!(a.files, 2);
     assert!(!a.always);
     assert_eq!(button(Lang::En, &a.op), "Stash and check out");
-    let body = crate::state::auto_stash::body(Lang::En, &a.op, a.files);
+    let body = glowfly_model::state::auto_stash::body(Lang::En, &a.op, a.files);
     assert_eq!(body, "You have 2 changed files. Glowfly stashes them, checks out feature and puts them back afterwards.");
 
     up(&mut st, Msg::CloseModal);
@@ -178,8 +178,11 @@ fn stale_load_never_puts_back() {
     let from = st.load_gen + 1;
     pending(&mut st, &dir, from);
     let snap = glowfly_core::repo::load(&dir, &glowfly_core::repo::LoadOptions::all(100)).unwrap();
-    let old =
-        Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: crate::effect::LoadKind::Refresh, result: Ok(Box::new(snap)) });
+    let old = Msg::Repo(RepoMsg::RepoLoaded {
+        generation: st.load_gen,
+        kind: glowfly_model::effect::LoadKind::Refresh,
+        result: Ok(Box::new(snap)),
+    });
     st.loading = true;
     let fx = up(&mut st, old);
     assert_eq!(put_backs(&fx), 0, "a load from before the job ended: {fx:?}");
@@ -252,9 +255,9 @@ fn held_job_drops_its_mark() {
 
 #[test]
 fn interactive_rebase_with_always_stash_skips_question() {
-    use crate::effect::RebaseEffect;
-    use crate::msg::RebaseMsg;
     use glowfly_core::rebase::{RebaseAction, RebaseBase};
+    use glowfly_model::effect::RebaseEffect;
+    use glowfly_model::msg::RebaseMsg;
     let (mut st, dir, _) = super::rebase_tests::with_panel("as-rebase", RebaseBase::FromCommit(Oid::zero()));
     drive(&mut st, Msg::Rebase(RebaseMsg::RebaseMove { from: 2, to: 0 }));
     std::fs::write(dir.join("a.txt"), "one\nedited\n").unwrap();
@@ -290,7 +293,7 @@ fn gate_records_the_retry_of_a_guarded_command() {
 fn approval_beats_a_snapshot_that_shows_no_changes() {
     let (mut st, dir) = clean_repo("as-gate-approved");
     st.auto_stash.approved =
-        Some(crate::state::auto_stash::Approval { op: AutoStashFor::Checkout { target: "feature".into() }, stash: true });
+        Some(glowfly_model::state::auto_stash::Approval { op: AutoStashFor::Checkout { target: "feature".into() }, stash: true });
     let fx = up(&mut st, checkout_feature());
     assert_eq!(
         git_cmds(&fx),

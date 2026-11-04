@@ -5,15 +5,15 @@
 use super::history_tests::{empty_diff, opened};
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::keymap::KeyAction;
-use crate::msg::{DiffMsg, HistoryMsg, LayoutMsg, Msg, RepoMsg, StageMsg, TabsMsg};
-use crate::state::AppState;
-use crate::state::diff_nav;
-use crate::state::file_folds::FileListId;
-use crate::state::list_keys::{ListKey, ListMove};
 use glowfly_core::repo::{self, DiffTarget, FileEntry, Hazard, HistoryStart, LoadOptions};
 use glowfly_core::settings::FileListMode;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::{DiffMsg, HistoryMsg, LayoutMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::diff_nav;
+use glowfly_model::state::file_folds::FileListId;
+use glowfly_model::state::list_keys::{ListKey, ListMove};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -132,7 +132,7 @@ fn next_change_walks_the_tree_and_opens_collapsed_folders() {
     let (mut st, dir) = tree_repo("tree-nav");
     git(&dir, &["add", "src/c.txt"]);
     reload(&mut st, &dir);
-    st.session.selection = crate::state::Selection::Wip;
+    st.session.selection = glowfly_model::state::Selection::Wip;
     // Unstaged in tree order (src/b.txt, a.txt), then Staged (src/c.txt).
     assert_eq!(diff_nav::next_file(&st, &un("src/b.txt"), 1), Some(un("a.txt")));
     assert_eq!(diff_nav::next_file(&st, &un("a.txt"), 1), Some(DiffTarget::Staged("src/c.txt".into())));
@@ -163,14 +163,14 @@ fn commit_details_walk_in_tree_order() {
     let detail = repo::commit_detail(&dir, head).unwrap();
     let flat: Vec<&str> = detail.files.iter().map(|f| f.path.as_str()).collect();
     assert_eq!(flat, ["a.txt", "a/b.txt"], "git's order");
-    st.session.selection = crate::state::Selection::Commit(head);
+    st.session.selection = glowfly_model::state::Selection::Commit(head);
     st.session.detail = Some(detail);
     let c = |p: &str| DiffTarget::Commit(head, p.into());
     assert_eq!(diff_nav::next_file(&st, &c("a/b.txt"), 1), Some(c("a.txt")), "the folder first");
-    assert_eq!(crate::state::file_folds::list_of(&st, &c("a.txt")), Some(FileListId::Commit));
+    assert_eq!(glowfly_model::state::file_folds::list_of(&st, &c("a.txt")), Some(FileListId::Commit));
     st.settings.file_list_mode = FileListMode::List;
     assert_eq!(diff_nav::next_file(&st, &c("a.txt"), 1), Some(c("a/b.txt")));
-    assert_eq!(crate::state::file_folds::list_of(&st, &c("a.txt")), None, "no tree in List mode");
+    assert_eq!(glowfly_model::state::file_folds::list_of(&st, &c("a.txt")), None, "no tree in List mode");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -248,6 +248,6 @@ fn a_folder_rows_history_starts_at_its_commit() {
         "{fx:?}"
     );
     let v = st.session.history.view.as_ref().unwrap();
-    assert_eq!(v.kind, crate::state::history::HistoryKind::Folder);
+    assert_eq!(v.kind, glowfly_model::state::history::HistoryKind::Folder);
     let _ = std::fs::remove_dir_all(&dir);
 }

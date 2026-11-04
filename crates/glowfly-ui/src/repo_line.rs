@@ -4,9 +4,9 @@
 //! the panels and under menus and dialog backdrops.
 
 use super::theme::color;
-use crate::state::AppState;
-use crate::state::repo_colours::active_colour;
 use eframe::egui::{self, Id, LayerId, Order, Rect, vec2};
+use glowfly_model::state::AppState;
+use glowfly_model::state::repo_colours::active_colour;
 
 /// The line's height.
 const LINE_H: f32 = 2.0;

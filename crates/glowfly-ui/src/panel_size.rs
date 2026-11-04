@@ -4,12 +4,12 @@
 //! is set to its fitted size, except while its edge is dragged (egui then follows the pointer
 //! within the fitted range) and on the frame the drag ends, when the new size is reported.
 
-use crate::msg::{LayoutMsg, Msg};
-use crate::state::AppState;
-use crate::state::layout::{DetailsShape, details_shape};
-use crate::state::panel_layout::{self, DETAILS, Fit, MAIN_MIN_WIDTH, SIDEBAR, Spec};
 use eframe::egui::{self, Id, Pos2, Rect, Vec2, containers::panel::PanelState};
 use glowfly_core::settings::SizedPanel;
+use glowfly_model::msg::{LayoutMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{DetailsShape, details_shape};
+use glowfly_model::state::panel_layout::{self, DETAILS, Fit, MAIN_MIN_WIDTH, SIDEBAR, Spec};
 
 /// The egui ids of the drawers sized here.
 pub const SIDEBAR_ID: &str = "refs";

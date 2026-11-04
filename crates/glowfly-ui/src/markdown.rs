@@ -8,10 +8,10 @@ use super::markdown_cache::{CodeBlock, MarkdownCache, Rendered};
 use super::markdown_inline::{self, Look};
 use super::theme::{color, type_scale};
 use super::widgets::{self, Icon};
-use crate::msg::Msg;
 use eframe::egui::{self, Align, Align2, Color32, FontId, Layout, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::markdown::{Block, Inline, Item};
+use glowfly_model::msg::Msg;
 use std::cell::Cell;
 
 /// The width of a list item's bullet, number or task box column.

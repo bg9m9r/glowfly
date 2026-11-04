@@ -1,11 +1,11 @@
 //! Blaming a file for the blame view, with its syntax spans (`Effect::LoadBlame`).
 
 use super::execute::{Cx, Execute};
-use crate::effect::BlameRequest;
-use crate::msg::{BlameMsg, Msg};
-use crate::state::blame::BlameData;
 use glowfly_core::highlight::{self, SyntaxHint};
 use glowfly_core::repo;
+use glowfly_model::effect::BlameRequest;
+use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::state::blame::BlameData;
 
 pub(super) fn load(r: BlameRequest) -> Msg {
     // A HEAD blame re-run after HEAD moved follows the file through renames since then; a name
@@ -17,7 +17,10 @@ pub(super) fn load(r: BlameRequest) -> Msg {
     let read = match repo::blame_file(&r.workdir, &path, r.at, &r.opts) {
         // A partial clone hasn't downloaded every version: blame again once it has.
         Err(glowfly_core::error::Error::MissingContent(missing)) => {
-            return Msg::Partial(crate::msg::PartialMsg::ContentMissing { missing, retry: Box::new(crate::effect::Effect::LoadBlame(r)) });
+            return Msg::Partial(glowfly_model::msg::PartialMsg::ContentMissing {
+                missing,
+                retry: Box::new(glowfly_model::effect::Effect::LoadBlame(r)),
+            });
         }
         read => read,
     };

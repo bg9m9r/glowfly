@@ -44,7 +44,7 @@ impl Journey {
     #[track_caller]
     pub fn open_palette(&mut self, query: &str) {
         self.toasts.clear();
-        let chord = self.state().keymap.chords(crate::keymap::BindingId::Palette)[0];
+        let chord = self.state().keymap.chords(glowfly_model::keymap::BindingId::Palette)[0];
         let key = egui::Key::from_name(chord.key.config()).expect("the palette's key is an egui key");
         let (m, mac) = (chord.mods, cfg!(target_os = "macos"));
         let command = egui::Modifiers { ctrl: !mac, mac_cmd: mac, command: true, ..egui::Modifiers::NONE };

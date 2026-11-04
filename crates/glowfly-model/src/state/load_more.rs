@@ -16,7 +16,7 @@ use std::time::Duration;
 
 /// How long after a failed load for more each automatic retry waits; after the last one only
 /// Try again loads again.
-pub const AUTO_RETRY_DELAYS: [Duration; 2] = [Duration::from_secs(3), Duration::from_secs(10)];
+pub(crate) const AUTO_RETRY_DELAYS: [Duration; 2] = [Duration::from_secs(3), Duration::from_secs(10)];
 
 /// How many batches of older history one filtering search loads by itself.
 pub const DEEPER_BATCHES: u8 = 5;

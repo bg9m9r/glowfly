@@ -16,9 +16,9 @@
 //! corners, and outside the edge of a framed one that stands alone.
 
 use super::buttons::Kind;
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::tokens::{self, DANGER_QUIET_HOVER, DANGER_QUIET_PRESSED, FILL_HOVER, FILL_PRESSED, HIT_MIN};
+use crate::theme::color::{self, Palette};
+use crate::theme::sizes::ControlSize;
+use crate::theme::tokens::{self, DANGER_QUIET_HOVER, DANGER_QUIET_PRESSED, FILL_HOVER, FILL_PRESSED, HIT_MIN};
 use eframe::egui::{Color32, CornerRadius, Painter, Rect, Stroke, StrokeKind};
 
 /// A button's interaction state.

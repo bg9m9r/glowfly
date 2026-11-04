@@ -3,22 +3,22 @@
 
 use super::tests::{drive, scratch_repo, state};
 use super::update;
-use crate::effect::{Effect, LocalOp};
-use crate::keymap::KeyAction;
-use crate::msg::CredentialMsg;
-use crate::msg::DiffMsg;
-use crate::msg::Msg;
-use crate::msg::PaletteMsg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::conflict::ConflictView;
-use crate::state::history::FileHistoryView;
-use crate::state::lines::LineClick;
-use crate::state::palette::{PaletteCommand as C, entries};
-use crate::state::{AppState, Modal, PrefPage, PrefsState, Selection};
 use glowfly_core::askpass::Prompt;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk, HunkOp, LoadOptions};
 use glowfly_core::settings::DiffMode;
+use glowfly_model::effect::{Effect, LocalOp};
+use glowfly_model::keymap::KeyAction;
+use glowfly_model::msg::CredentialMsg;
+use glowfly_model::msg::DiffMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::PaletteMsg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::history::FileHistoryView;
+use glowfly_model::state::lines::LineClick;
+use glowfly_model::state::palette::{PaletteCommand as C, entries};
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState, Selection};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -297,8 +297,11 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     let commit = DiffTarget::Commit(st.snap.as_ref().unwrap().commits[0].oid, "f.txt".into());
     st.session.diff.view = Some((commit.clone(), super::diff_tests::three_hunks().into()));
     st.view.diff_visible_rows = 40;
-    let rows =
-        crate::state::diff_nav::change_rows_of(&st.session.diff.view.as_ref().unwrap().1, &st.settings, &st.session.tab_view.diff_expanded);
+    let rows = glowfly_model::state::diff_nav::change_rows_of(
+        &st.session.diff.view.as_ref().unwrap().1,
+        &st.settings,
+        &st.session.tab_view.diff_expanded,
+    );
     st.session.tab_view.diff_top_row = rows[1];
     assert!(matches!(revert_part(&key(&mut st, KeyAction::RevertHunk)), Some(RevertPart::Hunk { index: 1, .. })));
     st.session.tab_view.diff_top_row = 0;
@@ -315,7 +318,7 @@ fn r_reverts_the_current_hunk_or_the_lines() {
     st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the conflict view");
     st.session.conflict.view = None;
-    st.session.blame.view = Some(crate::state::blame::BlameView::loading("f.txt".into(), None));
+    st.session.blame.view = Some(glowfly_model::state::blame::BlameView::loading("f.txt".into(), None));
     assert!(key(&mut st, KeyAction::RevertHunk).is_empty(), "under the blame view");
     st.session.blame.view = None;
     st.session.diff.view = Some((unstaged(), one_hunk().into()));

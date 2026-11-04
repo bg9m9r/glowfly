@@ -5,9 +5,9 @@
 use super::conflict_mark_undo_tests::{binary_conflict, opened, stages};
 use super::conflict_tests::two_conflicts;
 use super::tests::drive;
-use crate::msg::{ConflictMsg, JobMsg, Msg, StageMsg};
 use glowfly_core::repo::Side;
 use glowfly_core::undo::{Action, WorkAt};
+use glowfly_model::msg::{ConflictMsg, JobMsg, Msg, StageMsg};
 
 #[test]
 fn a_one_file_toast_offers_no_undo_for_several_files() {

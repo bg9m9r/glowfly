@@ -5,12 +5,12 @@
 //! mark; after you chose not to trust the repository a quiet button with the shield.
 
 use super::widgets::{Icon, buttons};
-use crate::msg::{Msg, TrustMsg};
-use crate::state::AppState;
-use crate::state::trust::{self, Standing};
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::type_scale;
+use crate::theme::sizes::ControlSize;
+use crate::theme::type_scale;
 use eframe::egui::{self, Sense};
+use glowfly_model::msg::{Msg, TrustMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::trust::{self, Standing};
 
 /// The chip's label.
 const LABEL: &str = "Untrusted";

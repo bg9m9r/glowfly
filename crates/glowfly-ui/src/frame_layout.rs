@@ -8,10 +8,10 @@ use super::{
     UiCache, activity_log, central, details, git_banner, gitflow_resume_banner, lfs_banner, menu_bar, op_strip, panel_rails, panel_size,
     prefs, repo_line, settings_banner, sidebar, sign_in_banner, status, tabs, terminal, title_bar, toolbar, tour,
 };
-use crate::msg::Msg;
-use crate::state::AppState;
-use crate::state::layout::{DetailsShape, Panel, details_shape};
 use eframe::egui;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::layout::{DetailsShape, Panel, details_shape};
 
 /// Draws every panel of the window (Preferences in place of all but the status bar and a drawn
 /// title bar while open); returns where the chrome ends, for the toasts.
@@ -52,7 +52,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     let top = ctx.available_rect().top();
     activity_log::show(ctx, st, msgs);
     side_panels(ctx, st, cache, msgs);
-    let central = if crate::state::terminal::maximized_shown(st) {
+    let central = if glowfly_model::state::terminal::maximized_shown(st) {
         terminal::show_in_main(ctx, st, msgs)
     } else {
         central::show(ctx, st, cache, msgs)

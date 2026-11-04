@@ -6,15 +6,14 @@ use super::submodule_tests::{PATH, cleanup, last_log, opened, sub};
 use super::tests::{drive, finish};
 use super::trust_held_tests::held_repo;
 use super::update;
-use crate::effect::{Effect, SubmoduleEffect};
-use crate::msg::{Msg, RepoMsg};
-use crate::runner;
-use crate::state::submodules::remove::RemoveForm;
-use crate::state::{AppState, Modal};
-use crate::submodule::{RemoveRequest, SubmoduleMsg};
 use git2::Oid;
 use glowfly_core::repo::{SubmoduleInfo, SubmoduleState};
 use glowfly_core::submodule_ops::{RemovalFacts, RemoveOutcome, RemoveReport};
+use glowfly_model::effect::{Effect, SubmoduleEffect};
+use glowfly_model::msg::{Msg, RepoMsg};
+use glowfly_model::state::submodules::remove::RemoveForm;
+use glowfly_model::state::{AppState, Modal};
+use glowfly_model::submodule::{RemoveRequest, SubmoduleMsg};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -245,7 +244,7 @@ fn removes_a_submodule_end_to_end() {
     assert!(store(&parent).exists());
     let fx = run(&mut st, sm(SubmoduleMsg::RemoveDialog(PATH.into())));
     for e in fx {
-        let m = runner::testing::execute(e).expect("the check answers");
+        let m = glowfly_runner::testing::execute(e).expect("the check answers");
         drive(&mut st, m);
     }
     assert!(matches!(st.modal, Some(Modal::RemoveSubmodule(_))));

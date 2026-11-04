@@ -5,13 +5,13 @@
 
 use super::issue_tests::{details, done, err, github, jobs, open_repo, reply, run};
 use super::update;
-use crate::effect::{ForgeError, IssueCall, IssueReply};
-use crate::msg::{IssueMsg, Msg, TabsMsg};
-use crate::state::AppState;
-use crate::state::issue::{Details, IssueView};
-use crate::state::issue_comment::{FIELD, POSTING, comment_blocked};
 use glowfly_core::forge::{Auth, Entry, EntryKind, Provider, Target};
 use glowfly_core::settings::RepoTrust;
+use glowfly_model::effect::{ForgeError, IssueCall, IssueReply};
+use glowfly_model::msg::{IssueMsg, Msg, TabsMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::issue::{Details, IssueView};
+use glowfly_model::state::issue_comment::{FIELD, POSTING, comment_blocked};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -43,12 +43,12 @@ fn commented(workdir: &Path, generation: u64, key: &str, result: Result<Entry, F
 }
 
 /// Feeds `st` the answer for issue `key` from the repository at `workdir`.
-fn answer(st: &mut AppState, workdir: &Path, key: &str, result: Result<Entry, ForgeError>) -> Vec<crate::effect::Effect> {
+fn answer(st: &mut AppState, workdir: &Path, key: &str, result: Result<Entry, ForgeError>) -> Vec<glowfly_model::effect::Effect> {
     let msg = commented(workdir, st.session.issue.generation, key, result);
     run(st, msg)
 }
 
-fn post(st: &mut AppState, text: &str) -> Vec<crate::effect::Effect> {
+fn post(st: &mut AppState, text: &str) -> Vec<glowfly_model::effect::Effect> {
     view_mut(st).comment.text = text.into();
     run(st, IssueMsg::PostComment)
 }
@@ -82,10 +82,10 @@ fn post_is_blocked_with_reasons() {
     assert_eq!(comment_blocked(view(&st), true).as_deref(), Some("Comments on GitHub can have at most 65,536 characters"));
 
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::NotTrusted);
     assert!(jobs(&post(&mut st, "Thanks")).is_empty(), "untrusted");
     assert_eq!(comment_blocked(view(&st), st.runs_git_unasked()).as_deref(), Some("Trust this repository to comment"));
-    crate::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
+    glowfly_model::state::trust::record(&mut st.settings, &real, RepoTrust::Trusted);
 
     view_mut(&mut st).comment.posting = true;
     assert!(jobs(&post(&mut st, "Thanks")).is_empty(), "posting");

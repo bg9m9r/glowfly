@@ -3,14 +3,14 @@
 //! tests check the chip opens the notes and the choice is kept.
 
 use super::{app, prefs, sent, status_bar, the_offer};
-use crate::msg::UpdateMsg;
-use crate::state::AppState;
-use crate::state::updates::UpdateStatus;
-use crate::ui::snapshot_check::CheckSnapshot;
-use crate::ui::snapshot_tests::{NOW, harness, harness_sized};
+use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::{NOW, harness, harness_sized};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{NewsChip, ThemeChoice, WhatsNew};
+use glowfly_model::msg::UpdateMsg;
+use glowfly_model::state::AppState;
+use glowfly_model::state::updates::UpdateStatus;
 
 const CHIP: &str = "What's new in 0.2.0";
 

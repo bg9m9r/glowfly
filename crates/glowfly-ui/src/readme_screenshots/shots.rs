@@ -4,13 +4,13 @@
 
 use super::demo::{self, Demo};
 use super::{harness, shoot};
-use crate::state::conflict::ConflictView;
-use crate::state::{AppState, Selection, Tab};
-use crate::ui::snapshot_fixtures::{NOW, scenes::fill_lists, settings};
+use crate::snapshot_fixtures::{NOW, scenes::fill_lists, settings};
 use eframe::egui;
 use glowfly_core::repo::{self, Choice, DiffTarget, LoadOptions};
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
 use glowfly_core::{highlight, intraline};
+use glowfly_model::state::conflict::ConflictView;
+use glowfly_model::state::{AppState, Selection, Tab};
 use std::sync::Arc;
 use std::time::Instant;
 

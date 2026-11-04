@@ -4,16 +4,16 @@
 //! for the repository, each a job of its own.
 
 use super::{help, row, text_field};
-use crate::msg::PrefsMsg;
-use crate::msg::{FolderPurpose, LoadMsg, Msg};
-use crate::state::prefs::GitConfigValues;
-use crate::state::repo_identity::inherit_hints;
-use crate::ui::widgets::buttons;
+use crate::widgets::buttons;
 use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::StatusSpeedups;
 use glowfly_core::repo_identity::RepoIdentity;
 use glowfly_core::settings::Settings;
+use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{FolderPurpose, LoadMsg, Msg};
+use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::repo_identity::inherit_hints;
 
 /// What the hooks page's file system monitor row offers.
 pub struct MonitorRow {

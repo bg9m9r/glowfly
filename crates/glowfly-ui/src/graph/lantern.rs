@@ -10,9 +10,9 @@
 
 use super::nodes::{NodeKind, radius};
 use super::row_look::{RowLook, top_fill};
-use crate::ui::theme::color::{self, Palette};
-use crate::ui::theme::contrast::tint;
-use crate::ui::widgets::row_fill::HOVER_SHADOW_H;
+use crate::theme::color::{self, Palette};
+use crate::theme::contrast::tint;
+use crate::widgets::row_fill::HOVER_SHADOW_H;
 use eframe::egui::{Color32, Mesh, Painter, Pos2, Rect, Stroke, emath::GuiRounding, vec2};
 use git2::Oid;
 use glowfly_core::repo::CommitInfo;
@@ -170,7 +170,7 @@ mod pixel_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::builtin;
+    use crate::theme::builtin;
     use glowfly_core::settings::BuiltinTheme;
 
     #[test]
@@ -222,7 +222,7 @@ mod tests {
     /// Halfway out the glow still lifts the row (docs/COLOUR.md, "lantern").
     #[test]
     fn the_glow_still_shows_halfway_out() {
-        use crate::ui::theme::contrast::ratio;
+        use crate::theme::contrast::ratio;
         for t in BuiltinTheme::ALL {
             let p = builtin(t);
             if p.high_contrast {

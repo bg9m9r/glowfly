@@ -17,7 +17,7 @@ pub fn time_label(ui: &mut Ui, settings: &Settings, secs: i64, now: i64, offset:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::widgets::truncate::tests::in_panel;
+    use crate::widgets::truncate::tests::in_panel;
     use eframe::egui;
 
     #[test]

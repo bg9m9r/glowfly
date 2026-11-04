@@ -4,16 +4,16 @@
 use super::branch_tests::with_origin;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::CommitMsg;
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::StageMsg;
-use crate::state::commit::pushes_after;
-use crate::state::{AppState, RunningJob};
 use glowfly_core::gitcli::{args, run};
 use glowfly_core::repo::FileEntry;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::StageMsg;
+use glowfly_model::state::commit::pushes_after;
+use glowfly_model::state::{AppState, RunningJob};
 use std::path::Path;
 use std::time::Instant;
 
@@ -78,7 +78,7 @@ fn shortcut_refusals_toast() {
     let log_before = st.log.len();
     assert!(update(&mut st, Msg::Commit(CommitMsg::Commit), Instant::now()).is_empty());
     // Only the first missing step: staging, before the summary.
-    let key = st.keymap.hint(crate::keymap::BindingId::StageAllAndCommit).expect("a default key").to_owned();
+    let key = st.keymap.hint(glowfly_model::keymap::BindingId::StageAllAndCommit).expect("a default key").to_owned();
     let stage = format!("Stage changes to commit, or press {key} to stage all and commit.");
     assert_eq!(last_toast(&st), (false, stage.clone()));
     assert!(!st.view.show_log, "a refused shortcut doesn't open the log");
@@ -112,7 +112,7 @@ fn skip_hooks_bypasses_failing_pre_commit() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     // The hook makes the repository ask about trust; trusted, the commit runs it.
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
-    crate::state::trust::record_as_found(&mut st.settings, &real);
+    glowfly_model::state::trust::record_as_found(&mut st.settings, &real);
     drive(&mut st, Msg::CloseModal);
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     let head = rev(&dir, "HEAD");

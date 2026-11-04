@@ -22,8 +22,8 @@ use super::widgets::chip::{self, ChipSize, Look};
 use super::widgets::quiet_target::{self, State};
 use super::widgets::tab_glyph::{self, TabGlyph};
 use super::widgets::{Cut, Icon, icon, paint_cut_text, paint_icon_sized, truncate};
-use crate::state::tabs::glance::Mark;
 use eframe::egui::{self, Color32, FontId, Rect, Stroke, StrokeKind, pos2, vec2};
+use glowfly_model::state::tabs::glance::Mark;
 
 /// A tab's corners: rounded at the top, square where it meets the bar's bottom.
 pub(super) const ROUNDING: egui::CornerRadius = radius::top(radius::LG);
@@ -276,8 +276,8 @@ mod tests {
     /// reads at 4.5:1 on its bar.
     #[test]
     fn the_marks_read_in_every_theme() {
-        use crate::ui::theme::builtin;
-        use crate::ui::theme::contrast::ratio;
+        use crate::theme::builtin;
+        use crate::theme::contrast::ratio;
         use glowfly_core::settings::BuiltinTheme;
         let mut failures = Vec::new();
         for t in BuiltinTheme::ALL {

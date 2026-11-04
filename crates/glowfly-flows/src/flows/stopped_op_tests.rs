@@ -5,13 +5,13 @@
 
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git};
-use crate::msg::{CommitMsg, Msg, RepoMsg};
-use crate::state::AppState;
-use crate::state::commit::{amend_blocked, commit_blocked};
-use crate::state::op_actions::{banner_title, state_actions};
-use crate::state::op_confirm::banner_msg;
 use git2::RepositoryState;
 use glowfly_core::gitcli::{args, run};
+use glowfly_model::msg::{CommitMsg, Msg, RepoMsg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::commit::{amend_blocked, commit_blocked};
+use glowfly_model::state::op_actions::{banner_title, state_actions};
+use glowfly_model::state::op_confirm::banner_msg;
 use std::path::{Path, PathBuf};
 
 fn opened(dir: &Path) -> AppState {

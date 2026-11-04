@@ -2,11 +2,11 @@
 
 use super::tests::{drive, git, state};
 use super::update;
-use crate::effect::OsEffect;
-use crate::effect::{Effect, ReposEffect};
-use crate::msg::{FolderPurpose, Msg, PrefsMsg, ReposMsg, ScanFound};
-use crate::state::repo_scan::{FoundRepo, project_folders};
-use crate::state::{AppState, Modal};
+use glowfly_model::effect::OsEffect;
+use glowfly_model::effect::{Effect, ReposEffect};
+use glowfly_model::msg::{FolderPurpose, Msg, PrefsMsg, ReposMsg, ScanFound};
+use glowfly_model::state::repo_scan::{FoundRepo, project_folders};
+use glowfly_model::state::{AppState, Modal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

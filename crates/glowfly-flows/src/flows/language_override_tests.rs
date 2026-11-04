@@ -2,10 +2,10 @@
 //! (`linguist-language`), follows edits to that file on a reload, and highlights `.jsx`.
 
 use super::tests::{drive, git, scratch_repo, state};
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::state::AppState;
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::state::AppState;
 use std::path::{Path, PathBuf};
 
 /// The syntax of the diff on screen; `None` when it is plain or nothing is open.

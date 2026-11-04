@@ -5,13 +5,13 @@
 
 use super::snapshot_tests::{harness, remove_fixture, settings, try_git};
 use super::snapshot_tests_search::{searching, send, with_two_authors};
-use crate::msg::{CloneMsg, DashboardMsg, LoadMsg, Msg, PrefsMsg, RepoMsg, SearchMsg};
-use crate::state::{AppState, PrefPage, Selection};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::{self, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{CloneMsg, DashboardMsg, LoadMsg, Msg, PrefsMsg, RepoMsg, SearchMsg};
+use glowfly_model::state::{AppState, PrefPage, Selection};
 use std::time::Instant;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;

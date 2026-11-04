@@ -9,7 +9,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::settings::RepoForgeFilters;
 
 /// "3 open pull requests" (or merge requests, as the service calls them).
-pub fn open_requests_text(t: Lang, noun: &str, n: usize) -> String {
+pub(crate) fn open_requests_text(t: Lang, noun: &str, n: usize) -> String {
     if noun == "merge request" { t.trn("status.open_merge_requests", n, &[]) } else { t.trn("status.open_pull_requests", n, &[]) }
 }
 

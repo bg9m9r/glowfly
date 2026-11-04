@@ -10,14 +10,14 @@
 
 use super::quiet_target::{self, State};
 use super::{Icon, PAD_X, SECTION_H, TITLE_X, chevron, paint_icon_sized, row_fill};
-use crate::msg::Msg;
-use crate::state::section_actions::SectionAction;
-use crate::ui::theme::sizes::ControlSize;
-use crate::ui::theme::{color, fonts, type_scale};
-use crate::ui::widgets::menu;
-use crate::ui::widgets::row_menu::RowMenuExt;
+use crate::theme::sizes::ControlSize;
+use crate::theme::{color, fonts, type_scale};
+use crate::widgets::menu;
+use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui::{self, Align2, CornerRadius, FontId, Rect, Response, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::section_actions::SectionAction;
 
 /// The + and ⋯: Regular quiet icon-only targets, a header's least hit area.
 const HEADER_SIZE: ControlSize = ControlSize::Regular;
@@ -266,14 +266,14 @@ fn paint_button(ui: &Ui, r: &Response, icon: Icon, enabled: bool, open: bool) {
 
 /// `a` as a menu item ("New branch…"), disabled with its reason while blocked.
 pub fn action_item(ui: &mut Ui, msgs: &mut Vec<Msg>, a: &SectionAction) {
-    crate::ui::common::menu_item_if(msgs, ui, a.label(), a.blocked.as_deref(), a.msg());
+    crate::common::menu_item_if(msgs, ui, a.label(), a.blocked.as_deref(), a.msg());
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::theme::builtin;
-    use crate::ui::theme::contrast::{mix, ratio};
+    use crate::theme::builtin;
+    use crate::theme::contrast::{mix, ratio};
     use eframe::egui::Color32;
     use glowfly_core::settings::BuiltinTheme;
 
@@ -318,7 +318,7 @@ mod tests {
     #[test]
     fn count_digits_are_tabular() {
         let ctx = egui::Context::default();
-        ctx.set_fonts(crate::ui::theme::fonts::definitions().clone());
+        ctx.set_fonts(crate::theme::fonts::definitions().clone());
         for _ in 0..2 {
             let _ = ctx.run(egui::RawInput::default(), |_| {});
         }

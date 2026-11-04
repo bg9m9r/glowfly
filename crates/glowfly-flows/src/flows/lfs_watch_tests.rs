@@ -5,13 +5,12 @@
 
 use super::tests::{drive, finish, scratch_repo, state};
 use super::update;
-use crate::effect::LfsEffect;
-use crate::effect::{Effect, StatusRead};
-use crate::msg::{LoadMsg, Msg, PrefsMsg, RepoMsg, WatchMsg};
-use crate::runner;
-use crate::state::lfs::{LfsInstall, TrackContext, track_items};
-use crate::state::{AppState, PrefPage};
 use glowfly_core::lfs::{LfsPattern, LfsStatus};
+use glowfly_model::effect::LfsEffect;
+use glowfly_model::effect::{Effect, StatusRead};
+use glowfly_model::msg::{LoadMsg, Msg, PrefsMsg, RepoMsg, WatchMsg};
+use glowfly_model::state::lfs::{LfsInstall, TrackContext, track_items};
+use glowfly_model::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -75,7 +74,7 @@ fn a_refresh_that_finds_the_refs_unchanged_picks_up_the_patterns() {
     // A rescan (events were lost) checks the refs first.
     let fx = update(&mut st, watched_full(&workdir, true), Instant::now());
     let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { known: Some(_), .. })).expect("a checked refresh");
-    let msg = runner::testing::execute(load).expect("a result");
+    let msg = glowfly_runner::testing::execute(load).expect("a result");
     assert!(matches!(msg, Msg::Load(LoadMsg::RepoUnchanged { lfs_patterns: Some(_), .. })));
     let fx = update(&mut st, msg, Instant::now());
     finish(&mut st, fx);

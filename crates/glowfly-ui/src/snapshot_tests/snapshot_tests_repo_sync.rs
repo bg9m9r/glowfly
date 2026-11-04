@@ -3,14 +3,14 @@
 //! a failure's whole error on hover, and a finished run. The paths are labels only, never read.
 
 use super::snapshot_tests::{harness, settings};
-use crate::msg::{Msg, RepoMsg, ReposMsg};
-use crate::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, SyncScope};
-use crate::state::{AppState, Modal};
-use crate::ui::snapshot_check::CheckSnapshot;
+use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo_sync::Outcome;
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::msg::{Msg, RepoMsg, ReposMsg};
+use glowfly_model::state::repo_sync::{RepoSync, RowState, SyncKind, SyncRow, SyncScope};
+use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
 

@@ -5,13 +5,13 @@
 
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
-use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
-use crate::msg::JobMsg;
-use crate::msg::Msg;
-use crate::msg::RepoMsg;
-use crate::msg::WorkFileMsg;
-use crate::state::Modal;
 use glowfly_core::repo::{DiffTarget, FileEntry};
+use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
+use glowfly_model::msg::JobMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::WorkFileMsg;
+use glowfly_model::state::Modal;
 use std::path::PathBuf;
 
 #[test]

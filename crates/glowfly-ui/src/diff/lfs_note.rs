@@ -2,12 +2,12 @@
 //! sizes and what changed (`state::lfs_notes::summary_text`), with a way to the pointer text and
 //! back.
 
-use crate::lfs::LfsMsg;
-use crate::msg::Msg;
-use crate::state::lfs_notes::{LfsSummary, POINTER_BAR, SHOW_SUMMARY, SUMMARY_SHOW_POINTER};
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
+use crate::theme::color;
+use crate::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::Msg;
+use glowfly_model::state::lfs_notes::{LfsSummary, POINTER_BAR, SHOW_SUMMARY, SUMMARY_SHOW_POINTER};
 
 /// The summary block in the diff's place.
 pub(super) fn summary(ui: &mut Ui, s: &LfsSummary, msgs: &mut Vec<Msg>) {

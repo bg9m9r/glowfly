@@ -4,14 +4,14 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::{CloneEffect, Effect};
-use crate::msg::{CloneMsg, Msg};
-use crate::state::AppState;
-use crate::state::clone::{CloneForm, CloneRequest};
-use crate::state::trust::Created;
 use chrono::NaiveDate;
 use glowfly_core::clone_ops::{CloneOptions, CloneOutcome, Sparse};
 use glowfly_core::git_version::GitInfo;
+use glowfly_model::effect::{CloneEffect, Effect};
+use glowfly_model::msg::{CloneMsg, Msg};
+use glowfly_model::state::AppState;
+use glowfly_model::state::clone::{CloneForm, CloneRequest};
+use glowfly_model::state::trust::Created;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 

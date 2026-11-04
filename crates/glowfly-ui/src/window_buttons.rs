@@ -5,11 +5,11 @@
 //! the OS (`CaptionButton`), and its click reaches the shell from there.
 
 use super::theme::color;
-use crate::msg::{AppMsg, Msg};
-use crate::state::window_chrome::WindowCmd;
-use crate::state::window_native::CaptionButton;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_model::msg::{AppMsg, Msg};
+use glowfly_model::state::window_chrome::WindowCmd;
+use glowfly_model::state::window_native::CaptionButton;
 
 pub(super) const BUTTON_W: f32 = 46.0;
 pub(super) const BUTTON_H: f32 = 36.0;

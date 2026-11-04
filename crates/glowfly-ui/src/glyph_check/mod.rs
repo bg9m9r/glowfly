@@ -3,13 +3,12 @@
 //! from the translation files (`glowfly-core/locales/*.json`) has a glyph in the fonts egui
 //! draws with. A character without one draws as a box.
 //!
-//! This lives in the crate rather than `tests/` so that `fonts()` installs the app's bundled
-//! fonts the way the app does (`ui::theme::fonts::install`, which only in-crate code can call).
-//! In tests the CJK fallback is a bundled subset, so the result doesn't depend on the machine;
-//! `cjk_dates` also asks the machine's own CJK fonts, where it has them.
+//! It installs the bundled fonts the way the app does (`theme::fonts::install`). In tests the
+//! CJK fallback is a bundled subset, so the result doesn't depend on the machine; the app's
+//! `platform/system_fonts/tests.rs` asks the machine's own CJK fonts, where it has them.
 
 mod cjk_dates;
-#[path = "../../../glowfly-ui/tests/view_checks/support/lexer.rs"]
+#[path = "../../tests/view_checks/support/lexer.rs"]
 mod lexer;
 mod scan;
 
@@ -54,8 +53,8 @@ const NEVER_DRAWN: &[(char, &str)] = &[
 /// They exist only after the first pass.
 fn fonts() -> egui::Context {
     let ctx = egui::Context::default();
-    crate::ui::theme::fonts::use_test_cjk();
-    crate::ui::theme::fonts::install(&ctx);
+    crate::theme::fonts::use_test_cjk();
+    crate::theme::fonts::install(&ctx);
     let _ = ctx.run(egui::RawInput::default(), |_| {});
     ctx
 }
@@ -73,7 +72,7 @@ fn drawable_in(ctx: &egui::Context, font: &egui::FontId, c: char) -> bool {
 /// between checkouts), falling back to the one this was built from.
 fn crates_dir() -> PathBuf {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").into()));
-    manifest.parent().expect("the app crate sits in crates/").to_path_buf()
+    manifest.parent().expect("glowfly-ui sits in crates/").to_path_buf()
 }
 
 /// The folders under `crates/` that hold a crate with sources, sorted.

@@ -7,12 +7,12 @@
 use super::conflict_tests::conflicted_repo;
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use crate::effect::Effect;
-use crate::msg::{Msg, PrefsMsg, RepoMsg, TrustMsg};
-use crate::state::{AppState, Modal, PrefPage};
-use crate::tools::{GitDiffRequest, GitMergeRequest, GitToolNext, ToolEffect, ToolsMsg};
 use glowfly_core::external_tools::git_config::{GitTool, GitToolRun, GitTools};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::Effect;
+use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TrustMsg};
+use glowfly_model::state::{AppState, Modal, PrefPage};
+use glowfly_model::tools::{GitDiffRequest, GitMergeRequest, GitToolNext, ToolEffect, ToolsMsg};
 use std::path::Path;
 use std::time::Instant;
 

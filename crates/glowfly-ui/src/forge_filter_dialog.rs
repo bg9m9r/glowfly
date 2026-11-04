@@ -6,18 +6,18 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::widgets::text_field::{self, TextField};
 use super::widgets::{FieldGroup, buttons};
-use crate::msg::{FilterMsg, Msg};
-use crate::state::ForgeState;
-use crate::state::forge_filter_form::FilterForm;
-use crate::state::forge_filters::{OptionsState, suggestions};
-use crate::ui::theme::controls;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::form_message::{self, Message};
+use crate::theme::controls;
+use crate::theme::type_scale;
+use crate::widgets::form_message::{self, Message};
 use eframe::egui::{self, RichText};
 use glowfly_core::forge::filters::matching::{self, Field};
 use glowfly_core::forge::filters::{Draft, Milestone, Review, Sprint, Who};
 use glowfly_core::forge::{FilterKind, FilterOptions};
 use glowfly_core::settings::RepoForgeFilters;
+use glowfly_model::msg::{FilterMsg, Msg};
+use glowfly_model::state::ForgeState;
+use glowfly_model::state::forge_filter_form::FilterForm;
+use glowfly_model::state::forge_filters::{OptionsState, suggestions};
 
 /// Suggested labels shown under the labels field.
 const MAX_CHIPS: usize = 12;
@@ -32,7 +32,7 @@ pub fn show(
     existing: &RepoForgeFilters,
     msgs: &mut Vec<Msg>,
 ) -> bool {
-    let target = fs.and_then(|f| crate::state::forge_filters::target_for(f, form.kind));
+    let target = fs.and_then(|f| glowfly_model::state::forge_filters::target_for(f, form.kind));
     let mut d = Dialog::new(cx, form.title());
     if let Some(t) = &target {
         d = d.subtitle(format!("{} · {}", t.provider.name(), t.display()));

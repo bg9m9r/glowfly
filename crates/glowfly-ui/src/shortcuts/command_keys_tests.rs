@@ -2,12 +2,12 @@
 //! only while nothing covers the main window and no text field has focus; a held key runs it
 //! once, and a focused terminal keeps the presses that reach its shell.
 
-use crate::keymap::{BindingId as I, Chord, KeyName as K};
-use crate::msg::{Msg, PaletteMsg};
-use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use eframe::egui::{self, Event, Key, Modifiers};
 use egui_kittest::Harness;
 use glowfly_core::settings::Settings;
+use glowfly_model::keymap::{BindingId as I, Chord, KeyName as K};
+use glowfly_model::msg::{Msg, PaletteMsg};
+use glowfly_model::state::{AppState, Modal, PrefPage, PrefsState};
 use std::time::Instant;
 
 struct Keys {
@@ -30,7 +30,7 @@ fn fetch_on_f8() -> AppState {
 
 fn harness(st: AppState, field: bool) -> H {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(String::new), left: Vec::new() };
-    let mut h = crate::ui::snapshot_check::builder().build_state(
+    let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
             super::input(ctx, &mut k.st, &mut k.msgs);
             k.left = ctx.input(|i| {

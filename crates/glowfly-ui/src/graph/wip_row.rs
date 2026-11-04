@@ -5,10 +5,10 @@
 //! characters, then the chips hide, and only then is the label cut further.
 
 use super::layout::Columns;
-use crate::ui::line_counts;
-use crate::ui::theme::color;
-use crate::ui::theme::type_scale;
-use crate::ui::widgets::paint_cut_text;
+use crate::line_counts;
+use crate::theme::color;
+use crate::theme::type_scale;
+use crate::widgets::paint_cut_text;
 use eframe::egui::{Painter, pos2};
 use glowfly_core::repo::{ChangeCounts, LineCount};
 
@@ -85,7 +85,7 @@ pub(super) fn draw(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::widgets::truncate::{cut_galley, cut_job};
+    use crate::widgets::truncate::{cut_galley, cut_job};
     use eframe::egui::{self, Rect, vec2};
     use glowfly_core::i18n::Lang;
     use glowfly_core::settings::{ColumnWidths, GraphColumns};
@@ -164,14 +164,14 @@ mod tests {
     /// "Uncomm…" beside its chips; a px less, the chips hide and the label takes the room.
     #[test]
     fn graph_wip_row_floor() {
-        use crate::ui::snapshot_check::CheckSnapshot;
+        use crate::snapshot_check::CheckSnapshot;
         let label = Lang::En.tr("graph.wip.label");
         let changes = ChangeCounts { modified: 2, added: 2, deleted: 1 };
         let total = Some(LineCount { added: 38, removed: 1 });
         let floor = |kept: f32, chips: f32| kept + LABEL_GAP + chips;
         for (name, less) in [("graph_wip_row_floor", 0.0), ("graph_wip_row_floor_no_chips", 1.0)] {
-            let mut h = crate::ui::snapshot_check::builder().with_size(vec2(360.0, 40.0)).build_ui(|ui| {
-                crate::ui::theme::apply_theme(ui.ctx());
+            let mut h = crate::snapshot_check::builder().with_size(vec2(360.0, 40.0)).build_ui(|ui| {
+                crate::theme::apply_theme(ui.ctx());
                 let ctx = ui.ctx().clone();
                 let font = type_scale::font(type_scale::BODY);
                 let measure = |s: String| ctx.fonts(|f| f.layout_no_wrap(s, font.clone(), color::text()).size().x);

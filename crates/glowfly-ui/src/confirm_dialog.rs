@@ -5,10 +5,10 @@
 //! (`Modal::ConfirmChoice`), which pushes `Msg::ConfirmAlt`. `Modal::ConfirmDetails` adds a
 //! collapsed Details under the body.
 
-use crate::msg::Msg;
-use crate::ui::dialog_frame::{self, Cx, Dialog, Footer, Size, Tone};
-use crate::ui::widgets::{buttons, details::disclosure};
+use crate::dialog_frame::{self, Cx, Dialog, Footer, Size, Tone};
+use crate::widgets::{buttons, details::disclosure};
 use eframe::egui::{self, Ui};
+use glowfly_model::msg::Msg;
 
 /// The dialog's texts: `details`, when given, sits collapsed under the body.
 pub(super) struct Texts<'a> {

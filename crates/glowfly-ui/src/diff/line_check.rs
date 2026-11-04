@@ -6,9 +6,9 @@
 //! hovering the line's text shows nothing.
 
 use super::LineHover;
-use crate::ui::theme::color;
-use crate::ui::theme::contrast::ratio;
-use crate::ui::theme::tokens::radius;
+use crate::theme::color;
+use crate::theme::contrast::ratio;
+use crate::theme::tokens::radius;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Shape, Stroke, StrokeKind, Ui, pos2, vec2};
 
 /// The check box's side.
