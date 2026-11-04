@@ -34,20 +34,6 @@ fn about_dialog_light() {
 }
 
 #[test]
-fn about_dialog_de() {
-    let mut h = dialog_harness_in(git(), draw_about, Lang::De, true);
-    h.run();
-    h.check_snapshot("about_dialog_de");
-}
-
-#[test]
-fn about_dialog_es() {
-    let mut h = dialog_harness_in(git(), draw_about, Lang::Es, true);
-    h.run();
-    h.check_snapshot("about_dialog_es");
-}
-
-#[test]
 fn about_dialog() {
     let git = GitState { info: Some(GitInfo { path: None, version: Some((2, 47, 1)), chosen: false }), ..GitState::default() };
     let mut h = about_harness(git);

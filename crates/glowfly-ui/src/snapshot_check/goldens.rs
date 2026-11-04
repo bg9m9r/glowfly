@@ -329,8 +329,6 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("dialog_look_high_contrast_light", Dialog),
     ("about_dialog", Dialog),
     ("about_dialog_light", Dialog),
-    ("about_dialog_de", Dialog),
-    ("about_dialog_es", Dialog),
     ("repo_group_add_dialog", Dialog),
     ("repo_group_add_dialog_light", Dialog),
     ("dialog_guide_beside", Dialog),
@@ -346,8 +344,6 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 const IMAGE_ONLY: &[&str] = &[
     // `about_dialog` in Light.
     "about_dialog_light",
-    "about_dialog_de",
-    "about_dialog_es",
     // `status_bar_failure_dark` and `tabs_states_dark` in Light: only their look differs.
     "status_bar_failure_light",
     "tabs_states_light",

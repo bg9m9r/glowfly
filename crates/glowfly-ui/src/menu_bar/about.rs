@@ -19,11 +19,11 @@ const WIDTH: f32 = 400.0;
 const ICON: f32 = 96.0;
 const ICON_TOP: f32 = 8.0;
 /// The wordmark: 1.4 × `type_scale::TITLE`.
-const NAME_PX: f32 = 28.0;
-/// The table's rows, the gutter between its columns and its values' size.
+const NAME_PX: f32 = type_scale::TITLE * 1.4;
+/// The table's rows, the gutter between its columns and its values' size (the help text's).
 const ROW_H: f32 = 22.0;
 const GUTTER: f32 = 16.0;
-const VALUE_PX: f32 = 13.0;
+const VALUE_PX: f32 = type_scale::HELP;
 /// Between a link and the dot that separates it from the next.
 const LINK_GAP: f32 = 8.0;
 
