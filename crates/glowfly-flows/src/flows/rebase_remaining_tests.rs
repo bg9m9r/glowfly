@@ -80,7 +80,10 @@ fn opening_loads_the_steps() {
     assert!(!p.loading);
     let oids: Vec<Oid> = p.items.iter().filter_map(TodoStep::oid).collect();
     assert_eq!(oids, [c[1], c[2]]);
-    assert_eq!(p.subtitle(), format!("2 steps left in the rebase of main onto {} · 1 done", panel_onto(&st)));
+    assert_eq!(
+        p.subtitle(glowfly_core::i18n::Lang::En),
+        format!("2 steps left in the rebase of main onto {}, 1 done.", &panel_onto(&st)[..7])
+    );
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(p.start_blocker(snap, false).as_deref(), Some(UNCHANGED));
     let _ = std::fs::remove_dir_all(&dir);

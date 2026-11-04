@@ -37,8 +37,9 @@ fn rebase_panel_merges() {
     let p = st.session.rebase.view.as_ref().unwrap();
     assert!(p.items.iter().any(TodoStep::is_structure), "{:?}", p.items);
     assert!(p.items.iter().any(|s| s.merge().is_some()));
-    let subtitle = p.subtitle();
-    assert!(subtitle.starts_with("Rebasing 3 commits and 1 merge of main onto ") && subtitle.ends_with(" Initial commit"), "{subtitle}");
+    let subtitle = p.subtitle(glowfly_core::i18n::Lang::En);
+    let onto = &p.plan.as_ref().unwrap().onto_label[..7];
+    assert_eq!(subtitle, format!("Rebasing 3 commits and 1 merge of main onto {onto}."), "the commit by its short id alone");
     assert!(p.start_blocker(st.snap.as_ref().unwrap(), false).is_some(), "nothing changed yet");
     let mut h = harness(st, true);
     h.run();

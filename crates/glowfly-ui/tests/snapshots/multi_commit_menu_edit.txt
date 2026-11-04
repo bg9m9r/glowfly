@@ -71,7 +71,7 @@ Button "Uncommitted changes"
 Button "Tidy styles"
 Label "2 commits selected"
 Button "Cherry-pick" [disabled]
-Button "Preview cherry-pick" [disabled]
+Button "Preview the cherry-pick" [disabled]
 Button "Revert"
 Button "Squash…"
 Button "Range-diff the two commits"

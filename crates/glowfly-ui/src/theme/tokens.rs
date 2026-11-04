@@ -1,6 +1,6 @@
 //! The design tokens that aren't colours: the corner scale (`radius`, with a segment's corners),
 //! the border width, the least hit area and a split's caret width, the state-layer amounts,
-//! the two elevations (`Elevation`, `shadow`), the focus ring in its two styles (Standard and
+//! the three elevations (`Elevation`, `shadow`), the focus ring in its two styles (Standard and
 //! Strong, `focus_style`) and the text field's halo, the
 //! selection of a pane without the keyboard focus (`selected_inactive`), and the
 //! motion timings (`motion`). Every theme reads the same tokens; the colour tokens worked out
@@ -104,15 +104,19 @@ pub enum Elevation {
     Float,
     /// Dialogs and the command palette.
     Dialog,
+    /// A row lifted off its list while it is dragged (the rebase steps).
+    Lift,
 }
 
 /// The shadow under something at elevation `e` in palette `p`. egui draws one layer, so each
 /// elevation is a single soft shadow: Float 4 px down with a 16 px blur, Dialog 12 px down with
-/// a 40 px blur, lighter on light palettes.
+/// a 40 px blur, Lift 4 px down with a tight 12 px blur (black at 35%, 18% on light palettes);
+/// each lighter on light palettes.
 pub fn shadow(e: Elevation, p: &Palette) -> Shadow {
     let (offset, blur, dark, light) = match e {
         Elevation::Float => (4, 16, 64, 28),
         Elevation::Dialog => (12, 40, 120, 40),
+        Elevation::Lift => (4, 12, 89, 46),
     };
     Shadow { offset: [0, offset], blur, spread: 0, color: Color32::from_black_alpha(if p.dark { dark } else { light }) }
 }
@@ -237,6 +241,8 @@ pub mod motion {
     pub const QUICK: f32 = 0.09;
     /// Tooltips and menus fading and rising into place, tabs sliding.
     pub const STANDARD: f32 = 0.15;
+    /// Rows moving apart round a dragged row.
+    pub const SHIFT: f32 = 0.12;
     /// How far something rises as it appears; nothing moves further.
     pub const RISE: f32 = 4.0;
 

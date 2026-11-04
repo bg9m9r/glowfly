@@ -65,7 +65,7 @@ fn rebase_panel() {
     p.items[1].commit_mut().unwrap().new_message = Some(NEW_MESSAGE.into());
     p.open_editor(1);
     assert_eq!(p.draft, NEW_MESSAGE);
-    assert_eq!(p.subtitle(), "Rebasing 6 commits of main from the first commit");
+    assert_eq!(p.subtitle(glowfly_core::i18n::Lang::En), "Rebasing 6 commits of main from the first commit.");
     let blocker = p.start_blocker(st.snap.as_ref().unwrap(), false);
     assert_eq!(blocker, None, "Start is enabled");
     let mut h = harness(st, true);
@@ -176,12 +176,34 @@ fn header_buttons_and_esc() {
     remove_fixture(&dir);
 }
 
-fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<bool>) {
+pub(super) fn pointer(h: &mut Harness<'_, (AppState, Vec<Msg>)>, pos: Pos2, button: Option<bool>) {
     let events = &mut h.input_mut().events;
     events.push(Event::PointerMoved(pos));
     if let Some(pressed) = button {
         events.push(Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
     }
+}
+
+/// Presses on the first row's grip and drags it two rows down, still held: returns where.
+fn drag_two_down(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Pos2 {
+    // Rows are labelled with their commit's summary.
+    let bounds = |h: &Harness<'_, (AppState, Vec<Msg>)>, label: &str| {
+        let b = h.get_by_label(label).bounding_box().expect("the row has bounds");
+        (b.x0 as f32, b.y0 as f32, b.y1 as f32)
+    };
+    let (x0, top0, bottom0) = bounds(h, "Initial commit");
+    let (_, top1, _) = bounds(h, "Add app skeleton");
+    let pitch = top1 - top0;
+    let start = pos2(x0 + 16.0, (top0 + bottom0) / 2.0);
+    pointer(h, start, Some(true));
+    h.step();
+    pointer(h, start + egui::vec2(0.0, 12.0), None);
+    h.step();
+    let over = start + egui::vec2(0.0, 2.0 * pitch + 6.0);
+    pointer(h, over, None);
+    h.step();
+    h.run();
+    over
 }
 
 #[test]
@@ -190,23 +212,7 @@ fn row_drag_moves_and_snapshots() {
     let (st, dir) = with_panel(ThemeChoice::Dark, "rebase-drag", &[Pick, Pick, Squash, Pick, Drop, Pick]);
     let mut h = harness(st, true);
     h.run();
-    // Rows are labelled with their commit's summary.
-    let bounds = |h: &Harness<'_, (AppState, Vec<Msg>)>, label: &str| {
-        let b = h.get_by_label(label).bounding_box().expect("the row has bounds");
-        (b.x0 as f32, b.y0 as f32, b.y1 as f32)
-    };
-    let (x0, top0, bottom0) = bounds(&h, "Initial commit");
-    let (_, top1, _) = bounds(&h, "Add app skeleton");
-    let pitch = top1 - top0;
-    let start = pos2(x0 + 16.0, (top0 + bottom0) / 2.0);
-    pointer(&mut h, start, Some(true));
-    h.step();
-    pointer(&mut h, start + egui::vec2(0.0, 12.0), None);
-    h.step();
-    let over = start + egui::vec2(0.0, 2.0 * pitch + 6.0);
-    pointer(&mut h, over, None);
-    h.step();
-    h.run();
+    let over = drag_two_down(&mut h);
     assert!(h.state().1.is_empty(), "nothing is sent while dragging");
     h.check_snapshot("rebase_dragging");
 
@@ -223,6 +229,19 @@ fn row_drag_moves_and_snapshots() {
         !h.state().1.iter().any(|m| matches!(m, Msg::Repo(RepoMsg::SelectCommit(_)) | Msg::Rebase(RebaseMsg::RebaseSelect(_)))),
         "dragging does not select the row"
     );
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The lifted row in a light theme: the raised fill on the lighter `Lift` shadow.
+#[test]
+fn rebase_dragging_light() {
+    use RebaseAction::*;
+    let (st, dir) = with_panel(ThemeChoice::Light, "rebase-drag-light", &[Pick, Pick, Squash, Pick, Drop, Pick]);
+    let mut h = harness(st, false);
+    h.run();
+    drag_two_down(&mut h);
+    h.check_snapshot("rebase_dragging_light");
     drop(h);
     remove_fixture(&dir);
 }
