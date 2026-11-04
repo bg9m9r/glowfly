@@ -414,8 +414,9 @@ is at most one, and it sits at the surface's trailing edge.
     (`GLOWFLY_SHEET_DIR=<dir> cargo test -p glowfly-ui --lib colour_sheet -- --ignored`).
 - The HEAD lantern's glow is painted through `contrast::tint`, never as a plain alpha wash of
   `lantern`: a warm wash on a dark field reads brown at any strength, so on the dark themes the
-  glow lifts the row's own hue and the warmth sits on the node's 1 px `lantern` rim. Its peak is
-  25% on dark themes and 16% on paper (18% and 12% with colour-blind safe colours), falling off
+  glow lifts the row's own hue and the warmth sits on the node's `lantern` rim (1 pt and a
+  pixel wide, so egui paints one solid pixel of it). Its peak is 25% on dark themes and 16% on
+  paper (18% and 12% with colour-blind safe colours), falling off
   as 1 - smoothstep(t) from 4 px outside the node's edge (a whole pixel past the rim's
   antialiased edge, so the rim reads on the plain row fill; HEAD's node is snapped to the pixel
   grid) to the row's edge, stopping above a hovered row's shadow.

@@ -1,4 +1,4 @@
-//! The HEAD lantern: the one glow on screen, round the checked-out commit's node, and the 1 px
+//! The HEAD lantern: the one glow on screen, round the checked-out commit's node, and the
 //! `lantern` rim on the node's edge (docs/COLOUR.md, "lantern"). HEAD's node is drawn from a
 //! centre snapped to the pixel grid, and the glow starts a whole pixel past the rim's
 //! antialiased edge, so the rim sits on the plain row fill and keeps its 3:1 (checked on the
@@ -22,15 +22,28 @@ const REACH: f32 = 10.0;
 /// The rings the glow is drawn in (`RINGS + 1` radii) and the segments round each.
 const RINGS: usize = 8;
 const SEGMENTS: usize = 48;
-/// How far outside the node's edge the rim's centre line runs, and its width.
-const RIM_GAP: f32 = 1.75;
+/// About how far outside the node's edge the rim's centre line runs (`rim_radius` puts it on
+/// a pixel centre), and its width before `rim_width` adds the pixel egui's feathering takes:
+/// a stroke paints a solid core only where it is wider than its 1 px feather, so the rim is
+/// 1 pt + 1 px wide and paints one pixel of solid `lantern` across.
+const RIM_GAP: f32 = 1.5;
 const RIM_W: f32 = 1.0;
-/// How far egui's antialiasing carries a stroke past its edge.
+/// How far egui's antialiasing carries a stroke past its edge, in physical px.
 const FEATHER: f32 = 0.5;
 /// How far outside the node's edge the glow starts: a whole pixel past the rim's antialiased
 /// edge, so a pixel of plain fill shows between the rim and the glow.
 const GLOW_GAP: f32 = 4.0;
-const _: () = assert!(GLOW_GAP >= RIM_GAP + RIM_W / 2.0 + FEATHER + 1.0);
+/// Whether, round a node whose edge is `edge` at `ppp` pixels per point, a whole pixel of plain
+/// fill lies between the rim's antialiased outer edge and the glow (in points; `rim_radius`
+/// worked out as a const).
+const fn gap_holds(edge: f32, ppp: f32) -> bool {
+    let px = 1.0 / ppp;
+    let rim_r = ((((edge + RIM_GAP) * ppp - 0.5) + 0.5) as i32 as f32 + 0.5) / ppp;
+    edge + GLOW_GAP >= rim_r + (RIM_W + px) / 2.0 + FEATHER * px + px
+}
+// A Comfortable and a Compact commit's node (10 and 8) and a merge dot (4), at 1 and 1.5.
+const _: () = assert!(gap_holds(10.0, 1.0) && gap_holds(8.0, 1.0) && gap_holds(4.0, 1.0));
+const _: () = assert!(gap_holds(10.0, 1.5) && gap_holds(8.0, 1.5) && gap_holds(4.0, 1.5));
 
 /// How strongly the glow tints its row at the node's edge: lighter on paper (a stronger warm
 /// wash there reads tan) and lower again with colour-blind safe colours.
@@ -130,9 +143,24 @@ fn mesh(pal: &Palette, c: Pos2, (inner, outer): (f32, f32), fill: Color32) -> Me
     mesh
 }
 
-/// The 1 px opaque `lantern` rim just outside a glowing node whose edge is `edge` from `c`.
+/// The rim's radius round a node whose edge is `edge` from a centre on the pixel grid, at
+/// `ppp` pixels per point: about `RIM_GAP` out, on a pixel centre.
+pub(super) fn rim_radius(edge: f32, ppp: f32) -> f32 {
+    (((edge + RIM_GAP) * ppp - 0.5).round() + 0.5) / ppp
+}
+
+/// The rim's width at `ppp`: 1 pt and the pixel egui's feathering takes.
+pub(super) fn rim_width(ppp: f32) -> f32 {
+    RIM_W + 1.0 / ppp
+}
+
+/// The opaque `lantern` rim just outside a glowing node whose edge is `edge` from `c`.
 pub(super) fn rim(p: &Painter, c: Pos2, edge: f32) {
-    p.circle_stroke(c, edge + RIM_GAP, Stroke::new(RIM_W, color::current().lantern));
+    let (ppp, lantern) = (p.pixels_per_point(), color::current().lantern);
+    // egui strokes a circle outside its radius: start half the width in so the rim centres on
+    // `rim_radius`.
+    let w = rim_width(ppp);
+    p.circle_stroke(c, rim_radius(edge, ppp) - w / 2.0, Stroke::new(w, lantern));
 }
 
 #[cfg(test)]
@@ -159,6 +187,21 @@ mod tests {
         assert_eq!(extent(NodeKind::Commit, 8.0, 28.0), (8.0, 12.0, 14.0));
         assert_eq!(extent(NodeKind::Merge, 10.0, 36.0), (4.0, 8.0, 14.0));
         assert_eq!(extent(NodeKind::Merge, 8.0, 28.0), (4.0, 8.0, 14.0));
+    }
+
+    /// How far `rim_radius` may move the rim to put it on a pixel centre, in physical px.
+    const RIM_SNAP: f32 = 0.5;
+
+    #[test]
+    fn the_rim_sits_on_a_pixel_centre() {
+        for edge in [4.0, 8.0, 10.0] {
+            assert_eq!(rim_radius(edge, 1.0), edge + 1.5);
+            for ppp in [1.0, 1.25, 1.5, 2.0] {
+                let r = rim_radius(edge, ppp);
+                assert_eq!((r * ppp).fract(), 0.5, "{edge} at {ppp}");
+                assert!((r - edge - RIM_GAP).abs() <= RIM_SNAP / ppp + 1e-4, "{edge} at {ppp}: {r}");
+            }
+        }
     }
 
     #[test]

@@ -9,11 +9,12 @@
 //! - (d) past the glow's outer edge every pixel is the fill;
 //! - (e) on a hovered row the hover's shadow is the same as without the glow;
 //! - (f) the high-contrast themes draw no rim or glow;
-//! - (g) the snapped centre is within half a pixel of the unsnapped one.
+//! - (g) the snapped centre is within half a pixel of the unsnapped one;
+//! - (h) the rim paints a pixel of solid `lantern`, so (b) describes what is painted.
 
 use super::super::nodes::{self, NodeKind};
 use super::super::row_look::{self, RowLook};
-use super::{RIM_GAP, extent, head_glow, rim};
+use super::{FEATHER, extent, head_glow, rim, rim_radius, rim_width};
 use crate::ui::snapshot_check::{SKIP_VAR, skip_requested};
 use crate::ui::theme::branch_colours::{line_in, swatches};
 use crate::ui::theme::color::{self, Palette};
@@ -173,13 +174,24 @@ fn check(name: &str, p: &Palette, ppp: f32, density: Density, failures: &mut Vec
         if (at.x - c.x).abs() > 0.5 / ppp + 1e-4 || (at.y - c.y).abs() > 0.5 / ppp + 1e-4 {
             failures.push(format!("{what}: snapped {at:?} from {c:?}"));
         }
-        // (a) and (b): the pixel wholly between the rim's edge and the glow.
-        let gap = ((edge + RIM_GAP + 1.0) * ppp).ceil();
-        assert!(gap + 1.0 <= (edge + super::GLOW_GAP) * ppp + 1e-3, "{what}: no whole pixel in the gap");
-        let plain = at_px(gap);
-        if !near(plain, fill) {
-            failures.push(format!("{what}: the gap pixel is {plain:?}, the fill {fill:?}"));
+        // (h) the rim's own pixel.
+        let rim_r = rim_radius(edge, ppp);
+        let solid = at_px((rim_r * ppp).floor());
+        if [(solid.r(), p.lantern.r()), (solid.g(), p.lantern.g()), (solid.b(), p.lantern.b())].iter().any(|(a, b)| a.abs_diff(*b) > 2) {
+            failures.push(format!("{what}: the rim's pixel is {solid:?}, not the lantern {:?}", p.lantern));
         }
+        // (a) and (b): the pixels wholly between the rim's antialiased edge and the glow.
+        let (gap, glow_px) =
+            (((rim_r * ppp) + rim_width(ppp) * ppp / 2.0 + FEATHER).ceil(), ((edge + super::GLOW_GAP) * ppp + 1e-3).floor());
+        assert!(gap + 1.0 <= glow_px, "{what}: no whole pixel in the gap");
+        let mut d = gap;
+        while d + 1.0 <= glow_px {
+            if !near(at_px(d), fill) {
+                failures.push(format!("{what}: the gap pixel at +{d} px is {:?}, the fill {fill:?}", at_px(d)));
+            }
+            d += 1.0;
+        }
+        let plain = at_px(gap);
         let r = ratio(p.lantern, plain);
         if r < crate::ui::theme::lantern_floor(cell.fill.ends_with("highlighted")) {
             failures.push(format!("{what}: the rim {r:.2}:1 on the gap pixel"));
