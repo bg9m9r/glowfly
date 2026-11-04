@@ -20,19 +20,19 @@ fn hunk_view() {
     st.view.diff_visible_rows = 10;
     let r = rows(&st);
     assert_eq!(current_hunk(&st), Some(0), "the first hunk at the top");
-    st.session.tab_view.diff_top_row = r[1];
+    st.view.tab.diff_top_row = r[1];
     assert_eq!(current_hunk(&st), Some(1));
-    st.session.tab_view.diff_top_row = r[2] - 1;
+    st.view.tab.diff_top_row = r[2] - 1;
     assert_eq!(current_hunk(&st), Some(1), "the hunk at or above the top row");
-    st.session.tab_view.diff_top_row = r[2] + 1;
+    st.view.tab.diff_top_row = r[2] + 1;
     assert_eq!(current_hunk(&st), Some(2));
 
     // The change last stepped to while on screen, else the top row.
-    st.session.tab_view.diff_top_row = r[1];
-    st.view.diff_cursor = Some(r[2]);
+    st.view.tab.diff_top_row = r[1];
+    st.cues.diff_cursor = Some(r[2]);
     assert_eq!(current_hunk(&st), Some(2));
-    st.session.tab_view.diff_top_row = r[2] + 10;
-    st.view.diff_cursor = Some(r[0]);
+    st.view.tab.diff_top_row = r[2] + 10;
+    st.cues.diff_cursor = Some(r[0]);
     assert_eq!(current_hunk(&st), Some(2), "a cursor scrolled off screen is ignored");
 }
 
@@ -59,7 +59,7 @@ fn whole_file_view_maps_blocks_to_hunks() {
     let r = rows(&st);
     assert_eq!(r.len(), 2);
     assert_eq!(current_hunk(&st), Some(0));
-    st.session.tab_view.diff_top_row = r[1];
+    st.view.tab.diff_top_row = r[1];
     assert_eq!(current_hunk(&st), Some(1));
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -36,7 +36,7 @@ fn push_run(st: &mut AppState) -> EntryId {
 #[test]
 fn copy_entry_puts_the_entry_on_the_clipboard() {
     let mut st = state();
-    st.view.utc_offset = 3600;
+    st.cues.utc_offset = 3600;
     let id = push_run(&mut st);
     let toasts = st.toasts.len();
     let fx = logs(&mut st, LogsMsg::CopyEntry(id));

@@ -133,7 +133,7 @@ fn auto_picked(name: &str) -> (AppState, PathBuf) {
     };
     let (mut st, dir) = with_conflict(name, "settings.txt", settings);
     assert_eq!(st.session.conflict.view.as_ref().unwrap().auto.iter().flatten().count(), 1);
-    st.view.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
+    st.cues.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
     (st, dir)
 }
 
@@ -161,7 +161,7 @@ fn conflict_view_german() {
 fn conflict_narrow_1100_de() {
     let (mut st, dir) = auto_picked("lang-conflict-narrow");
     german(&mut st);
-    st.view.details_expanded_for = None;
+    st.cues.details_expanded_for = None;
     let toggle = |side| Msg::Conflict(glowfly_model::msg::ConflictMsg::ConflictToggle { chunk: 1, side });
     for side in [glowfly_core::repo::Side::Theirs, glowfly_core::repo::Side::Ours] {
         glowfly_model::update::update(&mut st, toggle(side), std::time::Instant::now());

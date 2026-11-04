@@ -18,9 +18,9 @@ use glowfly_ui::window_frame;
 pub(super) fn before_draw(native: &mut NativeWindow, st: &mut AppState, tint: Option<MicaTint>, msgs: &mut Vec<Msg>) -> bool {
     let f = native.poll();
     native.set_dark(color::is_dark());
-    st.view.window.max_button = f.max_button;
-    st.view.backdrop = window_native::backdrop(f.support, tint);
-    msgs.extend(frame_msgs(&f, st.view.window));
+    st.cues.window.max_button = f.max_button;
+    st.cues.backdrop = window_native::backdrop(f.support, tint);
+    msgs.extend(frame_msgs(&f, st.cues.window));
     // The menu took the Alt press: its release mustn't open the title bar's menu.
     if f.system_menu_shown {
         st.view.alt_tap = st.view.alt_tap.cancel();

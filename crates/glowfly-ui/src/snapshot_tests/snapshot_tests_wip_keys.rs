@@ -98,7 +98,7 @@ fn wip_list_selected_files() {
     let target = DiffTarget::Unstaged("login.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
     st.session.diff.view = Some((target, diff.into()));
-    st.view.wip_span = Some(WipSpan { staged: false, anchor: "app.txt".into(), head: "login.txt".into() });
+    st.cues.wip_span = Some(WipSpan { staged: false, anchor: "app.txt".into(), head: "login.txt".into() });
     let mut h = harness(st, true);
     h.run();
     h.ctx.memory_mut(|m| m.request_focus(list_id(false)));

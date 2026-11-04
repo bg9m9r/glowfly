@@ -64,13 +64,13 @@ pub(super) fn to_px(r: Rect, ppp: f32) -> PxRect {
 /// the window buttons. Full screen leaves the Maximize button out, so Windows offers no Snap
 /// Layouts there and egui handles the button (Restore, which leaves full screen).
 pub fn caption_geometry(ctx: &egui::Context, st: &AppState) -> Option<CaptionGeometry> {
-    if !st.view.chrome.window_buttons() {
+    if !st.cues.chrome.window_buttons() {
         return None;
     }
     let (screen, ppp) = (ctx.screen_rect(), ctx.pixels_per_point());
     let at = title_bar::menu_at(ctx).unwrap_or(pos2(screen.left() + 8.0, screen.top() + title_bar::TITLE_H));
     let menu_at = ((at.x * ppp).round() as i32, (at.y * ppp).round() as i32);
-    let window = st.view.window;
+    let window = st.cues.window;
     let max_button = if window.fullscreen { PxRect::default() } else { to_px(max_button_rect(screen), ppp) };
     // The edge strips' thickness in pixels (`EDGE` screen points): resizing from above the
     // button too, as the strip beside it does; none where the strips are off.
@@ -123,15 +123,15 @@ pub(super) fn resize_zones(screen: Rect, edge: f32, corner: f32) -> [(ResizeEdge
 
 /// The overlay above every dialog (call last): only on Windows, where Glowfly draws the frame.
 pub(super) fn overlay(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
-    if !st.view.chrome.window_buttons() {
+    if !st.cues.chrome.window_buttons() {
         return;
     }
     let screen = ctx.screen_rect();
-    let window = st.view.window;
+    let window = st.cues.window;
     if !window.maximized && !window.fullscreen {
         let border = ctx.layer_painter(LayerId::new(Order::Tooltip, Id::new("window-border")));
         border.rect_stroke(screen, 0.0, Stroke::new(1.0_f32, color::border()), StrokeKind::Inside);
-        if st.view.chrome.resize_edges() {
+        if st.cues.chrome.resize_edges() {
             resize_edges(ctx, screen, msgs);
         }
     }
@@ -155,7 +155,7 @@ pub(super) fn overlay(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::App(AppMsg::Window(WindowCmd::SetMaximized(!window.maximized))));
         } else if r.drag_started_by(PointerButton::Primary) {
             msgs.push(Msg::App(AppMsg::Window(WindowCmd::StartDrag)));
-        } else if r.secondary_clicked() && st.view.chrome.system_menu() {
+        } else if r.secondary_clicked() && st.cues.chrome.system_menu() {
             msgs.push(Msg::App(AppMsg::Window(WindowCmd::SystemMenu)));
         }
     });
@@ -246,10 +246,10 @@ mod tests {
         let ctx = egui::Context::default();
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         let mut st = AppState::new(glowfly_core::settings::Settings::default(), Vec::new(), std::time::Instant::now());
-        st.view.chrome = Chrome::Windows;
+        st.cues.chrome = Chrome::Windows;
         let windowed = caption_geometry(&ctx, &st).expect("Glowfly draws the buttons");
         assert_ne!(windowed.max_button, PxRect::default(), "Snap Layouts while windowed");
-        st.view.window.fullscreen = true;
+        st.cues.window.fullscreen = true;
         let full = caption_geometry(&ctx, &st).expect("Glowfly draws the buttons");
         assert_eq!(full.max_button, PxRect::default(), "no Snap Layouts in full screen");
         assert_eq!(full.menu_at, windowed.menu_at, "Alt+Space still opens the system menu");
@@ -259,7 +259,7 @@ mod tests {
     fn the_top_strip_over_maximize_matches_the_edges() {
         let ctx = egui::Context::default();
         let mut st = AppState::new(glowfly_core::settings::Settings::default(), Vec::new(), std::time::Instant::now());
-        st.view.chrome = Chrome::Windows;
+        st.cues.chrome = Chrome::Windows;
         let geometry = |ctx: &egui::Context, st: &AppState, ppp: f32| {
             let input = egui::RawInput {
                 viewports: std::iter::once((
@@ -277,9 +277,9 @@ mod tests {
         ctx.set_zoom_factor(2.0);
         assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 5, "zooming keeps the strip's screen size");
         ctx.set_zoom_factor(1.0);
-        st.view.window.maximized = true;
+        st.cues.window.maximized = true;
         assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 0, "no resizing while maximized");
-        st.view.window = WindowInfo { fullscreen: true, ..WindowInfo::default() };
+        st.cues.window = WindowInfo { fullscreen: true, ..WindowInfo::default() };
         assert_eq!(geometry(&ctx, &st, 1.0).top_edge, 0, "nor in full screen");
     }
 

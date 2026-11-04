@@ -62,7 +62,7 @@ impl AppState {
         let u = &self.settings.updates;
         let chip = u.news_chip.as_ref().filter(|_| u.whats_new == WhatsNew::Chip)?;
         let current = Version::parse(&chip.version).is_some_and(|v| v == self.updates.current);
-        (current && chip.until.is_none_or(|until| self.view.now < until)).then_some(chip)
+        (current && chip.until.is_none_or(|until| self.cues.now < until)).then_some(chip)
     }
 }
 

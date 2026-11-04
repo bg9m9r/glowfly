@@ -65,7 +65,7 @@ pub(super) fn set_text(st: &mut AppState, text: &str) {
 
 fn select(st: &mut AppState, hunk: usize, lines: &[usize]) {
     let target = pr_target(st, "f.txt");
-    let sel = &mut st.view.diff_lines;
+    let sel = &mut st.cues.diff_lines;
     sel.target = Some(target);
     sel.hunk = hunk;
     sel.lines = lines.iter().copied().collect::<BTreeSet<_>>();

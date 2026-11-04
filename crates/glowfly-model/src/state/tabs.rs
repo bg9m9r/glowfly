@@ -210,6 +210,8 @@ pub struct Parked {
     /// commit detail and draft, the repository reads, the selection, forge data, undo history,
     /// commit search and view state (state/session.rs).
     pub session: super::session::RepoSession,
+    /// The graph's scroll and the diff's top row (`ViewState::tab`), restored on return.
+    pub scroll: super::session_view::TabScroll,
     pub snap: Option<Snapshot>,
     /// The Create issue dialog, unless an issue was being created (its choices load again on
     /// return).

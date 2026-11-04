@@ -48,7 +48,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs:
             let retry = Some(Msg::Issue(IssueMsg::Reload));
             pane_status::failed(ui, st.settings.lang(), Failure { title: &title, error: e, retry }, msgs);
         }
-        Details::Loaded(_) => conversation(ui, v, Clock { settings: &st.settings, now: st.view.now, offset: st.view.utc_offset }, md, msgs),
+        Details::Loaded(_) => conversation(ui, v, Clock { settings: &st.settings, now: st.cues.now, offset: st.cues.utc_offset }, md, msgs),
     });
 }
 

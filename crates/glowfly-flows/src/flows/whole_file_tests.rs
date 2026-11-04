@@ -69,8 +69,8 @@ fn arrive(st: &mut AppState, target: DiffTarget, d: FileDiff) {
 fn set_diff_mode_whole_reloads_and_keeps_hunk() {
     let (mut st, dir) = with_diff("whole-switch", three_changes(false));
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 1, line: 3, how: Only }));
-    assert!(!st.view.diff_lines.is_empty());
-    st.session.tab_view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1];
+    assert!(!st.cues.diff_lines.is_empty());
+    st.view.tab.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1];
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     assert_eq!(st.settings.diff_mode, DiffMode::WholeFile);
@@ -79,8 +79,8 @@ fn set_diff_mode_whole_reloads_and_keeps_hunk() {
             if s.diff_mode == DiffMode::WholeFile),
         "{fx:?}"
     );
-    assert_eq!(st.view.diff_open_hunk, Some(1));
-    assert!(st.view.diff_lines.is_empty());
+    assert_eq!(st.cues.diff_open_hunk, Some(1));
+    assert!(st.cues.diff_lines.is_empty());
     assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the whole file");
     assert!(run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile))).is_empty(), "no change, nothing to do");
     let _ = std::fs::remove_dir_all(&dir);
@@ -89,14 +89,14 @@ fn set_diff_mode_whole_reloads_and_keeps_hunk() {
 #[test]
 fn diff_loaded_in_whole_mode_scrolls_to_kept_block() {
     let (mut st, dir) = with_diff("whole-open", three_changes(false));
-    st.session.tab_view.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1] + 2;
+    st.view.tab.diff_top_row = header_rows(&three_changes(false), DiffLayout::Inline)[1] + 2;
     run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::WholeFile)));
     let target = DiffTarget::Unstaged("f.txt".into());
     arrive(&mut st, target, three_changes(true));
     let rows = blocks(&three_changes(true), DiffLayout::Inline);
     assert_eq!(st.view.diff_scroll_to_row, Some(rows[1]));
-    assert_eq!(st.session.tab_view.diff_top_row, rows[1]);
-    assert_eq!(st.view.diff_open_hunk, None, "used once");
+    assert_eq!(st.view.tab.diff_top_row, rows[1]);
+    assert_eq!(st.cues.diff_open_hunk, None, "used once");
     assert!(st.hunk_ops_gen().is_some());
 
     // Another file opens on its first change block.
@@ -121,7 +121,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
         let (mut st, dir) = with_diff("whole-back", three_changes(true));
         st.settings.diff_mode = DiffMode::WholeFile;
         st.settings.diff_layout = layout;
-        st.session.tab_view.diff_top_row = blocks(&three_changes(true), layout)[2] + 3;
+        st.view.tab.diff_top_row = blocks(&three_changes(true), layout)[2] + 3;
         let shown = st.hunk_ops_gen();
         assert!(shown.is_some());
 
@@ -130,7 +130,7 @@ fn set_diff_mode_hunks_needs_no_reload() {
         let (_, d) = st.session.diff.view.as_ref().unwrap();
         assert!(d.whole.is_none());
         let header = header_rows(&three_changes(false), layout)[2];
-        assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (Some(header), header), "{layout:?}");
+        assert_eq!((st.view.diff_scroll_to_row, st.view.tab.diff_top_row), (Some(header), header), "{layout:?}");
         assert_eq!(st.hunk_ops_gen(), shown, "the hunks didn't change");
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -163,7 +163,7 @@ fn jump_to_change_steps_blocks_in_whole_mode() {
     st.settings.diff_mode = DiffMode::WholeFile;
     let (inline, split) = (blocks(&three_changes(true), DiffLayout::Inline), blocks(&three_changes(true), DiffLayout::Split));
     assert_ne!(inline[1], split[1]);
-    st.session.tab_view.diff_top_row = inline[1] + 1;
+    st.view.tab.diff_top_row = inline[1] + 1;
     run(&mut st, Msg::Diff(DiffMsg::SetDiffLayout(DiffLayout::Split)));
     assert_eq!(st.view.diff_scroll_to_row, Some(split[1]));
 }
@@ -174,12 +174,12 @@ fn line_ops_blocked_in_whole_mode() {
     st.settings.diff_mode = DiffMode::WholeFile;
     assert_eq!(st.line_ops_blocked(), Some(WHOLE_FILE_BLOCKS_LINE_OPS));
     assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only })).is_empty());
-    assert!(st.view.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.is_empty());
 
     // A selection made in the hunk view, applied after the setting changed (a stale message).
     st.settings.diff_mode = DiffMode::Hunks;
     run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only }));
-    assert!(!st.view.diff_lines.is_empty());
+    assert!(!st.cues.diff_lines.is_empty());
     st.settings.diff_mode = DiffMode::WholeFile;
     assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage))).is_empty());
     assert!(st.log.iter().any(|l| !l.ok && l.text == WHOLE_FILE_BLOCKS_LINE_OPS));
@@ -318,7 +318,7 @@ fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     let mut st = state();
     st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), three_changes(true).into()));
     st.settings.diff_mode = DiffMode::WholeFile;
-    st.session.tab_view.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
+    st.view.tab.diff_top_row = blocks(&three_changes(true), DiffLayout::Inline)[2];
 
     run(&mut st, Msg::Tabs(TabsMsg::NewTab));
     run(&mut st, Msg::Diff(DiffMsg::SetDiffMode(DiffMode::Hunks)));
@@ -326,5 +326,5 @@ fn a_parked_diff_follows_a_mode_change_made_in_another_tab() {
     let (_, d) = st.session.diff.view.as_ref().unwrap();
     assert!(d.whole.is_none(), "the hunk view shows the normal hunks");
     let header = header_rows(&three_changes(false), DiffLayout::Inline)[2];
-    assert_eq!((st.view.diff_scroll_to_row, st.session.tab_view.diff_top_row), (Some(header), header), "the same hunk stays at the top");
+    assert_eq!((st.view.diff_scroll_to_row, st.view.tab.diff_top_row), (Some(header), header), "the same hunk stays at the top");
 }

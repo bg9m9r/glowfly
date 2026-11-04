@@ -46,7 +46,7 @@ fn a_new_tab_is_numbered_and_takes_the_input() {
     let second = spawned(run(&mut st, T::NewTab(None)));
     assert_eq!(tabs(&st), [(1, first), (2, second)]);
     assert_eq!(active(&st), Some(second));
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     let fx = terminal(run(&mut st, T::Input(vec![TermInput::Text("x".into())])));
     assert!(matches!(&fx[..], [E::Write { id, .. }] if *id == second), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
@@ -76,10 +76,10 @@ fn select_tab_switches_and_numbers_reuse_the_lowest_free() {
     let (mut st, dir, one) = open_with_panel("term-tab-select");
     let two = spawned(run(&mut st, T::NewTab(None)));
     let three = spawned(run(&mut st, T::NewTab(None)));
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     run(&mut st, T::SelectTab(one));
     assert_eq!(active(&st), Some(one));
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     run(&mut st, T::SelectTab(999));
     assert_eq!(active(&st), Some(one), "an unknown id is ignored");
 

@@ -17,7 +17,7 @@ fn lang(st: &AppState) -> Lang {
 
 fn fetched(st: &AppState) -> String {
     let at = st.snap.as_ref().and_then(|s| s.fetched_at);
-    rules::fetched_line(lang(st), &st.settings, at, st.view.now, st.view.utc_offset)
+    rules::fetched_line(lang(st), &st.settings, at, st.cues.now, st.cues.utc_offset)
 }
 
 /// Undo: "Undo commit 'Fix login'", its keys, and what undoing it reverts (or why it can't).

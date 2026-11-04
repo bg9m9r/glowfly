@@ -236,7 +236,7 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut Mar
     let scroll = st.view.pr_thread_scroll.take();
     let reasons = super::line_comment::reasons(st);
     let focus = std::mem::take(&mut st.view.pr_line_comment_focus);
-    let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
+    let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.cues.now, offset: st.cues.utc_offset, go_to, scroll };
     let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let drafted = draft_on(v, path);
     let shown = head_path(v, path).to_owned();

@@ -21,7 +21,7 @@ fn many_files(dir: &Path, count: usize, text: &str) {
 /// `target`'s diff on screen; with `landed`, as a step's landing.
 fn open(st: &mut AppState, dir: &Path, target: DiffTarget, landed: bool) {
     let diff = repo::load_diff(dir, &target).unwrap();
-    st.view.file_reveal = landed.then(|| (target.clone(), 7));
+    st.cues.file_reveal = landed.then(|| (target.clone(), 7));
     st.session.diff.view = Some((target, diff.into()));
 }
 

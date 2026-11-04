@@ -97,7 +97,7 @@ pub(super) fn settle(st: &mut AppState, fx: &mut Vec<Effect>) {
     if !st.settings.hints || covered {
         // Off, or the PULL REQUESTS section opened over the Connect tip: hidden, not ignored.
         st.onboarding.hint = None;
-    } else if hints::place_gone(st) || st.view.quitting {
+    } else if hints::place_gone(st) || st.cues.quitting {
         let changed = hints::ignore(st);
         save_if(st, changed, fx);
     }

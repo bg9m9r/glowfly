@@ -17,7 +17,7 @@ use std::time::Instant;
 pub(super) fn handle(st: &mut AppState, staged: bool, key: ListKey, now: Instant, fx: &mut Vec<Effect>) {
     match key {
         ListKey::Move(m) => {
-            st.view.wip_span = None;
+            st.cues.wip_span = None;
             super::wip_list::step(st, staged, m, fx);
         }
         ListKey::Extend(m) => extend(st, staged, m, fx),
@@ -48,7 +48,7 @@ fn extend(st: &mut AppState, staged: bool, m: ListMove, fx: &mut Vec<Effect>) {
     let head = t.path().to_owned();
     let anchor = anchor.unwrap_or_else(|| head.clone());
     open(st, t, fx);
-    st.view.wip_span = Some(WipSpan { staged, anchor, head });
+    st.cues.wip_span = Some(WipSpan { staged, anchor, head });
 }
 
 /// Space: stages (Unstaged Files) or unstages the selected files, or the current file alone.
@@ -62,14 +62,14 @@ fn toggle(st: &mut AppState, staged: bool, now: Instant, fx: &mut Vec<Effect>) {
             if staged { StageMsg::UnstageFile(p) } else { StageMsg::StageFile(p) }
         }
     };
-    st.view.wip_span = None;
+    st.cues.wip_span = None;
     fx.extend(super::update_sealed(st, Msg::Stage(msg), now));
 }
 
 /// Enter: opens the list's current file when another one (or none) is open: where the list
 /// was left, else its first file.
 fn open_current(st: &mut AppState, staged: bool, fx: &mut Vec<Effect>) {
-    st.view.wip_span = None;
+    st.cues.wip_span = None;
     if cursor(st).and_then(|t| path_in(staged, t)).is_some() {
         return;
     }
@@ -80,7 +80,7 @@ fn open_current(st: &mut AppState, staged: bool, fx: &mut Vec<Effect>) {
 
 /// The file that list last opened, while it is still there.
 fn left_at(st: &AppState, staged: bool) -> Option<DiffTarget> {
-    let t = target(staged, st.view.wip_place[usize::from(staged)].as_deref()?);
+    let t = target(staged, st.cues.wip_place[usize::from(staged)].as_deref()?);
     still_listed(st, &t).then_some(t)
 }
 
@@ -92,7 +92,7 @@ fn discard(st: &mut AppState, staged: bool, now: Instant, fx: &mut Vec<Effect>) 
     let Some(path) = current(st, false) else { return };
     let Some(f) = st.snap.as_ref().and_then(|s| files(s, false).into_iter().find(|f| f.path == path)) else { return };
     let msg = crate::state::files::discard_msg(st.settings.lang(), f);
-    st.view.wip_span = None;
+    st.cues.wip_span = None;
     fx.extend(super::update_sealed(st, msg, now));
 }
 
@@ -104,7 +104,7 @@ fn across(st: &mut AppState, staged: bool, right: bool, fx: &mut Vec<Effect>) {
         return;
     }
     let to = right;
-    st.view.wip_span = None;
+    st.cues.wip_span = None;
     st.view.wip_focus = Some(to);
     let same = cursor(st).and_then(|t| path_in(staged, t)).map(|p| target(to, p)).filter(|t| still_listed(st, t));
     let t = same.or_else(|| left_at(st, to)).or_else(|| landing(st, to, ListMove::Step { down: true }));

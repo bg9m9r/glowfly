@@ -182,7 +182,7 @@ fn prefs_change_refreshes_repo_and_keeps_diff_row() {
     let file =
         glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), file.into()));
-    st.session.tab_view.diff_top_row = 6;
+    st.view.tab.diff_top_row = 6;
     st.view.diff_scroll_to_row = None;
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.view.diff_scroll_to_row, Some(6));

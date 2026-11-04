@@ -28,8 +28,8 @@ pub(super) fn pin(st: &mut AppState, key: &str, slot: Option<u8>, fx: &mut Vec<E
 /// Keeps the slots that pass for the trunk in the active palette (`mask`) and recolours the
 /// active snapshot with them. A tab in the background takes them when it comes back.
 pub(super) fn trunk_near(st: &mut AppState, mask: u16) {
-    if st.view.trunk_near != mask {
-        st.view.trunk_near = mask;
+    if st.cues.trunk_near != mask {
+        st.cues.trunk_near = mask;
         sync(st);
     }
 }
@@ -37,7 +37,7 @@ pub(super) fn trunk_near(st: &mut AppState, mask: u16) {
 /// Recolours the active snapshot when its colouring differs from the settings'.
 pub(super) fn sync(st: &mut AppState) {
     if let Some(snap) = st.snap.as_mut() {
-        apply(&st.settings, st.view.trunk_near, snap);
+        apply(&st.settings, st.cues.trunk_near, snap);
     }
 }
 

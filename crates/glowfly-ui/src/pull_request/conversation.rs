@@ -31,7 +31,7 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs:
     let scroll = st.view.pr_thread_scroll.take();
     let t = st.settings.lang();
     let keys = &st.keymap;
-    let ctx = threads::Ctx { settings: &st.settings, keys, now: st.view.now, offset: st.view.utc_offset, go_to, scroll };
+    let ctx = threads::Ctx { settings: &st.settings, keys, now: st.cues.now, offset: st.cues.utc_offset, go_to, scroll };
     let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let supported = !matches!(v.page, Page::Unsupported);
     if supported {

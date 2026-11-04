@@ -46,7 +46,7 @@ pub(super) fn copy(st: &mut AppState, keep: bool, fx: &mut Vec<Effect>) {
     if !keep {
         s.selection = None;
     }
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }
 
 /// A mouse selection ended: it becomes the PRIMARY selection, and with Copy on select is
@@ -55,7 +55,7 @@ pub(super) fn selected(st: &mut AppState, fx: &mut Vec<Effect>) {
     let copy_on_select = st.settings.terminal.copy_on_select;
     let Some(s) = active_mut(st) else { return };
     offer(copy_text(s), copy_on_select, fx);
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }
 
 /// Selects the whole history and screen, which becomes the PRIMARY selection; with Copy on
@@ -66,7 +66,7 @@ pub(super) fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (anchor, head) = s.screen.select_all();
     s.selection = Some(Selection { anchor, head, epoch: s.screen.epoch() });
     offer(copy_text(s), copy_on_select, fx);
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }
 
 /// A new selection's `text` as the PRIMARY selection (which the shell ignores where there is
@@ -94,13 +94,13 @@ pub(super) fn clear(st: &mut AppState, fx: &mut Vec<Effect>) {
     } else if s.alive() {
         fx.push(Effect::Terminal(E::Write { id: s.id, bytes: vec![0x0c] }));
     }
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }
 
 /// Asks the window for the clipboard, which comes back to the focused grid as a paste.
 pub(super) fn paste(st: &mut AppState, fx: &mut Vec<Effect>) {
     if active_mut(st).is_some_and(|s| s.alive()) {
-        st.terminal.focus_requested = true;
+        st.view.terminal.focus_requested = true;
         fx.push(Effect::Ui(UiEffect::RequestPaste));
     }
 }
@@ -109,7 +109,7 @@ pub(super) fn paste(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// tab, or for the clipboard where there is no PRIMARY.
 pub(super) fn paste_primary(st: &mut AppState, fx: &mut Vec<Effect>) {
     if active_mut(st).is_some_and(|s| s.alive()) {
-        st.terminal.focus_requested = true;
+        st.view.terminal.focus_requested = true;
         fx.push(Effect::Ui(UiEffect::PastePrimary));
     }
 }

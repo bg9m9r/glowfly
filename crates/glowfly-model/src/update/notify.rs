@@ -133,7 +133,7 @@ pub(super) fn run_action(st: &mut AppState, action: ToastAction, now: Instant, f
 /// Also shows `title` as a desktop notification, with the repository's name as its body, when
 /// the setting is on and the window is in the background.
 pub(super) fn desktop(st: &AppState, kind: NoteKind, title: &str, workdir: Option<&Path>, fx: &mut Vec<Effect>) {
-    if !st.settings.desktop_notifications || st.view.focused {
+    if !st.settings.desktop_notifications || st.cues.focused {
         return;
     }
     fx.push(Effect::Notify(notify::desktop_note(kind, title, &repo_label(st, workdir), workdir)));

@@ -68,7 +68,7 @@ fn header(ui: &mut Ui, st: &AppState, view: &RangeDiffView, msgs: &mut Vec<Msg>)
     let small = |text: String| RichText::new(text).font(type_scale::font(type_scale::SMALL)).color(color::weak());
     let lines = match view.compared() {
         Some(c) => {
-            let sub = subtitle(t, &view.origin, c, &st.settings, st.view.now, st.view.utc_offset);
+            let sub = subtitle(t, &view.origin, c, &st.settings, st.cues.now, st.cues.utc_offset);
             vec![sub, format!("{} · {}", base_line(t, c), counts_line(t, c))]
         }
         None => view.origin.label.clone().into_iter().collect(),

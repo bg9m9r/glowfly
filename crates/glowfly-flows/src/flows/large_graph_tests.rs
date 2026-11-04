@@ -114,28 +114,28 @@ fn hovering_waits_for_the_ancestry_then_highlights_as_on_the_ui_thread() {
     let ancestry = |fx: &[Effect]| fx.iter().filter(|e| matches!(e, Effect::Background(BackgroundEffect::Ancestry { .. }))).count();
     let fx = update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now());
     assert_eq!(ancestry(&fx), 1);
-    assert!(st.view.highlight.is_none(), "nothing highlighted until the worker answers");
+    assert!(st.cues.highlight.is_none(), "nothing highlighted until the worker answers");
     assert_eq!(ancestry(&update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now())), 0, "asked once");
     finish(&mut st, fx);
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now());
-    let (shown, rows) = st.view.highlight.clone().expect("highlighted once the ancestry is in");
+    let (shown, rows) = st.cues.highlight.clone().expect("highlighted once the ancestry is in");
     let snap = st.snap.as_ref().unwrap();
     let base = glowfly_model::state::ref_rows::default_ancestry(snap).1;
-    assert_eq!(st.view.ref_rows.base.as_ref(), Some(&base), "the same ancestry as on the UI thread");
+    assert_eq!(st.cues.ref_rows.base.as_ref(), Some(&base), "the same ancestry as on the UI thread");
     assert_eq!((shown, &*rows), (tip, &glowfly_model::state::ref_rows::branch_rows(snap, tip, &base)));
     // Hovering it again reuses its rows.
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(None)), Instant::now());
     update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now());
-    assert!(Arc::ptr_eq(&rows, &st.view.highlight.as_ref().unwrap().1), "worked out once per snapshot");
+    assert!(Arc::ptr_eq(&rows, &st.cues.highlight.as_ref().unwrap().1), "worked out once per snapshot");
 
     // An answer for the snapshot before a reset is dropped.
-    st.view.ref_rows.reset();
+    st.cues.ref_rows.reset();
     let fx = update(&mut st, Msg::Graph(GraphMsg::HoverRef(Some(tip))), Instant::now());
-    let request = st.view.ref_rows.asked.unwrap();
+    let request = st.cues.ref_rows.asked.unwrap();
     update(&mut st, Msg::Graph(GraphMsg::AncestryFound { request: request - 1, base: Default::default() }), Instant::now());
-    assert!(st.view.ref_rows.base.is_none(), "an older request's answer");
+    assert!(st.cues.ref_rows.base.is_none(), "an older request's answer");
     finish(&mut st, fx);
-    assert_eq!(st.view.ref_rows.base.as_ref(), Some(&base));
+    assert_eq!(st.cues.ref_rows.base.as_ref(), Some(&base));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

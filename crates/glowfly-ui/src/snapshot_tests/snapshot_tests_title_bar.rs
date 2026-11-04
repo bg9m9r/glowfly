@@ -27,7 +27,7 @@ const EMPTY: Pos2 = pos2(1000.0, 20.0);
 
 fn fixture(chrome: Chrome, theme: ThemeChoice, name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
-    st.view.chrome = chrome;
+    st.cues.chrome = chrome;
     st.settings.reduce_motion = true;
     (st, dir)
 }
@@ -83,7 +83,7 @@ fn title_bar_snapshots() {
     use ThemeChoice::{Dark, Light};
     snapshot("title_bar_windows_dark", Windows, Dark, true, |_| {}, |_| {});
     snapshot("title_bar_windows_light", Windows, Light, false, |_| {}, |_| {});
-    snapshot("title_bar_windows_maximized", Windows, Dark, true, |st| st.view.window.maximized = true, |_| {});
+    snapshot("title_bar_windows_maximized", Windows, Dark, true, |st| st.cues.window.maximized = true, |_| {});
     snapshot("title_bar_mac_dark", MacOs, Dark, true, |_| {}, |_| {});
     snapshot("title_bar_close_hover", Windows, Dark, true, |_| {}, |h| h.get_by_label("Close window").hover());
     snapshot("title_bar_menu_open", Windows, Dark, true, |_| {}, |h| h.get_by_label("Menu").click());
@@ -129,7 +129,7 @@ fn the_window_buttons_send_their_actions() {
     h.run();
     assert_eq!(sent(&h), [WindowCmd::SetMaximized(true)]);
     h.state_mut().1.clear();
-    h.state_mut().0.view.window.maximized = true;
+    h.state_mut().0.cues.window.maximized = true;
     h.run();
     assert!(h.query_by_label("Maximize window").is_none());
     h.get_by_label("Restore window").click();
@@ -145,7 +145,7 @@ fn the_window_buttons_send_their_actions() {
 #[test]
 fn title_bar_windows_full_screen() {
     let (mut st, dir) = fixture(Chrome::Windows, ThemeChoice::Dark, "title-bar-full-screen");
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     let mut h = open(st, true);
     settle(&mut h);
     let t = h.state().0.settings.lang();
@@ -216,7 +216,7 @@ fn pressed_at(chrome: Chrome, maximized: bool, at: Pos2) -> Vec<WindowCmd> {
 fn pressed_in(chrome: Chrome, window: WindowInfo, at: Pos2) -> Vec<WindowCmd> {
     let (m, f) = (window.maximized, window.fullscreen);
     let (mut st, dir) = fixture(chrome, ThemeChoice::Dark, &format!("title-bar-resize-{chrome:?}-{m}-{f}-{}", at.x));
-    st.view.window = window;
+    st.cues.window = window;
     let mut h = open(st, true);
     pointer(&mut h, at, Some((PointerButton::Primary, true)));
     h.run();

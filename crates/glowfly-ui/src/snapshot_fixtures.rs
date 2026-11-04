@@ -171,8 +171,8 @@ pub fn harness_stepped(st: AppState, dark: bool, dt: f32) -> Harness<'static, (A
 }
 
 fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, dt: f32) -> Harness<'static, (AppState, Vec<Msg>)> {
-    st.view.now = NOW;
-    st.view.utc_offset = 0;
+    st.cues.now = NOW;
+    st.cues.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
     crate::snapshot_check::builder()
         .with_size(size)
@@ -200,11 +200,11 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, d
                 // Tests inject working-tree files into the lists; count them as a status read would,
                 // so the WIP row's counts match the files shown. Like the shell and `update`, colour
                 // the graph with the palette's slots near the trunk.
-                st.view.trunk_near = theme::branch_colours::trunk_near(&p);
+                st.cues.trunk_near = theme::branch_colours::trunk_near(&p);
                 if let Some(snap) = st.snap.as_mut() {
                     snap.changes = ChangeCounts::of(&snap.staged, &snap.unstaged);
-                    if snap.graph.colouring.trunk_near != st.view.trunk_near {
-                        let c = Colouring { trunk_near: st.view.trunk_near, ..snap.graph.colouring.clone() };
+                    if snap.graph.colouring.trunk_near != st.cues.trunk_near {
+                        let c = Colouring { trunk_near: st.cues.trunk_near, ..snap.graph.colouring.clone() };
                         snap.set_colouring(c);
                     }
                 }

@@ -218,7 +218,7 @@ fn started_held() -> AppState {
 fn what_glowfly_records_by_itself_is_no_edit_and_its_newer_records_are_kept() {
     let mut st = started_held();
     // The automatic update check, 15 s in, records when it worked.
-    st.view.now = 1_800_000_000;
+    st.cues.now = 1_800_000_000;
     let fx = run(&mut st, Msg::Updates(UpdateMsg::Checked { manual: false, result: Ok(None) }));
     assert_eq!(saves(&fx), 0, "held: {fx:?}");
     assert_eq!(st.settings.updates.last_checked, Some(1_800_000_000));
@@ -244,7 +244,7 @@ fn what_glowfly_records_by_itself_is_no_edit_and_its_newer_records_are_kept() {
 #[test]
 fn a_users_edit_while_held_is_said_to_be_dropped() {
     let mut st = started_held();
-    st.view.now = 1_800_000_000;
+    st.cues.now = 1_800_000_000;
     run(&mut st, Msg::Updates(UpdateMsg::Checked { manual: false, result: Ok(None) }));
     toggle_labels(&mut st);
     run(&mut st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((Settings::default(), None)))));

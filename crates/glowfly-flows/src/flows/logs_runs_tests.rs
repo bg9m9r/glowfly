@@ -42,7 +42,7 @@ fn last(st: &AppState) -> &LogEntry {
 #[test]
 fn job_becomes_a_run() {
     let (mut st, dir) = opened("runs-push");
-    st.view.now = 1_800_000_000;
+    st.cues.now = 1_800_000_000;
     let t0 = Instant::now();
     at(&mut st, Msg::git("Push", &["push"]), t0);
     assert!(st.job.is_some());

@@ -155,7 +155,7 @@ fn next_change_past_a_folder_file_opens_the_next_file() {
     assert_eq!(st.session.history.view.as_ref().unwrap().file, 1);
     assert_eq!(st.view.history_file_scroll, Some(1));
     // At the last file nothing follows, and nothing wraps.
-    st.view.diff_landing = None;
+    st.cues.diff_landing = None;
     st.view.history_file_scroll = None;
     st.session.diff.view = Some((DiffTarget::Commit(oid(1), "src/b.rs".into()), super::history_tests::empty_diff().into()));
     assert!(update(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)), Instant::now()).is_empty());

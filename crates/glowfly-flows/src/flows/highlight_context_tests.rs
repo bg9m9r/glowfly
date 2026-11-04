@@ -91,13 +91,13 @@ fn medium_file_opens_colored_then_corrects() {
         matches!(&held[0], Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, .. }) if *generation == st.session.diff.shown_gen)
     );
 
-    let view = (st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone());
+    let view = (st.view.tab.diff_top_row, st.cues.diff_cursor, st.cues.diff_lines.clone());
     let msg = glowfly_runner::testing::execute(held.remove(0)).expect("a result");
     assert!(update(&mut st, msg, Instant::now()).is_empty());
     let d = shown(&st);
     assert!(!hl(d).is_pending());
     assert!(all_comment(d), "corrected in context: {:?}", let_lines(d));
-    assert_eq!((st.session.tab_view.diff_top_row, st.view.diff_cursor, st.view.diff_lines.clone()), view);
+    assert_eq!((st.view.tab.diff_top_row, st.cues.diff_cursor, st.cues.diff_lines.clone()), view);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

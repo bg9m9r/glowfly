@@ -168,7 +168,7 @@ fn record_rows(ui: &mut Ui, st: &mut AppState, cache: &mut DiffRowsCache, scroll
     let shown = rows(ui, st, cache, scroll_to, &mut text, msgs);
     (st.view.diff_text, st.view.diff_text_edge) = (text.sel, text.edge);
     if let Some((top, visible)) = shown {
-        st.session.tab_view.diff_top_row = top;
+        st.view.tab.diff_top_row = top;
         st.view.diff_visible_rows = visible;
     }
 }
@@ -195,7 +195,7 @@ fn rows(
     let hl = whole.map_or(diff.highlight.as_ref(), |w| w.diff.highlight.as_ref()).filter(|_| st.settings.syntax_highlighting);
     let header_hl = diff.highlight.as_ref().filter(|_| st.settings.syntax_highlighting);
     let selectable = st.line_ops_blocked().is_none();
-    let sel = selectable.then_some(&st.view.diff_lines);
+    let sel = selectable.then_some(&st.cues.diff_lines);
     // The release can happen over a row that is no longer drawn, so the drag ends here.
     if sel.and_then(LineSelection::dragging).is_some() {
         if ui.input(|i| i.pointer.primary_down()) {
@@ -223,7 +223,7 @@ fn rows(
     // wrapped) keep the row at the top in place.
     let heights = Heights { row_h: style.row_h, header_h: style.header_h };
     let anchor = cache.refresh_heights(lines, &gap_lines, heights, style.tab, wrap);
-    let scroll_to = scroll_to.or(anchor.then_some(st.session.tab_view.diff_top_row));
+    let scroll_to = scroll_to.or(anchor.then_some(st.view.tab.diff_top_row));
     let m = cache.row_metrics(style.row_h);
     let marks =
         st.session.pull_request.view.as_ref().filter(|v| v.shows_file(target)).and_then(|v| pull_request_threads::marks(v, target.path()));

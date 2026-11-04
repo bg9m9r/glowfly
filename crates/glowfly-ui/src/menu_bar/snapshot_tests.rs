@@ -185,7 +185,7 @@ fn view_menu_checks_the_shown_panels() {
     assert_eq!((full.role(), full.toggled()), (Role::CheckBox, Some(Toggled::False)));
     drop(h);
     let (mut st, _) = with_bar(ThemeChoice::Dark, "menu-bar-view-checks");
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     let h = opened(st, true, "View");
     assert_eq!(h.get_by_label("Full screen").toggled(), Some(Toggled::True));
     drop(h);

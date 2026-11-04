@@ -168,7 +168,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
 /// Discarding every line of an untracked file discards the file, as its Discard does.
 fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
     let Some((target, diff)) = &st.session.diff.view else { return };
-    let sel = &st.view.diff_lines;
+    let sel = &st.cues.diff_lines;
     let fits =
         matches!((target, op), (DiffTarget::Unstaged(_), HunkOp::Stage | HunkOp::Discard) | (DiffTarget::Staged(_), HunkOp::Unstage));
     if sel.is_empty() || sel.target.as_ref() != Some(target) || !fits {
@@ -183,12 +183,12 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
         st.log(false, "The diff changed before the line operation ran, so nothing was changed. Try again on the updated diff.");
         return;
     }
-    let Some(expected) = diff.hunks.get(st.view.diff_lines.hunk).cloned() else { return };
+    let Some(expected) = diff.hunks.get(st.cues.diff_lines.hunk).cloned() else { return };
     let path = target.path().to_owned();
     let whole = op == HunkOp::Discard
         && diff.hunks.len() == 1
-        && super::work_files_delete::every_line_untracked(st, &path, &expected, &st.view.diff_lines.lines);
-    let sel = std::mem::take(&mut st.view.diff_lines);
+        && super::work_files_delete::every_line_untracked(st, &path, &expected, &st.cues.diff_lines.lines);
+    let sel = std::mem::take(&mut st.cues.diff_lines);
     // Its hunks are stale from now until the reload that follows the operation lands.
     st.session.diff.generation += 1;
     let lines = sel.lines.into_iter().collect();
@@ -289,7 +289,7 @@ pub fn finish_job(
         (a, b) => a.is_none() && b.is_none(),
     };
     // Pull's tooltip says when the repository last fetched; other tabs read FETCH_HEAD on load.
-    let fetched = st.view.now;
+    let fetched = st.cues.now;
     if ok
         && job.fetches
         && here

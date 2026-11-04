@@ -1,5 +1,5 @@
 //! Author avatars: requests from the views become background fetches, and fetched images wait
-//! in `view.avatars_loaded` for the shell to turn them into textures. Nothing is fetched unless
+//! in `cues.avatars_loaded` for the shell to turn them into textures. Nothing is fetched unless
 //! lookups are on and the active repository is publicly hosted (`avatars::lookups_allowed`).
 
 use crate::effect::Effect;
@@ -19,6 +19,6 @@ pub(super) fn handle(st: &mut AppState, msg: AvatarMsg, fx: &mut Vec<Effect>) {
                 fx.extend(emails.chunks(BATCH).map(|c| Effect::Network(NetworkEffect::Avatars(c.to_vec()))));
             }
         }
-        AvatarMsg::AvatarsLoaded(batch) => st.view.avatars_loaded.extend(batch),
+        AvatarMsg::AvatarsLoaded(batch) => st.cues.avatars_loaded.extend(batch),
     }
 }

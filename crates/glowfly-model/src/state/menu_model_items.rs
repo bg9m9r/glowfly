@@ -153,7 +153,7 @@ pub(super) fn view(st: &AppState) -> Vec<Entry> {
     ];
     for panel in Panel::ALL {
         // A drawn title bar replaces the menu bar.
-        if panel == Panel::MenuBar && st.view.chrome.drawn() {
+        if panel == Panel::MenuBar && st.cues.chrome.drawn() {
             continue;
         }
         let on = shown(s, panel);
@@ -162,7 +162,7 @@ pub(super) fn view(st: &AppState) -> Vec<Entry> {
     }
     let no_repo = st.snap.is_none().then_some(t.tr("menu.common.no_repo"));
     let full = MenuAction::send(Msg::Layout(LayoutMsg::ToggleFullscreen));
-    out.push(marked(keys, t.tr("menu.view.full_screen"), Mark::Check(st.view.window.fullscreen), Some(I::ToggleFullscreen), None, full));
+    out.push(marked(keys, t.tr("menu.view.full_screen"), Mark::Check(st.cues.window.fullscreen), Some(I::ToggleFullscreen), None, full));
     let term = MenuAction::send(Msg::Terminal(TerminalMsg::Toggle));
     out.push(marked(keys, t.tr("menu.view.terminal"), Mark::Check(st.terminal.open), Some(I::ToggleTerminal), no_repo, term));
     out.push(marked(keys, t.tr("menu.view.activity_log"), Mark::Check(st.view.show_log), None, None, MenuAction::ToggleActivityLog));

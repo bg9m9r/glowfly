@@ -52,7 +52,7 @@ fn cleanup(dirs: &[&Path]) {
 #[test]
 fn turning_on_saves_and_sends_one_confirmation() {
     let mut st = state();
-    assert!(st.view.focused);
+    assert!(st.cues.focused);
     let fx = set(&mut st, true);
     assert!(st.settings.desktop_notifications);
     assert_eq!(fx.len(), 2, "{fx:?}");
@@ -82,7 +82,7 @@ fn finished_job_notifies_while_unfocused() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.settings.desktop_notifications = true;
-    st.view.focused = false;
+    st.cues.focused = false;
     let name = tab_name(&st);
     assert!(!name.is_empty());
 
@@ -107,10 +107,10 @@ fn no_job_notification_when_focused_or_off() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.settings.desktop_notifications = true;
-    st.view.focused = true;
+    st.cues.focused = true;
     assert!(notes(&fetch_ends(&mut st, true, "")).is_empty(), "focused");
     st.settings.desktop_notifications = false;
-    st.view.focused = false;
+    st.cues.focused = false;
     assert!(notes(&fetch_ends(&mut st, true, "")).is_empty(), "setting off");
     assert_eq!(st.toasts.len(), 1, "both still toast: the second shows the first again");
     assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Fetch succeeded"));
@@ -121,7 +121,7 @@ fn no_job_notification_when_focused_or_off() {
 fn quiet_auto_fetch_does_not_notify() {
     let (mut st, work, bare) = with_origin("desktop-autofetch");
     st.settings.desktop_notifications = true;
-    st.view.focused = false;
+    st.cues.focused = false;
     let kept = auto_fetch(&mut st);
     assert!(notes(&kept).is_empty(), "{kept:?}");
     assert!(st.toasts.is_empty());
@@ -132,7 +132,7 @@ fn quiet_auto_fetch_does_not_notify() {
 fn behind_alert_also_goes_to_the_desktop() {
     let (mut st, work, bare) = with_origin("desktop-behind");
     st.settings.desktop_notifications = true;
-    st.view.focused = false;
+    st.cues.focused = false;
     let name = tab_name(&st);
     remote_commit(&bare, "main", "r1.txt");
     let kept = auto_fetch(&mut st);
@@ -148,14 +148,14 @@ fn behind_alert_also_goes_to_the_desktop() {
     assert!(t.action.is_some(), "still with its Pull button");
 
     // Focused: only the toast.
-    st.view.focused = true;
+    st.cues.focused = true;
     remote_commit(&bare, "main", "r2.txt");
     let kept = auto_fetch(&mut st);
     assert!(notes(&kept).is_empty(), "{kept:?}");
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("main is 2 commits behind origin/main"));
 
     // Behind alerts off: neither.
-    st.view.focused = false;
+    st.cues.focused = false;
     st.settings.behind_alerts = false;
     let toasts = st.toasts.len();
     remote_commit(&bare, "main", "r3.txt");

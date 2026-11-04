@@ -28,12 +28,12 @@ fn start_rename_fills_the_draft_and_selects_the_tab() {
     let (mut st, dir, one) = open_with_panel("term-rename-start");
     started(&mut st, one);
     run(&mut st, T::NewTab(None));
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     run(&mut st, T::StartRename(one));
     let want = format!("pwsh \u{b7} {}", folder(&st));
     assert_eq!(st.terminal.renaming, Some(TabRename { id: one, shown: want.clone(), text: want, focus: true }));
     assert_eq!(st.terminal.active_id(&workdir(&st)), Some(one));
-    assert!(!st.terminal.focus_requested, "the field takes the keyboard, not the shell");
+    assert!(!st.view.terminal.focus_requested, "the field takes the keyboard, not the shell");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -45,7 +45,7 @@ fn rename_by_focus_moving_elsewhere_leaves_the_keyboard_there() {
     run(&mut st, T::Rename { id: one, name: "build".into(), submitted: false });
     assert_eq!(session(&st, one).name.as_deref(), Some("build"));
     assert!(st.terminal.renaming.is_none());
-    assert!(!st.terminal.focus_requested, "the shell must not take the keyboard from the widget the user clicked");
+    assert!(!st.view.terminal.focus_requested, "the shell must not take the keyboard from the widget the user clicked");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -54,12 +54,12 @@ fn rename_sets_a_cleaned_name_and_gives_the_shell_the_keyboard() {
     let (mut st, dir, one) = open_with_panel("term-rename-set");
     started(&mut st, one);
     run(&mut st, T::StartRename(one));
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     run(&mut st, T::Rename { id: one, name: "  build  ".into(), submitted: true });
     assert_eq!(session(&st, one).name.as_deref(), Some("build"));
     assert_eq!(display_name(session(&st, one)), "build");
     assert!(st.terminal.renaming.is_none());
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
 
     run(&mut st, T::StartRename(one));
     run(&mut st, T::Rename { id: one, name: "x".repeat(100), submitted: true });
@@ -117,10 +117,10 @@ fn a_stale_rename_is_ignored_and_cancel_clears_the_draft() {
     run(&mut st, T::Rename { id: one, name: "other".into(), submitted: true });
     assert_eq!(session(&st, one).name, None, "not the draft's tab");
     assert!(st.terminal.renaming.is_some());
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     run(&mut st, T::CancelRename);
     assert!(st.terminal.renaming.is_none());
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     assert_eq!(session(&st, two).name, None);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -150,7 +150,7 @@ fn maximise_toggles_only_while_the_panel_shows() {
     let (mut st, dir, _) = open_with_panel("term-max-toggle");
     run(&mut st, T::ToggleMaximize);
     assert!(st.terminal.maximized && maximized_shown(&st));
-    assert!(st.terminal.focus_requested);
+    assert!(st.view.terminal.focus_requested);
     run(&mut st, T::ToggleMaximize);
     assert!(!st.terminal.maximized);
     run(&mut st, T::Hide);

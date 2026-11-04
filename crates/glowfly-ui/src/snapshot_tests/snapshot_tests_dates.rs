@@ -17,7 +17,7 @@ type H = Harness<'static, (AppState, Vec<Msg>)>;
 /// The full date and time of the first commit (the row below WIP): the tooltip's first line.
 fn first_commit_verbose(st: &AppState) -> String {
     let c = &st.snap.as_ref().unwrap().commits[0];
-    st.settings.date_tooltip(c.time, st.view.now, 0).lines().next().unwrap().to_owned()
+    st.settings.date_tooltip(c.time, st.cues.now, 0).lines().next().unwrap().to_owned()
 }
 
 /// Rests the pointer on the first commit row, `dx` px right of the date column's grip.

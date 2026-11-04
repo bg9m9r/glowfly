@@ -110,7 +110,7 @@ pub(crate) fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout,
         let how = if i == 0 { LineClick::Only } else { LineClick::Toggle };
         glowfly_model::update::update(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how }), std::time::Instant::now());
     }
-    assert_eq!(st.view.diff_lines.count_in(&target, 0), selected.len());
+    assert_eq!(st.cues.diff_lines.count_in(&target, 0), selected.len());
     (st, dir)
 }
 

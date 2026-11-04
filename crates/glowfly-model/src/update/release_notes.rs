@@ -66,7 +66,7 @@ pub(super) fn startup_notes(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Once per frame: starts the What's new chip's time from the first frame that knows the
 /// time, and takes it away once that time is up.
 pub(super) fn news_chip_tick(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let now = st.view.now;
+    let now = st.cues.now;
     let Some(chip) = st.settings.updates.news_chip.as_mut() else { return };
     match chip.until {
         None if now > 0 => chip.until = Some(now + NEWS_CHIP_FOR),

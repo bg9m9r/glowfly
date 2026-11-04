@@ -73,7 +73,7 @@ pub(super) fn tick(st: &mut AppState, t: Instant, fx: &mut Vec<Effect>) {
     }
     let u = &st.updates;
     let armed = u.auto_from.is_some_and(|from| t >= from) && u.retry_at.is_none_or(|at| t >= at);
-    if armed && !u.blocked() && app_update::due(st.settings.updates.check, st.settings.updates.last_checked, st.view.now) {
+    if armed && !u.blocked() && app_update::due(st.settings.updates.check, st.settings.updates.last_checked, st.cues.now) {
         check(st, false, fx);
     }
 }
@@ -120,7 +120,7 @@ fn checked(st: &mut AppState, manual: bool, result: Result<Option<CheckedRelease
             return;
         }
     };
-    st.settings.updates.last_checked = Some(st.view.now);
+    st.settings.updates.last_checked = Some(st.cues.now);
     st.updates.retry_at = None;
     fx.extend(super::prefs::save_settings(st));
     let u = &st.updates;

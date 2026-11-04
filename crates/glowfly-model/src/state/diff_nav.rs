@@ -65,8 +65,8 @@ impl Step {
 /// The row stepping continues from: the change last stepped to while it is still on screen
 /// (it may sit below the top when the scroll clamps at the end), otherwise the top row.
 pub fn position(st: &AppState) -> usize {
-    let top = st.session.tab_view.diff_top_row;
-    match st.view.diff_cursor {
+    let top = st.view.tab.diff_top_row;
+    match st.cues.diff_cursor {
         Some(c) if c >= top && c < top + st.view.diff_visible_rows.max(1) => c,
         _ => top,
     }

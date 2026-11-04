@@ -79,7 +79,7 @@ pub(super) fn panel(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 row_h,
                 c.files.len(),
                 |ui, range| {
-                    reveal(ui, "workdir-files", st.view.file_reveal.as_ref(), index, &range, row_h);
+                    reveal(ui, "workdir-files", st.cues.file_reveal.as_ref(), index, &range, row_h);
                     for row in range {
                         let f = &c.files[row];
                         let target = w.target(f.path.clone());

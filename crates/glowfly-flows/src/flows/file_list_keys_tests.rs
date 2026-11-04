@@ -51,7 +51,7 @@ fn the_commit_list_opens_the_file_above_or_below() {
     // No file open yet: Down starts at the first file.
     let fx = key(&mut st, FileList::Commit, DOWN);
     assert_eq!(opened(&fx), Some(&at("f.txt")));
-    assert_eq!(st.view.file_reveal.as_ref().map(|(t, _)| t), Some(&at("f.txt")), "the list scrolls to it");
+    assert_eq!(st.cues.file_reveal.as_ref().map(|(t, _)| t), Some(&at("f.txt")), "the list scrolls to it");
     press(&mut st, FileList::Commit, DOWN);
     press(&mut st, FileList::Commit, DOWN);
     assert_eq!(shown(&st), Some(&at("g.txt")), "the second press opened g.txt, the third stopped at the end");
@@ -190,7 +190,7 @@ fn the_conflicted_list_opens_the_conflict_above_or_below() {
     let open = |st: &AppState| st.session.conflict.view.as_ref().map(|c| c.path.clone());
     press(&mut st, FileList::Conflicted, DOWN);
     assert_eq!(open(&st).as_deref(), Some("b.txt"));
-    let reveal = st.view.file_reveal.as_ref().map(|(t, _)| t);
+    let reveal = st.cues.file_reveal.as_ref().map(|(t, _)| t);
     assert_eq!(reveal, Some(&DiffTarget::Unstaged("b.txt".into())), "Conflicted Files scrolls to it");
     assert!(key(&mut st, FileList::Conflicted, DOWN).is_empty(), "b.txt is the last");
     press(&mut st, FileList::Conflicted, UP);

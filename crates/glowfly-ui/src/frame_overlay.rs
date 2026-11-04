@@ -13,7 +13,7 @@ pub fn show(ctx: &egui::Context, st: &AppState) {
     if !st.settings.show_frame_times {
         return;
     }
-    let f = st.view.frame_times;
+    let f = st.cues.frame_times;
     let one = |ms: f32| format!("{ms:.1}");
     let text =
         st.settings.lang().trf("frame_times.overlay", &[("last", &one(f.last_ms)), ("avg", &one(f.avg_ms)), ("max", &one(f.max_ms))]);

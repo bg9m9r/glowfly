@@ -14,7 +14,7 @@ use std::time::Instant;
 
 /// Asks where to save the bundle, suggesting a name with the time in it.
 pub(super) fn export(st: &AppState, fx: &mut Vec<Effect>) {
-    fx.push(Effect::Logs(LogsEffect::PickExport { name: logs::bundle_name(st.view.now, st.view.utc_offset) }));
+    fx.push(Effect::Logs(LogsEffect::PickExport { name: logs::bundle_name(st.cues.now, st.cues.utc_offset) }));
 }
 
 /// The save dialog's answer: writes the bundle there, or nothing when it was cancelled.
@@ -36,7 +36,7 @@ pub(super) fn header(st: &AppState) -> Vec<(String, String)> {
         },
     };
     let pairs = [
-        ("Exported", logs::stamp(st.view.now, st.view.utc_offset)),
+        ("Exported", logs::stamp(st.cues.now, st.cues.utc_offset)),
         ("Glowfly", st.updates.shown.to_owned()),
         ("OS", logs::platform()),
         ("Git", git),

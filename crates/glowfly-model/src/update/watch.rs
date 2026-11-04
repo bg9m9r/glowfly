@@ -151,7 +151,7 @@ pub(super) fn remote_text(workdir: &std::path::Path, kind: &str, keys: &Keymap) 
 /// the last one, and never queued behind a read already running.
 pub(super) fn poll(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let Some(every) = st.watch.poll_interval() else { return };
-    if !st.view.was_focused || st.snap.is_none() || st.job.is_some() || st.loading {
+    if !st.cues.was_focused || st.snap.is_none() || st.job.is_some() || st.loading {
         return;
     }
     let Some(last) = st.watch.last_poll else {

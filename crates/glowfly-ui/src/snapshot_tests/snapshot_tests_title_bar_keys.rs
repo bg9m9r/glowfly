@@ -16,7 +16,7 @@ use std::path::PathBuf;
 
 fn fixture(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, name);
-    st.view.chrome = Chrome::Windows;
+    st.cues.chrome = Chrome::Windows;
     st.settings.reduce_motion = true;
     (st, dir)
 }
@@ -121,7 +121,7 @@ fn a_click_on_the_menu_button_shows_the_list() {
 #[test]
 fn macos_has_no_mnemonics() {
     let (mut st, dir) = fixture("title-keys-mac");
-    st.view.chrome = Chrome::MacOs;
+    st.cues.chrome = Chrome::MacOs;
     let mut h = open(st);
     press(&mut h, Modifiers::ALT, Key::E);
     assert!(!menu_open(&h));

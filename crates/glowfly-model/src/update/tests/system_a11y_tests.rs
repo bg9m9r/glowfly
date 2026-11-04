@@ -21,11 +21,11 @@ fn asks(reduce_motion: bool, high_contrast: bool, text_scale: f32) -> SystemA11y
 #[test]
 fn the_message_records_what_the_system_asks_for() {
     let mut st = state();
-    assert_eq!(st.view.system_a11y, SystemA11y::default());
+    assert_eq!(st.cues.system_a11y, SystemA11y::default());
     system(&mut st, asks(true, true, 1.5));
-    assert_eq!(st.view.system_a11y, asks(true, true, 1.5));
+    assert_eq!(st.cues.system_a11y, asks(true, true, 1.5));
     system(&mut st, SystemA11y::default());
-    assert_eq!(st.view.system_a11y, SystemA11y::default(), "turned off again in the system");
+    assert_eq!(st.cues.system_a11y, SystemA11y::default(), "turned off again in the system");
 }
 
 #[test]

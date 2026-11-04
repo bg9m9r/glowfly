@@ -171,10 +171,10 @@ fn showing_the_summary_clears_the_line_selection() {
     loaded(&mut st, target("art.psd"), false, Some(change()));
     run(&mut st, Msg::Lfs(LfsMsg::ShowPointer(true)));
     let (t, d) = st.session.diff.view.clone().unwrap();
-    st.view.diff_lines.click(&t, &d, 0, 1, LineClick::Only);
-    assert!(!st.view.diff_lines.is_empty());
+    st.cues.diff_lines.click(&t, &d, 0, 1, LineClick::Only);
+    assert!(!st.cues.diff_lines.is_empty());
     run(&mut st, Msg::Lfs(LfsMsg::ShowPointer(false)));
-    assert!(st.view.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.is_empty());
     assert!(summary(&st).is_some());
 }
 

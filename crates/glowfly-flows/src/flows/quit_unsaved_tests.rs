@@ -78,15 +78,15 @@ fn quitting_with_a_draft_asks_and_names_its_tab() {
     let (title, body) = question(&st);
     assert_eq!(title, "Quit Glowfly?");
     assert_eq!(body, format!("{HEADER}\n- b: its commit message draft"));
-    assert!(!st.view.quitting);
+    assert!(!st.cues.quitting);
     // The OS's close is cancelled too.
     run(&mut st, Msg::CloseModal);
     let fx = run(&mut st, Msg::App(AppMsg::CloseRequested));
     assert!(fx.iter().any(|e| matches!(e, Effect::Ui(UiEffect::CancelClose))), "{fx:?}");
-    assert!(!st.view.quitting);
+    assert!(!st.cues.quitting);
     // Quit anyway closes.
     assert!(closes(&run(&mut st, Msg::ConfirmAccepted)));
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn quitting_with_nothing_unsaved_closes() {
     run(&mut st, nothing());
     let fx = quit(&mut st);
     assert!(closes(&fx), "{fx:?}");
-    assert!(st.view.quitting);
+    assert!(st.cues.quitting);
     // An unedited Preferences page closes too.
     let mut st = identity();
     assert!(closes(&quit(&mut st)));
@@ -153,7 +153,7 @@ fn one_question_names_unsaved_and_running_work_and_never_closes_by_itself() {
     // The push ends: the draft is still there, so the question stays, naming only the draft.
     let fx = run(&mut st, Msg::Job(JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     assert!(!closes(&fx), "{fx:?}");
-    assert!(!st.view.quitting);
+    assert!(!st.cues.quitting);
     assert_eq!(question(&st).1, lost);
     assert!(!closes(&run(&mut st, nothing())));
     assert!(glowfly_model::state::quit_confirm::asking(&st));

@@ -36,8 +36,8 @@ fn export_header(st: &mut AppState) -> Vec<(String, String)> {
 #[test]
 fn export_asks_where_to_save() {
     let mut st = state();
-    st.view.now = 1_772_600_767;
-    st.view.utc_offset = 7200;
+    st.cues.now = 1_772_600_767;
+    st.cues.utc_offset = 7200;
     let fx = logs(&mut st, LogsMsg::Export);
     match fx.as_slice() {
         [Effect::Logs(LogsEffect::PickExport { name })] => assert_eq!(name, &bundle_name(1_772_600_767, 7200)),
@@ -49,7 +49,7 @@ fn export_asks_where_to_save() {
 #[test]
 fn export_to_sends_the_header() {
     let mut st = state();
-    st.view.now = 1_772_600_767;
+    st.cues.now = 1_772_600_767;
     st.git.info = None;
     let h = export_header(&mut st);
     let labels: Vec<&str> = h.iter().map(|(l, _)| l.as_str()).collect();

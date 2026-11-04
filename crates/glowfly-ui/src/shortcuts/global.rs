@@ -64,8 +64,8 @@ pub fn input(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // A menu's Alt+letter, after the bindings and custom keys (they win), while a menu bar is
     // reachable and nothing covers the window or holds the keyboard.
     st.view.menu_keys.request = None;
-    let bar = st.view.chrome.drawn() || st.settings.show_menu_bar;
-    if st.view.chrome.mnemonics() && bar && !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.terminal) {
+    let bar = st.cues.chrome.drawn() || st.settings.show_menu_bar;
+    if st.cues.chrome.mnemonics() && bar && !(live.prefs || live.askpass || live.palette || live.dialog || live.sheet || live.terminal) {
         let marks = crate::menu_bar::marks(st);
         st.view.menu_keys.request = ctx.input_mut(|i| crate::menu_bar::take(i, &marks));
     }

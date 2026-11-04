@@ -106,7 +106,7 @@ fn shift_moves_select_files_and_space_stages_them_together() {
 
     let fx = key(&mut st, false, ListKey::Toggle);
     assert_eq!(local_op(&fx), Some(&LocalOp::StagePaths(vec!["b.txt".into(), "c.txt".into(), "d.txt".into()])), "{fx:?}");
-    assert!(st.view.wip_span.is_none());
+    assert!(st.cues.wip_span.is_none());
     for e in fx {
         if let Some(m) = glowfly_runner::testing::execute(e) {
             drive(&mut st, m);

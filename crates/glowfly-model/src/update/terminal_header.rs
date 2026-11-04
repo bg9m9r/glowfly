@@ -15,7 +15,7 @@ pub(super) fn start_rename(st: &mut AppState, id: u64) {
     let Some(text) = tab_names(&tabs).into_iter().nth(i) else { return };
     st.terminal.active.insert(workdir, id);
     st.terminal.renaming = Some(TabRename { id, shown: text.clone(), text, focus: true });
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
 }
 
 /// Names tab `id` `name` from its rename field. A blank name, or the automatic one, goes back
@@ -24,7 +24,7 @@ pub(super) fn start_rename(st: &mut AppState, id: u64) {
 /// the field lost focus to another widget, the keyboard stays with that widget.
 pub(super) fn rename(st: &mut AppState, id: u64, name: &str, submitted: bool) {
     let Some(draft) = st.terminal.renaming.take_if(|r| r.id == id) else { return };
-    st.terminal.focus_requested = submitted;
+    st.view.terminal.focus_requested = submitted;
     let Some(s) = st.terminal.sessions.iter_mut().find(|s| s.id == id) else { return };
     let name = clean_rename(name);
     if name.as_deref() == clean_rename(&draft.shown).as_deref() {
@@ -36,7 +36,7 @@ pub(super) fn rename(st: &mut AppState, id: u64, name: &str, submitted: bool) {
 /// Esc in the rename field: the name stays and the shell gets the keyboard back.
 pub(super) fn cancel_rename(st: &mut AppState) {
     st.terminal.renaming = None;
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }
 
 /// The panel takes the main area, or goes back under it. Only while it shows on a repository.
@@ -45,5 +45,5 @@ pub(super) fn toggle_maximize(st: &mut AppState) {
         return;
     }
     st.terminal.maximized = !st.terminal.maximized;
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
 }

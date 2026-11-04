@@ -158,7 +158,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
 
 /// The toolbar's fill: the side panels' surface, which the active tab runs into.
 fn ground(st: &AppState) -> egui::Color32 {
-    backdrop::fill(st.view.backdrop, Surface::Side, color::panel())
+    backdrop::fill(st.cues.backdrop, Surface::Side, color::panel())
 }
 
 /// Keeps `value` under `key` for the next frame, drawing once more when it changed.

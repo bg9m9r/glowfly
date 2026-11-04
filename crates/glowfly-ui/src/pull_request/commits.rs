@@ -91,7 +91,7 @@ fn row(ui: &mut Ui, st: &AppState, c: &RangeCommit, selected: bool, msgs: &mut V
     }
     let resp = match (date_rect, ui.ctx().pointer_hover_pos()) {
         (Some(r), Some(p)) if resp.hovered() && r.contains(p) => {
-            resp.on_hover_text_at_pointer(st.settings.date_tooltip(c.time, st.view.now, st.view.utc_offset))
+            resp.on_hover_text_at_pointer(st.settings.date_tooltip(c.time, st.cues.now, st.cues.utc_offset))
         }
         _ => resp,
     };
@@ -116,7 +116,7 @@ fn paint(ui: &Ui, st: &AppState, rect: egui::Rect, c: &RangeCommit) -> egui::Rec
     let p = ui.painter();
     let sha_w = paint_cut_text(p, pos2(left, y1), &short(c.oid), mono, color::weak(), 80.0).rect.width();
     paint_cut_text(p, pos2(left + sha_w + 8.0, y1), &printable(&c.summary), body, color::text(), right - left - sha_w - 8.0);
-    let date = st.settings.format_day(c.time, st.view.now, st.view.utc_offset);
+    let date = st.settings.format_day(c.time, st.cues.now, st.cues.utc_offset);
     let date_rect = p.text(pos2(right, y2), Align2::RIGHT_CENTER, date, small.clone(), color::weak());
     let limit = right - date_rect.width() - 12.0;
     paint_cut_text(p, pos2(left, y2), &second_line(c), small, color::text(), limit - left);

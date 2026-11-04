@@ -31,7 +31,7 @@ fn terminal_tab_rename_dark() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("terminal_tab_rename");
-    assert!(!h.state().0.terminal.focused, "the field has the keyboard, not the shell");
+    assert!(!h.state().0.view.terminal.focused, "the field has the keyboard, not the shell");
     assert!(h.query_by_label("pwsh \u{b7} demo").is_none(), "the field stands in for the pill");
     h.state_mut().1.clear();
     h.input_mut().events.push(egui::Event::Text("build".into()));
@@ -63,7 +63,7 @@ fn focus_leaving_the_rename_field_renames_without_the_shell() {
     h.run();
     assert!(pushed(&h, |t| matches!(t, TerminalMsg::Rename { id: 1, submitted: false, .. })));
     assert!(!pushed(&h, |t| matches!(t, TerminalMsg::Rename { submitted: true, .. })), "only Enter hands the shell the keyboard");
-    assert!(!h.state().0.terminal.focused, "the shell did not take the keyboard");
+    assert!(!h.state().0.view.terminal.focused, "the shell did not take the keyboard");
     drop(h);
     remove_fixture(&dir);
 }
@@ -162,10 +162,10 @@ fn terminal_maximized_dark() {
 fn esc_restores_a_maximised_panel_unless_the_shell_has_the_keyboard() {
     let (mut st, dir) = with_session(ThemeChoice::Dark, "terminal-max-esc", SessionStatus::Running);
     st.terminal.maximized = true;
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let mut h = app_harness(st);
     h.run();
-    assert!(!h.state().0.terminal.focused);
+    assert!(!h.state().0.view.terminal.focused);
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();
@@ -178,7 +178,7 @@ fn esc_restores_a_maximised_panel_unless_the_shell_has_the_keyboard() {
     st.terminal.maximized = true;
     let mut h = app_harness(st);
     h.run();
-    assert!(h.state().0.terminal.focused);
+    assert!(h.state().0.view.terminal.focused);
     h.state_mut().1.clear();
     h.press_key(Key::Escape);
     h.run();

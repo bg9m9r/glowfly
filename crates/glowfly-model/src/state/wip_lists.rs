@@ -39,7 +39,7 @@ pub fn target(staged: bool, path: &str) -> DiffTarget {
 
 /// The file the keys act on: the one still opening, else the one on screen.
 pub fn cursor(st: &AppState) -> Option<&DiffTarget> {
-    st.view.diff_opening.as_ref().or(st.session.diff.view.as_ref().map(|(t, _)| t))
+    st.cues.diff_opening.as_ref().or(st.session.diff.view.as_ref().map(|(t, _)| t))
 }
 
 /// The path of `t` when it is a diff of that list's kind.
@@ -70,7 +70,7 @@ pub fn place(files: &[&FileEntry], order: &[(usize, bool)], path: Option<&str>) 
 
 /// The span of that list while it holds (its head is the file the keys act on).
 pub fn span(st: &AppState, staged: bool) -> Option<&WipSpan> {
-    let s = st.view.wip_span.as_ref().filter(|s| s.staged == staged)?;
+    let s = st.cues.wip_span.as_ref().filter(|s| s.staged == staged)?;
     cursor(st).and_then(|t| path_in(staged, t)).filter(|p| *p == s.head).map(|_| s)
 }
 

@@ -153,7 +153,7 @@ fn a_drag_across_code_selects_text_and_ctrl_c_copies_exactly_it() {
     let g = Grid::of(&h, DiffLayout::Inline);
     drag(&mut h, g.at(0, 1), g.at(3, 2));
     assert!(!picked_lines(&h), "a drag across code picks no lines");
-    assert!(h.state().0.view.diff_lines.is_empty());
+    assert!(h.state().0.cues.diff_lines.is_empty());
     let sel = h.state().0.view.diff_text.clone().expect("the drag selected text");
     assert_eq!(sel.side, TextSide::Inline);
     // No line numbers, no signs; the `-` and `+` lines in the order shown.
@@ -186,7 +186,7 @@ fn shift_click_extends_and_a_plain_click_drops_the_text_only() {
     assert!(h.state().0.view.diff_text.is_none(), "a plain click drops the text");
     assert_eq!(copied(&mut h), Vec::<String>::new());
     assert!(!picked_lines(&h));
-    assert_eq!(h.state().0.view.diff_lines.lines.iter().copied().collect::<Vec<_>>(), [1], "and keeps the lines");
+    assert_eq!(h.state().0.cues.diff_lines.lines.iter().copied().collect::<Vec<_>>(), [1], "and keeps the lines");
     drop(h);
     remove_fixture(&dir);
 }

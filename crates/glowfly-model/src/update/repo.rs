@@ -89,12 +89,12 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             if generation != st.session.diff.generation {
                 return; // superseded: another file was opened, the diff closed, or a newer reload sent
             }
-            st.view.diff_opening = None;
+            st.cues.diff_opening = None;
             // Any accepted result ends a pending step. A refresh while it loads asks for the step's
             // destination again (`diff::renew_step`) rather than reloading the old file, so a
             // superseding reload can't block it.
-            let landing = st.view.diff_landing.take();
-            let line = st.view.diff_open_line.take().filter(|(t, ..)| !reload && *t == target);
+            let landing = st.cues.diff_landing.take();
+            let line = st.cues.diff_open_line.take().filter(|(t, ..)| !reload && *t == target);
             match result {
                 Ok(mut d) => {
                     let landing = landing.filter(|(t, _)| !reload && *t == target).map(|(_, l)| l);
@@ -104,24 +104,24 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                     {
                         return;
                     }
-                    // The line and text selections survive only a reload bringing back the same diff.
-                    // Only the text counts: a provisional or pending highlight doesn't make it differ.
-                    let shown = st.session.diff.view.as_ref();
-                    let same = reload && shown.is_some_and(|(t, old)| *t == target && old.binary == d.binary && old.hunks == d.hunks);
+                    // The line and text selections survive only a reload bringing back the same text (not just a new highlight).
+                    let open = st.session.diff.view.as_ref().filter(|(t, _)| *t == target);
+                    let same = reload && open.is_some_and(|(_, old)| old.binary == d.binary && old.hunks == d.hunks);
+                    let same_file = open.is_some();
                     if !same {
-                        st.view.clear_diff_selection();
+                        st.clear_diff_selection();
                     } else if let Some(sel) = st.view.diff_text.as_mut() {
                         sel.key.1 = generation; // keyed to the load it shows
                     }
                     // Folds opened in another file don't apply to this one.
-                    if !matches!(shown, Some((t, _)) if *t == target) {
+                    if !same_file {
                         st.session.tab_view.diff_expanded.clear();
                     }
                     // A different file opens at the top (or its first change block, or the hunk kept
                     // through a view mode switch, or the change a step lands on); a reload after a
                     // hunk operation keeps its place, but its change rows may have moved.
                     if !reload {
-                        let hunk = st.view.diff_open_hunk.take();
+                        let hunk = st.cues.diff_open_hunk.take();
                         let row = match landing {
                             Some(l) => super::diff::landing_row(&d, &st.settings, l, &st.session.tab_view.diff_expanded),
                             None => {
@@ -132,17 +132,17 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                             }
                         };
                         st.view.diff_scroll_to_row = Some(row);
-                        st.session.tab_view.diff_top_row = row;
-                        st.view.diff_cursor = landing.map(|_| row);
+                        st.view.tab.diff_top_row = row;
+                        st.cues.diff_cursor = landing.map(|_| row);
                     } else {
-                        st.view.diff_cursor = None;
+                        st.cues.diff_cursor = None;
                     }
                     if reload {
                         super::highlight::keep_finished(st.session.diff.view.as_ref(), &target, &mut d);
                     }
                     // A step landed: its file list shows the file once.
                     if landing.is_some() {
-                        st.view.file_reveal = Some((target.clone(), generation));
+                        st.cues.file_reveal = Some((target.clone(), generation));
                     }
                     super::lfs::diff_loaded(st, &target, lfs);
                     st.session.diff.view = Some((target, std::sync::Arc::new(d)));
@@ -155,8 +155,8 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 // A reload that finds no changes left closes the diff, or follows a new file unstaged.
                 Err(_) if reload => super::wip_list::emptied(st, target, fx),
                 Err(e) => {
-                    st.view.diff_lines.clear();
-                    st.view.diff_open_hunk = None;
+                    st.cues.diff_lines.clear();
+                    st.cues.diff_open_hunk = None;
                     st.log(false, e);
                     // The diff still on screen was marked stale by this request: re-read it. Not
                     // `reload_diff`, which would ask again for a file history entry that failed.
@@ -236,16 +236,16 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
     super::conflict::close(st);
     // Nothing is selected by default: lines or text picked in the diff on screen don't carry
     // over, not even while the new one loads.
-    st.view.clear_diff_selection();
+    st.clear_diff_selection();
     // A different file opens: a hunk kept through a view mode switch or a pending step is moot.
-    st.view.diff_open_hunk = None;
-    st.view.diff_landing = None;
-    st.view.file_reveal = None;
-    st.view.diff_open_line = None;
-    st.view.diff_cursor = None;
+    st.cues.diff_open_hunk = None;
+    st.cues.diff_landing = None;
+    st.cues.file_reveal = None;
+    st.cues.diff_open_line = None;
+    st.cues.diff_cursor = None;
     if let Some(workdir) = st.workdir() {
         let generation = st.session.diff.next();
-        st.view.diff_opening = Some(target.clone());
+        st.cues.diff_opening = Some(target.clone());
         super::wip_list::opened(st, &target);
         fx.push(super::diff::load_effect(st, workdir, target, false, generation, None));
     }
@@ -254,14 +254,14 @@ pub(super) fn open_diff(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effe
 /// Closes the diff; a load still in flight must not reopen it.
 pub(super) fn close_diff(st: &mut AppState) {
     st.session.diff.view = None;
-    st.view.clear_diff_selection();
+    st.clear_diff_selection();
     st.session.tab_view.diff_expanded.clear();
-    st.view.diff_open_hunk = None;
-    st.view.diff_landing = None;
-    st.view.file_reveal = None;
-    st.view.diff_open_line = None;
-    st.view.diff_cursor = None;
-    st.view.diff_opening = None;
+    st.cues.diff_open_hunk = None;
+    st.cues.diff_landing = None;
+    st.cues.file_reveal = None;
+    st.cues.diff_open_line = None;
+    st.cues.diff_cursor = None;
+    st.cues.diff_opening = None;
     st.session.diff_preview = None;
     st.session.diff.next();
 }
@@ -273,8 +273,8 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
         super::deep_link_open::ready(st, now, fx);
         return;
     }
-    st.view.ref_rows.reset();
-    st.view.highlight = None;
+    st.cues.ref_rows.reset();
+    st.cues.highlight = None;
     match kind {
         LoadKind::Open => {
             // Any spelling of this folder (a short 8.3 name, a link, another case where the volume ignores it) gives way to libgit2's.
@@ -331,7 +331,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     let reload = super::graph_filter::loaded(st, &snap, kind, fx);
     super::notify::loaded(st, &snap, kind, now, fx);
     // After the filter, which adopts the repository's keys: the pins are found under its own.
-    super::branch_colour::apply(&st.settings, st.view.trunk_near, &mut snap);
+    super::branch_colour::apply(&st.settings, st.cues.trunk_near, &mut snap);
     super::large_graph::show(st, snap, fx);
     super::line_counts::status_changed(st, fx);
     super::pick::state_changed(st, state_before);

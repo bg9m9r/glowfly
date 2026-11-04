@@ -16,7 +16,7 @@ fn show_and_hide_fold_a_step_until_the_operation_moves_on() {
     snap.state = RepositoryState::Merge;
     snap.unstaged = rows(&[("a.txt", '!')]);
     st.snap = Some(snap);
-    let open = |st: &crate::state::AppState, step| st.view.op_steps.is_open(st.snap.as_ref().unwrap(), step);
+    let open = |st: &crate::state::AppState, step| st.cues.op_steps.is_open(st.snap.as_ref().unwrap(), step);
     assert!(!open(&st, OpStep::Finish), "Commit the merge waits for the conflicts");
 
     let fx = update(&mut st, Msg::Layout(LayoutMsg::ToggleOpStep(OpStep::Finish)), Instant::now());

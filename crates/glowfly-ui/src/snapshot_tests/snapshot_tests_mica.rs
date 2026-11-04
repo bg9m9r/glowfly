@@ -35,8 +35,8 @@ fn paint_wallpaper(ctx: &egui::Context, bands: &[Color32; 9]) {
 
 /// The app at the window's opening size in palette `p`, over the stand-in wallpaper.
 fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harness<'static, (AppState, Vec<Msg>)> {
-    st.view.now = NOW;
-    st.view.utc_offset = 0;
+    st.cues.now = NOW;
+    st.cues.utc_offset = 0;
     let mut cache: Option<UiCache> = None;
     crate::snapshot_check::builder().with_size(vec2(1440.0, 880.0)).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
@@ -67,10 +67,10 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
 
 fn mica(name: &str, theme: ThemeChoice, p: Palette, bands: &'static [Color32; 9]) {
     let (mut st, dir) = with_repo(theme, name);
-    st.view.chrome = Chrome::Windows;
+    st.cues.chrome = Chrome::Windows;
     st.settings.reduce_motion = true;
     let tint = mica_tint(&p).expect("the built-in palettes have a tint");
-    st.view.backdrop = Backdrop::Mica { chrome: tint.chrome, side: tint.side };
+    st.cues.backdrop = Backdrop::Mica { chrome: tint.chrome, side: tint.side };
     let mut h = harness(st, p, bands);
     for _ in 0..4 {
         h.step();

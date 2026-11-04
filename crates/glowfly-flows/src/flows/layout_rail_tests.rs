@@ -132,11 +132,11 @@ fn expand_lasts_for_the_open_view_only() {
     st.session.blame.view = blame();
     let fx = send(&mut st, Msg::Layout(LayoutMsg::ExpandDetails));
     assert!(fx.is_empty(), "{fx:?}");
-    assert_eq!(st.view.details_expanded_for, Some(ToolView::Blame));
+    assert_eq!(st.cues.details_expanded_for, Some(ToolView::Blame));
     assert_eq!(details_shape(&st), DetailsShape::Full);
     send(&mut st, Msg::Blame(BlameMsg::Close));
     assert_eq!(details_shape(&st), DetailsShape::Full);
-    assert_eq!(st.view.details_expanded_for, None);
+    assert_eq!(st.cues.details_expanded_for, None);
     st.session.blame.view = blame();
     nudge(&mut st);
     assert_eq!(details_shape(&st), DetailsShape::Rail, "the next blame starts collapsed");
@@ -161,7 +161,7 @@ fn expand_without_a_tool_view_does_nothing() {
     let (mut st, dir) = opened("rail-expand-graph");
     let fx = send(&mut st, Msg::Layout(LayoutMsg::ExpandDetails));
     assert!(fx.is_empty());
-    assert_eq!(st.view.details_expanded_for, None);
+    assert_eq!(st.cues.details_expanded_for, None);
     assert_eq!(details_shape(&st), DetailsShape::Full);
     done(st, dir);
 }
@@ -277,7 +277,7 @@ fn each_mode_collapses_and_leaving_it_restores_the_panel() {
         assert_eq!(details_shape(&st), DetailsShape::Full, "{name}: expanded");
         send(&mut st, close);
         assert_eq!(details_shape(&st), DetailsShape::Full, "{name}: left");
-        assert_eq!(st.view.details_expanded_for, None, "{name}: the expansion ends with the mode");
+        assert_eq!(st.cues.details_expanded_for, None, "{name}: the expansion ends with the mode");
         // The next time starts collapsed again.
         open(&mut st);
         nudge(&mut st);

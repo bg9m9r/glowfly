@@ -41,7 +41,7 @@ pub(crate) const MAIN_MENU: &str = "main-menu";
 /// Draws the bar as the topmost panel (call before the other top panels), with the system
 /// frame only.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    if st.view.chrome.drawn() || !st.settings.show_menu_bar {
+    if st.cues.chrome.drawn() || !st.settings.show_menu_bar {
         hide(ctx);
         return;
     }

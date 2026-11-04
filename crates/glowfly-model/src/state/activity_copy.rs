@@ -114,7 +114,7 @@ pub fn log_text(st: &AppState) -> Option<(String, usize)> {
     }
     let t = st.settings.lang();
     match st.logs.tab {
-        LogKind::Activity => Some((activity_text(&st.log, t, st.view.utc_offset), st.log.len())),
+        LogKind::Activity => Some((activity_text(&st.log, t, st.cues.utc_offset), st.log.len())),
         _ => match shown_tail(st)? {
             Ok(tail) => Some((file_text(tail, t), tail.lines.len())),
             Err(_) => None,

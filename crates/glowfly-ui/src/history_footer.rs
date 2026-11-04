@@ -61,7 +61,7 @@ pub(super) fn footer(ui: &mut Ui, st: &AppState, view: &FileHistoryView, msgs: &
         } else {
             // Stopped at the commit limit.
             if let Some((oid, time)) = view.searched_until {
-                let date = st.settings.format_date_word(time, st.view.utc_offset);
+                let date = st.settings.format_date_word(time, st.cues.utc_offset);
                 ui.label(RichText::new(format!("Searched back to {date} ({})", short(oid))).color(color::weak()));
             }
             if ui.add(buttons::secondary("Search further")).clicked() {

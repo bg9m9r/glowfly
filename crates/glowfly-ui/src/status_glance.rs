@@ -47,7 +47,7 @@ pub(super) fn failure_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>
 pub(super) fn fetch_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let Some(snap) = st.snap.as_ref().filter(|s| !s.remote_info.is_empty()) else { return };
     let t = st.settings.lang();
-    let (now, offset) = (st.view.now, st.view.utc_offset);
+    let (now, offset) = (st.cues.now, st.cues.utc_offset);
     let fetching = glance_fetch::fetching(st);
     let text = glance_fetch::label(t, &st.settings, snap.fetched_at, fetching, now, offset);
     if let Some(secs) = glance_fetch::changes_in(snap.fetched_at, now) {

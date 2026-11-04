@@ -39,7 +39,7 @@ pub(super) fn state(d: &Demo, dark: bool) -> AppState {
     st.tabs = vec![Tab::unloaded(d.dir.clone()), Tab::unloaded(other)];
     st.view.sections.tags = false;
     st.view.sections.stashes = false;
-    st.view.now = NOW;
+    st.cues.now = NOW;
     st
 }
 

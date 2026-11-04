@@ -49,7 +49,7 @@ impl GlowflyApp {
             glowfly_model::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
         let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| glowfly_runner::testing::sandboxed(tx, waker, files));
-        app.st.view.chrome = chrome;
+        app.st.cues.chrome = chrome;
         app.start(ctx, ThemeCatalog::default(), None, problem);
         if let Some(path) = open {
             app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path)));

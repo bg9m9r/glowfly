@@ -57,7 +57,7 @@ pub(super) fn click(st: &mut AppState, hunk: usize, line: usize, how: LineClick)
 }
 
 pub(super) fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
-    let s = &st.view.diff_lines;
+    let s = &st.cues.diff_lines;
     (!s.is_empty()).then(|| (s.hunk, s.lines.iter().copied().collect()))
 }
 
@@ -71,7 +71,7 @@ fn click_shift_ctrl_rules() {
     let mut st = with_diff(unstaged());
     click(&mut st, 0, 1, Only);
     assert_eq!(selected(&st), Some((0, vec![1])));
-    assert_eq!(st.view.diff_lines.header, "@@ -1,4 +1,4 @@");
+    assert_eq!(st.cues.diff_lines.header, "@@ -1,4 +1,4 @@");
     click(&mut st, 0, 1, Only);
     assert_eq!(selected(&st), None, "clicking the only selected line deselects it");
 
@@ -146,13 +146,13 @@ fn apply_lines_emits_local_op() {
     click(&mut st, 0, 5, Only);
     click(&mut st, 0, 2, Toggle);
     assert!(run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Unstage))).is_empty(), "unstage doesn't fit an unstaged diff");
-    assert!(!st.view.diff_lines.is_empty());
+    assert!(!st.cues.diff_lines.is_empty());
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
     let expected = st.session.diff.view.as_ref().unwrap().1.hunks[0].clone();
     assert_eq!(expected.header, "@@ -1,4 +1,4 @@");
     let want = LocalOp::Lines { op: HunkOp::Stage, path: "f.txt".into(), hunk: 0, expected, lines: vec![2, 5], ignore_whitespace: false };
     assert!(matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op, .. })] if *op == want), "{fx:?}");
-    assert!(st.view.diff_lines.is_empty(), "applying clears the selection");
+    assert!(st.cues.diff_lines.is_empty(), "applying clears the selection");
     assert_eq!(st.hunk_ops_gen(), None, "hunk and line buttons wait for the reload");
 
     let mut st = with_diff(DiffTarget::Staged("f.txt".into()));
@@ -193,7 +193,7 @@ fn reload_keeps_identical_clears_changed() {
     let mut st = with_diff(unstaged());
     let select = |st: &mut AppState| {
         click(st, 0, 1, Only);
-        assert!(!st.view.diff_lines.is_empty());
+        assert!(!st.cues.diff_lines.is_empty());
     };
     select(&mut st);
     loaded(&mut st, unstaged(), true, Ok(two_hunks()));
@@ -248,7 +248,7 @@ fn end_to_end_stage_lines() {
     let two = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "two").unwrap();
     drive(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: two, how: Only }));
     drive(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
-    assert!(st.view.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.is_empty());
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.staged.iter().any(|f| f.path == "a.txt"), "a.txt is partly staged");
     assert!(snap.unstaged.iter().any(|f| f.path == "a.txt"), "and still has unstaged changes");

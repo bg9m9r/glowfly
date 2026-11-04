@@ -97,9 +97,9 @@ fn whitespace_hidden_reverts_carry_the_flag_but_files_dont() {
         ),
         "{fx:?}"
     );
-    st.view.diff_lines.target = Some(target.clone());
-    st.view.diff_lines.hunk = 0;
-    st.view.diff_lines.lines.insert(1);
+    st.cues.diff_lines.target = Some(target.clone());
+    st.cues.diff_lines.hunk = 0;
+    st.cues.diff_lines.lines.insert(1);
     let fx = run(&mut st, Msg::Stage(StageMsg::RevertLines));
     assert!(
         matches!(
@@ -139,9 +139,9 @@ fn the_working_tree_compared_with_a_commit_has_no_revert() {
     st.session.diff.view = Some((target.clone(), one_hunk().into()));
     assert!(revert(&mut st, 0).is_empty(), "no Revert Hunk");
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertFile(target.clone()))).is_empty(), "no Revert changes to this file");
-    st.view.diff_lines.target = Some(target);
-    st.view.diff_lines.hunk = 0;
-    st.view.diff_lines.lines.insert(1);
+    st.cues.diff_lines.target = Some(target);
+    st.cues.diff_lines.hunk = 0;
+    st.cues.diff_lines.lines.insert(1);
     assert!(run(&mut st, Msg::Stage(StageMsg::RevertLines)).is_empty(), "no Revert lines");
     assert!(st.log.is_empty());
     let _ = std::fs::remove_dir_all(&dir);

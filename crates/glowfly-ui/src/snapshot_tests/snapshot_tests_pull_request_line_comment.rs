@@ -162,9 +162,9 @@ fn diff_hunk_comment_lines_light() {
     let (mut st, dir, _) = opened(ThemeChoice::Light, "pr-line-comment-hunk", |_| {}, false, None);
     let (target, d) = st.session.diff.view.clone().unwrap();
     let i = d.hunks[0].lines.iter().position(|l| l.origin == '+').expect("an added line");
-    st.view.diff_lines.target = Some(target);
-    st.view.diff_lines.hunk = 0;
-    st.view.diff_lines.lines = [i].into_iter().collect();
+    st.cues.diff_lines.target = Some(target);
+    st.cues.diff_lines.hunk = 0;
+    st.cues.diff_lines.lines = [i].into_iter().collect();
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("diff_hunk_comment_lines_light");

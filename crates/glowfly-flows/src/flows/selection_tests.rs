@@ -305,9 +305,9 @@ fn two_commit_diff_end_to_end() {
     // Lines of a diff between commits can be selected (for Revert lines).
     let line = diff.hunks[0].lines.iter().position(|l| l.origin == '+').unwrap();
     up(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only }));
-    assert_eq!(st.view.diff_lines.count_in(&target, 0), 1);
+    assert_eq!(st.cues.diff_lines.count_in(&target, 0), 1);
     up(&mut st, Msg::Diff(DiffMsg::ClearLineSelection));
-    assert!(st.view.diff_lines.is_empty());
+    assert!(st.cues.diff_lines.is_empty());
     let _ = std::fs::remove_dir_all(&f.dir);
 }
 

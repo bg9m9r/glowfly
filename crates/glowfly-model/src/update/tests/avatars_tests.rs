@@ -32,7 +32,7 @@ fn avatars_are_fetched_in_batches_and_handed_to_the_shell() {
     let mut st = with_remote("batches", true, Some("https://github.com/o/r.git"));
     assert_eq!(fetches(&mut st), [8, 2]);
     update(&mut st, Msg::Avatars(AvatarMsg::AvatarsLoaded(vec![("dev0@example.com".into(), None)])), Instant::now());
-    assert_eq!(st.view.avatars_loaded.len(), 1);
+    assert_eq!(st.cues.avatars_loaded.len(), 1);
 }
 
 #[test]

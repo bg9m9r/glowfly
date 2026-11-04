@@ -35,7 +35,7 @@ pub(super) fn set_svg_preview(st: &mut AppState, on: bool, fx: &mut Vec<Effect>)
     fx.extend(super::prefs::save_settings(st));
     // The text selected and the change stepped to were on rows no longer (or not yet) shown.
     st.view.diff_text = None;
-    st.view.diff_cursor = None;
+    st.cues.diff_cursor = None;
     if crate::state::diff_preview::svg_switch(st).is_some() {
         diff_shown(st, fx);
     }

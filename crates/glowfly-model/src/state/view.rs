@@ -1,14 +1,10 @@
-//! Transient view state: scroll targets, hover highlights, focus requests and which
-//! left-panel sections are expanded.
+//! Transient view state the views write: scroll targets and positions, focus requests, hover,
+//! drags and which left-panel sections are expanded. What only update or the shell sets for the
+//! views is in `view_cues.rs`.
 
-use super::window_chrome::{AltTap, Chrome, WindowInfo};
-use super::window_native::Backdrop;
-use super::{diff_nav, lines};
+use super::window_chrome::AltTap;
 use git2::Oid;
-use glowfly_core::repo::DiffTarget;
 use glowfly_core::settings::{ResizableColumn, SizedPanel};
-use std::collections::HashSet;
-use std::time::Instant;
 
 #[path = "diff_text.rs"]
 pub mod diff_text;
@@ -18,15 +14,19 @@ pub mod file_folds;
 pub mod file_lists;
 #[path = "file_tree.rs"]
 pub mod file_tree;
-/// The shell's frame timing, which fills `ViewState::frame_times`.
+/// The shell's frame timing, which fills `ViewCues::frame_times`.
 #[path = "frame_times.rs"]
 pub mod frame_times;
 #[path = "list_keys.rs"]
 pub mod list_keys;
 #[path = "system_a11y.rs"]
 pub mod system_a11y;
+#[path = "view_cues.rs"]
+mod view_cues;
 #[path = "wip_lists.rs"]
 pub mod wip_lists;
+
+pub use view_cues::ViewCues;
 
 /// Each left-panel section's open state; views toggle them directly.
 pub struct Sections {
@@ -71,7 +71,9 @@ pub struct ColumnDrag {
     pub width: f32,
 }
 
-/// Purely visual state that views may change directly.
+/// Purely visual state that views may change directly: scroll requests and positions, focus
+/// requests, hover, drags and expanded sections. What only update or the shell sets is in
+/// `ViewCues` (`AppState::cues`).
 pub struct ViewState {
     pub show_log: bool,
     /// An activity row to scroll into view once (set by update for a toast's Details; the
@@ -89,30 +91,6 @@ pub struct ViewState {
     pub graph_fit_rows: usize,
     /// Scroll the diff so this row is at the top on the next frame (set by `update`).
     pub diff_scroll_to_row: Option<usize>,
-    /// Put this hunk at the top of the next freshly opened diff (its header row, or its change
-    /// block in the whole-file view); set when the view mode changes.
-    pub diff_open_hunk: Option<usize>,
-    /// A file opened by next/previous change, still loading, and the change to land on. Set
-    /// and cleared only by `update`.
-    pub diff_landing: Option<(DiffTarget, diff_nav::Landing)>,
-    /// The file a next/previous change step landed on and the `DiffSlot::shown_gen` it landed at:
-    /// the file list it came from scrolls its row into view once. Set and cleared only by
-    /// `update`.
-    pub file_reveal: Option<(DiffTarget, u64)>,
-    /// A file opened (not reloaded) whose diff hasn't arrived yet. Set by `repo::open_diff`;
-    /// cleared when a result of the current generation arrives, the diff closes or the tab is
-    /// parked. Changed only by `update`.
-    pub diff_opening: Option<DiffTarget>,
-    /// The open file being staged or unstaged as a whole (alone or with the other selected
-    /// files), and the file to open when its operation reports success (`update/wip_list.rs`).
-    /// Changed only by `update`.
-    pub stage_move_on: Option<super::wip_lists::MoveOn>,
-    /// The files a Shift move selected in the Unstaged or Staged Files list. Changed only by
-    /// `update`.
-    pub wip_span: Option<super::wip_lists::WipSpan>,
-    /// The file each of those lists (Unstaged, then Staged) last opened, where going to the
-    /// list from the other one lands. Changed only by `update`.
-    pub wip_place: [Option<String>; 2],
     /// Give that list (`Some(staged)`) the keyboard focus on the next frame (set by `update`,
     /// taken by the view).
     pub wip_focus: Option<bool>,
@@ -121,9 +99,6 @@ pub struct ViewState {
     pub pane_focus: Option<super::layout::Pane>,
     /// A graph key for the graph view to apply with its rows at hand (set by the shortcuts).
     pub graph_key: Option<super::graph_rows::GraphKey>,
-    /// A file opened from a pull request's code comment thread, still loading, and the line
-    /// (side, number) to land on. Set and cleared only by `update`.
-    pub diff_open_line: Option<(DiffTarget, glowfly_core::diff_rows::LineSide, u32)>,
     /// Scroll the pull request's comment pane to this thread on the next frame (set by
     /// `update`, taken by the view).
     pub pr_thread_scroll: Option<String>,
@@ -133,52 +108,20 @@ pub struct ViewState {
     /// Focus the pull request's new code comment box and scroll its pane to it on the next
     /// frame (set by `update`, taken by the view).
     pub pr_line_comment_focus: bool,
-    /// The change row next/previous change last moved to. Steps continue from it while it is
-    /// on screen, because a change near the end can't scroll to the top.
-    pub diff_cursor: Option<usize>,
     /// How many diff rows fit in the viewport, recorded by the view.
     pub diff_visible_rows: usize,
-    /// Branch tip under the pointer (sidebar or BRANCH/TAG column), for row highlighting.
-    pub hover_tip: Option<Oid>,
     pub hover_tip_next: Option<Oid>,
     /// Branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), filled by the
     /// views and taken by the shell.
     pub tips_seen: Vec<Oid>,
     /// The LOCAL section's rows, kept between frames.
     pub local_rows: crate::state::stack_rows::LocalRowsCache,
-    /// The hovered ref's tip and the commits on its branch, for row highlighting. Set by
-    /// `update` (`GraphMsg::HoverRef`); the graph only reads it.
-    pub highlight: Option<(Oid, std::sync::Arc<HashSet<Oid>>)>,
-    /// The walks behind `highlight`, kept for the snapshot (`ref_rows::RefRows`); reset when a
-    /// new snapshot or tab arrives.
-    pub ref_rows: crate::state::ref_rows::RefRows,
-    /// The window had the keyboard focus last frame (for the WindowFocused transition).
-    pub was_focused: bool,
-    /// The window has the keyboard focus this frame. The shell sets it before handling results;
-    /// update reads it to decide desktop notifications.
-    pub focused: bool,
     /// A text field had the keyboard when the last frame was drawn. egui takes the focus
     /// away when Esc is pressed before the shell sees the key, so Esc checks this instead.
     pub was_typing: bool,
     /// The keyboard was on the Preferences Save / Revert bar (its Save or Revert button) when
     /// the last frame was drawn: Esc there reverts the page.
     pub prefs_bar_focused: bool,
-    /// Wall-clock time (Unix seconds) for this frame, set by the shell; fixed in tests.
-    pub now: i64,
-    /// The shell's time stamp for this frame (ui/app.rs); toasts fade and expire by it. None in
-    /// snapshot tests: toasts stay at full opacity.
-    pub frame_at: Option<Instant>,
-    /// UTC offset (seconds) used to display times; the local zone in the app, fixed in tests.
-    pub utc_offset: i32,
-    /// The slots that pass for the trunk tone in the active palette (a bitmask), as the shell
-    /// reported them (`GraphMsg::TrunkNear`); `update` folds them into each repository's colouring.
-    pub trunk_near: u16,
-    /// The recent frames' times, set by the shell after each frame, for the frame-time overlay.
-    pub frame_times: crate::state::frame_times::FrameSummary,
-    /// Fetched avatars waiting for the shell to turn them into textures.
-    pub avatars_loaded: Vec<(String, Option<glowfly_core::avatars::Image>)>,
-    /// Lines selected in the open diff for line-level staging (changed only by `update`).
-    pub diff_lines: lines::LineSelection,
     /// Text selected in the open diff's code: written by the view as the pointer drags,
     /// cleared by update when another diff (or load of it) shows or the layout switches.
     pub diff_text: Option<diff_text::TextSel>,
@@ -200,49 +143,16 @@ pub struct ViewState {
     pub column_drag: Option<ColumnDrag>,
     /// The drawer whose edge is being dragged (set and cleared by `ui::panel_size::track`).
     pub panel_drag: Option<SizedPanel>,
-    /// The zoom toast's id, so the next zoom step updates it (set only by update).
-    pub zoom_toast: Option<u64>,
-    /// The tool view in which the collapsed commit panel was expanded; set and cleared only by
-    /// update (`state::layout::drop_stale_expansion`), so it isn't parked with a tab.
-    pub details_expanded_for: Option<super::layout::ToolView>,
-    /// Who draws the window frame: set once by the real app (`Chrome::chosen`); tests keep
-    /// `System` unless they pick another.
-    pub chrome: Chrome,
-    /// Preferences > UI offers the Windows system title bar setting: set once by the real app on
-    /// Windows (`Chrome::offers_system_title_bar`); tests keep it off unless they turn it on.
-    pub system_title_bar_offered: bool,
-    /// Whether the window is maximized or fullscreen, read by the shell each frame.
-    pub window: WindowInfo,
     /// The Alt tap that opens a drawn title bar's menu (`ui/title_bar.rs`).
     pub alt_tap: AltTap,
     /// The menus' keyboard state: a mnemonic pressed, a menu opened from the keyboard
     /// (`ui/menu_bar`).
     pub menu_keys: super::menu_keys::MenuKeys,
-    /// Quit went ahead (update/app.rs): the close request that follows isn't asked about again.
-    pub quitting: bool,
-    /// What the open quit question named, so it closes the window once all of that has ended
-    /// (update/app.rs `settle`); `None` while it isn't open.
-    pub quit_ask: Option<super::quit_confirm::QuitAsk>,
-    /// Quit anyway asked the running job to stop (a fetch): the window closes once it has
-    /// ended, its leftover lock files removed.
-    pub quit_after_stop: bool,
-    /// What the title bar, toolbar and sidebar are painted on: set by the shell each frame;
-    /// views read it through `ui::backdrop::fill`.
-    pub backdrop: Backdrop,
-    /// The WIP panel's steps opened or folded by hand while an operation is in progress (set
-    /// only by update, `LayoutMsg::ToggleOpStep`).
-    pub op_steps: super::op_steps::StepFolds,
-    /// The system's accessibility settings as last read (set only by update,
-    /// `AppMsg::SystemA11y`).
-    pub system_a11y: system_a11y::SystemA11y,
-}
-
-impl ViewState {
-    /// Drops what is selected in the diff: its lines and its text.
-    pub fn clear_diff_selection(&mut self) {
-        self.diff_lines.clear();
-        self.diff_text = None;
-    }
+    /// The terminal panel's keyboard, wheel, drag and clipboard state between frames.
+    pub terminal: crate::state::terminal::TerminalView,
+    /// The active tab's graph scroll and diff top row, recorded by the views; parked with the tab
+    /// (`Parked::scroll`).
+    pub tab: crate::state::session_view::TabScroll,
 }
 
 impl Default for ViewState {
@@ -257,39 +167,18 @@ impl Default for ViewState {
             scroll_offset: None,
             graph_fit_rows: 0,
             diff_scroll_to_row: None,
-            diff_open_hunk: None,
-            diff_landing: None,
-            file_reveal: None,
-            diff_opening: None,
-            stage_move_on: None,
-            wip_span: None,
-            wip_place: [None, None],
             wip_focus: None,
             pane_focus: None,
             graph_key: None,
-            diff_open_line: None,
             pr_thread_scroll: None,
             issue_comment_focus: false,
             pr_line_comment_focus: false,
-            diff_cursor: None,
             diff_visible_rows: 0,
-            hover_tip: None,
             hover_tip_next: None,
             tips_seen: Vec::new(),
             local_rows: Default::default(),
-            highlight: None,
-            ref_rows: Default::default(),
-            was_focused: true,
-            focused: true,
             was_typing: false,
             prefs_bar_focused: false,
-            now: 0,
-            frame_at: None,
-            utc_offset: 0,
-            trunk_near: 0,
-            frame_times: Default::default(),
-            avatars_loaded: Vec::new(),
-            diff_lines: lines::LineSelection::default(),
             diff_text: None,
             diff_text_edge: [0.0; 2],
             conflict_scroll_to: None,
@@ -299,19 +188,10 @@ impl Default for ViewState {
             focus_message: false,
             column_drag: None,
             panel_drag: None,
-            zoom_toast: None,
-            details_expanded_for: None,
-            chrome: Chrome::System,
-            system_title_bar_offered: false,
-            window: WindowInfo::default(),
             alt_tap: AltTap::default(),
             menu_keys: Default::default(),
-            quitting: false,
-            quit_ask: None,
-            quit_after_stop: false,
-            backdrop: Backdrop::Solid,
-            op_steps: Default::default(),
-            system_a11y: Default::default(),
+            terminal: Default::default(),
+            tab: Default::default(),
         }
     }
 }

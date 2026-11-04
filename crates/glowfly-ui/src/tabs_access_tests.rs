@@ -49,7 +49,7 @@ fn tabs_are_tab_nodes_and_each_close_names_its_tab() {
 #[test]
 fn tab_walks_the_title_bar_and_its_icon_buttons() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "tabs-focus");
-    st.view.chrome = Chrome::Windows;
+    st.cues.chrome = Chrome::Windows;
     st.settings.reduce_motion = true;
     // A closed tab, so the tab list button shows.
     st.closed_tabs = vec![ClosedTab::from(PathBuf::from("C:/work/old-repo"))];

@@ -125,7 +125,7 @@ fn edit_window_and_help_list_their_items_in_order() {
 #[test]
 fn view_menu_lists_its_items_in_order() {
     let st = state();
-    assert_eq!(st.view.chrome, Chrome::System);
+    assert_eq!(st.cues.chrome, Chrome::System);
     let want = [
         "Zoom in",
         "Zoom out",
@@ -210,7 +210,7 @@ fn marks_follow_the_state() {
     let mut st = state();
     st.settings.show_left_panel = false;
     st.settings.show_toolbar = true;
-    st.view.window.fullscreen = true;
+    st.cues.window.fullscreen = true;
     st.view.show_log = true;
     st.settings.diff_layout = DiffLayout::Split;
     st.settings.diff_mode = DiffMode::WholeFile;
@@ -247,7 +247,7 @@ fn marks_follow_the_state() {
 fn drawn_title_bars_have_no_menu_bar_item() {
     let mut st = state();
     for (chrome, has) in [(Chrome::MacOs, false), (Chrome::Windows, false), (Chrome::System, true)] {
-        st.view.chrome = chrome;
+        st.cues.chrome = chrome;
         assert_eq!(rows(&entries(&st, TopMenu::View)).iter().any(|r| r == "Menu bar"), has, "{chrome:?}");
     }
 }

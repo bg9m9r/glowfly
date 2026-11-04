@@ -20,7 +20,7 @@ fn opened(name: &str) -> (AppState, std::path::PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.view.was_focused = true;
+    st.cues.was_focused = true;
     (st, dir)
 }
 
@@ -44,7 +44,7 @@ fn a_remote_repository_is_announced_once_and_read_on_a_timer() {
     let t2 = t0 + REMOTE_POLL;
     assert_eq!(statuses(&update(&mut st, Msg::Tick(t2), t2)), 1, "re-read when due");
     // Not while the window is in the background: regaining focus refreshes anyway.
-    st.view.was_focused = false;
+    st.cues.was_focused = false;
     let t3 = t2 + REMOTE_POLL * 2;
     assert_eq!(statuses(&update(&mut st, Msg::Tick(t3), t3)), 0);
     let _ = std::fs::remove_dir_all(&dir);

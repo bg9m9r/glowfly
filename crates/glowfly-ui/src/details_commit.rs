@@ -144,11 +144,11 @@ fn branch_row(ui: &mut Ui, st: &AppState, d: &CommitDetail) {
 fn person_row(ui: &mut Ui, st: &AppState, cache: &mut UiCache, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let name = if d.author.is_empty() { &d.email } else { &d.author };
-    let when = format!(" · {}", glowfly_core::dates::relative(t, st.view.now - d.author_time));
+    let when = format!(" · {}", glowfly_core::dates::relative(t, st.cues.now - d.author_time));
     let tip = format!(
         "{}\n{}",
         super::details_chips::identity(&d.author, &d.email),
-        st.settings.format_verbose(d.author_time, st.view.utc_offset)
+        st.settings.format_verbose(d.author_time, st.cues.utc_offset)
     );
     ui.allocate_ui_with_layout(vec2(ui.available_width(), PERSON_H), Layout::left_to_right(Align::Center), |ui| {
         let (rect, _) = ui.allocate_exact_size(vec2(PERSON_H, PERSON_H), Sense::hover());
@@ -222,7 +222,7 @@ fn files(ui: &mut Ui, st: &AppState, d: &CommitDetail, msgs: &mut Vec<Msg>) {
     let current = open.and_then(index);
     let focus = super::file_list_keys::target(ui, FileList::Commit, rows.len(), ui.available_height(), &heading);
     let shown = ScrollArea::vertical().auto_shrink([false, false]).show_rows(ui, row_h, rows.len(), |ui, range| {
-        file_reveal::reveal(ui, "commit-files", st.view.file_reveal.as_ref(), index, &range, row_h);
+        file_reveal::reveal(ui, "commit-files", st.cues.file_reveal.as_ref(), index, &range, row_h);
         for row in range {
             let r = match rows.get(row) {
                 Shown::File { index, depth } => {

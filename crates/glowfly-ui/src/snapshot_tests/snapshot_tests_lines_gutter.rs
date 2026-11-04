@@ -58,7 +58,7 @@ fn hover(h: &mut H, at: Pos2) {
 }
 
 fn selection(h: &H) -> Vec<usize> {
-    h.state().0.view.diff_lines.lines.iter().copied().collect()
+    h.state().0.cues.diff_lines.lines.iter().copied().collect()
 }
 
 /// Where to point at a line: its gutter (the sign column) and its text.

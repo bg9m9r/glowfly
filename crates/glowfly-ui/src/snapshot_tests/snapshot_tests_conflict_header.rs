@@ -38,7 +38,7 @@ pub(crate) fn one_of_two(name: &str) -> (AppState, PathBuf) {
     let view = st.session.conflict.view.as_mut().unwrap();
     assert_eq!(view.chunk_count(), 2);
     view.picks[0] = Choice::Ours.into();
-    st.view.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
+    st.cues.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
     (st, dir)
 }
 
@@ -81,7 +81,7 @@ fn conflict_header_progress() {
 #[test]
 fn conflict_header_centres_its_middle() {
     let (mut st, dir) = one_of_two("conflict-header-centred");
-    st.view.details_expanded_for = None;
+    st.cues.details_expanded_for = None;
     let mut h = harness(st, true);
     h.run();
     let prev = rect(h.get_by_label_contains("Previous conflict").bounding_box().unwrap());
@@ -139,7 +139,7 @@ fn conflict_more_menu() {
 #[test]
 fn conflict_binary_fallback() {
     let (mut st, dir) = with_conflict("conflict-binary-fallback", "logo.bin", |side| format!("{side}\0image").into_bytes());
-    st.view.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
+    st.cues.details_expanded_for = glowfly_model::state::layout::tool_view(&st);
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("conflict_binary_fallback");

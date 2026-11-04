@@ -19,13 +19,13 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     status::status_bar(ctx, st, msgs);
     repo_line::paint(ctx, st);
     let bottom = ctx.available_rect().bottom();
-    let drawn = st.view.chrome.drawn();
+    let drawn = st.cues.chrome.drawn();
     if drawn {
         title_bar::show(ctx, st, msgs);
     }
     if st.prefs.is_some() {
         // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
-        st.terminal.focused = false;
+        st.view.terminal.focused = false;
         // Nor is the menu bar, so its menu closes (a drawn title bar closes its own).
         menu_bar::hide(ctx);
         // Above the page, since changes made there aren't saved either.
@@ -65,7 +65,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
 /// go first, so the drawers are fitted to the room they leave.
 fn side_panels(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     if st.snap.is_none() || st.dashboard.open {
-        st.terminal.focused = false;
+        st.view.terminal.focused = false;
         return;
     }
     if !st.settings.show_left_panel {

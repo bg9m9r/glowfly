@@ -97,7 +97,7 @@ fn vivid_porcelain() {
 #[test]
 fn vivid_title_bar() {
     let (mut st, dir) = coloured("vivid-title-bar");
-    st.view.chrome = Chrome::Windows;
+    st.cues.chrome = Chrome::Windows;
     st.settings.reduce_motion = true;
     let mut h = harness_sized(st, true, vec2(1440.0, 880.0));
     h.run();

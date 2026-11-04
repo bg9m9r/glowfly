@@ -7,7 +7,7 @@
 pub const CHECKED: &[(&str, &[&str])] = &[("glowfly-ui", &[]), ("glowfly-model", &["testing.rs"])];
 
 const FILES: &str = "the file system";
-const CLOCK: &str = "the clock (update gets `now`; views read `st.view.now`)";
+const CLOCK: &str = "the clock (update gets `now`; views read `st.cues.now`)";
 
 /// Families of outside work, as (pattern, what it reaches). A pattern that starts with a letter
 /// matches only at the start of a word, so `fs::` doesn't match `prefs::`.

@@ -188,10 +188,10 @@ fn terminal_bar_dimmed_light() {
     let (mut st, dir) = with_session(ThemeChoice::Light, "terminal-bar", SessionStatus::Running);
     st.settings.terminal.cursor = CursorStyle::Bar;
     st.settings.terminal.dim_unfocused = true;
-    st.terminal.focus_requested = false;
+    st.view.terminal.focus_requested = false;
     let mut h = harness(st, false);
     h.run();
-    assert!(!h.state().0.terminal.focused);
+    assert!(!h.state().0.view.terminal.focused);
     h.check_snapshot("terminal_bar_dimmed_light");
     drop(h);
     remove_fixture(&dir);
@@ -200,7 +200,7 @@ fn terminal_bar_dimmed_light() {
     st.settings.terminal.cursor = CursorStyle::Underline;
     let mut h = harness(st, true);
     h.run();
-    assert!(h.state().0.terminal.focused);
+    assert!(h.state().0.view.terminal.focused);
     assert!(h.query_by_label("Terminal screen").is_some());
     drop(h);
     remove_fixture(&dir);

@@ -25,14 +25,14 @@ fn with_diff() -> AppState {
 #[test]
 fn set_word_wrap_saves_and_keeps_top_row() {
     let mut st = with_diff();
-    st.session.tab_view.diff_top_row = 4;
-    st.view.diff_cursor = Some(4);
+    st.view.tab.diff_top_row = 4;
+    st.cues.diff_cursor = Some(4);
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetWordWrap(true)));
     assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if s.diff_word_wrap));
     assert!(st.settings.diff_word_wrap);
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
     assert_eq!(st.view.diff_scroll_to_row, Some(4), "the top row stays in place");
-    assert_eq!(st.view.diff_cursor, Some(4), "rows are numbered the same");
+    assert_eq!(st.cues.diff_cursor, Some(4), "rows are numbered the same");
 
     st.view.diff_scroll_to_row = None;
     assert!(run(&mut st, Msg::Diff(DiffMsg::SetWordWrap(true))).is_empty(), "no change, nothing to do");
@@ -55,7 +55,7 @@ fn steps_land_on_the_same_rows_wrapped() {
         (0..2)
             .map(|_| {
                 run(&mut st, Msg::Diff(DiffMsg::JumpToChange(1)));
-                st.session.tab_view.diff_top_row
+                st.view.tab.diff_top_row
             })
             .collect::<Vec<_>>()
     };

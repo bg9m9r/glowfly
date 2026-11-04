@@ -77,7 +77,7 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
     if conflicted {
         return None;
     }
-    let sel = &st.view.diff_lines;
+    let sel = &st.cues.diff_lines;
     let lines = !sel.is_empty() && sel.target.as_ref() == Some(target) && st.line_ops_blocked().is_none();
     match (target, stage) {
         (DiffTarget::Unstaged(p), true) => {
@@ -102,7 +102,7 @@ fn revert_msg(st: &mut AppState) -> Option<Msg> {
     if !target.reverts_hunks() {
         return None;
     }
-    let sel = &st.view.diff_lines;
+    let sel = &st.cues.diff_lines;
     if !sel.is_empty() && sel.target.as_ref() == Some(target) && st.line_ops_blocked().is_none() {
         return Some(Msg::Stage(StageMsg::RevertLines));
     }

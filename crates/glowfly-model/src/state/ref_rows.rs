@@ -1,7 +1,7 @@
 //! Which graph rows belong to a branch, for highlighting the rows of the ref under the pointer.
 //! Pure walks over the loaded history; `update` runs them (`GraphMsg::HoverRef`, the default
 //! branch's ancestry on a worker for a large history) and keeps them per snapshot in `RefRows`;
-//! views only read `ViewState::highlight`.
+//! views only read `ViewCues::highlight`.
 
 use git2::Oid;
 use glowfly_core::repo::{CommitInfo, Snapshot};

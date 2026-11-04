@@ -63,8 +63,8 @@ fn system_title_bar_row_is_offered_on_windows_only() {
     assert!(h.query_by_label(TITLE_BAR).is_none(), "not offered off Windows");
     drop(h);
     let mut st = page(false);
-    st.view.chrome = Chrome::Windows;
-    st.view.system_title_bar_offered = true;
+    st.cues.chrome = Chrome::Windows;
+    st.cues.system_title_bar_offered = true;
     let mut h = harness_sized(st, true, size);
     h.run();
     h.check_snapshot("prefs_ui_system_title_bar");
@@ -72,12 +72,12 @@ fn system_title_bar_row_is_offered_on_windows_only() {
     h.get_by_label(TITLE_BAR).click();
     h.run();
     assert!(h.state().0.settings.system_title_bar);
-    assert_eq!(h.state().0.view.chrome, Chrome::Windows, "the frame changes at the next start");
+    assert_eq!(h.state().0.cues.chrome, Chrome::Windows, "the frame changes at the next start");
     drop(h);
     // After that restart: the system frame, with its menu bar row, and the switch to go back.
     let mut st = page(false);
     st.settings.system_title_bar = true;
-    st.view.system_title_bar_offered = true;
+    st.cues.system_title_bar_offered = true;
     let mut h = harness_sized(st, true, size);
     h.run();
     assert!(h.query_by_label("Show the menu bar").is_some());

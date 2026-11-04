@@ -28,7 +28,7 @@ pub(crate) fn marks(st: &AppState) -> [Option<Mnemonic>; 5] {
 
 /// Whether the titles show their letters now.
 pub(super) fn shown(ctx: &egui::Context, st: &AppState) -> bool {
-    st.view.chrome.mnemonics() && (alt_held(ctx) || st.view.menu_keys.keyboard)
+    st.cues.chrome.mnemonics() && (alt_held(ctx) || st.view.menu_keys.keyboard)
 }
 
 /// `m`'s title; with `show`, its mnemonic underlined. The text, and so the widget's id and

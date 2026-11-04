@@ -51,7 +51,7 @@ fn ctrl_q_or_cmd_q_quits() {
 
 #[test]
 fn a_focused_terminal_keeps_ctrl_q_for_its_shell() {
-    let mut h = harness(|st| st.terminal.focused = true);
+    let mut h = harness(|st| st.view.terminal.focused = true);
     assert!(!quits(&mut h, PC_CTRL), "the shell's XON / quoted insert");
     assert!(quits(&mut h, MAC_CMD), "Cmd+Q never reaches the shell");
 }

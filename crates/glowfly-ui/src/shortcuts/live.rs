@@ -55,7 +55,7 @@ impl Live {
                 && crate::file_list_keys::focused(ctx).is_none()
                 && !crate::pane_focus::target_focused(ctx),
             working_diff: st
-                .view
+                .cues
                 .diff_opening
                 .as_ref()
                 .or(st.session.diff.view.as_ref().map(|(t, _)| t))
@@ -68,7 +68,7 @@ impl Live {
             conflict: st.session.blame.view.is_none() && st.session.conflict.view.is_some(),
             blame: st.session.blame.view.as_ref().is_some_and(|v| v.data.is_some()),
             graph: st.graph_shown(),
-            terminal: st.terminal.focused,
+            terminal: st.view.terminal.focused,
             rebasing: glowfly_model::state::conflict::keys::rebasing(st),
             pane: crate::pane_focus::focused_pane(ctx),
         }

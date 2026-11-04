@@ -181,11 +181,11 @@ fn an_emptied_staged_diff_closes_unless_its_file_is_untracked() {
     };
     // Gone from both lists (unstaged and deleted, say): closed.
     let st = showing(&dir);
-    assert!(st.session.diff.view.is_none() && st.view.diff_opening.is_none());
+    assert!(st.session.diff.view.is_none() && st.cues.diff_opening.is_none());
 
     // Untracked now: its untracked view opens.
     std::fs::write(dir.join("f.txt"), "x\n").unwrap();
     let st = showing(&dir);
-    assert_eq!(st.view.diff_opening, Some(DiffTarget::Unstaged("f.txt".into())));
+    assert_eq!(st.cues.diff_opening, Some(DiffTarget::Unstaged("f.txt".into())));
     let _ = std::fs::remove_dir_all(&dir);
 }

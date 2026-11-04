@@ -52,7 +52,7 @@ fn drawn_menus_come_from_the_model() {
 #[test]
 fn macos_menus_and_preferences_have_no_menu_bar() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "menu-model-mac");
-    st.view.chrome = Chrome::MacOs;
+    st.cues.chrome = Chrome::MacOs;
     let mut h = harness(st, true);
     h.run();
     h.get_by_label("Menu").click();
@@ -64,7 +64,7 @@ fn macos_menus_and_preferences_have_no_menu_bar() {
     remove_fixture(&dir);
 
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "menu-model-mac-prefs");
-    st.view.chrome = Chrome::MacOs;
+    st.cues.chrome = Chrome::MacOs;
     st.prefs = Some(PrefsState::new(PrefPage::Ui));
     let mut h = harness(st, true);
     h.run();

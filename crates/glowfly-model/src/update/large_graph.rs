@@ -65,7 +65,7 @@ pub(super) fn free(fx: &mut Vec<Effect>, name: &'static str, what: Box<dyn Send>
 /// The default branch's ancestry, needed for highlighting: walked at once for a small history;
 /// for a large one asked of a worker (once) and false until it answers.
 pub(super) fn ancestry_ready(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
-    let (Some(snap), rows) = (st.snap.as_ref(), &mut st.view.ref_rows) else { return false };
+    let (Some(snap), rows) = (st.snap.as_ref(), &mut st.cues.ref_rows) else { return false };
     if rows.base.is_some() {
         return true;
     }
@@ -86,7 +86,7 @@ pub(super) fn ancestry_ready(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
 /// A worker's ancestry for request `request`: kept when it is the one asked for (the snapshot is
 /// the same); the graph asks for the hovered branch's rows again on its next frame.
 pub(super) fn ancestry_found(st: &mut AppState, request: u64, base: HashSet<Oid>) {
-    let rows = &mut st.view.ref_rows;
+    let rows = &mut st.cues.ref_rows;
     if rows.asked == Some(request) {
         rows.asked = None;
         rows.base = Some(base);

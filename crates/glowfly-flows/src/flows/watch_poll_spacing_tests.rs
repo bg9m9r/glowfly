@@ -20,7 +20,7 @@ fn remote(name: &str) -> (AppState, std::path::PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.view.was_focused = true;
+    st.cues.was_focused = true;
     let workdir = st.workdir().unwrap();
     st.watch.remote.insert(workdir, "SMB");
     (st, dir)
@@ -129,9 +129,9 @@ fn a_background_window_pauses_the_timer_and_focus_resumes_it() {
     let started = first_read(&mut st, Instant::now());
     let ended = started + Duration::from_secs(1);
     read_ends(&mut st, ended);
-    st.view.was_focused = false;
+    st.cues.was_focused = false;
     assert_eq!(statuses(&tick(&mut st, ended + REMOTE_POLL * 5)), 0, "not in the background");
-    st.view.was_focused = true;
+    st.cues.was_focused = true;
     assert_eq!(statuses(&tick(&mut st, ended + REMOTE_POLL * 6)), 1, "overdue once focused again");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -82,7 +82,7 @@ mod tests {
     fn the_followed_system_text_size_scales_the_zoom() {
         let ctx = egui::Context::default();
         let mut st = state(100);
-        st.view.system_a11y.text_scale = 1.5;
+        st.cues.system_a11y.text_scale = 1.5;
         apply_zoom(&ctx, &st);
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         assert_eq!(ctx.zoom_factor(), 1.5);

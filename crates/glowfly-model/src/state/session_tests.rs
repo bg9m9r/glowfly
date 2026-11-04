@@ -53,7 +53,7 @@ fn park_empties_the_views_and_keeps_the_counters() {
     active.undo.record(an_action());
     active.search.filter = true;
     let v = &mut active.tab_view;
-    (v.search, v.ref_filter, v.graph_scroll, v.diff_top_row) = ("fix".into(), "main".into(), (120.0, 400.0), 7);
+    (v.search, v.ref_filter) = ("fix".into(), "main".into());
     v.file_folds.toggle(FileListId::Unstaged, "src".into());
     let before = counts(&mut active);
 
@@ -75,12 +75,12 @@ fn park_empties_the_views_and_keeps_the_counters() {
     assert_eq!(parked.selection, Selection::Wip, "the selection goes with the tab");
     assert!(parked.forge.is_some() && parked.undo.undo.len() == 1 && parked.search.filter, "and the forge data, undo and search");
     let v = &parked.tab_view;
-    assert_eq!((v.search.as_str(), v.ref_filter.as_str(), v.graph_scroll, v.diff_top_row), ("fix", "main", (120.0, 400.0), 7));
+    assert_eq!((v.search.as_str(), v.ref_filter.as_str()), ("fix", "main"));
     assert!(v.file_folds.is_closed(FileListId::Unstaged, "src"), "and the view state");
     assert_eq!(active.selection, Selection::None);
     assert!(active.forge.is_none() && active.undo.undo.is_empty() && !active.search.filter, "the next tab gets none of them");
     let v = &active.tab_view;
-    assert!(v.search.is_empty() && v.ref_filter.is_empty() && v.graph_scroll == (0.0, 0.0) && v.diff_top_row == 0);
+    assert!(v.search.is_empty() && v.ref_filter.is_empty());
     assert_eq!(v.file_folds, FileFolds::default());
 }
 

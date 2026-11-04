@@ -55,7 +55,7 @@ pub(super) fn anchor(corner: Corner, b: ToastBounds, screen: Rect) -> (Align2, V
 /// fix and its Details sit side by side under the text, the fix first. They fade and expire by
 /// the frame's time stamp; without one (snapshot tests) they stay at full strength.
 pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, msgs: &mut Vec<Msg>) {
-    let now = st.view.frame_at;
+    let now = st.cues.frame_at;
     if let Some(now) = now {
         st.expire_toasts(now);
     }

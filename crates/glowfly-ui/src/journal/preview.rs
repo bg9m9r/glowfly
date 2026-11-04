@@ -44,7 +44,7 @@ fn pane(ui: &mut Ui, st: &AppState, view: &JournalView, snap: &Snapshot, row: &R
     ui.spacing_mut().item_spacing.y = 6.0;
     let title = RichText::new(row_label(t, row)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
     ui.add(egui::Label::new(title).wrap());
-    let date = st.settings.format_verbose(row.at, st.view.utc_offset);
+    let date = st.settings.format_verbose(row.at, st.cues.utc_offset);
     let meta = format!("{} · {} · {date}", subject_name(&row.subject), short(row.oid));
     ui.label(RichText::new(meta).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
     let preview = view.preview_of(&row.key());
@@ -115,7 +115,7 @@ pub(super) fn lane(ui: &mut Ui, st: &AppState, tone: Color32, history: &[CommitL
     for (i, c) in history.iter().enumerate() {
         let cy = y(i);
         p.circle_filled(pos2(x, cy), DOT_R, tone);
-        let age = st.settings.format_time(c.time, st.view.now, st.view.utc_offset);
+        let age = st.settings.format_time(c.time, st.cues.now, st.cues.utc_offset);
         let age_rect = p.text(pos2(right, cy), Align2::RIGHT_CENTER, age, small.clone(), color::weak());
         let sha_w = 64.0;
         let sha_x = age_rect.left() - 12.0 - sha_w;

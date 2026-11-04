@@ -1,6 +1,6 @@
 //! The window's zoom and which of its panels are drawn: the left panel of refs, the commit
 //! details panel, the toolbar and the menu bar. All live in `Settings`; the shell reads them
-//! each frame. Full screen is the window's own state (`view.window`), never saved. The tool view open in the central area decides whether the commit details panel
+//! each frame. Full screen is the window's own state (`cues.window`), never saved. The tool view open in the central area decides whether the commit details panel
 //! is drawn in full or as a narrow rail (`details_shape`), which is view state, never saved.
 
 use super::AppState;
@@ -191,7 +191,7 @@ pub fn details_shape(st: &AppState) -> DetailsShape {
     match tool_view(st) {
         // A stopped rebase is continued from the panel's steps, so it stays in full.
         Some(_) if st.snap.as_ref().is_some_and(super::commit::stop::rebase_stopped) => DetailsShape::Full,
-        Some(v) if st.view.details_expanded_for != Some(v) => DetailsShape::Rail,
+        Some(v) if st.cues.details_expanded_for != Some(v) => DetailsShape::Rail,
         _ => DetailsShape::Full,
     }
 }
@@ -205,8 +205,8 @@ pub fn wip_change_count(snap: &Snapshot) -> usize {
 /// Forgets the commit panel's expansion once the tool view it was expanded in is gone or
 /// another one replaced it (`update` calls it after every message).
 pub fn drop_stale_expansion(st: &mut AppState) {
-    if st.view.details_expanded_for.is_some() && st.view.details_expanded_for != tool_view(st) {
-        st.view.details_expanded_for = None;
+    if st.cues.details_expanded_for.is_some() && st.cues.details_expanded_for != tool_view(st) {
+        st.cues.details_expanded_for = None;
     }
 }
 
@@ -242,12 +242,12 @@ pub(super) fn palette_entries(st: &AppState, out: &mut Vec<Entry>) {
             out.push(with_detail(entry(PaletteCommand::Layout(msg), label, keywords), now()));
         }
     }
-    let label = if st.view.window.fullscreen { "Leave full screen" } else { "Enter full screen" };
+    let label = if st.cues.window.fullscreen { "Leave full screen" } else { "Enter full screen" };
     let keywords = "fullscreen full screen window maximize kiosk presentation hide taskbar";
     out.push(entry(PaletteCommand::Layout(LayoutMsg::ToggleFullscreen), label, keywords));
     for panel in Panel::ALL {
         // A drawn title bar replaces the menu bar.
-        if panel == Panel::MenuBar && st.view.chrome.drawn() {
+        if panel == Panel::MenuBar && st.cues.chrome.drawn() {
             continue;
         }
         let on = shown(&st.settings, panel);

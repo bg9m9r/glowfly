@@ -53,7 +53,7 @@ fn a_selection_with_a_gap_lists_each_commits_changes() {
     assert_eq!(next_file(&st, &commit_file(f.c(4)), 1), Some(commit_file(f.c(2))));
     assert_eq!(next_file(&st, &commit_file(f.c(4)), -1), Some(commit_file(f.c(5))));
     assert_eq!(next_file(&st, &commit_file(f.c(2)), 1), None);
-    st.session.tab_view.diff_top_row = 10_000;
+    st.view.tab.diff_top_row = 10_000;
     assert_eq!(step(&st, 1), Step::File(commit_file(f.c(2)), Landing::First), "past c4's last change");
 
     // Ctrl-clicking c4 away closes its diff.

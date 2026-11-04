@@ -122,7 +122,7 @@ fn a_held_key_runs_once() {
 #[test]
 fn the_focused_terminal_keeps_what_reaches_its_shell() {
     let mut st = fetch_on_f8();
-    st.terminal.focused = true;
+    st.view.terminal.focused = true;
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, NONE, Key::F8), quiet());
     assert!(h.state().left.contains(&Key::F8), "left for the shell");

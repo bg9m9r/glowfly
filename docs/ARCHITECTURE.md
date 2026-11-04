@@ -77,11 +77,14 @@ source file, update its line in the matching file.
 ```
 
 - **Views** draw `AppState` and push `Msg`s. They change only text buffers and `view` state
-  (scroll, hover, open sections, a drag's preview until its release sends a `Msg`), never domain
-  state such as the log, the selection or a form's checks. They never touch disk, network,
-  processes or the clock. They may use core types and pure helpers. Avatars, for example, are
-  requested by the views, fetched through `NetworkEffect::Avatars`, and turned into textures by the
-  shell.
+  (`ViewState`: scroll, hover, open sections, focus requests they take, the terminal panel's
+  keyboard and wheel state, the graph's scroll and the diff's top row, a drag's preview until its
+  release sends a `Msg`), never domain state such as the log, the selection or a form's checks.
+  What update and the shell set for the views to read (the frame's clock and window, the hover
+  highlight, the file a change step lands on) is `cues` (`ViewCues`), which views never write.
+  They never touch disk, network, processes or the clock. They may use core types and pure
+  helpers. Avatars, for example, are requested by the views, fetched through
+  `NetworkEffect::Avatars`, and turned into textures by the shell.
 - **`update`** is the only place domain state changes. It never blocks and does no I/O. Anything
   slow or outside the process (git, HTTP, the file system) becomes an `Effect`.
 - **The runner** (`runner/mod.rs`) starts one worker thread per effect and sends the result back
@@ -103,7 +106,7 @@ source file, update its line in the matching file.
 3. New behavior gets an `update` test; new git or API logic gets a `glowfly-core` test. A flow that
    crosses views, the runner and git gets a journey step (`src/journey/`).
 4. New views get an `egui_kittest` snapshot when practical. Views read time from
-   `st.view.now` / `st.view.utc_offset` (never the system clock) so images are reproducible.
+   `st.cues.now` / `st.cues.utc_offset` (never the system clock) so images are reproducible.
 5. No global mutable state; pass values in. The one exception is the active palette
    (`ui::theme::color`): a thread-local copy of a `Palette`, set by reference
    (`color::set_palette`) at the start of each frame, so renders on different threads (parallel

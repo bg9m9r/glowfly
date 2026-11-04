@@ -130,7 +130,7 @@ fn paint(ui: &Ui, st: &AppState, rect: Rect, c: &LostCommit, name: &str) {
     let (left, right) = (rect.left() + PAD_X, rect.right() - PAD_X);
     let (y1, y2) = (rect.top() + 18.0, rect.top() + 39.0);
     let small = type_scale::font(type_scale::SMALL);
-    let when = st.settings.format_time(c.time, st.view.now, st.view.utc_offset);
+    let when = st.settings.format_time(c.time, st.cues.now, st.cues.utc_offset);
     let time = p.text(pos2(right, y1), Align2::RIGHT_CENTER, when, small.clone(), color::weak());
     let body = type_scale::font(type_scale::BODY);
     paint_cut_text(p, pos2(left, y1), name, body, color::text(), (time.left() - 12.0 - left).max(0.0));

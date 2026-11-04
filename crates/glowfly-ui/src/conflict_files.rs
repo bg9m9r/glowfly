@@ -102,7 +102,7 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
     let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
         // A key's landing is named by the file's working-tree target (`update/file_list_keys.rs`).
         let index = |want: &DiffTarget| rows.iter().position(|f| *want == DiffTarget::Unstaged(f.path.clone()));
-        reveal(ui, "Conflicted files", st.view.file_reveal.as_ref(), index, &range, row_h);
+        reveal(ui, "Conflicted files", st.cues.file_reveal.as_ref(), index, &range, row_h);
         for row in range {
             let f = rows[row];
             let ctx = RowContext { keyed: true, ..ctx };
@@ -135,7 +135,7 @@ fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, op
     let area = egui::ScrollArea::vertical().id_salt("Resolved files").max_height(lists.height).auto_shrink([false, true]);
     let shown = area.show_rows(ui, row_h, rows.len(), |ui, range| {
         let index = |want: &DiffTarget| rows.iter().position(|r| *want == DiffTarget::Staged(r.entry.path.clone()));
-        reveal(ui, "Resolved files", st.view.file_reveal.as_ref(), index, &range, row_h);
+        reveal(ui, "Resolved files", st.cues.file_reveal.as_ref(), index, &range, row_h);
         for row in range {
             let resp = resolved_row(ui, st, snap, rows[row], open, msgs);
             focus.row(ui, &resp, current == Some(row));

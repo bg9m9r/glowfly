@@ -19,9 +19,9 @@ fn parts(fx: &[Effect]) -> Vec<&RevertPart> {
 }
 
 fn select_line(st: &mut AppState, target: &DiffTarget) {
-    st.view.diff_lines.target = Some(target.clone());
-    st.view.diff_lines.hunk = 0;
-    st.view.diff_lines.lines.insert(1);
+    st.cues.diff_lines.target = Some(target.clone());
+    st.cues.diff_lines.hunk = 0;
+    st.cues.diff_lines.lines.insert(1);
 }
 
 #[test]

@@ -29,7 +29,7 @@ fn parked_behind_new_tab(dir: &Path, n: usize, row: usize, scroll: f32) -> AppSt
     let snap = load(dir, n);
     st.session.selection = Selection::Commit(snap.commits[row].oid);
     st.snap = Some(snap);
-    st.session.tab_view.graph_scroll = (scroll, 400.0);
+    st.view.tab.graph_scroll = (scroll, 400.0);
     update(&mut st, Msg::Tabs(TabsMsg::NewTab), Instant::now());
     assert_eq!(st.active_tab, 1);
     st

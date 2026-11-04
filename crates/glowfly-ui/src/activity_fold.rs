@@ -103,14 +103,14 @@ fn output(ui: &mut Ui, st: &AppState, text: &str) {
 /// One run of an open routine group: a 28 px faint row with its time, duration and summary.
 pub(super) fn sub_row(ui: &mut Ui, st: &AppState, e: &LogEntry) {
     let summary = e.run.as_ref().map_or("", |r| r.summary.as_str());
-    let time = glowfly_core::dates::relative(st.settings.lang(), st.view.now - e.at);
+    let time = glowfly_core::dates::relative(st.settings.lang(), st.cues.now - e.at);
     let look = RowLook {
         title: &time,
         title_color: color::faint(),
         summary,
         took_ms: e.run.as_ref().and_then(|r| r.took_ms),
         at: e.at,
-        time_tip: st.settings.format_verbose(e.at, st.view.utc_offset),
+        time_tip: st.settings.format_verbose(e.at, st.cues.utc_offset),
         open: None,
         sub: true,
     };

@@ -67,7 +67,7 @@ fn rows_at_1080p(density: Density, name: &str) -> (usize, usize) {
     h.run();
     let (st, _): &mut (AppState, _) = h.state_mut();
     let whole = st.view.graph_fit_rows;
-    let (_, height) = st.session.tab_view.graph_scroll;
+    let (_, height) = st.view.tab.graph_scroll;
     drop(h);
     remove_fixture(&dir);
     (whole, (height / row_h(density)).ceil() as usize)

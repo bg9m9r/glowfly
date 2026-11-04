@@ -105,14 +105,14 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
     }
     let session = &mut st.terminal.sessions[index];
     if resp.hovered() {
-        let rows = ui.input(|i| wheel_rows(&i.events, g.rh, g.rows, &mut st.terminal.wheel_rem));
+        let rows = ui.input(|i| wheel_rows(&i.events, g.rh, g.rows, &mut st.view.terminal.wheel_rem));
         if !session.screen.alternate() {
             if rows != 0 {
                 msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
             }
         } else if session.screen.mouse_reporting() {
             // The program asked for mouse events, which the terminal doesn't report yet.
-            st.terminal.wheel_rem = 0.0;
+            st.view.terminal.wheel_rem = 0.0;
         } else if rows != 0 {
             msgs.push(Msg::Terminal(TerminalMsg::Input(wheel_keys(rows))));
         }
@@ -128,7 +128,7 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
             let from = ui.input(|i| i.pointer.press_origin()).unwrap_or(pos);
             session.selection = Some(Selection { anchor: point(from), head: point(pos), epoch: screen.epoch() });
         }
-        st.terminal.edge_rem = 0.0;
+        st.view.terminal.edge_rem = 0.0;
         resp.request_focus();
     } else if resp.dragged_by(PointerButton::Primary)
         && let Some(pos) = pos
@@ -140,14 +140,14 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
         let bottom = (g.origin.y + f32::from(g.rows) * g.rh).min(resp.rect.max.y);
         if !screen.alternate() && !(g.origin.y..=bottom).contains(&pos.y) {
             let dt = ui.input(|i| i.stable_dt);
-            let rows = edge_rows(pos.y, g.origin.y, bottom, g.rh, dt, &mut st.terminal.edge_rem);
+            let rows = edge_rows(pos.y, g.origin.y, bottom, g.rh, dt, &mut st.view.terminal.edge_rem);
             if rows != 0 {
                 msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
             }
             // Keep scrolling while the pointer is held still out there.
             ui.ctx().request_repaint();
         } else {
-            st.terminal.edge_rem = 0.0;
+            st.view.terminal.edge_rem = 0.0;
         }
     }
     let mut picked = false;

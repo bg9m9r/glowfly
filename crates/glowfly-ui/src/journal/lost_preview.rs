@@ -39,7 +39,7 @@ fn discarded(ui: &mut Ui, st: &AppState, c: &LostCommit, msgs: &mut Vec<Msg>) {
     ui.spacing_mut().item_spacing.y = 6.0;
     let title = RichText::new(label(t, c)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
     ui.add(egui::Label::new(title).wrap());
-    let date = st.settings.format_verbose(c.time, st.view.utc_offset);
+    let date = st.settings.format_verbose(c.time, st.cues.utc_offset);
     let meta = format!("{} · {date}", chip(t, &c.kind).unwrap_or_default());
     ui.label(RichText::new(meta).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
     ui.add_space(4.0);
@@ -67,7 +67,7 @@ fn pane(ui: &mut Ui, st: &AppState, view: &LostView, c: &LostCommit, msgs: &mut 
     ui.spacing_mut().item_spacing.y = 6.0;
     let title = RichText::new(label(t, c)).font(type_scale::strong(ui, type_scale::SUBHEAD)).color(color::text());
     ui.add(egui::Label::new(title).wrap());
-    let date = st.settings.format_verbose(c.time, st.view.utc_offset);
+    let date = st.settings.format_verbose(c.time, st.cues.utc_offset);
     let meta = format!("{} · {} · {date}", c.author, short(c.oid));
     ui.label(RichText::new(meta).font(type_scale::font(type_scale::SMALL)).color(color::weak()));
     ui.add_space(4.0);

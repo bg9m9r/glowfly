@@ -84,7 +84,7 @@ fn lines_can_be_selected_and_staged() {
     let (mut st, dir, _) = reindented("ws-ops-lines", false);
     let close = st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
     assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only })).is_empty());
-    assert!(!st.view.diff_lines.is_empty(), "selection works with whitespace hidden");
+    assert!(!st.cues.diff_lines.is_empty(), "selection works with whitespace hidden");
     let fx = run(&mut st, Msg::Stage(StageMsg::ApplyLines(HunkOp::Stage)));
     assert!(
         matches!(&fx[..], [Effect::Files(FilesEffect::LocalOp { op: LocalOp::Lines { lines, ignore_whitespace: true, .. }, .. })] if *lines == [close]),
@@ -99,7 +99,7 @@ fn lines_can_be_selected_and_staged() {
 fn select_close(st: &mut AppState) -> usize {
     let close = st.session.diff.view.as_ref().unwrap().1.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == "}").unwrap();
     assert!(run(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: close, how: Only })).is_empty());
-    assert!(!st.view.diff_lines.is_empty());
+    assert!(!st.cues.diff_lines.is_empty());
     close
 }
 

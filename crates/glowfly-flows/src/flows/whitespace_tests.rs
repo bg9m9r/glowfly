@@ -50,7 +50,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), one_hunk().into()));
     assert!(run(&mut st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line: 1, how: Only })).is_empty());
-    assert!(!st.view.diff_lines.is_empty());
+    assert!(!st.cues.diff_lines.is_empty());
     assert!(st.hunk_ops_gen().is_some());
 
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
@@ -58,7 +58,7 @@ fn toggle_saves_and_reloads_the_open_diff() {
         matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s)), Effect::Diff(glowfly_model::effect::DiffEffect::Load { ignore_whitespace: true, reload: false, .. })]
         if s.diff_ignore_whitespace)
     );
-    assert!(st.view.diff_lines.is_empty(), "hunk rows change, so the selection goes");
+    assert!(st.cues.diff_lines.is_empty(), "hunk rows change, so the selection goes");
     assert_eq!(st.hunk_ops_gen(), None, "hunk buttons wait for the reload");
     assert_eq!(st.settings_file.saved(), serde_json::to_string(&st.settings).unwrap());
 

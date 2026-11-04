@@ -86,10 +86,10 @@ fn esc_closes_preferences_opened_while_the_terminal_had_focus() {
     });
     st.terminal.next_id = 2;
     st.terminal.open = true;
-    st.terminal.focus_requested = true;
+    st.view.terminal.focus_requested = true;
     let mut h = app_harness(st);
     h.run();
-    assert!(h.state().0.terminal.focused);
+    assert!(h.state().0.view.terminal.focused);
 
     // As Ctrl+comma does from the terminal.
     h.state_mut().0.prefs = Some(PrefsState::new(PrefPage::General));
@@ -196,14 +196,14 @@ fn esc_in_file_history_clears_a_line_selection_first() {
     use glowfly_model::state::history::FileHistoryView;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-history-lines");
     st.session.history.view = Some(FileHistoryView::loading("README.md".into(), None));
-    st.view.diff_lines.target = Some(DiffTarget::Commit(git2::Oid::zero(), "README.md".into()));
-    st.view.diff_lines.lines.insert(1);
+    st.cues.diff_lines.target = Some(DiffTarget::Commit(git2::Oid::zero(), "README.md".into()));
+    st.cues.diff_lines.lines.insert(1);
     let mut h = app_harness(st);
     h.run_steps(4);
     let msgs = esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::Diff(DiffMsg::ClearLineSelection))), "Esc drops the selection");
     assert!(!msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "and leaves the history open");
-    h.state_mut().0.view.diff_lines.clear();
+    h.state_mut().0.cues.diff_lines.clear();
     let msgs = esc(&mut h);
     assert!(msgs.iter().any(|m| matches!(m, Msg::History(HistoryMsg::CloseFileHistory))), "the next Esc closes the history");
     drop(h);
