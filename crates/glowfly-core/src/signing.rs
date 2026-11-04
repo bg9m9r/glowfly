@@ -62,7 +62,7 @@ impl SigningFormat {
 /// language (`state/error_words/typed.rs`); `said` is the program's or the system's own words.
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyError {
-    /// Generating needs a name and an email in Profile first.
+    /// Generating needs a name and an email in Preferences > Profiles first.
     NoIdentity,
     /// `program` couldn't be started.
     NotRun { program: String, said: String },

@@ -2863,7 +2863,7 @@
   "signing_errors.failed": "{program} failed: {said}",
   "signing_errors.generate_failed": "key generation failed: {said}",
   "signing_errors.new_key_not_found": "the new key was not found",
-  "signing_errors.no_identity": "set your name and email in Profile first",
+  "signing_errors.no_identity": "set your name and email in Preferences > Profiles first",
   "signing_errors.no_public_key": "not found: no public key for {key}",
   "signing_errors.not_run": "could not run {program}: {said}",
   "stack.blocked.needs_restack": "{branch} needs a restack onto {lower} first.",

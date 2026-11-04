@@ -2863,7 +2863,7 @@
   "signing_errors.failed": "{program} ist fehlgeschlagen: {said}",
   "signing_errors.generate_failed": "die Schlüsselerzeugung ist fehlgeschlagen: {said}",
   "signing_errors.new_key_not_found": "der neue Schlüssel wurde nicht gefunden",
-  "signing_errors.no_identity": "trage zuerst unter Profile deinen Namen und deine E-Mail-Adresse ein",
+  "signing_errors.no_identity": "trage zuerst unter Einstellungen > Profile deinen Namen und deine E-Mail-Adresse ein",
   "signing_errors.no_public_key": "nicht gefunden: es gibt keinen öffentlichen Schlüssel für {key}",
   "signing_errors.not_run": "{program} konnte nicht gestartet werden: {said}",
   "stack.blocked.needs_restack": "{branch} muss zuerst auf {lower} neu gestapelt werden.",

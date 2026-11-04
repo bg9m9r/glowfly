@@ -23,9 +23,9 @@ fn variants() -> Vec<(E, [&'static str; 3])> {
         (
             E::NoIdentity,
             [
-                "set your name and email in Profile first",
-                "trage zuerst unter Profile deinen Namen und deine E-Mail-Adresse ein",
-                "primero indica tu nombre y tu correo electrónico en Perfiles",
+                "set your name and email in Preferences > Profiles first",
+                "trage zuerst unter Einstellungen > Profile deinen Namen und deine E-Mail-Adresse ein",
+                "primero indica tu nombre y tu correo electrónico en Preferencias > Perfiles",
             ],
         ),
         (
