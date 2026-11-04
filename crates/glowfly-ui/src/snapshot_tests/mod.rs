@@ -210,6 +210,7 @@ pub(super) mod snapshot_tests_updates;
 pub(super) mod snapshot_tests_vivid;
 pub(super) mod snapshot_tests_welcome_looks;
 pub(super) mod snapshot_tests_window_native;
+pub(super) mod snapshot_tests_wip_chosen;
 pub(super) mod snapshot_tests_wip_keys;
 pub(super) mod snapshot_tests_worktree_branches;
 pub(super) mod snapshot_tests_worktree_manage;

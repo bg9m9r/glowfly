@@ -237,3 +237,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)
 - Read stash messages that aren't UTF-8 without git2's stash_foreach, which panics on them (`to_str().unwrap()`); read the refs/stash reflog bytes lossily instead
 - Decode annotated tag messages and taggers with the tag's own encoding header wherever tag text is shown
+
+### Quiet main window chrome (D3)
+- Describe a row's chips in its accessible description ("main, in sync with origin/main, checked out") instead of the raw ref names
+- `branch_chip::paint`'s no-snapshot fallback fills the chip with the accent; use the trunk tone, as "never the accent" asks

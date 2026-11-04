@@ -270,6 +270,7 @@ fn stage_and_commit_end_to_end() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let snap = st.snap.as_ref().expect("opened");
     assert_eq!(st.session.selection, Selection::Wip, "a dirty repo opens on the WIP");
+    assert!(!st.session.wip_drawn_selected(), "without lighting its row");
     assert_eq!(snap.unstaged.len(), 1);
 
     let fx = update(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())), Instant::now());

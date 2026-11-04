@@ -147,6 +147,10 @@ pub struct RepoSession {
     /// What is selected in the graph; None on return to a tab whose repository isn't loaded
     /// (update/tabs.rs).
     pub selection: super::Selection,
+    /// The WIP row was chosen (a click, the keyboard, a command), so it is drawn selected; a
+    /// WIP selection made on its own (opening a dirty repository, a refresh, a pick or rebase
+    /// stopping) keeps the staging panel without lighting the row (`wip_drawn_selected`).
+    pub wip_lit: bool,
     /// The code host's and tracker's data; replies in flight are dropped while parked
     /// (`resume_after`).
     pub forge: Option<super::ForgeState>,
@@ -221,6 +225,16 @@ impl RepoSession {
         // Replies in flight for this tab were dropped while it was parked.
         if let Some(f) = self.forge.as_mut() {
             f.replies_dropped();
+        }
+    }
+
+    /// Whether the graph draws the WIP row selected: compared with a commit, or the WIP
+    /// selection was chosen (`wip_lit`).
+    pub fn wip_drawn_selected(&self) -> bool {
+        match self.selection {
+            super::Selection::Wip => self.wip_lit,
+            super::Selection::VsWorkdir(_) => true,
+            _ => false,
         }
     }
 

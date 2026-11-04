@@ -124,8 +124,6 @@ painted:
   "2"
   "1"
   "0"
-  "Tags"
-  "1"
   "3"
   "Summary"
   "Description"

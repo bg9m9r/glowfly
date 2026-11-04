@@ -1,4 +1,4 @@
-//! A graph row's background: a faint band in its node's lane colour, the hovered branch's
+//! A graph row's background: a faint band in its node's lane colour (none on a WIP row), the hovered branch's
 //! highlight, and a search match's accent bar along the left edge (the selection's bar, when
 //! selected). The selection (a fill with that bar) and the lifted look of a hovered row come
 //! from `widgets::row_fill`. Also the inks of a row a search dims.
@@ -13,6 +13,8 @@ use eframe::egui::{Color32, Painter, Rect, vec2};
 pub(super) struct RowLook {
     /// The node's lane colour.
     pub lane: Color32,
+    /// A WIP row (this tab's or another worktree's): no band, the row's background shows.
+    pub wip: bool,
     /// The row belongs to the hovered branch.
     pub highlighted: bool,
     pub selected: bool,
@@ -26,7 +28,7 @@ pub(super) struct RowLook {
 /// Paints the row's background in `rect`, under everything else in the row.
 pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
     let pal = color::current();
-    let band = band_color(look.lane, &pal);
+    let band = band(look, &pal);
     p.rect_filled(rect, 0.0, band);
     if look.highlighted {
         p.rect_filled(rect, 0.0, highlight_color(band, look.lane));
@@ -41,7 +43,7 @@ pub(super) fn paint(p: &Painter, rect: Rect, look: RowLook) {
 /// the band (the surface a search's find fill is worked out on).
 pub(super) fn top_fill(look: RowLook) -> Color32 {
     let pal = color::current();
-    let band = band_color(look.lane, &pal);
+    let band = band(look, &pal);
     match look {
         RowLook { selected: true, active: true, .. } => pal.selected,
         RowLook { selected: true, .. } => crate::ui::theme::tokens::selected_inactive(&pal),
@@ -49,6 +51,11 @@ pub(super) fn top_fill(look: RowLook) -> Color32 {
         RowLook { highlighted: true, .. } => highlight_color(band, look.lane),
         _ => band,
     }
+}
+
+/// The row's band: its lane's, or the background on a WIP row.
+fn band(look: RowLook, pal: &Palette) -> Color32 {
+    if look.wip { pal.bg } else { band_color(look.lane, pal) }
 }
 
 /// Whether a commit row matches the search (`searching`: there is one, and this is a commit

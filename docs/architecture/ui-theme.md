@@ -11,7 +11,7 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 
 ## Colours
 
-- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown`, `clear` and `clean_ink` that keep tints, edges, fills and chip letters out of it, and the change and selected-diff-line fills.
+- `theme/contrast.rs`: contrast maths, the brown zone (`brownish`, and `brownish_text` for coloured text) with `unbrown` and `clear` that keep tints, edges, fills and chip letters out of it, and the change and selected-diff-line fills.
 - `theme/ref_chip.rs`: the graph's ref chip colours: filled local branches, outlined remotes and tags, the halo on the checked-out branch and HEAD, each standing 3:1 from every row surface.
 - `theme/ref_chip_tests.rs`: the ref chips in every built-in and both presets: text on the fill or every row surface, fill or edge 3:1 from every row surface, the halo only where you are.
 - `theme/no_brown_tests.rs`: every built-in's (and the Garden pair's) surfaces, bands, chips, tints and washes, composited, and its accent, edges, branch lanes and chip letters, in both presets (the colour-safe one with its diff and status colours), stay out of the brown zone, with no exception.
@@ -38,7 +38,8 @@ source file, update its line here. What each colour is for is in [COLOUR.md](../
 - `theme/branch_palette.rs`: the branch hues in two presets, standard and colour-blind friendly (the light tones trading Olive, Gold and a yellow for Wine, Navy and a clear amber), put into a palette by `applied`.
 - `theme/branch_palette_gold.rs`, `theme/branch_palette_more.rs`: the families that make room beside a gold, iris (Dawn) or cobalt accent.
 - `theme/branch_names.rs`: the branch hues' names in the language.
-- `theme/branch_colours.rs`: a branch swatch's line and chip tones (main's trunk tone among them, and the slots that pass for it, `trunk_near`), with a person's initials colours.
+- `theme/branch_colours.rs`: a branch swatch's line and chip tones (main's trunk tone among them, and the slots that pass for it, `trunk_near`).
+- `theme/initials.rs`: a person's initials colours: eight muted tones by email, `text` initials. Tests in `initials_tests.rs`.
 - `theme/colour_safe.rs`: the colour-blind safe preset's diff and status colours (blue added, orange removed, violet modified), each at its theme colour's luminance; `colour_safe_tests.rs` holds them apart under simulated colour vision and at the contrast floors in every built-in.
 - `theme/vision.rs`: simulated colour vision (normal, protan, deutan, tritan), the OKLab distance and the floors under which two lines pass for each other.
 - The branch colours are read by the graph's per-row colours (`graph/lane_colours.rs`) and the branch dots (`branch_dot.rs`).

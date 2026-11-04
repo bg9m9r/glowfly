@@ -108,7 +108,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
         if st.modal.is_none() && st.palette.is_none() && !st.askpass.showing() {
             let (offset, height) = st.session.tab_view.graph_scroll;
             let port = select::Viewport { offset, height, row_h };
-            select::keyboard_nav(ui, &st.session.selection, snap, &rows, port, &mut st.view, msgs);
+            select::keyboard_nav(ui, (&st.session.selection, st.session.wip_lit), snap, &rows, port, &mut st.view, msgs);
         }
 
         // What grouping a row's ref labels into chips needs, once per frame.
@@ -153,6 +153,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
             area = area.vertical_scroll_offset(off);
         }
         let selection = &st.session.selection;
+        let wip_lit = st.session.wip_drawn_selected();
         let settings = &st.settings;
         let idle = st.job.is_none();
         let forge = st.session.forge.as_ref();
@@ -220,9 +221,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 // Another worktree's row is never selected.
                 let selected = match (selection, commit) {
                     _ if worktree.is_some() => false,
-                    (s, None) if s.wip_shown() => true,
+                    (_, None) => wip_lit,
                     (s, Some(c)) => s.includes(c.oid),
-                    _ => false,
                 };
                 // The pointer over the row's ghost button still hovers the row.
                 let hovered = resp.hovered() || ui.rect_contains_pointer(rect);
@@ -230,7 +230,8 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                 let highlighted = commit.is_some_and(|c| highlight.is_some_and(|h| h.contains(&c.oid)));
                 let (matched, dim) =
                     row_look::found(searching && commit.is_some(), filtered, selected, || st.session.search.position(index));
-                let look = row_look::RowLook { lane: lane_col, highlighted, selected, active, hovered, marked: matched && !filtered };
+                let wip = commit.is_none();
+                let look = row_look::RowLook { lane: lane_col, wip, highlighted, selected, active, hovered, marked: matched && !filtered };
                 row_look::paint(&painter, rect, look);
 
                 let mut gp = painter.with_clip_rect(cols.rect(cols.cell.graph, rect));
@@ -258,7 +259,7 @@ pub fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mu
                         nodes::wip_ring(&gp, pos2(node_x, mid), node_r, lane_col);
                     }
                     let mp = painter.with_clip_rect(cols.rect(cols.wip_span(), rect));
-                    wip_row::draw(&mp, &cols, mid, wip_label, snap.changes, wip_total);
+                    wip_row::draw(&mp, &cols, mid, (wip_label, selected), snap.changes, wip_total);
                     if resp.clicked() {
                         select::focus(ui.ctx());
                         msgs.push(select::wip_click(ui.input(|i| i.modifiers)));

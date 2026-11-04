@@ -1,9 +1,9 @@
-//! A graph row's node, in its lane's colour: an ordinary commit's author (initials in the
-//! person's own colours, or the avatar) inside a ring, 20 px across in Comfortable rows and 16
+//! A graph row's node, in its lane's colour: an ordinary commit's author (initials on the
+//! person's own muted tone, `theme::initials`, or the avatar) inside a ring, 20 px across in Comfortable rows and 16
 //! in Compact ones (`node_r`), a merge commit's small solid dot, and a WIP row's dashed ring.
 
 use crate::ui::avatars::Avatars;
-use crate::ui::theme::branch_colours::initials_tones;
+use crate::ui::theme::initials::initials_tones;
 use crate::ui::widgets;
 use eframe::egui::{Align2, Color32, CornerRadius, FontId, Painter, Pos2, Rect, Stroke, epaint::RectShape, pos2, vec2};
 use glowfly_core::settings::Density;

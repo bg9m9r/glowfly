@@ -120,8 +120,6 @@ painted:
   "0"
   "Worktrees"
   "0"
-  "Submodule"
-  "0"
   "M"
   "Zusammenfassung"
   "Beschreibung"

@@ -186,8 +186,8 @@ Olive's slot is a deep Wine (hue 352), Gold's a Navy (hue 262), both darker than
 neighbours, and Orange is a clear amber at hue 62 (#c47100, at the sRGB edge: the one warm line
 that stays clean at 3:1). Beside Porcelain's cobalt, Forest (hue 142) takes Navy's
 slot; on Dawn, Jade takes it and Forest takes Indigo's, beside the iris accent. A chip whose
-tone would letter it in brown (the amber's text tone) is lettered in the ink instead
-(`contrast::clean_ink`), its fill and edge keeping the hue.
+tone would letter it in brown (the amber's text tone) is lettered in the ink instead, its
+fill and edge keeping the hue.
 
 - `branch.lanes`: line tones, for lines, dots and bands (3:1 on bg and panel).
 - `branch.chips`: chip tones, which ref chips are edged and lettered in (see Chip tints).
@@ -217,12 +217,16 @@ automatic neighbour moves off it, and two pinned neighbours may share a hue. Mai
 like any branch. Automatic returns it to the trunk. A pin keeps its slot number, so under the colour-blind preset it
 shows as that number modulo 8.
 
-People: the initials in graph nodes and the commit details avatar take a person's own slot,
-FNV-1a of their trimmed, lowercased email (their name when the email is blank) modulo the
-preset's hue count, never the accent. The fill is the background mixed 30% toward their line
-tone, and the ink their chip tone pushed to 4.5:1 on that fill
-(`theme/branch_colours.rs::initials_tones`). The ring around the initials, or around an avatar
-image, stays the branch's colour.
+Initials: the initials in graph nodes and the commit details avatar sit on one of eight muted
+tones, chosen by the top three bits of FNV-1a of the person's trimmed, lowercased email (their
+name when the email is blank; `branch_colour::person_tone`). The tones are not branch hues and
+ignore the branch preset: OKLCH hues 0, 135, 165, 195, 228, 260, 292 and 325 deg (clear of the
+brown zone) at chroma 0.055, lightness 0.14 above the background's but at least 0.30 (0.10
+below on a light palette), stepped back (never under the 0.30 floor) toward the background until `text` initials read at 4.5:1 (7:1 in high
+contrast) (`theme/initials.rs`, checked in `initials_tests.rs`: chroma at most 0.06, the discs
+1.25:1 off `bg` and `panel`, the eight apart and clear of every lane's line tone). The ring
+around the initials, or around an avatar image, stays the branch's colour, so the node and the
+author read as two marks.
 
 Colour-blind friendly preset (Preferences > Accessibility > Colours > Colour-blind safe): 8
 hues that stay apart under protan, deutan and tritan vision as well as normal vision, and keep
@@ -387,12 +391,12 @@ is at most one, and it sits at the surface's trailing edge.
     tinted.
   - Banners sit on a neutral `banner` fill; the stripe carries the kind's colour.
   - `theme/no_brown_tests.rs` composites every surface, band, highlighted band, chip and chip
-    edge, initials fill, change chip, tone tint, tonal state and wash (each semantic and
+    edge, change chip, tone tint, tonal state and wash (each semantic and
     repository colour at 3% to 80% on bg, panel, toolbar and raised) and fails on any in the
     zone, in both branch presets, with no exception (Dusk's bronze selected row is gone). It
     also checks every line, edge and letter drawn in a
     colour of its own: the accent, `primary_border`, the field and dialog edges, each branch
-    lane, chip text and initials ink.
+    lane and chip text (the initials tones are checked in `theme/initials_tests.rs`).
   - `theme/no_brown_text_tests.rs` checks every coloured text (status, `warn`, tag and hunk
     text, syntax but `syn_comment`, the terminal's red to cyan, normal and bright) against
     `contrast::brownish_text`. Text dark enough for 4.5:1 on paper can't take the chroma a warm
@@ -533,8 +537,10 @@ built-in and two custom palettes with odd colours.
 ## 5. Chip tints
 
 Ref chips in the graph (`ref_chip::ref_chip`, painted by `graph/labels.rs`'s `paint_box`):
-filled = a local branch, outlined = a reference (a remote branch or a tag), a halo = you are
-here. Every chip stands apart from every row surface it can sit on (`surfaces::with_row_surfaces`:
+filled = a local branch (no mark), outlined = a reference (a remote branch or a tag), a halo =
+you are here, with a ✔ and semibold text. A local branch at the same commit as its copies on
+remotes (its upstream, or the same name) folds them in and shows the cloud mark ("main, in sync
+with origin/main" on hover); a diverged upstream keeps its own outlined chip on its own commit. Every chip stands apart from every row surface it can sit on (`surfaces::with_row_surfaces`:
 the background, hover, the selection with and without the focus, and every lane's band in both
 presets, plain and highlighted while its branch is hovered): its fill or its edge reaches 3:1
 against each. Its text reaches 4.5:1 (7:1 in the
