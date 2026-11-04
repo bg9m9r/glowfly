@@ -5,7 +5,6 @@ source file, update its line here.
 
 ## Commit graph and branch colours
 
-- : the SVG preview's budget: refuses drawings whose filters (morphology radius, turbulence octaves, convolution size, primitive count, total pixel work) or stacked layers cost too much.
 - `graph.rs`, `graph/`: lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes.
 - `graph/lanes.rs`: the lane layout itself (`layout`), kept with where the lanes stand below the last row so `Layout::extend` lays more commits out under it.
 - `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.

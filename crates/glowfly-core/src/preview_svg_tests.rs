@@ -116,56 +116,114 @@ fn svg_paths_by_extension() {
     }
 }
 
-/// `render` of `body`, which must come back within a second (a debug build on CI is slow, but
-/// a refused drawing never reaches the filters at all).
-fn quick(body: &str) -> Result<SvgRender, SvgError> {
+/// Asserts `body` is refused as too costly, within a second (a refused drawing never reaches
+/// the renderer, so even a loaded CI machine answers at once).
+fn refused(body: &str) {
     let start = std::time::Instant::now();
     let r = render(&svg(body));
     assert!(start.elapsed() < std::time::Duration::from_secs(1), "took {:?}", start.elapsed());
-    r
+    assert_eq!(r.err(), Some(SvgError::TooCostly), "{body:.200}");
+}
+
+/// `body` drawn (no time limit: drawing at opt-level 1 on a loaded machine varies).
+fn drawn(body: &str) -> SvgRender {
+    render(&svg(body)).unwrap_or_else(|e| panic!("{e:?}: {body:.200}"))
+}
+
+fn filtered(filter: &str) -> String {
+    format!(r#"width="100" height="100"><filter id="f">{filter}</filter><rect width="100" height="100" filter="url(#f)"/>"#)
+}
+
+/// `inner` embedded as a `data:` SVG image `size` units square in a 10-unit drawing.
+fn embedded(inner: &str, size: u32) -> String {
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(svg(inner));
+    format!(r#"width="10" height="10"><image width="{size}" height="{size}" href="data:image/svg+xml;base64,{b64}"/>"#)
 }
 
 #[test]
 fn costly_filters_are_refused_quickly() {
-    let filtered = |filter: &str| {
-        format!(r#"width="100" height="100"><filter id="f">{filter}</filter><rect width="100" height="100" filter="url(#f)"/>"#)
-    };
-    let hostile = [
+    for f in [
         r#"<feMorphology radius="100000"/>"#,
         r#"<feMorphology operator="dilate" radius="50"/>"#,
         r#"<feTurbulence baseFrequency="0.05" numOctaves="1000000000"/>"#,
         r#"<feTurbulence baseFrequency="0.05" numOctaves="11"/>"#,
-    ];
-    for f in hostile {
-        assert_eq!(quick(&filtered(f)).unwrap_err(), SvgError::TooCostly, "{f}");
+    ] {
+        refused(&filtered(f));
     }
     // A large convolution kernel costs its area for every pixel.
     let kernel = vec!["1"; 99 * 99].join(" ");
-    let convolve = format!(r#"<feConvolveMatrix order="99" kernelMatrix="{kernel}"/>"#);
-    assert_eq!(quick(&filtered(&convolve)).unwrap_err(), SvgError::TooCostly);
+    refused(&filtered(&format!(r#"<feConvolveMatrix order="99" kernelMatrix="{kernel}"/>"#)));
     // Too many primitives, even cheap ones.
-    let many = r#"<feOffset dx="1"/>"#.repeat(200);
-    assert_eq!(quick(&filtered(&many)).unwrap_err(), SvgError::TooCostly);
+    refused(&filtered(&r#"<feOffset dx="1"/>"#.repeat(200)));
+    // A merge draws the whole region once for each of its inputs.
+    refused(&filtered(&format!("<feMerge>{}</feMerge>", "<feMergeNode/>".repeat(5000))));
     // A filter too costly at full size draws at half the size instead.
-    let soft = quick(&filtered(r#"<feMorphology radius="1"/>"#)).unwrap();
-    assert_eq!(soft.image.shown, [512, 512]);
+    assert_eq!(drawn(&filtered(r#"<feMorphology radius="1"/>"#)).image.shown, [512, 512]);
     // Modest filters still draw.
-    for f in
-        [r#"<feMorphology radius="1"/>"#, r#"<feTurbulence baseFrequency="0.05" numOctaves="4"/>"#, r#"<feGaussianBlur stdDeviation="5"/>"#]
-    {
-        assert!(quick(&filtered(f)).is_ok(), "{f}");
+    for f in [
+        r#"<feMorphology radius="0.2"/>"#,
+        r#"<feTurbulence baseFrequency="0.05" numOctaves="4"/>"#,
+        r#"<feGaussianBlur stdDeviation="5"/>"#,
+        "<feMerge><feMergeNode/><feMergeNode/></feMerge>",
+    ] {
+        drawn(&filtered(f));
     }
 }
 
 #[test]
-fn a_costly_filter_inside_an_embedded_svg_is_refused_too() {
-    use base64::Engine;
-    let inner = svg(
-        r#"width="100" height="100"><filter id="f"><feMorphology radius="100000"/></filter><rect width="100" height="100" filter="url(#f)"/>"#,
+fn an_embedded_svg_is_measured_at_the_size_it_is_drawn() {
+    let costly = r#"width="100" height="100"><filter id="f"><feMorphology radius="100000"/></filter><rect width="100" height="100" filter="url(#f)"/>"#;
+    refused(&embedded(costly, 10));
+    // A 1-unit drawing whose half-unit radius looks harmless, scaled up into a 10-unit image
+    // drawn 1024 px wide: the radius is about 512 px.
+    let tiny = r#"width="1" height="1"><filter id="f"><feMorphology radius="0.5"/></filter><rect width="1" height="1" filter="url(#f)"/>"#;
+    refused(&embedded(tiny, 10));
+}
+
+#[test]
+fn a_costly_filter_at_the_end_of_a_mask_chain_is_refused() {
+    let body = r#"width="100" height="100">
+      <filter id="f"><feMorphology radius="100000"/></filter>
+      <mask id="m3"><rect width="100" height="100" fill="white" filter="url(#f)"/></mask>
+      <mask id="m2" mask="url(#m3)"><rect width="100" height="100" fill="white"/></mask>
+      <mask id="m1" mask="url(#m2)"><rect width="100" height="100" fill="white"/></mask>
+      <rect width="100" height="100" mask="url(#m1)"/>"#;
+    refused(body);
+    // A long chain holds a layer for every link.
+    let mut chain = String::from(r#"width="100" height="100"><mask id="m0"><rect width="100" height="100" fill="white"/></mask>"#);
+    for i in 1..40 {
+        chain += &format!(r#"<mask id="m{i}" mask="url(#m{})"><rect width="100" height="100" fill="white"/></mask>"#, i - 1);
+    }
+    chain += r#"<rect width="100" height="100" mask="url(#m39)"/>"#;
+    refused(&chain);
+    let mut clips = String::from(r#"width="100" height="100"><clipPath id="c0"><rect width="100" height="100"/></clipPath>"#);
+    for i in 1..40 {
+        clips += &format!(r#"<clipPath id="c{i}" clip-path="url(#c{})"><rect width="100" height="100"/></clipPath>"#, i - 1);
+    }
+    clips += r#"<rect width="100" height="100" clip-path="url(#c39)"/>"#;
+    refused(&clips);
+}
+
+#[test]
+fn use_fan_out_and_huge_pattern_tiles_are_refused() {
+    // Six levels of ten <use> each: a million full-canvas rectangles after expansion (usvg may
+    // stop at its own node limit first; either way nothing is drawn).
+    let mut body = String::from(r#"width="100" height="100"><defs><rect id="u0" width="100" height="100"/>"#);
+    for i in 1..=6 {
+        body += &format!(r##"<g id="u{i}">{}</g>"##, format!(r##"<use href="#u{}"/>"##, i - 1).repeat(10));
+    }
+    body += r##"</defs><use href="#u6"/>"##;
+    let start = std::time::Instant::now();
+    assert!(render(&svg(&body)).is_err(), "a million full-canvas rectangles");
+    assert!(start.elapsed() < std::time::Duration::from_secs(5), "took {:?}", start.elapsed());
+    // A 20-unit tile in a 1-unit drawing: a 20480 px square pixmap.
+    refused(
+        r#"width="1" height="1"><pattern id="p" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="20" height="20"/></pattern><rect width="1" height="1" fill="url(#p)"/>"#,
     );
-    let b64 = base64::engine::general_purpose::STANDARD.encode(inner);
-    let body = format!(r#"width="10" height="10"><image width="10" height="10" href="data:image/svg+xml;base64,{b64}"/>"#);
-    assert_eq!(quick(&body).unwrap_err(), SvgError::TooCostly);
+    drawn(
+        r#"width="100" height="100"><pattern id="p" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="5" height="5"/></pattern><rect width="100" height="100" fill="url(#p)"/>"#,
+    );
 }
 
 #[test]
@@ -175,25 +233,18 @@ fn deep_stacks_of_layers_are_refused() {
         format!(r#"width="100" height="100">{open}<rect width="100" height="100"/>{}"#, "</g>".repeat(depth))
     };
     for attr in [r#"opacity="0.9""#, r#"filter="url(#f)""#] {
-        let deep = format!(r#"{}<filter id="f"><feOffset dx="1"/></filter>"#, nest(300, attr));
-        assert_eq!(quick(&deep).unwrap_err(), SvgError::TooCostly, "{attr}");
+        refused(&format!(r#"{}<filter id="f"><feOffset dx="1"/></filter>"#, nest(300, attr)));
     }
-    assert!(quick(&nest(4, r#"opacity="0.9""#)).is_ok(), "a few layers draw");
+    drawn(&nest(4, r#"opacity="0.9""#));
 }
 
 #[test]
 fn references_to_other_files_are_flagged_wherever_they_are() {
-    use base64::Engine;
-    let used = quick(r##"width="10" height="10"><use href="other.svg#icon"/><use href="#local"/><rect id="local" width="1" height="1"/>"##)
-        .unwrap();
+    let used = drawn(r##"width="10" height="10"><use href="other.svg#icon"/><use href="#local"/><rect id="local" width="1" height="1"/>"##);
     assert!(used.linked, "a <use> of another file");
     let local =
-        quick(r##"width="10" height="10"><a href="https://example.invalid"><rect id="r" width="1" height="1"/></a><use href="#r"/>"##)
-            .unwrap();
+        drawn(r##"width="10" height="10"><a href="https://example.invalid"><rect id="r" width="1" height="1"/></a><use href="#r"/>"##);
     assert!(!local.linked, "a link and a local <use> name no file to draw");
-    let inner = svg(r#"width="10" height="10"><image width="10" height="10" href="https://example.invalid/x.png"/>"#);
-    let b64 = base64::engine::general_purpose::STANDARD.encode(inner);
-    let nested =
-        quick(&format!(r#"width="10" height="10"><image width="10" height="10" href="data:image/svg+xml;base64,{b64}"/>"#)).unwrap();
+    let nested = drawn(&embedded(r#"width="10" height="10"><image width="10" height="10" href="https://example.invalid/x.png"/>"#, 10));
     assert!(nested.linked, "an external image inside an embedded SVG");
 }
