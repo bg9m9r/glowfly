@@ -44,7 +44,7 @@ fn force_push_leases_the_commit_the_snapshot_saw() {
     let seen = rev(&work, "origin/feature");
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",
@@ -113,7 +113,7 @@ fn force_push_of_a_new_branch_expects_it_absent() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = update(&mut st, Msg::Job(JobMsg::Push { force: true }), Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",
@@ -165,7 +165,7 @@ fn force_push_of_a_branch_that_is_not_checked_out_leases_its_upstream() {
     assert!(body.contains("origin/feature has 1 commit that feature doesn't have"), "{body}");
     let fx = update(&mut st, then, Instant::now());
     match &fx[..] {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(
             cmds[..],
             [args(&[
                 "push",

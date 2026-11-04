@@ -32,7 +32,7 @@ fn big() -> DiffTarget {
 
 /// Runs the held background pass for the diff on screen and applies its result.
 fn finish_held(st: &mut glowfly_model::state::AppState, fx: &mut Vec<Effect>) {
-    let i = fx.iter().position(|e| matches!(e, Effect::HighlightDiff { generation, .. } if *generation == st.session.diff.shown_gen));
+    let i = fx.iter().position(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { generation, .. }) if *generation == st.session.diff.shown_gen));
     let msg = glowfly_runner::testing::execute(fx.remove(i.expect("a background pass"))).expect("a result");
     update(st, msg, Instant::now());
 }
@@ -90,7 +90,7 @@ fn reload_carries_header_spans() {
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "big.rs".into(), index: 0, generation }));
     // The reload resumes from the checkpoints and finishes inline.
     let fx = land(&mut st, held);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }))));
     let d = shown(&st);
     assert!(!hl(d).is_pending());
     let after = headers(d);

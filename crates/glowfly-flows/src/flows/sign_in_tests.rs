@@ -40,7 +40,7 @@ fn origin(name: &str) -> (AppState, PathBuf) {
 fn runs(fx: &[Effect]) -> Vec<(Vec<Vec<String>>, bool)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::RunGit { cmds, prompts, .. } => Some((cmds.clone(), *prompts)),
+            Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, prompts, .. }) => Some((cmds.clone(), *prompts)),
             _ => None,
         })
         .collect()

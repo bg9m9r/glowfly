@@ -46,7 +46,7 @@ fn op(st: &mut AppState, op: FilterOp) -> Vec<Effect> {
 /// Runs effects already returned by `update` to completion.
 fn run(st: &mut AppState, fx: Vec<Effect>) {
     for e in fx {
-        if matches!(e, Effect::LoadRepo { .. })
+        if matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))
             && let Some(m) = glowfly_runner::testing::execute(e)
         {
             drive(st, m);
@@ -66,14 +66,14 @@ fn filter(st: &AppState) -> GraphFilter {
     st.settings.graph_filter_for(&st.snap.as_ref().unwrap().real_workdir)
 }
 
-/// The options of the single LoadRepo in `fx`.
+/// The options of the single `LoadEffect::Repo` in `fx`.
 fn load_opts(fx: &[Effect]) -> &LoadOptions {
     let mut loads = fx.iter().filter_map(|e| match e {
-        Effect::LoadRepo { opts, .. } => Some(opts),
+        Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) => Some(opts),
         _ => None,
     });
-    let opts = loads.next().expect("a LoadRepo");
-    assert!(loads.next().is_none(), "one LoadRepo");
+    let opts = loads.next().expect("a repository load");
+    assert!(loads.next().is_none(), "one repository load");
     opts
 }
 
@@ -84,7 +84,7 @@ fn hide_saves_and_reloads_without_branch() {
     assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
 
     let fx = op(&mut st, FilterOp::Hide(heads("feature")));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::LoadRepo { .. }]));
+    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
     assert_eq!(load_opts(&fx).hidden, [heads("feature")]);
     run(&mut st, fx);
     assert!(!has_label(&st, "feature") && !has_commit(&st, "feature work"));
@@ -127,11 +127,15 @@ fn checking_out_hidden_branch_shows_it_again() {
     git(&dir, &["checkout", "-q", "feature"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded =
-        fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| glowfly_runner::testing::execute(e)).flatten()).unwrap();
+    let loaded = fx
+        .into_iter()
+        .find_map(|e| {
+            matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })).then(|| glowfly_runner::testing::execute(e)).flatten()
+        })
+        .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "the load already showed it");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "the load already showed it");
     assert_eq!(filter(&st).hidden, [heads("other")], "only the checked-out branch is unhidden");
     assert!(has_label(&st, "feature") && has_commit(&st, "feature work"));
     assert!(!has_label(&st, "other"));
@@ -223,8 +227,12 @@ fn deleted_refs_are_pruned() {
     git(&dir, &["branch", "-D", "feature", "other"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded =
-        fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| glowfly_runner::testing::execute(e)).flatten()).unwrap();
+    let loaded = fx
+        .into_iter()
+        .find_map(|e| {
+            matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })).then(|| glowfly_runner::testing::execute(e)).flatten()
+        })
+        .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));
@@ -275,7 +283,7 @@ fn hide_show_and_solo_a_tag() {
     assert!(has_label(&st, "rel") && has_commit(&st, "feature work"));
 
     let fx = op(&mut st, FilterOp::Hide(tags("rel")));
-    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::LoadRepo { .. }]));
+    assert!(matches!(&fx[..], [Effect::SaveSettings(_), Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })]));
     assert_eq!(load_opts(&fx).hidden, [tags("rel")]);
     run(&mut st, fx);
     assert!(!has_label(&st, "rel") && !has_commit(&st, "feature work"));
@@ -310,8 +318,12 @@ fn deleted_tags_are_pruned() {
     git(&dir, &["tag", "-d", "rel", "keep"]);
 
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    let loaded =
-        fx.into_iter().find_map(|e| matches!(e, Effect::LoadRepo { .. }).then(|| glowfly_runner::testing::execute(e)).flatten()).unwrap();
+    let loaded = fx
+        .into_iter()
+        .find_map(|e| {
+            matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })).then(|| glowfly_runner::testing::execute(e)).flatten()
+        })
+        .unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     assert!(st.settings.graph_filters.is_empty(), "both entries are gone");
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))));

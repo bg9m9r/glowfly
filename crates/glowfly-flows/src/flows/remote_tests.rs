@@ -35,7 +35,7 @@ fn form(st: &mut AppState) -> &mut RemoteForm {
 /// The single RunGit job's commands in `fx`.
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }

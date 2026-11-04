@@ -253,7 +253,7 @@ pub enum JobMsg {
         output: String,
         undo: Option<UndoResult>,
     },
-    /// The job failed, and the check it carried for that (`Effect::RunGit::on_fail_check`)
+    /// The job failed, and the check it carried for that (`JobEffect::RunGit::on_fail_check`)
     /// passed: handled as a failed `JobDone` whose pending patch apply is already applied.
     FailCheckPassed {
         output: String,

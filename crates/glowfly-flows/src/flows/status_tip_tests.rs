@@ -154,7 +154,10 @@ fn turn_on_starts_the_job_in_the_repository() {
     let msg = Msg::Load(LoadMsg::SpeedUpStatus { speedups: s, cache: true, monitor: false });
     let fx = update(&mut st, msg, Instant::now());
     let workdir = st.workdir().unwrap();
-    assert!(matches!(&fx[..], [Effect::RunGit { cwd, cmds, .. }] if cwd == &workdir && cmds == &repo::untracked_cache_cmds(s)), "{fx:?}");
+    assert!(
+        matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cwd, cmds, .. })] if cwd == &workdir && cmds == &repo::untracked_cache_cmds(s)),
+        "{fx:?}"
+    );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Turn on the untracked cache"));
     let _ = std::fs::remove_dir_all(&dir);
 }

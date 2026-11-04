@@ -92,7 +92,7 @@ fn merged_with_local_delete_runs_remote_steps_then_the_checked_delete() {
     let fx = reply(&mut st, true);
     assert_eq!(git_jobs(&fx), [[PUSH_DELETE, FETCH, CHECK, TRACK, DELETE].map(cmd).to_vec()]);
     let record = fx.iter().find_map(|e| match e {
-        Effect::RunGit { record, .. } => Some(record.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { record, .. }) => Some(record.clone()),
         _ => None,
     });
     assert_eq!(record, Some(Some(UndoKind::DeleteBranch("feature".into()))), "Undo brings the branch back");

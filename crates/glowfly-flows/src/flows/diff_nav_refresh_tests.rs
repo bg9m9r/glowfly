@@ -82,9 +82,9 @@ fn options_change_during_step_reopens_the_target() {
     let (mut st, dir) = nav_repo("refresh-options");
     pending_step(&mut st);
     let fx = run(&mut st, Msg::Diff(DiffMsg::SetIgnoreWhitespace(true)));
-    let loads: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).collect();
+    let loads: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).collect();
     assert!(
-        matches!(&loads[..], [Effect::LoadDiff { target, reload: false, ignore_whitespace: true, .. }] if *target == unstaged("b.bin")),
+        matches!(&loads[..], [Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload: false, ignore_whitespace: true, .. })] if *target == unstaged("b.bin")),
         "{fx:?}"
     );
     assert_eq!(st.view.diff_landing, Some((unstaged("b.bin"), Landing::First)));

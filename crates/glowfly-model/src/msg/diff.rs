@@ -88,7 +88,7 @@ pub enum DiffMsg {
     HunkPatchRead {
         result: Result<Vec<u8>, String>,
     },
-    /// A HighlightDiff finished: exact spans for the hunks and/or the whole file of the diff shown
+    /// A `DiffEffect::Highlight` finished: exact spans for the hunks and/or the whole file of the diff shown
     /// at `generation`, each only where it was pending. Applied only while that diff is still on
     /// screen.
     DiffHighlighted {
@@ -98,14 +98,14 @@ pub enum DiffMsg {
         whole: Option<DiffHighlight>,
     },
     /// The unchanged lines between the hunks of the diff shown at `generation`, read
-    /// (`Effect::LoadDiffGaps`).
+    /// (`DiffEffect::Gaps`).
     GapsLoaded {
         target: DiffTarget,
         generation: u64,
         result: Result<Arc<GapText>, String>,
     },
     /// The sizes and decoded images of the binary diff shown at `generation`
-    /// (`Effect::LoadBinarySides`).
+    /// (`DiffEffect::BinarySides`).
     BinarySidesLoaded {
         target: DiffTarget,
         generation: u64,

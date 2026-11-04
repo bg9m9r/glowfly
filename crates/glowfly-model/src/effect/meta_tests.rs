@@ -1,11 +1,12 @@
 //! Tests for the effect areas' metadata (effect/meta.rs): the effects that moved into areas keep
-//! the names, scopes, queues and timing they had as flat variants, and the pool holds and stop
-//! keys are unchanged.
+//! the names, scopes, queues, timing and sandbox rules they had as flat variants, and the pool
+//! holds and stop keys are unchanged.
 
 use crate::effect::partial::{ContentRequest, PartialEffect, StopKey};
 use crate::effect::{
-    CloneEffect, CommitEffect, ConflictEffect, ConflictRead, Effect, FileOp, FilesEffect, LfsEffect, MonitorJob, MonitorOff, ReposEffect,
-    SandboxRule, SelectionEffect, SparseEffect, StackRequest, WorktreeEffect,
+    CloneEffect, CommitEffect, ConflictEffect, ConflictRead, DiffEffect, Effect, FileOp, FilesEffect, IndexRequest, JobEffect, LfsEffect,
+    LoadEffect, LoadKind, MonitorJob, MonitorOff, ReposEffect, SandboxRule, SelectionEffect, SparseEffect, StackRequest, UndoOpts,
+    WorktreeEffect,
 };
 use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoveRequest};
 use glowfly_core::repo_sync::SyncOp;
@@ -23,7 +24,7 @@ fn meta(e: &Effect) -> Meta<'_> {
 }
 
 fn git(cwd: &Path, cmds: &[&[&str]], stoppable: bool) -> Effect {
-    Effect::RunGit {
+    Effect::Job(JobEffect::RunGit {
         cwd: cwd.to_owned(),
         cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
         write_file: None,
@@ -33,7 +34,7 @@ fn git(cwd: &Path, cmds: &[&[&str]], stoppable: bool) -> Effect {
         expect: None,
         stoppable,
         on_fail_check: None,
-    }
+    })
 }
 
 #[test]
@@ -139,6 +140,119 @@ fn moved_effects_keep_their_metadata() {
             assert_eq!(effect.sandbox(), SandboxRule::Run, "{} runs in the whole-app tests", expected.0);
         }
     }
+}
+
+/// The Load, Diff and Job areas (#373): what main gave the flat `LoadRepo`, `LoadStatus`,
+/// `LoadIndexStatus`, `LoadDiff`, `HighlightDiff`, `LoadDiffGaps`, `LoadBinarySides`, `RunGit` and
+/// `UndoRedo`.
+#[test]
+fn load_diff_and_job_effects_keep_their_metadata() {
+    let w = folder("reads");
+    let cwd = folder("job");
+    let oid = git2::Oid::zero();
+    let scoped = Some(w.as_path());
+    let target = || glowfly_core::repo::DiffTarget::Unstaged("a.txt".into());
+    let diff = || {
+        let d =
+            glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+        std::sync::Arc::new(d)
+    };
+    let memo = std::sync::Arc::new(glowfly_core::repo::IndexMemo::of(&git2::Index::new().unwrap()).unwrap());
+    let read = IndexRequest { old: memo, partners: Vec::new(), paths: Vec::new() };
+    let action = glowfly_core::undo::Action::Commit { branch: None, from: oid, to: oid, message: String::new(), amend: false };
+    let cases: Vec<(Effect, Meta)> = vec![
+        (
+            Effect::Load(LoadEffect::Repo {
+                path: w.clone(),
+                opts: Default::default(),
+                generation: 1,
+                kind: LoadKind::Refresh,
+                known: None,
+                prior: None,
+            }),
+            ("load-repo", None, None, true),
+        ),
+        (
+            Effect::Load(LoadEffect::Status {
+                workdir: w.clone(),
+                generation: 1,
+                submodules: false,
+                open: None,
+                git_status: true,
+                paths: None,
+            }),
+            ("load-status", scoped, None, true),
+        ),
+        (
+            Effect::Load(LoadEffect::IndexStatus {
+                workdir: w.clone(),
+                generation: 1,
+                submodules: false,
+                open: None,
+                git_status: true,
+                read,
+            }),
+            ("load-index-status", scoped, None, true),
+        ),
+        (
+            Effect::Diff(DiffEffect::Load {
+                workdir: w.clone(),
+                target: target(),
+                reload: false,
+                generation: 1,
+                previous: None,
+                ignore_whitespace: false,
+                whole_file: false,
+                listed: None,
+            }),
+            ("load-diff", scoped, None, true),
+        ),
+        (
+            Effect::Diff(DiffEffect::Highlight { workdir: w.clone(), target: target(), generation: 1, diff: diff() }),
+            ("highlight", scoped, None, true),
+        ),
+        (
+            Effect::Diff(DiffEffect::Gaps { workdir: w.clone(), target: target(), generation: 1, diff: diff() }),
+            ("load-diff-gaps", scoped, None, true),
+        ),
+        (
+            Effect::Diff(DiffEffect::BinarySides { workdir: w.clone(), target: target(), generation: 1 }),
+            ("binary-sides", scoped, None, true),
+        ),
+        (git(&cwd, &[&["commit"]], false), ("git", None, Some(cwd.as_path()), true)),
+        (
+            Effect::Job(JobEffect::UndoRedo { cwd: cwd.clone(), action, redo: false, opts: UndoOpts::default() }),
+            ("undo-redo", None, Some(cwd.as_path()), true),
+        ),
+    ];
+    for (effect, expected) in &cases {
+        assert_eq!(meta(effect), *expected, "{effect:?}");
+        assert_eq!(effect.holds(), expected.2, "{} holds what it queues on", expected.0);
+        assert_eq!(effect.stop_key(), None, "{} can't be stopped", expected.0);
+        assert_eq!(effect.sandbox(), SandboxRule::Run, "{} runs in the whole-app tests", expected.0);
+    }
+}
+
+/// `RunGit`'s queue, pool hold and stop key as main had them: a job of only fetches and pushes
+/// doesn't queue but holds the pool, one that names `.` or runs anything else queues, and only a
+/// `stoppable` job has a stop.
+#[test]
+fn a_git_job_queues_holds_and_stops_as_before() {
+    let w = folder("git-job");
+    let at = Some(w.clone());
+    let rules = |e: Effect| {
+        (e.name(), e.scope().is_none(), e.queue().map(Path::to_path_buf), e.holds().map(Path::to_path_buf), e.stop_key(), e.sandbox())
+    };
+    let run = SandboxRule::Run;
+    assert_eq!(rules(git(&w, &[&["fetch", "origin"], &["push", "origin", "main"]], false)), ("git", true, None, at.clone(), None, run));
+    assert_eq!(rules(git(&w, &[&["fetch", "origin"]], true)), ("git", true, None, at.clone(), Some(StopKey::Job), run));
+    assert_eq!(
+        rules(git(&w, &[&["fetch", "."]], false)),
+        ("git", true, at.clone(), at.clone(), None, run),
+        "a fetch into this repository changes it"
+    );
+    assert_eq!(rules(git(&w, &[&["fetch", "origin"], &["merge"]], true)), ("git", true, at.clone(), at.clone(), Some(StopKey::Job), run));
+    assert_eq!(rules(git(&w, &[&["commit"]], false)), ("git", true, at.clone(), at, None, run));
 }
 
 #[test]

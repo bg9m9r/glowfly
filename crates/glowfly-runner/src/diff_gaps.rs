@@ -1,4 +1,4 @@
-//! Reading the unchanged lines between a diff's hunks, for the hunk view (`Effect::LoadDiffGaps`).
+//! Reading the unchanged lines between a diff's hunks, for the hunk view (`DiffEffect::Gaps`).
 
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
 use glowfly_model::msg::{DiffMsg, Msg};

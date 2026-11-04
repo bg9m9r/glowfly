@@ -5,6 +5,7 @@
 //! (except F5 and opening), a refresh asked for while a load runs waits for it (requests merge
 //! into one), and so do status reads.
 
+use crate::effect::LoadEffect;
 use crate::effect::{Effect, KnownRepo, LoadKind, StatusRead};
 use crate::msg::LoadMsg;
 use crate::state::refresh::{Depth, RefreshState, Wanted, can_load_more, only_more};
@@ -161,7 +162,7 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
         ..Default::default()
     };
     let prior = reuse.then(|| st.snap.as_ref().filter(|s| st.names_repo(s, &path)).map(Snapshot::prior)).flatten();
-    fx.push(Effect::LoadRepo { path, opts, generation: st.load_gen, kind, known, prior });
+    fx.push(Effect::Load(LoadEffect::Repo { path, opts, generation: st.load_gen, kind, known, prior }));
 }
 
 /// Refreshes the active tab, walking the history again only if refs, HEAD, config, worktrees or
@@ -229,7 +230,14 @@ pub(super) fn refresh_status(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.refresh.status_busy = true;
     let submodules = st.snap.as_ref().is_some_and(|s| !s.submodules.is_empty());
     let git_status = st.runs_git_unasked();
-    fx.push(Effect::LoadStatus { workdir, generation: st.load_gen, submodules, open: open_file(st), git_status, paths: None });
+    fx.push(Effect::Load(LoadEffect::Status {
+        workdir,
+        generation: st.load_gen,
+        submodules,
+        open: open_file(st),
+        git_status,
+        paths: None,
+    }));
 }
 
 /// The file whose working-tree, index or commit-to-working-tree diff is open.

@@ -49,7 +49,7 @@ fn answer(st: &mut AppState, text: &str, matches: Vec<Found>) -> Vec<Effect> {
 
 fn loads(fx: &[Effect], kind: LoadKind) -> Option<PathBuf> {
     fx.iter().find_map(|e| match e {
-        Effect::LoadRepo { path, kind: k, .. } if *k == kind => Some(path.clone()),
+        Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, kind: k, .. }) if *k == kind => Some(path.clone()),
         _ => None,
     })
 }
@@ -197,7 +197,10 @@ fn a_missing_target_offers_fetch_and_looks_again() {
     let mut fx = send(&mut st, DeepLinkMsg::Fetch);
     assert_eq!(fx.len(), 1, "{fx:?}");
     let job = fx.remove(0);
-    assert!(matches!(&job, Effect::RunGit { cmds, .. } if cmds[0] == glowfly_core::remote_ops::fetch_cmd("origin")), "{job:?}");
+    assert!(
+        matches!(&job, Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) if cmds[0] == glowfly_core::remote_ops::fetch_cmd("origin")),
+        "{job:?}"
+    );
     let run = glowfly_runner::testing::execute(job).unwrap();
     assert!(st.job.as_ref().is_some_and(|j| j.then_link));
     let fx = update(&mut st, run, Instant::now());
@@ -257,7 +260,7 @@ fn clone_fills_the_url_and_the_clone_is_checked() {
     // The clone opens (here: a copy with that origin): it is checked for the link.
     update(&mut st, Msg::CloseModal, Instant::now());
     let fx = update(&mut st, Msg::Repo(RepoMsg::Open(work.clone())), Instant::now());
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).unwrap();
     let loaded = glowfly_runner::testing::execute(load).unwrap();
     let fx = update(&mut st, loaded, Instant::now());
     let (candidates, origin) = find(&fx).expect("the clone is checked");

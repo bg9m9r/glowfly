@@ -1,7 +1,8 @@
 //! The unchanged lines between hunks in the hunk view: opening and closing a run (by the key it
 //! shares with the whole-file view's fold of the same lines), reading the runs' text once per
-//! diff (`Effect::LoadDiffGaps`), and keeping the row at the top in place as rows come and go.
+//! diff (`DiffEffect::Gaps`), and keeping the row at the top in place as rows come and go.
 
+use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use crate::state::AppState;
 use glowfly_core::diff_rows::{DiffRow, GapSpan, GapText, SplitRow, gaps, inline_rows_filled, split_rows_filled};
@@ -90,7 +91,12 @@ pub(super) fn diff_shown(st: &AppState, fx: &mut Vec<Effect>) {
 
 fn request(st: &AppState, fx: &mut Vec<Effect>) {
     if let (Some(workdir), Some((target, diff))) = (st.workdir(), st.session.diff.view.as_ref()) {
-        fx.push(Effect::LoadDiffGaps { workdir, target: target.clone(), generation: st.session.diff.shown_gen, diff: diff.clone() });
+        fx.push(Effect::Diff(DiffEffect::Gaps {
+            workdir,
+            target: target.clone(),
+            generation: st.session.diff.shown_gen,
+            diff: diff.clone(),
+        }));
     }
 }
 

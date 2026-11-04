@@ -30,7 +30,7 @@ fn repo(name: &str) -> (PathBuf, Oid, Oid) {
 }
 
 fn run_git(dir: &Path, cmd: &[&str], record: Option<UndoKind>, journal: Option<Op>) -> Option<Msg> {
-    execute(Effect::RunGit {
+    execute(Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: dir.to_path_buf(),
         cmds: vec![args(cmd)],
         write_file: None,
@@ -40,7 +40,7 @@ fn run_git(dir: &Path, cmd: &[&str], record: Option<UndoKind>, journal: Option<O
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    })
+    }))
 }
 
 #[test]
@@ -82,7 +82,12 @@ fn an_undo_that_moves_head_writes_an_undo_note() {
     git(&dir, &["reset", "--hard", &one.to_string()]);
     let action = Action::Reset { mode: ResetMode::Hard, branch: Some("main".into()), from: two, to: one, stash: None };
     let what = action.describe();
-    let msg = execute(Effect::UndoRedo { cwd: dir.clone(), action, redo: false, opts: UndoOpts::default() });
+    let msg = execute(Effect::Job(glowfly_model::effect::JobEffect::UndoRedo {
+        cwd: dir.clone(),
+        action,
+        redo: false,
+        opts: UndoOpts::default(),
+    }));
     assert!(matches!(msg, Some(Msg::Job(JobMsg::JobDone { ok: true, .. }))));
     assert_eq!(head(&dir), two, "the undo put main back");
     let notes = notes::read(&dir);

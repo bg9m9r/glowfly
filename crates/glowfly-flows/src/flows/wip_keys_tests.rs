@@ -51,7 +51,7 @@ fn press(st: &mut AppState, staged: bool, key: ListKey) {
 /// The diff `fx` opens.
 fn opened(fx: &[Effect]) -> Option<&DiffTarget> {
     fx.iter().find_map(|e| match e {
-        Effect::LoadDiff { target, reload: false, .. } => Some(target),
+        Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, reload: false, .. }) => Some(target),
         _ => None,
     })
 }

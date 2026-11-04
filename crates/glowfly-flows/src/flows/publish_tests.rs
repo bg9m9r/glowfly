@@ -186,7 +186,7 @@ fn created_repository_becomes_origin_and_is_pushed() {
 
     // With a remote now, Push pushes instead of offering to publish again.
     let fx = run(&mut st, Msg::Job(JobMsg::Push { force: false }));
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]) && st.modal.is_none(), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]) && st.modal.is_none(), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&bare);
 }

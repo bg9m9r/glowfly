@@ -90,11 +90,11 @@ fn an_old_git_refuses_a_sparse_clone() {
     // A plain clone still runs.
     let req = CloneRequest { options: CloneOptions::default(), ..sparse_request(&[]) };
     let fx = update(&mut st, Msg::Clone(CloneMsg::Start(req)), Instant::now());
-    assert!(matches!(fx.as_slice(), [Effect::RunGit { .. }]), "{fx:?}");
+    assert!(matches!(fx.as_slice(), [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]), "{fx:?}");
 }
 
 fn loads(fx: &[Effect], dest: &Path) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::LoadRepo { path, .. } if path == dest))
+    fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { path, .. }) if path == dest))
 }
 
 #[test]

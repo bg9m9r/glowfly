@@ -46,7 +46,7 @@ pub struct JobSpec {
     /// The job's last command is a cherry-pick or revert of these commits: it runs as
     /// Effect::Pick, carried past the commits that change nothing.
     pub pick: Option<PickPlan>,
-    /// The check to run when the job fails (`Effect::RunGit::on_fail_check`).
+    /// The check to run when the job fails (`JobEffect::RunGit::on_fail_check`).
     pub on_fail_check: Option<Vec<String>>,
 }
 

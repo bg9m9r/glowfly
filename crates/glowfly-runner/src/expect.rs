@@ -1,4 +1,4 @@
-//! The check a job can carry (`Effect::RunGit { expect }`): a revision named by position, such
+//! The check a job can carry (`JobEffect::RunGit { expect }`): a revision named by position, such
 //! as `stash@{2}`, must still be the commit the user picked, or nothing runs.
 
 use glowfly_core::gitcli::{self, args};

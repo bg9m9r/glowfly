@@ -29,7 +29,9 @@ pub(super) fn sealed(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 
 /// The job effect of `fx`, which carries its check.
 pub(super) fn checked_job(fx: Vec<Effect>) -> Effect {
-    let job = fx.into_iter().find(|e| matches!(e, Effect::Checked(c) if matches!(c.effect, Effect::RunGit { .. })));
+    let job = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Checked(c) if matches!(c.effect, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))));
     job.expect("a checked job")
 }
 
@@ -149,16 +151,18 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
     assert_eq!(labels, [Some("b".to_owned()), Some("a".to_owned()), None]);
     assert!(st.trust.seals.is_empty(), "each update's seals are used once");
     // Moved, it checks the one in its own repository, not another repository's.
-    let job = |cwd: &str| Effect::RunGit {
-        cwd: cwd.into(),
-        cmds: Vec::new(),
-        write_file: None,
-        record: None,
-        journal: None,
-        prompts: false,
-        expect: None,
-        stoppable: false,
-        on_fail_check: None,
+    let job = |cwd: &str| {
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit {
+            cwd: cwd.into(),
+            cmds: Vec::new(),
+            write_file: None,
+            record: None,
+            journal: None,
+            prompts: false,
+            expect: None,
+            stoppable: false,
+            on_fail_check: None,
+        })
     };
     st.trust.seals.push(Seal { at: 0, name: job("w").name(), check: check("w") });
     let mut fx = vec![job("other"), job("w")];
@@ -171,8 +175,16 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
 fn a_read_that_lets_git_run_carries_a_check() {
     let mut st = super::tests::state();
     let workdir = std::path::PathBuf::from("w");
-    let status =
-        |git_status| Effect::LoadStatus { workdir: workdir.clone(), generation: 1, submodules: false, open: None, git_status, paths: None };
+    let status = |git_status| {
+        Effect::Load(glowfly_model::effect::LoadEffect::Status {
+            workdir: workdir.clone(),
+            generation: 1,
+            submodules: false,
+            open: None,
+            git_status,
+            paths: None,
+        })
+    };
     let mut fx = vec![
         status(true),
         status(false),

@@ -184,7 +184,7 @@ fn prefs_change_refreshes_repo_and_keeps_diff_row() {
     st.view.diff_scroll_to_row = None;
     let fx = switch(&mut st, PERSONAL);
     assert_eq!(st.view.diff_scroll_to_row, Some(6));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "{fx:?}");
     assert_eq!(forge_calls(&fx), 0);
     let _ = std::fs::remove_dir_all(dir);
 }

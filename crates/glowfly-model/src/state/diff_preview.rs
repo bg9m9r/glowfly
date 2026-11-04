@@ -1,5 +1,5 @@
 //! The binary diff on screen's two sides: their sizes and decoded images, read in the background
-//! (`Effect::LoadBinarySides`, set only by update/diff_preview.rs) for the header's size chip and
+//! (`DiffEffect::BinarySides`, set only by update/diff_preview.rs) for the header's size chip and
 //! the before/after image preview. A changed SVG that git takes for text is drawn there too
 //! when the header's Text / Preview switch says Preview (`svg_switch`, `drawn`).
 

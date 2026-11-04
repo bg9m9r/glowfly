@@ -177,7 +177,7 @@ fn diffs_arrive_highlighted_including_reloads() {
     // diff on screen to the runner so the unchanged hunk keeps its colors, and arrives colored.
     let generation = st.hunk_ops_gen().expect("hunk buttons enabled");
     let held = drive_holding_diffs(&mut st, Msg::Stage(StageMsg::Hunk { op: HunkOp::Stage, path: "main.rs".into(), index: 0, generation }));
-    assert!(held.iter().any(|e| matches!(e, Effect::LoadDiff { reload: true, previous: Some(p), .. } if p.hunks.len() == 2)), "{held:?}");
+    assert!(held.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { reload: true, previous: Some(p), .. }) if p.hunks.len() == 2)), "{held:?}");
     for e in held {
         if let Some(msg) = glowfly_runner::testing::execute(e) {
             drive(&mut st, msg);
@@ -223,10 +223,10 @@ pub(super) fn drive_holding_diffs(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     while let Some(m) = queue.pop() {
         for effect in update(st, m, Instant::now()) {
             match effect {
-                Effect::LoadDiff { .. } => held.push(effect),
-                Effect::LoadStatus { .. } | Effect::LocalOp { .. } | Effect::LoadRepo { .. } => {
-                    queue.extend(glowfly_runner::testing::execute(effect))
-                }
+                Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }) => held.push(effect),
+                Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                | Effect::LocalOp { .. }
+                | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }) => queue.extend(glowfly_runner::testing::execute(effect)),
                 _ => {}
             }
         }

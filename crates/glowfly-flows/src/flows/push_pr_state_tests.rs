@@ -130,7 +130,7 @@ fn palette_pr_entries() {
     assert!(pr_commands(&st).is_empty());
     st.session.forge.as_mut().unwrap().prs.clear();
     let fx = update(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::PushAndCreatePr("topic".into()))), Instant::now());
-    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).count(), 1, "{fx:?}");
+    assert_eq!(fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).count(), 1, "{fx:?}");
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Push"));
     st.job = None;
     git(&work, &["checkout", "-q", "feature"]);

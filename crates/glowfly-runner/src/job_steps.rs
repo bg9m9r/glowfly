@@ -1,4 +1,4 @@
-//! Running a stoppable job's git commands (`Effect::RunGit` with `stoppable`, whose stop
+//! Running a stoppable job's git commands (`JobEffect::RunGit` with `stoppable`, whose stop
 //! `Effect::StopGit(StopKey::Job)` asks for). Before each command the UI is told its kind
 //! (`JobMsg::Step`), so Cancel is offered only while one can be stopped:
 //!

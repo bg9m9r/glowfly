@@ -68,7 +68,7 @@ fn page_with(st: &mut AppState, s: LfsStatus) -> Vec<Effect> {
 
 fn git_cmds(fx: &[Effect]) -> Option<Vec<Vec<String>>> {
     fx.iter().find_map(|e| match e {
-        Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
         _ => None,
     })
 }

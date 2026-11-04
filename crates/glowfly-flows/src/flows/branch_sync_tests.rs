@@ -60,7 +60,7 @@ fn rename_with_remote_pushes_then_deletes_the_old_name() {
     st.modal = Some(Modal::RenameBranch(RenameForm { name: "feature-2".into(), remote: true, ..RenameForm::new("feature".into()) }));
     let tip = glowfly_model::state::remote_branch::exists(st.snap.as_ref().unwrap(), "origin", "feature").unwrap();
     let fx = update(&mut st, rename("feature", "feature-2"), Instant::now());
-    let [Effect::RunGit { cmds, .. }] = &fx[..] else { panic!("one job: {fx:?}") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] = &fx[..] else { panic!("one job: {fx:?}") };
     assert_eq!(cmds, &glowfly_core::branch_ops::rename_with_remote_cmds("feature", "feature-2", "origin", "feature", tip));
     assert!(st.modal.is_none(), "the dialog closes");
     super::tests::finish(&mut st, fx);
@@ -115,7 +115,7 @@ fn the_delete_is_leased_on_the_tip_last_fetched() {
 fn a_failed_rename_keeps_the_pending_job_for_try_again() {
     let (mut st, work, bare) = with_origin("sync-rename-fails");
     let fx = update(&mut st, rename("feature", "feature-2"), Instant::now());
-    assert!(matches!(&fx[..], [Effect::RunGit { .. }]));
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })]));
     let output = "$ git branch -m feature feature-2\nfatal: Unable to create '.git/refs/heads/feature-2.lock': File exists.".to_owned();
     update(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output, undo: None }), Instant::now());
     assert!(st.rename_job.is_some(), "kept for a run again");
@@ -186,7 +186,7 @@ fn delete_remote_warns_of_tracking_branches_and_unsets_them() {
     assert_eq!(form.unset_label(T), "Unset the upstreams of all 2");
     let delete = form.delete_msg();
     let fx = update(&mut st, delete, Instant::now());
-    let [Effect::RunGit { cmds, .. }] = &fx[..] else { panic!("one job") };
+    let [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] = &fx[..] else { panic!("one job") };
     assert_eq!(
         cmds,
         &[

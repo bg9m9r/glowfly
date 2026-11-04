@@ -108,7 +108,10 @@ fn loads_detail(fx: &[Effect], oid: Oid) -> bool {
 /// Refreshes the repository and returns the effects of applying the new snapshot.
 pub(super) fn refresh(st: &mut AppState) -> Vec<Effect> {
     let fx = up(st, Msg::Repo(RepoMsg::Refresh));
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, .. })).expect("a refresh load");
+    let load = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, .. })))
+        .expect("a refresh load");
     let loaded = glowfly_runner::testing::execute(load).unwrap();
     up(st, loaded)
 }
@@ -363,7 +366,8 @@ fn multi_selection_survives_tab_switch() {
     let fx = up(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)));
     assert_eq!(multi(&st).oids, [f.c(5), f.c(3)]);
     assert!(multi(&st).changes.is_none());
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("the tab refreshes");
+    let load =
+        fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).expect("the tab refreshes");
     let fx = up(&mut st, glowfly_runner::testing::execute(load).unwrap());
     assert_eq!(compares(&fx), [(f.c(3), f.c(5))], "the dropped file list is asked for again");
     let _ = std::fs::remove_dir_all(&f.dir);

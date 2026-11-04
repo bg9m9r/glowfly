@@ -3,6 +3,7 @@
 //! pane offers (update/partial_size.rs, update/partial_content.rs, ui/content_fetch.rs).
 
 use super::AppState;
+use crate::effect::DiffEffect;
 use crate::effect::Effect;
 use git2::Oid;
 use std::collections::HashSet;
@@ -79,7 +80,7 @@ impl ContentView {
     /// The view `retry` reads for; None for an effect that isn't one of those reads.
     pub fn of(retry: &Effect) -> Option<ContentView> {
         match retry {
-            Effect::LoadDiff { generation, .. } => Some(ContentView::Diff { generation: *generation }),
+            Effect::Diff(DiffEffect::Load { generation, .. }) => Some(ContentView::Diff { generation: *generation }),
             Effect::LoadFileText(r) => Some(ContentView::FileText { oid: r.oid, path: r.path.clone(), before: r.before }),
             Effect::LoadBlame(r) => Some(ContentView::Blame { generation: r.generation }),
             _ => None,

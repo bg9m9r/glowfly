@@ -71,7 +71,9 @@ fn a_long_parked_large_history_is_freed_and_reloaded_as_it_was() {
     // Shown again: a full reload as deep as before, with the selection and the scroll kept.
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
     let reload = fx.iter().find_map(|e| match e {
-        Effect::LoadRepo { kind, known, prior, opts, .. } => Some((*kind, known.is_none(), prior.is_none(), opts.max_commits)),
+        Effect::Load(crate::effect::LoadEffect::Repo { kind, known, prior, opts, .. }) => {
+            Some((*kind, known.is_none(), prior.is_none(), opts.max_commits))
+        }
         _ => None,
     });
     assert_eq!(reload, Some((LoadKind::Refresh, true, true, n)), "{fx:?}");
@@ -87,7 +89,10 @@ fn a_long_parked_large_history_is_freed_and_reloaded_as_it_was() {
     assert_eq!(st.session.tab_view.history_freed, None);
     assert_eq!(st.session.selection, Selection::Commit(oid), "the selected commit is still loaded");
     assert_eq!(st.view.scroll_offset, Some(75_000.0), "the graph scrolls back once drawn");
-    assert!(fx.iter().all(|e| !matches!(e, Effect::LoadRepo { known: Some(_), .. })), "no check of the walk: {fx:?}");
+    assert!(
+        fx.iter().all(|e| !matches!(e, Effect::Load(crate::effect::LoadEffect::Repo { known: Some(_), .. }))),
+        "no check of the walk: {fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -105,7 +110,7 @@ fn a_small_history_or_a_short_park_keeps_its_commits() {
 
     // Shown again, it refreshes as usual, taking the commits it holds.
     let fx = update(&mut st, Msg::Tabs(TabsMsg::SelectTab(0)), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { prior: Some(_), .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(crate::effect::LoadEffect::Repo { prior: Some(_), .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -147,7 +152,11 @@ fn a_failed_reload_of_a_freed_history_is_shown_and_tried_again() {
 
     // Try again (F5) reloads in full; once it lands the error is gone.
     let fx = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { known: None, prior: None, kind: LoadKind::Refresh, .. })), "{fx:?}");
+    assert!(
+        fx.iter()
+            .any(|e| matches!(e, Effect::Load(crate::effect::LoadEffect::Repo { known: None, prior: None, kind: LoadKind::Refresh, .. }))),
+        "{fx:?}"
+    );
     assert!(st.loading);
     let (generation, result) = (st.load_gen, Ok(Box::new(load(&dir, n))));
     update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Refresh, result }), Instant::now());

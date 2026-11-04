@@ -33,7 +33,7 @@ fn hook(dir: &Path, text: &str) {
 
 fn job(dir: &Path) -> Effect {
     let cmds = vec![glowfly_core::gitcli::args(&["status"])];
-    Effect::RunGit {
+    Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: dir.into(),
         cmds,
         write_file: None,
@@ -43,7 +43,7 @@ fn job(dir: &Path) -> Effect {
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    }
+    })
 }
 
 #[test]
@@ -57,7 +57,9 @@ fn a_hook_edited_after_the_decision_holds_the_job() {
     assert_eq!((found.0.hooks.as_slice(), found.1.is_none()), (&["pre-push".to_owned()][..], true));
     // Executing it sends the effect back instead of running it.
     match execute_checked(check(&dir, Some(saved)), job(&dir)) {
-        Some(Msg::Trust(TrustMsg::Stale(s))) => assert!(matches!(s.effect, Effect::RunGit { .. }) && s.now.hooks == ["pre-push"]),
+        Some(Msg::Trust(TrustMsg::Stale(s))) => {
+            assert!(matches!(s.effect, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })) && s.now.hooks == ["pre-push"])
+        }
         _ => panic!("held, not run"),
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -85,14 +87,24 @@ fn a_repository_that_cant_be_read_fails_the_job_rather_than_run_it() {
 #[test]
 fn a_status_read_that_fails_its_check_reads_without_git() {
     let dir = repo("read");
-    let read =
-        |git_status| Effect::LoadStatus { workdir: dir.clone(), generation: 1, submodules: false, open: None, git_status, paths: None };
+    let read = |git_status| {
+        Effect::Load(glowfly_model::effect::LoadEffect::Status {
+            workdir: dir.clone(),
+            generation: 1,
+            submodules: false,
+            open: None,
+            git_status,
+            paths: None,
+        })
+    };
     let sealed = TrustCheck { sealed: Sealed::Read, ..check(&dir, None) };
     assert!(matches!(verify(&sealed, &read(true)), Verdict::Pass(_)), "nothing runs yet");
     // An fsmonitor set since: the read goes on, without git.
     glowfly_core::testkit::git(&dir, &["config", "core.fsmonitor", "evil"]);
     assert!(matches!(verify(&sealed, &read(true)), Verdict::Stale(_)), "the cached scan isn't reused once the config changed");
-    let Effect::LoadStatus { git_status, .. } = without_git(read(true)).unwrap() else { panic!("a status read") };
+    let Effect::Load(glowfly_model::effect::LoadEffect::Status { git_status, .. }) = without_git(read(true)).unwrap() else {
+        panic!("a status read")
+    };
     assert!(!git_status);
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -46,7 +46,7 @@ fn push_change(other: &Path, file: &str, text: &str) {
 }
 
 fn job(dir: &Path, cmds: &[&[&str]]) -> Effect {
-    Effect::RunGit {
+    Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: dir.into(),
         cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
         write_file: None,
@@ -56,7 +56,7 @@ fn job(dir: &Path, cmds: &[&[&str]]) -> Effect {
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    }
+    })
 }
 
 fn trusted(dir: &Path) -> TrustCheck {
@@ -85,7 +85,10 @@ fn a_merge_after_a_fetch_in_the_same_job_is_compared_with_what_the_fetch_brought
     match crate::testing::execute_checked(trusted(&work), fx) {
         Some(Msg::Trust(TrustMsg::Stale(s))) => {
             assert_eq!(s.incoming.as_ref().map(|i| i.hooks.clone()), Some(vec!["post-merge".to_owned()]));
-            assert!(matches!(s.effect, Effect::RunGit { ref cmds, .. } if cmds.len() == 2), "the whole job waits again");
+            assert!(
+                matches!(s.effect, Effect::Job(glowfly_model::effect::JobEffect::RunGit { ref cmds, .. }) if cmds.len() == 2),
+                "the whole job waits again"
+            );
         }
         other => panic!("held before the merge: {}", other.is_some()),
     }

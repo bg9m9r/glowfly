@@ -67,12 +67,15 @@ source file, update its line here. Features that span every layer are in
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
 - `files.rs`: `FilesEffect`: restoring a file from a commit, creating, renaming, deleting and discarding working-tree files (on the repository's queue), and listing the tracked files.
 - `commit.rs`: `CommitEffect`: the details panel's reads of one commit, its detail and its signature check.
+- `load.rs`: `LoadEffect`: loading the repository, reading its status, and an index change's rows.
+- `diff.rs`: `DiffEffect`: the open diff, finishing its highlighting (with `Runner::run`'s cancel ticket), the unchanged lines between its hunks and a binary diff's sides.
+- `job.rs`: `JobEffect`: a job's git commands (`RunGit`, with the fetch-and-push queue rule, its pool hold and its stop key) and undoing or redoing an action.
 - `worktree.rs`: `WorktreeEffect`: the worktree folder check, removing, moving and counting other worktrees' changes.
 - `monitor.rs`: `MonitorJob` and `MonitorOff`, turning git's file system monitor on and off.
 - `pick.rs`: `PickJob`, a cherry-pick or revert run that skips commits changing nothing.
 - `stack.rs`: `StackEffect`, `StackPushJob`: a stack's push with the remote tips it saw and whether pull requests follow.
 - `names.rs`: `Effect::name`, `timed` (flat variants; areas delegate).
-- `scope.rs`: `Effect::scope`, `queue`, `holds` (flat variants, with the fetch and push rule; areas delegate).
+- `scope.rs`: `Effect::scope`, `queue`, `holds` (flat variants; areas delegate).
 - `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`; flat variants, areas delegate).
 - `effect/credential.rs`: saving and dropping HTTPS sign-ins typed in the credential prompt (runner/credentials.rs).
 - `effect/repos.rs`: what repositories across folders ask the runner (runner/repos.rs): listing the project folders, and fetching or pulling one listed repository.
@@ -148,7 +151,7 @@ source file, update its line here. Features that span every layer are in
 - `state/blame_find.rs`: find in the blame view and the file history's File view: the query, the lines that match, and the current match.
 - `state/blocked.rs`: the reason shared by every action that can't start while another one runs.
 - `state/build_status.rs`: CI status of branch tips: which tips are on screen, what the hosting service said about each commit, and when to ask again (update/build_status.rs).
-- `state/diff_preview.rs`: the binary diff on screen's two sides: their sizes and decoded images, read in the background (`Effect::LoadBinarySides`, set only by update/diff_preview.rs) for the header's size chip and the before/after image preview; also whether an SVG diffed as text has the Text / Preview switch and is drawn (`svg_switch`, `drawn`).
+- `state/diff_preview.rs`: the binary diff on screen's two sides: their sizes and decoded images, read in the background (`DiffEffect::BinarySides`, set only by update/diff_preview.rs) for the header's size chip and the before/after image preview; also whether an SVG diffed as text has the Text / Preview switch and is drawn (`svg_switch`, `drawn`).
 - `state/files.rs`: the New file and Rename file dialogs' form: the typed path, the last error and whether a request is running; what status says about a path being deleted, the trash's name, the file manager's show-in-folder label, the offer of the home Trash (`TrashOffer`), and the message that asks to discard an Unstaged Files row (its menu item and Delete key send it).
 - `state/forge_filter_form.rs`: the filter dialog (`Modal::ForgeFilter`): a saved filter's name and conditions while they are edited, and why it can't be saved yet.
 - `state/forks.rs`: the fork dialogs and View on service: Add a fork (pick one of the repository's forks on its hosting service and add it as a remote) and Fork (fork the repository into the user's account, then add and fetch it).
@@ -262,7 +265,7 @@ source file, update its line here. Features that span every layer are in
 - `update/blame_nav.rs`: moving between blames: Blame before this commit and Back, skipping commits, the whitespace, move and wrap toggles, the jump to the file's history, and the header's Diff and File back to the history the blame was opened over.
 - `update/build_status.rs`: CI status of branch tips: asking the host about the tips on screen, a few at a time, and recording the answers (state/build_status.rs).
 - `update/compare_wip.rs`: comparing one commit with the working directory (`Selection::VsWorkdir`): Ctrl-click on the WIP row or a commit, the commit menu's entry (also in the palette and the commit details), Swap direction, reading the file list in the chosen direction (again after every working-tree status read, so it follows edits), and keeping it across refreshes.
-- `update/diff_preview.rs`: the binary diff's sizes and image previews: asked for when a binary diff is shown (`Effect::LoadBinarySides`), kept through a reload of the same file until the new sides arrive, ignored when they come back for a diff that is no longer on screen, and asked for again when a tab comes back with them still loading; an SVG's Text / Preview switch and a Preferences edit of it ask for them or drop them.
+- `update/diff_preview.rs`: the binary diff's sizes and image previews: asked for when a binary diff is shown (`DiffEffect::BinarySides`), kept through a reload of the same file until the new sides arrive, ignored when they come back for a diff that is no longer on screen, and asked for again when a tab comes back with them still loading; an SVG's Text / Preview switch and a Preferences edit of it ask for them or drop them.
 - `update/files.rs`: file actions from file menus: restoring a file as it was in a commit (after a confirmation, recorded for undo with the working copy it replaced), opening a working-tree file in its default program or showing it in the file manager, and creating, renaming and deleting working-tree files (in `work_files.rs`).
 - `update/forge_filter_edit.rs`: the filter dialog (`Modal::ForgeFilter`): opening it for a new filter (starting from the one on show) or a saved one, loading its pickers' options, and saving.
 - `update/gitflow_finish.rs`: Git Flow Finish: opening the dialog for a feature, release or hotfix branch, running the planned merges, tag and delete as one git job (it stops at the first failing step), and the headline when that job (or a Continue finish job) ends: the plan's summary, or which step stopped it and what is left, remembered for Continue finish when a merge conflicted (gitflow_resume.rs).
@@ -326,7 +329,9 @@ source file, update its line here. Features that span every layer are in
 - `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
-- `load.rs`: a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
+- `load.rs`: the `Execute` impl of `LoadEffect` (the status reads are in `status.rs`), and a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
+- `diff.rs`: the `Execute` impl of `DiffEffect`: a diff and its highlighting (`highlight.rs`), the unchanged lines between hunks (`diff_gaps.rs`) and a binary diff's sides.
+- `job.rs`: the `Execute` impl of `JobEffect`: a job's git commands, with the expected revision's check, the undo record, the trust gate's re-run, a stop for network commands and the journal note; and undo or redo (`undo_run.rs`).
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
 - `pick.rs`: runs a cherry-pick or revert, skipping the commits that change nothing, and reports `JobMsg::PickDone`.
 - `undo_run.rs`: undo and redo as the runner carries them out: plans the action as the repository is now and runs its git commands, through the trust gate when there is one (`UndoGit`), saying whether anything may have changed (`UndoRun::acted`).
@@ -342,7 +347,7 @@ source file, update its line here. Features that span every layer are in
 - `watcher.rs` (glowfly-runner's `src/`): the file watcher for the active tab's repository, owned by the runner; on Windows its thread also runs the poll's sweeps (`Effect::SweepWatch`, `watcher/sweep_tests.rs`); `watcher/includes.rs` watches the folders of the config files the repository's config includes (`watcher/include_tests.rs`); a burst that touched the config also sends `WatchMsg::ConfigChanged` (`watcher/config_tests.rs`); `watcher/probe.rs` checks after starting that events arrive at all and sends `WatchMsg::Probed` (`watcher/probe_tests.rs`).
 - `runner/askpass.rs`: the credential-prompt listener: started once with the app, it reports prompts from the askpass helper as `Msg`s and hands the dialog's answers back to the waiting helper.
 - `runner/credentials.rs`: saving and dropping HTTPS sign-ins with git's credential helpers (`CredentialEffect`).
-- `runner/expect.rs`: the check a job can carry (`Effect::RunGit { expect }`): a revision named by position, such as `stash@{2}`, must still be the commit the user picked, or nothing runs.
+- `runner/expect.rs`: the check a job can carry (`JobEffect::RunGit { expect }`): a revision named by position, such as `stash@{2}`, must still be the commit the user picked, or nothing runs.
 - `runner/files.rs`: the `Execute` impl of `FilesEffect`: restoring a file from a commit with an undo entry, creating, renaming, deleting and discarding (untracked) a working-tree file, listing the tracked files; and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
 - `runner/forge_calls.rs`: calls to hosting services: pull requests and issues (`Effect::Forge`), and connected accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello account's boards.
 - `runner/forge_filter_calls.rs`: calls of pull request and issue filters (`ForgeCall::Filter`): the signed-in user, issue searches and the filter dialog's options.
@@ -361,7 +366,7 @@ source file, update its line here. Features that span every layer are in
 - `runner/commit.rs`: the `Execute` impl of `CommitEffect`: a commit's detail and its signature check (`signatures.rs`).
 - `runner/stashes.rs`: stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, reading and writing the auto-stashes waiting to go back across restarts, reading the files a stash changes for the question before applying it, and the abort that keeps an operation's work (also run by redoing one).
 - `runner/stats.rs`: line counts for the graph's CHANGES column.
-- `runner/svg_worker.rs` (tests in `svg_worker_tests.rs`): the one thread that draws SVG previews for `LoadBinarySides`: one drawing at a time, a newer request replacing the queued one, callers giving up after 3 s (the side shows "Can't preview this SVG") while the drawing runs on.
+- `runner/svg_worker.rs` (tests in `svg_worker_tests.rs`): the one thread that draws SVG previews for `DiffEffect::BinarySides`: one drawing at a time, a newer request replacing the queued one, callers giving up after 3 s (the side shows "Can't preview this SVG") while the drawing runs on.
 - `runner/submodules.rs`: the SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
 - `runner/terminal_out.rs`: a shell's output on its way to the UI thread, which parses it.
 - `runner/tools/git_tool.rs`: running the diff and merge tools git config names (Preferences > External tools sets none).

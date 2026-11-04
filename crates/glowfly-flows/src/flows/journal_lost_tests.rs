@@ -212,8 +212,8 @@ fn create_branch_opens_the_dialog_at_the_commit() {
 }
 
 fn git_cmds(fx: &[Effect]) -> Vec<Vec<String>> {
-    match fx.iter().find(|e| matches!(e, Effect::RunGit { .. })) {
-        Some(Effect::RunGit { cmds, .. }) => cmds.clone(),
+    match fx.iter().find(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) {
+        Some(Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })) => cmds.clone(),
         _ => panic!("a git job: {fx:?}"),
     }
 }

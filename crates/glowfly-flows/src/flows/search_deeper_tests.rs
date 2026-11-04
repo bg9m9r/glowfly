@@ -28,12 +28,14 @@ fn truncated(name: &str) -> (AppState, PathBuf) {
 }
 
 fn loads(fx: &[Effect]) -> Vec<&Effect> {
-    fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).collect()
 }
 
 /// The one full load in `fx`: the commit count it walks.
 fn one_full_load(fx: &[Effect]) -> usize {
-    let [Effect::LoadRepo { opts, known: None, kind: LoadKind::Refresh, .. }] = &loads(fx)[..] else { panic!("one full load: {fx:?}") };
+    let [Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, kind: LoadKind::Refresh, .. })] = &loads(fx)[..] else {
+        panic!("one full load: {fx:?}")
+    };
     opts.max_commits
 }
 
@@ -56,7 +58,7 @@ fn filter(st: &mut AppState, q: &str) -> Vec<Effect> {
 /// Runs the load in `fx` and hands back its snapshot as cut short again: the effects that
 /// raised.
 fn finish_truncated(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).expect("a load");
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).expect("a load");
     let Some(Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Ok(mut snap) })) = glowfly_runner::testing::execute(load) else {
         panic!("the load succeeds")
     };

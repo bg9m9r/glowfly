@@ -34,7 +34,7 @@ fn missing_worktree(st: &mut AppState, work: &Path, branch: &str, new: bool) -> 
 /// The undo kind of the one RunGit in `fx`.
 fn record(fx: &[Effect]) -> Option<UndoKind> {
     fx.iter().find_map(|e| match e {
-        Effect::RunGit { record, .. } => Some(record.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { record, .. }) => Some(record.clone()),
         _ => None,
     })?
 }
@@ -53,7 +53,10 @@ fn prune_and_check_out_on_a_dirty_tree_asks_first() {
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
 
     let again = prune_then(BranchMsg::Checkout("side".into()));
-    assert!(up(&mut st, again).iter().all(|e| !matches!(e, Effect::RunGit { .. })), "asked, nothing ran");
+    assert!(
+        up(&mut st, again).iter().all(|e| !matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))),
+        "asked, nothing ran"
+    );
     let asked = ask(&st);
     assert_eq!(asked.op, AutoStashFor::Checkout { target: "side".into() });
     assert!(matches!(&*asked.retry, Msg::Branch(BranchMsg::PruneThen(m)) if matches!(&**m, BranchMsg::Checkout(b) if b == "side")));

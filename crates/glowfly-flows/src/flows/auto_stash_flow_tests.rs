@@ -52,7 +52,10 @@ fn stash_and_checkout_puts_changes_back() {
     );
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Checkout"), "the job keeps its label");
     let record = Some(glowfly_core::undo::UndoKind::Checkout);
-    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { record: r, .. } if *r == record)), "undo records the checkout");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: r, .. }) if *r == record)),
+        "undo records the checkout"
+    );
     finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("feature"));
     mine_is_back(&st, &dir);
@@ -122,7 +125,10 @@ fn double_click_checkout_asks_then_stashes() {
         vec![args(&["stash", "push", "-m", "Auto-stash before checking out feature"]), args(&["checkout", "feature", "--"])]
     );
     let record = Some(UndoKind::Checkout);
-    assert!(fx.iter().any(|e| matches!(e, Effect::RunGit { record: r, .. } if *r == record)), "undo records the checkout");
+    assert!(
+        fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: r, .. }) if *r == record)),
+        "undo records the checkout"
+    );
     finish(&mut st, fx);
     assert_eq!(head_branch(&st), Some("feature"));
     mine_is_back(&st, &dir);

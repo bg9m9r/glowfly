@@ -121,7 +121,7 @@ fn restored_toasts_and_refreshes() {
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.ok && toast.text.contains("a.txt") && toast.text.contains(&short(oid)), "{}", toast.text);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     assert!(st.session.detail.as_ref().unwrap().in_workdir("a.txt"), "Open and Show become available");
     finish(&mut st, fx);
 
@@ -132,7 +132,7 @@ fn restored_toasts_and_refreshes() {
 
     let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: None }));
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore a.txt: boom"));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })));
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -208,7 +208,7 @@ fn comparison_restore_clears_absent() {
     assert!(c.in_workdir("a.txt"), "Open and Show become available");
     let toast = st.toasts.last().expect("a toast");
     assert!(toast.text.contains(&format!("Restored a.txt from {}", short(oid))), "{}", toast.text);
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

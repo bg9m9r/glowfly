@@ -47,7 +47,12 @@ fn loads(st: &mut AppState, msg: Msg) -> Vec<String> {
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
-            if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
+            if matches!(
+                e,
+                Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                    | Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+            ) {
                 seen.push(format!("{e:?}"));
                 queue.extend(glowfly_runner::testing::execute(e));
             }
@@ -78,8 +83,8 @@ fn a_status_read_keeps_the_worktree_rows() {
     let workdir = st.workdir().unwrap();
     let changed = Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
     let seen = loads(&mut st, Msg::Scoped { workdir, msg: Box::new(changed) });
-    assert!(seen.iter().any(|e| e.starts_with("LoadStatus")), "{seen:?}");
-    assert!(!seen.iter().any(|e| e.starts_with("LoadRepo")), "{seen:?}");
+    assert!(seen.iter().any(|e| e.starts_with("Load(Status")), "{seen:?}");
+    assert!(!seen.iter().any(|e| e.starts_with("Load(Repo")), "{seen:?}");
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.graph.wip.is_none(), "the own WIP row is gone");
     assert_eq!(wip_rows(&st), [(1, 0)], "the other worktree's row stays");
@@ -93,7 +98,8 @@ fn turning_the_setting_off_drops_the_rows() {
     st.settings.worktree_wips = false;
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs), Instant::now());
     assert!(
-        fx.iter().any(|e| matches!(e, Effect::LoadRepo { opts, known: None, .. } if !opts.worktree_wips)),
+        fx.iter()
+            .any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, .. }) if !opts.worktree_wips)),
         "a full load without the rows: {fx:?}"
     );
     finish(&mut st, fx);

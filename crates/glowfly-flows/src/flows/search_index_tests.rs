@@ -36,7 +36,9 @@ fn search(st: &mut AppState, q: &str, filter: bool) -> Vec<Effect> {
 fn loads(fx: &[Effect]) -> Vec<usize> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadRepo { opts, kind: LoadKind::Refresh | LoadKind::More, .. } => Some(opts.max_commits),
+            Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, kind: LoadKind::Refresh | LoadKind::More, .. }) => {
+                Some(opts.max_commits)
+            }
             _ => None,
         })
         .collect()

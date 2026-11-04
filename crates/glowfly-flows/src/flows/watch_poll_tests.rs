@@ -12,7 +12,7 @@ use glowfly_model::state::watch::{LiveUpdates, Probe, REMOTE_POLL, WINDOWS_POLL}
 use std::time::{Duration, Instant};
 
 fn statuses(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadStatus { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).count()
 }
 
 fn opened(name: &str) -> (AppState, std::path::PathBuf) {

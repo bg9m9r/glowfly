@@ -11,6 +11,7 @@
 //! again, which names what changed.
 
 use crate::effect::CommitEffect;
+use crate::effect::LoadEffect;
 use crate::effect::{Accepted, Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
 use crate::patch::PatchEffect;
@@ -106,7 +107,8 @@ fn repo_of(e: &Effect) -> Option<&Path> {
 /// or merge tool, git LFS): the runner checks it first (`Sealed::Read`).
 fn read_in(e: &Effect) -> Option<&Path> {
     let w = match e {
-        Effect::LoadStatus { workdir, git_status: true, .. } | Effect::LoadIndexStatus { workdir, git_status: true, .. } => workdir,
+        Effect::Load(LoadEffect::Status { workdir, git_status: true, .. })
+        | Effect::Load(LoadEffect::IndexStatus { workdir, git_status: true, .. }) => workdir,
         Effect::Commit(CommitEffect::VerifySignature { workdir, .. }) => workdir,
         Effect::Lfs(LfsEffect::Load { workdir, .. }) => workdir,
         Effect::Sparse(SparseEffect::Load { workdir, run_git: true, .. }) => workdir,

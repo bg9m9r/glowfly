@@ -37,7 +37,7 @@ fn open_palette(st: &mut AppState) {
 /// The commands of the single `RunGit` in `fx`, and what it records for undo.
 fn run_git(fx: &[Effect]) -> (Vec<Vec<String>>, Option<UndoKind>) {
     match fx {
-        [Effect::RunGit { cmds, record, .. }] => (cmds.clone(), record.clone()),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, .. })] => (cmds.clone(), record.clone()),
         other => panic!("expected one RunGit, got {other:?}"),
     }
 }

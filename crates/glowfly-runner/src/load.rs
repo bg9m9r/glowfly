@@ -1,17 +1,36 @@
-//! Loading the active tab's repository (`Effect::LoadRepo`): only the status when the refs are
-//! as the snapshot on screen has them, the next commits of its walk for a load for more
-//! (`repo::load_more`), else everything, taking the commits on screen instead of reading them
-//! again (`repo::load_reusing`).
+//! The `Execute` impl of `LoadEffect`, and loading the active tab's repository
+//! (`LoadEffect::Repo`): only the status when the refs are as the snapshot on screen has them,
+//! the next commits of its walk for a load for more (`repo::load_more`), else everything, taking
+//! the commits on screen instead of reading them again (`repo::load_reusing`). The status reads
+//! are in status.rs.
 
 use super::execute::err;
+use super::execute::{Cx, Execute};
 use super::git_env;
+use super::status;
 use glowfly_core::repo::{self, GraphCache, LoadOptions, MoreLoaded, Prior};
-use glowfly_model::effect::{KnownRepo, LoadKind};
+use glowfly_model::effect::{KnownRepo, LoadEffect, LoadKind};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
 use std::path::PathBuf;
 
+impl Execute for LoadEffect {
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(match self {
+            LoadEffect::Repo { path, opts, generation, kind, known, prior } => {
+                load_repo(path, opts, generation, kind, known, prior, cx.graph_cache)
+            }
+            LoadEffect::Status { workdir, generation, submodules, open, git_status, paths } => {
+                status::load(&workdir, generation, submodules, open, git_status, paths, cx.graph_cache)
+            }
+            LoadEffect::IndexStatus { workdir, generation, submodules, open, git_status, read } => {
+                status::load_index(&workdir, generation, submodules, open, git_status, read, cx.graph_cache)
+            }
+        })
+    }
+}
+
 /// Runs one repository load and returns its result message.
-pub(super) fn load_repo(
+fn load_repo(
     path: PathBuf,
     opts: LoadOptions,
     generation: u64,

@@ -31,20 +31,23 @@ fn load_more(st: &mut AppState) -> Vec<Effect> {
 }
 
 fn loads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).count()
 }
 
 fn status_reads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadStatus { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).count()
 }
 
 /// The one load in `fx`, which goes on from the walk.
 #[track_caller]
 fn one_more(fx: Vec<Effect>) -> Effect {
-    let mut found: Vec<Effect> = fx.into_iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect();
+    let mut found: Vec<Effect> =
+        fx.into_iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).collect();
     assert_eq!(found.len(), 1, "one load: {found:?}");
     let load = found.pop().unwrap();
-    let Effect::LoadRepo { kind: LoadKind::More, known: Some(_), prior: Some(p), .. } = &load else { panic!("a load for more: {load:?}") };
+    let Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::More, known: Some(_), prior: Some(p), .. }) = &load else {
+        panic!("a load for more: {load:?}")
+    };
     assert!(p.frontier.is_some(), "with the walk's frontier");
     load
 }
@@ -73,7 +76,7 @@ fn load_more_goes_on_from_the_walk_without_a_full_load() {
     let fx = load_more(&mut st);
     assert_eq!(status_reads(&fx), 0);
     let load = one_more(fx);
-    let Effect::LoadRepo { opts, .. } = &load else { unreachable!() };
+    let Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, .. }) = &load else { unreachable!() };
     assert_eq!(opts.max_commits, 1000);
     let opts = opts.clone();
     let fx = update(&mut st, run_page(load), Instant::now());
@@ -107,7 +110,7 @@ fn a_refresh_merged_into_load_more_reads_the_status_after() {
     let (mut st, dir) = opened("resume-status", 1200, 500);
     let running = update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
     assert!(st.loading);
-    let first = running.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
+    let first = running.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).unwrap();
     assert_eq!(loads(&load_more(&mut st)), 0, "waits for the running load");
     assert_eq!(st.refresh.queued, Some(Depth::More));
     update(&mut st, Msg::Repo(RepoMsg::WindowFocused), Instant::now());
@@ -162,7 +165,10 @@ fn an_old_page_is_ignored() {
     let shown = std::sync::Arc::clone(&st.snap.as_ref().unwrap().commits);
     let replayed = LoadMsg::HistoryExtended { generation: st.load_gen, result: Ok(page) };
     let fx = update(&mut st, Msg::Load(replayed), Instant::now());
-    let full = fx.iter().filter(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Refresh, known: None, .. })).count();
+    let full = fx
+        .iter()
+        .filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Refresh, known: None, .. })))
+        .count();
     assert_eq!(full, 1, "{fx:?}");
     assert!(std::sync::Arc::ptr_eq(&shown, &st.snap.as_ref().unwrap().commits));
     let _ = std::fs::remove_dir_all(&dir);
@@ -234,7 +240,7 @@ fn a_status_read_dropped_by_load_more_is_read_after_the_page() {
     // The load for more starts before the read lands, which is then out of date.
     let load = one_more(load_more(&mut st));
     assert!(st.refresh.status_after);
-    let read = read.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).unwrap();
+    let read = read.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).unwrap();
     update(&mut st, glowfly_runner::testing::execute(read).unwrap(), Instant::now());
     let fx = update(&mut st, run_page(load), Instant::now());
     assert_eq!(status_reads(&fx), 1, "read again: {fx:?}");

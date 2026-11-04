@@ -30,7 +30,7 @@ fn save(st: &mut AppState) -> Vec<Effect> {
 
 fn cmds(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("{other:?}"),
     }
 }

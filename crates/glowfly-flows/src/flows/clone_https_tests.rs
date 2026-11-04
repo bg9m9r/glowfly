@@ -38,7 +38,7 @@ fn start(st: &mut AppState, url: &str, submodules: bool) -> Vec<Vec<String>> {
     let options = CloneOptions { submodules, ..CloneOptions::default() };
     let req = CloneRequest { url: url.into(), parent: work().into(), name: "app".into(), options };
     match up(st, Msg::Clone(CloneMsg::Start(req))).as_slice() {
-        [Effect::RunGit { cmds, .. }] => cmds.clone(),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
     }
 }
@@ -99,7 +99,7 @@ fn a_denied_ssh_clone_offers_https_with_the_account() {
     let Msg::Job(JobMsg::Retry(r)) = runs(&st, https) else { unreachable!() };
     let r = r.clone();
     match up(&mut st, Msg::Job(JobMsg::Retry(r))).as_slice() {
-        [Effect::RunGit { cmds, .. }] => assert_eq!(cmds, &[want]),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => assert_eq!(cmds, &[want]),
         other => panic!("unexpected effects {other:?}"),
     }
 }

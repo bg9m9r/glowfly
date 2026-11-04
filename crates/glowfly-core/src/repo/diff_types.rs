@@ -95,7 +95,7 @@ pub struct FileDiff {
     pub binary: bool,
     pub hunks: Vec<Hunk>,
     /// Filled in by `highlight::highlight_diff`; `None` means plain. A pending highlight is
-    /// finished by Effect::HighlightDiff (`highlight::finish`).
+    /// finished by DiffEffect::Highlight (`highlight::finish`).
     pub highlight: Option<crate::highlight::DiffHighlight>,
     /// Filled in by `intraline::intraline`: the word marks, and the similarity line pairs that
     /// the split layout and the marks share. Empty means no marks and pairing by position.

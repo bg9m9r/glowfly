@@ -42,7 +42,7 @@ pub(super) fn job_cmds(st: &AppState, fx: &[Effect], label: &str) -> Option<Vec<
         return None;
     }
     fx.iter().find_map(|e| match e {
-        Effect::RunGit { cmds, .. } => Some(cmds.clone()),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => Some(cmds.clone()),
         _ => None,
     })
 }

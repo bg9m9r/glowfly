@@ -122,7 +122,7 @@ fn discard_trash_refused_offers_permanent() {
             refusal: TrashRefusal::new(TrashProblem::NoTrash, "this drive has no Recycle Bin"),
         }),
     );
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     let (title, body, button, then) = confirm(&st);
     assert_eq!((title, button), ("Delete permanently?", "Delete permanently"));
     assert_eq!(
@@ -178,7 +178,7 @@ fn discard_failure_logs_and_closes_diff() {
     let ok = Ok(WorkFileOk::deleted(Deleted::Trashed));
     let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: ok }));
     assert!(st.session.diff.view.is_none());
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadStatus { .. })), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     st.session.diff.view = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
     run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: Err("boom".into()) }));

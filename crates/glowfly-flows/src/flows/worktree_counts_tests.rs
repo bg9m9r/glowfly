@@ -63,7 +63,12 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
         for e in update(st, m, Instant::now()) {
-            if matches!(e, Effect::LoadRepo { .. } | Effect::LoadStatus { .. } | Effect::LoadDiff { .. }) {
+            if matches!(
+                e,
+                Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+                    | Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+            ) {
                 queue.extend(glowfly_runner::testing::execute(e));
             } else {
                 all.push(e);

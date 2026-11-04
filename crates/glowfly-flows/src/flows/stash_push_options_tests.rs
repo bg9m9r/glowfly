@@ -88,7 +88,7 @@ fn a_chosen_staged_rename_brings_its_old_path() {
     assert_eq!(git_run(&fx).0, whole);
     assert_eq!(job_label(&st), Some("Stash selected files"));
     let recorded = |fx: &[glowfly_model::effect::Effect]| match fx {
-        [glowfly_model::effect::Effect::RunGit { record, .. }] => record.clone(),
+        [glowfly_model::effect::Effect::Job(glowfly_model::effect::JobEffect::RunGit { record, .. })] => record.clone(),
         _ => None,
     };
     assert_eq!(recorded(&fx), Some(glowfly_core::undo::UndoKind::StashPush { replay: Some(whole.clone()) }), "redo runs both");

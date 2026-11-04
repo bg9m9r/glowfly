@@ -230,7 +230,7 @@ fn go_to_thread_opens_file_and_lands_on_line() {
     let loads: Vec<&DiffTarget> = fx
         .iter()
         .filter_map(|e| match e {
-            Effect::LoadDiff { target, .. } => Some(target),
+            Effect::Diff(glowfly_model::effect::DiffEffect::Load { target, .. }) => Some(target),
             _ => None,
         })
         .collect();
@@ -258,7 +258,7 @@ fn go_to_thread_with_diff_open_scrolls_without_loading() {
     run(&mut st, PullRequestMsg::Tab(PrTab::Overview));
     st.view.diff_scroll_to_row = None;
     let fx = run(&mut st, PullRequestMsg::GoToThread("T1".into()));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadDiff { .. })));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))));
     assert_eq!(view(&st).tab, PrTab::Files);
     assert_eq!(st.view.diff_scroll_to_row, Some(1), "under the hunk header");
     assert_eq!(st.view.pr_thread_scroll.as_deref(), Some("T1"));

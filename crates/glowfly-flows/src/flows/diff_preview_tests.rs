@@ -43,9 +43,9 @@ fn open(st: &mut AppState, target: DiffTarget) -> Vec<Effect> {
     deliver_diff(st, fx)
 }
 
-/// Runs the LoadDiff among `fx` and applies its result, returning the effects that raised.
+/// Runs the `DiffEffect::Load` among `fx` and applies its result, returning the effects that raised.
 fn deliver_diff(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
-    let load = fx.into_iter().find(|e| matches!(e, Effect::LoadDiff { .. })).expect("a diff load");
+    let load = fx.into_iter().find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).expect("a diff load");
     let msg = glowfly_runner::testing::execute(load).expect("a result");
     run(st, msg)
 }
@@ -53,7 +53,7 @@ fn deliver_diff(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
 fn requests(fx: &[Effect]) -> Vec<(DiffTarget, u64)> {
     fx.iter()
         .filter_map(|e| match e {
-            Effect::LoadBinarySides { target, generation, .. } => Some((target.clone(), *generation)),
+            Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { target, generation, .. }) => Some((target.clone(), *generation)),
             _ => None,
         })
         .collect()
@@ -79,7 +79,7 @@ fn a_binary_diff_asks_for_its_sides_once() {
     let p = st.session.diff_preview.as_ref().expect("a preview");
     assert!(p.target == bin() && p.sides.is_none(), "loading");
     // Running it fills the sides in.
-    for e in fx.into_iter().filter(|e| matches!(e, Effect::LoadBinarySides { .. })) {
+    for e in fx.into_iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { .. }))) {
         let msg = glowfly_runner::testing::execute(e).expect("a result");
         assert!(matches!(&msg, Msg::Scoped { msg, .. } if matches!(**msg, Msg::Diff(DiffMsg::BinarySidesLoaded { .. }))));
         drive(&mut st, msg);

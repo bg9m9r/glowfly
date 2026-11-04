@@ -20,7 +20,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 fn loads(fx: &[Effect]) -> Vec<&Effect> {
-    fx.iter().filter(|e| matches!(e, Effect::LoadRepo { .. })).collect()
+    fx.iter().filter(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).collect()
 }
 
 fn near_end(st: &mut AppState) -> Vec<Effect> {
@@ -39,7 +39,9 @@ fn truncate(st: &mut AppState) {
 
 /// The one full load in `fx`: the commit count it walks.
 fn one_full_load(fx: &[Effect]) -> usize {
-    let [Effect::LoadRepo { opts, known: None, kind: LoadKind::Refresh, .. }] = &loads(fx)[..] else { panic!("one full load: {fx:?}") };
+    let [Effect::Load(glowfly_model::effect::LoadEffect::Repo { opts, known: None, kind: LoadKind::Refresh, .. })] = &loads(fx)[..] else {
+        panic!("one full load: {fx:?}")
+    };
     opts.max_commits
 }
 
@@ -105,7 +107,7 @@ fn scrolling_while_a_refresh_runs_queues_one_load() {
     assert_eq!(st.refresh.extra_commits, limit);
 
     // The first load finishes: the queued one runs, once, with the higher limit.
-    let load = running.into_iter().find(|e| matches!(e, Effect::LoadRepo { .. })).unwrap();
+    let load = running.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).unwrap();
     let msg = glowfly_runner::testing::execute(load).unwrap();
     let fx = update(&mut st, msg, Instant::now());
     assert_eq!(one_full_load(&fx), 2 * limit);

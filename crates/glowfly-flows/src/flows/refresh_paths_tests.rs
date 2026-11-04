@@ -34,20 +34,20 @@ fn changed(workdir: &Path, full: bool, paths: Option<&[&str]>) -> Msg {
 /// The paths of the one status read in `fx`.
 fn read_paths(fx: &[Effect]) -> Option<Vec<String>> {
     match fx {
-        [Effect::LoadStatus { paths, .. }] => paths.clone(),
+        [Effect::Load(glowfly_model::effect::LoadEffect::Status { paths, .. })] => paths.clone(),
         other => panic!("one status read expected: {other:?}"),
     }
 }
 
 /// Runs the one status read in `fx` and hands its result to `update`.
 fn run_read(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
-    let read = fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).expect("a status read");
+    let read = fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))).expect("a status read");
     let msg = glowfly_runner::testing::execute(read).expect("a result");
     update(st, msg, Instant::now())
 }
 
 fn diff_loads(fx: &[Effect]) -> usize {
-    fx.iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).count()
+    fx.iter().filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).count()
 }
 
 #[test]
@@ -55,7 +55,7 @@ fn a_path_report_reads_only_those_paths() {
     let (mut st, dir, workdir) = opened("paths-ask");
     let fx = update(&mut st, changed(&workdir, false, Some(&["a.txt"])), Instant::now());
     assert!(
-        matches!(&fx[..], [Effect::LoadStatus { paths: Some(p), generation, .. }] if p == &owned(&["a.txt"]) && *generation == st.load_gen),
+        matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { paths: Some(p), generation, .. })] if p == &owned(&["a.txt"]) && *generation == st.load_gen),
         "{fx:?}"
     );
     finish(&mut st, fx);
@@ -63,7 +63,7 @@ fn a_path_report_reads_only_those_paths() {
     assert_eq!(read_paths(&fx), None, "no paths: the whole status");
     finish(&mut st, fx);
     let fx = update(&mut st, changed(&workdir, true, Some(&["a.txt"])), Instant::now());
-    assert!(matches!(&fx[..], [Effect::LoadRepo { known: Some(_), .. }]), "full wins: {fx:?}");
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Repo { known: Some(_), .. })]), "full wins: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -132,14 +132,14 @@ fn paths_that_cannot_be_read_alone_read_everything_in_the_same_effect() {
     std::fs::write(dir.join("x.log"), "log\n").unwrap();
     std::fs::write(dir.join(".gitignore"), "*.log\n").unwrap();
     std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
-    let read = Effect::LoadStatus {
+    let read = Effect::Load(glowfly_model::effect::LoadEffect::Status {
         workdir: workdir.clone(),
         generation: st.load_gen,
         submodules: false,
         open: None,
         git_status: true,
         paths: Some(owned(&[".gitignore"])),
-    };
+    });
     let msg = glowfly_runner::testing::execute(read).expect("a result");
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped") };
     assert!(matches!(&*msg, Msg::Load(LoadMsg::StatusLoaded { result: Ok(StatusRead::Whole(..)), .. })), "a whole read");
@@ -167,7 +167,10 @@ fn the_open_diff_is_read_again_only_when_its_file_is_covered_and_changed() {
 
     std::fs::write(dir.join("b.txt"), "new\n").unwrap();
     let ask = update(&mut st, changed(&workdir, false, Some(&["b.txt"])), Instant::now());
-    assert!(matches!(&ask[..], [Effect::LoadStatus { open: None, .. }]), "the open file's stamp isn't needed: {ask:?}");
+    assert!(
+        matches!(&ask[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { open: None, .. })]),
+        "the open file's stamp isn't needed: {ask:?}"
+    );
     let fx = run_read(&mut st, ask);
     assert_eq!(diff_loads(&fx), 0, "{fx:?}");
     assert_eq!(st.refresh.open_stamp, stamp, "left alone");
@@ -218,7 +221,7 @@ and more
     let fx = run_read(&mut st, first);
     assert_eq!(diff_loads(&fx), 0, "left to the next read: {fx:?}");
     assert_eq!(read_paths(&fx), Some(owned(&["a.txt", "b.txt"])), "the open file is read again too");
-    assert!(matches!(&fx[..], [Effect::LoadStatus { open: Some(p), .. }] if p == "a.txt"), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { open: Some(p), .. })] if p == "a.txt"), "{fx:?}");
     let fx = run_read(&mut st, fx);
     assert_eq!(diff_loads(&fx), 1, "the diff catches up: {fx:?}");
     let _ = std::fs::remove_dir_all(&dir);

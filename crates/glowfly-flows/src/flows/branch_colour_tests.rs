@@ -52,8 +52,11 @@ fn colours_survive_the_clean_to_dirty_relayout() {
     let changed =
         Msg::Scoped { workdir, msg: Box::new(Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() })) };
     let fx = update(&mut st, changed, Instant::now());
-    let status =
-        fx.into_iter().find(|e| matches!(e, Effect::LoadStatus { .. })).and_then(glowfly_runner::testing::execute).expect("a status read");
+    let status = fx
+        .into_iter()
+        .find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })))
+        .and_then(glowfly_runner::testing::execute)
+        .expect("a status read");
     let _ = update(&mut st, status, Instant::now());
 
     let snap = st.snap.as_ref().unwrap();
@@ -71,7 +74,7 @@ fn a_pin_recolours_at_once_is_saved_and_survives_a_reopen() {
     let automatic = swatch(&st, "topic");
     let fx = pin(&mut st, "topic", Some(9));
     assert!(fx.iter().any(|e| matches!(e, Effect::SaveSettings(_))), "saved");
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "no reload");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))), "no reload");
     assert_eq!(swatch(&st, "topic"), Swatch::Slot(9));
     assert_ne!(swatch(&st, "fix-1"), Swatch::Slot(9), "the automatic neighbour moves off it");
     let real = st.snap.as_ref().unwrap().real_workdir.clone();

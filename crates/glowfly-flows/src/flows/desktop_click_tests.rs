@@ -68,7 +68,7 @@ fn a_click_reopens_a_closed_repository() {
     assert_eq!(st.tab_showing(&a), None, "closed");
     let fx = click(&mut st, Some(&a));
     assert!(focuses(&fx));
-    assert!(fx.iter().any(|e| matches!(e, Effect::LoadRepo { kind: LoadKind::Open, path, .. } if same_place(path, &a))), "{fx:?}");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { kind: LoadKind::Open, path, .. }) if same_place(path, &a))), "{fx:?}");
     assert_eq!(st.tabs.len(), 2, "in a new tab");
     assert!(shows(&st, &a));
     cleanup(&[&a, &b]);

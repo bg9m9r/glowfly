@@ -173,7 +173,7 @@ fn a_commit_mid_sequence_waits_for_its_end() {
     let fx = after_job(&mut st, commit_no_edit());
     assert!(fx.iter().any(|e| matches!(e, Effect::Submodule(SubmoduleEffect::CheckAll { once_finished: true, .. }))), "{fx:?}");
     let fx = step(&mut st, fx);
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     finish(&mut st, fx);
     assert_eq!(st.snap.as_ref().unwrap().state, RepositoryState::CherryPickSequence);
     assert_eq!(sub(&st).state, SubmoduleState::OutOfSync);

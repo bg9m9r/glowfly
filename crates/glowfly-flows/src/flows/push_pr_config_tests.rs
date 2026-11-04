@@ -19,7 +19,9 @@ use std::time::Instant;
 fn push_and_start(st: &mut AppState, branch: &str) -> Vec<Vec<Vec<String>>> {
     let fx = update(st, Msg::Forge(ForgeMsg::PushAndStartPr { branch: branch.into(), target: None }), Instant::now());
     st.job = None;
-    fx.into_iter().filter_map(|e| if let Effect::RunGit { cmds, .. } = e { Some(cmds) } else { None }).collect()
+    fx.into_iter()
+        .filter_map(|e| if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) = e { Some(cmds) } else { None })
+        .collect()
 }
 
 fn push(remote: &str, branch: &str, upstream: bool) -> Vec<Vec<Vec<String>>> {

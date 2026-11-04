@@ -1,10 +1,11 @@
 //! Decorating loaded diffs (syntax spans and word marks), and finishing large diffs' syntax
 //! highlighting in the background. `Runner::run` gives each background job a cancel ticket, so a
-//! newer `Effect::HighlightDiff` cancels the older one.
+//! newer `DiffEffect::Highlight` cancels the older one.
 
 use glowfly_core::highlight::{self, DiffHighlight, OldText, SyntaxHint};
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, FileEntry, LoadDiffOptions};
+use glowfly_model::effect::DiffEffect;
 use glowfly_model::effect::Effect;
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
@@ -14,7 +15,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-/// Loads a diff for the viewer (`Effect::LoadDiff`, narrowed by its list row `listed`) and
+/// Loads a diff for the viewer (`DiffEffect::Load`, narrowed by its list row `listed`) and
 /// decorates it, with the language its gitattributes name, if any.
 pub(super) fn load_job(
     workdir: PathBuf,
@@ -29,7 +30,8 @@ pub(super) fn load_job(
         // A partial clone hasn't downloaded a side: read again once it has.
         Err(glowfly_core::error::Error::MissingContent(missing)) => {
             let LoadDiffOptions { ignore_whitespace, whole_file } = opts;
-            let retry = Effect::LoadDiff { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed };
+            let retry =
+                Effect::Diff(DiffEffect::Load { workdir, target, reload, generation, previous, ignore_whitespace, whole_file, listed });
             return Msg::Partial(PartialMsg::ContentMissing { missing, retry: Box::new(retry) });
         }
         r => r,

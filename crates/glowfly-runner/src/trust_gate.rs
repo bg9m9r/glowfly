@@ -16,6 +16,7 @@ use glowfly_core::trust::compare::{self, Refused};
 use glowfly_core::trust::incoming::{self, How, Target};
 use glowfly_core::trust::pull::{Pull, PullRun, run_pinned};
 use glowfly_core::trust::{Follow, TrustScan};
+use glowfly_model::effect::JobEffect;
 use glowfly_model::effect::{Accepted, Effect, RebaseEffect};
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
@@ -90,7 +91,7 @@ pub(super) fn targets(effect: &Effect) -> Vec<Target> {
             resume.into_iter().chain(steps).chain(back).collect()
         }
         // Every commit the action names, from its fields: an undo can go back to any of them.
-        Effect::UndoRedo { action, .. } => commits_in(&format!("{action:?}")).into_iter().map(commit).collect(),
+        Effect::Job(JobEffect::UndoRedo { action, .. }) => commits_in(&format!("{action:?}")).into_iter().map(commit).collect(),
         _ => Vec::new(),
     }
 }

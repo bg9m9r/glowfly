@@ -33,7 +33,7 @@ fn with_origin(name: &str) -> (AppState, PathBuf, PathBuf) {
 
 fn stoppable(fx: &[Effect]) -> Option<bool> {
     fx.iter().find_map(|e| match e {
-        Effect::RunGit { stoppable, .. } => Some(*stoppable),
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { stoppable, .. }) => Some(*stoppable),
         _ => None,
     })
 }
@@ -156,7 +156,10 @@ fn a_clone_is_cancelled_and_not_opened() {
     assert!(matches!(&fx[..], [Effect::StopGit(StopKey::Job)]));
     let output = format!("$ git clone -- x app\nCancelled.\nRemoved {}, which the stopped clone had made.", parent.join("app").display());
     let fx = run(&mut st, Msg::Job(JobMsg::Stopped { output, undo: None }));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::LoadRepo { .. })), "a cancelled clone isn't opened: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))),
+        "a cancelled clone isn't opened: {fx:?}"
+    );
     assert!(st.job.is_none());
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Clone cancelled"));
     let logged = st.log.iter().rev().find(|l| l.text.starts_with("Clone cancelled")).map(|l| l.text.clone()).unwrap_or_default();

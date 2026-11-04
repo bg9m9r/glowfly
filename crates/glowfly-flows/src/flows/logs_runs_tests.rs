@@ -32,7 +32,7 @@ fn opened(name: &str) -> (AppState, PathBuf) {
 }
 
 fn runs_git(fx: &[Effect]) -> bool {
-    fx.iter().any(|e| matches!(e, Effect::RunGit { .. }))
+    fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. })))
 }
 
 fn last(st: &AppState) -> &LogEntry {

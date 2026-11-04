@@ -117,16 +117,18 @@ fn case_twins_share_a_queue_only_where_the_volume_ignores_case() {
 #[test]
 fn which_effects_queue() {
     let w = PathBuf::from("C:/r");
-    let git = |cmds: &[&[&str]]| Effect::RunGit {
-        cwd: w.clone(),
-        cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
-        write_file: None,
-        record: None,
-        journal: None,
-        prompts: false,
-        expect: None,
-        stoppable: false,
-        on_fail_check: None,
+    let git = |cmds: &[&[&str]]| {
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit {
+            cwd: w.clone(),
+            cmds: cmds.iter().map(|c| glowfly_core::gitcli::args(c)).collect(),
+            write_file: None,
+            record: None,
+            journal: None,
+            prompts: false,
+            expect: None,
+            stoppable: false,
+            on_fail_check: None,
+        })
     };
     assert_eq!(Effect::queue(&git(&[&["pull"]])), Some(w.as_path()));
     assert_eq!(Effect::queue(&git(&[&["fetch", "--all"]])), None, "auto-fetch doesn't hold up staging");
@@ -147,14 +149,14 @@ fn which_effects_queue() {
     let op = Effect::LocalOp { workdir: w.clone(), op: glowfly_model::effect::LocalOp::StageAll };
     assert_eq!(Effect::queue(&op), Some(w.as_path()));
     assert_eq!(
-        Effect::queue(&Effect::LoadStatus {
+        Effect::queue(&Effect::Load(glowfly_model::effect::LoadEffect::Status {
             workdir: w.clone(),
             generation: 0,
             submodules: false,
             open: None,
             git_status: true,
             paths: None
-        }),
+        })),
         None
     );
     // Saving a patch only reads the repository.
@@ -242,7 +244,7 @@ fn every_effect_that_changes_a_repository_queues() {
             overwrite: false,
         }),
         Effect::Files(glowfly_model::effect::FilesEffect::Work { workdir: w.clone(), op: FileOp::Create("a".into()) }),
-        Effect::RunGit {
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit {
             cwd: w.clone(),
             cmds: vec![glowfly_core::gitcli::args(&["commit"])],
             write_file: None,
@@ -252,13 +254,13 @@ fn every_effect_that_changes_a_repository_queues() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
-        },
-        Effect::UndoRedo {
+        }),
+        Effect::Job(glowfly_model::effect::JobEffect::UndoRedo {
             cwd: w.clone(),
             action: glowfly_core::undo::Action::DiscardAll { stash: git2::Oid::zero(), head: git2::Oid::zero() },
             redo: false,
             opts: Default::default(),
-        },
+        }),
         Effect::Rebase(RebaseEffect::Start {
             cwd: w.clone(),
             request: glowfly_core::rebase::StartRequest {

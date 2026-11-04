@@ -11,7 +11,7 @@ use std::time::Instant;
 
 #[test]
 fn a_panicking_job_finishes_failed_and_frees_the_job_slot() {
-    let effect = Effect::RunGit {
+    let effect = Effect::Job(glowfly_model::effect::JobEffect::RunGit {
         cwd: "C:/r".into(),
         cmds: vec![],
         write_file: None,
@@ -21,7 +21,7 @@ fn a_panicking_job_finishes_failed_and_frees_the_job_slot() {
         expect: None,
         stoppable: false,
         on_fail_check: None,
-    };
+    });
     let msg = guarded(Recovery::of(&effect, "git"), || panic!("boom {}", 42)).expect("a failure result");
     let Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Recorded(None)) }) = &msg else { panic!("not a failed job") };
     assert!(output.contains("boom 42") && output.contains("git"), "{output}");
@@ -194,21 +194,41 @@ fn a_panicking_load_ends_the_load() {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     st.load_gen = 3;
     st.loading = true;
-    let effect =
-        Effect::LoadRepo { path: "r".into(), opts: Default::default(), generation: 3, kind: LoadKind::More, known: None, prior: None };
+    let effect = Effect::Load(glowfly_model::effect::LoadEffect::Repo {
+        path: "r".into(),
+        opts: Default::default(),
+        generation: 3,
+        kind: LoadKind::More,
+        known: None,
+        prior: None,
+    });
     let msg = guarded(Recovery::of(&effect, "load-repo"), || panic!("boom")).unwrap();
     assert!(matches!(&msg, Msg::Repo(RepoMsg::RepoLoaded { generation: 3, result: Err(e), .. }) if e.contains("boom")));
     update(&mut st, msg, Instant::now());
     assert!(!st.loading, "the next refresh isn't left waiting for it");
 
-    let effect = Effect::LoadStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None, git_status: true, paths: None };
+    let effect = Effect::Load(glowfly_model::effect::LoadEffect::Status {
+        workdir: "C:/r".into(),
+        generation: 3,
+        submodules: false,
+        open: None,
+        git_status: true,
+        paths: None,
+    });
     let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
     assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));
 
     let old = std::sync::Arc::new(glowfly_core::repo::IndexMemo::of(&git2::Index::new().unwrap()).unwrap());
     let read = glowfly_model::effect::IndexRequest { old, partners: Vec::new(), paths: Vec::new() };
-    let effect = Effect::LoadIndexStatus { workdir: "C:/r".into(), generation: 3, submodules: false, open: None, git_status: true, read };
+    let effect = Effect::Load(glowfly_model::effect::LoadEffect::IndexStatus {
+        workdir: "C:/r".into(),
+        generation: 3,
+        submodules: false,
+        open: None,
+        git_status: true,
+        read,
+    });
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
     assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), index: None, .. })));

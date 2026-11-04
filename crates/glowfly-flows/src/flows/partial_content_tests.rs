@@ -62,8 +62,11 @@ fn blob(dir: &Path, spec: &str) -> Oid {
 /// Opens HEAD's diff of a.txt and runs its read: the message it sends back.
 fn read_head_diff(st: &mut AppState) -> Msg {
     let fx = run(st, Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Commit(head(st), "a.txt".into()))));
-    let mut back: Vec<Msg> =
-        fx.into_iter().filter(|e| matches!(e, Effect::LoadDiff { .. })).filter_map(glowfly_runner::testing::execute).collect();
+    let mut back: Vec<Msg> = fx
+        .into_iter()
+        .filter(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })))
+        .filter_map(glowfly_runner::testing::execute)
+        .collect();
     assert_eq!(back.len(), 1);
     back.pop().unwrap()
 }

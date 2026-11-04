@@ -47,6 +47,9 @@ fn staging_a_hunk_of_a_big_file_finishes_inline() {
     let d = shown(&st);
     assert_eq!(d.hunks.len(), 1);
     assert!(d.highlight.as_ref().is_some_and(|h| !h.is_pending()), "no provisional colours");
-    assert!(!fx.iter().any(|e| matches!(e, Effect::HighlightDiff { .. })), "no background pass: {fx:?}");
+    assert!(
+        !fx.iter().any(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Highlight { .. }))),
+        "no background pass: {fx:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

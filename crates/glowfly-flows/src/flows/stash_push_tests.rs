@@ -61,7 +61,9 @@ pub(super) fn argv(a: &[&str]) -> Vec<Vec<String>> {
 /// The commands and file of the one RunGit effect in `fx`.
 pub(super) fn git_run(fx: &[Effect]) -> (Vec<Vec<String>>, Option<(PathBuf, String)>) {
     match fx {
-        [Effect::RunGit { cmds, write_file, .. }] => (cmds.clone(), write_file.clone().map(|(p, b)| (p, String::from_utf8(b).unwrap()))),
+        [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, write_file, .. })] => {
+            (cmds.clone(), write_file.clone().map(|(p, b)| (p, String::from_utf8(b).unwrap())))
+        }
         other => panic!("expected one RunGit, got {} effects", other.len()),
     }
 }
@@ -266,12 +268,12 @@ fn stash_runs_are_held_by_trust() {
     let (mut st, dir) = held_repo_with("stash-push-held", false);
     dialog(&mut st, StashScope::All);
     let fx = run(&mut st, push(StashScope::All, "", &[]));
-    assert!(!fx.iter().any(|e| matches!(e, Effect::RunGit { .. })), "{fx:?}");
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))), "{fx:?}");
     assert!(matches!(st.modal, Some(Modal::Trust(_))), "the trust prompt replaces the dialog");
     assert_eq!(st.trust.held.as_ref().map(|h| h.job.label.as_str()), Some("Stash"));
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let fx = run(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
-    let gits: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::RunGit { .. })).collect();
+    let gits: Vec<_> = fx.iter().filter(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))).collect();
     assert_eq!(gits.len(), 1, "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

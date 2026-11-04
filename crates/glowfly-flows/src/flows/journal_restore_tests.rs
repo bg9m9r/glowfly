@@ -52,8 +52,10 @@ struct GitJob<'a> {
 }
 
 fn git_job(fx: &[Effect]) -> GitJob<'_> {
-    match fx.iter().find(|e| matches!(e, Effect::RunGit { .. })) {
-        Some(Effect::RunGit { cmds, record, journal, expect, .. }) => GitJob { cmds, record, journal, expect },
+    match fx.iter().find(|e| matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { .. }))) {
+        Some(Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, record, journal, expect, .. })) => {
+            GitJob { cmds, record, journal, expect }
+        }
         _ => panic!("a git job"),
     }
 }

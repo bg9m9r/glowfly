@@ -25,14 +25,18 @@ fn drive(st: &mut AppState, msg: Msg) {
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
         for e in glowfly_model::update::update(st, m, Instant::now()) {
-            if matches!(e, Effect::LoadDiff { .. } | Effect::LoadBinarySides { .. } | Effect::LoadRepo { .. } | Effect::LoadStatus { .. })
-                || matches!(
-                    e,
-                    Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { .. })
-                        | Effect::Selection(SelectionEffect::Compare { .. })
-                        | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
-                )
-            {
+            if matches!(
+                e,
+                Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. })
+                    | Effect::Diff(glowfly_model::effect::DiffEffect::BinarySides { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
+                    | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
+            ) || matches!(
+                e,
+                Effect::Commit(glowfly_model::effect::CommitEffect::LoadDetail { .. })
+                    | Effect::Selection(SelectionEffect::Compare { .. })
+                    | Effect::Selection(SelectionEffect::WorkdirCompare { .. })
+            ) {
                 queue.extend(glowfly_runner::testing::execute(e));
             }
         }
