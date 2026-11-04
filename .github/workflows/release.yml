@@ -273,12 +273,12 @@ jobs:
           cp "$BUNDLE" "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl"
           gh release upload "$TAG" dist/SHA256SUMS "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl" --clobber
 
-  # The Homebrew cask and the winget manifests for this release, filled in from SHA256SUMS
-  # (scripts/fill-manifests.sh) and attached to the release for submitting (docs/RELEASING.md).
-  # A pre-release gets none. Its files (glowfly.rb, Glowfly.Glowfly.*.yaml) stay out of the
-  # checksums job's 'glowfly-*' pattern.
+  # The Homebrew cask, the Scoop manifest and the winget manifests for this release, filled in
+  # from SHA256SUMS (scripts/fill-manifests.sh) and attached to the release for publishing
+  # (docs/RELEASING.md). A pre-release gets none. Their files (glowfly.rb, glowfly.json,
+  # Glowfly.Glowfly.*.yaml) stay out of the checksums job's 'glowfly-*' pattern.
   manifests:
-    name: Attach the Homebrew and winget manifests
+    name: Attach the Homebrew, Scoop and winget manifests
     needs: [prepare, checksums]
     if: ${{ !cancelled() && needs.prepare.result == 'success' && needs.checksums.result == 'success' }}
     runs-on: ubuntu-latest
