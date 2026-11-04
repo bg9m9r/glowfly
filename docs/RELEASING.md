@@ -189,12 +189,16 @@ The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
 `packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
 yet and the checksums confirm a download matches what the release published, not who published
 it, how to check a download against `SHA256SUMS` (a command for each system) and its build
-provenance (`gh attestation verify`), and that Glowfly
+provenance (`gh attestation verify`), how to open the unsigned builds anyway after checking them
+(SmartScreen's "More info" > "Run anyway" and unblocking the zip on Windows; Privacy & Security >
+"Open Anyway" or `xattr -dr com.apple.quarantine` on macOS 15 and later, where right-click > Open
+no longer works; `chmod +x` for the AppImage), that package managers are coming (#557), and that Glowfly
 is provided as is, without warranty, under MIT OR Apache-2.0, and a link to `PRIVACY.md`. The header sits between two HTML
 comment markers, so a re-run replaces it instead of adding a second. The header has no `## `
 heading and no list items, so the app's release notes dialog, which reads the release body,
 skips it (`changelog_tests.rs` checks). Edit the file to change the text, for example once the
-builds are signed; `bash scripts/release-notes-header.sh --print <notes file>` shows the result
+builds are signed (drop the "Open it anyway" paragraphs for each system that is signed, and
+their copy in the README's install section) or once package managers carry Glowfly; `bash scripts/release-notes-header.sh --print <notes file>` shows the result
 without touching a release.
 
 ## Code signing
