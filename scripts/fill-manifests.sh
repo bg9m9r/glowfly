@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Fills the Homebrew cask (packaging/homebrew/glowfly.rb.in) and the winget manifests
-# (packaging/winget/*.yaml.in) for a release from its SHA256SUMS, into <out dir>: glowfly.rb,
-# Glowfly.Glowfly.yaml, Glowfly.Glowfly.installer.yaml and Glowfly.Glowfly.locale.en-US.yaml.
+# Fills the Homebrew cask (packaging/homebrew/glowfly.rb.in), the Scoop manifest
+# (packaging/scoop/glowfly.json.in) and the winget manifests (packaging/winget/*.yaml.in) for a
+# release from its SHA256SUMS, into <out dir>: glowfly.rb, glowfly.json, Glowfly.Glowfly.yaml,
+# Glowfly.Glowfly.installer.yaml and Glowfly.Glowfly.locale.en-US.yaml.
 # Run by the Release workflow's manifests job; docs/RELEASING.md says how to submit them.
 #
 #   bash scripts/fill-manifests.sh v0.3.0 dist/SHA256SUMS out bg9m9r/glowfly
@@ -39,6 +40,8 @@ mac_arm="$(hash_of "glowfly-$tag-aarch64-apple-darwin.dmg")"
 mac_x86="$(hash_of "glowfly-$tag-x86_64-apple-darwin.dmg")"
 win_x64="$(hash_of "glowfly-$tag-x86_64-pc-windows-msvc.msi")"
 win_arm="$(hash_of "glowfly-$tag-aarch64-pc-windows-msvc.msi")"
+win_x64_zip="$(hash_of "glowfly-$tag-x86_64-pc-windows-msvc.zip")"
+win_arm_zip="$(hash_of "glowfly-$tag-aarch64-pc-windows-msvc.zip")"
 
 mkdir -p "$out"
 fill() {
@@ -47,6 +50,7 @@ fill() {
   sed -e "s|@VERSION@|$version|g" -e "s|@TAG@|$tag|g" -e "s|@REPO@|$repo|g" \
     -e "s|@SHA256_MAC_ARM64@|$mac_arm|g" -e "s|@SHA256_MAC_X86_64@|$mac_x86|g" \
     -e "s|@SHA256_WIN_X64@|$win_x64|g" -e "s|@SHA256_WIN_ARM64@|$win_arm|g" \
+    -e "s|@SHA256_WIN_X64_ZIP@|$win_x64_zip|g" -e "s|@SHA256_WIN_ARM64_ZIP@|$win_arm_zip|g" \
     "$template" > "$target"
   if grep -n '@[A-Z0-9_]*@' "$target"; then
     echo "::error::$target still has placeholders" >&2
@@ -56,6 +60,7 @@ fill() {
 }
 
 fill "$root/packaging/homebrew/glowfly.rb.in" "$out/glowfly.rb"
+fill "$root/packaging/scoop/glowfly.json.in" "$out/glowfly.json"
 for manifest in Glowfly.Glowfly.yaml Glowfly.Glowfly.installer.yaml Glowfly.Glowfly.locale.en-US.yaml; do
   fill "$root/packaging/winget/$manifest.in" "$out/$manifest"
 done
