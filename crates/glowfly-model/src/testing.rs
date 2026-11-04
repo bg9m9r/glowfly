@@ -86,3 +86,9 @@ pub fn keys(text: &str) -> String {
 pub fn same_place(a: &Path, b: &Path) -> bool {
     glowfly_core::paths::same_folder(a, b)
 }
+
+/// A read failure in libgit2's or the system's own words `text`, as the runner reports one
+/// (`ReadFailed::Said`).
+pub fn said(text: &str) -> glowfly_core::error::ReadFailed {
+    glowfly_core::error::ReadFailed::Said { said: text.into() }
+}

@@ -4,6 +4,8 @@
 
 use crate::effect::{Effect, HunkPatchRequest, UiEffect};
 use crate::state::AppState;
+use crate::state::error_words::typed;
+use glowfly_core::error::ReadFailed;
 use std::time::Instant;
 
 /// Asks for hunk `index` of the diff on screen, unless that diff changed since the menu showed it.
@@ -22,11 +24,11 @@ pub(super) fn read(st: &mut AppState, index: usize, generation: u64, fx: &mut Ve
 }
 
 /// Copies the patch read, or says why it can't be.
-pub(super) fn copied(st: &mut AppState, result: Result<Vec<u8>, String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn copied(st: &mut AppState, result: Result<Vec<u8>, ReadFailed>, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     match result.map(String::from_utf8) {
         Ok(Ok(text)) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Ok(Err(_)) => st.toast(false, t.tr("diff.row_menu.not_text"), now),
-        Err(e) => st.toast(false, t.trf("diff.copy_hunk.failed", &[("error", &e)]), now),
+        Err(e) => st.toast(false, t.trf("diff.copy_hunk.failed", &[("error", &typed::read(t, &e))]), now),
     }
 }

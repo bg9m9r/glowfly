@@ -6,6 +6,7 @@
 use super::Waker;
 use glowfly_core::commit_index::CommitIndex;
 use glowfly_core::commit_query::CommitQuery;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::CommitInfo;
 use glowfly_model::msg::{Msg, SearchMsg};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -38,7 +39,7 @@ impl Haystack {
     }
 
     /// The report of request `request` failing with `error`.
-    fn failed(&self, request: u64, error: String) -> SearchMsg {
+    fn failed(&self, request: u64, error: ReadFailed) -> SearchMsg {
         match self {
             Haystack::Index(_) => SearchMsg::IndexQueried { request, result: Err(error) },
             Haystack::Loaded(_) => SearchMsg::LoadedMatched { request, result: Err(error) },
@@ -82,7 +83,7 @@ impl QueryWorker {
             s.running = false;
             if let Some(r) = s.next.take() {
                 drop(s);
-                let msg = r.haystack.failed(r.request, format!("could not start a thread: {e}"));
+                let msg = r.haystack.failed(r.request, ReadFailed::NoThread { said: e.to_string() });
                 super::index::send(&tx, &waker, &r.workdir, msg);
             }
         }
@@ -106,7 +107,7 @@ impl QueryWorker {
                 Ok(Some(msg)) => msg,
                 // A newer request is waiting.
                 Ok(None) => continue,
-                Err(_) => haystack.failed(request, "Glowfly hit an internal error (index-query)".to_owned()),
+                Err(_) => haystack.failed(request, ReadFailed::Internal { effect: "index-query".into() }),
             };
             if newer() {
                 continue;

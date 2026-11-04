@@ -8,6 +8,7 @@ use crate::effect::Effect;
 use crate::effect::HistoryEffect;
 use crate::msg::HistoryMsg;
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::history::{FileHistoryView, HistoryKind};
 use git2::Oid;
 use glowfly_core::repo::{DiffTarget, FileHistory, HistoryStart, Snapshot};
@@ -24,11 +25,13 @@ pub(super) fn handle(st: &mut AppState, msg: HistoryMsg, now: Instant, fx: &mut 
             match result {
                 Ok(h) => loaded(st, &path, h, fx),
                 Err(e) => {
+                    let t = st.settings.lang();
                     let Some(view) = st.session.history.view.as_mut().filter(|v| v.path == path) else { return };
+                    let why = typed::read(t, &e);
                     view.loading = false;
                     view.rerun = false;
-                    view.error = Some(e.clone());
-                    st.log(false, format!("Could not load the history of {path}: {e}"));
+                    view.error = Some(why.clone());
+                    st.log(false, t.trf("history.load.failed", &[("path", &path), ("why", &why)]));
                 }
             }
         }

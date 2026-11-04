@@ -2,7 +2,7 @@
 //! resolved, Mark all resolved, Mark conflicted, the summary reads and their generations.
 
 use super::conflict_tests::{conflicted_repo, two_conflicts};
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::{ConflictSummary, FileEntry, ResolvedFile};
 use glowfly_model::effect::ConflictEffect;
@@ -184,7 +184,7 @@ fn summaries_follow_the_status_and_drop_stale_reads() {
 fn only_failed_reads_reach_an_inactive_tab() {
     let read =
         |result| Msg::Conflict(ConflictMsg::ConflictFilesRead { purpose: ConflictRead::BeforeMarkResolved, paths: Vec::new(), result });
-    assert!(matches!(read(Err("boom".into())).on_inactive(), Some(Inactive::Log(e)) if e == "boom"));
+    assert!(matches!(read(Err(said("boom"))).on_inactive(), Some(Inactive::ConflictFilesUnread(e)) if e == said("boom")));
     assert!(read(Ok(ConflictSummary::default())).on_inactive().is_none());
     assert!(Msg::Conflict(ConflictMsg::MarkResolved(owned(&["a.txt"]))).on_inactive().is_none());
 }

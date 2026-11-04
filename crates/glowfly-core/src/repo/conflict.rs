@@ -2,7 +2,7 @@
 //! plus names for the two sides taken from the operation in progress.
 
 use crate::commit_text;
-use crate::error::{Error, Result};
+use crate::error::{Error, ReadFailed, Result};
 use git2::{BranchType, ErrorCode, IndexEntry, MergeFileOptions, Oid, Repository, RepositoryState};
 use std::path::Path;
 
@@ -120,12 +120,12 @@ impl ConflictFile {
 }
 
 /// Reads the conflict at `path` (repo-relative, `/`-separated) from the index.
-pub fn load_conflict(workdir: &Path, path: &str) -> Result<ConflictFile> {
+pub fn load_conflict(workdir: &Path, path: &str) -> Result<ConflictFile, ReadFailed> {
     let repo = Repository::open(workdir)?;
     let index = repo.index()?;
     let conflict = match index.conflict_get(Path::new(path)) {
         Ok(c) => c,
-        Err(e) if e.code() == ErrorCode::NotFound => return Err(Error::NotFound(format!("{path} is not conflicted"))),
+        Err(e) if e.code() == ErrorCode::NotFound => return Err(ReadFailed::NotConflicted { path: path.to_owned() }),
         Err(e) => return Err(e.into()),
     };
     let ids = ConflictIds {

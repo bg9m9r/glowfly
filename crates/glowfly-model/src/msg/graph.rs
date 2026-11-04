@@ -6,6 +6,7 @@
 use crate::state::pick::PickOp;
 use git2::Oid;
 use glowfly_core::commit_index::CommitIndex;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::graph::Layout;
 use glowfly_core::repo::branch_colours::LayoutFit;
 use glowfly_core::repo::{Comparison, StackedCommit};
@@ -33,10 +34,10 @@ pub enum SelectionMsg {
     PickWithMainline { op: PickOp, oids: Vec<Oid>, mainline: u32 },
     /// The files that differ from commit `from` to `to` (the selection's compare ends), with
     /// which of them are missing from the working tree.
-    CompareLoaded { from: Oid, to: Oid, result: Result<Comparison, String> },
+    CompareLoaded { from: Oid, to: Oid, result: Result<Comparison, ReadFailed> },
     /// The stacked lists of `oids` (the selection's `stack_oids` when asked): each commit's own
     /// changes, for a selection with no combined diff.
-    StackedLoaded { oids: Vec<Oid>, result: Result<Vec<StackedCommit>, String> },
+    StackedLoaded { oids: Vec<Oid>, result: Result<Vec<StackedCommit>, ReadFailed> },
     /// Ctrl/Cmd-click on the WIP row: compare the one selected commit with the working
     /// directory, or stop comparing.
     ToggleWip,
@@ -47,7 +48,7 @@ pub enum SelectionMsg {
     CompareWithHead { oid: Oid, name: String },
     /// The files that differ from commit `oid` to the working tree, read for request
     /// `generation`.
-    WorkdirCompareLoaded { oid: Oid, generation: u64, result: Result<Comparison, String> },
+    WorkdirCompareLoaded { oid: Oid, generation: u64, result: Result<Comparison, ReadFailed> },
     /// Swap direction: compare the selection's ends (two commits, a line of them, or a commit
     /// and the working tree) the other way round.
     SwapCompare,
@@ -155,16 +156,16 @@ pub enum SearchMsg {
     PickAuthor(Option<String>),
     /// A report from HistoryEffect::SearchPaths request `request`: a chunk of the commits it looked at
     /// and which of them touch the path terms; `done` on its last chunk.
-    PathsSearched { request: u64, result: Result<PathsChunk, String> },
+    PathsSearched { request: u64, result: Result<PathsChunk, ReadFailed> },
     /// How far whole-history index build `build` has got (`IndexEffect::Build`): commits indexed
     /// and about how many there are, when git's commit-graph file says.
     IndexProgress { build: u64, indexed: usize, estimate: Option<usize> },
     /// Index build `build` finished, or failed with this error.
-    IndexBuilt { build: u64, result: Result<Arc<CommitIndex>, String> },
+    IndexBuilt { build: u64, result: Result<Arc<CommitIndex>, ReadFailed> },
     /// The walk positions of the index's matches for query request `request` (`IndexEffect::Query`).
-    IndexQueried { request: u64, result: Result<Vec<u32>, String> },
+    IndexQueried { request: u64, result: Result<Vec<u32>, ReadFailed> },
     /// The loaded rows matching the query of request `request` (`IndexEffect::MatchLoaded`).
-    LoadedMatched { request: u64, result: Result<Vec<usize>, String> },
+    LoadedMatched { request: u64, result: Result<Vec<usize>, ReadFailed> },
 }
 
 /// Part of the answer to a path search (`SearchMsg::PathsSearched`).

@@ -5,9 +5,11 @@
 
 use crate::effect::Effect;
 use crate::effect::SelectionEffect;
+use crate::state::error_words::typed;
 use crate::state::selection_wip::{WorkdirCompare, wip_toggled};
 use crate::state::{AppState, Selection, diff_nav};
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{Comparison, Snapshot};
 
 /// Ctrl-click on the WIP row: one commit gains the working directory, a comparison drops it,
@@ -61,7 +63,9 @@ pub(super) fn request(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// A file list read: kept when it is the latest read for the compared commit. The open diff of
 /// one of its files is read again when that file's row changed: it was read going by the old
 /// row (`diff_nav::file_order::listed`), which only names the rename partner the old list paired it with.
-pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Result<Comparison, String>, fx: &mut Vec<Effect>) {
+pub(super) fn loaded(st: &mut AppState, oid: Oid, generation: u64, result: Result<Comparison, ReadFailed>, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
+    let result = result.map_err(|e| typed::read(t, &e));
     let open_row = |st: &AppState| {
         let (target, _) = st.session.diff.view.as_ref().filter(|(t, _)| t.workdir_compared() == Some(oid))?;
         diff_nav::file_order::listed(st, target).cloned()

@@ -5,6 +5,7 @@
 
 use super::Waker;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::path_query::PathTerm;
 use glowfly_core::repo;
 use glowfly_model::msg::{Msg, PathsChunk, SearchMsg};
@@ -58,7 +59,7 @@ impl PathSearchWorker {
             s.running = false;
             if let Some(r) = s.next.take() {
                 drop(s);
-                report(&tx, &waker, r.workdir, r.request, Err(format!("could not start a thread: {e}")));
+                report(&tx, &waker, r.workdir, r.request, Err(ReadFailed::NoThread { said: e.to_string() }));
             }
         }
     }
@@ -97,11 +98,11 @@ impl PathSearchWorker {
                         start = end;
                     }
                     Ok(Err(e)) => {
-                        report(tx, waker, workdir.clone(), request, Err(e.to_string()));
+                        report(tx, waker, workdir.clone(), request, Err(ReadFailed::from(e)));
                         break;
                     }
                     Err(_) => {
-                        report(tx, waker, workdir.clone(), request, Err("Glowfly hit an internal error (search-paths)".into()));
+                        report(tx, waker, workdir.clone(), request, Err(ReadFailed::Internal { effect: "search-paths".into() }));
                         break;
                     }
                 }
@@ -110,7 +111,7 @@ impl PathSearchWorker {
     }
 }
 
-fn report(tx: &Sender<Msg>, waker: &Waker, workdir: PathBuf, request: u64, result: Result<PathsChunk, String>) {
+fn report(tx: &Sender<Msg>, waker: &Waker, workdir: PathBuf, request: u64, result: Result<PathsChunk, ReadFailed>) {
     let msg = Msg::Search(SearchMsg::PathsSearched { request, result });
     if tx.send(Msg::Scoped { workdir, msg: Box::new(msg) }).is_ok() {
         waker.wake();
@@ -122,7 +123,7 @@ pub(super) fn once(r: Request) -> Msg {
     let Request { workdir, request, terms, oids } = r;
     let result = repo::commits_touching(&workdir, &oids, &terms, &|| false)
         .map(|t| PathsChunk { searched: oids, touching: t.touching, done: true })
-        .map_err(|e| e.to_string());
+        .map_err(ReadFailed::from);
     Msg::Search(SearchMsg::PathsSearched { request, result })
 }
 

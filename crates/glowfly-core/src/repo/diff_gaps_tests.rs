@@ -48,7 +48,7 @@ fn the_lines_between_three_hunks() {
     // The working file changed since the hunks were read.
     write(&dir, "a.rs", &body(&[5, 25, 50, 55]));
     let e = load_gap_text(&dir, &target, &h, Some("Rust")).unwrap_err();
-    assert!(e.to_string().contains("the file changed"), "{e}");
+    assert_eq!(e, crate::error::ReadFailed::FileChanged);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

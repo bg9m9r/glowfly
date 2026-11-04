@@ -7,23 +7,29 @@ use super::diff::{file_patch, hunk_of, target_diff};
 use super::lines::{Names, Patched, split_eol, write_patch};
 use super::shown_ws::{changed, exact_context, raw_lines, side_lines};
 use super::{DiffTarget, Hunk, LoadDiffOptions};
-use crate::error::{Error, Result};
+use crate::error::{ReadFailed, Result};
 use git2::{Delta, Repository};
 use std::path::Path;
 
 /// Hunk `hunk_index` of `target`'s diff as patch text: the hunk's own `@@` line and its lines,
 /// context included, so `git apply` places it where it was cut. `expected` is the hunk as the
 /// user saw it: unless git produces exactly that hunk now, it is refused as stale with
-/// `NotFound`. With `ignore_whitespace` the hunks are counted in the diff shown with whitespace
+/// `ReadFailed::DiffChanged`. With `ignore_whitespace` the hunks are counted in the diff shown with whitespace
 /// changes hidden, and its unchanged lines are taken from the old side as they are, so the
 /// patch still applies there (refused with `Unsupported` in the rare case that one differs from
 /// the file by more than whitespace). The bytes are the file's own, whatever its encoding.
-pub fn hunk_patch(workdir: &Path, target: &DiffTarget, hunk_index: usize, expected: &Hunk, ignore_whitespace: bool) -> Result<Vec<u8>> {
+pub fn hunk_patch(
+    workdir: &Path,
+    target: &DiffTarget,
+    hunk_index: usize,
+    expected: &Hunk,
+    ignore_whitespace: bool,
+) -> Result<Vec<u8>, ReadFailed> {
     let repo = Repository::open(workdir)?;
     let attrs = super::attr_source::for_target(&repo, target);
     let path = target.path();
     let diff = target_diff(&attrs, target, LoadDiffOptions { ignore_whitespace, ..Default::default() }, None)?;
-    let stale = || Error::NotFound("the diff changed; try again on the updated diff".into());
+    let stale = || ReadFailed::DiffChanged;
     let patch = file_patch(&diff, path)?.ok_or_else(stale)?;
     if hunk_index >= patch.num_hunks() || hunk_of(&patch, hunk_index)? != *expected {
         return Err(stale());

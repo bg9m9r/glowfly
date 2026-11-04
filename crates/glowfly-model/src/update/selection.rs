@@ -8,11 +8,13 @@ use crate::effect::CommitEffect;
 use crate::effect::SelectionEffect;
 use crate::effect::{Effect, StackRequest};
 use crate::msg::SelectionMsg;
+use crate::state::error_words::typed;
 use crate::state::graph_rows::GraphRows;
 use crate::state::pick::PickOp;
 use crate::state::remote_branch;
 use crate::state::selection::{self as sel, MultiSelection};
 use crate::state::{AppState, Selection};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{DiffTarget, Snapshot, StackedCommit};
 use std::time::Instant;
 
@@ -41,15 +43,19 @@ pub(super) fn handle(st: &mut AppState, msg: SelectionMsg, now: Instant, fx: &mu
             Selection::None | Selection::Wip | Selection::Commit(_) => {}
         },
         SelectionMsg::SwapCompare => swap(st, fx),
-        SelectionMsg::CompareLoaded { from, to, result } => match &mut st.session.selection {
-            Selection::Commits(m) if m.compare_ends() == Some((from, to)) => {
-                m.changes = Some(result.clone());
-                if let Err(e) = result {
-                    st.log(false, e);
+        SelectionMsg::CompareLoaded { from, to, result } => {
+            let t = st.settings.lang();
+            let result = result.map_err(|e| typed::read(t, &e));
+            match &mut st.session.selection {
+                Selection::Commits(m) if m.compare_ends() == Some((from, to)) => {
+                    m.changes = Some(result.clone());
+                    if let Err(e) = result {
+                        st.log(false, e);
+                    }
                 }
+                _ => tracing::debug!("dropped a stale comparison of {from} and {to}"),
             }
-            _ => tracing::debug!("dropped a stale comparison of {from} and {to}"),
-        },
+        }
         SelectionMsg::ToggleWip => super::compare_wip::toggle(st, fx),
         SelectionMsg::CompareWithWorkdir(oid) => super::compare_wip::compare(st, oid, fx),
         SelectionMsg::CompareWithHead { oid, name } => compare_with_head(st, oid, &name, fx),
@@ -126,7 +132,9 @@ fn swap(st: &mut AppState, fx: &mut Vec<Effect>) {
 }
 
 /// A stacked list arrived: kept while the selection still shows those commits.
-fn stacked_loaded(st: &mut AppState, oids: Vec<git2::Oid>, result: Result<Vec<StackedCommit>, String>) {
+fn stacked_loaded(st: &mut AppState, oids: Vec<git2::Oid>, result: Result<Vec<StackedCommit>, ReadFailed>) {
+    let t = st.settings.lang();
+    let result = result.map_err(|e| typed::read(t, &e));
     match &mut st.session.selection {
         Selection::Commits(m) if m.stack_oids() == Some(&oids[..]) => {
             if let Err(e) = &result {

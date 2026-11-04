@@ -66,3 +66,12 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - The Strong focus help says its outline "shows on every color", which overstates the faint outline on panels
 - Spanish Reset all group colors: "Restablecer todos los colores de grupo", with the toast "…restablecidos a los predeterminados"; its Undo can reuse the Edit menu's Undo text
 - German "Zielbranch" should be "Ziel-Branch", as the other Branch compounds are hyphenated
+
+### Typed errors in result messages
+
+- The deeper core sentences still reach users as `ReadFailed::Other`, untranslated: diff.rs's "no changes in {path}", "could not parse the merged file", resolve-undo's messages and file_bytes's folder, submodule and too-large refusals; give them variants too
+- Copy hunk as patch: on `ReadFailed::DiffChanged`, show the existing `diff.copy_hunk.stale` sentence instead of the generic failure toast
+- A conflict that can't be opened logs the bare cause; give it a translated headline naming the file ("Couldn't open the conflict in {path}: ...")
+- Compare, workdir compare and stacked-list failures log the bare cause; give the activity-log line a translated headline
+- A failed match of the loaded history (`LoadedMatched`) is only a tracing warning; consider an activity-log line
+- Reuse `ReadFailed` for repo.rs's reads (snapshot, commit detail, file diff, signatures, line counts, status) as the next #367 area

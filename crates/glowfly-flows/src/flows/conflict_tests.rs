@@ -1,6 +1,6 @@
 //! Headless tests for the conflict view: loading, picking, stepping, saving and closing.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::conflict_rows::Trivial;
@@ -141,7 +141,7 @@ fn stale_conflict_results_are_ignored() {
     update(&mut st, loaded(4, "f.txt", Ok(fake_file(1))), Instant::now());
     update(&mut st, loaded(5, "g.txt", Ok(fake_file(1))), Instant::now());
     assert!(st.session.conflict.view.as_ref().is_some_and(|c| c.file.is_none()), "still loading");
-    update(&mut st, loaded(5, "f.txt", Err("boom".into())), Instant::now());
+    update(&mut st, loaded(5, "f.txt", Err(said("boom"))), Instant::now());
     assert!(st.session.conflict.view.is_none());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "boom"));
 }

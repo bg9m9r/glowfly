@@ -3,7 +3,7 @@
 
 use super::{DiffTarget, Hunk, LoadDiffOptions, load_diff_for_view};
 use crate::diff_rows::{GapLines, GapText, gaps};
-use crate::error::{Error, Result};
+use crate::error::{ReadFailed, Result};
 use crate::highlight;
 use std::path::Path;
 
@@ -12,16 +12,16 @@ use std::path::Path;
 /// the file changed since (its hunks differ now), or when the old file can't be read in full
 /// (over `highlight::OLD_TEXT_MAX_BYTES`, or a filter makes it differ from the hunks). A diff
 /// with one hunk, or none, has no runs.
-pub fn load_gap_text(workdir: &Path, target: &DiffTarget, hunks: &[Hunk], syntax: Option<&str>) -> Result<GapText> {
+pub fn load_gap_text(workdir: &Path, target: &DiffTarget, hunks: &[Hunk], syntax: Option<&str>) -> Result<GapText, ReadFailed> {
     let v = load_diff_for_view(workdir, target, LoadDiffOptions::default())?;
     if v.diff.hunks != hunks {
-        return Err(Error::NotFound("the file changed".into()));
+        return Err(ReadFailed::FileChanged);
     }
     let spans = gaps(&v.diff);
     if spans.is_empty() {
         return Ok(GapText::default());
     }
-    let unreadable = || Error::Unsupported("the old file can't be read".into());
+    let unreadable = || ReadFailed::OldFileUnreadable;
     let old = v.old.ok_or_else(unreadable)?;
     let text = old.gaps(hunks).ok_or_else(unreadable)?;
     let colors = highlight::gap_spans(syntax, &old, hunks);

@@ -1,7 +1,7 @@
 //! Headless tests for the file history view: requests, results, selection, searching further,
 //! jumping to the graph, and closing.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use git2::Oid;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, FileHistory, HistoryEntry, HistoryStart, LoadOptions};
@@ -254,7 +254,7 @@ fn history_error_is_shown_and_logged() {
     let m = Msg::History(HistoryMsg::FileHistoryLoaded {
         path: "a.txt".into(),
         generation: st.session.history.generation,
-        result: Err("boom".into()),
+        result: Err(said("boom")),
     });
     update(&mut st, m, Instant::now());
     let v = st.session.history.view.as_ref().unwrap();

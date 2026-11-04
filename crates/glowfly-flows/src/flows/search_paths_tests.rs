@@ -1,9 +1,10 @@
 //! Headless tests for the search's path terms: the requests update sends, merging reports,
 //! the cache across query changes, refreshes, Close and tab switches, and the filtered graph.
 
-use super::tests::{drive, git, scratch_repo, skipped, state};
+use super::tests::{drive, git, said, scratch_repo, skipped, state};
 use super::update;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::HistoryEffect;
 use glowfly_model::msg::{Msg, PathsChunk, RepoMsg, SearchMsg, TabsMsg};
@@ -83,7 +84,7 @@ fn up(st: &mut AppState, msg: SearchMsg) {
     drive(st, Msg::Search(msg));
 }
 
-fn report(st: &mut AppState, request: u64, result: Result<PathsChunk, String>) {
+fn report(st: &mut AppState, request: u64, result: Result<PathsChunk, ReadFailed>) {
     up(st, SearchMsg::PathsSearched { request, result });
 }
 
@@ -208,7 +209,7 @@ fn partial_reports_match_and_enter_steps_through_them() {
 fn a_failed_search_is_logged_and_ends() {
     let (mut st, dir) = repo("search-paths-error");
     let request = search(&mut st, "path:docs")[0].0;
-    report(&mut st, request, Err("no such repository".into()));
+    report(&mut st, request, Err(said("no such repository")));
     assert_eq!(st.log.last().map(|l| l.text.as_str()), Some("Could not search changed files: no such repository"));
     assert_eq!(st.session.search.paths.pending, None);
     assert_eq!(st.session.search.count_text(None, st.history_count()).as_deref(), Some("No matches"));

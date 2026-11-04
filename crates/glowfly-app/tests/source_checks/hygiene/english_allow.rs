@@ -4,7 +4,6 @@
 
 /// Each file with its count of English literals, by path.
 pub const ENGLISH_TEXT: &[(&str, usize)] = &[
-    ("crates/glowfly-runner/src/conflict_files.rs", 1),
     ("crates/glowfly-runner/src/deep_link.rs", 1),
     ("crates/glowfly-runner/src/expect.rs", 4),
     ("crates/glowfly-runner/src/forge_calls.rs", 4),
@@ -12,15 +11,12 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-runner/src/git_ops.rs", 6),
     ("crates/glowfly-runner/src/guard.rs", 2),
     ("crates/glowfly-runner/src/history.rs", 1),
-    ("crates/glowfly-runner/src/index.rs", 1),
-    ("crates/glowfly-runner/src/index_query.rs", 2),
     ("crates/glowfly-runner/src/job_steps.rs", 8),
     ("crates/glowfly-runner/src/load.rs", 1),
     ("crates/glowfly-runner/src/logs.rs", 6),
     ("crates/glowfly-runner/src/notify.rs", 2),
     ("crates/glowfly-runner/src/os.rs", 9),
     ("crates/glowfly-runner/src/patches.rs", 4),
-    ("crates/glowfly-runner/src/path_search.rs", 2),
     ("crates/glowfly-runner/src/platform/terminal.rs", 3),
     ("crates/glowfly-runner/src/profiles.rs", 1),
     ("crates/glowfly-runner/src/sandbox.rs", 3),
