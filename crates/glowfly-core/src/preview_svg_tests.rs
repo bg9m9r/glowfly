@@ -146,6 +146,9 @@ fn costly_filters_are_refused_quickly() {
     // Too many primitives, even cheap ones.
     let many = r#"<feOffset dx="1"/>"#.repeat(200);
     assert_eq!(quick(&filtered(&many)).unwrap_err(), SvgError::TooCostly);
+    // A filter too costly at full size draws at half the size instead.
+    let soft = quick(&filtered(r#"<feMorphology radius="1"/>"#)).unwrap();
+    assert_eq!(soft.image.shown, [512, 512]);
     // Modest filters still draw.
     for f in
         [r#"<feMorphology radius="1"/>"#, r#"<feTurbulence baseFrequency="0.05" numOctaves="4"/>"#, r#"<feGaussianBlur stdDeviation="5"/>"#]

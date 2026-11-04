@@ -127,7 +127,8 @@ pub struct SvgRender {
     pub linked: bool,
 }
 
-/// `bytes` rendered as an SVG, its longer side scaled to `SHOWN_MAX` pixels. The image's
+/// `bytes` rendered as an SVG, its longer side scaled to `SHOWN_MAX` pixels (or a half or a
+/// quarter of that when its filters would cost too much at full size). The image's
 /// `width` and `height` are the drawing's own size in CSS pixels, rounded.
 pub fn render(bytes: &[u8]) -> Result<SvgRender, SvgError> {
     let linked = Arc::new(AtomicBool::new(false));
@@ -140,10 +141,11 @@ pub fn render(bytes: &[u8]) -> Result<SvgRender, SvgError> {
     if !(w.is_finite() && h.is_finite()) || w <= 0.0 || h <= 0.0 {
         return Err(SvgError::Empty);
     }
-    let scale = SHOWN_MAX as f32 / w.max(h);
-    if !crate::preview_svg_budget::within(&tree, scale) {
-        return Err(SvgError::TooCostly);
-    }
+    // Filters cost more the larger they are drawn: over budget, the drawing is tried at half
+    // and a quarter of the size (an honest picture, only softer) before it is refused.
+    let full = SHOWN_MAX as f32 / w.max(h);
+    let scale =
+        [full, full / 2.0, full / 4.0].into_iter().find(|&s| crate::preview_svg_budget::within(&tree, s)).ok_or(SvgError::TooCostly)?;
     let px = |v: f32| ((v * scale).round() as u32).clamp(1, SHOWN_MAX);
     let mut pixmap = Pixmap::new(px(w), px(h)).ok_or(SvgError::Empty)?;
     resvg::render(&tree, Transform::from_scale(scale, scale), &mut pixmap.as_mut());

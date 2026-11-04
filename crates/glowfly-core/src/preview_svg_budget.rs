@@ -4,7 +4,8 @@
 //! deep stack of filtered or translucent groups holds a whole layer for each (about 100 MB at
 //! the largest filter region), where a failed allocation aborts the app. `within` walks the
 //! parsed tree, nested pictures, clip paths, masks, patterns and `feImage` included, and
-//! refuses rather than clamps: a drawing rendered with weaker filters would be a wrong picture.
+//! never weakens a filter: a drawing with weaker filters would be a wrong picture. The
+//! renderer may instead draw it smaller (`preview_svg::render`), and refuses it past that.
 
 use crate::preview_image::SHOWN_MAX;
 use resvg::usvg::{Group, Node, Tree, filter};
