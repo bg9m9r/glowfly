@@ -4,7 +4,6 @@
 //! follow the language.
 
 use crate::msg::{Msg, UpdateMsg};
-use crate::state::menu_bar::PLACEHOLDER_VERSION as VERSION;
 use crate::state::release_notes::NotesDialog;
 use crate::state::{AppState, Modal, PrefPage, PrefsState};
 use crate::ui::snapshot_check::CheckSnapshot;
@@ -112,8 +111,8 @@ fn tab_menu_and_release_notes_in_german() {
     st.modal = Some(Modal::About);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label(&Lang::De.trf("about.version", &[("version", &VERSION)])).is_some(), "About is German");
-    assert!(h.query_by_label(Lang::De.tr("about.copy_info.button")).is_some());
+    assert!(h.query_by_label(Lang::De.tr("about.row.os")).is_some(), "About is German");
+    assert!(h.query_by_label(Lang::De.tr("common.copy_details.button")).is_some());
     drop(h);
     remove_fixture(&dir);
     remove_fixture(&other);

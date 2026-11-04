@@ -87,17 +87,35 @@ fn links_point_at_the_project() {
 }
 
 #[test]
-fn version_info_names_glowfly_and_git() {
+fn version_info_names_glowfly_git_the_system_and_the_build() {
     let mut git = GitState::default();
-    assert_eq!(version_info(PLACEHOLDER_VERSION, &git), format!("Glowfly {PLACEHOLDER_VERSION}"));
-    assert_eq!(git_line(&git), None);
+    let sample = BuildInfo::SAMPLE;
+    let tail = "OS: Windows\nBuild: x86_64-pc-windows-msvc";
+    assert_eq!(version_info(PLACEHOLDER_VERSION, &git, &sample), format!("Glowfly {PLACEHOLDER_VERSION}\nGit: unknown\n{tail}"));
+    assert_eq!(git_version(&git), None);
     git.info = Some(GitInfo { path: None, version: None, chosen: false });
-    assert_eq!(git_line(&git), None, "git didn't say its version");
+    assert_eq!(git_version(&git), None, "git didn't say its version");
     git.info = Some(GitInfo { path: None, version: Some((2, 47, 1)), chosen: false });
-    assert_eq!(git_line(&git).as_deref(), Some("Git 2.47.1"));
-    assert_eq!(version_info(PLACEHOLDER_VERSION, &git), format!("Glowfly {PLACEHOLDER_VERSION}\nGit 2.47.1"));
+    assert_eq!(git_version(&git).as_deref(), Some("2.47.1"));
+    assert_eq!(version_info(PLACEHOLDER_VERSION, &git, &sample), format!("Glowfly {PLACEHOLDER_VERSION}\nGit: 2.47.1\n{tail}"));
+}
+
+#[test]
+fn version_info_names_no_path() {
     let program = glowfly_core::paths::temp_dir().join("git");
-    git.info = Some(GitInfo { path: Some(program.clone()), version: Some((2, 47, 1)), chosen: true });
-    let shown = glowfly_core::native_path::shown(&program);
-    assert_eq!(version_info(PLACEHOLDER_VERSION, &git), format!("Glowfly {PLACEHOLDER_VERSION}\nGit 2.47.1 ({shown})"));
+    let info = GitInfo { path: Some(program.clone()), version: Some((2, 47, 1)), chosen: true };
+    let text = version_info(PLACEHOLDER_VERSION, &GitState { info: Some(info), ..GitState::default() }, &BuildInfo::SAMPLE);
+    assert!(!text.contains(&glowfly_core::native_path::shown(&program)), "{text}");
+    assert!(!text.contains(['/', '\\']), "{text}");
+}
+
+#[test]
+fn build_info_names_the_system_and_marks_a_debug_build() {
+    let name = |os| BuildInfo { os, ..BuildInfo::SAMPLE }.os_name();
+    assert_eq!((name("windows"), name("macos"), name("linux"), name("freebsd")), ("Windows", "macOS", "Linux", "freebsd"));
+    assert_eq!(BuildInfo { debug: true, ..BuildInfo::SAMPLE }.build_text(), "x86_64-pc-windows-msvc (debug)");
+    assert_eq!(BuildInfo::SAMPLE.build_text(), "x86_64-pc-windows-msvc");
+    let this = BuildInfo::this();
+    assert_eq!((this.os, this.debug), (std::env::consts::OS, cfg!(debug_assertions)));
+    assert!(this.target.contains('-'), "the build script passed the triple: {:?}", this.target);
 }

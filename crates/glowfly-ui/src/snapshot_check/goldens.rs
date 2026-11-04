@@ -333,6 +333,7 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("dialog_look_high_contrast_dark", Dialog),
     ("dialog_look_high_contrast_light", Dialog),
     ("about_dialog", Dialog),
+    ("about_dialog_light", Dialog),
     ("repo_group_add_dialog", Dialog),
     ("repo_group_add_dialog_light", Dialog),
     ("dialog_guide_beside", Dialog),
@@ -346,6 +347,8 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
 /// The goldens compared only as images: their text would be the same as another snapshot's
 /// (most are one view in several themes, whose text the first theme's snapshot keeps).
 const IMAGE_ONLY: &[&str] = &[
+    // `about_dialog` in Light.
+    "about_dialog_light",
     // `status_bar_failure_dark` and `tabs_states_dark` in Light: only their look differs.
     "status_bar_failure_light",
     "tabs_states_light",
