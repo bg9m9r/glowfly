@@ -90,6 +90,8 @@ pub struct UpdatesState {
     pub restarting: bool,
     /// The running download's progress (reset when one starts or ends).
     pub transfer: Transfer,
+    /// The system and build About shows (`BuildInfo::SAMPLE` until the shell sets the build's).
+    pub build: super::menu_bar::BuildInfo,
 }
 
 impl Default for UpdatesState {
@@ -106,6 +108,7 @@ impl Default for UpdatesState {
             install: None,
             restarting: false,
             transfer: Transfer::default(),
+            build: super::menu_bar::BuildInfo::SAMPLE,
         }
     }
 }

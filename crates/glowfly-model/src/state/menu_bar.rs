@@ -105,24 +105,52 @@ pub fn copy_branch(st: &AppState) -> Result<String, &'static str> {
     st.snap.as_ref().and_then(|s| s.head_branch.clone()).ok_or(st.settings.lang().tr("menu.edit.no_branch"))
 }
 
-/// About's git line, "Git 2.47.1", when the startup check found a version.
-pub fn git_line(git: &GitState) -> Option<String> {
-    let v = git.info.as_ref()?.version?;
-    Some(format!("Git {}", glowfly_core::git_version::show(v)))
+/// The git version About shows, "2.47.1", when the startup check found one.
+pub fn git_version(git: &GitState) -> Option<String> {
+    git.info.as_ref()?.version.map(glowfly_core::git_version::show)
 }
 
-/// About's Copy version info: "Glowfly 0.1.0" (`version`) and the git line with where git is,
-/// for bug reports.
-pub fn version_info(version: &str, git: &GitState) -> String {
-    let mut out = format!("Glowfly {version}");
-    if let Some(line) = git_line(git) {
-        out.push('\n');
-        out.push_str(&line);
-        if let Some(path) = git.info.as_ref().and_then(|i| i.path.as_ref()) {
-            out.push_str(&format!(" ({})", glowfly_core::native_path::shown(path)));
+/// The system and build About's table shows (`UpdatesState::build`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BuildInfo {
+    /// `std::env::consts::OS`.
+    pub os: &'static str,
+    /// The target triple the build was compiled for.
+    pub target: &'static str,
+    pub debug: bool,
+}
+
+impl BuildInfo {
+    /// What views and tests see until the shell sets the build's (`this`), so the goldens are
+    /// the same on every CI system.
+    pub const SAMPLE: Self = Self { os: "windows", target: "x86_64-pc-windows-msvc", debug: false };
+
+    /// This build's.
+    pub fn this() -> Self {
+        Self { os: std::env::consts::OS, target: env!("GLOWFLY_TARGET"), debug: cfg!(debug_assertions) }
+    }
+
+    /// The system's name as people write it.
+    pub fn os_name(&self) -> &'static str {
+        match self.os {
+            "windows" => "Windows",
+            "macos" => "macOS",
+            "linux" => "Linux",
+            other => other,
         }
     }
-    out
+
+    /// The Build row: the triple, and " (debug)" for a debug build.
+    pub fn build_text(&self) -> String {
+        if self.debug { format!("{} (debug)", self.target) } else { self.target.to_owned() }
+    }
+}
+
+/// About's Copy details, in English for bug reports: Glowfly's `version`, git's, the system and
+/// the build, one per line. No paths, so nothing in it names the user.
+pub fn version_info(version: &str, git: &GitState, build: &BuildInfo) -> String {
+    let git = git_version(git).unwrap_or_else(|| "unknown".to_owned());
+    format!("Glowfly {version}\nGit: {git}\nOS: {}\nBuild: {}", build.os_name(), build.build_text())
 }
 
 /// License text for a dialog that wraps to its width: the lines of each paragraph joined with

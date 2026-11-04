@@ -12,7 +12,7 @@ use crate::ui::theme::{self, color};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use glowfly_core::git_version::GitInfo;
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::{Action, HeadPos};
 use glowfly_model::journal::JournalMsg;
@@ -275,7 +275,7 @@ fn about_through_the_window() {
     st.modal = Some(Modal::About);
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label(&format!("Version {VERSION}")).is_some());
+    assert!(h.query_by_label(VERSION).is_some(), "the table's version");
     assert!(h.query_by_label("Third-party notices…").is_some());
     h.get_by_label("Close").click();
     h.run();
@@ -284,53 +284,34 @@ fn about_through_the_window() {
     remove_fixture(&dir);
 }
 
-/// The About dialog alone, as `modals.rs` draws it, with a fixed version so a release doesn't
-/// change the image.
-fn about_harness(git: GitState) -> Harness<'static, (GitState, Vec<Msg>)> {
-    dialog_harness(git, |ui, cx, git, msgs| super::about(ui, cx, git, "1.2.3", msgs))
-}
-
 /// The third-party notices dialog alone, as `modals.rs` draws it.
 fn notices_harness() -> Harness<'static, (GitState, Vec<Msg>)> {
     dialog_harness(GitState::default(), |ui, cx, _, msgs| super::notices(ui, cx, msgs))
 }
 
-type DrawDialog = fn(&mut egui::Ui, crate::ui::dialog_frame::Cx, &GitState, &mut Vec<Msg>) -> bool;
+pub(super) type DrawDialog = fn(&mut egui::Ui, crate::ui::dialog_frame::Cx, &GitState, &mut Vec<Msg>) -> bool;
 
 /// A dialog drawn by `draw` in the dark theme, its rect kept under "about-rect".
-fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState, Vec<Msg>)> {
+pub(super) fn dialog_harness(git: GitState, draw: DrawDialog) -> Harness<'static, (GitState, Vec<Msg>)> {
+    dialog_harness_in(git, draw, Lang::En, true)
+}
+
+/// `dialog_harness` in `lang`, in the dark or the light default theme.
+pub(super) fn dialog_harness_in(git: GitState, draw: DrawDialog, lang: Lang, dark: bool) -> Harness<'static, (GitState, Vec<Msg>)> {
     crate::ui::snapshot_check::builder().with_size(egui::vec2(1024.0, 700.0)).build_state(
         move |ctx, (git, msgs): &mut (GitState, Vec<Msg>)| {
-            color::set_palette(&theme::view_palette(true));
-            theme::apply_style(ctx, &theme::view_palette(true));
-            ctx.set_theme(theme::egui_theme(&theme::view_palette(true)));
+            let p = theme::view_palette(dark);
+            color::set_palette(&p);
+            theme::apply_style(ctx, &p);
+            ctx.set_theme(theme::egui_theme(&p));
             egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg())).show(ctx, |_| {});
             let id = egui::Id::new("glowfly-modal");
-            let cx = crate::ui::dialog_frame::Cx { t: glowfly_core::i18n::Lang::En, keyboard: true, key: id.with("about") };
+            let cx = crate::ui::dialog_frame::Cx { t: lang, keyboard: true, key: id.with("about") };
             let resp = theme::show_modal(ctx, theme::dialog(ctx, id), |ui| draw(ui, cx, git, msgs));
             ctx.data_mut(|d| d.insert_temp(egui::Id::new("about-rect"), resp.response.rect));
         },
         (git, Vec::new()),
     )
-}
-
-#[test]
-fn about_dialog() {
-    let git = GitState { info: Some(GitInfo { path: None, version: Some((2, 47, 1)), chosen: false }), ..GitState::default() };
-    let mut h = about_harness(git);
-    h.run();
-    h.check_snapshot("about_dialog");
-    // The dialog, its padding included, fits inside the window.
-    let rect = h.ctx.data(|d| d.get_temp::<egui::Rect>(egui::Id::new("about-rect"))).unwrap();
-    assert!(h.ctx.screen_rect().contains_rect(rect), "{rect:?}");
-    assert!(h.query_by_label("Git 2.47.1").is_some());
-    h.get_by_label("Copy version info").click();
-    h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Copy(t) if t.starts_with("Glowfly ") && t.ends_with("\nGit 2.47.1"))));
-    assert!(h.query_by_label("Rust").is_none(), "the notices have their own dialog");
-    h.get_by_label("Third-party notices…").click();
-    h.run();
-    assert!(h.state().1.iter().any(|m| matches!(m, Msg::App(AppMsg::ShowNotices))));
 }
 
 #[test]
@@ -356,11 +337,4 @@ fn notices_dialog_open() {
     h.get_by_label("Rust").click();
     h.run();
     h.check_snapshot("notices_dialog_open");
-}
-
-#[test]
-fn about_leaves_out_an_unknown_git() {
-    let mut h = about_harness(GitState::default());
-    h.run();
-    assert!(h.query_by_label_contains("Git 2").is_none());
 }

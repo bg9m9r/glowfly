@@ -17,7 +17,7 @@ ProgressIndicator
 Label "Reading..."
 Image
 Label "Glowfly"
-Label "A fast, native Git client"
+Label "See your history clearly."
 Button "Open repository…"
 Label "A folder on this computer that already holds a Git repository."
 Button "Clone repository…"
