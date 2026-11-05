@@ -57,16 +57,11 @@ pub struct WatchPaths {
 
 /// The common git dir of a linked worktree's git dir (`<repo>/.git/worktrees/<name>`): the
 /// folder its `commondir` file names (relative to `git_dir` unless absolute). None for any other
-/// git dir, which is its own common dir.
-pub fn common_dir(git_dir: &Path) -> Option<PathBuf> {
-    // A regular file of a few bytes: a nested repository's content names this one.
-    let text = crate::config_includes::read_file_bounded(&git_dir.join("commondir"), 4096).and_then(|b| String::from_utf8(b).ok());
-    match text {
-        Some(text) if !text.trim().is_empty() => {
-            let named = Path::new(text.trim_end_matches(['\n', '\r']));
-            let joined = if named.is_absolute() { named.to_path_buf() } else { git_dir.join(named) };
-            Some(crate::paths::resolve(&joined))
-        }
+/// git dir, which is its own common dir. `home` is the place already in use: a `commondir`
+/// naming another network root gives None (`git_file::common_dir_of`).
+pub fn common_dir(git_dir: &Path, home: &Path) -> Option<PathBuf> {
+    match crate::git_file::common_dir_of(git_dir, home) {
+        crate::git_file::Named::At(p) => Some(p),
         _ => None,
     }
 }

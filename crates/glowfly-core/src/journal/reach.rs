@@ -60,6 +60,13 @@ fn hide_tips(repo: &Repository, walk: &mut Revwalk<'_>) {
     if let Ok(names) = repo.worktrees() {
         for name in names.iter().flatten() {
             let Ok(wt) = repo.find_worktree(name) else { continue };
+            // A folder on another network place is never opened: its HEAD is in its admin dir.
+            if !crate::net_path::may_follow(wt.path(), repo.commondir()) {
+                if let Some(h) = crate::git_file::worktree_head(repo, name) {
+                    hide(h);
+                }
+                continue;
+            }
             let Ok(r) = Repository::open_from_worktree(&wt) else { continue };
             if let Some(h) = head_of(&r) {
                 hide(h);
