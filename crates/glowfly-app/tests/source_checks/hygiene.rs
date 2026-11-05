@@ -6,6 +6,8 @@
 //!   `LONG_FILES` with their current length as a ceiling: they may shrink but not grow, and an
 //!   entry is removed once its file is back under the limit.
 //! - Every non-test file opens with a `//!` module doc saying what it holds.
+//! - No source file, test code included, holds a raw control character (bar tab, CR and LF):
+//!   git reads a file with a NUL as binary and shows no diff of it.
 //! - The `update/` and `state/` log and toast calls with an English string literal (rather than a
 //!   `t.tr`/`trf`/`trn` lookup) number at most `ENGLISH_LOG_CALLS`; the number only goes down.
 //!   glowfly-ui's and glowfly-runner's English text for the user is counted per file in
@@ -346,8 +348,23 @@ fn harnesses_come_from_the_shared_builder() {
     assert!(problems.is_empty(), "harnesses built without the shared builder:\n{}", problems.join("\n"));
 }
 
+/// The lines (1-based) of `text` holding a raw control character other than tab, CR or LF.
+/// git reads a file with a NUL as binary, so its diffs can't be read or reviewed.
+fn control_char_lines(text: &str) -> Vec<usize> {
+    let raw = |c: char| c.is_control() && !matches!(c, '\t' | '\r' | '\n');
+    text.lines().enumerate().filter(|(_, l)| l.chars().any(raw)).map(|(i, _)| i + 1).collect()
+}
+
+#[test]
+fn source_files_hold_no_raw_control_characters() {
+    let problems: Vec<String> =
+        all_sources().iter().flat_map(|s| control_char_lines(&s.text).into_iter().map(move |line| format!("{}:{line}", s.path))).collect();
+    assert!(problems.is_empty(), "raw control characters; write them as escapes (`\\0`, `\\x01`, `\\x1b`):\n{}", problems.join("\n"));
+}
+
 #[test]
 fn the_checks_catch_what_they_should() {
+    assert_eq!(control_char_lines("a\tb\r\nc\n\"\\0\\x1b\"\nd\u{0}e\nf\u{1b}g\u{7f}\n"), [4, 5]);
     assert_eq!(length_problem("crates/x.rs", LINE_LIMIT), None);
     assert!(length_problem("crates/x.rs", LINE_LIMIT + 1).unwrap().starts_with("crates/x.rs:401:"));
     let (long, ceiling) = LONG_FILES[0];
