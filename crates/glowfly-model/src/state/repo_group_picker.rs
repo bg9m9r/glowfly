@@ -22,6 +22,7 @@ pub struct PickRow {
 }
 
 /// The Add repositories picker for group `group`.
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddPicker {
     pub group: usize,
     pub rows: Vec<PickRow>,

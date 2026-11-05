@@ -15,7 +15,7 @@ use glowfly_core::conflict_pick::ChunkPick;
 use glowfly_core::conflict_rows::{OutRow, output_rows, scroll_target};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{Chunk, Segment};
-use glowfly_model::msg::{ConflictMsg, DiffMsg, Msg};
+use glowfly_model::msg::{ConflictMsg, DiffMsg, EditMsg, Msg};
 use glowfly_model::state::conflict::{ConflictView, OutputEdit};
 
 /// The tint of text typed in the output.
@@ -26,7 +26,7 @@ fn typed() -> Color32 {
 /// The Output strip (Edit / Done, Wrap lines, and Discard edits outside conflicts while any
 /// clean run is edited), the note after an undone edit, and the output itself. `wrap` is the
 /// Wrap long lines setting.
-pub(super) fn output(ui: &mut Ui, t: Lang, view: &mut ConflictView, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
+pub(super) fn output(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
     if view.segments().is_none() {
         return;
     }
@@ -66,9 +66,8 @@ pub(super) fn output(ui: &mut Ui, t: Lang, view: &mut ConflictView, scroll_to: O
             ui.label(RichText::new(note.as_str()).color(color::warn()));
         });
     }
-    let saving = view.saving;
-    match view.edit.as_mut() {
-        Some(e) => editor(ui, e, saving, scroll_to, wrap, msgs),
+    match view.edit.as_ref() {
+        Some(e) => editor(ui, &view.path, e, view.saving, scroll_to, wrap, msgs),
         None => painted(ui, t, view, scroll_to, wrap, msgs),
     }
 }
@@ -151,9 +150,10 @@ fn painted(ui: &mut Ui, t: Lang, view: &ConflictView, scroll_to: Option<usize>, 
 }
 
 /// The whole file as text (conflicts not picked yet as markers), with no folds; wrapped (`wrap`)
-/// as wide as the panel. A change is reported as `ConflictOutputEdited`; the update keeps it
-/// only inside one conflict or one clean run. Read-only while saving.
-fn editor(ui: &mut Ui, e: &mut OutputEdit, saving: bool, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
+/// as wide as the panel, drawn from a copy of the buffer. A change goes back as
+/// `EditMsg::ConflictOutput` for `path` and is reported as `ConflictOutputEdited`; the update
+/// keeps it only inside one conflict or one clean run. Read-only while saving.
+fn editor(ui: &mut Ui, path: &str, e: &OutputEdit, saving: bool, scroll_to: Option<usize>, wrap: bool, msgs: &mut Vec<Msg>) {
     let area = if wrap { egui::ScrollArea::vertical() } else { egui::ScrollArea::both() };
     let mut area = area.id_salt("conflict-output-edit").auto_shrink([false, false]);
     if let Some(range) = scroll_to.and_then(|k| e.rendered.chunks.get(k)) {
@@ -163,13 +163,15 @@ fn editor(ui: &mut Ui, e: &mut OutputEdit, saving: bool, scroll_to: Option<usize
     }
     area.show(ui, |ui| {
         let width = if wrap { ui.available_width() } else { f32::INFINITY };
-        let text = egui::TextEdit::multiline(&mut e.buffer)
+        let mut buffer = e.buffer.clone();
+        let text = egui::TextEdit::multiline(&mut buffer)
             .code_editor()
             .font(mono())
             .lock_focus(true)
             .desired_width(width)
             .min_size(vec2(0.0, ui.available_height()));
         if ui.add_enabled(!saving, controls::Field(text)).changed() {
+            msgs.push(Msg::Edit(EditMsg::ConflictOutput { path: path.to_owned(), buffer }));
             msgs.push(Msg::Conflict(ConflictMsg::ConflictOutputEdited));
         }
     });

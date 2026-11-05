@@ -10,6 +10,7 @@ pub mod marks;
 pub mod service;
 pub mod windows;
 
+use super::secret_fields::SecretFields;
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::ssh_keys::{
@@ -18,6 +19,16 @@ use glowfly_core::ssh_keys::{
 use key_use::{Choices, RepoTarget};
 use service::UploadForm;
 use std::path::{Path, PathBuf};
+
+/// What the Generate SSH key dialog writes besides the passphrases (which stay in
+/// `ViewState::secrets`), sent back as `EditMsg::SshKeygen`. Kept apart from `PrefsFields`:
+/// Preferences and the dialog draw in one frame, so each edit covers fields the other doesn't.
+#[derive(Clone, Debug, PartialEq)]
+pub struct KeygenFields {
+    pub location: String,
+    pub comment: String,
+    pub touched: super::touched::Touched,
+}
 
 pub const COPIED: &str = "Public key copied to the clipboard";
 pub const REPLACE_TITLE: &str = "Replace SSH key";
@@ -36,9 +47,6 @@ pub struct SshPage {
     pub comment: String,
     /// The comment was filled from user.email once; it isn't filled again.
     pub comment_prefilled: bool,
-    pub passphrase: String,
-    /// The Confirm Passphrase field.
-    pub confirm: String,
     /// Which of the dialog's fields were edited, and whether a submit was tried.
     pub touched: super::touched::Touched,
     /// ssh-keygen is running.
@@ -100,10 +108,6 @@ impl SshPage {
         listing.keys.iter().any(|k| same_spelling(&k.private, &path))
     }
 
-    pub fn passphrase_mismatch(&self) -> bool {
-        self.passphrase != self.confirm
-    }
-
     /// Why the Generate… button can't open the dialog now, in `t`.
     pub fn open_blocked(&self, t: Lang) -> Option<&'static str> {
         let Some(listing) = &self.listing else { return Some(t.tr("prefs.ssh.generate.reading.warn")) };
@@ -119,8 +123,8 @@ impl SshPage {
         self.open_blocked(t)
     }
 
-    /// The first reason Generate can't run now, in `t`.
-    pub fn blocked(&self, t: Lang) -> Option<&'static str> {
+    /// The first reason Generate can't run now, in `t` (the passphrases are in `secrets`).
+    pub fn blocked(&self, t: Lang, secrets: &SecretFields) -> Option<&'static str> {
         if let Some(wait) = self.form_wait(t) {
             return Some(wait);
         }
@@ -130,7 +134,7 @@ impl SshPage {
         if let Some(p) = self.comment_problem(t) {
             return Some(p);
         }
-        self.passphrase_mismatch().then(|| t.tr("prefs.ssh.generate.mismatch.warn"))
+        secrets.ssh_mismatch().then(|| t.tr("prefs.ssh.generate.mismatch.warn"))
     }
 
     /// Why the typed comment can't be used, in `t`.
@@ -138,9 +142,21 @@ impl SshPage {
         comment_problem(&self.comment).map(|_| t.tr("prefs.ssh.generate.comment.control.warn"))
     }
 
-    pub fn can_generate(&self) -> bool {
+    pub fn can_generate(&self, secrets: &SecretFields) -> bool {
         // Only whether there is a reason matters, not its language.
-        self.blocked(Lang::En).is_none()
+        self.blocked(Lang::En, secrets).is_none()
+    }
+
+    /// The copy the Generate SSH key dialog draws from.
+    pub fn keygen_fields(&self) -> KeygenFields {
+        KeygenFields { location: self.location.clone(), comment: self.comment.clone(), touched: self.touched.clone() }
+    }
+
+    /// Takes back what the dialog wrote.
+    pub fn apply_keygen(&mut self, f: KeygenFields) {
+        self.location = f.location;
+        self.comment = f.comment;
+        self.touched = f.touched;
     }
 
     /// Fills the comment with the user's email, once, unless something is typed already.

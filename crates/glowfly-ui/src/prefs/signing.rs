@@ -15,7 +15,7 @@ use glowfly_core::signing::SigningFormat;
 use glowfly_model::msg::PrefsMsg;
 use glowfly_model::msg::{FilePurpose, Msg};
 use glowfly_model::state::PrefsState;
-use glowfly_model::state::prefs::SigningState;
+use glowfly_model::state::prefs::{GitConfigValues, SigningState};
 
 /// The fallback when Extend by 2 years fails: how to extend a key by hand.
 const RENEW_HELP: &str = "https://docs.github.com/en/authentication/managing-commit-signature-verification/updating-an-expired-gpg-key";
@@ -29,10 +29,18 @@ const PROMPT_HELP: &str = "Off: GnuPG shows its own passphrase window, for examp
 your system keychain. Needs git 2.31 or newer and GnuPG 2.1.12 or newer; with older versions GnuPG's own window is used.";
 
 /// `settings` is edited in place (the shell saves it after the frame).
-pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState, msgs: &mut Vec<Msg>) {
+/// `git` is the frame's copy of the git config values, `passphrase` the new key's passphrase
+/// (`ViewState::secrets`).
+pub fn signing_page(
+    ui: &mut Ui,
+    settings: &mut Settings,
+    prefs: &PrefsState,
+    git: &mut GitConfigValues,
+    passphrase: &mut String,
+    msgs: &mut Vec<Msg>,
+) {
     let t = settings.lang();
-    let Some(git) = prefs.git.as_mut() else { return };
-    let signing = &mut prefs.signing;
+    let signing = &prefs.signing;
     let format = SigningFormat::from_config(&git.signing_format);
 
     row(ui, "Signing format", |ui| {
@@ -137,7 +145,7 @@ pub fn signing_page(ui: &mut Ui, settings: &mut Settings, prefs: &mut PrefsState
         });
         row(ui, "Generate new GPG key", |ui| {
             ui.horizontal(|ui| {
-                let pass = egui::TextEdit::singleline(&mut signing.passphrase).password(true).hint_text("Passphrase (optional)");
+                let pass = egui::TextEdit::singleline(passphrase).password(true).hint_text("Passphrase (optional)");
                 ui.add(controls::SizedField::new(ControlSize::Regular, pass).width(220.0));
                 let can = !signing.generating && !git.user_name.is_empty() && !git.user_email.is_empty();
                 // While generating, the spinner says why.

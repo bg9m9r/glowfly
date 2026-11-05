@@ -46,7 +46,7 @@ pub(super) fn generate_gpg_key(st: &mut AppState, fx: &mut Vec<Effect>) {
         program,
         name: git.user_name.clone(),
         email: git.user_email.clone(),
-        passphrase: std::mem::take(&mut p.signing.passphrase),
+        passphrase: st.view.secrets.take_signing_passphrase(),
     }));
 }
 

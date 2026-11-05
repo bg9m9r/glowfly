@@ -27,7 +27,8 @@ pub struct SparseContext {
     pub held: Option<PathBuf>,
 }
 
-pub fn sparse_page(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs: &mut Vec<Msg>) {
+/// `(paths, mode)` are the frame's copies of the paths and mode.
+pub fn sparse_page(ui: &mut Ui, page: &SparsePage, (paths, mode): (&mut String, &mut SparseMode), cx: &SparseContext, msgs: &mut Vec<Msg>) {
     if cx.repo_name.is_none() {
         help(ui, "Open a repository to choose which of its folders are checked out.");
         return;
@@ -52,8 +53,8 @@ pub fn sparse_page(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs:
         held_row(ui, cx, msgs);
         return;
     }
-    mode_row(ui, page);
-    paths_row(ui, page, cx, msgs);
+    mode_row(ui, mode);
+    paths_row(ui, page, paths, *mode, cx, msgs);
     actions_row(ui, page, &status, cx, msgs);
 }
 
@@ -95,16 +96,16 @@ fn held_row(ui: &mut Ui, cx: &SparseContext, msgs: &mut Vec<Msg>) {
     });
 }
 
-fn mode_row(ui: &mut Ui, page: &mut SparsePage) {
+fn mode_row(ui: &mut Ui, mode: &mut SparseMode) {
     row(ui, "Mode", |ui| {
         ui.horizontal(|ui| {
-            controls::radio_value(ui, &mut page.mode, SparseMode::Cone, "Folders (cone mode)");
+            controls::radio_value(ui, mode, SparseMode::Cone, "Folders (cone mode)");
             ui.add_space(8.0);
-            controls::radio_value(ui, &mut page.mode, SparseMode::Patterns, "Patterns");
+            controls::radio_value(ui, mode, SparseMode::Patterns, "Patterns");
         });
         help(
             ui,
-            match page.mode {
+            match mode {
                 SparseMode::Cone => "Fast: whole folders are checked out, and files at the root of the repository always are.",
                 SparseMode::Patterns => {
                     "Lines like a .gitignore file name what to check out, and a line starting with ! leaves it out again. Slower in \
@@ -115,22 +116,20 @@ fn mode_row(ui: &mut Ui, page: &mut SparsePage) {
     });
 }
 
-fn paths_row(ui: &mut Ui, page: &mut SparsePage, cx: &SparseContext, msgs: &mut Vec<Msg>) {
-    let cone = page.mode == SparseMode::Cone;
+fn paths_row(ui: &mut Ui, page: &SparsePage, paths: &mut String, mode: SparseMode, cx: &SparseContext, msgs: &mut Vec<Msg>) {
+    let cone = mode == SparseMode::Cone;
     let (label, hint) = if cone { ("Folders", "src\ndocs/guide") } else { ("Patterns", "/*\n!/assets/\n/assets/icons/") };
     row(ui, label, |ui| {
         // Always enabled: disabling it while a job (an auto-fetch, say) runs would take the
         // focus away mid-typing. Only the buttons wait for the job.
-        let edit = egui::TextEdit::multiline(&mut page.paths)
+        let edit = egui::TextEdit::multiline(paths)
             .font(egui::TextStyle::Monospace)
             .desired_rows(8)
             .desired_width(320.0)
             .margin(vec2(8.0, 5.0))
             .hint_text(hint);
+        // A change clears the paths' error (`PrefsState::apply`).
         let r = controls::field(ui, edit);
-        if r.changed() {
-            page.paths_error = None;
-        }
         if r.has_focus() && cx.job.is_none() && ui.input_mut(|i| i.consume_key(Modifiers::COMMAND, Key::Enter)) {
             msgs.push(Msg::Sparse(SparseMsg::Apply));
         }

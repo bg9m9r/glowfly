@@ -222,7 +222,8 @@ fn rename_stash_dialog_without_branch() {
 #[test]
 fn palette_stash_rename() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-stash-rename");
-    let pk = Pick::stashes_to_rename(&fixture_stashes(&st));
+    let mut pk = Pick::stashes_to_rename(&fixture_stashes(&st));
+    pk.refresh("");
     st.palette = Some(Palette { mode: Mode::Pick(pk), selected: 1, ..Default::default() });
     let mut h = harness(st, true);
     h.run();

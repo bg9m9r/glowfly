@@ -78,10 +78,9 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
                     }
                     let page = st.prefs.as_ref().map(|p| p.page);
                     if let Some(p) = st.prefs.as_mut() {
-                        p.ssh.passphrase.clear();
-                        p.ssh.confirm.clear();
                         p.ssh.touched = Default::default();
                     }
+                    st.view.secrets.clear_ssh();
                     st.toast(true, format!("Created SSH key {}", pair.file_name()), now);
                     if page == Some(PrefPage::Ssh) {
                         load(st, fx);
@@ -179,13 +178,13 @@ fn open_generate(st: &mut AppState) {
 fn generate(st: &mut AppState, overwrite: bool, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let Some(page) = st.prefs.as_mut().map(|p| &mut p.ssh) else { return };
-    if let Some(reason) = page.blocked(t) {
+    if let Some(reason) = page.blocked(t, &st.view.secrets) {
         page.form_error = Some(reason.into());
         return;
     }
     let (Some(keygen), Some(path)) = (page.listing.as_ref().and_then(|l| l.keygen.clone()), page.resolved()) else { return };
     page.generating = true;
     page.form_error = None;
-    let key = NewKey { path, comment: page.comment.trim().into(), passphrase: page.passphrase.clone() };
+    let key = NewKey { path, comment: page.comment.trim().into(), passphrase: st.view.secrets.ssh_passphrase.clone() };
     fx.push(Effect::Ssh(SshEffect::Generate { keygen, key, overwrite }));
 }

@@ -30,7 +30,7 @@ fn open_generate_opens_the_dialog() {
     assert!(st.modal.is_none());
     ssh(&mut st, SshMsg::OpenGenerate);
     assert!(matches!(st.modal, Some(Modal::SshKeygen)));
-    assert_eq!((page(&st).location.as_str(), page(&st).passphrase.as_str()), ("~/.ssh/work", "s3cret"));
+    assert_eq!((page(&st).location.as_str(), st.view.secrets.ssh_passphrase.as_str()), ("~/.ssh/work", "s3cret"));
 
     let mut st = loaded(vec![], false);
     ssh(&mut st, SshMsg::OpenGenerate);
@@ -105,7 +105,7 @@ b",
     );
     let control = page(&st).comment_problem(de).expect("a control character");
     assert_ne!(Some(control), page(&st).comment_problem(Lang::En));
-    assert_eq!(page(&st).blocked(de), Some(control));
+    assert_eq!(page(&st).blocked(de, &st.view.secrets), Some(control));
 
     page_mut(&mut st).comment.clear();
     page_mut(&mut st).generating = true;

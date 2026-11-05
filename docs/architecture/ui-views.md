@@ -6,6 +6,8 @@ start with `state/`, `update/` or `ui/`.
 
 ## Dialogs with their own files
 
+- `modal_forms.rs`: the form dialogs, drawn from the frame's copy (`Modal::form_copy`) that `ui/modals.rs` sends back as `EditMsg::Dialog` when it changed, with `DialogEnv`, what they read from the state.
+- `modal_notes.rs`: the dialogs whose views only read (the confirmations, notes and questions), drawn from the dialog itself; the danger confirmation's box, the auto-stash question's Always stash box and Generate SSH key's fields go back as their own edits.
 - `clone_dialog.rs`, `clone_service.rs`: the Clone dialog.
 - `init_dialog.rs`: the Init dialog.
 - `branch_delete_dialog.rs`: a local branch's Delete dialog (`Modal::DeleteBranch`): the question, a counting line, then the commits only the branch has and Delete anyway; Cancel stays the default.

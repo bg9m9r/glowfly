@@ -79,7 +79,7 @@ pub struct RebasePanel {
     pub selected: Option<usize>,
     /// The open inline editor.
     pub editing: Option<Editing>,
-    /// The editor's text (edited in place by the view).
+    /// The editor's text (drawn from a copy, sent back as `EditMsg::RebaseDraft`).
     pub draft: String,
 }
 

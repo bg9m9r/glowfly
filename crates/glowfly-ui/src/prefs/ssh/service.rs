@@ -12,7 +12,8 @@ use glowfly_model::msg::Msg;
 use glowfly_model::ssh::SshMsg;
 use glowfly_model::state::ssh::service::{UploadForm, UploadState, already_note};
 
-pub(in crate::prefs) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm, file: &str, msgs: &mut Vec<Msg>) {
+/// `title` is the frame's copy of the form's title.
+pub(in crate::prefs) fn upload_form(ui: &mut Ui, t: Lang, form: &UploadForm, title: &mut String, file: &str, msgs: &mut Vec<Msg>) {
     // As wide as the cards, in their style.
     let w = fit(ui, LABEL_W + GAP + ROW_W);
     egui::Frame::new()
@@ -29,7 +30,7 @@ pub(in crate::prefs) fn upload_form(ui: &mut Ui, t: Lang, form: &mut UploadForm,
             ui.horizontal(|ui| {
                 ui.label(RichText::new(t.tr("prefs.ssh.service.title.label")).size(type_scale::SMALL).color(color::text()));
                 let hint = form.default_title.clone();
-                text_field(ui, &mut form.title, &hint);
+                text_field(ui, title, &hint);
             });
             if let Some(problem) = form.title_problem(t) {
                 warn(ui, problem);

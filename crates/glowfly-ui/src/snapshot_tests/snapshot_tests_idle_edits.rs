@@ -22,11 +22,11 @@ use glowfly_model::state::{AppState, PrefPage, PrefsState};
 use glowfly_model::terminal::TerminalMsg;
 use std::time::Instant;
 
-type H = Harness<'static, (AppState, Vec<Msg>)>;
+pub(super) type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// Settles `st`'s window, then draws idle frames and asserts they sent no edit (`what` names
 /// the case). Returns the harness for a follow-up.
-fn idle(st: AppState, what: &str) -> H {
+pub(super) fn idle(st: AppState, what: &str) -> H {
     let mut h = harness(st, true);
     h.run();
     h.run();
@@ -39,7 +39,7 @@ fn idle(st: AppState, what: &str) -> H {
 }
 
 /// Types into the text field showing `value` and asserts that sent an edit.
-fn typing_edits(h: &mut H, value: &str) {
+pub(super) fn typing_edits(h: &mut H, value: &str) {
     h.get(By::new().role(Role::TextInput).value(value)).type_text("x");
     h.run();
     assert!(edits_taken() > 0, "typing in {value:?} sends an edit");

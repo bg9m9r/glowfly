@@ -324,9 +324,9 @@ fn connected(
             crate::state::hints::retire(st, crate::state::hints::HintId::Connect);
             fx.extend(super::prefs::save_settings(st));
             if let Some(p) = st.prefs.as_mut() {
-                p.int_token.clear();
                 p.int_adding = false;
             }
+            st.view.secrets.clear_token();
             let t = st.settings.lang();
             let (service, place) = (account.provider.name(), account.display());
             st.log(true, t.trf("prefs.integrations.connected", &[("service", &service), ("account", &place), ("user", &user)]));

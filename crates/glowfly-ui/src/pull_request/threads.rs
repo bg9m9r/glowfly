@@ -20,8 +20,7 @@ use glowfly_core::text::printable;
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::AppState;
-use glowfly_model::state::pull_request::actions::error_for;
+use glowfly_model::state::pull_request::actions::{PrFields, PrForms, error_for};
 use glowfly_model::state::pull_request::line_comment::draft_on;
 use glowfly_model::state::pull_request::line_map::{head_path, on_local_file};
 use glowfly_model::state::pull_request::threads::{
@@ -29,6 +28,7 @@ use glowfly_model::state::pull_request::threads::{
     resolve_label, resolved_toggle, where_text,
 };
 use glowfly_model::state::pull_request::{PrAction, PrView, description_text};
+use glowfly_model::state::{AppState, ViewState};
 use std::collections::HashMap;
 
 /// Where a card is drawn: in the conversation (with its path and code snippet) or in its
@@ -103,7 +103,15 @@ fn go_link(ui: &mut Ui, text: String, id: &str, blocked: Option<&String>, msgs: 
 
 /// Thread `id`'s card: where it is and its state, then (while open) the code it is on, its
 /// comments, and the reply box with Reply and Resolve or Unresolve.
-pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+pub(super) fn card(
+    ui: &mut Ui,
+    (v, forms): (&PrView, &mut PrForms),
+    id: &str,
+    place: Place,
+    ctx: &Ctx,
+    md: &mut MarkdownCache,
+    msgs: &mut Vec<Msg>,
+) {
     let Some(t) = v.loaded().and_then(|p| p.threads.iter().find(|t| t.id == id)).cloned() else { return };
     let open = is_open(&v.threads, &t);
     let at = where_text(v, &t);
@@ -119,7 +127,7 @@ pub(super) fn card(ui: &mut Ui, v: &mut PrView, id: &str, place: Place, ctx: &Ct
             ui.set_width(ui.available_width());
             header(ui, &t, &at, place, open, ctx, msgs);
             if open {
-                body(ui, v, &t, place, ctx, md, msgs);
+                body(ui, (v, forms), &t, place, ctx, md, msgs);
             }
         })
         .response;
@@ -165,7 +173,15 @@ fn header(ui: &mut Ui, t: &ReviewThread, at: &str, place: Place, open: bool, ctx
     });
 }
 
-fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+fn body(
+    ui: &mut Ui,
+    (v, forms): (&PrView, &mut PrForms),
+    t: &ReviewThread,
+    place: Place,
+    ctx: &Ctx,
+    md: &mut MarkdownCache,
+    msgs: &mut Vec<Msg>,
+) {
     if !t.context.is_empty() && (place == Place::Overview || t.outdated) {
         ui.add(egui::Label::new(RichText::new(&t.context).monospace().color(color::weak())).wrap());
         ui.add_space(2.0);
@@ -198,8 +214,13 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
         });
     }
     ui.add_space(4.0);
-    let draft = v.forms.replies.entry(t.id.clone()).or_default();
-    let field = controls::field(ui, egui::TextEdit::multiline(draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY));
+    // Read into a local and put back only when typed in, so drawing adds no empty drafts.
+    let mut draft = forms.replies.get(&t.id).cloned().unwrap_or_default();
+    let edit = egui::TextEdit::multiline(&mut draft).desired_rows(2).hint_text("Reply…").desired_width(f32::INFINITY);
+    let field = controls::field(ui, edit);
+    if field.changed() {
+        forms.replies.insert(t.id.clone(), draft);
+    }
     crate::access::name_field(&field, "Reply");
     if send_key(ui, &field) && reply_blocked(v, t).is_none() {
         msgs.push(Msg::PullRequest(PullRequestMsg::Reply(t.id.clone())));
@@ -231,13 +252,21 @@ fn body(ui: &mut Ui, v: &mut PrView, t: &ReviewThread, place: Place, ctx: &Ctx, 
 /// file, then the file's threads, with the filter bar, and a note when they can't be placed on
 /// the local lines (or are placed on the local version's). A file the head names otherwise (a
 /// rename) lists the threads under the head's name.
-pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+pub(super) fn file_pane(
+    ui: &mut Ui,
+    st: &AppState,
+    vs: &mut ViewState,
+    path: &str,
+    md: &mut MarkdownCache,
+    f: &mut PrFields,
+    msgs: &mut Vec<Msg>,
+) {
     let go_to = go_to_reasons(st);
-    let scroll = st.view.pr_thread_scroll.take();
+    let scroll = vs.pr_thread_scroll.take();
     let reasons = super::line_comment::reasons(st);
-    let focus = std::mem::take(&mut st.view.pr_line_comment_focus);
+    let focus = std::mem::take(&mut vs.pr_line_comment_focus);
     let ctx = Ctx { settings: &st.settings, keys: &st.keymap, now: st.cues.now, offset: st.cues.utc_offset, go_to, scroll };
-    let Some(v) = st.session.pull_request.view.as_mut() else { return };
+    let Some(v) = &st.session.pull_request.view else { return };
     let drafted = draft_on(v, path);
     let shown = head_path(v, path).to_owned();
     let n = on_local_file(v, path);
@@ -254,10 +283,10 @@ pub(super) fn file_pane(ui: &mut Ui, st: &mut AppState, path: &str, md: &mut Mar
     filter_bar(ui, v, Some(&shown), msgs);
     egui::ScrollArea::vertical().id_salt("pr-file-threads").auto_shrink([false, false]).show(ui, |ui| {
         if drafted {
-            super::line_comment::card(ui, ctx.settings.lang(), v, &reasons, ctx.keys, focus, msgs);
+            super::line_comment::card(ui, ctx.settings.lang(), (v, &mut f.line_text), &reasons, ctx.keys, focus, msgs);
         }
         for id in &ids {
-            card(ui, v, id, Place::File, &ctx, md, msgs);
+            card(ui, (v, &mut f.forms), id, Place::File, &ctx, md, msgs);
         }
     });
 }

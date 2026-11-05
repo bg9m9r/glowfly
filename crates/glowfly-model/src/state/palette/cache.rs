@@ -1,4 +1,5 @@
-//! The open palette's command list, kept between frames (`CommandCache`). The view asks for the
+//! The open palette's command list, kept between frames (`CommandCache`, held in
+//! `ViewState::palette_list` and shared by the view and update). The view asks for the
 //! list every frame while the palette is open; building one checkout entry per branch and tag
 //! and ranking them all again each time cost milliseconds in a repository with many tags. The
 //! cache keeps the checkout entries until the refs they are built from change, and the ranking
@@ -84,7 +85,7 @@ struct Ranking {
 
 impl CommandCache {
     /// The command list for `query`, as `palette::listed` would build it now.
-    pub(super) fn listed(&mut self, st: &AppState, query: &str) -> Listed {
+    pub fn listed(&mut self, st: &AppState, query: &str) -> Listed {
         let fixed = fixed_entries(st);
         if self.fixed != fixed {
             self.fixed = fixed;

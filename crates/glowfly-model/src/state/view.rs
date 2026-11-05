@@ -1,5 +1,6 @@
 //! Transient view state the views write: scroll targets and positions, focus requests, hover,
-//! drags, which left-panel sections are expanded and the text fields moved out of the model. What
+//! drags, which left-panel sections are expanded, the text fields moved out of the model, the
+//! palette's command list memo and Preferences' secrets. What
 //! only update or the shell sets for the views is in `view_cues.rs`. `AppState::with_view` lends
 //! it to the views apart from the rest of `AppState`, so they read the model and write only this.
 
@@ -162,6 +163,15 @@ pub struct ViewState {
     /// The credential dialog's fields, edited in place (never sent in a message); update reads
     /// and wipes them (`update/askpass.rs`).
     pub askpass: crate::state::askpass::PromptFields,
+    /// Scroll the palette's selected row into view on the next frame (set by update after a
+    /// move, cleared by the view once the row is drawn).
+    pub palette_scroll: bool,
+    /// The palette's command list from the last frame: the memo the view and update's
+    /// `palette::row_count` share (reset when the palette opens).
+    pub palette_list: crate::state::palette::cache::CommandCache,
+    /// Preferences' secret fields, edited in place (never sent in a message); update reads and
+    /// wipes them.
+    pub secrets: crate::state::secret_fields::SecretFields,
 }
 
 impl Default for ViewState {
@@ -203,6 +213,9 @@ impl Default for ViewState {
             terminal: Default::default(),
             tab: Default::default(),
             askpass: Default::default(),
+            palette_scroll: false,
+            palette_list: Default::default(),
+            secrets: Default::default(),
         }
     }
 }

@@ -102,6 +102,7 @@ fn open(st: &mut AppState, page: PrefPage, fx: &mut Vec<Effect>) {
         prefs.jira_project = project;
     }
     st.prefs = Some(prefs);
+    st.view.secrets.clear();
     super::prefs_nav::enter_page(st, page, fx);
     // Which program opens glowfly:// links (General), read again at every opening.
     super::deep_link::check_scheme(st, fx);
@@ -115,6 +116,7 @@ fn open(st: &mut AppState, page: PrefPage, fx: &mut Vec<Effect>) {
 
 fn close(st: &mut AppState, fx: &mut Vec<Effect>) {
     st.prefs = None;
+    st.view.secrets.clear();
     // The Commit Signing page may have changed the program or the allowed signers file.
     st.session.reads.signatures.clear();
     // The diff's scroll offset is in pixels: keep the same top row if the editor font
@@ -145,10 +147,10 @@ fn config_loaded(st: &mut AppState, values: GitConfigValues, fx: &mut Vec<Effect
 fn show_account_form(st: &mut AppState, on: bool) {
     if let Some(p) = st.prefs.as_mut() {
         p.int_adding = on;
-        p.int_token.clear();
         p.int_user.clear();
         p.int_error = None;
     }
+    st.view.secrets.clear_token();
 }
 
 /// Records the current settings as saved and returns the effect that writes them; open
@@ -193,11 +195,11 @@ pub(super) fn select_integration(st: &mut AppState, provider: Provider) {
     p.int_provider = provider;
     p.int_adding = false;
     p.int_error = None;
-    p.int_token.clear();
     p.int_user.clear();
     p.int_host = match (host, saved) {
         (Some(t), _) => host_text(&t.account()),
         (None, Some(a)) => host_text(&a),
         _ => String::new(),
     };
+    st.view.secrets.clear_token();
 }

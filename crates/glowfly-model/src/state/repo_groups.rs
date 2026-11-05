@@ -98,6 +98,7 @@ pub fn prune(s: &mut Settings) -> bool {
 }
 
 /// The New group and Rename group dialog (`Modal::RepoGroup`).
+#[derive(Clone, Debug, PartialEq)]
 pub struct GroupForm {
     /// The group being renamed; None makes a new one.
     pub group: Option<usize>,

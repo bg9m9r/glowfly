@@ -64,10 +64,19 @@ fn snippet_line(l: &DiffLine) -> String {
 
 /// The draft's card; `focus` puts the cursor in its field and scrolls the pane to it.
 /// `t` translates Cancel.
-pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Keymap, focus: bool, msgs: &mut Vec<Msg>) {
+/// `text` is the frame's copy of its text (`PrFields::line_text`).
+pub(super) fn card(
+    ui: &mut Ui,
+    t: Lang,
+    (v, text): (&PrView, &mut Option<String>),
+    r: &Reasons,
+    keys: &Keymap,
+    focus: bool,
+    msgs: &mut Vec<Msg>,
+) {
     let review = primary_is_review(v);
     let review_text = review_label(v);
-    let Some(d) = v.line_draft.as_mut() else { return };
+    let (Some(d), Some(text)) = (v.line_draft.as_ref(), text.as_mut()) else { return };
     let posting = d.posting.is_some();
     let frame = egui::Frame::new()
         .fill(color::panel())
@@ -89,7 +98,7 @@ pub(super) fn card(ui: &mut Ui, t: Lang, v: &mut PrView, r: &Reasons, keys: &Key
         let snippet = d.lines[skip..].iter().map(snippet_line).collect::<Vec<_>>().join("\n");
         ui.add(egui::Label::new(RichText::new(snippet).monospace().color(color::weak())).wrap());
         ui.add_space(4.0);
-        let edit = egui::TextEdit::multiline(&mut d.text)
+        let edit = egui::TextEdit::multiline(text)
             .interactive(!posting)
             .desired_rows(4)
             .hint_text("Leave a comment…")

@@ -16,15 +16,17 @@ use crate::theme::type_scale;
 use crate::widgets::buttons;
 use eframe::egui::{self, CornerRadius, Id, Response, RichText, Stroke, Ui};
 use glowfly_core::i18n::Lang;
-use glowfly_model::msg::{Msg, RebaseMsg};
+use glowfly_model::msg::{EditMsg, Msg, RebaseMsg};
 use glowfly_model::state::rebase::{Editing, RebasePanel};
 
 const COMBINED_LABEL: &str = "Message of the combined commit";
 const COMMAND_HINT: &str = "Shell command, e.g. cargo test";
 
-/// The open editor, under the SHA and summary and as wide as the row.
-pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut UiCache, spell: bool, msgs: &mut Vec<Msg>) {
+/// The open editor, under the SHA and summary and as wide as the row, drawn from a copy of the
+/// draft that goes back as `EditMsg::RebaseDraft` when it changed.
+pub(super) fn show(ui: &mut Ui, t: Lang, panel: &RebasePanel, cache: &mut UiCache, spell: bool, msgs: &mut Vec<Msg>) {
     let Some(editing) = panel.editing else { return };
+    let mut draft = panel.draft.clone();
     let enabled = panel.editable();
     // The editor that had focus last frame: a new one takes it once.
     let open_id = Id::new("rebase-editor-open");
@@ -46,15 +48,15 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                         let field = match editing {
                             Editing::Message(_) => {
                                 ui.label(RichText::new("New commit message").size(type_scale::SMALL).color(color::weak()));
-                                spell_text_edit(ui, &mut panel.draft, "Commit message", 5, &mut cache.speller, spell)
+                                spell_text_edit(ui, &mut draft, "Commit message", 5, &mut cache.speller, spell)
                             }
                             Editing::Combined(_) => {
                                 ui.label(RichText::new(COMBINED_LABEL).size(type_scale::SMALL).color(color::weak()));
-                                spell_text_edit(ui, &mut panel.draft, "Commit message", 6, &mut cache.speller, spell)
+                                spell_text_edit(ui, &mut draft, "Commit message", 6, &mut cache.speller, spell)
                             }
                             Editing::Command(_) => {
                                 ui.label(RichText::new("Command").size(type_scale::SMALL).color(color::weak()));
-                                command_field(ui, &mut panel.draft)
+                                command_field(ui, &mut draft)
                             }
                         };
                         if fresh {
@@ -64,7 +66,7 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                             let save = match editing {
                                 Editing::Message(_) | Editing::Combined(_) => buttons::secondary("Update message").size(ControlSize::Small),
                                 Editing::Command(_) => {
-                                    let typed = !panel.draft.trim().is_empty();
+                                    let typed = !draft.trim().is_empty();
                                     let why = (!typed).then_some(t.tr("rebase.editor.command_empty.why"));
                                     buttons::secondary(t.tr("rebase.editor.save.button")).size(ControlSize::Small).enabled(typed).why(why)
                                 }
@@ -88,6 +90,9 @@ pub(super) fn show(ui: &mut Ui, t: Lang, panel: &mut RebasePanel, cache: &mut Ui
                 });
         });
     });
+    if draft != panel.draft {
+        msgs.push(Msg::Edit(EditMsg::RebaseDraft { editing, draft }));
+    }
 }
 
 /// Forgets which editor was open, so the next one takes the focus again.

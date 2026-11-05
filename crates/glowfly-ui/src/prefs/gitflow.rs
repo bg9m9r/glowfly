@@ -32,7 +32,14 @@ enum Note {
     Warn(String),
 }
 
-pub fn gitflow_page(ui: &mut Ui, page: &mut GitFlowPage, cx: &GitFlowContext, msgs: &mut Vec<Msg>) {
+/// The frame's copies of what the page writes: the branch and prefix fields, and the branch
+/// Finish acts on.
+pub struct FlowForm<'a> {
+    pub form: &'a mut GitFlowSettings,
+    pub finish: &'a mut String,
+}
+
+pub fn gitflow_page(ui: &mut Ui, page: &GitFlowPage, f: FlowForm<'_>, cx: &GitFlowContext, msgs: &mut Vec<Msg>) {
     let Some(snap) = cx.snap else {
         help(ui, "Open a repository to set up Git Flow.");
         return;
@@ -43,23 +50,20 @@ pub fn gitflow_page(ui: &mut Ui, page: &mut GitFlowPage, cx: &GitFlowContext, ms
 
     section(ui, "Branches");
     let initialized = saved.is_some();
-    let mut changed = branch_row(ui, "Production branch", &mut page.form.production, "main", |p| production_note(p, &b));
-    let production = page.form.production.trim().to_owned();
-    changed |=
-        branch_row(ui, "Development branch", &mut page.form.development, "develop", |d| development_note(d, &production, initialized, &b));
+    // A change clears the page's error (`PrefsState::apply`).
+    branch_row(ui, "Production branch", &mut f.form.production, "main", |p| production_note(p, &b));
+    let production = f.form.production.trim().to_owned();
+    branch_row(ui, "Development branch", &mut f.form.development, "develop", |d| development_note(d, &production, initialized, &b));
 
     section(ui, "Prefixes");
-    changed |= prefix_rows(ui, &mut page.form);
-    if changed {
-        page.error = None;
-    }
+    prefix_rows(ui, f.form);
 
     buttons(ui, page, &b, initialized, cx.busy, msgs);
     if let Some(s) = &saved {
         // Edits wait for the bar: Start and Finish use the saved settings.
         let wait = Wait { busy: cx.busy, edited: page.edited().then_some(cx.save_first) };
         start_row(ui, s, &b, &wait, msgs);
-        finish_row(ui, &mut page.finish_branch, s, &b, &wait, msgs);
+        finish_row(ui, f.finish, s, &b, &wait, msgs);
     }
 }
 

@@ -13,6 +13,7 @@ use glowfly_model::effect::{Effect, UiEffect};
 use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg};
 use glowfly_model::ssh::{GenerateFailure, SshEffect, SshMsg};
 use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::secret_fields::SecretFields;
 use glowfly_model::state::ssh::SshPage;
 use glowfly_model::state::{AppState, Modal, PrefPage};
 use std::path::{Path, PathBuf};
@@ -153,8 +154,8 @@ pub(crate) fn fill(st: &mut AppState, location: &str, comment: &str, passphrase:
     let p = page_mut(st);
     p.location = location.into();
     p.comment = comment.into();
-    p.passphrase = passphrase.into();
-    p.confirm = confirm.into();
+    st.view.secrets.ssh_passphrase = passphrase.into();
+    st.view.secrets.ssh_confirm = confirm.into();
 }
 
 #[test]
@@ -228,7 +229,7 @@ fn generated_reloads_and_clears() {
     let fx = ssh(&mut st, SshMsg::Generated(Ok(pair("id_ed25519", "ada"))));
     assert!(st.modal.is_none(), "the dialog closes");
     assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Created SSH key id_ed25519"));
-    assert_eq!((page(&st).passphrase.as_str(), page(&st).confirm.as_str()), ("", ""));
+    assert_eq!((st.view.secrets.ssh_passphrase.as_str(), st.view.secrets.ssh_confirm.as_str()), ("", ""));
     assert!(!page(&st).generating);
     assert_eq!(lists(&fx).len(), 1, "the list reloads");
 
@@ -270,23 +271,24 @@ fn page_rules() {
     assert!(!page(&st).location_taken(), "spelling never folds case");
     fill(&mut st, "~/.ssh/other", "", "", "");
     assert!(!page(&st).location_taken());
-    assert!(page(&st).can_generate());
+    assert!(page(&st).can_generate(&st.view.secrets));
 
     let en = Lang::En;
-    let mut p = SshPage { generating: true, passphrase: "a".into(), ..Default::default() };
-    assert_eq!(p.blocked(en), Some("A key is being generated."));
+    let mut p = SshPage { generating: true, ..Default::default() };
+    let mut secrets = SecretFields { ssh_passphrase: "a".into(), ..Default::default() };
+    assert_eq!(p.blocked(en, &secrets), Some("A key is being generated."));
     p.generating = false;
-    assert!(p.blocked(en).is_some_and(|b| b.contains(".ssh folder")), "listing first");
+    assert!(p.blocked(en, &secrets).is_some_and(|b| b.contains(".ssh folder")), "listing first");
     assert_eq!(p.location_problem(), None, "no problem shown before the home folder is known");
     p.listing = Some(listing(vec![], true));
-    assert_eq!(p.blocked(en), Some("Enter where to save the private key."));
+    assert_eq!(p.blocked(en, &secrets), Some("Enter where to save the private key."));
     p.location = "~/.ssh/k".into();
     p.comment = "a\tb".into();
-    assert!(p.blocked(en).is_some_and(|b| b.contains("control characters")));
+    assert!(p.blocked(en, &secrets).is_some_and(|b| b.contains("control characters")));
     p.comment.clear();
-    assert_eq!(p.blocked(en), Some("The passphrases don't match."));
-    p.confirm = "a".into();
-    assert_eq!(p.blocked(en), None);
+    assert_eq!(p.blocked(en, &secrets), Some("The passphrases don't match."));
+    secrets.ssh_confirm = "a".into();
+    assert_eq!(p.blocked(en, &secrets), None);
     assert!(glowfly_model::state::ssh::replace_body(Path::new("C:/k/id")).contains("will stop accepting it"));
 }
 

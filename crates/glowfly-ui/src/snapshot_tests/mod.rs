@@ -75,6 +75,8 @@ pub(super) mod snapshot_tests_history_file;
 pub(super) mod snapshot_tests_history_preview;
 pub(super) mod snapshot_tests_history_table;
 pub(super) mod snapshot_tests_idle_edits;
+pub(super) mod snapshot_tests_idle_forms;
+pub(super) mod snapshot_tests_idle_panels;
 pub(super) mod snapshot_tests_index;
 pub(super) mod snapshot_tests_init;
 pub(super) mod snapshot_tests_issue;

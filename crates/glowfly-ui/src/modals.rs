@@ -30,31 +30,36 @@
 //! stashing uncommitted changes before an operation (drawn by `auto_stash_dialog.rs`) and
 //! generating an SSH key (drawn by `prefs/ssh/keygen_dialog.rs`). An edited form kept under a question
 //! (state/dialog_guard.rs) is drawn first, beneath the question.
+//!
+//! A form is drawn from the frame's copy (`modal_forms.rs`), sent back as `EditMsg::Dialog`
+//! when it changed; the other dialogs are drawn from the dialog itself (`modal_notes.rs`).
 
-use crate::dialog_frame::{Cx, Tone};
+use crate::dialog_frame::Cx;
 use eframe::egui;
-use glowfly_model::msg::{DialogMsg, Dismiss, Msg};
-use glowfly_model::state::{AppState, Modal};
+use glowfly_model::msg::{DialogMsg, Dismiss, EditMsg, Msg};
+use glowfly_model::state::modal_form::DialogForm;
+use glowfly_model::state::{AppState, Modal, ViewState};
 
 #[path = "confirm_dialog.rs"]
 mod confirm_dialog;
+#[path = "modal_forms.rs"]
+mod modal_forms;
+#[path = "modal_notes.rs"]
+mod modal_notes;
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     // An edited form kept under a question (state/dialog_guard.rs) is drawn first, beneath it:
-    // dimmed, without the keyboard, and what it sends is dropped.
-    let over = match st.dialog.take_under() {
-        Some((form, opened)) => {
-            let top = st.modal.replace(form);
-            draw(ctx, st, &mut Vec::new(), Layer::Under);
-            let form = std::mem::replace(&mut st.modal, top);
-            if let Some(form) = form {
-                st.dialog.put_under((form, opened));
-            }
+    // dimmed, without the keyboard, and what it sends (its edits too) is dropped.
+    let over = match st.dialog.under() {
+        Some(form) => {
+            draw(ctx, st, view, form, &mut Vec::new(), Layer::Under);
             true
         }
         None => false,
     };
-    draw(ctx, st, msgs, if over { Layer::Over } else { Layer::Only });
+    if let Some(shown) = st.modal.as_ref() {
+        draw(ctx, st, view, shown, msgs, if over { Layer::Over } else { Layer::Only });
+    }
 }
 
 /// Where the dialog drawn stacks.
@@ -68,7 +73,7 @@ enum Layer {
     Over,
 }
 
-fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Layer) {
+fn draw(ctx: &egui::Context, st: &AppState, view: &mut ViewState, shown: &Modal, msgs: &mut Vec<Msg>, layer: Layer) {
     // Under a credential prompt, Esc and clicks belong to the prompt.
     let prompting = st.askpass.showing();
     // Under the "Discard your changes?" question, the form's fields don't take the focus.
@@ -76,144 +81,29 @@ fn draw(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>, layer: Laye
     let keyboard = !prompting && !asking && layer != Layer::Under;
     // The form underneath keeps the usual id, so its fields keep their state when it is back.
     let area = if layer == Layer::Over { "glowfly-modal-over" } else { "glowfly-modal" };
-    let today = glowfly_core::clone_ops::local_date(st.cues.now, st.cues.utc_offset);
-    let sparse_blocked = st.git.blocked(glowfly_core::git_version::Feature::SparseCheckout);
-    // Worked out before the dialog borrows the state: which results are open or favorites.
-    let finder = matches!(st.modal, Some(Modal::FindRepos { .. }))
-        .then(|| (glowfly_model::state::repo_scan::finder_rows(st), glowfly_model::state::repo_scan::project_folders(&st.settings)));
-    let repo_scan = &st.repo_scan;
-    let repo_sync = st.repo_sync.as_ref();
-    // The Generate SSH key dialog's fields live on the SSH page (a borrow apart from the modal's).
-    let ssh_page = st.prefs.as_mut().map(|p| &mut p.ssh);
-    let preview_env = super::op_preview_dialog::Env {
-        snap: st.snap.as_ref(),
-        settings: &st.settings,
-        now: st.cues.now,
-        offset: st.cues.utc_offset,
-        idle: st.job.is_none(),
-    };
-    let Some(modal) = st.modal.as_mut() else { return };
-    let snap = st.snap.as_ref();
-    let fs = st.session.forge.as_ref();
-    let idle = st.job.is_none();
-    let stage_renames = st.settings.stage_renames;
-    let push_tags = st.settings.push_new_tags;
-    let connections = &st.settings.connections;
-    let groups = &st.settings.repo_groups;
-    let keys = &st.keymap;
-    let git = &st.git;
-    let version = st.updates.shown;
-    let build = &st.updates.build;
-    let t = st.settings.lang();
-    let repo_filters = snap.map(|s| st.settings.forge_filters_for(&s.real_workdir)).unwrap_or_default();
+    let env = modal_forms::DialogEnv::new(st, shown);
+    let t = env.t;
+    // The form's copy for this frame (None for a dialog that only reads).
+    let mut copy = shown.form_copy();
     let mut close = false;
     let first = msgs.len();
     let resp = super::theme::show_modal(ctx, super::theme::dialog(ctx, egui::Id::new(area)), |ui| {
         // A dialog's key in egui's memory: the first frame of each kind takes the focus.
-        let cx = Cx { t, keyboard, key: egui::Id::new("glowfly-dialog").with(std::mem::discriminant(&*modal)) };
-        match modal {
-            Modal::Confirm { title, body, button, .. } => {
-                let texts = confirm_dialog::Texts { title, body, button, details: None };
-                close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, None, msgs)
-            }
-            Modal::ConfirmDetails { title, body, details, button, .. } => {
-                let texts = confirm_dialog::Texts { title, body, button, details: Some(details) };
-                close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, None, msgs)
-            }
-            Modal::ConfirmDanger { title, body, button, ack, acked, .. } => {
-                let ack = ack.as_deref().map(|label| (label, acked));
-                let texts = confirm_dialog::Texts { title, body, button, details: None };
-                close = confirm_dialog::show(ui, cx, texts, Tone::Danger, ack, None, msgs);
-            }
-            Modal::ConfirmChoice { title, body, button, alt, .. } => {
-                let texts = confirm_dialog::Texts { title, body, button, details: None };
-                close = confirm_dialog::show(ui, cx, texts, Tone::Normal, None, Some(alt), msgs)
-            }
-            Modal::NewBranch { start, name, checkout, track, touched } => {
-                // Not under a credential prompt or the discard question: its fields need the keyboard.
-                let form = super::branch_dialogs::NewBranchForm { start: start.as_deref(), name, checkout, track: track.as_ref(), touched };
-                close = super::branch_dialogs::new_branch(ui, cx, form, snap, msgs);
-            }
-            Modal::NewTag(form) => close = super::tag_dialog::new_tag(ui, cx, form, snap, push_tags, msgs),
-            Modal::AnnotateTag(form) => close = super::tag_dialog::annotate_tag(ui, cx, form, snap, msgs),
-            Modal::NewWorktree(form) => close = super::worktree_dialog::new_worktree(ui, cx, form, snap, msgs),
-            Modal::DeleteBranch(form) => close = super::branch_delete_dialog::show(ui, cx, form, msgs),
-            Modal::DeleteRemoteBranch(form) => close = super::remote_branch_delete_dialog::show(ui, cx, form, msgs),
-            Modal::RemoveWorktree(form) => close = super::worktree_manage_dialog::remove(ui, cx, form, idle, msgs),
-            Modal::LockWorktree(form) => close = super::worktree_manage_dialog::lock(ui, cx, form, idle, msgs),
-            Modal::MoveWorktree(form) => close = super::worktree_move_dialog::move_worktree(ui, cx, form, snap, idle, msgs),
-            Modal::AddSubmodule(form) => close = super::submodule_dialogs::add(ui, cx, form, snap, idle, msgs),
-            Modal::EditSubmodule(form) => close = super::submodule_dialogs::edit(ui, cx, form, idle, msgs),
-            Modal::RemoveSubmodule(form) => close = super::submodule_dialogs::remove(ui, cx, form, idle, msgs),
-            Modal::Clone(form) => close = super::clone_dialog::show(ui, cx, form, today, sparse_blocked.as_deref(), connections, msgs),
-            Modal::Init(form) => close = super::init_dialog::show(ui, cx, form, chrono::Datelike::year(&today), msgs),
-            Modal::CreatePr { source, target, targets, title, description, draft, items, repos } => {
-                let Some(fs) = fs.filter(|f| f.host.is_some()) else {
-                    close = true;
-                    return;
-                };
-                let form = super::pull_request::create_dialog::PrForm { source, target, targets, title, description, draft, items, repos };
-                close = super::pull_request::create_dialog::show(ui, cx, form, fs, snap, idle, msgs);
-            }
-            Modal::Publish(f) => close = super::publish::form(ui, cx, f, idle, msgs),
-            Modal::RenameBranch(form) => close = super::branch_dialogs::rename(ui, cx, form, snap, msgs),
-            Modal::RenameStash(form) => close = super::stash_dialog::rename(ui, cx, form, idle, msgs),
-            Modal::StashPush(form) => close = super::stash_push_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::SetUpstream { branch, remote, name, touched } => {
-                close = super::branch_dialogs::upstream(ui, cx, branch, (remote, name, touched), snap, msgs)
-            }
-            Modal::NewFile(form) => close = super::file_dialogs::new_file(ui, cx, form, snap, msgs),
-            Modal::RenameFile { old, form } => close = super::file_dialogs::rename_file(ui, cx, old, form, snap, stage_renames, msgs),
-            Modal::Remote(form) => {
-                let fork_source = snap.and_then(|s| glowfly_model::state::forks::fork_source(s, connections));
-                close = super::remotes::dialog::show(ui, cx, form, snap, fork_source, idle, msgs);
-            }
-            Modal::AddFork(p) => close = super::remotes::fork_pick::show(ui, cx, p, snap, connections, idle, msgs),
-            Modal::CreateFork(f) => close = super::remotes::fork_create::show(ui, cx, f, snap, connections, idle, msgs),
-            Modal::GitFlowStart(form) => close = super::gitflow_dialog::start(ui, cx, form, snap, msgs),
-            Modal::GitFlowFinish(form) => close = super::gitflow_finish_dialog::finish(ui, cx, form, snap, idle, msgs),
-            Modal::Shortcuts { filter } => close = super::shortcuts::sheet(ui, cx, filter, keys),
-            Modal::Trust(p) => close = super::trust_dialog::show(ui, cx, p, msgs),
-            Modal::ConflictReport(r) => {
-                let remote = snap.is_some_and(|s| glowfly_model::state::conflict_check::is_remote(s, &r.request.target));
-                let on_head = snap.is_some_and(|s| glowfly_model::state::conflict_check::for_head(r, s));
-                close = super::conflict_check::report_modal(ui, cx, r, remote, on_head, idle, msgs);
-            }
-            Modal::OpPreview(d) => close = super::op_preview_dialog::show(ui, cx, d, &preview_env, msgs),
-            Modal::ForgeFilter(form) => close = super::forge_filter_dialog::show(ui, cx, form, fs, &repo_filters, msgs),
-            Modal::DeepLink(d) => close = super::deep_link_dialog::show(ui, cx, d, msgs),
-            Modal::CreateIssue(form) => close = super::issue::create_dialog::show(ui, cx, form, fs, msgs),
-            Modal::RewordCommit(form) => close = super::rebase::reword_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::About => close = super::menu_bar::about(ui, cx, git, super::menu_bar::ThisCopy { version, build }, msgs),
-            Modal::Notices => close = super::menu_bar::notices(ui, cx, msgs),
-            Modal::ReleaseNotes(d) => close = super::release_notes::show(ui, cx, d, msgs),
-            Modal::UndoCreated(form) => close = super::undo_dialog::created_branch(ui, cx, form, msgs),
-            Modal::ApplyPatch(form) => close = super::patch_apply_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::SavePatch(form) => close = super::patch_save_dialog::show(ui, cx, form, snap, idle, msgs),
-            Modal::FindRepos { filter } => {
-                let (rows, folders) = finder.as_ref().map(|(r, f)| (&r[..], &f[..])).unwrap_or_default();
-                let lists = super::repo_finder::FinderLists { rows, scan: repo_scan, folders };
-                close = super::repo_finder::show(ui, cx, filter, lists, msgs);
-            }
-            Modal::SyncRepos => close = super::repo_sync::show(ui, cx, repo_sync, msgs),
-            Modal::RenameTab(form) => close = super::tab_dialog::rename(ui, cx, form, msgs),
-            Modal::RepoGroup(form) => close = super::repo_group_dialog::show(ui, cx, form, msgs),
-            Modal::AddToGroup(form) => close = super::repo_group_picker::show(ui, cx, form, groups, msgs),
-            Modal::Mainline(form) => close = super::mainline_dialog::show(ui, cx, form, idle, msgs),
-            Modal::TrashOffer(o) => close = super::trash_offer_dialog::show(ui, cx, o, msgs),
-            Modal::AutoStash(ask) => close = super::auto_stash_dialog::show(ui, cx, ask, msgs),
-            Modal::SshKeygen => {
-                close = match ssh_page {
-                    Some(p) => super::prefs::ssh::keygen_dialog::show(ui, cx, p, msgs),
-                    None => true,
-                }
-            }
-        }
+        let cx = Cx { t, keyboard, key: egui::Id::new("glowfly-dialog").with(std::mem::discriminant(shown)) };
+        close = match copy.as_mut() {
+            Some(form) => modal_forms::draw(ui, cx, form, &env, msgs),
+            None => modal_notes::draw(ui, cx, shown, &env, view, msgs),
+        };
     });
     // Taken every frame, so a click that closed this dialog never reaches the next one.
     let closed = super::dialog_frame::take_closed(&resp);
     if layer == Layer::Under {
         return;
+    }
+    if let Some(form) = copy
+        && !shown.same_form(&form)
+    {
+        msgs.push(Msg::Edit(EditMsg::Dialog(DialogForm::new(form))));
     }
     if close {
         // The dialog closes before what it asked for runs, so a dialog that opens (the trust

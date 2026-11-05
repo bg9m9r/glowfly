@@ -291,7 +291,7 @@ pub struct RebasePlan {
 }
 
 /// The list to run, with the HEAD it was made for.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct StartRequest {
     pub head: Oid,
     pub upstream: Upstream,

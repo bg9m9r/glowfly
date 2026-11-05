@@ -154,7 +154,6 @@ pub struct SigningState {
     /// None while the list is loading.
     pub keys: Option<Vec<glowfly_core::signing::SigningKey>>,
     pub keys_error: Option<String>,
-    pub passphrase: String,
     pub generating: bool,
     /// Extend by 2 years is running.
     pub extending: bool,
@@ -169,7 +168,6 @@ pub struct PrefsState {
     pub int_provider: Provider,
     pub int_host: String,
     pub int_user: String,
-    pub int_token: String,
     pub int_busy: bool,
     pub int_error: Option<String>,
     pub jira_project: String,
@@ -211,7 +209,6 @@ impl PrefsState {
             int_provider: Provider::GitHub,
             int_host: String::new(),
             int_user: String::new(),
-            int_token: String::new(),
             int_busy: false,
             int_error: None,
             jira_project: String::new(),

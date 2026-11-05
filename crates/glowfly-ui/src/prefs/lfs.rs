@@ -34,7 +34,8 @@ pub struct LfsContext {
     pub lang: Lang,
 }
 
-pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec<Msg>) {
+/// `pattern` is the frame's copy of the new pattern field.
+pub fn lfs_page(ui: &mut Ui, page: &LfsPage, pattern: &mut String, cx: &LfsContext, msgs: &mut Vec<Msg>) {
     let t = cx.lang;
     let Some(repo) = cx.repo_name.as_deref() else {
         help(ui, t.tr("lfs.page.no_repo.help"));
@@ -62,7 +63,7 @@ pub fn lfs_page(ui: &mut Ui, page: &mut LfsPage, cx: &LfsContext, msgs: &mut Vec
     match &status.version {
         None => missing(ui, t, &status, msgs),
         Some(_) if !status.initialized => not_set_up(ui, t, &status, repo, busy, msgs),
-        Some(version) => set_up(ui, page, &status, version, cx, msgs),
+        Some(version) => set_up(ui, page, pattern, &status, version, cx, msgs),
     }
 }
 
@@ -133,7 +134,7 @@ fn not_set_up(ui: &mut Ui, t: Lang, status: &LfsStatus, repo: &str, busy: bool, 
 }
 
 /// The repository is set up: patterns, the new-pattern field, .gitattributes and commands.
-fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx: &LfsContext, msgs: &mut Vec<Msg>) {
+fn set_up(ui: &mut Ui, page: &LfsPage, pattern: &mut String, status: &LfsStatus, version: &str, cx: &LfsContext, msgs: &mut Vec<Msg>) {
     let (t, busy) = (cx.lang, cx.job.is_some());
     row(ui, t.tr("lfs.page.status.label"), |ui| {
         ui.label(RichText::new(t.trf("lfs.page.enabled.body", &[("version", &version)])).color(color::text()));
@@ -151,15 +152,13 @@ fn set_up(ui: &mut Ui, page: &mut LfsPage, status: &LfsStatus, version: &str, cx
         ui.horizontal(|ui| {
             // Always enabled: disabling it while a job (an auto-fetch, say) runs would take the
             // focus away mid-typing. Only Track waits for the job.
-            let r = text_field(ui, &mut page.new_pattern, t.tr("lfs.page.new_pattern.hint"));
-            if r.changed() {
-                page.pattern_error = None;
-            }
+            // A change clears the pattern's error (`PrefsState::apply`).
+            let r = text_field(ui, pattern, t.tr("lfs.page.new_pattern.hint"));
             submit = r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
             submit |= ui.add(buttons::secondary(t.tr("lfs.page.track.button")).enabled(!busy)).clicked();
         });
         if submit && !busy {
-            msgs.push(Msg::Lfs(LfsMsg::Track(page.new_pattern.clone())));
+            msgs.push(Msg::Lfs(LfsMsg::Track(pattern.clone())));
         }
         if let Some(e) = &page.pattern_error {
             warn(ui, e);

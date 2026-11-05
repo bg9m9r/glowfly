@@ -45,6 +45,7 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
                 st.palette = None;
             } else if may_open(st) {
                 st.palette = Some(Palette::default());
+                st.view.palette_list = Default::default();
             }
         }
         PaletteMsg::ClosePalette => st.palette = None,
@@ -52,13 +53,13 @@ pub(super) fn handle(st: &mut AppState, msg: PaletteMsg, now: Instant, fx: &mut 
             let len = palette::row_count(st);
             let Some(p) = st.palette.as_mut() else { return };
             p.selected = if len == 0 { 0 } else { (p.selected.min(len - 1) as isize + step).rem_euclid(len as isize) as usize };
-            p.scroll_to_selected = true;
+            st.view.palette_scroll = true;
         }
         PaletteMsg::PaletteJump(j) => {
             let len = palette::row_count(st);
             let Some(p) = st.palette.as_mut() else { return };
             p.selected = crate::state::palette::nav::jumped(p.selected, len, j);
-            p.scroll_to_selected = true;
+            st.view.palette_scroll = true;
         }
         PaletteMsg::PaletteHover(i) => {
             if let Some(p) = st.palette.as_mut() {
@@ -139,12 +140,13 @@ fn open_step(st: &mut AppState, mode: Mode) -> bool {
             return false;
         }
         st.palette = Some(Palette::default());
+        st.view.palette_list = Default::default();
     }
     let Some(p) = st.palette.as_mut() else { return false };
     p.mode = mode;
     p.query.clear();
     p.selected = 0;
-    p.scroll_to_selected = false;
+    st.view.palette_scroll = false;
     st.palette_gen += 1;
     true
 }

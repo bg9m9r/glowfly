@@ -17,24 +17,27 @@ use eframe::egui::{self, Frame, Margin, RichText, Ui};
 use glowfly_core::forge::Entry;
 use glowfly_core::settings::Settings;
 use glowfly_core::text::printable;
-use glowfly_model::msg::{IssueMsg, Msg};
-use glowfly_model::state::AppState;
+use glowfly_model::msg::{EditMsg, IssueMsg, Msg};
 use glowfly_model::state::issue::{Details, IssueView};
 use glowfly_model::state::issue_comment::POSTING;
 use glowfly_model::state::pull_request::description_text;
+use glowfly_model::state::{AppState, ViewState};
 
 const LOADING: &str = "Loading the issue…";
 
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let trusted = st.runs_git_unasked();
-    let focus = std::mem::take(&mut st.view.issue_comment_focus);
-    if let Some(v) = st.session.issue.view.as_mut().filter(|v| matches!(v.details, Details::Loaded(_))) {
+    let focus = std::mem::take(&mut view.issue_comment_focus);
+    let Some(v) = &st.session.issue.view else { return };
+    if matches!(v.details, Details::Loaded(_)) {
+        let mut fields = v.comment.fields();
         egui::TopBottomPanel::bottom("issue-comment-box")
             .frame(Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(0, 8)))
-            .show_inside(ui, |ui| comment_box::show(ui, v, trusted, focus, msgs));
+            .show_inside(ui, |ui| comment_box::show(ui, v, &mut fields, trusted, focus, msgs));
+        if fields != v.comment.fields() {
+            msgs.push(Msg::Edit(EditMsg::IssueComment { key: v.key.clone(), fields }));
+        }
     }
-    let st = &*st;
-    let Some(v) = &st.session.issue.view else { return };
     egui::ScrollArea::vertical().id_salt("issue-conversation").auto_shrink([false, false]).show(ui, |ui| match &v.details {
         Details::Unsupported => {
             let text =

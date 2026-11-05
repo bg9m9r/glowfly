@@ -254,7 +254,7 @@ impl GlowflyApp {
         }
         self.phase("draw", |app| {
             app.input(ctx, &mut msgs);
-            glowfly_ui::draw(ctx, &mut app.st, &mut app.cache, &mut msgs);
+            app.st.with_view(|st, view| glowfly_ui::draw(ctx, st, view, &mut app.cache, &mut msgs));
             app.draw_overlay(ctx);
         });
         // Debug builds: warn once about each character drawn as a box.

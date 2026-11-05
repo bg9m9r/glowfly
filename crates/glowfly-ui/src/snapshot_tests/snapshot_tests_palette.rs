@@ -52,7 +52,7 @@ fn palette_dark() {
 #[test]
 fn palette_filtered_light() {
     let (mut st, dir) = with_repo(ThemeChoice::Light, "palette-light");
-    st.palette = Some(Palette { query: "ch".into(), selected: 1, scroll_to_selected: false, ..Default::default() });
+    st.palette = Some(Palette { query: "ch".into(), selected: 1, ..Default::default() });
     render("palette_filtered_light", st, false);
     remove_fixture(&dir);
 }
@@ -267,11 +267,12 @@ fn palette_takes_typing_over_an_empty_search_bar() {
     remove_fixture(&dir);
 }
 
-/// A palette in the file finder over `items`, with `query` typed.
+/// A palette in the file finder over `items`, with `query` typed (ranked, as update leaves it).
 fn finder(items: Items, query: &str, selected: usize) -> Palette {
     let mut pk = Pick::new(PickKind::FileHistory);
     pk.set_items(items);
-    Palette { query: query.into(), selected, mode: Mode::Pick(pk), ..Default::default() }
+    pk.refresh(query);
+    Palette { query: query.into(), selected, mode: Mode::Pick(pk) }
 }
 
 fn queue_prompt(st: &mut AppState) {
@@ -308,6 +309,7 @@ fn palette_blame_finder() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-blame");
     let mut pk = Pick::new(PickKind::Blame);
     pk.set_items(Items::Ready(repo::tracked_paths(&dir).unwrap()));
+    pk.refresh("");
     st.palette = Some(Palette { mode: Mode::Pick(pk), ..Default::default() });
     let mut h = harness(st, true);
     h.run();
@@ -390,7 +392,8 @@ fn palette_files_loading_and_error() {
 }
 
 fn set_items(h: &mut Harness<'_, (AppState, Vec<Msg>)>, items: Items) {
-    if let Some(Palette { mode: Mode::Pick(pk), .. }) = h.state_mut().0.palette.as_mut() {
+    if let Some(Palette { mode: Mode::Pick(pk), query, .. }) = h.state_mut().0.palette.as_mut() {
         pk.set_items(items);
+        pk.refresh(query);
     }
 }

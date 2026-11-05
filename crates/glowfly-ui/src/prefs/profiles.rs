@@ -21,6 +21,7 @@ use glowfly_core::settings::{Profile, ProfileId, Settings};
 use glowfly_model::msg::Msg;
 use glowfly_model::profile::ProfileMsg;
 use glowfly_model::state::prefs::GitConfigValues;
+use glowfly_model::state::prefs_fields::ProfileFields;
 use glowfly_model::state::profiles::{
     ADD_BUTTON, AddForm, COPY_ACCOUNTS, COPY_CURRENT, CURRENT_CHIP, CURRENT_HELP, DELETE_BUTTON, DELETE_DISABLED, KEY_HELP, LIST_HELP,
     LIST_LABEL, NAME_LABEL, NEW_LABEL, NEW_NAME_HINT, NO_IDENTITY, OTHER_HELP, ProfilesPage, RENAME_BUTTON, RenameForm, SWITCH_BUTTON,
@@ -31,10 +32,13 @@ use glowfly_model::state::profiles::{
 const LIST_W: f32 = 640.0;
 const ROW_H: f32 = 44.0;
 
+/// `f` is the frame's copy of the identity fields and the open rename and New profile forms.
+#[allow(clippy::too_many_arguments)]
 pub fn profile_page(
     ui: &mut Ui,
     settings: &Settings,
-    page: &mut ProfilesPage,
+    page: &ProfilesPage,
+    f: &mut ProfileFields,
     git: &GitConfigValues,
     switching: Option<ProfileId>,
     here: Option<RepoHere<'_>>,
@@ -44,9 +48,9 @@ pub fn profile_page(
     if let Some(here) = &here {
         here_row(ui, settings, here, list_width(ui), msgs);
     }
-    list(ui, settings, page, switching, msgs);
-    add_form(ui, settings.lang(), page, msgs);
-    fields(ui, settings, page, git, here.as_ref(), msgs);
+    list(ui, settings, page, f, switching, msgs);
+    add_form(ui, settings.lang(), f, msgs);
+    fields(ui, settings, page, f, git, here.as_ref(), msgs);
 }
 
 /// Wider than the field column where there is room, never past the content column.
@@ -54,35 +58,44 @@ fn list_width(ui: &Ui) -> f32 {
     (ui.available_width() - super::field_left(ui)).clamp(0.0, LIST_W)
 }
 
-fn list(ui: &mut Ui, settings: &Settings, page: &mut ProfilesPage, switching: Option<ProfileId>, msgs: &mut Vec<Msg>) {
+fn list(ui: &mut Ui, settings: &Settings, page: &ProfilesPage, f: &mut ProfileFields, switching: Option<ProfileId>, msgs: &mut Vec<Msg>) {
     let width = list_width(ui);
     row(ui, LIST_LABEL, |ui| {
         ui.set_max_width(width);
         ui.spacing_mut().item_spacing.y = 4.0;
         for p in &settings.profiles {
             let current = settings.active_profile == Some(p.id);
-            profile_row(ui, p, current, page, switching, msgs);
+            profile_row(ui, p, current, page.selected, f, switching, msgs);
         }
         ui.add_space(2.0);
         help(ui, LIST_HELP);
-        if page.adding.is_none() {
+        if f.adding.is_none() {
             ui.add_space(4.0);
             if ui.add(buttons::secondary(ADD_BUTTON)).clicked() {
-                page.adding = Some(AddForm::new());
+                f.adding = Some(AddForm::new());
             }
         }
     });
 }
 
 /// One profile: marker, name (or its rename field), chip, identity line, and the buttons.
-fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage, switching: Option<ProfileId>, msgs: &mut Vec<Msg>) {
+/// `selected` is the profile the page shows.
+fn profile_row(
+    ui: &mut Ui,
+    p: &Profile,
+    current: bool,
+    selected: Option<ProfileId>,
+    page: &mut ProfileFields,
+    switching: Option<ProfileId>,
+    msgs: &mut Vec<Msg>,
+) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &p.name));
     if resp.clicked() {
         msgs.push(Msg::Profile(ProfileMsg::Select(p.id)));
     }
     let painter = ui.painter_at(rect);
-    let fill = if page.selected == Some(p.id) {
+    let fill = if selected == Some(p.id) {
         color::selected()
     } else if resp.hovered() {
         color::hover()
@@ -151,7 +164,7 @@ fn profile_row(ui: &mut Ui, p: &Profile, current: bool, page: &mut ProfilesPage,
 }
 
 /// The inline rename field: Enter or leaving it commits, Esc cancels.
-fn rename_field(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
+fn rename_field(ui: &mut Ui, page: &mut ProfileFields, msgs: &mut Vec<Msg>) {
     let Some(form) = page.renaming.as_mut() else { return };
     let r = ui.add(controls::SizedField::new(ControlSize::Regular, egui::TextEdit::singleline(&mut form.name)).width(ui.available_width()));
     if form.focus {
@@ -167,7 +180,7 @@ fn rename_field(ui: &mut Ui, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
     }
 }
 
-fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) {
+fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfileFields, msgs: &mut Vec<Msg>) {
     let Some(form) = page.adding.as_mut() else { return };
     let mut cancel = false;
     row(ui, NEW_LABEL, |ui| {
@@ -200,7 +213,8 @@ fn add_form(ui: &mut Ui, t: Lang, page: &mut ProfilesPage, msgs: &mut Vec<Msg>) 
 fn fields(
     ui: &mut Ui,
     settings: &Settings,
-    page: &mut ProfilesPage,
+    page: &ProfilesPage,
+    f: &mut ProfileFields,
     git: &GitConfigValues,
     here: Option<&RepoHere<'_>>,
     msgs: &mut Vec<Msg>,
@@ -211,15 +225,15 @@ fn fields(
         ui.label(RichText::new(editing_caption(&p.name, current)).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
     });
     row(ui, "Author name", |ui| {
-        text_field(ui, &mut page.author_name, "Your name");
+        text_field(ui, &mut f.author_name, "Your name");
     });
     row(ui, "Author email", |ui| {
-        text_field(ui, &mut page.author_email, "you@example.com");
+        text_field(ui, &mut f.author_email, "you@example.com");
         help(ui, if current { CURRENT_HELP } else { OTHER_HELP });
     });
     row(ui, "Signing key", |ui| {
         let hint = key_hint(p.signing_key.as_deref(), &git.signing_key);
-        text_field(ui, &mut page.signing_key, &hint);
+        text_field(ui, &mut f.signing_key, &hint);
         help(ui, KEY_HELP);
     });
     rules_rows(ui, p, page, here, list_width(ui), msgs);

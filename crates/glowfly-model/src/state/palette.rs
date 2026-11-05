@@ -1,6 +1,8 @@
 //! The command palette (Ctrl+P): whether it is open, what is typed, which row is selected, and
 //! the commands it lists for the query. App-wide, never parked with a tab. The view and `update`
-//! get the list through `listed_open`, which keeps it between frames (`cache`); the tests
+//! get the list through `listed_open`, which keeps it between frames in the memo both share
+//! (`ViewState::palette_list`, a `cache::CommandCache`); a sub-list is ranked for the query by
+//! update (`settle`), and the view only draws the ranking. The tests
 //! build it from scratch through `entries` and `listed` (or `shown`). Both keep at
 //! most `MAX_COMMAND_ROWS` of the ranked matches; the commands themselves are
 //! in `commands`. Some commands open a second step: a list of items for that command
@@ -11,7 +13,7 @@
 //! query, recency only breaks score ties and there are no headings.
 
 pub mod bindings;
-mod cache;
+pub mod cache;
 pub mod commands;
 pub(crate) mod custom;
 pub(crate) mod files;
@@ -33,6 +35,7 @@ pub use kinds::{InputKind, PickKind, StashAction};
 use super::AppState;
 use super::forge::ForgeState;
 use cache::{CommandCache, by_recency};
+
 use glowfly_core::fuzzy;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::StashInfo;
@@ -43,12 +46,8 @@ use suggested::grouped;
 pub struct Palette {
     pub query: String,
     pub selected: usize,
-    /// Set by update after a move; the view scrolls the row into view and clears it.
-    pub scroll_to_selected: bool,
     /// The command list, or a command's sub-list.
     pub mode: Mode,
-    /// The command list from the last frame (`listed_open`).
-    pub commands: CommandCache,
 }
 
 /// What the palette lists.
@@ -199,16 +198,14 @@ pub fn listed(st: &AppState, query: &str) -> Listed {
     Listed { rows, total, groups }
 }
 
-/// The open palette's command list for its query: `listed`, kept between frames by the
-/// palette's `CommandCache`. Empty while the palette is closed.
-pub fn listed_open(st: &mut AppState) -> Listed {
-    let Some(p) = st.palette.as_mut() else { return Listed { rows: Vec::new(), total: 0, groups: Vec::new() } };
-    let (query, mut cache) = (p.query.clone(), std::mem::take(&mut p.commands));
-    let listed = cache.listed(st, &query);
-    if let Some(p) = st.palette.as_mut() {
-        p.commands = cache;
+/// The open palette's command list for `query` (its own, or the one the view is drawing):
+/// `listed`, kept between frames by `cache` (`ViewState::palette_list`). Empty while the palette
+/// is closed.
+pub fn listed_open(st: &AppState, cache: &mut CommandCache, query: &str) -> Listed {
+    if st.palette.is_none() {
+        return Listed { rows: Vec::new(), total: 0, groups: Vec::new() };
     }
-    listed
+    cache.listed(st, query)
 }
 
 /// The rows of `listed`.
@@ -242,11 +239,26 @@ pub fn row_count(st: &mut AppState) -> usize {
     let Some(p) = st.palette.as_ref() else { return 0 };
     let query = p.query.clone();
     match p.mode {
-        Mode::Commands => return listed_open(st).rows.len(),
+        Mode::Commands => {
+            let mut cache = std::mem::take(&mut st.view.palette_list);
+            let n = listed_open(st, &mut cache, &query).rows.len();
+            st.view.palette_list = cache;
+            return n;
+        }
         Mode::Input(_) => return 0,
         Mode::Pick(_) => {}
     }
-    let Some(Palette { mode: Mode::Pick(pick), .. }) = st.palette.as_mut() else { return 0 };
-    pick.refresh(&query);
-    pick.ranked().map_or(0, |r| r.hits.len())
+    settle(st);
+    match st.palette.as_ref().map(|p| &p.mode) {
+        Some(Mode::Pick(pick)) => pick.ranked().map_or(0, |r| r.hits.len()),
+        _ => 0,
+    }
+}
+
+/// After every update: an open sub-list is ranked for the query (cheap while neither changed),
+/// so the view only draws the ranking.
+pub fn settle(st: &mut AppState) {
+    if let Some(Palette { mode: Mode::Pick(pick), query, .. }) = st.palette.as_mut() {
+        pick.refresh(query);
+    }
 }

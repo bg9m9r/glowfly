@@ -164,7 +164,7 @@ fn with_stash(body: String, stash: bool) -> String {
 
 /// The Reword dialog (`Modal::RewordCommit`), which is also the Squash dialog: the prepared
 /// plan and the message being typed (for a squash, the combined commit's).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RewordForm {
     pub workdir: PathBuf,
     pub plan: QuickPlan,

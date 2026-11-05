@@ -181,7 +181,7 @@ fn move_wraps_and_resets() {
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(-1)));
     let p = st.palette.as_ref().unwrap();
     assert_eq!(p.selected, 36);
-    assert!(p.scroll_to_selected);
+    assert!(st.view.palette_scroll);
     run(&mut st, Msg::Palette(PaletteMsg::PaletteMove(1)));
     assert_eq!(st.palette.as_ref().unwrap().selected, 0);
 

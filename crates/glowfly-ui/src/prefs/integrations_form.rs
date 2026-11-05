@@ -2,6 +2,7 @@
 //! Credential Manager where the service supports it, or a host, user and token), both aligned
 //! with the field column.
 
+use super::integrations::SignIn;
 use super::{field_left, field_width, help, primary_button, row, text_field, trello};
 use crate::theme::sizes::ControlSize;
 use crate::theme::tokens::radius;
@@ -12,7 +13,6 @@ use eframe::egui::{self, Align, Layout, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::forge::{self, Account, Connection, Provider, Target};
 use glowfly_core::i18n::Lang;
 use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg};
-use glowfly_model::state::PrefsState;
 
 /// Why Connect waits: the host isn't known yet.
 const NO_HOST: &str = "Enter the host domain first";
@@ -55,9 +55,10 @@ pub fn account_card(ui: &mut Ui, c: &Connection, msgs: &mut Vec<Msg>) {
 }
 
 /// The sign-in form; with `cancel` (an account is already connected) it ends with Cancel.
-pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, msgs: &mut Vec<Msg>) {
+pub fn sign_in_form(ui: &mut Ui, t: Lang, form: SignIn<'_>, cancel: bool, msgs: &mut Vec<Msg>) {
+    let SignIn { prefs, fields, token } = form;
     let provider = prefs.int_provider;
-    let account = forge::parse_host(provider, &prefs.int_host).map(|(host, org)| Account { provider, host, org });
+    let account = forge::parse_host(provider, &fields.int_host).map(|(host, org)| Account { provider, host, org });
     if provider.supports_gcm() {
         aligned(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
@@ -84,7 +85,7 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, 
     }
     if provider.fixed_host().is_none() {
         row(ui, "Host domain", |ui| {
-            text_field(ui, &mut prefs.int_host, provider.host_hint());
+            text_field(ui, &mut fields.int_host, provider.host_hint());
         });
     }
     let is_trello = provider == Provider::Trello;
@@ -95,7 +96,7 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, 
                 _ if is_trello => "32-character key",
                 _ => "username",
             };
-            text_field(ui, &mut prefs.int_user, hint);
+            text_field(ui, &mut fields.int_user, hint);
             if is_trello {
                 trello::key_link(ui, msgs);
             }
@@ -109,11 +110,11 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, 
     };
     row(ui, token_label, |ui| {
         let w = super::fit(ui, super::FIELD_W);
-        let edit = egui::TextEdit::singleline(&mut prefs.int_token).password(true);
+        let edit = egui::TextEdit::singleline(&mut *token).password(true);
         ui.add(controls::SizedField::new(ControlSize::Regular, edit).width(w));
         help(ui, &format!("{} Stored in the Windows Credential Manager, never in Glowfly's settings file.", provider.token_help()));
         if is_trello {
-            trello::token_link(ui, &prefs.int_user, msgs);
+            trello::token_link(ui, &fields.int_user, msgs);
         } else if let Some(url) = account.as_ref().and_then(Target::token_url)
             && ui.link("Create a token").clicked()
         {
@@ -122,13 +123,13 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, prefs: &mut PrefsState, cancel: bool, 
     });
     aligned(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
-            let needs_user = matches!(provider, Provider::JiraCloud | Provider::Trello) && prefs.int_user.trim().is_empty();
-            let valid = !prefs.int_token.trim().is_empty() && account.is_some() && !prefs.int_busy && !needs_user;
+            let needs_user = matches!(provider, Provider::JiraCloud | Provider::Trello) && fields.int_user.trim().is_empty();
+            let valid = !token.trim().is_empty() && account.is_some() && !prefs.int_busy && !needs_user;
             if primary_button(ui, "Connect", valid, None).clicked()
                 && let Some(a) = &account
             {
-                let user = Some(prefs.int_user.trim().to_owned()).filter(|u| !u.is_empty());
-                msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user, token: Some(prefs.int_token.trim().to_owned()) }));
+                let user = Some(fields.int_user.trim().to_owned()).filter(|u| !u.is_empty());
+                msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user, token: Some(token.trim().to_owned()) }));
             }
             if cancel && ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {
                 msgs.push(Msg::Prefs(PrefsMsg::ShowAccountForm(false)));

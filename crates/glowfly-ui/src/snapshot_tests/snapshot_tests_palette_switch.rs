@@ -17,7 +17,8 @@ fn palette_switch_branch() {
     let snap = st.snap.as_mut().unwrap();
     let oid = snap.head_oid.unwrap();
     snap.remotes = vec![("origin".into(), vec![("feature/sidebar".into(), oid)])];
-    let pk = Pick::checkouts(snap);
+    let mut pk = Pick::checkouts(snap);
+    pk.refresh("");
     st.palette = Some(Palette { mode: Mode::Pick(pk), ..Default::default() });
     let mut h = harness(st, true);
     h.run();

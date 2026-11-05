@@ -44,10 +44,10 @@ fn prefs_ssh_keygen_errors() {
     let mut st = dialog(ThemeChoice::Light);
     let p = ssh_mut(&mut st);
     p.location = format!("{HOME}/.ssh/id_ed25519");
-    p.passphrase = "one".into();
-    p.confirm = "two".into();
     p.touched = Touched::all();
     p.form_error = Some("ssh-keygen failed: Saving key failed: Permission denied".into());
+    st.view.secrets.ssh_passphrase = "one".into();
+    st.view.secrets.ssh_confirm = "two".into();
     let mut h = harness(st, false);
     h.run();
     assert!(h.get_by_label("Generate key").is_disabled());

@@ -39,7 +39,7 @@ impl QuickEdit {
 }
 
 /// An edit ready to run.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct QuickPlan {
     pub edit: QuickEdit,
     /// The list to run; `autostash` is false (the caller decides after asking).
