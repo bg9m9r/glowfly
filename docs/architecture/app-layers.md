@@ -393,3 +393,4 @@ source file, update its line here. Features that span every layer are in
 - `journey/explore/scene.rs`: the fixture repositories built from a seed (app with conflicting branches, lib).
 - `journey/explore/shadow.rs`: the markers of live edits and the commit summaries a session expects to find again.
 - `journey/explore/reach.rs`: whether markers and summaries are still reachable in a repository (no lost work); `reach_tests.rs` tests it.
+- `journey/explore/probe.rs`: reads a repository (head, branches, stashes, state, conflicted, changed, staged) and tells whether an action took effect from two readings; `probe_tests.rs` tests it.

@@ -6,8 +6,10 @@
 //! - `scene`: the fixture repositories built from a seed.
 //! - `shadow`: the markers of live edits the session expects to find again.
 //! - `reach`: whether markers and commit summaries are reachable in a repository.
+//! - `probe`: whether a step's action took effect, from readings of the repository around it.
 
 mod action;
+mod probe;
 mod reach;
 mod rng;
 mod scene;
