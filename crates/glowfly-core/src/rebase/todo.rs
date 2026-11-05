@@ -2,11 +2,7 @@
 //! and combined message files), recognising the lines Glowfly adds, and installing it over the
 //! list git generated.
 
-use super::{
-    CHANGED, COMBINE_AFTER_MERGE, COMBINE_AFTER_STEP, EMPTY_COMBINED, EMPTY_EXEC, EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES,
-    LOST_TO_RESET, RebaseAction, SequenceEditor, TodoItem, TodoStep, merges,
-};
-use crate::error::{Error, Result};
+use super::{RebaseAction, RebaseError, SequenceEditor, TodoItem, TodoStep, merges};
 use git2::Oid;
 use std::path::{Path, PathBuf};
 
@@ -63,7 +59,7 @@ pub fn default_combined(steps: &[TodoStep], head: usize) -> String {
 }
 
 /// Why the list can't run as it is; see [`problem_with`].
-pub fn problem(steps: &[TodoStep]) -> Option<String> {
+pub fn problem(steps: &[TodoStep]) -> Option<RebaseError> {
     problem_with(steps, false)
 }
 
@@ -72,12 +68,12 @@ pub fn problem(steps: &[TodoStep]) -> Option<String> {
 /// exec or break step (or a label, reset or merge), a commit a later reset would throw away, an
 /// empty typed reword or combined message, or an exec command that is empty or longer than one
 /// line.
-pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<String> {
+pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<RebaseError> {
     let dropped = |s: &TodoStep| s.item().is_some_and(|i| i.action == RebaseAction::Drop);
     let mut kept = first_may_combine;
     for step in steps {
         match step {
-            TodoStep::Commit(i) if i.action.combines() && !kept => return Some(FIRST_COMBINES.into()),
+            TodoStep::Commit(i) if i.action.combines() && !kept => return Some(RebaseError::FirstCombines),
             TodoStep::Commit(_) | TodoStep::Merge(_) if !dropped(step) => kept = true,
             _ => {}
         }
@@ -86,8 +82,8 @@ pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<Strin
     for step in steps {
         let combines = step.commit().is_some_and(|i| i.action.combines());
         match before {
-            Some(TodoStep::Exec(_) | TodoStep::Break) if combines => return Some(COMBINE_AFTER_STEP.into()),
-            Some(b) if combines && b.is_structure() => return Some(COMBINE_AFTER_MERGE.into()),
+            Some(TodoStep::Exec(_) | TodoStep::Break) if combines => return Some(RebaseError::CombineAfterStep),
+            Some(b) if combines && b.is_structure() => return Some(RebaseError::CombineAfterMerge),
             _ => {}
         }
         if !dropped(step) && !matches!(step, TodoStep::UpdateRef(_)) {
@@ -95,23 +91,23 @@ pub fn problem_with(steps: &[TodoStep], first_may_combine: bool) -> Option<Strin
         }
     }
     if merges::loses_commit(steps) {
-        return Some(LOST_TO_RESET.into());
+        return Some(RebaseError::LostToReset);
     }
     let commits = || steps.iter().filter_map(TodoStep::item);
     if commits().any(|i| i.action == RebaseAction::Reword && i.new_message.as_ref().is_some_and(|m| m.trim().is_empty())) {
-        return Some(EMPTY_REWORD.into());
+        return Some(RebaseError::EmptyReword);
     }
     let empty_combined = |(n, s): (usize, &TodoStep)| {
         s.commit().and_then(|i| i.combined_message.as_ref()).is_some_and(|m| m.trim().is_empty()) && group_end(steps, n).is_some()
     };
     if steps.iter().enumerate().any(empty_combined) {
-        return Some(EMPTY_COMBINED.into());
+        return Some(RebaseError::EmptyCombined);
     }
     let execs = || steps.iter().filter_map(|s| if let TodoStep::Exec(c) = s { Some(c) } else { None });
     if execs().any(|c| c.trim().is_empty()) {
-        return Some(EMPTY_EXEC.into());
+        return Some(RebaseError::EmptyExec);
     }
-    execs().any(|c| c.contains(['\n', '\r'])).then(|| EXEC_ONE_LINE.into())
+    execs().any(|c| c.contains(['\n', '\r'])).then_some(RebaseError::ExecOneLine)
 }
 
 /// Whether running `steps` would replay `original` as it is: the same steps in the same order,
@@ -344,17 +340,17 @@ pub fn listed_oids(text: &str) -> Vec<String> {
 /// and the counts must match. Both must also move the same branches (`update-ref` lines, which
 /// git writes with `rebase.updateRefs`; never one git left out, such as a branch checked out in
 /// another worktree). On a mismatch git's todo is left as it is.
-pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<()> {
+pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<(), RebaseError> {
     // Read leniently: a branch name that isn't UTF-8 is then caught by its update-ref line.
     let gits = String::from_utf8_lossy(&std::fs::read(git_todo)?).into_owned();
     let theirs = listed_oids(&gits);
     let text = std::fs::read_to_string(prepared)?;
     let ours = listed_oids(&text);
     if theirs.len() != ours.len() {
-        return Err(Error::Unsupported(CHANGED.into()));
+        return Err(RebaseError::Changed);
     }
     if let Some(why) = super::update_refs::refs_problem(&gits, &text) {
-        return Err(Error::Unsupported(why));
+        return Err(why);
     }
     let mut used = vec![false; ours.len()];
     for t in &theirs {
@@ -362,7 +358,7 @@ pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<()> {
         let mut matches = ours.iter().enumerate().filter(|(_, o)| o.to_ascii_lowercase().starts_with(&t)).map(|(i, _)| i);
         match (matches.next(), matches.next()) {
             (Some(i), None) if !used[i] => used[i] = true,
-            _ => return Err(Error::Unsupported(CHANGED.into())),
+            _ => return Err(RebaseError::Changed),
         }
     }
     crate::persist::atomic_write(git_todo, text.as_bytes())?;

@@ -7,11 +7,12 @@ use super::ops::Started;
 use super::rebase::{launch, refuse};
 use crate::effect::{Effect, RebaseEffect};
 use crate::msg::{Msg, RebaseMsg};
+use crate::state::error_words::typed;
 use crate::state::rebase::{JOB_RUNNING, STASH_LINE, needs_stash, open_blocker};
 use crate::state::rebase_quick::{RewordForm, drop_question, label, undo_detail};
 use crate::state::{AppState, Modal};
 use glowfly_core::paths::same_spelling;
-use glowfly_core::rebase::{QuickEdit, QuickPlan};
+use glowfly_core::rebase::{QuickEdit, QuickPlan, RebaseError};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -33,13 +34,13 @@ pub(super) fn edit(st: &mut AppState, edit: QuickEdit, now: Instant, fx: &mut Ve
 
 /// The prepared edit: a reword or a squash opens its message dialog, a drop asks. Ignored for
 /// another tab, or when a dialog opened meanwhile.
-pub(super) fn prepared(st: &mut AppState, workdir: PathBuf, result: Result<QuickPlan, String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn prepared(st: &mut AppState, workdir: PathBuf, result: Result<QuickPlan, RebaseError>, now: Instant, fx: &mut Vec<Effect>) {
     if !st.workdir().is_some_and(|w| same_spelling(&w, &workdir)) || st.modal.is_some() {
         return;
     }
     let plan = match result {
         Ok(p) => p,
-        Err(e) => return refuse(st, e, now),
+        Err(e) => return refuse(st, typed::rebase(st.settings.lang(), &e), now),
     };
     let stash = st.snap.as_ref().is_some_and(needs_stash);
     match plan.edit {

@@ -45,7 +45,7 @@ source file, update its line here. Features that span every layer are in
 - `msg/layout.rs`: messages for the window's zoom, full screen, showing or hiding its panels and how the changed-file lists show their files (update/layout.rs).
 - `msg/recent.rs`: messages for the recent and favorite repository lists (update/recent.rs).
 - `msg/repos.rs`: messages for finding repositories in project folders, and fetching or pulling many listed repositories at once (update/repos.rs).
-- `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/commit.rs, update/undo.rs, update/stash.rs).
+- `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/local_done.rs, update/commit.rs, update/undo.rs, update/stash.rs).
 
 ## `effect/`: effects
 
@@ -287,10 +287,11 @@ source file, update its line here. Features that span every layer are in
 - `update/graph_filter.rs`: hidden and soloed refs in the graph, saved per repository: changing them saves the settings and reloads; each load drops refs that no longer exist.
 - `update/history_find.rs`: moving within the file history's File view: find in the shown version and go to line, as the blame view does (`blame_find.rs`).
 - `update/history_view.rs`: the history's right panel: the selected file of a folder entry (and stepping through its files), the Diff / File toggle and the File view's Text / Preview switch (both remembered in the settings), and the File view's text of the selected version (`Effect::LoadFileText`).
-- `update/inactive.rs`: results for a tab that is no longer active: what each area keeps (`Msg::on_inactive`).
+- `update/inactive.rs`: results for a tab that is no longer active: what each area keeps (`Msg::on_inactive`), a failed write worded in that tab's log with its undo (`Inactive::WriteFailed`).
 - `update/issue_comment.rs`: posting the issue panel's comment box and quoting a comment into it; the reply appends the posted comment or keeps the draft with the reason, also for a parked tab's panel or the draft kept for a closed one.
 - `update/issue_create.rs`: the Create issue dialog: opening it for the active repository's tracker, loading the labels, people, types and epics it offers (per Jira project), creating the issue, and the reply: logged and toasted with a View action, cached, the ISSUES list refreshed, and the New branch dialog opened when asked.
 - `update/keys.rs`: Preferences > Keyboard: recording a key for an action, checking it (`keymap::check`), settling a clash by swapping or taking the key, removing keys and resetting them.
+- `update/local_done.rs`: a staging, discard or conflict change's result (`StageMsg::LocalOpDone`, `LocalOpFailed`): the failure worded in the user's language for the log, the undo recorded, then the conflict view, the WIP list and the status catch up.
 - `update/logs_copy.rs`: the logs panel's Copy entry (the row menu, the open row's Copy) and Copy log (the header's More menu, the row menu).
 - `update/logs_export.rs`: export logs: ask where to save (a worker thread runs the dialog), then the log worker writes every log as one bundle after the appends queued before it (runner/logs.rs), under a header naming the versions and the platform for a bug report.
 - `update/palette.rs`: the command palette: opening and closing it, moving the selection, running a command through the message the rest of the app uses for it (remembering recently run ones), and the second steps two-step commands open (the file finder, the stash, profile and assigned-issue sub-lists, a stash message, a shallow clone's commit count).

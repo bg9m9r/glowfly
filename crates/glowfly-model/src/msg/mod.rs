@@ -191,13 +191,33 @@ pub enum Inactive {
     /// A failure for that tab's activity log that still left an undoable change (both of the above).
     LogAndUndo { text: String, undo: glowfly_core::undo::Action },
     /// A working-tree file operation's result: a dialog may still be waiting for it.
-    WorkFile { op: FileOp, result: Result<WorkFileOk, String> },
+    WorkFile { op: FileOp, result: Result<WorkFileOk, glowfly_core::error::WriteFailed> },
+    /// A failed write for that tab's activity log, worded there, with its undo when it changed
+    /// files anyway.
+    WriteFailed { at: FailedWrite, error: glowfly_core::error::WriteFailed, undo: Option<glowfly_core::undo::Action> },
     /// A whole-history index build for that tab finished: the parked tab keeps the index.
     IndexBuilt { build: u64, result: Result<std::sync::Arc<glowfly_core::commit_index::CommitIndex>, glowfly_core::error::ReadFailed> },
     /// The conflicted files of that tab couldn't be read: for its activity log, worded there.
     ConflictFilesUnread(glowfly_core::error::ReadFailed),
     /// A load or whole status read for that tab: its tab keeps the counts it shows.
     Counts(crate::state::tabs::glance::CountsRead),
+}
+
+/// Which write failed, for the log line `Inactive::WriteFailed` words.
+#[derive(Clone, Debug, PartialEq)]
+pub enum FailedWrite {
+    /// A stage, unstage, discard or conflict change.
+    LocalOp,
+    /// A conflict change that failed partway: Undo puts back the files it changed.
+    LocalOpPartial,
+    Revert {
+        path: String,
+        what: RevertWhat,
+    },
+    /// Restoring `path` from a commit.
+    Restore {
+        path: String,
+    },
 }
 
 impl Msg {

@@ -130,7 +130,15 @@ fn restored_toasts_and_refreshes() {
     finish(&mut st, fx);
     assert!(st.toasts.last().unwrap().text.contains("before"));
 
-    let fx = run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: None }));
+    let fx = run(
+        &mut st,
+        Msg::Files(FilesMsg::FileRestored {
+            path: "a.txt".into(),
+            oid,
+            result: Err(glowfly_model::testing::write_said("boom")),
+            undo: None,
+        }),
+    );
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore a.txt: boom"));
     assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
     let _ = std::fs::remove_dir_all(&dir);
@@ -145,7 +153,15 @@ fn restore_marks_history_file_on_disk() {
 
     run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "old.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     assert!(!on_disk(&st), "another path");
-    run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: None }));
+    run(
+        &mut st,
+        Msg::Files(FilesMsg::FileRestored {
+            path: "a.txt".into(),
+            oid,
+            result: Err(glowfly_model::testing::write_said("boom")),
+            undo: None,
+        }),
+    );
     assert!(!on_disk(&st), "a failed restore");
     run(&mut st, Msg::Files(FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Ok(RestoredFrom::Commit), undo: None }));
     assert!(on_disk(&st), "Open and Show become available in the history");
@@ -155,7 +171,12 @@ fn restore_marks_history_file_on_disk() {
 #[test]
 fn scoped_error_for_inactive_tab_is_logged() {
     let (mut st, dir) = loaded("files-scoped");
-    let msg = Msg::Files(FilesMsg::FileRestored { path: "b.txt".into(), oid: head(&dir), result: Err("in the way".into()), undo: None });
+    let msg = Msg::Files(FilesMsg::FileRestored {
+        path: "b.txt".into(),
+        oid: head(&dir),
+        result: Err(glowfly_model::testing::write_said("in the way")),
+        undo: None,
+    });
     let fx = run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == "Could not restore b.txt: in the way"));

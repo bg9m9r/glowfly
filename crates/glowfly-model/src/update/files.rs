@@ -8,6 +8,7 @@ use crate::effect::FilesEffect;
 use crate::effect::OsEffect;
 use crate::msg::FilesMsg;
 use crate::msg::Msg;
+use crate::state::error_words::typed;
 use crate::state::trust::Standing;
 use crate::state::{AppState, Modal, Selection};
 use git2::Oid;
@@ -85,7 +86,8 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
                 }
                 Err(e) => {
                     let key = st.keymap.hint(crate::keymap::BindingId::Undo).map(str::to_owned);
-                    st.log(false, crate::msg::restore_failed(&path, &e, undoable, key.as_deref()));
+                    let why = typed::write(st.settings.lang(), &e);
+                    st.log(false, crate::msg::restore_failed(&path, &why, undoable, key.as_deref()));
                 }
             }
             super::watch::settled(st, now);

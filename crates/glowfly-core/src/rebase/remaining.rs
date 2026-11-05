@@ -4,15 +4,12 @@
 //! belong to; the lines finishing a reword whose pick is already done are kept as they are.
 //! `update-ref` lines (`rebase.updateRefs`) become fixed steps and are written back as they are.
 
+use super::error::refusal_file;
 use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, in_group, listed_oids, own_line, problem_with};
 use super::update_refs::same_refs;
-use super::{
-    CHANGED, NOT_INTERACTIVE, REFS_CHANGED, RebaseAction, SequenceEditor, TODO_MOVED, TodoItem, TodoStep, UNSUPPORTED_STEPS,
-    UPDATE_REF_IN_GROUP, short,
-};
+use super::{RebaseAction, RebaseError, SequenceEditor, TodoItem, TodoStep, read_refusal, short};
 use crate::commit_encoding::MessageEncoding;
 use crate::commit_text::{self, Decoder};
-use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
 use std::collections::HashSet;
@@ -55,19 +52,19 @@ enum Parsed {
     Own(OwnLine),
 }
 
-fn interactive(workdir: &Path) -> Result<Repository> {
+fn interactive(workdir: &Path) -> Result<Repository, RebaseError> {
     let repo = Repository::open(workdir)?;
     if repo.state() != RepositoryState::RebaseInteractive {
-        return Err(Error::Unsupported(NOT_INTERACTIVE.into()));
+        return Err(RebaseError::NotInteractive);
     }
     Ok(repo)
 }
 
-/// The remaining steps of the interactive rebase in progress. Refused (`Unsupported`) when none
-/// is in progress, or when the todo holds commands the list can't show (label, reset, merge,
-/// `fixup -C`, an update-ref between a commit and a squash or fixup into it); a commit that
-/// can't be found is `NotFound`.
-pub fn remaining(workdir: &Path) -> Result<Remaining> {
+/// The remaining steps of the interactive rebase in progress. Refused when none is in progress,
+/// or when the todo holds commands the list can't show (label, reset, merge, `fixup -C`, an
+/// update-ref between a commit and a squash or fixup into it); a commit that can't be found is
+/// `CommitNotFound`.
+pub fn remaining(workdir: &Path) -> Result<Remaining, RebaseError> {
     let repo = interactive(workdir)?;
     let dir = repo.path().join("rebase-merge");
     let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap_or_default();
@@ -113,13 +110,13 @@ pub fn remaining(workdir: &Path) -> Result<Remaining> {
     // The list writes an update-ref inside a squash group after the group: refuse one the todo
     // has there, rather than move it.
     if (0..steps.len()).any(|i| matches!(steps[i], TodoStep::UpdateRef(_)) && in_group(&steps, i)) {
-        return Err(Error::Unsupported(UPDATE_REF_IN_GROUP.into()));
+        return Err(RebaseError::UpdateRefInGroup);
     }
     Ok(Remaining { branch, onto_label, done: done_commits, locked, locked_text, steps, first_may_combine: done_commits > 0, todo })
 }
 
 /// One todo line; `None` for a `noop`.
-fn parse(repo: &Repository, line: &str) -> Result<Option<Parsed>> {
+fn parse(repo: &Repository, line: &str) -> Result<Option<Parsed>, RebaseError> {
     let (cmd, rest) = line.split_once(char::is_whitespace).map_or((line, ""), |(c, r)| (c, r.trim()));
     let action = match cmd {
         "pick" | "p" => RebaseAction::Pick,
@@ -134,17 +131,18 @@ fn parse(repo: &Repository, line: &str) -> Result<Option<Parsed>> {
             let mut words = rest.split_whitespace();
             return match (words.next(), words.next()) {
                 (Some(r), None) if r.starts_with("refs/") => Ok(Some(Parsed::Step(TodoStep::UpdateRef(r.to_owned())))),
-                _ => Err(Error::Unsupported(UNSUPPORTED_STEPS.into())),
+                _ => Err(RebaseError::UnsupportedSteps),
             };
         }
         "noop" => return Ok(None),
-        _ => return Err(Error::Unsupported(UNSUPPORTED_STEPS.into())),
+        _ => return Err(RebaseError::UnsupportedSteps),
     };
     let sha = rest.split_whitespace().next().unwrap_or_default();
     if sha.is_empty() || sha.starts_with('-') {
-        return Err(Error::Unsupported(UNSUPPORTED_STEPS.into()));
+        return Err(RebaseError::UnsupportedSteps);
     }
-    let c = repo.revparse_single(sha).and_then(|o| o.peel_to_commit()).map_err(|_| Error::NotFound(format!("commit {sha}")))?;
+    let c =
+        repo.revparse_single(sha).and_then(|o| o.peel_to_commit()).map_err(|_| RebaseError::CommitNotFound { commit: sha.to_owned() })?;
     let (d, sig) = (Decoder::of(&c), c.author());
     Ok(Some(Parsed::Step(TodoStep::Commit(TodoItem {
         oid: c.id(),
@@ -211,16 +209,16 @@ fn fold(lines: Vec<(&str, Parsed)>, msg_dir: &Path, encoding: MessageEncoding) -
 /// Replaces the remaining steps of the rebase in progress with `req` through
 /// `git rebase --edit-todo`, with `editor` installing the prepared list. The rebase stays
 /// stopped where it was. Refused when no interactive rebase is in progress, when its todo
-/// changed since it was read (`TODO_MOVED`), when the commits differ from the ones git has
-/// left (`CHANGED`) or the branches its update-ref lines move do (`REFS_CHANGED`), when the
+/// changed since it was read (`TodoMoved`), when the commits differ from the ones git has
+/// left (`Changed`) or the branches its update-ref lines move do (`RefsChanged`), when the
 /// list has a problem, or when git or the editor refuses it.
-pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor) -> Result<()> {
+pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor) -> Result<(), RebaseError> {
     let repo = interactive(workdir)?;
     let git_dir = repo.path().to_path_buf();
     let todo_path = git_dir.join("rebase-merge").join("git-rebase-todo");
     let current = std::fs::read_to_string(&todo_path)?;
     if current != req.todo {
-        return Err(Error::Unsupported(TODO_MOVED.into()));
+        return Err(RebaseError::TodoMoved);
     }
     let resolve = |shas: Vec<String>| -> Option<Vec<Oid>> {
         let mut oids: Vec<Oid> = shas.iter().map(|s| repo.revparse_single(s).map(|o| o.id()).ok()).collect::<Option<_>>()?;
@@ -231,10 +229,10 @@ pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor)
     ours.extend(listed_oids(&req.locked_text));
     let (ours, theirs) = (resolve(ours), resolve(listed_oids(&current)));
     if ours.is_none() || ours != theirs {
-        return Err(Error::Unsupported(CHANGED.into()));
+        return Err(RebaseError::Changed);
     }
     if let Some(p) = problem_with(&req.steps, req.first_may_combine) {
-        return Err(Error::Unsupported(p));
+        return Err(p);
     }
     // Not wiped: a locked amend still reads its files from here.
     let msg_dir = git_dir.join(MSG_DIR);
@@ -243,28 +241,32 @@ pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor)
     // The panel never adds or removes an update-ref line: one it added could move a branch
     // checked out in another worktree, which git doesn't refuse.
     if !same_refs(&current, &text) {
-        return Err(Error::Unsupported(REFS_CHANGED.into()));
+        return Err(RebaseError::RefsChanged);
     }
     let encoding = MessageEncoding::of(&repo);
     std::fs::create_dir_all(&msg_dir)?;
     encoding.write_files(&files)?;
     let prepared = msg_dir.join("todo-edit");
     crate::persist::atomic_write(&prepared, text.as_bytes())?;
-    let refused = msg_dir.join("todo-edit.error");
+    let refused = refusal_file(&prepared);
     if refused.exists() {
         std::fs::remove_file(&refused)?;
     }
     let command = editor_command(editor, &prepared);
     let (ok, output) = gitcli::run_with_input(workdir, &gitcli::args(&["rebase", "--edit-todo"]), "", &[("GIT_SEQUENCE_EDITOR", &command)]);
     let why = if refused.exists() {
-        std::fs::read_to_string(&refused).unwrap_or_default().trim().to_owned()
+        read_refusal(&std::fs::read_to_string(&refused).unwrap_or_default())
     } else if !ok {
-        output.lines().map(str::trim).rfind(|l| !l.is_empty()).unwrap_or("git rebase --edit-todo failed").to_owned()
+        output
+            .lines()
+            .map(str::trim)
+            .rfind(|l| !l.is_empty())
+            .map_or(RebaseError::EditTodoFailed, |l| RebaseError::Said { said: l.to_owned() })
     } else {
         return Ok(());
     };
     // git leaves the list it handed the editor (short ids, help comments) behind: put back the
     // text that was read, so the panel's list still matches it.
     crate::persist::atomic_write(&todo_path, req.todo.as_bytes())?;
-    Err(Error::Unsupported(why))
+    Err(why)
 }

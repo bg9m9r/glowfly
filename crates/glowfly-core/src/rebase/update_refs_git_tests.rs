@@ -63,8 +63,8 @@ fn an_alias_of_a_branch_checked_out_elsewhere_holds_the_rebase() {
     assert_eq!(p.held, std::slice::from_ref(&held));
     assert!(listed_refs(&raw_todo(&dir, c2)).contains(&"refs/heads/alias".to_owned()), "git would follow the alias");
     let req = StartRequest { head: p.head, upstream: p.upstream, items: p.steps.clone(), autostash: false };
-    assert_eq!(unsupported(start(&dir, &req, &SequenceEditor::Copy)), held.text());
-    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Reword(c3))), held.text());
+    assert_eq!(unsupported(start(&dir, &req, &SequenceEditor::Copy)), RebaseError::from(&held));
+    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Reword(c3))), RebaseError::from(&held));
     assert_eq!(git_out(&dir, &["rev-parse", "mid"]).trim(), c3.to_string(), "mid stays");
 
     // An alias of a ref that isn't a local branch.
@@ -123,10 +123,10 @@ fn a_branch_name_that_isnt_utf8_is_refused() {
     bytes.extend_from_slice(b"\xe9\n");
     std::fs::write(&packed, bytes).unwrap();
     match plan(&dir, &RebaseBase::FromCommit(c2)) {
-        Err(crate::error::Error::Unsupported(t)) => assert_eq!(t, NOT_UTF8),
+        Err(RebaseError::NotUtf8Branch) => {}
         // libgit2 can't read the ref and the plan passes over it: git's list then has a line the
         // plan's lacks, which Start refuses by the same text.
-        Ok(p) => assert_eq!(unsupported(installs(&dir, &gits_todo(&dir, &p), &p.steps)), NOT_UTF8),
+        Ok(p) => assert_eq!(unsupported(installs(&dir, &gits_todo(&dir, &p), &p.steps)), RebaseError::NotUtf8Branch),
         Err(e) => panic!("{e:?}"),
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -136,9 +136,12 @@ fn a_branch_name_that_isnt_utf8_is_refused() {
 fn a_branch_git_leaves_out_is_named_with_its_reason() {
     let theirs = "pick abc c2\n# Ref refs/heads/mid checked out at '/work/wt'\npick def c3\n";
     let ours = "pick abc c2\nupdate-ref refs/heads/mid\npick def c3\n";
-    let why = refs_problem(theirs, ours).unwrap();
+    let e = refs_problem(theirs, ours).unwrap();
+    let left = LeftOut { name: "mid".into(), checked_out_at: Some("'/work/wt'".into()) };
+    assert_eq!(e, RebaseError::NotMoved { branches: vec![left] });
+    let why = e.to_string();
     assert!(why.starts_with("git won't move mid (checked out at '/work/wt')"), "{why}");
     assert!(!why.contains("reload"), "reloading wouldn't help: {why}");
-    assert_eq!(refs_problem(ours, theirs).as_deref(), Some(REFS_CHANGED), "git moving one the list doesn't");
+    assert_eq!(refs_problem(ours, theirs), Some(RebaseError::RefsChanged), "git moving one the list doesn't");
     assert_eq!(refs_problem(ours, ours), None);
 }

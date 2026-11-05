@@ -18,12 +18,13 @@ use crate::effect::{Effect, RebaseEffect, RestackJob, UndoResult};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::AppState;
 use crate::state::ToastAction;
+use crate::state::error_words::typed;
 use crate::state::rebase::{STASH_LINE, needs_stash};
 use crate::state::stack::{PendingRestack, blocker, detail, not_restacked, plan_for};
 use git2::RepositoryState;
 use glowfly_core::git_version::Feature;
 use glowfly_core::paths::same_spelling;
-use glowfly_core::rebase::{Outcome, Resume};
+use glowfly_core::rebase::{Outcome, RebaseError, Resume};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stack::{RestackRun, RestackScope, stash_op};
 use glowfly_core::undo::{Action, MoveOp};
@@ -66,7 +67,7 @@ pub(super) fn restack(st: &mut AppState, scope: RestackScope, autostash: bool, n
 /// putting the stash back went, when the restack tried.
 pub(super) fn ran(
     st: &mut AppState,
-    result: Result<RestackRun, String>,
+    result: Result<RestackRun, RebaseError>,
     undo: Option<UndoResult>,
     job: RestackJob,
     now: Instant,
@@ -96,7 +97,7 @@ pub(super) fn ran(
 /// finished part recorded, and tells how putting the stash back went.
 pub(super) fn ended(
     st: &mut AppState,
-    result: Result<RestackRun, String>,
+    result: Result<RestackRun, RebaseError>,
     undo: Option<UndoResult>,
     job: RestackJob,
     now: Instant,
@@ -105,7 +106,7 @@ pub(super) fn ended(
     let Some(workdir) = st.job.as_ref().and_then(|j| j.workdir.clone()) else { return };
     let (ok, output) = match &result {
         Ok(run) => (true, output_of(&run.outcome).to_owned()),
-        Err(e) => (false, e.clone()),
+        Err(e) => (false, typed::rebase(st.settings.lang(), e)),
     };
     if let Ok(run) = &result {
         stayed_on(st, run, &job);

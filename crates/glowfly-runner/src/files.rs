@@ -5,7 +5,7 @@
 
 use super::execute::{Cx, Execute};
 use git2::Oid;
-use glowfly_core::error::Error;
+use glowfly_core::error::{Error, WriteFailed};
 use glowfly_core::repo;
 use glowfly_core::undo;
 use glowfly_core::undo::RestoreFailed;
@@ -38,7 +38,7 @@ fn restore(workdir: &Path, oid: Oid, path: String, overwrite: bool) -> Msg {
             return Msg::Files(FilesMsg::RestoreWouldOverwrite { path, oid, reason });
         }
         Ok((from, undo)) => (Ok(from), undo),
-        Err(RestoreFailed { error, undo }) => (Err(error.to_string()), undo.map(|a| *a)),
+        Err(RestoreFailed { error, undo }) => (Err(WriteFailed::from(error)), undo.map(|a| *a)),
     };
     Msg::Files(FilesMsg::FileRestored { path, oid, result, undo })
 }
@@ -94,7 +94,7 @@ pub(super) fn work_file(workdir: &Path, op: FileOp, trashers: undo::Trashers) ->
         }
         Err((Error::NoCopyKept(reason), None)) => Msg::WorkFile(WorkFileMsg::NoCopyKept { op, reason }),
         Err((e, Some(undo))) => Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: e.to_string(), undo }),
-        r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|(e, _)| e.to_string()) }),
+        r => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: r.map_err(|(e, _)| WriteFailed::from(e)) }),
     }
 }
 

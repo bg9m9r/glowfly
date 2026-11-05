@@ -103,12 +103,12 @@ fn dropped_and_reworded_merges() {
 fn a_squash_after_structure_is_refused() {
     use RebaseAction::*;
     let after_merge = [c(1, Pick), merge(2, Pick, vec![]), c(3, Squash)];
-    assert_eq!(problem(&after_merge).as_deref(), Some(COMBINE_AFTER_MERGE));
+    assert_eq!(problem(&after_merge), Some(RebaseError::CombineAfterMerge));
     let after_label = [c(1, Pick), label(1), c(3, Fixup)];
-    assert_eq!(problem(&after_label).as_deref(), Some(COMBINE_AFTER_MERGE));
+    assert_eq!(problem(&after_label), Some(RebaseError::CombineAfterMerge));
     let after_reset = [c(1, Pick), TodoStep::Reset(ResetTo::Onto), c(3, Squash)];
-    assert_eq!(problem(&after_reset).as_deref(), Some(COMBINE_AFTER_MERGE));
-    assert_eq!(problem(&[c(1, Pick), TodoStep::Break, c(3, Squash)]).as_deref(), Some(COMBINE_AFTER_STEP));
+    assert_eq!(problem(&after_reset), Some(RebaseError::CombineAfterMerge));
+    assert_eq!(problem(&[c(1, Pick), TodoStep::Break, c(3, Squash)]), Some(RebaseError::CombineAfterStep));
     assert_eq!(problem(&[merge(2, Pick, vec![]), c(3, Pick)]), None);
     assert_eq!(problem(&list(Pick)), None);
 }
@@ -120,18 +120,18 @@ fn a_commit_a_reset_throws_away_is_refused() {
     let mut after_label = list(Pick);
     let moved = after_label.remove(1);
     after_label.insert(2, moved);
-    assert_eq!(problem(&after_label).as_deref(), Some(LOST_TO_RESET), "{after_label:?}");
+    assert_eq!(problem(&after_label), Some(RebaseError::LostToReset), "{after_label:?}");
     // Moved above the first reset.
     let mut above = list(Pick);
     let moved = above.remove(4);
     above.insert(0, moved);
-    assert_eq!(problem(&above).as_deref(), Some(LOST_TO_RESET));
+    assert_eq!(problem(&above), Some(RebaseError::LostToReset));
     // A dropped commit there loses nothing; a dropped merge keeps nothing.
     let mut dropped = after_label.clone();
     dropped[2] = c(1, Drop);
     assert_eq!(problem(&dropped), None);
     let dropped_merge = [TodoStep::Reset(ResetTo::Onto), c(1, Pick), merge(2, Drop, vec![]), TodoStep::Reset(ResetTo::Onto)];
-    assert_eq!(problem(&dropped_merge).as_deref(), Some(LOST_TO_RESET));
+    assert_eq!(problem(&dropped_merge), Some(RebaseError::LostToReset));
     // Commits after the last label or merge end the branch.
     assert_eq!(problem(&[TodoStep::Reset(ResetTo::Onto), c(1, Pick), label(1), c(2, Pick)]), None);
 }

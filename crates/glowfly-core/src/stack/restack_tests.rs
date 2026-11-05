@@ -3,7 +3,7 @@
 
 use super::read_tests::{commit, stacks_of, tip};
 use super::*;
-use crate::rebase::{Outcome, Resume};
+use crate::rebase::{Outcome, RebaseError, Resume};
 use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
@@ -108,6 +108,7 @@ fn a_stale_plan_changes_nothing() {
     git(&dir, &["branch", "-f", "top", "main"]);
     let (mid, top) = (tip(&dir, "mid"), tip(&dir, "top"));
     let err = restack(&dir, &p).unwrap_err();
+    assert_eq!(err, RebaseError::StackChanged);
     assert_eq!(err.to_string(), STALE_PLAN);
     assert_eq!((tip(&dir, "mid"), tip(&dir, "top")), (mid, top));
     let _ = std::fs::remove_dir_all(&dir);

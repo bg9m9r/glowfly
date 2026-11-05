@@ -81,7 +81,10 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - Commit detail, status and diff failures log the bare cause; give them translated headlines ("Couldn't read commit {short}: …", "Couldn't read the status: …", "Couldn't open the diff of {path}: …")
 - The signature badge, blame pane, Delete dialog, sparse page and load-more row keep the text worded on arrival; store the `ReadFailed` and word it in the view model so a language switch follows
 - `WatchMsg::WatchFailed { error: String }` and `ReposMsg::Scanned`'s `ScanFound.unreadable` still carry English strings outside a `Result`, which the ratchet doesn't count
-- Next #367 landing: the git-CLI write results (rebase.rs's 7, work.rs's LocalOpDone and Reverted, files.rs's FileRestored and WorkFileDone, `Inactive::WorkFile`, stack's StackPush)
+- About 45 `Result<_, String>` fields remain in message enums outside `msg/` (git_env.rs, ssh.rs, the dashboard's auth and others the ratchet doesn't scan); type them and widen `hygiene/string_errors.rs` to their files
+- `WorkFileMsg::WorkFileFailed { error: String }` (a file op that failed after changing files) still carries English text outside a `Result`; give it `WriteFailed`
+- The frames around the typed reasons are still English: revert's and restore's "Could not revert/restore {path}: …" (`revert::fail_text`, `msg::restore_failed`), the work-file ops' "Could not delete {path}: …", the rebase job's "{label} failed: …", `QUICK_STALE` and "Couldn't update the rebase steps: …"; move them to `t.trf`
+- Git's own refusal lines in `RebaseError::Said` (a failed `--edit-todo`, a rebase git stopped) and core's remaining `Error::Unsupported` texts that reach `RebaseError::Other` (commit encoding) could get variants
 
 ### Locale catalogs per area
 

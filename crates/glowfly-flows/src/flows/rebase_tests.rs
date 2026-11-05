@@ -6,7 +6,7 @@ use super::selection_tests::{commit_on, git, head};
 use super::tests::{drive, state};
 use super::update;
 use git2::{Oid, RepositoryState};
-use glowfly_core::rebase::{self, Outcome, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream};
+use glowfly_core::rebase::{self, Outcome, RebaseAction, RebaseBase, RebaseError, RebasePlan, TodoItem, TodoStep, Upstream};
 use glowfly_core::repo::{DiffTarget, FileDiff, FileEntry};
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, RebaseEffect};
@@ -173,7 +173,10 @@ fn stale_and_failed_list_results() {
     assert_eq!(panel(&st).items.len(), 2);
 
     st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(fake_oid(1))));
-    up(&mut st, Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation, result: Err("1a2b3c4 is not on the current branch".into()) }));
+    up(
+        &mut st,
+        Msg::Rebase(RebaseMsg::RebasePlanLoaded { generation, result: Err(RebaseError::CommitNotOnBranch { commit: "1a2b3c4".into() }) }),
+    );
     assert!(st.session.rebase.view.is_none());
     assert_eq!(last_log(&st), "1a2b3c4 is not on the current branch");
     assert!(st.toasts.last().is_some_and(|t| !t.ok && t.text == "1a2b3c4 is not on the current branch"));
@@ -321,7 +324,7 @@ fn a_refused_start_keeps_the_panel() {
     let (mut st, dir, _) = with_panel("rebase-finished-err", RebaseBase::FromCommit(Oid::zero()));
     st.job = Some(running_job(&dir));
     st.session.rebase.view.as_mut().unwrap().starting = true;
-    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(rebase::CHANGED.into()), undo: None }));
+    up(&mut st, Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(RebaseError::Changed), undo: None }));
     let p = panel(&st);
     assert!(!p.starting && p.stale);
     assert_eq!(p.error.as_deref(), Some(rebase::CHANGED));

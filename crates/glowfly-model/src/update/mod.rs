@@ -76,6 +76,7 @@ mod layout;
 pub mod lfs;
 pub mod line_counts;
 mod load_more;
+mod local_done;
 mod lock_file;
 mod logs;
 mod logs_copy;

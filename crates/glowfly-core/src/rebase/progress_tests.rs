@@ -3,7 +3,6 @@
 use super::plan_tests::{commit, head, linear};
 use super::run_tests::{log, request, start_copy, state};
 use super::*;
-use crate::error::Error;
 use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
@@ -99,7 +98,7 @@ fn apply_backend() {
     let clean = crate::repo::load(&dir, &crate::repo::LoadOptions::all(10)).unwrap();
     assert_eq!(clean.rebase, None);
     assert_eq!(progress(&dir), None);
-    assert!(matches!(resume(&dir, Resume::Continue), Err(Error::Unsupported(t)) if t == NOT_REBASING));
+    assert!(matches!(resume(&dir, Resume::Continue), Err(RebaseError::NotRebasing)));
 
     commit(&dir, "f.txt", "mine\n", "mine");
     commit(&dir, "g.txt", "g\n", "g");

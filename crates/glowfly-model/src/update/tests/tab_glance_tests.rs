@@ -47,7 +47,8 @@ fn status_loaded(result: StatusRead) -> Msg {
     })
 }
 
-fn job(dir: &Path) -> RunningJob {
+/// A running fetch in `dir`.
+pub(super) fn job(dir: &Path) -> RunningJob {
     RunningJob {
         label: "Fetch all".into(),
         workdir: Some(dir.to_path_buf()),

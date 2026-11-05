@@ -5,7 +5,6 @@ use super::plan_tests::linear;
 use super::remaining_tests::rebase_i;
 use super::run_tests::{log, out, start_copy, state};
 use super::*;
-use crate::error::Error;
 use crate::testutil::*;
 use git2::RepositoryState;
 use std::path::{Path, PathBuf};
@@ -54,9 +53,9 @@ fn start_steps(dir: &Path, p: &RebasePlan, steps: Vec<TodoStep>) -> Outcome {
     start_copy(dir, &StartRequest { head: p.head, upstream: p.upstream, items: steps, autostash: false })
 }
 
-pub(super) fn unsupported<T: std::fmt::Debug>(r: crate::error::Result<T>) -> String {
+pub(super) fn unsupported<T: std::fmt::Debug>(r: Result<T, RebaseError>) -> RebaseError {
     match r {
-        Err(Error::Unsupported(t)) => t,
+        Err(e) => e,
         other => panic!("expected a refusal, got {other:?}"),
     }
 }
@@ -73,7 +72,7 @@ pub(super) fn gits_todo(dir: &Path, p: &RebasePlan) -> String {
 }
 
 /// Whether git accepts the list built from `steps` in place of its own `theirs`.
-pub(super) fn installs(dir: &Path, theirs: &str, steps: &[TodoStep]) -> crate::error::Result<()> {
+pub(super) fn installs(dir: &Path, theirs: &str, steps: &[TodoStep]) -> Result<(), RebaseError> {
     let (saved, ours) = (git_dir(dir).join("gits-todo"), git_dir(dir).join("our-todo"));
     std::fs::write(&saved, theirs).unwrap();
     std::fs::write(&ours, build(steps, &git_dir(dir), false).0).unwrap();
@@ -95,9 +94,9 @@ fn the_plan_adds_an_update_ref_after_each_stacked_branchs_commit() {
     let off = plan_from(&dir, c2);
     assert_eq!(kinds(&off.steps), ["pick c2", "pick c3", "pick c4"], "off: no update-ref steps");
     assert!(listed_refs(&gits_todo(&dir, &off)).is_empty());
-    let why = unsupported(installs(&dir, &gits_todo(&dir, &off), &p.steps));
+    let why = unsupported(installs(&dir, &gits_todo(&dir, &off), &p.steps)).to_string();
     assert!(why.starts_with("git won't move lower, mid, also-head with this rebase"), "{why}");
-    assert_eq!(unsupported(installs(&dir, &theirs, &off.steps)), REFS_CHANGED, "git moving branches the list doesn't");
+    assert_eq!(unsupported(installs(&dir, &theirs, &off.steps)), RebaseError::RefsChanged, "git moving branches the list doesn't");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -143,9 +142,13 @@ fn a_branch_checked_out_in_another_worktree_is_left_alone() {
     let mut more = p.steps.clone();
     more.insert(3, ur("elsewhere"));
     let why = unsupported(installs(&dir, &theirs, &more));
-    assert!(why.starts_with("git won't move elsewhere (checked out at "), "{why}");
+    let RebaseError::NotMoved { branches } = &why else { panic!("{why:?}") };
+    assert_eq!(branches.len(), 1, "{why:?}");
+    assert_eq!(branches[0].name, "elsewhere");
+    assert!(branches[0].checked_out_at.as_deref().is_some_and(|p| p.contains("-wt")), "{why:?}");
+    assert!(why.to_string().starts_with("git won't move elsewhere (checked out at "), "{why}");
     let fewer: Vec<TodoStep> = p.steps.iter().filter(|s| s.update_ref() != Some("mid")).cloned().collect();
-    assert_eq!(unsupported(installs(&dir, &theirs, &fewer)), REFS_CHANGED);
+    assert_eq!(unsupported(installs(&dir, &theirs, &fewer)), RebaseError::RefsChanged);
 
     git(&dir, &["worktree", "remove", "--force", &wt.to_string_lossy()]);
     let _ = std::fs::remove_dir_all(&dir);
@@ -228,9 +231,9 @@ fn editing_a_running_rebase_keeps_its_update_refs() {
         |steps: Vec<TodoStep>| EditTodoRequest { steps, locked_text: r.locked_text.clone(), todo: r.todo.clone(), first_may_combine: true };
     let s = &r.steps;
     let without_mid = vec![s[0].clone(), s[1].clone(), s[3].clone()];
-    assert_eq!(unsupported(edit_todo(&dir, &req(without_mid), &SequenceEditor::Copy)), REFS_CHANGED);
+    assert_eq!(unsupported(edit_todo(&dir, &req(without_mid), &SequenceEditor::Copy)), RebaseError::RefsChanged);
     let with_more = [s.clone(), vec![ur("main-copy")]].concat();
-    assert_eq!(unsupported(edit_todo(&dir, &req(with_more), &SequenceEditor::Copy)), REFS_CHANGED);
+    assert_eq!(unsupported(edit_todo(&dir, &req(with_more), &SequenceEditor::Copy)), RebaseError::RefsChanged);
 
     // c4 before c3, which takes mid along.
     let moved = vec![s[0].clone(), s[3].clone(), s[1].clone(), s[2].clone()];
@@ -254,7 +257,7 @@ fn an_update_ref_inside_a_squash_group_is_refused() {
         format!("edit {c2} c2\nupdate-ref refs/heads/lower\ndrop {c3} c3\nsquash {c4} c4\n"),
     ] {
         assert!(rebase_i(&dir, &c1.to_string(), &todo), "{todo}");
-        assert_eq!(unsupported(remaining(&dir)), UPDATE_REF_IN_GROUP, "{todo}");
+        assert_eq!(unsupported(remaining(&dir)), RebaseError::UpdateRefInGroup, "{todo}");
         git(&dir, &["rebase", "--abort"]);
     }
     let _ = std::fs::remove_dir_all(&dir);
@@ -280,7 +283,7 @@ fn quick_edits_keep_the_stacked_branches() {
     assert_eq!(rev(&dir, "mid"), rev(&dir, "main~1"));
 
     let c3 = Oid::from_str(&rev(&dir, "main~1")).unwrap();
-    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::SquashIntoParent(c3))), SPLIT_BY_BRANCH);
+    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::SquashIntoParent(c3))), RebaseError::SplitByBranch);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -288,8 +291,8 @@ fn quick_edits_keep_the_stacked_branches() {
 #[test]
 fn a_quick_drop_of_a_branch_tip_is_refused() {
     let (dir, [_, c2, c3, c4]) = stacked("update-refs-quick-drop");
-    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Drop(vec![c3]))), BRANCH_TIP);
-    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Drop(vec![c2, c4]))), SOME_BRANCH_TIPS);
+    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Drop(vec![c3]))), RebaseError::BranchTip);
+    assert_eq!(unsupported(prepare_edit(&dir, &QuickEdit::Drop(vec![c2, c4]))), RebaseError::SomeBranchTips);
     prepare_edit(&dir, &QuickEdit::Drop(vec![c4])).expect("no other branch points at c4");
     let _ = std::fs::remove_dir_all(&dir);
 }

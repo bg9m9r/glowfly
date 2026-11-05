@@ -2,9 +2,8 @@
 //! Glowfly as the sequence editor, resuming a stopped one (each recording what undo needs), and
 //! reading and editing the remaining steps of a running one.
 
-use super::err;
 use super::execute::{Cx, Execute};
-use glowfly_core::rebase::{self, Outcome, SequenceEditor};
+use glowfly_core::rebase::{self, Outcome, RebaseError, SequenceEditor};
 use glowfly_core::undo::{self, RebaseStart};
 use glowfly_model::effect::{RebaseEffect, UndoResult};
 use glowfly_model::msg::Msg;
@@ -16,7 +15,7 @@ use std::path::Path;
 pub(super) fn run(e: RebaseEffect, sequence_editor: fn() -> SequenceEditor) -> Msg {
     Msg::Rebase(match e {
         RebaseEffect::LoadPlan { workdir, base, generation } => {
-            RebaseMsg::RebasePlanLoaded { generation, result: rebase::plan(&workdir, &base).map_err(err) }
+            RebaseMsg::RebasePlanLoaded { generation, result: rebase::plan(&workdir, &base) }
         }
         RebaseEffect::Start { cwd, request, detail } => {
             let before = undo::rebase_start(&cwd);
@@ -28,10 +27,10 @@ pub(super) fn run(e: RebaseEffect, sequence_editor: fn() -> SequenceEditor) -> M
                 (Ok(Outcome::Stopped { .. }), Some(s)) => Some(UndoResult::Stopped(s)),
                 _ => recorded(&cwd, before, &detail, &result),
             };
-            RebaseMsg::RebaseFinished { result: result.map_err(err), undo }
+            RebaseMsg::RebaseFinished { result, undo }
         }
         RebaseEffect::PrepareEdit { workdir, edit } => {
-            let result = rebase::prepare_edit(&workdir, &edit).map_err(err);
+            let result = rebase::prepare_edit(&workdir, &edit);
             RebaseMsg::EditPrepared { workdir, result }
         }
         RebaseEffect::Resume { cwd, how } => {
@@ -39,16 +38,16 @@ pub(super) fn run(e: RebaseEffect, sequence_editor: fn() -> SequenceEditor) -> M
             let detail = before.as_ref().map(RebaseStart::describe).unwrap_or_default();
             let result = rebase::resume(&cwd, how);
             let undo = recorded(&cwd, before, &detail, &result);
-            RebaseMsg::RebaseFinished { result: result.map_err(err), undo }
+            RebaseMsg::RebaseFinished { result, undo }
         }
         RebaseEffect::LoadRemaining { workdir, generation } => {
-            RebaseMsg::RemainingLoaded { generation, result: rebase::remaining(&workdir).map_err(err) }
+            RebaseMsg::RemainingLoaded { generation, result: rebase::remaining(&workdir) }
         }
         RebaseEffect::Restack { cwd, job } => return super::stack::restack(cwd, job),
         RebaseEffect::ResumeRestack { cwd, how, job } => return super::stack::resume(cwd, how, job),
         RebaseEffect::EndRestack { cwd, job } => return super::stack::end(cwd, job),
         RebaseEffect::EditTodo { cwd, request } => {
-            RebaseMsg::RemainingEdited { result: rebase::edit_todo(&cwd, &request, &sequence_editor()).map_err(err) }
+            RebaseMsg::RemainingEdited { result: rebase::edit_todo(&cwd, &request, &sequence_editor()) }
         }
     })
 }
@@ -62,7 +61,7 @@ impl Execute for RebaseEffect {
 /// What a rebase run means for the undo history: a finished rebase is one action back to where
 /// its branch was before (`None`, clearing the history, when that can't be known); a stopped
 /// one, or one that failed without moving HEAD, keeps the history as it is.
-fn recorded(cwd: &Path, before: Option<RebaseStart>, detail: &str, result: &glowfly_core::error::Result<Outcome>) -> Option<UndoResult> {
+fn recorded(cwd: &Path, before: Option<RebaseStart>, detail: &str, result: &Result<Outcome, RebaseError>) -> Option<UndoResult> {
     match result {
         Ok(Outcome::Finished { .. }) => before.and_then(|b| undo::rebased(cwd, &b, detail)).map(|a| UndoResult::Recorded(Some(a))),
         Ok(Outcome::Stopped { .. }) => Some(UndoResult::Recorded(None)),

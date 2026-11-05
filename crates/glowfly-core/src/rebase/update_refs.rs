@@ -11,9 +11,7 @@
 //! other worktrees, so an alias whose target is checked out elsewhere (or isn't a local branch)
 //! would move that ref: such a rebase is refused ([`HeldAlias`]).
 
-use super::TodoStep;
-
-use crate::error::{Error, Result};
+use super::{LeftOut, RebaseError, TodoStep};
 use crate::git_version::Feature;
 use crate::gitcli;
 use git2::{Oid, Repository};
@@ -34,23 +32,9 @@ pub struct HeldAlias {
 impl HeldAlias {
     /// Why the rebase is refused, in English (the panel shows its own words).
     pub fn text(&self) -> String {
-        let (alias, target) = (&self.alias, &self.target);
-        if self.elsewhere {
-            format!(
-                "{alias} points at {target}, which is checked out in another worktree; git would move {target} with this rebase (rebase.updateRefs). Delete {alias} or switch that worktree to another branch first."
-            )
-        } else {
-            format!(
-                "{alias} points at {target}, which isn't a local branch; git would move it with this rebase (rebase.updateRefs). Delete {alias} first."
-            )
-        }
+        RebaseError::from(self).to_string()
     }
 }
-
-/// A branch name that isn't UTF-8 points at a commit of the range: git would list it, and the
-/// list can't name it.
-pub const NOT_UTF8: &str =
-    "A branch whose name isn't valid UTF-8 points at a commit of this rebase, and git would move it (rebase.updateRefs). Rename it first.";
 
 /// Whether git adds update-ref lines here: `rebase.updateRefs` is true and git is new enough to
 /// know it.
@@ -66,7 +50,7 @@ fn enabled(workdir: &Path) -> bool {
 /// full ref name) over `range`, each commit's in git's order (reverse name order); and the
 /// aliases that must hold the rebase back. Unreadable refs are passed over: should git list one,
 /// its list no longer matches the plan's and the rebase is refused when it starts.
-pub(super) fn predict(repo: &Repository, workdir: &Path, head_ref: &str, range: &HashSet<Oid>) -> Result<Tips> {
+pub(super) fn predict(repo: &Repository, workdir: &Path, head_ref: &str, range: &HashSet<Oid>) -> Result<Tips, RebaseError> {
     let mut tips = Tips::default();
     if !enabled(workdir) {
         return Ok(tips);
@@ -86,7 +70,7 @@ pub(super) fn predict(repo: &Repository, workdir: &Path, head_ref: &str, range: 
         if !range.contains(&oid) {
             continue;
         }
-        let Some(name) = r.name() else { return Err(Error::Unsupported(NOT_UTF8.into())) };
+        let Some(name) = r.name() else { return Err(RebaseError::NotUtf8Branch) };
         if let Some(target) = r.symbolic_target() {
             targets.insert(target.to_owned());
             let end = final_target(repo, target);
@@ -197,9 +181,10 @@ pub(super) fn same_refs(a: &str, b: &str) -> bool {
 }
 
 /// Why git's list `theirs` and the prepared `ours` can't be swapped by their update-ref lines,
-/// if they can't: git moving a branch the list doesn't is `REFS_CHANGED` (reload); git leaving
-/// out branches the list moves names them, with the reason git's comment gives.
-pub(super) fn refs_problem(theirs: &str, ours: &str) -> Option<String> {
+/// if they can't: git moving a branch the list doesn't is `RefsChanged` (reload); git leaving
+/// out branches the list moves names them (`NotMoved`), with where git's comment says each is
+/// checked out.
+pub(super) fn refs_problem(theirs: &str, ours: &str) -> Option<RebaseError> {
     if same_refs(theirs, ours) {
         return None;
     }
@@ -207,38 +192,21 @@ pub(super) fn refs_problem(theirs: &str, ours: &str) -> Option<String> {
     let extra: Vec<&String> = t.iter().filter(|r| !o.contains(r)).collect();
     // A name read with a replacement character wasn't UTF-8.
     if extra.iter().any(|r| r.contains('\u{FFFD}')) {
-        return Some(NOT_UTF8.into());
+        return Some(RebaseError::NotUtf8Branch);
     }
     if !extra.is_empty() || t.len() > o.len() {
-        return Some(super::REFS_CHANGED.into());
+        return Some(RebaseError::RefsChanged);
     }
-    let left: Vec<String> = o.iter().filter(|r| !t.contains(r)).cloned().collect();
-    let why = |r: &str| {
+    let checked_out_at = |r: &str| {
         theirs.lines().find_map(|l| {
             let rest = l.trim().strip_prefix("# Ref ")?.strip_prefix(r)?;
-            rest.trim().strip_prefix("checked out at ").map(|p| format!("checked out at {}", p.trim()))
+            rest.trim().strip_prefix("checked out at ").map(|p| p.trim().to_owned())
         })
     };
-    let mut elsewhere = false;
-    let named: Vec<String> = left
+    let branches = o
         .iter()
-        .map(|r| {
-            let short = r.strip_prefix("refs/heads/").unwrap_or(r);
-            match why(r) {
-                Some(w) => {
-                    elsewhere = true;
-                    format!("{short} ({w})")
-                }
-                None => short.to_owned(),
-            }
-        })
+        .filter(|r| !t.contains(r))
+        .map(|r| LeftOut { name: r.strip_prefix("refs/heads/").unwrap_or(r).to_owned(), checked_out_at: checked_out_at(r) })
         .collect();
-    let what = named.join(", ");
-    Some(if elsewhere {
-        format!(
-            "git won't move {what} with this rebase (rebase.updateRefs), though the list does. Switch that worktree to another branch, or turn rebase.updateRefs off, and try again."
-        )
-    } else {
-        format!("git won't move {what} with this rebase, though the list does: check rebase.updateRefs and the git you run, and try again.")
-    })
+    Some(RebaseError::NotMoved { branches })
 }

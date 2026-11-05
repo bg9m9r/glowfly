@@ -7,7 +7,7 @@ use super::selection_tests::git;
 use super::tests::drive;
 use super::update;
 use git2::{Oid, RepositoryState};
-use glowfly_core::rebase::{self, RebaseAction, RebaseBase, TodoStep};
+use glowfly_core::rebase::{self, RebaseAction, RebaseBase, RebaseError, TodoStep};
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_model::effect::{Effect, RebaseEffect};
 use glowfly_model::msg::{Msg, RebaseMsg, RepoMsg, TabsMsg};
@@ -72,7 +72,10 @@ fn opening_loads_the_steps() {
     assert!(panel(&st).loading && panel(&st).source == PanelSource::Remaining);
 
     // An older request's result is ignored.
-    let stale = Msg::Rebase(RebaseMsg::RemainingLoaded { generation: st.session.rebase.generation - 1, result: Err("old".into()) });
+    let stale = Msg::Rebase(RebaseMsg::RemainingLoaded {
+        generation: st.session.rebase.generation - 1,
+        result: Err(RebaseError::Other { said: "old".into() }),
+    });
     up(&mut st, stale);
     assert!(panel(&st).loading);
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
@@ -132,7 +135,7 @@ fn a_refused_edit_keeps_the_panel() {
     drive(&mut st, Msg::Rebase(RebaseMsg::OpenRemaining));
     st.job = Some(running_job(&dir));
     st.session.rebase.view.as_mut().unwrap().starting = true;
-    up(&mut st, Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(rebase::TODO_MOVED.into()) }));
+    up(&mut st, Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(RebaseError::TodoMoved) }));
     let p = panel(&st);
     assert!(!p.starting && p.stale);
     assert_eq!(p.error.as_deref(), Some(rebase::TODO_MOVED));

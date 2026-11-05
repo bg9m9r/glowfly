@@ -7,9 +7,10 @@ use super::rebase::{close, close_views, panel_slot, refuse, request};
 use crate::effect::{Effect, RebaseEffect, UndoResult};
 use crate::msg::{Msg, RebaseMsg};
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::rebase::{RebasePanel, start_question};
 use crate::state::rebase_remaining::{EDIT_JOB, UPDATE, UPDATED, edit_request, open_remaining_blocker};
-use glowfly_core::rebase::{self, Remaining};
+use glowfly_core::rebase::{RebaseError, Remaining};
 use std::time::Instant;
 
 /// "Edit remaining steps…": opens the panel in place of the graph and asks for the steps.
@@ -28,7 +29,7 @@ pub(super) fn open(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 }
 
 /// The steps arrived; a refusal closes the panel and says why.
-pub(super) fn loaded(st: &mut AppState, generation: u64, result: Result<Remaining, String>, now: Instant) {
+pub(super) fn loaded(st: &mut AppState, generation: u64, result: Result<Remaining, RebaseError>, now: Instant) {
     if generation != st.session.rebase.generation || !st.session.rebase.view.as_ref().is_some_and(|p| p.loading) {
         return; // superseded: closed, reopened, or parked with its tab
     }
@@ -40,7 +41,7 @@ pub(super) fn loaded(st: &mut AppState, generation: u64, result: Result<Remainin
         }
         Err(e) => {
             close(st);
-            refuse(st, e, now);
+            refuse(st, typed::rebase(st.settings.lang(), &e), now);
         }
     }
 }
@@ -75,7 +76,7 @@ pub(super) fn update_steps(st: &mut AppState, confirmed: bool, now: Instant, fx:
 
 /// The edit-todo job ended: its tab's panel closes, or stays open with the reason (marked
 /// stale when the rebase had moved on).
-pub(super) fn edited(st: &mut AppState, result: Result<(), String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn edited(st: &mut AppState, result: Result<(), RebaseError>, now: Instant, fx: &mut Vec<Effect>) {
     let Some(job) = &st.job else { return };
     let workdir = job.workdir.clone();
     let here = match (workdir.as_deref(), st.workdir()) {
@@ -83,14 +84,15 @@ pub(super) fn edited(st: &mut AppState, result: Result<(), String>, now: Instant
         _ => false,
     };
     let ok = result.is_ok();
+    let words = result.as_ref().err().map(|e| typed::rebase(st.settings.lang(), e));
     if let Some(slot) = panel_slot(st, workdir, here) {
         match &result {
             Ok(()) => *slot = None,
             Err(e) => {
                 if let Some(p) = slot.as_mut() {
                     p.starting = false;
-                    p.error = Some(e.clone());
-                    p.stale |= e == rebase::TODO_MOVED;
+                    p.error = words.clone();
+                    p.stale |= matches!(e, RebaseError::TodoMoved);
                 }
             }
         }
@@ -98,9 +100,9 @@ pub(super) fn edited(st: &mut AppState, result: Result<(), String>, now: Instant
     if here && ok {
         st.session.rebase.generation += 1;
     }
-    let (headline, output) = match result {
-        Ok(()) => (UPDATED.to_owned(), String::new()),
-        Err(e) => (format!("Couldn't update the rebase steps: {e}"), e),
+    let (headline, output) = match words {
+        None => (UPDATED.to_owned(), String::new()),
+        Some(why) => (format!("Couldn't update the rebase steps: {why}"), why),
     };
     super::ops::finish_job(st, ok, output, Some(headline), Some(UndoResult::Recorded(None)), now, fx);
 }

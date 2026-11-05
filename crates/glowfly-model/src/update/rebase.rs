@@ -9,13 +9,14 @@ use super::rebase_resume::{STASH_KEPT, stopped_headline};
 use crate::effect::{Effect, RebaseEffect, UndoResult};
 use crate::msg::Msg;
 use crate::msg::RebaseMsg;
+use crate::state::error_words::typed;
 use crate::state::rebase::{PanelSource, RebasePanel, needs_stash, open_blocker, start_question};
 use crate::state::rebase_quick::QUICK_STALE;
 use crate::state::rebase_remaining::ENDED;
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
 use glowfly_core::i18n::Lang;
-use glowfly_core::rebase::{self, Outcome, StartRequest};
+use glowfly_core::rebase::{Outcome, RebaseError, StartRequest};
 use glowfly_core::repo::Snapshot;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -48,7 +49,7 @@ pub(super) fn handle(st: &mut AppState, msg: RebaseMsg, now: Instant, fx: &mut V
                 }
                 Err(e) => {
                     close(st);
-                    refuse(st, e, now);
+                    refuse(st, typed::rebase(st.settings.lang(), &e), now);
                 }
             }
         }
@@ -236,7 +237,13 @@ pub fn launch(st: &mut AppState, label: &str, request: StartRequest, detail: Str
 /// panel (active or parked) closes unless nothing was changed, in which case it stays open with
 /// the reason. A stop selects the WIP row, where the banner is. `undo` is what the run means
 /// for the undo history.
-pub(super) fn finished(st: &mut AppState, result: Result<Outcome, String>, undo: Option<UndoResult>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn finished(
+    st: &mut AppState,
+    result: Result<Outcome, RebaseError>,
+    undo: Option<UndoResult>,
+    now: Instant,
+    fx: &mut Vec<Effect>,
+) {
     let Some(job) = &st.job else { return };
     let (workdir, label) = (job.workdir.clone(), job.label.clone());
     let here = match (workdir.as_deref(), st.workdir()) {
@@ -259,10 +266,11 @@ pub(super) fn finished(st: &mut AppState, result: Result<Outcome, String>, undo:
             (false, output, None, Some((error, false)), false)
         }
         Err(e) => {
+            let why = typed::rebase(st.settings.lang(), &e);
             // Only the panel can be reset to reload its list.
-            let shown = if e == rebase::STALE && !panel_open { QUICK_STALE } else { e.as_str() };
+            let shown = if e == RebaseError::Stale && !panel_open { QUICK_STALE } else { why.as_str() };
             let headline = format!("{label} failed: {shown}");
-            (false, e.clone(), Some(headline), Some((e, true)), false)
+            (false, why.clone(), Some(headline), Some((why, true)), false)
         }
     };
     let closes = keep.is_none();

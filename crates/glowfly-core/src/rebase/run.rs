@@ -1,12 +1,12 @@
 //! Running an interactive rebase through the git CLI with a prepared todo list, and resuming a
 //! stopped one (Continue / Skip).
 
+use super::error::refusal_file;
 use super::plan::{checked_head, range};
 use super::progress::progress;
 use super::todo::{MSG_DIR, build, editor_command, problem};
-use super::{CHANGED, NOT_REBASING, Outcome, STALE, SequenceEditor, StartRequest, TodoStep, Upstream, merges, update_refs};
+use super::{Outcome, RebaseError, SequenceEditor, StartRequest, TodoStep, Upstream, merges, read_refusal, update_refs};
 use crate::commit_encoding::MessageEncoding;
-use crate::error::{Error, Result};
 use crate::gitcli;
 use git2::{Oid, Repository, RepositoryState};
 use std::collections::HashSet;
@@ -16,24 +16,24 @@ use std::path::Path;
 /// `req.items` as the todo list. `Err` means nothing was changed:
 /// HEAD moved since the list was made, the commits no longer match, the list has a problem, or
 /// the sequence editor refused the todo.
-pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Result<Outcome> {
+pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Result<Outcome, RebaseError> {
     let repo = Repository::open(workdir)?;
     let (head, branch) = checked_head(&repo)?;
     if head != req.head {
-        return Err(Error::Unsupported(STALE.into()));
+        return Err(RebaseError::Stale);
     }
     let expected: HashSet<Oid> = range(&repo, head, req.upstream)?.into_iter().collect();
     let commits: Vec<Oid> = req.items.iter().filter_map(TodoStep::oid).collect();
     let listed: HashSet<Oid> = commits.iter().copied().collect();
     if expected.is_empty() || listed.len() != commits.len() || listed != expected {
-        return Err(Error::Unsupported(CHANGED.into()));
+        return Err(RebaseError::Changed);
     }
     if let Some(p) = problem(&req.items) {
-        return Err(Error::Unsupported(p));
+        return Err(p);
     }
     // Checked again here, as the plan may be older than a new branch alias.
     if let Some(h) = update_refs::predict(&repo, workdir, &format!("refs/heads/{branch}"), &expected)?.held.first() {
-        return Err(Error::Unsupported(h.text()));
+        return Err(RebaseError::from(h));
     }
 
     // Message files from an earlier rebase are removed only now: exec lines read them until a
@@ -70,14 +70,13 @@ pub fn start(workdir: &Path, req: &StartRequest, editor: &SequenceEditor) -> Res
     let command = editor_command(editor, &prepared);
     let (ok, output) = gitcli::run_with_input(workdir, &args, "", &[("GIT_SEQUENCE_EDITOR", &command)]);
 
-    let refused = msg_dir.join("todo.error");
+    let refused = refusal_file(&prepared);
     if refused.exists() {
         abort_unstarted(workdir, &git_dir);
         let repo = Repository::open(workdir)?;
         let unchanged = repo.head().ok().and_then(|h| h.target()) == Some(head);
         if unchanged && repo.state() == RepositoryState::Clean {
-            let text = std::fs::read_to_string(&refused).unwrap_or_default();
-            return Err(Error::Unsupported(text.trim().to_owned()));
+            return Err(read_refusal(&std::fs::read_to_string(&refused).unwrap_or_default()));
         }
     } else if !ok {
         abort_unstarted(workdir, &git_dir);
@@ -97,11 +96,11 @@ pub enum Resume {
 /// Continues or skips the rebase in progress, then reads where it stands: finished, stopped
 /// again (at an edit, a conflict, or because git refused to go on), or failed. Refused when no
 /// rebase is in progress.
-pub fn resume(workdir: &Path, how: Resume) -> Result<Outcome> {
+pub fn resume(workdir: &Path, how: Resume) -> Result<Outcome, RebaseError> {
     let repo = Repository::open(workdir)?;
     use RepositoryState::*;
     if !matches!(repo.state(), Rebase | RebaseInteractive | RebaseMerge | ApplyMailboxOrRebase) {
-        return Err(Error::Unsupported(NOT_REBASING.into()));
+        return Err(RebaseError::NotRebasing);
     }
     let git_dir = repo.path();
     let had_stash = git_dir.join("rebase-merge").join("autostash").exists() || git_dir.join("rebase-apply").join("autostash").exists();
@@ -121,7 +120,13 @@ pub(crate) fn stash_tip(repo: &Repository) -> Option<Oid> {
 
 /// What a finished git run left: a rebase still in progress, none (with whether git had to
 /// keep an autostash it couldn't apply in the stash list), or a failure.
-pub(crate) fn outcome(workdir: &Path, ok: bool, output: String, autostash: bool, stash_before: Option<Oid>) -> Result<Outcome> {
+pub(crate) fn outcome(
+    workdir: &Path,
+    ok: bool,
+    output: String,
+    autostash: bool,
+    stash_before: Option<Oid>,
+) -> Result<Outcome, RebaseError> {
     if let Some(progress) = progress(workdir) {
         return Ok(Outcome::Stopped { ok, output, progress });
     }

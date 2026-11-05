@@ -7,8 +7,10 @@ use super::rebase::refuse;
 use crate::effect::{Effect, StackEffect, StackPushJob};
 use crate::msg::StackMsg;
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::stack_prs::StackPrs;
 use crate::state::stack_push::{layers, push_blocker, targets};
+use glowfly_core::error::WriteFailed;
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::stack::{LayerOutcome, LayerPushed, PushPlan, StackPush};
@@ -57,7 +59,7 @@ pub(super) fn push(
 
 /// The push job ended: the job's log and toast, then one line per layer; a push for the
 /// stack's pull requests that landed in the active tab starts them once the refresh lands.
-fn pushed(st: &mut AppState, result: Result<StackPush, String>, job: StackPushJob, now: Instant, fx: &mut Vec<Effect>) {
+fn pushed(st: &mut AppState, result: Result<StackPush, WriteFailed>, job: StackPushJob, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     // The user may have switched tabs while the push ran: its lines go to the pushed repo's tab.
     let repo = st.job.as_ref().and_then(|j| j.workdir.clone());
@@ -67,7 +69,7 @@ fn pushed(st: &mut AppState, result: Result<StackPush, String>, job: StackPushJo
     };
     let ok = match result {
         Err(e) => {
-            super::ops::finish_job(st, false, e, None, None, now, fx);
+            super::ops::finish_job(st, false, typed::write(t, &e), None, None, now, fx);
             false
         }
         Ok(run) => {

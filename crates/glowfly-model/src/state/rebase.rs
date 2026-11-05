@@ -302,7 +302,7 @@ impl RebasePanel {
                 return Some(rebase::TODO_MOVED.into());
             }
             if let Some(p) = rebase::problem_with(&self.items, self.first_may_combine()) {
-                return Some(p);
+                return Some(p.to_string());
             }
             return (self.items == self.original).then(|| UNCHANGED.into());
         }
@@ -319,7 +319,7 @@ impl RebasePanel {
             return Some(CONFLICTED_FILES.into());
         }
         if let Some(p) = rebase::problem(&self.items) {
-            return Some(p);
+            return Some(p.to_string());
         }
         let from_commit = matches!(self.source, PanelSource::Start(RebaseBase::FromCommit(_)));
         (from_commit && rebase::is_unchanged(&self.items, &self.original)).then(|| UNCHANGED.into())

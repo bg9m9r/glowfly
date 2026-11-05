@@ -8,8 +8,10 @@ use crate::effect::FilesEffect;
 use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
+use crate::state::error_words::typed;
 use crate::state::files::{PathForm, listed, tracked};
 use crate::state::{AppState, Modal};
+use glowfly_core::error::WriteFailed;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, PathProblem, check_new_path};
 use std::path::Path;
@@ -66,13 +68,16 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
         WorkFileMsg::WorkFileDone { op, result } => {
             match result {
                 Ok(ok) => succeeded(st, &op, ok, now),
-                Err(e) => match form_for(&mut st.modal, &op) {
-                    Some(form) => {
-                        form.busy = false;
-                        form.error = Some((form.text.clone(), e));
+                Err(e) => {
+                    let words = typed::write(st.settings.lang(), &e);
+                    match form_for(&mut st.modal, &op) {
+                        Some(form) => {
+                            form.busy = false;
+                            form.error = Some((form.text.clone(), words));
+                        }
+                        None => st.log(false, failure(&op, &words)),
                     }
-                    None => st.log(false, failure(&op, &e)),
-                },
+                }
             }
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
@@ -83,7 +88,7 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
 
 /// A result for a tab that is no longer active: the error goes to the log, the success to a
 /// toast, and a dialog still waiting for it is closed.
-pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, result: Result<WorkFileOk, String>, now: Instant) {
+pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, result: Result<WorkFileOk, WriteFailed>, now: Instant) {
     if matches!(&st.modal, Some(Modal::NewFile(f) | Modal::RenameFile { form: f, .. }) if f.busy) {
         st.modal = None;
     }
@@ -93,7 +98,10 @@ pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, res
             let text = success_text(st.settings.lang(), &op, &ok, None);
             st.toast(true, text, now);
         }
-        Err(e) => st.log_in(Some(workdir), false, failure(&op, &e)),
+        Err(e) => {
+            let words = typed::write(st.settings.lang(), &e);
+            st.log_in(Some(workdir), false, failure(&op, &words));
+        }
     }
 }
 

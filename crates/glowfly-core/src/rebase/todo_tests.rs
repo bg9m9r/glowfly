@@ -144,12 +144,12 @@ fn a_reworded_group_head_gets_the_message_its_editor_shows() {
 fn problems_with_the_list() {
     use RebaseAction::*;
     let list = |actions: &[RebaseAction]| actions.iter().enumerate().map(|(i, a)| c(i as u8, *a)).collect::<Vec<_>>();
-    assert_eq!(problem(&list(&[Squash, Pick])).as_deref(), Some(FIRST_COMBINES));
-    assert_eq!(problem(&list(&[Fixup])).as_deref(), Some(FIRST_COMBINES));
-    assert_eq!(problem(&list(&[Drop, Drop, Squash])).as_deref(), Some(FIRST_COMBINES));
+    assert_eq!(problem(&list(&[Squash, Pick])), Some(RebaseError::FirstCombines));
+    assert_eq!(problem(&list(&[Fixup])), Some(RebaseError::FirstCombines));
+    assert_eq!(problem(&list(&[Drop, Drop, Squash])), Some(RebaseError::FirstCombines));
     assert_eq!(problem(&list(&[Drop, Pick, Squash, Fixup])), None);
-    assert_eq!(problem(&steps(&[reword(1, "")])).as_deref(), Some(EMPTY_REWORD));
-    assert_eq!(problem(&steps(&[reword(1, " \n\t ")])).as_deref(), Some(EMPTY_REWORD));
+    assert_eq!(problem(&steps(&[reword(1, "")])), Some(RebaseError::EmptyReword));
+    assert_eq!(problem(&steps(&[reword(1, " \n\t ")])), Some(RebaseError::EmptyReword));
     assert_eq!(problem(&[c(1, Reword)]), None, "a reword without a typed message keeps the original");
 }
 
@@ -232,13 +232,13 @@ fn install_todo_checks_the_commits() {
     for text in [format!("{git_text}pick {} commit 3\n", short(3)), format!("pick {} commit 1\n", short(1))] {
         std::fs::write(&git_todo, &text).unwrap();
         let e = install_todo(&prepared, &git_todo).unwrap_err();
-        assert_eq!(e.to_string(), CHANGED);
+        assert_eq!(e, RebaseError::Changed);
         assert_eq!(std::fs::read_to_string(&git_todo).unwrap(), text);
     }
     // The same count, but a different commit.
     let other = format!("pick {} commit 1\npick {} commit 3\n", short(1), short(3));
     std::fs::write(&git_todo, &other).unwrap();
-    assert!(install_todo(&prepared, &git_todo).is_err());
+    assert_eq!(install_todo(&prepared, &git_todo), Err(RebaseError::Changed));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -311,19 +311,19 @@ fn group_end_and_default_combined() {
 #[test]
 fn problems_with_steps() {
     use RebaseAction::*;
-    assert_eq!(problem(&[exec("x"), c(1, Squash)]).as_deref(), Some(FIRST_COMBINES));
+    assert_eq!(problem(&[exec("x"), c(1, Squash)]), Some(RebaseError::FirstCombines));
     assert_eq!(problem_with(&[c(1, Squash), c(2, Pick)], true), None, "it melds into the commit already done");
-    assert_eq!(problem_with(&[TodoStep::Break, c(1, Fixup)], true).as_deref(), Some(COMBINE_AFTER_STEP));
-    assert_eq!(problem(&[c(1, Pick), exec("x"), c(2, Squash)]).as_deref(), Some(COMBINE_AFTER_STEP));
-    assert_eq!(problem(&[c(1, Pick), TodoStep::Break, c(3, Drop), c(2, Fixup)]).as_deref(), Some(COMBINE_AFTER_STEP));
+    assert_eq!(problem_with(&[TodoStep::Break, c(1, Fixup)], true), Some(RebaseError::CombineAfterStep));
+    assert_eq!(problem(&[c(1, Pick), exec("x"), c(2, Squash)]), Some(RebaseError::CombineAfterStep));
+    assert_eq!(problem(&[c(1, Pick), TodoStep::Break, c(3, Drop), c(2, Fixup)]), Some(RebaseError::CombineAfterStep));
     assert_eq!(problem(&[c(1, Pick), c(2, Squash), exec("x")]), None);
     let mut head = item(1, Pick);
     head.combined_message = Some("  \n".into());
-    assert_eq!(problem(&[TodoStep::Commit(head.clone()), c(2, Squash)]).as_deref(), Some(EMPTY_COMBINED));
+    assert_eq!(problem(&[TodoStep::Commit(head.clone()), c(2, Squash)]), Some(RebaseError::EmptyCombined));
     assert_eq!(problem(&[TodoStep::Commit(head)]), None, "no group, so the message isn't used");
-    assert_eq!(problem(&[c(1, Pick), exec("  ")]).as_deref(), Some(EMPTY_EXEC));
-    assert_eq!(problem(&[c(1, Pick), exec("a\nb")]).as_deref(), Some(EXEC_ONE_LINE));
-    assert_eq!(problem(&[c(1, Pick), exec("a\rb")]).as_deref(), Some(EXEC_ONE_LINE));
+    assert_eq!(problem(&[c(1, Pick), exec("  ")]), Some(RebaseError::EmptyExec));
+    assert_eq!(problem(&[c(1, Pick), exec("a\nb")]), Some(RebaseError::ExecOneLine));
+    assert_eq!(problem(&[c(1, Pick), exec("a\rb")]), Some(RebaseError::ExecOneLine));
 }
 
 #[test]

@@ -2,8 +2,9 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use glowfly_core::app_update::UpdateError;
-use glowfly_core::error::ReadFailed;
+use glowfly_core::error::{ReadFailed, WriteFailed};
 use glowfly_core::forge::{Account, Target};
+use glowfly_core::rebase::RebaseError;
 use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::JobEffect;
 use glowfly_model::effect::LoadEffect;
@@ -28,6 +29,37 @@ use glowfly_model::ssh::SshFailure;
 use glowfly_model::tools::ToolEffect;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
+
+/// The typed errors the results that carry one get instead of the failure's text.
+struct Typed {
+    update: UpdateError,
+    read: ReadFailed,
+    rebase: RebaseError,
+    write: WriteFailed,
+}
+
+impl Typed {
+    /// `effect` panicked, saying `panic`.
+    fn panicked(effect: &str, panic: &str) -> Self {
+        let (effect, panic) = (effect.to_owned(), panic.to_owned());
+        Typed {
+            update: UpdateError::Internal { effect: effect.clone(), panic: panic.clone() },
+            read: ReadFailed::Panicked { effect: effect.clone(), panic: panic.clone() },
+            rebase: RebaseError::Panicked { effect: effect.clone(), panic: panic.clone() },
+            write: WriteFailed::Panicked { effect, panic },
+        }
+    }
+
+    /// A failure that says `text`.
+    fn said(text: &str) -> Self {
+        Typed {
+            update: UpdateError::Said { said: text.to_owned() },
+            read: ReadFailed::Other { said: text.to_owned() },
+            rebase: RebaseError::Other { said: text.to_owned() },
+            write: WriteFailed::Other { said: text.to_owned() },
+        }
+    }
+}
 
 /// What to report if an effect panics, worked out before it runs.
 pub(super) struct Recovery {
@@ -150,27 +182,26 @@ impl Recovery {
 
     fn message(self, panic: String) -> Msg {
         let text = format!("Glowfly hit an internal error ({}): {panic}", self.name);
-        let read = ReadFailed::Panicked { effect: self.name.to_owned(), panic: panic.clone() };
-        let internal = UpdateError::Internal { effect: self.name.to_owned(), panic };
-        self.failed_as(text, internal, read)
+        let typed = Typed::panicked(self.name, &panic);
+        self.failed_as(text, typed)
     }
 
     /// The failure message the effect's sender waits for, saying `text` (a trust re-check that
     /// couldn't be made, runner/trust.rs).
     pub(super) fn failed(self, text: String) -> Msg {
-        let said = UpdateError::Said { said: text.clone() };
-        let read = ReadFailed::Other { said: text.clone() };
-        self.failed_as(text, said, read)
+        let typed = Typed::said(&text);
+        self.failed_as(text, typed)
     }
 
-    /// [`Self::failed`], with `update` and `read` the typed errors an update's and a read's
-    /// results carry instead.
-    fn failed_as(self, text: String, update: UpdateError, read: ReadFailed) -> Msg {
+    /// [`Self::failed`], with `typed` the errors an update's, a read's, a rebase's and a
+    /// write's results carry instead.
+    fn failed_as(self, text: String, typed: Typed) -> Msg {
+        let Typed { update, read, rebase, write } = typed;
         let msg = match self.kind {
             Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
-            Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text), undo: None }),
-            Kind::EditTodo => Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(text) }),
-            Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(text))),
+            Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(rebase), undo: None }),
+            Kind::EditTodo => Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(rebase) }),
+            Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(write))),
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(read) }),
             Kind::Status(generation) => {
                 let result = Err(read);

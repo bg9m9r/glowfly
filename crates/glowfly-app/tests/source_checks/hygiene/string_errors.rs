@@ -1,15 +1,11 @@
-//! The hygiene ratchet on English-string errors in result messages (see hygiene.rs, #367): a
-//! `Result<_, String>` in glowfly-model's `msg/` carries an error the runner already worded in
-//! English, so `update` can neither tell the causes apart nor translate them. Such fields number
-//! at most `STRING_ERRORS`, which only goes down: convert an area's results to a typed error
-//! (worded in `state/error_words/typed.rs` with `t.tr`), then lower it.
+//! The hygiene check on English-string errors in result messages (see hygiene.rs, #367): a
+//! `Result<_, String>` in glowfly-model's `msg/` would carry an error the runner already worded
+//! in English, so `update` could neither tell the causes apart nor translate them. There are
+//! none: a result carries a typed error (an enum in glowfly-core or glowfly-model), worded in
+//! `state/error_words/typed.rs` with `t.tr`.
 
 use super::all_sources;
 use crate::lexer::bare_lines;
-
-/// How many `Result<_, String>` types the message enums under `msg/` still hold. Lower it when
-/// you convert an area to a typed error; never raise it.
-const STRING_ERRORS: usize = 13;
 
 /// The folder of the message enums.
 const MSG_DIR: &str = "crates/glowfly-model/src/msg/";
@@ -57,17 +53,11 @@ fn result_messages_carry_typed_errors() {
         sites.extend(string_errors(&s.text).into_iter().map(|line| format!("{}:{line}", s.path)));
     }
     assert!(
-        sites.len() <= STRING_ERRORS,
-        "{} Result<_, String> types in {MSG_DIR}, more than STRING_ERRORS ({STRING_ERRORS}). Carry a typed error instead: an enum \
-         in glowfly-core or glowfly-model, worded in crates/glowfly-model/src/state/error_words/typed.rs with t.tr. The types:\n{}",
+        sites.is_empty(),
+        "{} Result<_, String> types in {MSG_DIR}. Carry a typed error instead: an enum in glowfly-core or glowfly-model, \
+         worded in crates/glowfly-model/src/state/error_words/typed.rs with t.tr. The types:\n{}",
         sites.len(),
         sites.join("\n")
-    );
-    assert!(
-        sites.len() == STRING_ERRORS,
-        "only {} Result<_, String> types in {MSG_DIR} now: lower STRING_ERRORS in tests/source_checks/hygiene/string_errors.rs to {}",
-        sites.len(),
-        sites.len()
     );
 }
 

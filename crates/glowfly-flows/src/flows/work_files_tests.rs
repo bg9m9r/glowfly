@@ -236,7 +236,7 @@ fn unstage_delete_results() {
     assert!(st.session.diff.view.is_none(), "the staged diff of the deleted file is closed");
     assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
-    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err("boom".into()) }));
+    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err(glowfly_model::testing::write_said("boom")) }));
     assert_eq!(last_log(&st), "Could not delete s.txt: boom");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -277,14 +277,20 @@ fn create_result_closes_or_shows_the_error() {
 
     run(&mut st, Msg::WorkFile(WorkFileMsg::NewFileDialog("docs/a.md".into())));
     run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("docs/a.md".into())));
-    let fx = run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Err("docs/a.md already exists".into()) }));
+    let fx = run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone {
+            op: create(),
+            result: Err(glowfly_model::testing::write_said("docs/a.md already exists")),
+        }),
+    );
     let form = new_form(&st);
     assert!(!form.busy);
     assert_eq!(form.error, Some(("docs/a.md".into(), "docs/a.md already exists".into())));
     assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))));
 
     st.modal = None;
-    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Err("boom".into()) }));
+    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: create(), result: Err(glowfly_model::testing::write_said("boom")) }));
     assert_eq!(last_log(&st), "Could not create docs/a.md: boom");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -321,7 +327,10 @@ fn result_for_inactive_tab() {
     run(&mut st, Msg::WorkFile(WorkFileMsg::NewFileDialog(String::new())));
     run(&mut st, Msg::WorkFile(WorkFileMsg::CreateFile("x.txt".into())));
     assert!(new_form(&st).busy);
-    let msg = Msg::WorkFile(WorkFileMsg::WorkFileDone { op: FileOp::Create("x.txt".into()), result: Err("in the way".into()) });
+    let msg = Msg::WorkFile(WorkFileMsg::WorkFileDone {
+        op: FileOp::Create("x.txt".into()),
+        result: Err(glowfly_model::testing::write_said("in the way")),
+    });
     let fx = run(&mut st, Msg::Scoped { workdir: PathBuf::from("C:/elsewhere"), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.modal.is_none(), "the waiting dialog is closed");
@@ -329,7 +338,7 @@ fn result_for_inactive_tab() {
 
     for (result, want) in [
         (Ok(WorkFileOk::deleted(Deleted::Permanently)), "Deleted s.txt and removed it from the staging area."),
-        (Err("in the way".to_owned()), "Could not delete s.txt: in the way"),
+        (Err(glowfly_model::testing::write_said("in the way")), "Could not delete s.txt: in the way"),
     ] {
         let ok = result.is_ok();
         let msg = Msg::WorkFile(WorkFileMsg::WorkFileDone {

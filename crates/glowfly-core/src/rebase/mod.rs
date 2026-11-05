@@ -16,10 +16,13 @@
 //! local branch points at, so stacked branches move with the rebase (`update_refs`). The plan
 //! predicts those lines the way git writes them; they are fixed rows that travel with their
 //! commit, and both the new list and an edited one must keep exactly git's set of them.
+//!
+//! Every refusal and failure is a `RebaseError` (`error`), worded for the user by the model.
 
 use git2::{Oid, RepositoryState};
 use std::path::PathBuf;
 
+mod error;
 mod merges;
 mod plan;
 mod progress;
@@ -29,6 +32,13 @@ mod run;
 mod todo;
 mod update_refs;
 
+pub use error::{
+    BRANCH_TIP, Busy, CHANGED, COMBINE_AFTER_MERGE, COMBINE_AFTER_STEP, DETACHED, DROPS_EVERYTHING, EMPTY_COMBINED, EMPTY_EXEC,
+    EMPTY_REWORD, EXEC_ONE_LINE, FIRST_COMBINES, LOST_TO_RESET, LeftOut, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_INTERACTIVE, NOT_ON_BRANCH,
+    NOT_REBASING, NOT_UTF8, PARENT_MERGE, REFS_CHANGED, ROOT_SQUASH, RebaseError, SIDE_LINE, SOME_BRANCH_TIPS, SOME_MERGE_SELECTED,
+    SOME_NOT_ON_BRANCH, SOME_SIDE_LINE, SPLIT_BY_BRANCH, STALE, TODO_MOVED, TOO_FEW_TO_SQUASH, UNSUPPORTED_STEPS, UPDATE_REF_IN_GROUP,
+    read_refusal, write_refusal,
+};
 pub use plan::plan;
 pub(crate) use progress::progress_of;
 pub use progress::{RebaseProgress, progress, stopped_at};
@@ -40,51 +50,7 @@ pub use todo::{
     build, default_combined, editor_command, group_end, install_todo, is_unchanged, listed_oids, problem, problem_with, shell_quote,
     shell_quote_for,
 };
-pub use update_refs::{HeldAlias, NOT_UTF8, listed_refs};
-
-/// Why Start refuses a list made before HEAD moved.
-pub const STALE: &str = "The branch changed since this list was made. Reset to reload it.";
-/// Why a todo is refused when git would rebase different commits than the list holds.
-pub const CHANGED: &str = "The commits to rebase changed; reload the list and try again.";
-pub const DETACHED: &str = "Check out a branch to rebase it.";
-pub const FIRST_COMBINES: &str =
-    "The first commit can't be squashed or fixed up: there is no earlier commit in the list to combine it with.";
-pub const EMPTY_REWORD: &str = "Reword messages can't be empty.";
-pub const NOT_ON_BRANCH: &str = "This commit isn't on the current branch.";
-pub const SOME_NOT_ON_BRANCH: &str = "Some selected commits aren't on the current branch.";
-pub const MERGE_SELECTED: &str = "Merge commits can't be edited this way.";
-pub const SOME_MERGE_SELECTED: &str = "The selection includes a merge commit.";
-/// A commit reachable from HEAD only through a merge's later parents.
-pub const SIDE_LINE: &str = "This commit came in through a merge; edit it in the interactive rebase panel instead.";
-pub const SOME_SIDE_LINE: &str = "Some selected commits came in through a merge; edit them in the interactive rebase panel instead.";
-/// A squash whose commits follow one another on the line, but the older one starts another line.
-/// A quick drop of a commit another branch points at (`rebase.updateRefs`).
-pub const BRANCH_TIP: &str = "Another branch points at this commit and would lose it; drop it in the interactive rebase panel instead.";
-pub const SOME_BRANCH_TIPS: &str =
-    "Another branch points at a selected commit and would lose it; drop them in the interactive rebase panel instead.";
-pub const SPLIT_BY_BRANCH: &str = "Another branch starts between these commits; squash them in the interactive rebase panel instead.";
-pub const COMBINE_AFTER_MERGE: &str = "A squash or fixup must follow the commit it melds into, not a merge, label or reset step.";
-/// A commit row a later `reset` would throw away (see `merges::loses_commit`).
-pub const LOST_TO_RESET: &str =
-    "A commit just before a reset step would be left out of the branch. Move it below the reset, or above the label that ends its line.";
-pub const ROOT_SQUASH: &str = "The first commit has no parent to squash it into.";
-pub const PARENT_MERGE: &str = "Its parent is a merge commit, which can't be squashed into.";
-pub const NOT_CONSECUTIVE: &str = "Select commits that follow one another to squash them.";
-pub const TOO_FEW_TO_SQUASH: &str = "Select two or more commits to squash them.";
-pub const DROPS_EVERYTHING: &str = "Dropping every commit of the branch isn't supported.";
-pub const NOT_REBASING: &str = "No rebase is in progress.";
-pub const EMPTY_COMBINED: &str = "The combined commit's message can't be empty.";
-pub const EMPTY_EXEC: &str = "Exec steps need a command.";
-pub const EXEC_ONE_LINE: &str = "An exec command must be one line.";
-pub const COMBINE_AFTER_STEP: &str = "Move the exec or break step below the squash or fixup: it must follow the commit it combines with.";
-pub const NOT_INTERACTIVE: &str = "Only an interactive rebase's remaining steps can be edited.";
-pub const UNSUPPORTED_STEPS: &str = "The remaining steps include merge, label or reset commands, which this panel can't edit yet. Use git rebase --edit-todo in a terminal.";
-/// An `update-ref` line between a commit and a squash or fixup into it: the panel keeps a
-/// branch's update after the whole group, so it can't write this order back.
-pub const UPDATE_REF_IN_GROUP: &str = "The remaining steps move a branch between a commit and a squash or fixup into it, which this panel can't keep as it is. Use git rebase --edit-todo in a terminal.";
-/// Why a todo is refused when git would move other branches than the list does.
-pub const REFS_CHANGED: &str = "The branches this rebase moves (rebase.updateRefs) changed; reload the list and try again.";
-pub const TODO_MOVED: &str = "The rebase moved on since this list was read. Reset to reload it.";
+pub use update_refs::{HeldAlias, listed_refs};
 
 /// Why a rebase onto `oid` would do nothing: `branch` already contains it.
 pub fn contains_commit(branch: &str, oid: Oid) -> String {
@@ -348,23 +314,13 @@ pub enum Outcome {
 
 /// Why nothing can start while an operation is in progress, if one is.
 pub fn in_progress_text(state: RepositoryState) -> Option<String> {
-    let op = operation_noun(state)?;
-    Some(format!("Finish or abort the {op} in progress before starting an interactive rebase."))
+    Busy::of(state).map(|op| RebaseError::InProgress { op }.to_string())
 }
 
 /// The operation in progress ("merge", "rebase", "cherry-pick", "revert", "patch application"
 /// or "bisect"), if any.
 pub fn operation_noun(state: RepositoryState) -> Option<&'static str> {
-    use RepositoryState::*;
-    Some(match state {
-        Clean => return None,
-        Merge => "merge",
-        Rebase | RebaseInteractive | RebaseMerge => "rebase",
-        CherryPick | CherryPickSequence => "cherry-pick",
-        Revert | RevertSequence => "revert",
-        ApplyMailbox | ApplyMailboxOrRebase => "patch application",
-        Bisect => "bisect",
-    })
+    Busy::of(state).map(Busy::noun)
 }
 
 /// The first seven characters of a commit id.

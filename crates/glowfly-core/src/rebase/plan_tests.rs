@@ -1,7 +1,6 @@
 //! Planning an interactive rebase against fixture repositories.
 
 use super::*;
-use crate::error::Error;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
 use git2::Repository;
@@ -28,10 +27,9 @@ pub(super) fn linear(name: &str) -> (PathBuf, [Oid; 4]) {
     (dir, [c1, c2, c3, c4])
 }
 
-fn refused(r: crate::error::Result<RebasePlan>) -> String {
+fn refused(r: Result<RebasePlan, RebaseError>) -> RebaseError {
     match r {
-        Err(Error::Unsupported(text)) => text,
-        Err(e) => panic!("expected a refusal, got {e:?}"),
+        Err(e) => e,
         Ok(p) => panic!("expected a refusal, got {p:?}"),
     }
 }
@@ -75,7 +73,8 @@ fn onto_a_branch() {
     assert_eq!(oids(&p), [f1, f2]);
     assert_eq!((p.upstream, p.onto_label.as_str(), p.branch.as_str()), (Upstream::Commit(tip), "base", "feature"));
     let e = plan(&dir, &RebaseBase::OntoBranch("missing".into())).unwrap_err();
-    assert!(e.is_not_found(), "{e:?}");
+    assert_eq!(e, RebaseError::BranchNotFound { name: "missing".into() });
+    assert_eq!(e.to_string(), crate::error::Error::NotFound("branch missing".into()).to_string());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -86,12 +85,15 @@ fn refusals() {
     git(&dir, &["checkout", "-q", "-b", "side", &c2.to_string()]);
     let side = commit(&dir, "s.txt", "s\n", "side");
     git(&dir, &["checkout", "-q", "main"]);
-    let text = refused(plan(&dir, &RebaseBase::FromCommit(side)));
-    assert_eq!(text, format!("{} is not on the current branch", &side.to_string()[..7]));
+    let e = refused(plan(&dir, &RebaseBase::FromCommit(side)));
+    assert_eq!(e, RebaseError::CommitNotOnBranch { commit: side.to_string()[..7].to_owned() });
+    assert_eq!(e.to_string(), format!("{} is not on the current branch", &side.to_string()[..7]));
 
     // An empty range: main is already on a branch that contains it.
     git(&dir, &["branch", "same", "main"]);
-    assert_eq!(refused(plan(&dir, &RebaseBase::OntoBranch("same".into()))), "main has no commits that aren't already on same");
+    let e = refused(plan(&dir, &RebaseBase::OntoBranch("same".into())));
+    assert_eq!(e, RebaseError::NothingToRebase { branch: "main".into(), onto: "same".into() });
+    assert_eq!(e.to_string(), "main has no commits that aren't already on same");
 
     // A merge in the range is planned, with the steps that recreate it.
     git(&dir, &["merge", "-q", "--no-ff", "side", "-m", "merge side"]);
@@ -107,7 +109,7 @@ fn refusals() {
 
     // Detached HEAD.
     git(&dir, &["checkout", "-q", &c4.to_string()]);
-    assert_eq!(refused(plan(&dir, &RebaseBase::FromCommit(c1))), DETACHED);
+    assert_eq!(refused(plan(&dir, &RebaseBase::FromCommit(c1))), RebaseError::Detached);
     git(&dir, &["checkout", "-q", "main"]);
 
     // A rebase already in progress.
@@ -115,8 +117,9 @@ fn refusals() {
     commit(&dir, "5.txt", "other\n", "conflicting c5");
     let (ok, _) = run(&dir, &args(&["rebase", "main"]));
     assert!(!ok, "the rebase should stop on a conflict");
-    let text = refused(plan(&dir, &RebaseBase::FromCommit(c1)));
-    assert_eq!(text, "Finish or abort the rebase in progress before starting an interactive rebase.");
+    let e = refused(plan(&dir, &RebaseBase::FromCommit(c1)));
+    assert_eq!(e, RebaseError::InProgress { op: Busy::Rebase });
+    assert_eq!(e.to_string(), "Finish or abort the rebase in progress before starting an interactive rebase.");
     git(&dir, &["rebase", "--abort"]);
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -134,10 +137,11 @@ fn onto_a_commit() {
     assert_eq!(oids(&p)[0], c2);
 
     let missing = Oid::from_bytes(&[7; 20]).unwrap();
-    assert!(plan(&dir, &RebaseBase::OntoCommit(missing)).unwrap_err().is_not_found());
+    let e = plan(&dir, &RebaseBase::OntoCommit(missing)).unwrap_err();
+    assert_eq!(e, RebaseError::CommitNotFound { commit: missing.to_string()[..7].to_owned() });
     let tip = head(&dir);
-    let text = refused(plan(&dir, &RebaseBase::OntoCommit(tip)));
-    assert_eq!(text, format!("main has no commits that aren't already on {} c4", &tip.to_string()[..7]));
+    let e = refused(plan(&dir, &RebaseBase::OntoCommit(tip)));
+    assert_eq!(e.to_string(), format!("main has no commits that aren't already on {} c4", &tip.to_string()[..7]));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

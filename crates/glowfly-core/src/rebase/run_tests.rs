@@ -160,6 +160,7 @@ fn stale_requests_change_nothing() {
     let moved = commit(&dir, "5.txt", "5\n", "c5");
     let rebase_dir = Repository::open(&dir).unwrap().path().join("rebase-merge");
     let e = start(&dir, &req, &SequenceEditor::Copy).unwrap_err();
+    assert_eq!(e, RebaseError::Stale);
     assert_eq!(e.to_string(), STALE);
     assert_eq!(head(&dir), moved);
     assert!(!rebase_dir.exists());
@@ -168,7 +169,7 @@ fn stale_requests_change_nothing() {
     let req = request(&dir, RebaseBase::FromCommit(c2), |items| {
         items.pop();
     });
-    assert_eq!(start(&dir, &req, &SequenceEditor::Copy).unwrap_err().to_string(), CHANGED);
+    assert_eq!(start(&dir, &req, &SequenceEditor::Copy).unwrap_err(), RebaseError::Changed);
     assert_eq!(head(&dir), moved);
 
     // A failing sequence editor.

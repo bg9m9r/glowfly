@@ -3,12 +3,7 @@
 
 use super::plan::{checked_head, plan};
 use super::todo::problem;
-use super::{
-    BRANCH_TIP, DROPS_EVERYTHING, MERGE_SELECTED, NOT_CONSECUTIVE, NOT_ON_BRANCH, PARENT_MERGE, ROOT_SQUASH, RebaseAction, RebaseBase,
-    SIDE_LINE, SOME_BRANCH_TIPS, SOME_MERGE_SELECTED, SOME_NOT_ON_BRANCH, SOME_SIDE_LINE, SPLIT_BY_BRANCH, StartRequest, TOO_FEW_TO_SQUASH,
-    TodoStep, Upstream,
-};
-use crate::error::{Error, Result};
+use super::{RebaseAction, RebaseBase, RebaseError, StartRequest, TodoStep, Upstream};
 use git2::{Oid, Repository};
 use std::collections::HashSet;
 use std::path::Path;
@@ -52,28 +47,28 @@ pub struct QuickPlan {
 }
 
 /// The rebase that makes `edit` on the current branch. Merges after the commits are kept (the
-/// list recreates them). Refused (`Error::Unsupported`, with a message for the user) while an
-/// operation is in progress, on a detached HEAD, for commits that aren't on the branch's
-/// first-parent line (`SIDE_LINE` for those that came in through a merge), for merges chosen,
+/// list recreates them). Refused while an operation is in progress, on a detached HEAD, for
+/// commits that aren't on the branch's first-parent line (`SideLine` for those that came in
+/// through a merge), for merges chosen,
 /// for a squash of the first commit or into a merge, for a squash of commits that don't follow
 /// one another or that another line starts between, and for dropping every commit of the
 /// branch.
-pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
+pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan, RebaseError> {
     let repo = Repository::open(workdir)?;
     let (head, _) = checked_head(&repo)?;
     let targets = edit.targets();
     let many = targets.len() > 1;
     if matches!(edit, QuickEdit::Squash(_)) && !many {
-        return Err(refused(TOO_FEW_TO_SQUASH));
+        return Err(RebaseError::TooFewToSquash);
     }
     let (oldest, mut line) = oldest_on_branch(&repo, head, &targets, many)?;
     let mut chosen = targets.clone();
     let base = match edit {
         QuickEdit::SquashIntoParent(o) => {
             let commit = repo.find_commit(*o)?;
-            let parent = commit.parent_ids().next().ok_or_else(|| refused(ROOT_SQUASH))?;
+            let parent = commit.parent_ids().next().ok_or(RebaseError::RootSquash)?;
             if repo.find_commit(parent)?.parent_count() > 1 {
-                return Err(refused(PARENT_MERGE));
+                return Err(RebaseError::ParentMerge);
             }
             chosen.push(parent);
             line.push(parent);
@@ -83,14 +78,14 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
     };
     let p = plan(workdir, &RebaseBase::FromCommit(base))?;
     if let Some(h) = p.held.first() {
-        return Err(Error::Unsupported(h.text()));
+        return Err(RebaseError::from(h));
     }
     let mut steps = p.steps;
     let mut rows: Vec<usize> = chosen.iter().filter_map(|o| steps.iter().position(|s| s.oid() == Some(*o))).collect();
     rows.sort_unstable();
     rows.dedup();
     if rows.is_empty() {
-        return Err(refused(if many { SOME_NOT_ON_BRANCH } else { NOT_ON_BRANCH }));
+        return Err(if many { RebaseError::SomeNotOnBranch } else { RebaseError::NotOnBranch });
     }
     match edit {
         QuickEdit::Reword(_) => {
@@ -101,7 +96,7 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
         }
         QuickEdit::SquashIntoParent(_) | QuickEdit::Squash(_) => {
             if rows.windows(2).any(|w| w[1] != w[0] + 1) {
-                return Err(refused(if consecutive_on(&line, &chosen) { SPLIT_BY_BRANCH } else { NOT_CONSECUTIVE }));
+                return Err(if consecutive_on(&line, &chosen) { RebaseError::SplitByBranch } else { RebaseError::NotConsecutive });
             }
             let joined =
                 rows.iter().filter_map(|&r| steps[r].commit()).map(|i| i.message.trim().to_owned()).collect::<Vec<_>>().join("\n\n");
@@ -118,7 +113,7 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
         QuickEdit::Drop(_) => {
             // Another branch pointing at a dropped commit would lose it (rebase.updateRefs).
             if rows.iter().any(|&r| matches!(steps.get(r + 1), Some(TodoStep::UpdateRef(_)))) {
-                return Err(refused(if many { SOME_BRANCH_TIPS } else { BRANCH_TIP }));
+                return Err(if many { RebaseError::SomeBranchTips } else { RebaseError::BranchTip });
             }
             for &r in &rows {
                 if let Some(i) = steps[r].commit_mut() {
@@ -127,14 +122,14 @@ pub fn prepare_edit(workdir: &Path, edit: &QuickEdit) -> Result<QuickPlan> {
             }
             let commits = steps.iter().filter(|s| s.oid().is_some()).count();
             if p.upstream == Upstream::Root && rows.len() == commits {
-                return Err(refused(DROPS_EVERYTHING));
+                return Err(RebaseError::DropsEverything);
             }
         }
     }
     let last = rows[rows.len() - 1];
     let later = steps[last + 1..].iter().filter(|s| s.oid().is_some()).count();
     if let Some(why) = problem(&steps) {
-        return Err(Error::Unsupported(why));
+        return Err(why);
     }
     let request = StartRequest { head: p.head, upstream: p.upstream, items: steps, autostash: false };
     Ok(QuickPlan { edit: edit.clone(), request, branch: p.branch, edited: rows, later })
@@ -150,9 +145,9 @@ fn consecutive_on(line: &[Oid], oids: &[Oid]) -> bool {
 
 /// Walks HEAD's first-parent line (through merges that weren't chosen) until every target is
 /// found; returns the oldest target and the line from HEAD down to it, newest first. Refused
-/// for a chosen merge, and for targets the line never reaches: `SIDE_LINE` when HEAD reaches
-/// them through a merge, else `NOT_ON_BRANCH`.
-fn oldest_on_branch(repo: &Repository, head: Oid, targets: &[Oid], many: bool) -> Result<(Oid, Vec<Oid>)> {
+/// for a chosen merge, and for targets the line never reaches: `SideLine` when HEAD reaches
+/// them through a merge, else `NotOnBranch`.
+fn oldest_on_branch(repo: &Repository, head: Oid, targets: &[Oid], many: bool) -> Result<(Oid, Vec<Oid>), RebaseError> {
     let mut left: HashSet<Oid> = targets.iter().copied().collect();
     let mut line = Vec::new();
     let mut at = head;
@@ -160,7 +155,7 @@ fn oldest_on_branch(repo: &Repository, head: Oid, targets: &[Oid], many: bool) -
         let commit = repo.find_commit(at)?;
         line.push(at);
         if left.remove(&at) && commit.parent_count() > 1 {
-            return Err(refused(if many { SOME_MERGE_SELECTED } else { MERGE_SELECTED }));
+            return Err(if many { RebaseError::SomeMergeSelected } else { RebaseError::MergeSelected });
         }
         if left.is_empty() {
             return Ok((at, line));
@@ -172,12 +167,8 @@ fn oldest_on_branch(repo: &Repository, head: Oid, targets: &[Oid], many: bool) -
     }
     for t in &left {
         if repo.graph_descendant_of(head, *t)? {
-            return Err(refused(if many { SOME_SIDE_LINE } else { SIDE_LINE }));
+            return Err(if many { RebaseError::SomeSideLine } else { RebaseError::SideLine });
         }
     }
-    Err(refused(if many { SOME_NOT_ON_BRANCH } else { NOT_ON_BRANCH }))
-}
-
-fn refused(text: &str) -> Error {
-    Error::Unsupported(text.into())
+    Err(if many { RebaseError::SomeNotOnBranch } else { RebaseError::NotOnBranch })
 }

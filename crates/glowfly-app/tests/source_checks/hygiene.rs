@@ -12,9 +12,8 @@
 //!   `t.tr`/`trf`/`trn` lookup) number at most `ENGLISH_LOG_CALLS`; the number only goes down.
 //!   glowfly-ui's and glowfly-runner's English text for the user is counted per file in
 //!   `hygiene/english_allow.rs` (`english_text.rs`), and those counts only go down too.
-//! - Result messages carry typed errors, not English text: the `Result<_, String>` types in
-//!   glowfly-model's `msg/` number at most `STRING_ERRORS` (`hygiene/string_errors.rs`), which
-//!   only goes down.
+//! - Result messages carry typed errors, not English text: glowfly-model's `msg/` has no
+//!   `Result<_, String>` (`hygiene/string_errors.rs`).
 //! - New effects go in effect areas: `Effect` has no flat variants, only the rows of
 //!   glowfly-model's `effect/areas.rs` (`hygiene/flat_effects.rs`).
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is

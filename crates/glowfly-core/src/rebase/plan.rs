@@ -1,25 +1,25 @@
 //! The commits an interactive rebase would replay, read with libgit2.
 
-use super::{DETACHED, RebaseAction, RebaseBase, RebasePlan, TodoItem, TodoStep, Upstream, in_progress_text, merges, short, update_refs};
+use super::{Busy, RebaseAction, RebaseBase, RebaseError, RebasePlan, TodoItem, TodoStep, Upstream, merges, short, update_refs};
 use crate::commit_text::{self, Decoder};
-use crate::error::{Error, Result};
+use crate::error::Result;
 use git2::{Oid, Repository, Sort};
 use std::collections::HashSet;
 use std::path::Path;
 
 /// The list for rebasing the current branch from `base`, oldest first, all picks; a range that
 /// holds merges gets the label, reset and merge steps that recreate them, and with
-/// `rebase.updateRefs` the update-ref steps git adds for the branches inside it. Refused
-/// (`Error::Unsupported`, with a message for the user) while an operation is in progress, on a
-/// detached HEAD, for a commit that isn't on the current branch, and when there is nothing to
-/// rebase. A missing branch or commit is `Error::NotFound`.
-pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
+/// `rebase.updateRefs` the update-ref steps git adds for the branches inside it. Refused while
+/// an operation is in progress, on a detached HEAD, for a commit that isn't on the current
+/// branch, and when there is nothing to rebase; a missing branch or commit is
+/// `BranchNotFound` or `CommitNotFound`.
+pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan, RebaseError> {
     let repo = Repository::open(workdir)?;
     let (head, branch) = checked_head(&repo)?;
     let (upstream, onto_label) = match base {
         RebaseBase::FromCommit(c) => {
             if *c != head && !repo.graph_descendant_of(head, *c)? {
-                return Err(Error::Unsupported(format!("{} is not on the current branch", short(*c))));
+                return Err(RebaseError::CommitNotOnBranch { commit: short(*c) });
             }
             let commit = repo.find_commit(*c)?;
             match commit.parent_ids().next() {
@@ -34,19 +34,19 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
             let tip = repo
                 .find_reference(&format!("refs/heads/{name}"))
                 .and_then(|r| r.peel_to_commit())
-                .map_err(|_| Error::NotFound(format!("branch {name}")))?
+                .map_err(|_| RebaseError::BranchNotFound { name: name.clone() })?
                 .id();
             (Upstream::Commit(tip), name.clone())
         }
         RebaseBase::OntoCommit(o) => {
-            let commit = repo.find_commit(*o).map_err(|_| Error::NotFound(format!("commit {}", short(*o))))?;
+            let commit = repo.find_commit(*o).map_err(|_| RebaseError::CommitNotFound { commit: short(*o) })?;
             let label = format!("{} {}", short(*o), commit_text::summary(&commit)).trim_end().to_owned();
             (Upstream::Commit(*o), label)
         }
     };
     let oids = range(&repo, head, upstream)?;
     if oids.is_empty() {
-        return Err(Error::Unsupported(format!("{branch} has no commits that aren't already on {onto_label}")));
+        return Err(RebaseError::NothingToRebase { branch, onto: onto_label });
     }
     let mut has_merge = false;
     for o in &oids {
@@ -65,16 +65,16 @@ pub fn plan(workdir: &Path, base: &RebaseBase) -> Result<RebasePlan> {
 
 /// HEAD's commit and branch, refusing while an operation is in progress or on a detached or
 /// unborn HEAD.
-pub(super) fn checked_head(repo: &Repository) -> Result<(Oid, String)> {
-    if let Some(text) = in_progress_text(repo.state()) {
-        return Err(Error::Unsupported(text));
+pub(super) fn checked_head(repo: &Repository) -> Result<(Oid, String), RebaseError> {
+    if let Some(op) = Busy::of(repo.state()) {
+        return Err(RebaseError::InProgress { op });
     }
     if repo.head_detached()? {
-        return Err(Error::Unsupported(DETACHED.into()));
+        return Err(RebaseError::Detached);
     }
-    let head = repo.head().map_err(|_| Error::Unsupported("The branch has no commits yet.".into()))?;
+    let head = repo.head().map_err(|_| RebaseError::NoCommitsYet)?;
     let branch = head.shorthand().unwrap_or_default().to_owned();
-    let oid = head.target().ok_or_else(|| Error::Unsupported("The branch has no commits yet.".into()))?;
+    let oid = head.target().ok_or(RebaseError::NoCommitsYet)?;
     Ok((oid, branch))
 }
 

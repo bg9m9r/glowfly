@@ -72,6 +72,7 @@ source file, update its line here.
 - The remaining steps of a rebase in progress and `--edit-todo`: `remaining.rs`.
 - Message files (`run.rs`, `remaining.rs`) are written in the repository's commit encoding and read back from it (`commit_encoding.rs`).
 - `update_refs.rs`: the `update-ref` steps git adds with `rebase.updateRefs` (predicted for the plan, branch aliases and the branches other worktrees hold included, compared when a list replaces git's); tests in `update_refs_tests.rs` and `update_refs_git_tests.rs`.
+- `rebase/error.rs`: `RebaseError`, why a rebase, a graph history edit, a remaining-steps edit or a restack was refused or failed: one variant per cause (`Busy` names the operation in progress, `LeftOut` a branch git won't move), git's own words in `Said`; `Display` is the English and the model words it (`typed::rebase`). The `--write-todo` helper hands its refusal back as JSON in `<prepared>.error` (`write_refusal`, `read_refusal`). Tests in `error_tests.rs`.
 - `rebase/progress.rs`: where a rebase in progress stands: how many of its commits are done, the commit it stopped at and why, and whether git holds an autostash.
 - `rebase/quick.rs`: history edits chosen in the graph (reword, squash, drop), turned into a ready `StartRequest` for the same `git rebase -i` run the panel uses.
 - `rebase/todo.rs`: the todo list: checking a list before it runs, writing it in git's format (with the reword and combined message files), recognising the lines Glowfly adds, and installing it over the list git generated.

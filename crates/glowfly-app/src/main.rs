@@ -185,8 +185,8 @@ fn start_path(arg: OsString) -> PathBuf {
 }
 
 /// `--write-todo <prepared> <git todo>`: replaces git's todo list with the prepared one after
-/// checking that both list the same commits. On failure the reason goes to `<prepared>.error`
-/// for the app to show, and git is told the editor failed (exit status 1).
+/// checking that both list the same commits. On failure the reason, typed, goes to
+/// `<prepared>.error` for the app to word, and git is told the editor failed (exit status 1).
 fn write_todo(args: &[OsString]) -> i32 {
     let [prepared, git_todo, ..] = args else {
         eprintln!("usage: glowfly --write-todo <prepared todo> <git todo>");
@@ -195,10 +195,8 @@ fn write_todo(args: &[OsString]) -> i32 {
     match glowfly_core::rebase::install_todo(Path::new(prepared), Path::new(git_todo)) {
         Ok(()) => 0,
         Err(e) => {
-            let mut error_file = prepared.clone();
-            error_file.push(".error");
-            if let Err(w) = std::fs::write(&error_file, e.to_string()) {
-                eprintln!("{e} (and could not write {}: {w})", Path::new(&error_file).display());
+            if let Err(w) = glowfly_core::rebase::write_refusal(Path::new(prepared), &e) {
+                eprintln!("{e} (and could not write {}.error: {w})", Path::new(prepared).display());
             }
             1
         }

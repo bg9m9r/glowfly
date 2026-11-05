@@ -1,6 +1,7 @@
 //! Reverting part of a commit or comparison diff in the working tree (`FilesEffect::Revert`), with
 //! the working copy saved before and after so the revert can be undone.
 
+use glowfly_core::error::WriteFailed;
 use glowfly_core::repo::{self, RevertRequest};
 use glowfly_core::undo;
 use glowfly_model::msg::{Msg, RevertWhat, StageMsg};
@@ -13,7 +14,7 @@ pub(super) fn run(workdir: &Path, req: RevertRequest) -> Msg {
     let (result, undo) = match undo::revert_saving(workdir, &path, what.saved_as(), || repo::revert(workdir, &req)) {
         Ok((r, a)) => (Ok(r), a),
         // A revert that changed the file before failing can still be undone.
-        Err(undo::RevertFailed { error, undo }) => (Err(super::err(error)), undo.map(|a| *a)),
+        Err(undo::RevertFailed { error, undo }) => (Err(WriteFailed::from(error)), undo.map(|a| *a)),
     };
     Msg::Stage(StageMsg::Reverted { path, what, result, undo })
 }

@@ -190,8 +190,29 @@ fn a_panicking_local_op_reports_to_its_repository() {
     let effect = Effect::Files(FilesEffect::LocalOp { workdir: "C:/r".into(), op: glowfly_model::effect::LocalOp::StageAll });
     let msg = guarded(Recovery::of(&effect, "local-op"), || panic!("static")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
-    assert!(matches!(*msg, Msg::Stage(StageMsg::LocalOpDone(Err(ref e))) if e.contains("static")));
+    assert!(matches!(*msg, Msg::Stage(StageMsg::LocalOpDone(Err(WriteFailed::Panicked { ref panic, .. }))) if panic.contains("static")));
     assert!(guarded(Recovery::of(&effect, "local-op"), || None).is_none(), "no panic, no message");
+}
+
+#[test]
+fn a_panicking_rebase_or_steps_edit_ends_its_job_typed() {
+    use glowfly_core::rebase::{EditTodoRequest, StartRequest, Upstream};
+    let cwd = glowfly_core::paths::temp_dir().join("glowfly-guard-rebase");
+    let request = StartRequest { head: git2::Oid::zero(), upstream: Upstream::Root, items: vec![], autostash: false };
+    let effect = Effect::Rebase(RebaseEffect::Start { cwd: cwd.clone(), request, detail: String::new() });
+    // Unscoped, like the job it ends.
+    let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+    assert!(
+        matches!(msg, Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(RebaseError::Panicked { ref panic, .. }), undo: None }) if panic == "boom"),
+        "the rebase job ends"
+    );
+    let request = EditTodoRequest { steps: vec![], locked_text: String::new(), todo: String::new(), first_may_combine: false };
+    let effect = Effect::Rebase(RebaseEffect::EditTodo { cwd, request });
+    let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
+    assert!(
+        matches!(msg, Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(RebaseError::Panicked { ref panic, .. }) }) if panic == "boom"),
+        "the edit-todo job ends"
+    );
 }
 
 #[test]
