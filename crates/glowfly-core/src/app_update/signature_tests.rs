@@ -1,10 +1,11 @@
 //! The minisign signature over `SHA256SUMS`: the committed fixtures (made once with the minisign
 //! CLI) verify and refuse as they should, `sign` (the tests' signer for local feeds, with the
-//! committed test key) makes what minisign makes, and a download goes ahead only with a signed
-//! list that names the file with its digest. No network: feeds are folders or the mock server.
+//! committed test key) makes what minisign makes, and a download goes ahead only with a list
+//! signed for the offered release (its trusted comment) that names the file with its digest. No
+//! network: feeds are folders or the mock server.
 
 use super::feed_tests::{MSI, is_empty, offer_for, scratch, sum_line, write_feed, write_feed_signed};
-use super::signature::{KEYS, SIGNATURE_FILE, TEST_KEY, verify};
+use super::signature::{KEYS, SIGNATURE_FILE, TEST_KEY, release_comment, signed_comment, verify};
 use super::*;
 use crate::forge::mock::{Mock, Reply};
 use base64::Engine;
@@ -35,22 +36,24 @@ fn secret_key(file: &str) -> ([u8; 8], ed25519_compact::KeyPair) {
     (keynum, ed25519_compact::KeyPair::from_seed(seed))
 }
 
-/// A minisign signature of `bytes` by the test key, as `minisign -S` writes it: Ed25519 over
-/// the BLAKE2b-512 of the bytes (`prehashed`; false gives the legacy kind, over the bytes
-/// themselves), then over that signature and the trusted comment.
-fn sign_as(bytes: &[u8], prehashed: bool) -> String {
+/// A minisign signature of `bytes` by the test key with the trusted comment `comment`, as
+/// `minisign -S -t <comment>` writes it: Ed25519 over the BLAKE2b-512 of the bytes (`prehashed`;
+/// false gives the legacy kind, over the bytes themselves), then over that signature and the
+/// trusted comment.
+fn sign_with(bytes: &[u8], comment: &str, prehashed: bool) -> String {
     let (keynum, pair) = secret_key(TEST_SECRET);
     let (alg, signature) =
         if prehashed { (b"ED", pair.sk.sign(Blake2b512::digest(bytes), None)) } else { (b"Ed", pair.sk.sign(bytes, None)) };
-    let comment = "file:SHA256SUMS test feed";
     let global = pair.sk.sign([&signature[..], comment.as_bytes()].concat(), None);
     let first = STANDARD.encode([&alg[..], &keynum, &signature[..]].concat());
     format!("untrusted comment: TEST KEY ONLY\n{first}\ntrusted comment: {comment}\n{}\n", STANDARD.encode(&global[..]))
 }
 
-/// A minisign signature of `bytes` by the test key.
-pub(super) fn sign(bytes: &[u8]) -> String {
-    sign_as(bytes, true)
+/// A minisign signature of `bytes` by the test key, made for the release `tag` as the Release
+/// workflow signs it (spelled out here rather than taken from `release_comment`, so the test pins
+/// the format).
+pub(super) fn sign(bytes: &[u8], tag: &str) -> String {
+    sign_with(bytes, &format!("Glowfly {tag}: SHA256SUMS"), true)
 }
 
 #[test]
@@ -87,40 +90,57 @@ fn key_id(key: &str) -> String {
 
 #[test]
 fn a_good_signature_verifies() {
-    assert_eq!(verify(SUMS, SIGNED, &[TEST_KEY]), Ok(()), "the minisign CLI's signature");
-    assert_eq!(verify(SUMS, SIGNED, &[ANOTHER_KEY, TEST_KEY]), Ok(()), "by any of the keys");
-    assert_eq!(verify(SUMS, sign(SUMS).as_bytes(), &[TEST_KEY]), Ok(()), "the tests' signer");
+    let fixture = Ok("file:SHA256SUMS test fixture".to_owned());
+    assert_eq!(signed_comment(SUMS, SIGNED, &[TEST_KEY]), fixture, "the minisign CLI's signature");
+    assert_eq!(signed_comment(SUMS, SIGNED, &[ANOTHER_KEY, TEST_KEY]), fixture, "by any of the keys");
     let crlf = String::from_utf8(SIGNED.to_vec()).unwrap().replace('\n', "\r\n");
-    assert_eq!(verify(SUMS, crlf.as_bytes(), &[TEST_KEY]), Ok(()), "a signature with CRLF lines");
+    assert_eq!(signed_comment(SUMS, crlf.as_bytes(), &[TEST_KEY]), fixture, "a signature with CRLF lines, no CR left");
+    assert_eq!(verify(SUMS, sign(SUMS, "v0.3.0").as_bytes(), &[TEST_KEY], "v0.3.0"), Ok(()), "the tests' signer");
+    let crlf = sign(SUMS, "v0.3.0").replace('\n', "\r\n");
+    assert_eq!(verify(SUMS, crlf.as_bytes(), &[TEST_KEY], "v0.3.0"), Ok(()), "the release comment with CRLF lines");
 }
 
 #[test]
 fn a_tampered_sha256sums_is_refused() {
     let mut changed = SUMS.to_vec();
     changed[0] = b'3';
-    assert_eq!(verify(&changed, SIGNED, &[TEST_KEY]), Err(UpdateError::BadSignature));
+    assert_eq!(signed_comment(&changed, SIGNED, &[TEST_KEY]), Err(UpdateError::BadSignature));
+    // Refused for the signature before the comment is looked at.
+    let signed = sign(SUMS, "v0.3.0");
+    assert_eq!(verify(&changed, signed.as_bytes(), &[TEST_KEY], "v0.3.0"), Err(UpdateError::BadSignature));
+    assert_eq!(verify(&changed, SIGNED, &[TEST_KEY], "v0.3.0"), Err(UpdateError::BadSignature), "and with another comment");
     assert_eq!(
-        verify(&[SUMS, b"3333333333333333333333333333333333333333333333333333333333333333  extra.msi\n"].concat(), SIGNED, &[TEST_KEY]),
+        signed_comment(
+            &[SUMS, b"3333333333333333333333333333333333333333333333333333333333333333  extra.msi\n"].concat(),
+            SIGNED,
+            &[TEST_KEY]
+        ),
         Err(UpdateError::BadSignature),
         "a line added"
     );
     // A changed trusted comment breaks the second signature.
     let text = String::from_utf8(SIGNED.to_vec()).unwrap().replace("test fixture", "something else");
-    assert_eq!(verify(SUMS, text.as_bytes(), &[TEST_KEY]), Err(UpdateError::BadSignature));
+    assert_eq!(signed_comment(SUMS, text.as_bytes(), &[TEST_KEY]), Err(UpdateError::BadSignature));
+    // Rewritten to name another release: still the second signature that refuses it.
+    let renamed = signed.replace("Glowfly v0.3.0: SHA256SUMS", "Glowfly v0.4.0: SHA256SUMS");
+    assert_eq!(verify(SUMS, renamed.as_bytes(), &[TEST_KEY], "v0.4.0"), Err(UpdateError::BadSignature), "a comment rewritten");
     for garbage in [&b""[..], b"not a signature", b"\xff\xfe", &SIGNED[..SIGNED.len() / 2]] {
-        assert_eq!(verify(SUMS, garbage, &[TEST_KEY]), Err(UpdateError::BadSignature), "{garbage:?}");
+        assert_eq!(verify(SUMS, garbage, &[TEST_KEY], "v0.3.0"), Err(UpdateError::BadSignature), "{garbage:?}");
     }
-    assert_eq!(verify(SUMS, sign_as(SUMS, false).as_bytes(), &[TEST_KEY]), Err(UpdateError::BadSignature), "the legacy kind");
+    let legacy = sign_with(SUMS, "Glowfly v0.3.0: SHA256SUMS", false);
+    assert_eq!(verify(SUMS, legacy.as_bytes(), &[TEST_KEY], "v0.3.0"), Err(UpdateError::BadSignature), "the legacy kind");
 }
 
 #[test]
 fn a_signature_from_a_different_key_is_refused() {
-    assert_eq!(verify(SUMS, BY_ANOTHER_KEY, &[ANOTHER_KEY]), Ok(()), "valid, by its own key");
-    assert_eq!(verify(SUMS, BY_ANOTHER_KEY, &[TEST_KEY]), Err(UpdateError::BadSignature));
-    assert_eq!(verify(SUMS, BY_ANOTHER_KEY, KEYS), Err(UpdateError::BadSignature));
-    assert_eq!(verify(SUMS, SIGNED, KEYS), Err(UpdateError::BadSignature), "the test key isn't one of the project's");
-    assert_eq!(verify(SUMS, SIGNED, &[]), Err(UpdateError::BadSignature), "no keys");
-    assert_eq!(verify(SUMS, SIGNED, &["not a key"]), Err(UpdateError::BadSignature));
+    assert!(signed_comment(SUMS, BY_ANOTHER_KEY, &[ANOTHER_KEY]).is_ok(), "valid, by its own key");
+    assert_eq!(verify(SUMS, BY_ANOTHER_KEY, &[TEST_KEY], "v0.3.0"), Err(UpdateError::BadSignature));
+    assert_eq!(verify(SUMS, BY_ANOTHER_KEY, KEYS, "v0.3.0"), Err(UpdateError::BadSignature));
+    let signed = sign(SUMS, "v0.3.0");
+    let not_ours = verify(SUMS, signed.as_bytes(), KEYS, "v0.3.0");
+    assert_eq!(not_ours, Err(UpdateError::BadSignature), "the test key isn't one of the project's");
+    assert_eq!(verify(SUMS, signed.as_bytes(), &[], "v0.3.0"), Err(UpdateError::BadSignature), "no keys");
+    assert_eq!(verify(SUMS, signed.as_bytes(), &["not a key"], "v0.3.0"), Err(UpdateError::BadSignature));
 }
 
 #[test]
@@ -143,7 +163,7 @@ fn signed_feed(dir: &std::path::Path, sums: &str, signature: Option<String>) -> 
 fn a_feed_signed_with_the_test_key_downloads() {
     let dir = scratch("signed");
     let sums = sum_line(MSI, MSI_BYTES);
-    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes())));
+    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes(), "v0.1.1")));
     let o = offer_for(&feed, InstallKind::Installer);
     assert!(o.release.assets.iter().any(|a| a.name == SIGNATURE_FILE));
     assert_eq!(std::fs::read(download(&feed, &o, &dl).unwrap()).unwrap(), MSI_BYTES);
@@ -155,7 +175,7 @@ fn a_feed_with_a_bad_signature_downloads_nothing() {
     let dir = scratch("badsig");
     let sums = sum_line(MSI, MSI_BYTES);
     // Signed, then changed: another digest for the same file.
-    let (feed, dl) = signed_feed(&dir, &sum_line(MSI, b"the real msi"), Some(sign(sums.as_bytes())));
+    let (feed, dl) = signed_feed(&dir, &sum_line(MSI, b"the real msi"), Some(sign(sums.as_bytes(), "v0.1.1")));
     let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err();
     assert_eq!(err, UpdateError::BadSignature);
     assert_eq!(err.to_string(), "This release's checksums aren't signed with Glowfly's key, so nothing was downloaded.");
@@ -185,12 +205,12 @@ fn a_missing_signature_downloads_nothing() {
 fn an_asset_not_in_the_signed_list_downloads_nothing() {
     let dir = scratch("unlisted");
     let sums = sum_line("glowfly-v0.1.1-x86_64-pc-windows-msvc.zip", b"zip");
-    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes())));
+    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes(), "v0.1.1")));
     let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum") && err.contains(MSI), "{err}");
     // Listed with another digest than the file has: the signed list wins.
     let sums = sum_line(MSI, b"what the project signed");
-    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes())));
+    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes(), "v0.1.1")));
     assert_eq!(download(&feed, &offer_for(&feed, InstallKind::Installer), &dl), Err(UpdateError::ChecksumMismatch));
     assert!(is_empty(&dl));
     let _ = std::fs::remove_dir_all(&dir);
@@ -199,7 +219,7 @@ fn an_asset_not_in_the_signed_list_downloads_nothing() {
 #[test]
 fn the_hosted_feed_refuses_the_test_key_before_fetching_the_file() {
     let sums = sum_line(MSI, MSI_BYTES);
-    let signature = sign(sums.as_bytes());
+    let signature = sign(sums.as_bytes(), "v0.1.1");
     let mock = Mock::start(move |req| match req.path.rsplit('/').next().unwrap_or("") {
         "SHA256SUMS" => Reply::text(&sums),
         "SHA256SUMS.minisig" => Reply::text(&signature),
@@ -229,6 +249,87 @@ fn write_feed_signs_with_the_test_key() {
     let sums = sum_line(MSI, MSI_BYTES);
     write_feed(&dir, "v0.1.1", &[(MSI, MSI_BYTES)], Some(sums.clone()));
     let signature = std::fs::read(dir.join(SIGNATURE_FILE)).unwrap();
-    assert_eq!(verify(sums.as_bytes(), &signature, &[TEST_KEY]), Ok(()));
+    assert_eq!(verify(sums.as_bytes(), &signature, &[TEST_KEY], "v0.1.1"), Ok(()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `verify` of `SUMS` signed by the test key with `comment`, for the release v0.3.0.
+fn for_v030(comment: &str) -> Result<(), UpdateError> {
+    verify(SUMS, sign_with(SUMS, comment, true).as_bytes(), &[TEST_KEY], "v0.3.0")
+}
+
+/// The refusal of a list signed for `signed` (None: a comment naming no release) offered as v0.3.0.
+fn signed_for(signed: Option<&str>) -> Result<(), UpdateError> {
+    Err(UpdateError::SignedForAnotherRelease { tag: "v0.3.0".to_owned(), signed: signed.map(str::to_owned) })
+}
+
+#[test]
+fn the_trusted_comment_must_name_the_release() {
+    assert_eq!(for_v030("Glowfly v0.3.0: SHA256SUMS"), Ok(()));
+    let older = for_v030("Glowfly v0.2.0: SHA256SUMS");
+    assert_eq!(older, signed_for(Some("v0.2.0")), "an older release's");
+    let said = older.unwrap_err().to_string();
+    assert_eq!(said, "This release's checksums were signed for v0.2.0, not v0.3.0, so nothing was downloaded.");
+    assert_eq!(for_v030("Glowfly v0.3.0-rc.1: SHA256SUMS"), signed_for(Some("v0.3.0-rc.1")), "its release candidate's");
+    // No tag, or not the release comment's form at all: the second wording.
+    for comment in ["Glowfly : SHA256SUMS", "Glowfly SHA256SUMS", "", "timestamp:1700000000\tfile:SHA256SUMS\thashed"] {
+        assert_eq!(for_v030(comment), signed_for(None), "{comment:?}");
+    }
+    let fixture = verify(SUMS, SIGNED, &[TEST_KEY], "v0.3.0");
+    assert_eq!(fixture, signed_for(None), "the minisign CLI's comment");
+    assert_eq!(fixture.unwrap_err().to_string(), "This release's checksums weren't signed for v0.3.0, so nothing was downloaded.");
+    // Exactly the comment: nothing after it, nothing before it, the same case.
+    for comment in [
+        "Glowfly v0.3.0: SHA256SUMS extra",
+        "Glowfly v0.3.0: SHA256SUMS\tfile:SHA256SUMS",
+        " Glowfly v0.3.0: SHA256SUMS",
+        "glowfly v0.3.0: SHA256SUMS",
+        "Glowfly v0.3.0: sha256sums",
+    ] {
+        assert_eq!(for_v030(comment), signed_for(None), "{comment:?}");
+    }
+    // The comment and the tag are untrusted: shown printable and capped, compared as they are.
+    assert_eq!(for_v030("Glowfly v0.3.0\u{202e}: SHA256SUMS"), signed_for(Some("v0.3.0")), "a bidi character");
+    let long = format!("Glowfly v{}: SHA256SUMS", "9".repeat(300));
+    let Err(UpdateError::SignedForAnotherRelease { signed: Some(shown), .. }) = for_v030(&long) else { panic!("refused") };
+    assert_eq!(shown, format!("v{}", "9".repeat(99)), "at most 100 characters");
+    let empty = verify(SUMS, sign_with(SUMS, "Glowfly : SHA256SUMS", true).as_bytes(), &[TEST_KEY], "");
+    assert_eq!(empty, Err(UpdateError::SignedForAnotherRelease { tag: String::new(), signed: None }), "an empty tag");
+}
+
+#[test]
+fn the_release_and_feed_checks_sign_with_the_release_comment() {
+    let release = include_str!("../../../../.github/workflows/release.yml");
+    assert!(release.contains(r#"-t "Glowfly $TAG: SHA256SUMS""#), "release.yml signs with the release comment");
+    assert_eq!(release_comment("$TAG"), "Glowfly $TAG: SHA256SUMS");
+    let check = include_str!("../../../../scripts/update-feed-check.ps1");
+    assert!(check.contains(r#"-t "Glowfly ${SignedFor}: SHA256SUMS""#), "the installer checks sign their feeds the same way");
+    assert!(!check.contains("installer check feed'"), "no other comment");
+}
+
+#[test]
+fn a_replayed_older_sha256sums_downloads_nothing() {
+    let dir = scratch("replayed");
+    let msi = "glowfly-v0.1.2-x86_64-pc-windows-msvc.msi";
+    let refused = || Err(UpdateError::SignedForAnotherRelease { tag: "v0.1.2".to_owned(), signed: Some("v0.1.1".to_owned()) });
+    // v0.1.1's signed list, verbatim, under v0.1.2.
+    let old = dir.join("old");
+    std::fs::create_dir_all(&old).unwrap();
+    write_feed(&old, "v0.1.1", &[(MSI, MSI_BYTES)], Some(sum_line(MSI, MSI_BYTES)));
+    let read = |name: &str| Some(std::fs::read_to_string(old.join(name)).unwrap());
+    let feed_dir = dir.join("feed");
+    std::fs::create_dir_all(&feed_dir).unwrap();
+    write_feed_signed(&feed_dir, "v0.1.2", &[(msi, MSI_BYTES)], read("SHA256SUMS"), read(SIGNATURE_FILE));
+    let (feed, dl) = (Feed::Folder(feed_dir.clone()), dir.join("dl"));
+    assert_eq!(download(&feed, &offer_for(&feed, InstallKind::Installer), &dl), refused());
+    assert!(is_empty(&dl));
+    // Even a list naming v0.1.2's file with its digest, when it was signed for v0.1.1.
+    let sums = sum_line(msi, MSI_BYTES);
+    write_feed_signed(&feed_dir, "v0.1.2", &[(msi, MSI_BYTES)], Some(sums.clone()), Some(sign(sums.as_bytes(), "v0.1.1")));
+    assert_eq!(download(&feed, &offer_for(&feed, InstallKind::Installer), &dl), refused());
+    assert!(is_empty(&dl));
+    // Signed for v0.1.2, the same list downloads.
+    write_feed_signed(&feed_dir, "v0.1.2", &[(msi, MSI_BYTES)], Some(sums.clone()), Some(sign(sums.as_bytes(), "v0.1.2")));
+    assert_eq!(std::fs::read(download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap()).unwrap(), MSI_BYTES);
     let _ = std::fs::remove_dir_all(&dir);
 }

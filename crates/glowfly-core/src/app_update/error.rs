@@ -35,6 +35,9 @@ pub enum UpdateError {
     SignatureUnreadable(Box<UpdateError>),
     /// The checksums' signature isn't valid, or isn't by one of the pinned keys.
     BadSignature,
+    /// The checksums' signature is valid but its trusted comment isn't `Glowfly <tag>: SHA256SUMS`
+    /// for this release (`tag`); `signed` is the tag the comment names, when it has that form.
+    SignedForAnotherRelease { tag: String, signed: Option<String> },
     /// `name` is announced larger than Glowfly downloads.
     TooLarge { name: String, mb: u64 },
     /// The Downloads folder couldn't be created.
@@ -131,6 +134,12 @@ impl std::fmt::Display for UpdateError {
             Self::Unsigned => f.write_str("This release's checksums aren't signed, so nothing was downloaded."),
             Self::SignatureUnreadable(why) => write!(f, "Couldn't read the checksums' signature: {why}"),
             Self::BadSignature => f.write_str("This release's checksums aren't signed with Glowfly's key, so nothing was downloaded."),
+            Self::SignedForAnotherRelease { tag, signed: Some(signed) } => {
+                write!(f, "This release's checksums were signed for {signed}, not {tag}, so nothing was downloaded.")
+            }
+            Self::SignedForAnotherRelease { tag, signed: None } => {
+                write!(f, "This release's checksums weren't signed for {tag}, so nothing was downloaded.")
+            }
             Self::TooLarge { name, mb } => write!(f, "{name} is larger than {mb} MB, so it wasn't downloaded."),
             Self::CreateFailed { path, said } => write!(f, "Couldn't create {path}: {said}"),
             Self::DownloadFailed { name, why } => write!(f, "Couldn't download {name}: {why}"),

@@ -35,7 +35,7 @@ pub(super) fn sum_line(name: &str, bytes: &[u8]) -> String {
 /// Writes `files` into `dir` with a release.json for `tag` listing them, plus SHA256SUMS and its
 /// signature by the test key (both listed too) when `sums` is Some.
 pub(super) fn write_feed(dir: &Path, tag: &str, files: &[(&str, &[u8])], sums: Option<String>) {
-    let signature = sums.as_deref().map(|s| super::signature_tests::sign(s.as_bytes()));
+    let signature = sums.as_deref().map(|s| super::signature_tests::sign(s.as_bytes(), tag));
     write_feed_signed(dir, tag, files, sums, signature);
 }
 

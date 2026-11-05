@@ -267,9 +267,11 @@ The **checksums** job signs `SHA256SUMS` with [minisign](https://jedisct1.github
 giving `SHA256SUMS.minisig`, which goes up with the release's other files (and which the publish
 job's check requires). The updater refuses to install a download unless that signature verifies
 against one of the public keys compiled into the app (`KEYS` in
-`crates/glowfly-core/src/app_update/signature.rs`) and the signed list names the file with its
-digest, so a download is the file the project signed, not only whatever the release page lists.
-The builds themselves are still not code-signed (see Code signing).
+`crates/glowfly-core/src/app_update/signature.rs`), its trusted comment is exactly `Glowfly
+<tag>: SHA256SUMS` for the release being installed (what the job's `minisign -t` writes), and the
+signed list names the file with its digest. So a download is the file the project signed for
+that release, not only whatever the release page lists, and an older release's signed list put
+up under a newer tag is refused. The builds themselves are still not code-signed (see Code signing).
 
 - **The key**: the secret key lives only in the `release` environment's secret
   `MINISIGN_SECRET_KEY` (Settings > Environments > release): the whole contents of a minisign
@@ -372,7 +374,8 @@ The format is chosen before the processor, so an installed copy on Windows on Ar
 MSI before an arm64 zip.
 
 A download happens only when you click Download: it is fetched into your Downloads folder,
-checked against `SHA256SUMS` once `SHA256SUMS.minisig` verifies against the pinned keys, and
+checked against `SHA256SUMS` once `SHA256SUMS.minisig` verifies against the pinned keys and
+its trusted comment names the release offered (`Glowfly <tag>: SHA256SUMS`), and
 discarded if the signature or the checksum is missing or doesn't match (a file's own `.sha256`
 isn't used: it isn't signed). Install checks it again before anything runs or is replaced; an AppImage swap
 also checks that the file is an AppImage. A file the copy can't install (an archive for an
@@ -444,13 +447,14 @@ feed/
   glowfly-v0.1.1-x86_64-pc-windows-msvc.msi     the current package, renamed to the feed's tag
   glowfly-v0.1.1-x86_64-pc-windows-msvc.zip
   SHA256SUMS                                    "<sha256>  <name>" lines, LF, no BOM
-  SHA256SUMS.minisig                            signed with the committed test key
+  SHA256SUMS.minisig                            signed with the committed test key, "Glowfly v0.1.1: SHA256SUMS"
 ```
 
 and runs `glowfly --check-update <folder>` for each case: the same version (exit 3), an empty
 folder (3), a newer release (0, the installer or archive by install kind, byte for byte), a wrong
-or missing checksum, a file changed after `SHA256SUMS` was written, no signature and a
-`SHA256SUMS` changed after it was signed (1, nothing saved), and a relative `GLOWFLY_UPDATE_FEED`
+or missing checksum, a file changed after `SHA256SUMS` was written, no signature, a
+`SHA256SUMS` changed after it was signed and a `SHA256SUMS` signed for an older release (1,
+nothing saved), and a relative `GLOWFLY_UPDATE_FEED`
 (2). It signs the feeds with minisign and the test key, so minisign has to be on the PATH (or
 named by `-Minisign`; `scripts/install-minisign.ps1 -Dir <folder>` puts one in a folder). It
 installs nothing and opens no window, so it runs locally against a debug build, which counts as

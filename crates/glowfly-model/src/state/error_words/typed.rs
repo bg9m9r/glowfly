@@ -221,6 +221,10 @@ pub fn update(t: Lang, e: &UpdateError) -> String {
         E::Unsigned => t.tr("update_errors.unsigned").to_owned(),
         E::SignatureUnreadable(why) => t.trf("update_errors.signature_unreadable", &[("why", &update(t, why))]),
         E::BadSignature => t.tr("update_errors.bad_signature").to_owned(),
+        E::SignedForAnotherRelease { tag, signed: Some(signed) } => {
+            t.trf("update_errors.signed_for_other", &[("signed", signed), ("tag", tag)])
+        }
+        E::SignedForAnotherRelease { tag, signed: None } => t.trf("update_errors.not_signed_for", &[("tag", tag)]),
         E::TooLarge { name, mb } => t.trf("update_errors.too_large", &[("name", name), ("mb", mb)]),
         E::CreateFailed { path, said } => t.trf("update_errors.create_failed", &[("path", path), ("said", said)]),
         E::DownloadFailed { name, why } => t.trf("update_errors.download_failed", &[("name", name), ("why", &update(t, why))]),
