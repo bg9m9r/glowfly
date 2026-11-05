@@ -21,7 +21,6 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 - Force push with lease of a branch whose `branch.<name>.pushRemote` or `remote.pushDefault`
   (`PushRemotes`) names another remote than its upstream's: offer it toward that push remote too,
   leasing its tracking branch there, instead of only toward the upstream
-- Merge from the menus names the short branch (so the merge message reads `Merge branch 'x'`), which git resolves to a same-named tag first; pass the full ref and write the usual message ourselves
 - Undo plans (`undo/refs.rs`: `branch -D`, `tag -d`, recreate, `--set-upstream-to`), Git Flow init and finish, and the create-branch and create-tag commands still put names before options end; their names are typed and validated or already passed the load, but `--` (with the undo classifier taught it) would make that local
 
 ### Whether HEAD contains each branch, without a walk per branch on every load
@@ -135,8 +134,6 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 
 - Publish to GitLab, Bitbucket and Azure DevOps
 - Add an existing remote URL from the Publish dialog
-- Undo removing or renaming a remote (re-add it with its URLs and fetch, or rename it back)
-- Rewrite the saved graph filter's hidden or shown-only refs when a remote is renamed or removed
 - Edit remotes defined outside the repository's config, and every URL of a remote with several
   fetch or push URLs
 - Per-remote options: fetch refspecs, tag fetching, prune on fetch, the default branch
@@ -158,7 +155,6 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 
 ### Tag management
 
-- After deleting a tag locally, offer to delete it from the remotes too
 - Offer Annotate… from the graph's tag labels and from the command palette (two steps: pick a
   lightweight tag, then the message)
 - Edit the message of an already annotated tag (re-annotate with the old message prefilled)
@@ -184,8 +180,5 @@ Branch and tag operations, remotes and Git Flow. Untriaged; see [README.md](READ
 
 ### Pull and Push name their target
 
-- With push.default=upstream and a pushRemote other than the upstream's remote, Push names fork/main but git refuses the push
-- A pushRemote naming a missing remote is still named; fall back to the upstream when it isn't among the remotes
-- `branches::push_blocked` still judges Push against the upstream, so Push to a fork is disabled while level with origin
 - On a focused Pull or Push with a count, the badge and its knockout cover part of the inset focus ring's top edge
 - The toolbar tests for the 0/0 and no-upstream names look up "main", which now also matches the remote row; look up "Branch: main"

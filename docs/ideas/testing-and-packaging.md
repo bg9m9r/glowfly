@@ -10,7 +10,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Skip this version: don't offer a release again until a newer one is out
 - "Open in Glowfly" in Windows 11's modern context menu (an IExplorerCommand with a sparse package)
 - "Open in Glowfly" on drives as well as folders
-- Sign SHA256SUMS (minisign or GPG) and check that signature in the app before trusting the checksums
 - Azure Trusted Signing as an alternative to a PFX certificate for Windows signing
 - A beta channel that offers pre-releases to users who opt in
 - A per-machine (all users) MSI
@@ -23,7 +22,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Remove a leftover .bak program as soon as the last window running it closes, not only at the next start
 - Offer to remove a glowfly.bak that an older release left without a record (it is kept, since nothing tells it from one the user made)
 - Move the signing secrets and RELEASE_PLEASE_TOKEN into the `release` environment (zizmor's auditor persona flags them as secrets outside an environment); the build jobs would then join the environment, adding one approval
-- Have the update check also skip a release whose JSON says draft or prerelease, in case /releases/latest or a feed folder ever returns one
 - Verify the release attestation GitHub makes for an immutable release (gh release verify) in the publish job, once immutability is on
 - Installer checks for the ARM64 MSI and the aarch64 .deb and .rpm on Arm runners (windows-11-arm, ubuntu-22.04-arm)
 - AppStream metainfo (usr/share/metainfo) for the AppImage and the Linux packages
@@ -50,8 +48,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Show GIT-NOTICE.md in Help > About when Glowfly runs inside the Flatpak, beside the third-party notices
 - Link the privacy notice from the release notes header once PRIVACY.md exists
 - Check the arm64 MSI's licence files in the Release workflow (an administrative install, msiexec /a), not only the installed x64 MSI in Installers
-- The final rename of a streamed update download can replace a file that appeared under the chosen name meanwhile; refuse or pick a free name
-- Clear temp files a killed update download left in Downloads (on the next start or the next download)
 - `check_saved` hashes the whole downloaded file on every Preferences open, and repeated opens queue several reads; remember the result by size and modified time, and run one read at a time
 - Cancel can wait up to the 60 s read timeout on a stalled connection; stop the read as soon as Cancel is pressed
 
@@ -66,7 +62,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Validate the MSI with `wix msi validate` (ICE checks) in the Installers workflow
 - Check the MSI's Options page choices (no desktop shortcut, no folder menu, no scheme) with silent installs that set DESKTOPSHORTCUT, FOLDERMENU and LINKSCHEME to empty, and that an upgrade keeps them off
 - Install the .deb through apt (`apt-get install ./file.deb`) to check dependency resolution on a minimal image
-- Test the `<file>.sha256` single-checksum fallback end to end in the feed script (it is unit-tested)
 
 ### Whole-app journey tests
 

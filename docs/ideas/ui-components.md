@@ -165,7 +165,6 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
 - The image preview in the conflict view
 - Keyboard keys for the View menu's choices (layout, section, wrap, ignore whitespace)
 - Remember the View menu's last section per repository
-- A renamed file's header names the old path too ("old → new", the arrow painted)
 
 ### One style for empty, loading, error and banner states
 
@@ -292,10 +291,7 @@ The design system, dialogs, toolbar, window chrome, lists, panels, truncation an
   (they arrive from the log worker and can race the job's end), so they no longer break an
   auto-fetch streak
 - A live row for the job that is running, with its elapsed time and a Stop button
-- When the activity file trims, drop routine auto-fetch lines first so they don't push older runs out
 - Fix buttons for earlier sessions' failures, rebuilt from the saved cause when it still applies
-- Filter the activity log to failures only, or search it
-- Keyboard navigation of activity rows (arrows move, Enter or Space folds)
 - Runs with durations for operations that are not jobs (stage, hunk and line operations, local
   file operations)
 - Copy or export the whole activity log

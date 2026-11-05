@@ -95,18 +95,15 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 ### Hide / show only branches in the graph
 
 - Hide / show only from the graph's BRANCH/TAG ref-label menus
-- Hide stashes in the graph
 - Hide, show only or stop showing only several selected branches at once (multi-select in the left panel)
 - Hide all / show all per section (LOCAL, REMOTE, TAGS) from the section header menu
 - Hover toggles (hide / show only) on rows that are not hidden or shown-only
 - A graph-header button listing hidden branches and tags, to unhide them from there
-- Keep the hidden / shown-only state when a branch is renamed (rename the entry instead of dropping it)
 
 ### Graph columns and loading
 
 - A per-repository commit limit, or remembering the extra loaded commits across tab switches
   and restarts
-- Keep the top visible commit in place when a load-more refresh also brings new commits above it
 - Count down to the failed load's automatic retry ("Trying again in 8 s"); needs a clock value
   passed to the view
 - Show the failed load's reason when the retry note leaves it no room in a narrow message column
@@ -153,7 +150,6 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Compact an index's text blocks after many updates leave unreachable commits' text behind
 - List the whole history's authors (with commit counts) in the author picker from the index
 - Date terms (before:, after:) answered from the index's author and committer dates
-- Apply .mailmap to author names and emails in search and the author picker
 - Show the whole history's commit count in the graph header once indexed ("Newest 500 of 812345 commits")
 - Hide the graph's Load more row in Filter mode when the index says no older commit matches
 - Show a match older than the graph's 200,000-commit cap in the details panel without loading it
@@ -209,9 +205,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - Status names on hover for the file rows' status chips (Modified, Added, Renamed, Type changed)
 - WIP Unstaged/Staged file rows use the status chips and the counts beside the name
 - The compare-with-working-tree header uses the SHA chip instead of its Copy SHA button
-- Rename rows show the old path (R from -> to)
 - Commit trailers (Co-authored-by, Signed-off-by) shown as person chips
-- Apply .mailmap to author and committer names in the details panel
 - Note when the author and committer are the same but the commit date is later than the author
   date (rebased or amended)
 - A monospace option for the commit body block
@@ -233,9 +227,7 @@ The graph and history table, search, multi-select, interactive rebase and stacke
 - `Snapshot::commit_encoding` is read on full loads only: a changed i18n.commitEncoding applies once a config edit triggers one; read it on lighter reloads too if it doesn't
 - Multi-byte labels WHATWG widens (`GB2312` to GBK, `EUC-KR` to windows-949, `Shift_JIS` to windows-31j) aren't checked strictly when writing, as `ISO-8859-1` and `US-ASCII` now are
 - C1 control characters (U+0080 to U+009F) are refused under ISO-8859-1 although it holds them; nobody types them, but the strict check could write them as their byte
-- Pass `-c i18n.logOutputEncoding=UTF-8` to git CLI calls whose log or blame output Glowfly parses, for users who set a legacy output encoding
 - Show which encoding a commit declares (e.g. a small 'ISO-8859-1' note in the details panel)
-- Read stash messages that aren't UTF-8 without git2's stash_foreach, which panics on them (`to_str().unwrap()`); read the refs/stash reflog bytes lossily instead
 - Decode annotated tag messages and taggers with the tag's own encoding header wherever tag text is shown
 
 ### Quiet main window chrome (D3)

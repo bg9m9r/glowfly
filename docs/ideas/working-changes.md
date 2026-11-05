@@ -10,10 +10,6 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 
 ### Keyboard in the WIP lists
 
-- Delete on several Shift-selected files discards them all after one confirmation (it discards
-  the current file only now)
-- Shift+click and Ctrl/Cmd+click to select WIP files with the pointer, the same selection the
-  Shift keys make, and the row menu acting on all of them
 - In Tree mode, a key to collapse or expand the current file's folder (Left and Right go to the
   other list)
 - Space on a file with selected lines in its diff stages just those lines, as S does
@@ -24,7 +20,6 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - A Show stash button on the toast when git's own autostash is kept after an interactive rebase
 - An option to include untracked files in the auto-stash
 - Pull and Checkout tooltips say when the changes will be stashed first
-- Save the auto-stash record as soon as the stash is made, so a crash mid-operation still offers it (now only once it has to wait)
 
 ### Line-level staging
 
@@ -68,11 +63,7 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 
 - Create, rename and delete files from the command palette
 - New file in this folder… on folder rows (folder rows wait for a tree view in file lists)
-- Delete several selected files at once (needs multi-select in file lists)
 - A button in the trash toast that opens the Recycle Bin / Trash or restores the file
-- Send several selected files to the Recycle Bin / Trash at once (needs multi-select in file
-  lists)
-- Name a staged rename's source path in its Unstage and delete confirmation and toast
 - Open the newly created file in the editor or default app after creating it
 - Create a file from a template, or with initial contents
 - Rename or delete folders and submodules
@@ -107,13 +98,9 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 
 ### Stash improvements
 
-- Hide stashes in the graph
 - Edit the stash message inline from the commit details panel when a stash is selected, and
   show the stash list message there (the stash commit's own message keeps its old text)
 - Keep the original reflog dates of the stash entries above the renamed one
-- Move apply, pop and drop (`JobMsg::Stash`) into `StashMsg`, so all stash actions share one
-  message enum
-- Share one stash-action message builder between the sidebar and the palette, Rename… included
 - Undo a stash rename (record the old message so Ctrl+Z restores it)
 - Rank recently picked stashes first in the rename sub-list
 - Stash ignored files too (`--all`) from the Stash dialog
@@ -122,11 +109,8 @@ The working-changes panel, staging, commit box, file actions, stashes and local 
 - Check the installed git version before offering "Only staged changes", instead of explaining after git refuses
 - Right-click menu on the toolbar Stash button with the Stash dialog's choices
 - "Stash…" entry in the STASHES section header menu that opens the Stash dialog
-- Stash the files selected in the WIP lists once working-tree files can be multi-selected
-- Show each stash's date in the sidebar and palette rows (needs the stash commit time in StashInfo)
 - A palette entry that stashes while keeping the staged changes in one step
 - Remember the Keep staged changes choice between openings of the Stash dialog
-- Show a staged rename's old path in the Stash dialog's file list and the WIP lists ("from a.txt")
 - Stash a staged rename whole when its old name isn't UTF-8 (now stashed as an added file, its deletion left staged)
 - Stash a staged rename whole when a new file sits at its old path (now the rename splits and the file stays)
 - Undo a keep-index stash of a file that had both staged and unstaged changes (now refused by the working-tree check)
