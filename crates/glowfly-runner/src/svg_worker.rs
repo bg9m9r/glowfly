@@ -1,4 +1,5 @@
-//! The one thread that draws SVG previews. The render budget (`preview_svg_budget`) refuses
+//! The preview drawing threads: one per preview kind, each a `Worker`; this file has the generic
+//! `Worker` and the SVG one (the font one is font_worker.rs). The render budget (`preview_svg_budget`) refuses
 //! the costly drawings it knows of; this bounds the rest. Only one SVG draws at a time, so a
 //! drawing that slips past the budget can pin one core at most, never one per click. A request
 //! made while the worker is busy waits in a single slot, and a newer request takes that slot
@@ -30,11 +31,11 @@ pub(crate) struct Worker<R> {
 }
 
 impl<R: Send + 'static> Worker<R> {
-    /// A worker drawing with `draw`, its callers waiting at most `deadline`.
-    pub(crate) fn new(draw: Arc<Draw<R>>, deadline: Duration) -> Self {
+    /// A worker drawing with `draw` on a thread named `name`, its callers waiting at most `deadline`.
+    pub(crate) fn new(name: &'static str, draw: Arc<Draw<R>>, deadline: Duration) -> Self {
         let slot: Arc<(Mutex<Option<Job<R>>>, Condvar)> = Arc::new((Mutex::new(None), Condvar::new()));
         let feed = slot.clone();
-        let spawned = std::thread::Builder::new().name("svg-preview".into()).spawn(move || {
+        let spawned = std::thread::Builder::new().name(name.into()).spawn(move || {
             loop {
                 let job = {
                     let (lock, ready) = &*feed;
@@ -51,7 +52,7 @@ impl<R: Send + 'static> Worker<R> {
             }
         });
         if let Err(e) = spawned {
-            tracing::warn!("svg preview worker: {e}");
+            tracing::warn!("{name} worker: {e}");
         }
         Self { slot, deadline }
     }
@@ -74,7 +75,7 @@ impl<R: Send + 'static> Worker<R> {
 /// `bytes` drawn on the app's one SVG worker, within `DEADLINE`.
 pub(crate) fn render(bytes: &[u8]) -> Result<SvgRender, SvgError> {
     static WORKER: OnceLock<Worker<Result<SvgRender, SvgError>>> = OnceLock::new();
-    let worker = WORKER.get_or_init(|| Worker::new(Arc::new(preview_svg::render), DEADLINE));
+    let worker = WORKER.get_or_init(|| Worker::new("svg-preview", Arc::new(preview_svg::render), DEADLINE));
     worker.draw(bytes).unwrap_or(Err(SvgError::Abandoned))
 }
 

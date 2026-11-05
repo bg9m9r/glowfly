@@ -4,19 +4,23 @@
 //! so with its size. An SVG (binary, or text with the header's switch on Preview) shows the same
 //! way, drawn by `preview_svg`, with no zoom limit: it fills its card; a side too large to draw
 //! or unreadable says so, a drawing that names files outside itself says they aren't shown,
-//! and while the sides load the cards stand empty. Any other binary file shows its bytes in the hex view (`hex`) when both
+//! and while the sides load the cards stand empty. A font (TrueType, OpenType or a collection)
+//! shows its specimen the same way, drawn in each side's own font at one shared scale
+//! (`preview_font`), with the same too-large, unreadable and loading cards. Any other binary file shows its bytes in the hex view (`hex`) when both
 //! sides are within the cap, or else the binary empty state with both sizes (and, over the cap,
 //! why). While
 //! the sides load (or when they failed) the plain binary empty state shows.
 
 use super::empty_state::{self, EmptyIcon};
-use crate::image_paint::{checkerboard, load};
+use super::preview_font;
+use crate::image_paint::{checkerboard, load, load_smooth};
 use crate::theme::color;
 use crate::theme::tokens::radius;
 use crate::theme::type_scale;
 use eframe::egui::{self, Align, Color32, Context, CornerRadius, Layout, Rect, RichText, Stroke, TextureHandle, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
+use glowfly_core::preview_font::{FONT_MAX_BYTES, is_font_path};
 use glowfly_core::preview_image::{PreviewImage, is_image_path};
 use glowfly_core::preview_svg::{SVG_MAX_BYTES, is_svg_path};
 use glowfly_core::repo::{BinarySide, BinarySides, HEX_MAX_BYTES};
@@ -24,8 +28,8 @@ use glowfly_model::state::AppState;
 use glowfly_model::state::diff_preview;
 use std::sync::Arc;
 
-/// Around the two columns, and between them.
-const PAD: f32 = 16.0;
+/// Around the two columns, and between them; also inside a card, around what it shows.
+pub(super) const PAD: f32 = 16.0;
 const GAP: f32 = 16.0;
 /// Never drawn larger than this many times its own size.
 const MAX_ZOOM: f32 = 4.0;
@@ -58,8 +62,13 @@ impl PreviewTextures {
         fn image(s: &Option<BinarySide>) -> Option<&PreviewImage> {
             s.as_ref().and_then(|s| s.image.as_ref())
         }
-        self.old = image(&sides.old).map(|i| load(ctx, "diff-image-old", i));
-        self.new = image(&sides.new).map(|i| load(ctx, "diff-image-new", i));
+        // A font's specimen is anti-aliased text: always smooth.
+        let texture = |s: &Option<BinarySide>, name: &str| {
+            let font = s.as_ref().is_some_and(|s| s.font.is_some());
+            image(s).map(|i| if font { load_smooth(ctx, name, i) } else { load(ctx, name, i) })
+        };
+        self.old = texture(&sides.old, "diff-image-old");
+        self.new = texture(&sides.new, "diff-image-new");
         self.key = Some(sides.clone());
     }
 
@@ -74,21 +83,29 @@ impl PreviewTextures {
 /// Draws the binary diff on screen's body.
 pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
     let t = st.settings.lang();
-    let svg = st.session.diff.view.as_ref().is_some_and(|(target, _)| is_svg_path(target.path()));
+    let path = st.session.diff.view.as_ref().map(|(target, _)| target.path());
+    let svg = path.is_some_and(is_svg_path);
+    let font_path = path.is_some_and(is_font_path);
+    // What an undrawable side's card says: the font's or the SVG's words and cap.
+    let words =
+        |font: bool| if font { (FONT_MAX_BYTES, t.tr("diff.font.cant_preview")) } else { (SVG_MAX_BYTES, t.tr("diff.svg.cant_preview")) };
+    let (limit, cant) = words(font_path);
     let (Some(sides), Some((target, _))) = (diff_preview::shown(st), st.session.diff.view.as_ref()) else {
         tex.clear();
         match st.session.diff_preview.as_ref().and_then(|p| p.sides.as_ref()) {
-            // An SVG's cards stand empty while its sides load, and say so when they failed.
-            Some(Err(_)) if svg => columns(ui, |ui, _, card| svg_unreadable(ui, card, t, None)),
-            _ if svg => columns(ui, |ui, _, card| {
+            // An SVG's or a font's cards stand empty while its sides load, and say so when they failed.
+            Some(Err(_)) if svg || font_path => columns(ui, |ui, _, card| cant_draw(ui, card, t, None, limit, cant)),
+            _ if svg || font_path => columns(ui, |ui, _, card| {
                 ui.painter().rect_filled(card, CornerRadius::same(radius::MD), color::raised());
             }),
             _ => empty_state::binary_file(ui),
         }
         return;
     };
+    let font = font_path || sides.old.iter().chain(&sides.new).any(|s| s.font.is_some());
+    let (limit, cant) = words(font);
     let any_image = sides.old.iter().chain(&sides.new).any(|s| s.image.is_some());
-    if !any_image && !is_image_path(target.path()) && !svg {
+    if !any_image && !is_image_path(target.path()) && !svg && !font {
         tex.clear();
         if sides.hex().is_some() {
             return super::hex::show(ui, st, sides, &mut tex.hex);
@@ -100,10 +117,19 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
     }
     tex.sync(ui.ctx(), sides);
     let textures = [&tex.old, &tex.new];
+    fn specimen(s: &Option<BinarySide>) -> Option<&PreviewImage> {
+        s.as_ref().filter(|s| s.font.is_some()).and_then(|s| s.image.as_ref())
+    }
+    let specimens = [specimen(&sides.old), specimen(&sides.new)];
     columns(ui, |ui, i, card| {
         let (side, missing) = if i == 0 { (&sides.old, ADDED) } else { (&sides.new, DELETED) };
         match (side, textures[i]) {
             (None, _) => placeholder(ui, card, missing),
+            (Some(s @ BinarySide { font: Some(face), image: Some(img), .. }), Some(tx)) => {
+                let scale = preview_font::shared_scale(card, specimens);
+                preview_font::card(ui, card, tx, img, scale);
+                preview_font::caption(ui, t, face, img, s.size);
+            }
             (Some(s), Some(tx)) => {
                 let img = s.image.as_ref().expect("a texture comes from an image");
                 image_card(ui, card, tx, img, if svg { f32::INFINITY } else { MAX_ZOOM });
@@ -114,7 +140,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, tex: &mut PreviewTextures) {
                     caption(ui, &text);
                 }
             }
-            (Some(s), None) if svg => svg_unreadable(ui, card, t, Some(s.size)),
+            (Some(s), None) if svg || font => cant_draw(ui, card, t, Some(s.size), limit, cant),
             (Some(s), None) => undecodable(ui, card, s.size),
         }
     });
@@ -148,13 +174,13 @@ fn linked_caption(ui: &mut Ui, t: Lang, text: &str) {
     ui.label(text).on_hover_text(t.tr("diff.svg.linked.tip"));
 }
 
-/// The card of an SVG side that can't be drawn: too large (over `SVG_MAX_BYTES`), else
-/// unreadable, with its size when known.
-fn svg_unreadable(ui: &mut Ui, card: Rect, t: Lang, size: Option<u64>) {
-    let too_large = size.is_some_and(|s| s > SVG_MAX_BYTES);
-    let title = if too_large { t.tr("diff.svg.too_large") } else { t.tr("diff.svg.cant_preview") };
+/// The card of an SVG or font side that can't be drawn: too large (over `limit`), else
+/// unreadable (saying `cant`), with its size when known.
+fn cant_draw(ui: &mut Ui, card: Rect, t: Lang, size: Option<u64>, limit: u64, cant: &str) {
+    let too_large = size.is_some_and(|s| s > limit);
+    let title = if too_large { t.tr("diff.svg.too_large") } else { cant };
     let line = match size {
-        Some(s) if too_large => Some(t.trf("diff.svg.too_large.size", &[("size", &size_text(s)), ("limit", &size_text(SVG_MAX_BYTES))])),
+        Some(s) if too_large => Some(t.trf("diff.svg.too_large.size", &[("size", &size_text(s)), ("limit", &size_text(limit))])),
         Some(s) => Some(size_text(s)),
         None => None,
     };

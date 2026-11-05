@@ -144,6 +144,25 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - A drawing in dark colours is hard to see on the dark theme's checkerboard (the backdrop choice above would help)
 - Say why a drawing was refused when its filters cost too much (it shows "Can't preview this SVG")
 
+### Font preview
+
+- WOFF and WOFF2 preview (needs a WOFF/Brotli decoder; fontdb and skrifa read only sfnt)
+- A custom sample text for the font preview (a field or setting)
+- A sample line in the interface language instead of the English pangram
+- A glyph grid or full character-set view of the font
+- Variable-font axes and named instances (today the default instance only)
+- Choose which face of a .ttc/.otc collection to preview (today the first)
+- Colour-font glyphs (COLR, sbix, CBDT) keeping their own colours instead of the text tint
+- Font preview in the file history's File view
+- A font-file icon in the diff header (painted with `widgets::paint_icon`)
+- A tooltip with the font's version, glyph count, designer and licence from its name table
+- A fuzz target for `preview_font::render`
+- Raise `FONT_MAX_BYTES` for large CJK collections, and stop copying the bytes into the worker and fontdb
+- Render the specimen at the screen's pixels per point instead of a fixed 2x
+- Say why a font couldn't be previewed (the parser's message) in the card's tooltip
+- Fonts that .gitattributes marks as text never get the preview
+- When both sides share one scale, a side that was already scaled down to fit 1024 px at render time compares at a smaller size than the other
+
 ### Merge conflict tool
 
 - Syntax highlighting in the conflict panes

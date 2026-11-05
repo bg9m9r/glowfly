@@ -39,6 +39,7 @@ mod diff_gaps;
 mod execute;
 mod expect;
 pub(crate) mod files;
+mod font_worker;
 mod forge_calls;
 mod forge_filter_calls;
 mod forks;

@@ -46,7 +46,7 @@ fn fake(deadline: Duration) -> Fake {
         let _ = finished_tx.send(b[1]);
         b[1]
     };
-    Fake { worker: Arc::new(Worker::new(Arc::new(draw), deadline)), most, started, finished, release }
+    Fake { worker: Arc::new(Worker::new("test-preview", Arc::new(draw), deadline)), most, started, finished, release }
 }
 
 /// `bytes` drawn on another thread, as a second caller would.

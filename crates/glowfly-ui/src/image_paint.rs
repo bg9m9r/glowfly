@@ -1,6 +1,7 @@
 //! Drawing a decoded image, shared by the binary diff's before/after preview and the file
-//! history's File view: its texture (sharp pixels for small images, smooth for others) and the
-//! light and dark checkerboard under it, so transparent pixels show as such.
+//! history's File view: its texture (sharp pixels for small images, smooth for others and for
+//! a font's specimen) and the light and dark checkerboard under it, so transparent pixels show
+//! as such.
 
 use super::theme::color;
 use eframe::egui::{Color32, ColorImage, Context, Painter, Rect, TextureHandle, TextureOptions, pos2, vec2};
@@ -16,6 +17,12 @@ pub(crate) fn load(ctx: &Context, name: &str, img: &PreviewImage) -> TextureHand
     let pixels = ColorImage::from_rgba_unmultiplied(img.shown, &img.rgba);
     let options = if img.width.max(img.height) <= SHARP_MAX { TextureOptions::NEAREST } else { TextureOptions::LINEAR };
     ctx.load_texture(name, pixels, options)
+}
+
+/// `img`'s pixels uploaded as a texture called `name`, always smooth: for a font's specimen,
+/// which is anti-aliased text and never pixel art, however small.
+pub(crate) fn load_smooth(ctx: &Context, name: &str, img: &PreviewImage) -> TextureHandle {
+    ctx.load_texture(name, ColorImage::from_rgba_unmultiplied(img.shown, &img.rgba), TextureOptions::LINEAR)
 }
 
 /// Light and dark squares under `rect`, so transparent pixels show as such.

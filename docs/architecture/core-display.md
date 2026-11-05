@@ -45,6 +45,7 @@ source file, update its line here.
 
 - `preview_image.rs`: decoding a PNG, JPEG, GIF, WebP or BMP (an animation's first frame), shared by the binary diff's preview and the file history's File view.
 - `preview_svg.rs` (tests in `preview_svg_tests.rs`): an SVG drawn by resvg for the diff's preview, its longer side at 1024 px; `<image>` hrefs other than `data:` are refused and flagged (`linked`), and text is set only in the bundled fonts.
+- `preview_font.rs` (tests in `preview_font_tests.rs`): a font (TrueType, OpenType or a collection's first face) drawn for the diff's preview: a specimen set in that font alone (no system or bundled font, no fallback), white for tinting, with the face's names read by skrifa.
 - `preview_svg_budget.rs`: the SVG preview's budget: refuses drawings whose filters (morphology radius, turbulence octaves, convolution size, primitive count, total pixel work) or stacked layers cost too much.
 - `bundled_fonts.rs`: the bytes of the fonts in `assets/fonts/`, shared by the interface's font setup and the SVG preview.
 - `preview_image.rs` bounds dimensions, pixel count (64 Mpx) and allocation, scales from the decoded buffer without a whole copy, reads the format from the content, and scales down to at most 1024 px a side for the diff (`decode`) or 2048 for the File view (`decode_sized`, which says why an image can't be shown); it also says which paths count as images.

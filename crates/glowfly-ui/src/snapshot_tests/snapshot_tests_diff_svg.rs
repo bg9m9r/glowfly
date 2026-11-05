@@ -142,7 +142,7 @@ fn diff_svg_too_large() {
     let big = SVG_MAX_BYTES + (1 << 20);
     let p = st.session.diff_preview.as_mut().unwrap();
     let old = p.sides.as_ref().unwrap().as_ref().unwrap().old.clone();
-    let new = Some(BinarySide { size: big, image: None, linked: false, bytes: None });
+    let new = Some(BinarySide { size: big, image: None, linked: false, font: None, bytes: None });
     p.sides = Some(Ok(Arc::new(BinarySides { old, new })));
     render(st, true, "diff_svg_too_large", &["Too large to preview", "5.0 MB \u{b7} over 4.0 MB"]);
     remove_fixture(&dir);

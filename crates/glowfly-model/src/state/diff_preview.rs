@@ -1,6 +1,7 @@
 //! The binary diff on screen's two sides: their sizes and decoded images, read in the background
 //! (`DiffEffect::BinarySides`, set only by update/diff_preview.rs) for the header's size chip and
-//! the before/after image preview. A changed SVG that git takes for text is drawn there too
+//! the before/after image preview. A font side carries its specimen as the image and its face's
+//! names (`BinarySide::font`). A changed SVG that git takes for text is drawn there too
 //! when the header's Text / Preview switch says Preview (`svg_switch`, `drawn`).
 
 use super::AppState;

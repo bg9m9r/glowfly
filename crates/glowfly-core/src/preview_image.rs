@@ -26,7 +26,7 @@ pub const IMAGE_EXTS: [&str; 6] = ["png", "jpg", "jpeg", "gif", "webp", "bmp"];
 /// A decoded image: its original size, its format and the (possibly downscaled) pixels to draw.
 #[derive(Clone)]
 pub struct PreviewImage {
-    /// The image's own width and height, in pixels.
+    /// The image's own width and height, in pixels (for a font sample, in points).
     pub width: u32,
     pub height: u32,
     /// "PNG", "JPEG", "GIF", "WebP" or "BMP", found from the content.
