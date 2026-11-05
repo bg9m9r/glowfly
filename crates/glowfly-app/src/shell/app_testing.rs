@@ -75,6 +75,12 @@ impl GlowflyApp {
         self.runner.in_flight_names()
     }
 
+    /// The names of the effects whose worker panicked, in order.
+    #[expect(dead_code, reason = "the exploration tests read it from task 8 on")]
+    pub(crate) fn panicked_effects(&self) -> Vec<&'static str> {
+        self.runner.panicked()
+    }
+
     /// The names of the effects the sandbox dropped (network, OS shell, global config, …).
     pub(crate) fn dropped_effects(&self) -> Vec<&'static str> {
         self.runner.dropped()
