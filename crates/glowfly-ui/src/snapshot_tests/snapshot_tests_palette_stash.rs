@@ -3,7 +3,7 @@
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
-use eframe::egui::Key;
+use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
@@ -105,6 +105,27 @@ fn palette_stash_keys() {
     h.press_key(Key::Backspace);
     h.run();
     assert!(!pushed(&h, |m| matches!(m, Msg::Palette(PaletteMsg::PaletteBack))));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Enter pressed in the frame the query was typed runs the best row for the typed query, not the
+/// row selected for the query before it (update hasn't ranked the typed one yet).
+#[test]
+fn palette_stash_typed_and_entered_in_one_frame() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-stash-typed-enter");
+    let stashes = fixture_stashes(&st);
+    st.palette = Some(stash_list(&st, StashAction::Pop, "", 0));
+    let mut h = harness(st, true);
+    h.run();
+    h.state_mut().1.clear();
+    // Straight into the frame's input (the field has the focus), so both land in one frame.
+    h.input_mut().events.push(Event::Text("half".into()));
+    h.press_key(Key::Enter);
+    h.run();
+    let pops = |want: Oid| move |m: &Msg| matches!(m, Msg::Palette(PaletteMsg::RunPaletteCommand(PaletteCommand::StashOp { action: StashAction::Pop, oid })) if *oid == want);
+    assert!(pushed(&h, pops(stashes[2].oid)), "the typed query's top row");
+    assert!(!pushed(&h, pops(stashes[0].oid)), "not the row selected before typing");
     drop(h);
     remove_fixture(&dir);
 }

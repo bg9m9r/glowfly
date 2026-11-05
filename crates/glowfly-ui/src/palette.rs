@@ -101,7 +101,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
                 commands_list(ui, st, view, &query, msgs, run_selected);
                 "Up/Down to choose, Enter to run, Esc to close"
             }
-            Mode::Pick(_) => pick_list(ui, p, &mut view.palette_scroll, msgs, run_selected),
+            Mode::Pick(_) => pick_list(ui, p, &query, &mut view.palette_scroll, msgs, run_selected),
             &Mode::Input(kind) => input_step(ui, kind, &query, msgs, run_selected),
         };
         ui.add_space(6.0);
@@ -221,17 +221,20 @@ fn group_heading(ui: &mut Ui, title: &str) {
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, title));
 }
 
-/// A sub-list's items matching the query, as update ranked them (at most `MAX_PICK_ROWS`);
-/// `scroll` brings the selected row into view once. Returns the footer.
-fn pick_list(ui: &mut Ui, p: &Palette, scroll: &mut bool, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
-    let selected = p.selected;
+/// A sub-list's items matching `query`, the one typed this frame (at most `MAX_PICK_ROWS`):
+/// update's ranking, or for a query changed this frame a ranking made now with its first row
+/// selected, as update will. `scroll` brings the selected row into view once. Returns the footer.
+fn pick_list(ui: &mut Ui, p: &Palette, query: &str, scroll: &mut bool, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
     let Mode::Pick(pk) = &p.mode else { return "" };
+    let typed = query != p.query;
+    let selected = if typed { 0 } else { p.selected };
+    let fresh = if typed { pk.rank(query) } else { None };
     let kind = pk.kind;
     match &pk.items {
         Items::Loading => note(ui, kind.loading(), color::weak()),
         Items::Failed(e) => note(ui, e, color::removed()),
         Items::Ready(v) if v.is_empty() => note(ui, kind.empty_text(), color::weak()),
-        Items::Ready(_) => match pk.ranked() {
+        Items::Ready(_) => match fresh.as_ref().or(pk.ranked()) {
             Some(r) if !r.hits.is_empty() => {
                 let sel = selected.min(r.hits.len() - 1);
                 if run_selected && let Some(c) = pk.command(r.hits[sel].index) {

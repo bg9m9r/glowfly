@@ -125,41 +125,47 @@ impl Pick {
         if self.ranked.as_ref().is_some_and(|r| r.query == query) {
             return;
         }
-        let Items::Ready(items) = &self.items else { return };
+        if let Some(ranked) = self.rank(query) {
+            self.ranked = Some(Box::new(ranked));
+        }
+    }
+
+    /// The items ranked for `query` as `refresh` would, without keeping it: for a query typed
+    /// this frame that update hasn't ranked yet. None while the items aren't ready.
+    pub fn rank(&self, query: &str) -> Option<Ranked> {
+        let Items::Ready(items) = &self.items else { return None };
         // One per item, so a detail can't land on another item (none at all for files).
         let details: Vec<String> = match self.kind {
             PickKind::FileHistory | PickKind::Blame => Vec::new(),
             _ => (0..items.len()).map(|i| self.detail(i).unwrap_or_default()).collect(),
         };
         let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
-        let ranked = if squash(query).is_empty() {
+        if squash(query).is_empty() {
             let hits = (0..items.len().min(MAX_PICK_ROWS)).map(|index| Hit { index, matched: Vec::new() }).collect();
-            Ranked { query: query.to_owned(), matches: (0..items.len()).collect(), hits, total: items.len() }
-        } else {
-            let candidates: Vec<usize> = match self.ranked.take() {
-                Some(r) if !squash(&r.query).is_empty() && squash(query).starts_with(&squash(&r.query)) => {
-                    let mut m = r.matches;
-                    // Back to item order, so ties keep ranking the earlier item first.
-                    m.sort_unstable();
-                    m
-                }
-                _ => (0..items.len()).collect(),
-            };
-            let keywords = |i: usize| details.get(i).map_or("", String::as_str);
-            let pairs: Vec<(&str, &str)> = candidates.iter().map(|&i| (items[i].as_str(), keywords(i))).collect();
-            let found = fuzzy::rank(query, &pairs);
-            let total = found.len();
-            let mut matches = Vec::with_capacity(total);
-            let mut hits = Vec::new();
-            for (pos, m) in found {
-                let index = candidates[pos];
-                matches.push(index);
-                if hits.len() < MAX_PICK_ROWS {
-                    hits.push(Hit { index, matched: m.positions });
-                }
+            return Some(Ranked { query: query.to_owned(), matches: (0..items.len()).collect(), hits, total: items.len() });
+        }
+        let candidates: Vec<usize> = match self.ranked.as_deref() {
+            Some(r) if !squash(&r.query).is_empty() && squash(query).starts_with(&squash(&r.query)) => {
+                let mut m = r.matches.clone();
+                // Back to item order, so ties keep ranking the earlier item first.
+                m.sort_unstable();
+                m
             }
-            Ranked { query: query.to_owned(), matches, hits, total }
+            _ => (0..items.len()).collect(),
         };
-        self.ranked = Some(Box::new(ranked));
+        let keywords = |i: usize| details.get(i).map_or("", String::as_str);
+        let pairs: Vec<(&str, &str)> = candidates.iter().map(|&i| (items[i].as_str(), keywords(i))).collect();
+        let found = fuzzy::rank(query, &pairs);
+        let total = found.len();
+        let mut matches = Vec::with_capacity(total);
+        let mut hits = Vec::new();
+        for (pos, m) in found {
+            let index = candidates[pos];
+            matches.push(index);
+            if hits.len() < MAX_PICK_ROWS {
+                hits.push(Hit { index, matched: m.positions });
+            }
+        }
+        Some(Ranked { query: query.to_owned(), matches, hits, total })
     }
 }
