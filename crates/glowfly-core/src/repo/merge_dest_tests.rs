@@ -108,3 +108,26 @@ fn a_ref_git_looks_up_first_shadows_the_branch() {
     assert_eq!(shadowed_in(&dir, &all), want, "z, v (refs/remotes/v comes after refs/heads/v), origin/x and origin/u are their own");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_tag_spelled_with_other_case_shadows_the_branch() {
+    // On Windows and macOS `git merge x` opens the loose refs/tags/X and merges the tag.
+    let dir = scratch_repo("mdest-shadow-case");
+    git(&dir, &["commit", "-q", "--allow-empty", "-m", "base"]);
+    for b in ["x", "Y"] {
+        git(&dir, &["branch", b]);
+    }
+    git(&dir, &["tag", "X"]);
+    git(&dir, &["tag", "y"]);
+    let local = |n: &str| BranchRef::Local(n.into());
+    assert_eq!(shadowed_in(&dir, &[local("x"), local("Y")]), ["refs/heads/Y", "refs/heads/x"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_tag_spelled_with_other_normalization_shadows_the_branch() {
+    // macOS finds a loose "e\u{301}" tag file under its composed name.
+    let refs: HashSet<String> = ["refs/tags/cafe\u{301}"].map(fold).into();
+    assert!(shadowed(&BranchRef::Local("caf\u{e9}".into()), &refs, |_| false));
+    assert!(!shadowed(&BranchRef::Local("cafe".into()), &refs, |_| false));
+}
