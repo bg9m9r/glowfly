@@ -6,7 +6,7 @@
 use git2::{ConfigLevel, Oid, Repository, RepositoryState, StatusOptions};
 use std::path::{Path, PathBuf};
 
-const DATE: &str = "2026-01-10T10:00:00+00:00";
+pub(super) const DATE: &str = "2026-01-10T10:00:00+00:00";
 
 pub(super) struct Fixture {
     pub root: PathBuf,
@@ -21,6 +21,13 @@ impl Fixture {
             std::fs::create_dir_all(root.join(sub)).unwrap();
         }
         Self { root }
+    }
+
+    /// Dates every git command (and Glowfly's own commits) under the folder from the fixture
+    /// `DATE` on, a minute apart, so commit ids are the same on every run.
+    #[expect(dead_code, reason = "the exploration tests call it")]
+    pub(super) fn pin_dates(&self) {
+        glowfly_core::testkit::clock::pin(&self.root, 1_768_039_200);
     }
 
     pub fn remote(&self) -> PathBuf {
@@ -71,6 +78,7 @@ impl Fixture {
 
 impl Drop for Fixture {
     fn drop(&mut self) {
+        glowfly_core::testkit::clock::unpin(&self.root);
         let _ = std::fs::remove_dir_all(&self.root);
     }
 }

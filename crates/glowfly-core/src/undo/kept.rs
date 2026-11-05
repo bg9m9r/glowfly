@@ -178,7 +178,7 @@ pub(crate) fn keep_stash(workdir: &Path, stash: Oid, message: &str) -> Result<Oi
 fn record(repo: &Repository, tree: Oid, parent: Option<Oid>, note: &Note, label: &str, at: Option<i64>) -> Result<Oid> {
     let sig = match at {
         Some(at) => Signature::new("Glowfly", "glowfly@localhost", &Time::new(at, 0))?,
-        None => Signature::now("Glowfly", "glowfly@localhost")?,
+        None => super::glowfly_signature(repo.path())?,
     };
     let json = serde_json::to_string(note).map_err(|e| Error::Other(e.to_string()))?;
     let first: String = label.lines().next().unwrap_or_default().chars().take(200).collect();
