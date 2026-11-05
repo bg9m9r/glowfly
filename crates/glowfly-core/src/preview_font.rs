@@ -207,25 +207,36 @@ fn xml_text(s: &str) -> String {
 }
 
 /// The options a render uses: a database holding only face 0 of `bytes`, every text run set
-/// in it, no fallback font and no images resolved.
-fn options(bytes: &[u8]) -> Result<Options<'static>, FontError> {
+/// in it, no fallback font and no images resolved. The face is pushed as it is rather than
+/// loaded, because loading parses every face of a collection, and a crafted one can list
+/// millions; the resolver picks it by id, so it needs no names or style here.
+fn options(bytes: &[u8]) -> Options<'static> {
     let mut db = fontdb::Database::new();
-    let ids = db.load_font_source(fontdb::Source::Binary(Arc::new(bytes.to_vec())));
-    let id = ids.into_iter().find(|&id| db.face(id).is_some_and(|f| f.index == 0)).ok_or(FontError::Unreadable)?;
-    Ok(Options {
+    let id = db.push_face_info(fontdb::FaceInfo {
+        id: fontdb::ID::dummy(),
+        source: fontdb::Source::Binary(Arc::new(bytes.to_vec())),
+        index: 0,
+        families: Vec::new(),
+        post_script_name: String::new(),
+        style: fontdb::Style::Normal,
+        weight: fontdb::Weight::NORMAL,
+        stretch: fontdb::Stretch::Normal,
+        monospaced: false,
+    });
+    Options {
         resources_dir: None,
         font_family: "sample".to_owned(),
         fontdb: Arc::new(db),
         font_resolver: FontResolver { select_font: Box::new(move |_, _| Some(id)), select_fallback: Box::new(|_, _, _| None) },
         image_href_resolver: ImageHrefResolver { resolve_data: Box::new(|_, _, _| None), resolve_string: Box::new(|_, _| None) },
         ..Options::default()
-    })
+    }
 }
 
 /// `lines` set in face 0 of `bytes` and drawn at `PX_PER_POINT` (less when that would pass
 /// `SHOWN_MAX`), cropped to the glyphs.
 fn rasterize(bytes: &[u8], lines: &[(f32, String)], format: &'static str) -> Result<PreviewImage, FontError> {
-    let opts = options(bytes)?;
+    let opts = options(bytes);
     let tree = Tree::from_str(&sample_svg(lines), &opts).map_err(|e| {
         tracing::debug!("font preview: {e}");
         FontError::Unreadable
