@@ -286,6 +286,7 @@ fn base_command(program: &OsStr, cwd: &Path, args: &[String], env: &[(&str, &str
         cmd.env_remove(k);
     }
     crate::env_path::apply(&mut cmd);
+    crate::pinned_dates::apply(&mut cmd, cwd, env);
     if stoppable {
         crate::process_tree::prepare(&mut cmd);
     } else {

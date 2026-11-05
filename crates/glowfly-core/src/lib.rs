@@ -81,6 +81,7 @@ pub mod path_query;
 pub mod paths;
 pub mod persist;
 pub mod pick_ops;
+mod pinned_dates;
 pub mod preview;
 pub mod preview_font;
 pub mod preview_image;
