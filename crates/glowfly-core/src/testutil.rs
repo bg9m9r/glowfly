@@ -282,3 +282,21 @@ pub(crate) fn add_bare_key(dir: &Path, section: &str, key: &str) {
     let mut f = std::fs::OpenOptions::new().append(true).open(dir.join(".git").join("config")).unwrap();
     f.write_all(format!("[{section}]\n\t{key}\n").as_bytes()).unwrap();
 }
+
+/// Makes `link` a symbolic link to the file `target` (a Windows file link), returning whether
+/// it could: Windows refuses without Developer Mode or admin rights, so link tests skip then.
+pub(crate) fn file_link(target: &str, link: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link).is_ok()
+    }
+    #[cfg(windows)]
+    {
+        std::os::windows::fs::symlink_file(target, link).is_ok()
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (target, link);
+        false
+    }
+}

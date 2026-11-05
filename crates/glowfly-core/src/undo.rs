@@ -20,8 +20,10 @@
 //! series keeps its work (resolutions, conflicts and the operation's state, also its state folder,
 //! where HEAD was and the refs the abort moves) as git objects first and is undone by putting all
 //! of it back (`aborted.rs`, `aborted_state.rs`, `aborted_restore.rs`). Discarded and deleted
-//! files and dropped stashes are also kept as records under `refs/glowfly/discarded/`
-//! (`kept.rs`), which outlive the in-memory history and are listed in the journal's Lost tab.
+//! files and links, dropped stashes, and the working copies a restore or a saved resolution
+//! replaced are also kept as records under `refs/glowfly/discarded/` (`kept.rs`, restored by
+//! `kept_restore.rs`), which outlive the in-memory history and are listed in the journal's Lost
+//! tab.
 
 use crate::gitcli::args;
 use crate::repo::StagedNew;
@@ -36,6 +38,7 @@ mod action;
 mod deleted;
 mod in_the_way;
 pub mod kept;
+mod kept_restore;
 mod kinds;
 mod marked;
 mod marked_plan;
@@ -194,6 +197,8 @@ mod in_the_way_tests;
 mod kept_tests;
 #[cfg(test)]
 mod kinds_tests;
+#[cfg(test)]
+mod link_tests;
 #[cfg(test)]
 mod marked_safety_tests;
 #[cfg(test)]

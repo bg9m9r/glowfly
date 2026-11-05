@@ -195,7 +195,8 @@ fn journal_lost_discarded() {
     // The stash moves up: its record keeps it, so it is listed with the discarded changes.
     let stash = l.commits.remove(0);
     let first = kept(1, "src/search/results.rs", KeptWhat::Hunk, 120);
-    l.discarded = vec![first.clone(), kept(2, "notes/todo.md", KeptWhat::Delete, 900), stash];
+    l.discarded =
+        vec![first.clone(), kept(2, "notes/todo.md", KeptWhat::Delete, 900), kept(3, "Cargo.toml", KeptWhat::Restore, 3600), stash];
     lost.selected = Some(first.oid);
     lost.preview = None;
     let mut h = harness(st, true);

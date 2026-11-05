@@ -115,6 +115,10 @@ pub(super) fn work<'a>(
                 absent.push(p.as_str());
             }
             OnDisk::Item => match saved::save(workdir, p) {
+                // Abort keeping doesn't keep links: refused as before, never kept as a plain file.
+                Ok(Some(s)) if s.link => {
+                    return Err(Error::Unsupported(format!("{p} isn't a regular file, so it can't be kept for Undo")));
+                }
                 Ok(Some(s)) => {
                     work.insert(p, (s.blob, if s.executable { 0o100755 } else { 0o100644 }));
                 }

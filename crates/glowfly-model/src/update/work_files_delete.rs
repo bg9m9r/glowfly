@@ -256,7 +256,7 @@ pub(super) fn deleted_text(path: &str, mode: DeleteMode, deleted: Deleted, unsta
         (Deleted::Permanently, _) => format!("Deleted {path}{also}."),
     };
     match (note, deleted) {
-        (UndoNote::None, _) | (_, Deleted::LinkRemoved) => {}
+        (UndoNote::None, _) | (UndoNote::TooLarge, Deleted::LinkRemoved) => {}
         (UndoNote::Undo(hint), _) => text.push_str(&format!(" Undo{hint} puts it back.")),
         (UndoNote::TooLarge, Deleted::Trashed) => {
             text.push_str(&format!(" It's over 64 MB, so Undo can't put it back; restore it from the {TRASH}."));

@@ -160,7 +160,12 @@ second one next to it.
    and their readers skip a torn last line.
 2. **Links:** Glowfly's own files follow a symlink to its real file and keep the link
    (`atomic_write`). Working-tree writes set `WriteOptions::refuse_links` and never write
-   through a link, which can point anywhere.
+   through a link, which can point anywhere. Undo and the journal put a saved link back as a
+   link (`persist::write_link`, made beside the path and renamed over it; `persist::create_link`
+   where nothing may be replaced), or as a plain file holding its target when `core.symlinks`
+   is false, as git checks one out. Targets are saved with forward slashes (Windows' backslashes
+   turned into slashes, and back when the link is made). Windows folder links and junctions
+   are not saved: a discard or delete of one runs without Undo.
 3. **A replaced file keeps its permissions and read-only attribute.** Set the exec bit only
    through `WriteOptions::executable`, only when it changes (`persist::needs_chmod`), honour
    `core.fileMode`, and never fail a write because chmod failed (vfat, some shares).

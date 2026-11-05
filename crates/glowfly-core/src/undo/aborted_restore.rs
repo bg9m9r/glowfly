@@ -215,7 +215,7 @@ pub(super) fn put_back(workdir: &Path, saved: Oid, at_head: Oid) -> Result<()> {
             remove(workdir, p)?;
         }
         for (p, (blob, mode)) in kept.work.iter().filter(|(p, _)| !kept.absent.contains(*p)) {
-            saved::write(workdir, p, Some(Saved { blob: *blob, executable: *mode == 0o100755 }))?;
+            saved::write(workdir, p, Some(Saved::file(*blob, *mode == 0o100755)))?;
         }
         refresh(&repo, kept.index.keys());
         done = "the index and the files were put back, but the operation isn't in progress yet";

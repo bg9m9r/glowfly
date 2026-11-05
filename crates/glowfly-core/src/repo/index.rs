@@ -160,8 +160,8 @@ pub enum WholeDiscard {
 /// bytes that aren't UTF-8 counts too. Refused as stale (`NotFound`) otherwise, so a file that
 /// changed since is never deleted. Also refused, as the line discard it stands for is, for a
 /// path that shares its file with another index path and for one whose content git converts;
-/// and when the path is tracked or staged by now, or isn't a regular file (a link's target
-/// can't be kept for Undo).
+/// and when the path is tracked or staged by now, or isn't a regular file (the file list's
+/// Discard takes a link, keeping it for Undo).
 pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, raw: git2::Oid, ignore_whitespace: bool) -> Result<WholeDiscard> {
     let rel = workfile::contained(path)?;
     super::collide::refuse(workdir, path, "discard changes to")?;
@@ -183,7 +183,7 @@ pub fn whole_discard(workdir: &Path, path: &str, expected: &Hunk, raw: git2::Oid
         Some(_) => Err(Error::Other(format!("{rel} is tracked now; refresh and try again"))),
         None if std::fs::symlink_metadata(workdir.join(rel)).is_ok_and(|m| m.is_file()) => Ok(WholeDiscard::Delete),
         None => Err(Error::Unsupported(format!(
-            "{rel} isn't a regular file, so Undo couldn't bring it back; discard it from the file list instead"
+            "{rel} isn't a regular file, so its lines can't be discarded; discard it from the file list instead"
         ))),
     }
 }

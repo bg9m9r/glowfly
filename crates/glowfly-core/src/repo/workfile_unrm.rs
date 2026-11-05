@@ -1,5 +1,7 @@
-//! Putting a deleted working-tree file back for undo, and the staged entry of a new file Unstage
-//! and delete removed.
+//! Putting a deleted working-tree file or symbolic link back for undo, and the staged entry of a
+//! new file Unstage and delete removed; also pointing a link back at a saved target. A link is
+//! made as `core.symlinks` says (true unless set, except on Windows): a real link, or a plain
+//! file holding the target text, as git checks one out.
 //!
 //! As in `workfile_rm.rs`, the index is changed with libgit2 and the exact index helpers rather
 //! than the git CLI: only a blob already in the object database goes back into the index, so no
@@ -77,6 +79,53 @@ pub fn index_clear_for(workdir: &Path, path: &str, s: &StagedNew) -> Result<bool
 /// Nothing is ever overwritten: a file that appeared at `path` is refused, changing nothing.
 /// When only the index step fails, the file stays back and the error says so.
 pub fn undelete_file(workdir: &Path, path: &str, bytes: &[u8], executable: Option<bool>, staged: Option<&StagedNew>) -> Result<()> {
+    undelete_with(workdir, path, staged, |full| Ok(write_new(full, bytes, executable)?))
+}
+
+/// [`undelete_file`] for a symbolic link to `target` (git's bytes): made as `core.symlinks`
+/// says, never over anything, with `staged` back in the index.
+pub(crate) fn undelete_link(workdir: &Path, path: &str, target: &[u8], staged: Option<&StagedNew>) -> Result<()> {
+    let symlinks = symlinks(&Repository::open(workdir)?);
+    undelete_with(workdir, path, staged, |full| {
+        if symlinks { Ok(crate::persist::create_link(full, target)?) } else { Ok(write_new(full, target, Some(false))?) }
+    })
+}
+
+/// Makes `path` a symbolic link to `target` (git's bytes) as `core.symlinks` says, replacing the
+/// file or link there (the caller checked it holds what the operation left); a folder there is
+/// refused, and so are parent folders that are links or lead outside the repository.
+pub(crate) fn write_link(workdir: &Path, path: &str, target: &[u8]) -> Result<()> {
+    let rel = contained(path)?;
+    let (repo, root) = open_root(workdir)?;
+    let symlinks = symlinks(&repo);
+    drop(repo);
+    check_parents(&root, rel)?;
+    let full = root.join(rel);
+    ensure_inside(&root, full.parent().unwrap_or(&root))?;
+    if full.symlink_metadata().is_ok_and(|m| m.is_dir()) {
+        return Err(Error::Other(format!("{rel} is a folder now, so the link can't be put back")));
+    }
+    if symlinks {
+        return Ok(crate::persist::write_link(&full, target)?);
+    }
+    // A plain file holding the target, as git checks a link out without `core.symlinks`; a
+    // link there is replaced, never written through.
+    if full.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
+        crate::persist::remove_file(&full)?;
+    }
+    let opts = crate::persist::WriteOptions { refuse_links: true, executable: Some(false), private: false };
+    Ok(crate::persist::write_file(&full, target, opts)?)
+}
+
+/// Whether links are made as links (`core.symlinks`, true unless set except on Windows).
+fn symlinks(repo: &Repository) -> bool {
+    repo.config().and_then(|c| c.get_bool("core.symlinks")).unwrap_or(!cfg!(windows))
+}
+
+/// Recreates the parent folders of the absent `path`, runs `make` on its full path (which must
+/// refuse anything already there), then puts `staged` back. A failed `make` removes the folders
+/// it recreated.
+fn undelete_with(workdir: &Path, path: &str, staged: Option<&StagedNew>, make: impl FnOnce(&Path) -> Result<()>) -> Result<()> {
     let rel = contained(path)?;
     let (repo, root) = open_root(workdir)?;
     drop(repo);
@@ -84,9 +133,9 @@ pub fn undelete_file(workdir: &Path, path: &str, bytes: &[u8], executable: Optio
     let created = create_parents(&root, rel)?;
     let full = root.join(rel);
     let written = ensure_inside(&root, full.parent().unwrap_or(&root)).and_then(|()| {
-        write_new(&full, bytes, executable).map_err(|e| match e.kind() {
-            ErrorKind::AlreadyExists => Error::Other(format!("{rel} is in your working tree again")),
-            _ => e.into(),
+        make(&full).map_err(|e| match e {
+            Error::Io(io) if io.kind() == ErrorKind::AlreadyExists => Error::Other(format!("{rel} is in your working tree again")),
+            e => e,
         })
     });
     if let Err(e) = written {
