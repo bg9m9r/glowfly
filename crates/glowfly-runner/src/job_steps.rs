@@ -41,8 +41,17 @@ pub(super) struct Ran {
 }
 
 /// Runs `cmds` in `cwd` in order, stopping at the first failure or once `stop` is asked; with
-/// `note`, where the last command's operation starts is noted just before it.
-pub(super) fn run(cwd: &Path, cmds: &[Vec<String>], prompts: bool, stop: &Stop, send: &dyn Fn(Msg), note: bool) -> Ran {
+/// `note`, where the last command's operation starts is noted just before it. `starting(i)` is
+/// called before command `i` runs.
+pub(super) fn run(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    prompts: bool,
+    stop: &Stop,
+    send: &dyn Fn(Msg),
+    note: bool,
+    starting: &mut dyn FnMut(usize),
+) -> Ran {
     let mut live = Live::new(cwd, prompts, stop, send);
     let mut output = String::new();
     let mut start = None;
@@ -53,6 +62,7 @@ pub(super) fn run(cwd: &Path, cmds: &[Vec<String>], prompts: bool, stop: &Stop, 
             live.stopped = true;
             break;
         }
+        starting(at);
         if note && at + 1 == cmds.len() {
             start = undo::op_start(cwd);
         }

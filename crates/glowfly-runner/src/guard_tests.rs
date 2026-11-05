@@ -22,6 +22,7 @@ fn a_panicking_job_finishes_failed_and_frees_the_job_slot() {
         expect: None,
         stoppable: false,
         on_fail_check: None,
+        auto_stash: None,
     });
     let msg = guarded(Recovery::of(&effect, "git"), || panic!("boom {}", 42)).expect("a failure result");
     let Msg::Job(JobMsg::JobDone { ok: false, output, undo: Some(UndoResult::Recorded(None)) }) = &msg else { panic!("not a failed job") };

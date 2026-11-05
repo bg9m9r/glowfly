@@ -14,9 +14,10 @@
 //! snapshot of that tab, finds the stash and, once nothing is in progress, puts it back as a
 //! quiet job (`StashEffect::PutBack`), whose result `handle` turns into a toast. It goes back
 //! with `git stash pop --index`, falling back to a plain pop when the staged state no longer
-//! fits (`PutBack::RestoredUnstaged`). An entry that has to wait (an operation stopped, a job
-//! runs) is written to the repository's saved records, so a restart offers it again
-//! (update/auto_stash_saved.rs, read on every `LoadKind::Open` through `loaded`).
+//! fits (`PutBack::RestoredUnstaged`). The runner writes the stash's saved record as soon as it
+//! exists (`AutoStashMsg::Made`), and every end of its put-back removes it, so a crash or restart
+//! in between still offers it (update/auto_stash_saved.rs, read on every `LoadKind::Open`
+//! through `loaded`).
 //!
 //! A guarded job the gate lets run without stashing (the snapshot showed nothing to stash) is
 //! recorded with its retry (`ran`, `AutoStashes::unstashed`); when it fails because changes were
@@ -190,18 +191,20 @@ pub(super) fn wrap(st: &AppState, spec: &mut JobSpec, op: AutoStashFor) {
 pub(super) fn job_finished(st: &mut AppState, job: &RunningJob, fx: &mut Vec<Effect>) {
     let Some(m) = st.auto_stash.making.take() else { return };
     let same = m.label == job.label && matches!((&m.workdir, &job.workdir), (Some(a), Some(b)) if same_spelling(a, b));
+    // Dropped for another job's end: a record it made stays in the file for the next open.
     let (true, Some(workdir)) = (same, m.workdir) else { return };
-    if let Some(i) = st.auto_stash.index_of(&workdir) {
-        let old = st.auto_stash.pending.remove(i);
+    let old = st.auto_stash.index_of(&workdir).map(|i| st.auto_stash.pending.remove(i));
+    if let Some(old) = &old {
         st.log_quiet(true, format!("Stopped waiting to put back \"{}\"; it stays in the stash list.", old.job.message));
-        if old.saved {
-            auto_stash_saved::save(st, &workdir, fx);
-        }
     }
     // A load that started before the job ended can still arrive with the current generation.
-    let from = st.load_gen + 1;
-    let job = m.job;
-    st.auto_stash.pending.push(PendingStash { workdir, job, oid: None, phase: Phase::Ended { from }, told: false, saved: false });
+    let phase = Phase::Ended { from: st.load_gen + 1 };
+    let entry = PendingStash { workdir: workdir.clone(), job: m.job, oid: m.made, phase, told: false, saved: m.made.is_some() };
+    st.auto_stash.pending.push(entry);
+    // Saved after the push, so the rewrite keeps the new record.
+    if old.is_some_and(|o| o.saved) {
+        auto_stash_saved::save(st, &workdir, fx);
+    }
 }
 
 /// After a repository load of the active tab (update/repo.rs): opening it reads the auto-stashes
@@ -313,6 +316,7 @@ pub(super) fn handle(st: &mut AppState, msg: AutoStashMsg, now: Instant, fx: &mu
         AutoStashMsg::SavedRead { workdir, saved } => auto_stash_saved::read(st, workdir, saved, fx),
         AutoStashMsg::PutBackSaved { workdir, oid } => auto_stash_saved::put_back(st, &workdir, oid, now, fx),
         AutoStashMsg::LeaveSaved { workdir, oid } => auto_stash_saved::leave(st, &workdir, oid, fx),
+        AutoStashMsg::Made { workdir, oid } => auto_stash_saved::made(st, &workdir, oid, fx),
         AutoStashMsg::Show(oid) => {
             if st.snap.as_ref().is_some_and(|s| s.stashes.iter().any(|x| x.oid == oid)) {
                 st.view.sections.stashes = true;

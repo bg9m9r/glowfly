@@ -21,6 +21,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::Sender;
 
 mod askpass;
+mod auto_stash_made;
 mod background;
 mod blame;
 mod branches;

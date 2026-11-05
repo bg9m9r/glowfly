@@ -1,10 +1,11 @@
 //! The `Execute` impl of `JobEffect`: a job's git commands (`RunGit`), with the expected
 //! revision's check (expect.rs), the undo record, the trust gate's re-run (trust.rs), a stop for
-//! network commands (job_steps.rs) and the journal note (journal.rs); and undoing or redoing an
-//! action (undo_run.rs).
+//! network commands (job_steps.rs), the journal note (journal.rs) and the saved record of an
+//! auto-stash, written once its first command made the stash (auto_stash_made.rs); and undoing or
+//! redoing an action (undo_run.rs).
 
 use super::execute::{Cx, Execute};
-use super::{expect, git_ops, job_steps, journal, op_stops, undo_run};
+use super::{auto_stash_made, expect, git_ops, job_steps, journal, op_stops, undo_run};
 use glowfly_core::undo;
 use glowfly_model::effect::{Effect, JobEffect, UndoResult};
 use glowfly_model::msg::{JobMsg, Msg};
@@ -12,7 +13,7 @@ use glowfly_model::msg::{JobMsg, Msg};
 impl Execute for JobEffect {
     fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
         match self {
-            JobEffect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _, on_fail_check } => {
+            JobEffect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable: _, on_fail_check, auto_stash } => {
                 if let Some(refused) = expect.and_then(|(rev, oid)| expect::check(&cwd, &rev, oid).err()) {
                     return Some(Msg::Job(JobMsg::JobDone {
                         ok: false,
@@ -42,22 +43,26 @@ impl Execute for JobEffect {
                         expect: None,
                         stoppable: false,
                         on_fail_check: on_fail_check.clone(),
+                        auto_stash: auto_stash.clone(),
                     });
                     (job, check.clone())
                 });
                 // The journal note sees the refs before git runs and after the undo record is read.
                 Some(journal::around(&cwd, journal, || {
+                    let mut starting = auto_stash_made::starting(&cwd, auto_stash.as_ref(), cx.send);
                     // A job with a network command has a stop, and it writes no file (job_steps.rs).
                     let (ok, output, start, stopped) = match (cx.stop.filter(|_| write_file.is_none()), cx.gate) {
                         (Some(stop), None) => {
-                            let r = job_steps::run(&cwd, &cmds, prompts, stop, cx.send, stops);
+                            let r = job_steps::run(&cwd, &cmds, prompts, stop, cx.send, stops, &mut starting);
                             (r.ok, r.output, r.start, r.stopped)
                         }
                         (stop, Some((gate, _))) => {
                             let mut live = stop.map(|s| job_steps::Live::new(&cwd, prompts, s, cx.send));
                             let (gated, start) = match live.as_mut() {
-                                Some(l) => git_ops::run_git_gated_with(&cwd, &cmds, gate, stops, &mut |a, i, e| l.git(a, i, e)),
-                                None => git_ops::run_git_gated_noting(&cwd, &cmds, write_file, prompts, gate, stops),
+                                Some(l) => {
+                                    git_ops::run_git_gated_with(&cwd, &cmds, gate, stops, &mut |a, i, e| l.git(a, i, e), &mut starting)
+                                }
+                                None => git_ops::run_git_gated_noting(&cwd, &cmds, write_file, prompts, gate, stops, &mut starting),
                             };
                             let stopped = live.as_ref().is_some_and(|l| l.stopped);
                             match gated {
@@ -86,11 +91,11 @@ impl Execute for JobEffect {
                             }
                         }
                         (None, None) if stops => {
-                            let (ok, output, start) = op_stops::run_noting_start(&cwd, &cmds, write_file, prompts);
+                            let (ok, output, start) = op_stops::run_noting_start(&cwd, &cmds, write_file, prompts, &mut starting);
                             (ok, output, start, false)
                         }
                         (None, None) => {
-                            let (ok, output) = git_ops::run_git(&cwd, &cmds, write_file, prompts);
+                            let (ok, output) = git_ops::run_git_each(&cwd, &cmds, write_file, prompts, &mut starting);
                             (ok, output, None, false)
                         }
                     };

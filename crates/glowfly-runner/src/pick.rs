@@ -1,5 +1,6 @@
-//! Running a cherry-pick or revert job (`Effect::Pick`): like `RunGit` (the undo record and the
-//! journal note around it), then carried past the commits that change nothing
+//! Running a cherry-pick or revert job (`Effect::Pick`): like `RunGit` (the undo record, the
+//! journal note around it and an auto-stash's saved record once its push made the stash,
+//! auto_stash_made.rs), then carried past the commits that change nothing
 //! (`glowfly_core::pick_ops::skip_empty`).
 
 use super::execute::{Cx, Execute};
@@ -15,8 +16,8 @@ fn head(cwd: &Path) -> Option<git2::Oid> {
     git2::Repository::open(cwd).ok()?.head().ok()?.target()
 }
 
-pub(super) fn run(j: PickJob) -> Msg {
-    let PickJob { cwd, mut cmds, record, journal, prompts, picking, oids, can_skip } = j;
+pub(super) fn run(j: PickJob, send: &dyn Fn(Msg)) -> Msg {
+    let PickJob { cwd, mut cmds, record, journal, prompts, picking, oids, can_skip, auto_stash } = j;
     let before = record.as_ref().and_then(|k| undo::before(&cwd, k).ok());
     let irreversible = before.as_ref().is_some_and(undo::irreversible);
     let total = oids.len();
@@ -29,6 +30,9 @@ pub(super) fn run(j: PickJob) -> Msg {
         if !stashed {
             let undo = record.as_ref().map(|_| UndoResult::Recorded(None));
             return (false, output, undo, PickResult { picking, total, ..PickResult::default() });
+        }
+        if let Some(a) = auto_stash.as_ref().filter(|_| !cmds.is_empty()) {
+            super::auto_stash_made::note(&cwd, a, send);
         }
         let start = head(&cwd);
         let op_start = glowfly_core::undo::op_start(&cwd);
@@ -50,7 +54,7 @@ pub(super) fn run(j: PickJob) -> Msg {
 }
 
 impl Execute for PickJob {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self))
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self, cx.send))
     }
 }

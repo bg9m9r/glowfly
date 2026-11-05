@@ -76,3 +76,21 @@ fn a_linked_worktree_keeps_its_records_in_its_own_git_dir() {
     let _ = std::fs::remove_dir_all(&wt);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn add_saved_creates_appends_and_skips_a_known_stash() {
+    let dir = committed("saved-auto-add");
+    let pull = AutoStashFor::Pull { branch: s("main") };
+    let merge = AutoStashFor::Merge { from: s("feature"), into: s("main") };
+    let one = SavedAutoStash::new(pull.clone(), pull.message(), Oid::from_bytes(&[4; 20]).unwrap());
+    let two = SavedAutoStash::new(merge.clone(), merge.message(), Oid::from_bytes(&[5; 20]).unwrap());
+    assert!(!file(&dir).exists());
+    add_saved(&dir, one.clone()).unwrap();
+    assert_eq!(read_saved(&dir), vec![one.clone()], "a missing file is created with the record");
+    add_saved(&dir, two.clone()).unwrap();
+    assert_eq!(read_saved(&dir), vec![one.clone(), two.clone()], "a second stash is added after the first");
+    let before = std::fs::read(file(&dir)).unwrap();
+    add_saved(&dir, SavedAutoStash::new(merge.clone(), s("another text"), Oid::from_bytes(&[4; 20]).unwrap())).unwrap();
+    assert_eq!(std::fs::read(file(&dir)).unwrap(), before, "a stash already recorded changes nothing");
+    let _ = std::fs::remove_dir_all(&dir);
+}

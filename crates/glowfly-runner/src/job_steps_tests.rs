@@ -74,7 +74,7 @@ fn run_stopped(cwd: &Path, cmds: &[Vec<String>], ready: impl Fn() -> bool + Send
     stop_when(&stop, ready);
     let sent = RefCell::new(Vec::new());
     let started = Instant::now();
-    let ran = run(cwd, cmds, false, &stop, &|m| sent.borrow_mut().push(m), false);
+    let ran = run(cwd, cmds, false, &stop, &|m| sent.borrow_mut().push(m), false, &mut |_| {});
     // A remote program runs 23 s: well under that means it was stopped.
     assert!(started.elapsed() < Duration::from_secs(15), "took {:?}: {}", started.elapsed(), ran.output);
     (ran, sent.into_inner())
@@ -252,5 +252,22 @@ fn a_stop_after_a_pull_s_fetch_keeps_what_it_fetched_in_the_log_and_never_rebase
     assert!(text.contains("$ git fetch"), "{text}");
     assert!(text.contains("was cancelled before it started"), "{text}");
     assert_eq!(head(), before, "nothing was rebased: {text}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn starting_comes_before_each_command_and_none_after_a_failure() {
+    let dir = temp("starting");
+    repo(&dir);
+    let stop = Stop::new();
+    let mut seen = Vec::new();
+    let ran = run(&dir, &[args(&["status"]), args(&["status"])], false, &stop, &|_| {}, false, &mut |i| seen.push(i));
+    assert!(ran.ok, "{}", ran.output);
+    assert_eq!(seen, [0, 1]);
+    seen.clear();
+    let failing = [args(&["checkout", "nosuch"]), args(&["status"])];
+    let ran = run(&dir, &failing, false, &stop, &|_| {}, false, &mut |i| seen.push(i));
+    assert!(!ran.ok);
+    assert_eq!(seen, [0], "the command after the failure never starts");
     let _ = std::fs::remove_dir_all(&dir);
 }

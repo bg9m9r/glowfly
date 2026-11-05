@@ -1,15 +1,17 @@
-//! Saved pending auto-stashes: an auto-stash that has to wait before it goes back (an operation
-//! stopped on conflicts, a job runs, a Git Flow finish holds it) is written to the repository's
-//! `auto-stashes.json` (`StashEffect::SaveAutoStashes`), and removed from it once its put-back
-//! ends. Opening the repository again reads them (`StashEffect::ReadAutoStashes`); those whose
-//! stash is still listed are offered one at a time (`Modal::ConfirmChoice`) once the repository
-//! is the active tab, ready, and nothing else waits or runs: Put back makes the record a normal
-//! pending auto-stash, Leave in stash list forgets it. Cancel asks again at the next open.
+//! Saved pending auto-stashes: an auto-stash is in the repository's `auto-stashes.json` from the
+//! moment its stash exists (the runner writes it and reports `AutoStashMsg::Made`; an entry it
+//! never reported is written by `keep` once it has to wait) until its put-back ends, each change
+//! rewriting the file from memory (`StashEffect::SaveAutoStashes`). Opening the repository again
+//! reads them (`StashEffect::ReadAutoStashes`); those whose stash is still listed are offered one
+//! at a time (`Modal::ConfirmChoice`) once the repository is the active tab, ready, and nothing
+//! else waits or runs: Put back makes the record a normal pending auto-stash, Leave in stash list
+//! forgets it. Cancel asks again at the next open. The running job's own record is kept by every
+//! rewrite but never offered.
 
 use crate::effect::{Effect, StashEffect};
 use crate::msg::{AutoStashMsg, Msg};
 use crate::state::auto_stash::{
-    AutoStashJob, PendingStash, Phase, SavedOffer, blocks, ready, saved_body, saved_gone, saved_leave, saved_left, saved_put_back,
+    AutoStashJob, Making, PendingStash, Phase, SavedOffer, blocks, ready, saved_body, saved_gone, saved_leave, saved_left, saved_put_back,
     saved_title,
 };
 use crate::state::{AppState, Modal};
@@ -27,13 +29,25 @@ pub(super) fn opened(st: &mut AppState, fx: &mut Vec<Effect>) {
     fx.push(Effect::Stash(StashEffect::ReadAutoStashes { cwd: workdir }));
 }
 
-/// What `workdir`'s file should hold: its pending entry once saved (and its stash found), and
-/// the records still waiting for an answer, each stash once.
+/// Whether the auto-stash job `m` runs in `workdir`.
+fn runs_in(m: &Making, workdir: &Path) -> bool {
+    m.workdir.as_deref().is_some_and(|w| same_spelling(w, workdir))
+}
+
+/// The running job's auto-stash in `workdir`, once the runner reported it.
+fn making_in<'a>(st: &'a AppState, workdir: &Path) -> Option<(&'a Making, Oid)> {
+    let m = st.auto_stash.making.as_ref().filter(|m| runs_in(m, workdir))?;
+    Some((m, m.made?))
+}
+
+/// What `workdir`'s file should hold: the running job's stash once made, its pending entry once
+/// saved (and its stash found), and the records still waiting for an answer, each stash once.
 fn records(st: &AppState, workdir: &Path) -> Vec<SavedAutoStash> {
     let mut out: Vec<SavedAutoStash> = Vec::new();
+    let making = making_in(st, workdir).map(|(m, oid)| SavedAutoStash::new(m.job.op.clone(), m.job.message.clone(), oid));
     let pending = st.auto_stash.pending.iter().filter(|p| p.saved && same_spelling(&p.workdir, workdir));
     let kept = pending.filter_map(|p| Some(SavedAutoStash::new(p.job.op.clone(), p.job.message.clone(), p.oid?)));
-    for s in kept.chain(st.auto_stash.saved_of(workdir).map(|o| o.stash.clone())) {
+    for s in making.into_iter().chain(kept).chain(st.auto_stash.saved_of(workdir).map(|o| o.stash.clone())) {
         if !out.iter().any(|o| o.oid == s.oid) {
             out.push(s);
         }
@@ -46,8 +60,19 @@ pub(super) fn save(st: &AppState, workdir: &Path, fx: &mut Vec<Effect>) {
     fx.push(Effect::Stash(StashEffect::SaveAutoStashes { cwd: workdir.to_path_buf(), saved: records(st, workdir) }));
 }
 
+/// The running job's auto-stash `oid` exists in `workdir`, its record already written by the
+/// runner: notes it on the making and rewrites the file from memory, so a save queued while the
+/// job runs keeps it. With no such making (another job's, or none) the record waits for the next
+/// open.
+pub(super) fn made(st: &mut AppState, workdir: &Path, oid: Oid, fx: &mut Vec<Effect>) {
+    let Some(m) = st.auto_stash.making.as_mut().filter(|m| runs_in(m, workdir)) else { return };
+    m.made = Some(oid);
+    save(st, workdir, fx);
+}
+
 /// The pending entry `i` keeps waiting with its stash found: writes it to the saved records the
-/// first time.
+/// first time. The fallback for an entry the runner never reported (a restack's stash, a push
+/// that failed after storing it).
 pub(super) fn keep(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     let p = &mut st.auto_stash.pending[i];
     if p.saved || p.oid.is_none() {
@@ -64,7 +89,8 @@ pub(super) fn read(st: &mut AppState, workdir: PathBuf, list: Vec<SavedAutoStash
     for stash in list {
         let Some(oid) = stash.oid() else { continue };
         let waiting = st.auto_stash.pending.iter().any(|p| same_spelling(&p.workdir, &workdir) && p.oid == Some(oid));
-        if waiting || st.auto_stash.saved_of(&workdir).any(|o| o.oid == oid) {
+        let running = making_in(st, &workdir).is_some_and(|(_, made)| made == oid);
+        if waiting || running || st.auto_stash.saved_of(&workdir).any(|o| o.oid == oid) {
             continue;
         }
         st.auto_stash.saved.push(SavedOffer { workdir: workdir.clone(), stash, oid, offered: false });

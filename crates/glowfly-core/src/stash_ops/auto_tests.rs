@@ -108,6 +108,29 @@ fn a_git_flow_finish_stash_is_asked_for_by_its_dialog() {
     }
 }
 
+#[test]
+fn made_in_finds_the_newest_new_entry_with_the_message() {
+    let msg = "Auto-stash before checking out feature";
+    let entry = |index: usize, message: &str, byte: u8| crate::repo::StashInfo {
+        index,
+        message: message.to_owned(),
+        oid: Oid::from_bytes(&[byte; 20]).unwrap(),
+    };
+    let oid = |byte: u8| Oid::from_bytes(&[byte; 20]).unwrap();
+    let list = [
+        entry(0, "On main: Auto-stash before pulling into main", 1),
+        entry(1, &format!("On main: {msg}"), 2),
+        entry(2, &format!("On main: {msg}"), 3),
+    ];
+    assert_eq!(made_in(&list, msg, &[]), Some(oid(2)), "the newest entry with the message");
+    assert_eq!(made_in(&list, msg, &[oid(2)]), Some(oid(3)), "an entry there before the job is skipped");
+    assert_eq!(made_in(&list, msg, &[oid(2), oid(3)]), None);
+    assert_eq!(made_in(&list, "Auto-stash before merging x into main", &[]), None, "another message is skipped");
+    let detached = [entry(0, &format!("On (no branch): {msg}"), 4)];
+    assert_eq!(made_in(&detached, msg, &[]), Some(oid(4)), "a stash made on a detached HEAD");
+    assert_eq!(made_in(&[], msg, &[]), None);
+}
+
 /// A repository on `main` with a.txt committed ("one\n") and then edited and stashed with
 /// `message`. Returns the folder and the stash's commit.
 fn stashed(name: &str, message: &str) -> (PathBuf, Oid) {

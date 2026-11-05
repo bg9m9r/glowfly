@@ -129,6 +129,7 @@ fn which_effects_queue() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
+            auto_stash: None,
         })
     };
     assert_eq!(Effect::queue(&git(&[&["pull"]])), Some(w.as_path()));
@@ -255,6 +256,7 @@ fn every_effect_that_changes_a_repository_queues() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
+            auto_stash: None,
         }),
         Effect::Job(glowfly_model::effect::JobEffect::UndoRedo {
             cwd: w.clone(),

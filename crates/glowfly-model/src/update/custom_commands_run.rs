@@ -153,6 +153,7 @@ fn job_effect(cwd: PathBuf, e: Expanded) -> (Effect, bool) {
                     expect: None,
                     stoppable: false,
                     on_fail_check: None,
+                    auto_stash: None,
                 }),
                 keeps,
             )

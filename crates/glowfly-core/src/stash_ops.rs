@@ -15,9 +15,10 @@
 //!
 //! `auto` names the stash Glowfly makes before an operation that needs a clean work tree
 //! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
-//! kept "autostash" in the list, and puts it back with `git stash pop --index` (a plain pop when
-//! the staged state no longer fits) once nothing is in progress. `saved` keeps the ones still
-//! waiting to go back across restarts. `paths` lists the files a stash changes.
+//! kept "autostash" in the list, finds the entry a job made (`made_in`), and puts it back with
+//! `git stash pop --index` (a plain pop when the staged state no longer fits) once nothing is in
+//! progress. `saved` keeps the ones still waiting to go back across restarts, each written as
+//! soon as its stash exists (`add_saved`). `paths` lists the files a stash changes.
 //!
 //! `list` reads the stash list from the `refs/stash` reflog, a message that isn't UTF-8 decoded
 //! lossily.
@@ -34,13 +35,14 @@ mod push;
 mod renames;
 mod saved;
 pub use auto::{
-    AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_index, pop_index_with, pop_put_back, prepare_put_back,
+    AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, made_in, pop_index, pop_index_with, pop_put_back,
+    prepare_put_back,
 };
 pub use list::{list, list_in};
 pub use paths::changed_paths;
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 pub use renames::{RESTORE_BLOCKED, rename_sources, restore_blocked, restore_blocked_output, restore_commands};
-pub use saved::{SavedAutoStash, path as saved_path, read_saved, write_saved};
+pub use saved::{SavedAutoStash, add_saved, path as saved_path, read_saved, write_saved};
 
 /// Splits a stash list text into the branch it was made on and the part the user can edit:
 /// "On <branch>: <rest>" and "WIP on <branch>: <rest>" give `(Some(branch), rest)`, anything
