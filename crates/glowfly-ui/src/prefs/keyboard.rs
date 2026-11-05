@@ -20,12 +20,13 @@ const MAX_W: f32 = 760.0;
 const HELP: &str =
     "Click a key to change it, or Add to give an action another key. Fixed keys work in one place only and can't be changed.";
 
-pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, msgs: &mut Vec<Msg>) {
+/// `filter` is the frame's copy of the filter field.
+pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &KeysPage, filter: &mut String, keys: &Keymap, msgs: &mut Vec<Msg>) {
     ui.set_max_width(MAX_W);
     help(ui, HELP);
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        let field = TextEdit::singleline(&mut page.filter).id(Id::new("glowfly-keys-filter")).hint_text(t.tr("prefs.keys.filter"));
+        let field = TextEdit::singleline(filter).id(Id::new("glowfly-keys-filter")).hint_text(t.tr("prefs.keys.filter"));
         let field = ui.add(controls::SizedField::new(ControlSize::Regular, field).width(super::FIELD_W));
         crate::access::name_if_unnamed(&field, t.tr("prefs.keys.filter"));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -49,7 +50,7 @@ pub fn keyboard_page(ui: &mut Ui, t: Lang, page: &mut KeysPage, keys: &Keymap, m
             }
         });
     }
-    let groups = keys.filter(&page.filter);
+    let groups = keys.filter(filter);
     if groups.is_empty() {
         ui.add_space(12.0);
         ui.label(RichText::new("No shortcuts match").color(color::weak()));

@@ -9,8 +9,9 @@ use glowfly_model::msg::{AutoStashMsg, Msg};
 use glowfly_model::state::auto_stash::{self, AutoStashAsk};
 
 /// Draws the dialog; returns true when it should close (Cancel). The answers go to `update`,
-/// which takes the dialog and runs the operation, as a confirmation does.
-pub fn show(ui: &mut egui::Ui, cx: Cx, ask: &mut AutoStashAsk, msgs: &mut Vec<Msg>) -> bool {
+/// which takes the dialog and runs the operation, as a confirmation does. `always` is the frame's
+/// copy of the Always stash box (sent back by the caller).
+pub fn show(ui: &mut egui::Ui, cx: Cx, ask: &AutoStashAsk, always: &mut bool, msgs: &mut Vec<Msg>) -> bool {
     let t = cx.t;
     let hard = ask.op.is_hard_reset();
     let mut d = Dialog::new(cx, auto_stash::title(t)).begin(ui);
@@ -18,7 +19,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, ask: &mut AutoStashAsk, msgs: &mut Vec<Ms
     d.body(ui, |ui| ui.add(egui::Label::new(body).wrap()));
     if !hard {
         ui.add_space(10.0);
-        controls::checkbox(ui, &mut ask.always, t.tr("auto_stash.always.check"));
+        controls::checkbox(ui, always, t.tr("auto_stash.always.check"));
         ui.add(egui::Label::new(RichText::new(t.tr("auto_stash.always.help")).color(color::weak())).wrap());
     }
     let footer = Footer::new().cancel();

@@ -19,6 +19,7 @@ pub const NOTHING: &str = "There are no changes to stash.";
 pub const NO_FILES: &str = "Choose at least one file to stash.";
 
 /// Renaming one stash list entry: the field holds the part after "On <branch>: ".
+#[derive(Clone, Debug, PartialEq)]
 pub struct RenameStashForm {
     pub oid: Oid,
     /// Its position when the dialog opened (`stash@{index}`).
@@ -57,6 +58,7 @@ impl RenameStashForm {
 
 /// The Stash dialog: what to stash, the message, and whether the staged changes also stay
 /// staged. Nothing is remembered between openings.
+#[derive(Clone, Debug, PartialEq)]
 pub struct StashPushForm {
     pub scope: StashScope,
     pub message: String,

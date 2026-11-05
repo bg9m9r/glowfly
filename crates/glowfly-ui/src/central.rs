@@ -120,7 +120,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &AppState, view: &mut ViewStat
 /// (conflict, blame, file history, pull request panel, issue panel, diff, rebase panel, Range-diff view, operation journal, Git
 /// Flow panel), else
 /// the graph. Returns where the panel was drawn (the tour outlines it).
-pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> egui::Rect {
+pub(super) fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> egui::Rect {
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()))
         .show(ctx, |ui| {
@@ -129,27 +129,27 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             // central view's and the diff's pane keys.
             let name = st.settings.lang().tr("central.focus.name");
             let (rect, other) = (ui.max_rect(), !st.graph_shown() && st.snap.is_some() && !st.dashboard.open);
-            let target = other.then(|| super::pane_focus::central(ui, &mut st.view, rect, name));
+            let target = other.then(|| super::pane_focus::central(ui, view, rect, name));
             // `AppState::graph_shown` and `state::layout::tool_view` follow this order: keep the
             // three in step.
             if st.dashboard.open {
-                st.with_view(|st, view| dashboard::show(ui, st, view, msgs));
+                dashboard::show(ui, st, view, msgs);
             } else if st.onboarding.getting_started.is_some() {
                 getting_started::show(ui, st, msgs);
             } else if st.snap.is_none() {
                 common::welcome(ui, st, msgs);
             } else if st.session.conflict.view.is_some() {
-                conflict::show(ui, st, msgs);
+                conflict::show(ui, st, view, msgs);
             } else if st.session.blame.view.is_some() {
                 blame::show(ui, st, cache, msgs);
             } else if st.session.history.view.is_some() {
-                st.with_view(|st, view| history::show(ui, st, view, cache, msgs));
+                history::show(ui, st, view, cache, msgs);
             } else if st.session.pull_request.view.is_some() {
-                pull_request::show(ui, st, cache, msgs);
+                pull_request::show(ui, st, view, cache, msgs);
             } else if st.session.issue.view.is_some() {
-                issue::show(ui, st, &mut cache.markdown, msgs);
+                issue::show(ui, st, view, &mut cache.markdown, msgs);
             } else if st.diff_or_download() {
-                st.with_view(|st, view| diff::show(ui, st, view, cache, msgs));
+                diff::show(ui, st, view, cache, msgs);
             } else if st.session.rebase.view.is_some() {
                 rebase::show(ui, st, cache, msgs);
             } else if st.session.range_diff.view.is_some() {
@@ -159,7 +159,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.session.gitflow_panel {
                 gitflow_panel::show(ui, st, msgs);
             } else {
-                st.with_view(|st, view| graph::show(ui, st, view, cache, msgs));
+                graph::show(ui, st, view, cache, msgs);
             }
             if let Some(t) = target {
                 t.ring(ui);

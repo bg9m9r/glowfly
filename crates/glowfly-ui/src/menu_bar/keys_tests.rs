@@ -45,7 +45,7 @@ pub(crate) fn keys_harness(mut st: AppState, size: egui::Vec2) -> H {
                 ref_upstreams: Default::default(),
             });
             st.with_view(|st, view| shortcuts::input(ctx, st, view, msgs));
-            draw(ctx, st, cache, msgs);
+            st.with_view(|st, view| draw(ctx, st, view, cache, msgs));
             glowfly_model::testing::apply_edits(st, msgs);
         },
         (st, Vec::new()),

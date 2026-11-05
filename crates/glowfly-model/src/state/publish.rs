@@ -3,6 +3,7 @@
 use glowfly_core::forge::Account;
 use std::path::PathBuf;
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct PublishForm {
     /// The repository being published and the branch to push.
     pub workdir: PathBuf,

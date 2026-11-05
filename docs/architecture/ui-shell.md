@@ -22,6 +22,7 @@ other UI files are in [ui-views.md](ui-views.md), [ui-widgets.md](ui-widgets.md)
 - `ui/access.rs` gives painted buttons and hint-only text fields their accessible names (a toolbar button's name describes it and differs from the palette's rows), lets a form row's label name the unnamed fields, combos and boxes drawn under it (`with_label`, `from_label`), and makes a label a live region under a stable key (`announce`).
 - `snapshot_tests/snapshot_tests_announce.rs`: the toasts' and the status bar job's live regions, and none with Announcements off.
 - `snapshot_tests/snapshot_tests_idle_edits.rs`: an idle frame sends no `Msg::Edit` (the commit box, the welcome, a terminal rename, the blame and File view with a query, the Preferences pages that edit settings); `snapshot_fixtures::edits_taken` counts them.
+- `snapshot_tests/snapshot_tests_idle_forms.rs`, `snapshot_tests_idle_panels.rs`: the same for a form dialog, the questions, Generate SSH key, every Preferences page and the palette, and for the pull request's and issue's comment boxes, the rebase editor and the conflict output; typing sends one edit that lands on the model.
 - `central.rs` holds the central-area routing (which view fills it: the pull request panel and the issue panel (`issue/`) share one place) and the Esc chain.
 - `panel_header.rs`: the pull request and issue panels' header links (Copy link, Open in browser), folded into a ⋯ menu when they would squeeze the title.
 - `ui/probe.rs`: the smoke probe's state file (see Test-only modules in [app-layers.md](app-layers.md)).

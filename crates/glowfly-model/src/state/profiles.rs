@@ -146,6 +146,7 @@ pub struct ProfilesPage {
 }
 
 /// A row's inline rename field.
+#[derive(Clone, Debug, PartialEq)]
 pub struct RenameForm {
     pub id: ProfileId,
     pub name: String,
@@ -161,6 +162,7 @@ impl RenameForm {
 }
 
 /// The New profile form.
+#[derive(Clone, Debug, PartialEq)]
 pub struct AddForm {
     pub name: String,
     pub copy_current: bool,

@@ -17,57 +17,50 @@ use glowfly_core::repo::{ConflictContent, ConflictFile, Side, Unmergeable};
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::ConflictMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::conflict::ConflictView;
 use glowfly_model::state::panel_layout::{CONFLICT_OUTPUT, CONFLICT_PANES_MIN};
 use glowfly_model::state::tool_compare::{ToolSetup, merge_blocked, merging};
+use glowfly_model::state::{AppState, ViewState};
 
-pub fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let scroll_to = st.view.conflict_scroll_to.take();
+pub fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+    let scroll_to = view.conflict_scroll_to.take();
     let wrap = st.settings.diff_word_wrap;
     let t = st.settings.lang();
-    let Some(view) = &st.session.conflict.view else { return };
-    let blocked = merge_blocked(t, view.file.as_ref().map(|f| &f.content), st.job.is_some());
+    let Some(cv) = &st.session.conflict.view else { return };
+    let blocked = merge_blocked(t, cv.file.as_ref().map(|f| &f.content), st.job.is_some());
     let setup = ToolSetup::of(t, &st.settings.external_tools).merge;
     // Nothing here writes the file while the merge tool has it open; it closes the view on a change.
-    let in_tool = merging(st, &view.path);
+    let in_tool = merging(st, &cv.path);
     let tool = header::MergeTool { blocked: blocked.as_deref(), setup };
-    header::header_bar(ui, t, view, tool, in_tool, &st.keymap, msgs);
+    header::header_bar(ui, t, cv, tool, in_tool, &st.keymap, msgs);
     if in_tool {
         ui.horizontal(|ui| {
             ui.add_space(8.0);
             ui.label(RichText::new(t.tr("conflict.view.in_tool.note")).color(color::warn()));
         });
     }
-    restored_note(ui, t, view);
-    let Some(file) = &view.file else {
+    restored_note(ui, t, cv);
+    let Some(file) = &cv.file else {
         return super::pane_status::loader(ui, t.tr("conflict.view.loading"));
     };
     if !matches!(file.content, ConflictContent::Text(_)) {
-        fallback(ui, t, view, file, in_tool, msgs);
+        fallback(ui, t, cv, file, in_tool, msgs);
         return;
     }
     ui.spacing_mut().item_spacing.y = 0.0;
     // The output first, at the bottom (its height kept by egui for the session); the panes take
-    // the rest. Its editor changes its own text buffer.
+    // the rest. Its editor sends its edited text back (`EditMsg::ConflictOutput`).
     let avail = ui.available_height();
     egui::TopBottomPanel::bottom("conflict-output")
         .resizable(true)
         .default_height(CONFLICT_OUTPUT.default_for(avail).floor())
         .height_range(CONFLICT_OUTPUT.min..=(avail - CONFLICT_PANES_MIN).max(CONFLICT_OUTPUT.min))
         .frame(Frame::new().fill(color::bg()))
-        .show_inside(ui, |ui| {
-            if let Some(view) = st.session.conflict.view.as_mut() {
-                output(ui, t, view, scroll_to, wrap, msgs);
-            }
-        });
+        .show_inside(ui, |ui| output(ui, t, cv, scroll_to, wrap, msgs));
     egui::CentralPanel::default().frame(Frame::new()).show_inside(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
-        if let Some(view) = &st.session.conflict.view
-            && let Some(file) = &view.file
-            && let ConflictContent::Text(segs) = &file.content
-        {
-            panes(ui, t, view, file, segs, scroll_to, wrap, msgs);
+        if let ConflictContent::Text(segs) = &file.content {
+            panes(ui, t, cv, file, segs, scroll_to, wrap, msgs);
         }
     });
 }

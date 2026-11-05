@@ -36,7 +36,7 @@ use glowfly_model::state::rebase_steps::NewStep;
 
 const STASH_HINT: &str = "Uncommitted changes will be stashed first and put back afterwards.";
 
-pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(panel) = &st.session.rebase.view else { return };
     let remaining = panel.source == PanelSource::Remaining;
     let t = st.settings.lang();

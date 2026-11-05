@@ -24,10 +24,10 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
 use glowfly_model::keymap::Keymap;
 use glowfly_model::msg::{IssueMsg, Msg};
-use glowfly_model::state::AppState;
 use glowfly_model::state::issue::IssueView;
+use glowfly_model::state::{AppState, ViewState};
 
-pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+pub fn show(ui: &mut Ui, st: &AppState, vs: &mut ViewState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.issue.view else { return };
     let open_label = st.session.forge.as_ref().map_or("Open in browser", |f| f.open_issue_label());
     ui.add_space(6.0);
@@ -58,7 +58,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut V
         });
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(16, 10)))
-        .show_inside(ui, |ui| conversation::show(ui, st, md, msgs));
+        .show_inside(ui, |ui| conversation::show(ui, st, vs, md, msgs));
 }
 
 /// The icon, mention and title on the left; Close, Copy link and Open in browser on the right

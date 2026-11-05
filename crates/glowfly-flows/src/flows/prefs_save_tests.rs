@@ -203,11 +203,10 @@ fn the_sparse_row_loads_its_status() {
 fn the_account_form_opens_and_closes() {
     let mut st = state();
     st.prefs = Some(PrefsState::new(PrefPage::Integrations));
-    st.prefs.as_mut().unwrap().int_token = "secret".into();
+    st.view.secrets.int_token = "secret".into();
     prefs(&mut st, PrefsMsg::ShowAccountForm(true));
-    let p = st.prefs.as_ref().unwrap();
-    assert!(p.int_adding);
-    assert!(p.int_token.is_empty(), "a fresh form");
+    assert!(st.prefs.as_ref().unwrap().int_adding);
+    assert!(st.view.secrets.int_token.is_empty(), "a fresh form");
     prefs(&mut st, PrefsMsg::ShowAccountForm(false));
     assert!(!st.prefs.as_ref().unwrap().int_adding);
 

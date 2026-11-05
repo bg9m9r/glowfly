@@ -13,11 +13,10 @@ use std::time::Instant;
 
 /// Sends `j` and returns the new selection, checking it asks the list to scroll there.
 fn jump(st: &mut AppState, j: Jump) -> usize {
-    st.palette.as_mut().unwrap().scroll_to_selected = false;
+    st.view.palette_scroll = false;
     update(st, Msg::Palette(PaletteMsg::PaletteJump(j)), Instant::now());
-    let p = st.palette.as_ref().unwrap();
-    assert!(p.scroll_to_selected, "{j:?} scrolls to the selection");
-    p.selected
+    assert!(st.view.palette_scroll, "{j:?} scrolls to the selection");
+    st.palette.as_ref().unwrap().selected
 }
 
 #[test]
@@ -69,7 +68,7 @@ fn hover_selects_without_scrolling() {
     update(&mut st, Msg::Palette(PaletteMsg::PaletteHover(4)), Instant::now());
     let p = st.palette.as_ref().unwrap();
     assert_eq!(p.selected, 4);
-    assert!(!p.scroll_to_selected);
+    assert!(!st.view.palette_scroll);
     st.palette = None;
     update(&mut st, Msg::Palette(PaletteMsg::PaletteHover(2)), Instant::now());
     assert!(st.palette.is_none(), "nothing happens with the palette closed");

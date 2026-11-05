@@ -57,6 +57,7 @@ impl GitFlowPage {
 }
 
 /// The Start dialog: which kind of branch and the name typed after its prefix.
+#[derive(Clone, Debug, PartialEq)]
 pub struct StartForm {
     pub kind: FlowKind,
     pub name: String,
@@ -65,6 +66,7 @@ pub struct StartForm {
 }
 
 /// The Finish dialog: the branch, the tag and message (release and hotfix) and Keep.
+#[derive(Clone, Debug, PartialEq)]
 pub struct FinishForm {
     pub kind: FlowKind,
     pub branch: String,

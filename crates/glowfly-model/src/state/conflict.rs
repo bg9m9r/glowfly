@@ -49,8 +49,9 @@ pub struct ConflictView {
     pub pending_save: Option<(String, Vec<ChunkPick>, CleanEdits)>,
 }
 
-/// The output being edited: `buffer` is the editor's text, `rendered` the text as last built
-/// from the picks and clean edits, with each chunk's and clean run's range.
+/// The output being edited: `buffer` is the editor's text (drawn from a copy, sent back as
+/// `EditMsg::ConflictOutput`), `rendered` the text as last built from the picks and clean
+/// edits, with each chunk's and clean run's range.
 #[derive(Clone, Debug)]
 pub struct OutputEdit {
     pub buffer: String,

@@ -223,7 +223,7 @@ use central::escape_key;
 use eframe::egui;
 use glowfly_core::spell::Speller;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 
 mod app_icon;
 mod app_mark;
@@ -254,28 +254,30 @@ pub struct UiCache {
     pub history_preview: preview_cache::PreviewTexture,
 }
 
-/// Draws one frame of the whole window from `st`, collecting the user's intents in `msgs`.
-pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+/// Draws one frame of the whole window from `st`, writing only the lent `view`
+/// (`AppState::with_view`), and collecting the user's intents in `msgs` (the model fields it
+/// edits go back as `Msg::Edit`).
+pub fn draw(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     // An open menu's keys are its own (done by the shortcuts already when they ran).
     menu_keys::capture(ctx);
     theme::a11y::configure(ctx, &st.settings, st.motion_reduced());
     cache.markdown.lang = st.settings.lang();
-    let bounds = frame_layout::show(ctx, st, cache, msgs);
+    let bounds = frame_layout::show(ctx, st, view, cache, msgs);
     // Frees the File view's image texture once a frame draws no image.
     cache.history_preview.end_frame();
     // Before the dialogs, so a dialog or credential prompt opened over them stacks on top.
-    palette::show(ctx, st, msgs);
+    palette::show(ctx, st, view, msgs);
     welcome::show(ctx, st, msgs);
-    modals::show(ctx, st, msgs);
+    modals::show(ctx, st, view, msgs);
     // After the other dialogs, so a credential prompt stacks on top of them.
-    st.with_view(|st, view| askpass::show(ctx, st, view, msgs));
+    askpass::show(ctx, st, view, msgs);
     toasts::show(ctx, st, bounds, msgs);
     // Last, above every dialog: the drawn frame's window buttons and resize edges.
     window_frame::overlay(ctx, st, msgs);
-    st.view.was_typing = shortcuts::text_field_focused(ctx);
+    view.was_typing = shortcuts::text_field_focused(ctx);
     pane_focus::end_frame(ctx);
     // Asked for a pane that wasn't drawn, or a graph key with no graph: nothing to do later.
-    st.view.pane_focus = None;
-    st.view.graph_key = None;
+    view.pane_focus = None;
+    view.graph_key = None;
     widgets::tooltip_motion::animate(ctx, st.motion_reduced());
 }

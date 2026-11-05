@@ -114,7 +114,8 @@ fn palette_hover_selects_on_pointer_movement() {
 #[test]
 fn palette_page_down() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "palette-page-down");
-    st.palette = Some(Palette { selected: 12, scroll_to_selected: true, ..Default::default() });
+    st.palette = Some(Palette { selected: 12, ..Default::default() });
+    st.view.palette_scroll = true;
     render("palette_page_down", st, true);
     remove_fixture(&dir);
 }

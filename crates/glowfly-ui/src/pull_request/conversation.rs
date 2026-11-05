@@ -18,26 +18,26 @@ use glowfly_core::text::printable;
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::AppState;
-use glowfly_model::state::pull_request::actions::{comment_blocked, error_for, verdict_text};
+use glowfly_model::state::pull_request::actions::{PrForms, comment_blocked, error_for, verdict_text};
 use glowfly_model::state::pull_request::threads::{self as pr_threads, Item};
 use glowfly_model::state::pull_request::{Page, PrAction, PrView, description_text};
+use glowfly_model::state::{AppState, ViewState};
 
 pub(crate) const LOADING: &str = "Loading the conversation…";
 pub(crate) const FAILED_TITLE: &str = "Couldn't load the conversation";
 
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, vs: &mut ViewState, md: &mut MarkdownCache, forms: &mut PrForms, msgs: &mut Vec<Msg>) {
     let go_to = threads::go_to_reasons(st);
-    let scroll = st.view.pr_thread_scroll.take();
+    let scroll = vs.pr_thread_scroll.take();
     let t = st.settings.lang();
     let keys = &st.keymap;
     let ctx = threads::Ctx { settings: &st.settings, keys, now: st.cues.now, offset: st.cues.utc_offset, go_to, scroll };
-    let Some(v) = st.session.pull_request.view.as_mut() else { return };
+    let Some(v) = &st.session.pull_request.view else { return };
     let supported = !matches!(v.page, Page::Unsupported);
     if supported {
         egui::TopBottomPanel::bottom("pr-comment-box")
             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(16, 8)))
-            .show_inside(ui, |ui| comment_box(ui, keys, v, msgs));
+            .show_inside(ui, |ui| comment_box(ui, keys, v, &mut forms.comment, msgs));
     }
     egui::CentralPanel::default().frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(16, 10))).show_inside(
         ui,
@@ -58,22 +58,21 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, md: &mut MarkdownCache, msgs:
                         let retry = Some(Msg::PullRequest(PullRequestMsg::Reload));
                         pane_status::failed(ui, t, Failure { title: FAILED_TITLE, error: e, retry }, msgs);
                     }
-                    Page::Loaded(_) => timeline(ui, v, &ctx, md, msgs),
+                    Page::Loaded(_) => timeline(ui, v, forms, &ctx, md, msgs),
                 }
             });
         },
     );
 }
 
-/// One item of the conversation, by position: entries and threads both need the panel, which
-/// thread cards borrow mutably for their reply boxes.
+/// One item of the conversation, by position.
 enum At {
     Entry(usize),
     Thread(String),
 }
 
 /// The threads' filter bar and note, then the comments, reviews and listed threads by time.
-fn timeline(ui: &mut Ui, v: &mut PrView, ctx: &threads::Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
+fn timeline(ui: &mut Ui, v: &PrView, forms: &mut PrForms, ctx: &threads::Ctx, md: &mut MarkdownCache, msgs: &mut Vec<Msg>) {
     let Some(p) = v.loaded() else { return };
     if !p.threads.is_empty() || p.threads_note.is_some() {
         threads::filter_bar(ui, v, None, msgs);
@@ -95,7 +94,7 @@ fn timeline(ui: &mut Ui, v: &mut PrView, ctx: &threads::Ctx, md: &mut MarkdownCa
                     entry(ui, i, e, ctx, md, msgs);
                 }
             }
-            At::Thread(id) => threads::card(ui, v, &id, threads::Place::Overview, ctx, md, msgs),
+            At::Thread(id) => threads::card(ui, (v, &mut *forms), &id, threads::Place::Overview, ctx, md, msgs),
         }
     }
 }
@@ -138,11 +137,11 @@ fn entry(ui: &mut Ui, i: usize, e: &Entry, ctx: &threads::Ctx, md: &mut Markdown
 
 /// The comment box and its button, with the last post's failure above it. Command+Enter in
 /// the box posts too.
-fn comment_box(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {
+fn comment_box(ui: &mut Ui, keys: &Keymap, v: &PrView, comment: &mut String, msgs: &mut Vec<Msg>) {
     if let Some(e) = error_for(v, &PrAction::Comment) {
         note(ui, e.to_owned(), color::removed());
     }
-    let edit = egui::TextEdit::multiline(&mut v.forms.comment).hint_text("Write a comment").desired_rows(3).desired_width(f32::INFINITY);
+    let edit = egui::TextEdit::multiline(comment).hint_text("Write a comment").desired_rows(3).desired_width(f32::INFINITY);
     let field = controls::field(ui, edit);
     crate::access::name_field(&field, "Write a comment");
     let blocked = comment_blocked(v);

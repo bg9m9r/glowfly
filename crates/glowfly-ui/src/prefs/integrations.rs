@@ -10,11 +10,21 @@ use eframe::egui::Ui;
 use glowfly_core::forge::{Account, Provider, RefStyle};
 use glowfly_core::settings::{Settings, TrackerChoice};
 use glowfly_model::msg::{ForgeMsg, Msg, PrefsMsg};
+use glowfly_model::state::prefs_fields::PrefsFields;
 use glowfly_model::state::profiles::accounts_owner;
 use glowfly_model::state::{ForgeState, PrefsState};
 use std::path::Path;
 
-pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
+/// What the sign-in form reads and writes: Preferences, the frame's copy of its fields (the host
+/// and user), and the token (`ViewState::secrets`).
+pub struct SignIn<'a> {
+    pub prefs: &'a PrefsState,
+    pub fields: &'a mut PrefsFields,
+    pub token: &'a mut String,
+}
+
+pub fn integration_page(ui: &mut Ui, s: &mut Settings, form: SignIn<'_>, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
+    let prefs = form.prefs;
     let provider = prefs.int_provider;
     let t = s.lang();
     // Which profile the accounts switch with, over the cards.
@@ -29,7 +39,7 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     }
     if mine.is_empty() || prefs.int_adding {
         ui.add_space(6.0);
-        sign_in_form(ui, t, prefs, !mine.is_empty(), msgs);
+        sign_in_form(ui, t, form, !mine.is_empty(), msgs);
     } else {
         aligned(ui, |ui| {
             if ui.add(buttons::secondary("Add another account")).clicked() {
@@ -58,10 +68,12 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, prefs: &mut PrefsState, f
     }
 }
 
+/// `jira_project` is the frame's copy of the Jira project field.
 pub fn tracker_page(
     ui: &mut Ui,
     s: &mut Settings,
-    prefs: &mut PrefsState,
+    prefs: &PrefsState,
+    jira_project: &mut String,
     fs: Option<&ForgeState>,
     workdir: Option<&Path>,
     msgs: &mut Vec<Msg>,
@@ -87,7 +99,7 @@ pub fn tracker_page(
                 let choice = if a.provider == Provider::Trello {
                     TrackerChoice::Trello { account: a.clone(), board: String::new(), board_name: String::new() }
                 } else {
-                    TrackerChoice::Jira { account: a.clone(), project: prefs.jira_project.trim().to_owned() }
+                    TrackerChoice::Jira { account: a.clone(), project: jira_project.trim().to_owned() }
                 };
                 msgs.push(Msg::Forge(ForgeMsg::SetTracker(choice)));
             }
@@ -110,11 +122,11 @@ pub fn tracker_page(
     }
     if let TrackerChoice::Jira { account, project } = &current {
         row(ui, "Jira project", |ui| {
-            let r = text_field(ui, &mut prefs.jira_project, "all projects");
-            if r.lost_focus() && prefs.jira_project.trim() != project {
+            let r = text_field(ui, jira_project, "all projects");
+            if r.lost_focus() && jira_project.trim() != project {
                 msgs.push(Msg::Forge(ForgeMsg::SetTracker(TrackerChoice::Jira {
                     account: account.clone(),
-                    project: prefs.jira_project.trim().to_uppercase(),
+                    project: jira_project.trim().to_uppercase(),
                 })));
             }
             help(

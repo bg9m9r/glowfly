@@ -15,31 +15,31 @@ use glowfly_model::state::{AppState, ViewState};
 
 /// Draws every panel of the window (Preferences in place of all but the status bar and a drawn
 /// title bar while open); returns where the chrome ends, for the toasts.
-pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> ToastBounds {
+pub(super) fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> ToastBounds {
     status::status_bar(ctx, st, msgs);
     repo_line::paint(ctx, st);
     let bottom = ctx.available_rect().bottom();
     let drawn = st.cues.chrome.drawn();
     if drawn {
-        st.with_view(|st, view| title_bar::show(ctx, st, view, msgs));
+        title_bar::show(ctx, st, view, msgs);
     }
     if st.prefs.is_some() {
         // The terminal isn't drawn, so it can't hold the keyboard (and Esc closes Preferences).
-        st.view.terminal.focused = false;
+        view.terminal.focused = false;
         // Nor is the menu bar, so its menu closes (a drawn title bar closes its own).
         menu_bar::hide(ctx);
         // Above the page, since changes made there aren't saved either.
         settings_banner::show(ctx, st, msgs);
         let top = ctx.available_rect().top();
-        prefs::show(ctx, st, msgs);
+        prefs::show(ctx, st, view, msgs);
         return ToastBounds { top, bottom };
     }
     if !drawn {
-        st.with_view(|st, view| menu_bar::show(ctx, st, view, msgs));
+        menu_bar::show(ctx, st, view, msgs);
         tabs::show(ctx, st, msgs);
     }
     if st.settings.show_toolbar {
-        st.with_view(|st, view| toolbar::show(ctx, st, view, msgs));
+        toolbar::show(ctx, st, view, msgs);
     }
     op_strip::show(ctx, st, msgs);
     git_banner::show(ctx, st, msgs);
@@ -50,12 +50,12 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
         gitflow_resume_banner::show(ctx, st, msgs);
     }
     let top = ctx.available_rect().top();
-    st.with_view(|st, view| activity_log::show(ctx, st, view, msgs));
-    st.with_view(|st, view| side_panels(ctx, st, view, cache, msgs));
+    activity_log::show(ctx, st, view, msgs);
+    side_panels(ctx, st, view, cache, msgs);
     let central = if glowfly_model::state::terminal::maximized_shown(st) {
-        st.with_view(|st, view| terminal::show_in_main(ctx, st, view, msgs))
+        terminal::show_in_main(ctx, st, view, msgs)
     } else {
-        central::show(ctx, st, cache, msgs)
+        central::show(ctx, st, view, cache, msgs)
     };
     tour::show(ctx, st, central, msgs);
     ToastBounds { top, bottom }

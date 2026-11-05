@@ -57,6 +57,32 @@ impl Default for PrForms {
     }
 }
 
+/// What the panel's view writes, drawn from a copy each frame and sent back as
+/// `EditMsg::PullRequest` for the pull request `id`: the forms, and the new code comment's text
+/// while its box is open.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PrFields {
+    pub id: u64,
+    pub forms: PrForms,
+    pub line_text: Option<String>,
+}
+
+impl PrView {
+    /// The copy the view draws from.
+    pub fn fields(&self) -> PrFields {
+        PrFields { id: self.pr.id, forms: self.forms.clone(), line_text: self.line_draft.as_ref().map(|d| d.text.clone()) }
+    }
+
+    /// Takes back what the view wrote: the forms whole (they are all the view's), the line text
+    /// only while the box is still open.
+    pub fn apply(&mut self, f: PrFields) {
+        self.forms = f.forms;
+        if let (Some(d), Some(text)) = (self.line_draft.as_mut(), f.line_text) {
+            d.text = text;
+        }
+    }
+}
+
 pub(in crate::state) fn too_long(s: &str, max: usize) -> bool {
     s.chars().count() > max
 }

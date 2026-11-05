@@ -155,7 +155,9 @@ fn add_form_sends_the_accounts_choice() {
 #[test]
 fn palette_profiles() {
     let mut st = AppState::new(with_profiles(ThemeChoice::Dark), Vec::new(), Instant::now());
-    st.palette = Some(Palette { mode: Mode::Pick(Pick::profiles(&st.settings)), ..Default::default() });
+    let mut pk = Pick::profiles(&st.settings);
+    pk.refresh("");
+    st.palette = Some(Palette { mode: Mode::Pick(pk), ..Default::default() });
     render("palette_profiles", st, true);
 }
 

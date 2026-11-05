@@ -22,7 +22,26 @@ pub struct CommentDraft {
     pub error: Option<String>,
 }
 
+/// What the comment box's view writes, drawn from a copy each frame and sent back as
+/// `EditMsg::IssueComment`; the posting state and the failure stay update's.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CommentFields {
+    pub text: String,
+    pub touched: Touched,
+}
+
 impl CommentDraft {
+    /// The copy the view draws from.
+    pub fn fields(&self) -> CommentFields {
+        CommentFields { text: self.text.clone(), touched: self.touched.clone() }
+    }
+
+    /// Takes back what the view wrote.
+    pub fn apply(&mut self, f: CommentFields) {
+        self.text = f.text;
+        self.touched = f.touched;
+    }
+
     /// Whether closing the panel would lose it: it has text, or it is being posted.
     fn worth_keeping(&self) -> bool {
         self.posting || !self.text.trim().is_empty()

@@ -50,19 +50,10 @@ impl DialogGuard {
         self.opened.as_ref().is_some_and(|(d, draft)| *d == std::mem::discriminant(modal) && *draft != modal.draft())
     }
 
-    /// The edited form kept under the open question, if any.
+    /// The edited form kept under the open question, if any: the views draw it beneath the
+    /// question without sending its edits.
     pub fn under(&self) -> Option<&Modal> {
         self.under.as_deref().map(|(m, _)| m)
-    }
-
-    /// Takes the form underneath out to draw it beneath the question (`put_under` puts it back).
-    pub fn take_under(&mut self) -> Option<(Modal, Opened)> {
-        self.under.take().map(|b| *b)
-    }
-
-    /// Puts back what `take_under` took.
-    pub fn put_under(&mut self, under: (Modal, Opened)) {
-        self.under = Some(Box::new(under));
     }
 
     /// Forgets the form underneath (its tab closed).
@@ -101,7 +92,7 @@ pub fn restore(modal: &mut Option<Modal>, guard: &mut DialogGuard) {
     if modal.is_some() {
         return;
     }
-    if let Some((form, opened)) = guard.take_under() {
+    if let Some((form, opened)) = guard.under.take().map(|b| *b) {
         *modal = Some(form);
         guard.opened = Some(opened);
         guard.asking = false;

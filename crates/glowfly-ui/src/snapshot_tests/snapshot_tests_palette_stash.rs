@@ -31,8 +31,9 @@ pub(crate) fn fixture_stashes(st: &AppState) -> Vec<StashInfo> {
 
 /// A palette in the `action` sub-list over the fixture stashes, with `query` typed.
 fn stash_list(st: &AppState, action: StashAction, query: &str, selected: usize) -> Palette {
-    let pk = Pick::stashes(action, &fixture_stashes(st));
-    Palette { query: query.into(), selected, mode: Mode::Pick(pk), ..Default::default() }
+    let mut pk = Pick::stashes(action, &fixture_stashes(st));
+    pk.refresh(query);
+    Palette { query: query.into(), selected, mode: Mode::Pick(pk) }
 }
 
 fn message_step(query: &str) -> Palette {

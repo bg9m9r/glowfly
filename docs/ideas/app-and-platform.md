@@ -250,6 +250,11 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - `Lent` could name the field that was read while lent in its debug panic, to find mid-frame `st.view` readers faster
 - The commit box's caption, button and caret menu read the draft as it was at the start of the frame: compute them from the frame's copy so they keep up on the keystroke's own frame instead of the repaint after it
 - The blame and File view bodies highlight the find query as stored, one frame behind typing: pass the copy's query to the body
+- Checks that read a stored draft lag one frame behind typing: the pull request's review, merge, reply and comment blocks, Generate SSH key's location problem, Git Flow's buttons and the SSH upload title's problem; compute them from the frame's copy
+- The palette's sub-list ranking catches up the frame after a keystroke (`palette::settle` runs after the update): rank the frame's copy in the view when the query changed
+- `form_copy` clones the whole form every frame, including big ones (Clone's service account list, Find repositories' results): move their read-only parts out of the `Modal` so the copy stays small
+- A form kept under a question is drawn from the dialog itself and its edits thrown away: give it a read-only draw path instead of the throwaway message list
+- `SecretFields` could wipe on drop as well as on `clear()`, like `PromptFields`
 
 ### Build and tooling
 

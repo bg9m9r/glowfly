@@ -240,6 +240,7 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     // (update/toast_log.rs).
     let entry_mark = crate::state::logs::EntryId::next();
     route(st, msg, now, &mut fx);
+    crate::state::palette::settle(st);
     undo::recorded_since(st, undo_mark);
     prefs_leave::settle(st);
     app::settle(st, &mut fx);

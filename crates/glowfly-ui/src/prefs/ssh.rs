@@ -40,7 +40,8 @@ pub struct SshContext {
     pub extra: Vec<PathBuf>,
 }
 
-pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs: &mut Vec<Msg>) {
+/// `upload_title` is the frame's copy of the Add to service form's title, while it is open.
+pub fn ssh_page(ui: &mut Ui, t: Lang, page: &SshPage, upload_title: &mut Option<String>, cx: &SshContext, msgs: &mut Vec<Msg>) {
     let reload = Msg::Ssh(SshMsg::Reload);
     agent::header(ui, t, t.tr("prefs.ssh.keys.title"), None, t.tr("prefs.ssh.keys.reload.tip"), reload, msgs);
     if let Some(error) = &page.error {
@@ -60,13 +61,21 @@ pub fn ssh_page(ui: &mut Ui, t: Lang, page: &mut SshPage, cx: &SshContext, msgs:
         });
         return;
     };
-    keys_section(ui, t, page, &listing, cx, msgs);
+    keys_section(ui, t, page, upload_title, &listing, cx, msgs);
     ui.add_space(14.0);
     git::which_key(ui, t, page, &listing, cx, msgs);
     agent::agent_section(ui, t, page, cx, msgs);
 }
 
-fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, cx: &SshContext, msgs: &mut Vec<Msg>) {
+fn keys_section(
+    ui: &mut Ui,
+    t: Lang,
+    page: &SshPage,
+    title: &mut Option<String>,
+    listing: &SshListing,
+    cx: &SshContext,
+    msgs: &mut Vec<Msg>,
+) {
     let dir = native_path::shown(&listing.dir);
     ui.vertical(|ui| {
         ui.set_max_width(fit(ui, LABEL_W + GAP + ROW_W));
@@ -84,8 +93,8 @@ fn keys_section(ui: &mut Ui, t: Lang, page: &mut SshPage, listing: &SshListing, 
     });
     for key in &listing.keys {
         card::card(ui, t, key, listing, page, cx, msgs);
-        if let Some(form) = page.upload.as_mut().filter(|f| same_spelling(&f.key, &key.private)) {
-            service::upload_form(ui, t, form, &key.file_name(), msgs);
+        if let (Some(form), Some(title)) = (page.upload.as_ref().filter(|f| same_spelling(&f.key, &key.private)), title.as_mut()) {
+            service::upload_form(ui, t, form, title, &key.file_name(), msgs);
         }
     }
     sources::config_notes(ui, t, listing);

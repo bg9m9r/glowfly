@@ -2,7 +2,8 @@
 //! fuzzy match, or over a two-step command's items (tracked files for File history, stashes to
 //! apply, pop or delete), or a free-text step (the message for a new stash). The lists come
 //! from `state::palette`; this file only draws them (with the empty query's group headings) and
-//! turns keys and clicks into messages.
+//! turns keys and clicks into messages. The query is drawn from a copy and sent back as
+//! `EditMsg::PaletteQuery`; update then resets the selection and ranks a sub-list for it.
 
 use super::theme::color;
 use super::widgets::quiet_target::{self, State};
@@ -17,12 +18,12 @@ use eframe::egui::{
     self, Align2, Color32, CornerRadius, FontId, Id, Key, Modifiers, Rect, Response, RichText, Sense, Ui, WidgetInfo, WidgetType, pos2,
     vec2,
 };
-use glowfly_model::msg::Msg;
 use glowfly_model::msg::PaletteMsg;
-use glowfly_model::state::AppState;
+use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::palette::commands::RepoListCommand;
 use glowfly_model::state::palette::nav::{Jump, PAGE_ROWS};
 use glowfly_model::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, PickKind};
+use glowfly_model::state::{AppState, ViewState};
 
 const WIDTH: f32 = 560.0;
 const ROW_H: f32 = 28.0;
@@ -46,8 +47,9 @@ pub fn area_rect(ctx: &egui::Context) -> Option<Rect> {
 }
 
 /// Draws the open palette. A credential prompt above it keeps the keyboard.
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let Some(p) = st.palette.as_ref() else { return };
+    let mut query = p.query.clone();
     let stepping = !matches!(p.mode, Mode::Commands);
     let empty = p.query.is_empty();
     let prompting = st.askpass.showing();
@@ -92,27 +94,30 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             });
         }
-        let Some(p) = st.palette.as_mut() else { return };
-        search_row(ui, p, prompting, msgs);
+        search_row(ui, p, &mut query, prompting, msgs);
         ui.add_space(6.0);
         let footer = match &p.mode {
             Mode::Commands => {
-                commands_list(ui, st, msgs, run_selected);
+                commands_list(ui, st, view, &query, msgs, run_selected);
                 "Up/Down to choose, Enter to run, Esc to close"
             }
-            Mode::Pick(_) => pick_list(ui, p, msgs, run_selected),
-            &Mode::Input(kind) => input_step(ui, kind, &p.query, msgs, run_selected),
+            Mode::Pick(_) => pick_list(ui, p, &mut view.palette_scroll, msgs, run_selected),
+            &Mode::Input(kind) => input_step(ui, kind, &query, msgs, run_selected),
         };
         ui.add_space(6.0);
         ui.label(RichText::new(footer).size(type_scale::SMALL).color(color::weak()));
     });
+    if query != p.query {
+        msgs.push(Msg::Edit(EditMsg::PaletteQuery { generation: st.palette_gen, query }));
+    }
     if resp.should_close() && !prompting {
         msgs.push(Msg::Palette(PaletteMsg::ClosePalette));
     }
 }
 
-/// The search field, after a search icon, or in a second step after a back arrow and its title.
-fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>) {
+/// The search field (`query`, the frame's copy), after a search icon, or in a second step after
+/// a back arrow and its title.
+fn search_row(ui: &mut Ui, p: &Palette, query: &mut String, prompting: bool, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         // As tall as the field from the start, so the icons before it centre on its centre line.
         ui.set_min_height(ControlSize::Large.metrics().h);
@@ -131,16 +136,13 @@ fn search_row(ui: &mut Ui, p: &mut Palette, prompting: bool, msgs: &mut Vec<Msg>
                 k.prompt()
             }
         };
-        let edit = egui::TextEdit::singleline(&mut p.query).id(Id::new("glowfly-palette-query")).hint_text(hint);
+        let edit = egui::TextEdit::singleline(query).id(Id::new("glowfly-palette-query")).hint_text(hint);
         // The font goes on the field, so its text is centred for the SUBHEAD line's height.
         let font = type_scale::font(type_scale::SUBHEAD);
         let r = ui.add(controls::SizedField::new(ControlSize::Large, edit).font(font));
         crate::access::name_if_unnamed(&r, hint);
         if !prompting {
             r.request_focus();
-        }
-        if r.changed() {
-            p.selected = 0;
         }
     });
 }
@@ -169,16 +171,14 @@ fn input_step(ui: &mut Ui, kind: InputKind, query: &str, msgs: &mut Vec<Msg>, ru
     kind.footer()
 }
 
-/// The commands matching the query (at most `MAX_COMMAND_ROWS`).
-fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_selected: bool) {
-    if st.palette.is_none() {
-        return;
-    }
-    let listed = palette::listed_open(st);
+/// The commands matching `query`, the one typed this frame (at most `MAX_COMMAND_ROWS`). A
+/// query changed this frame selects the first row, as update will.
+fn commands_list(ui: &mut Ui, st: &AppState, view: &mut ViewState, query: &str, msgs: &mut Vec<Msg>, run_selected: bool) {
+    let Some(p) = st.palette.as_ref() else { return };
+    let listed = palette::listed_open(st, &mut view.palette_list, query);
     let list = &listed.rows;
     let t = st.settings.lang();
-    let Some(p) = st.palette.as_mut() else { return };
-    let sel = p.selected_in(list.len());
+    let sel = if query == p.query { p.selected_in(list.len()) } else { (!list.is_empty()).then_some(0) };
     if run_selected && let Some(s) = sel {
         msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(list[s].entry.command.clone())));
     }
@@ -200,9 +200,9 @@ fn commands_list(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>, run_select
                 msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));
             }
             hover_selects(ui, &r, selected, i, msgs);
-            if selected && p.scroll_to_selected {
+            if selected && view.palette_scroll {
                 r.scroll_to_me(None);
-                p.scroll_to_selected = false;
+                view.palette_scroll = false;
             }
         }
     });
@@ -221,11 +221,11 @@ fn group_heading(ui: &mut Ui, title: &str) {
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, title));
 }
 
-/// A sub-list's items matching the query (at most `MAX_PICK_ROWS`). Returns the footer.
-fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
-    let (selected, mut scroll) = (p.selected, p.scroll_to_selected);
-    let Mode::Pick(pk) = &mut p.mode else { return "" };
-    pk.refresh(&p.query);
+/// A sub-list's items matching the query, as update ranked them (at most `MAX_PICK_ROWS`);
+/// `scroll` brings the selected row into view once. Returns the footer.
+fn pick_list(ui: &mut Ui, p: &Palette, scroll: &mut bool, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
+    let selected = p.selected;
+    let Mode::Pick(pk) = &p.mode else { return "" };
     let kind = pk.kind;
     match &pk.items {
         Items::Loading => note(ui, kind.loading(), color::weak()),
@@ -252,9 +252,9 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
                             msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(c)));
                         }
                         hover_selects(ui, &resp, i == sel, i, msgs);
-                        if i == sel && scroll {
+                        if i == sel && *scroll {
                             resp.scroll_to_me(None);
-                            scroll = false;
+                            *scroll = false;
                         }
                     }
                 });
@@ -266,7 +266,6 @@ fn pick_list(ui: &mut Ui, p: &mut Palette, msgs: &mut Vec<Msg>, run_selected: bo
             _ => note(ui, kind.none_text(), color::weak()),
         },
     }
-    p.scroll_to_selected = scroll;
     kind.footer()
 }
 

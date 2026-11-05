@@ -19,7 +19,7 @@ pub enum OptionsState {
     Failed(String),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IssueForm {
     pub target: Target,
     /// The Jira project key or Trello board id the choices and the issue are for; empty

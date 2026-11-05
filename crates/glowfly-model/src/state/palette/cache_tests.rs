@@ -119,19 +119,22 @@ fn the_open_palette_keeps_its_list_across_frames_and_modes() {
     let (mut st, dir) = state("open", 30);
     st.palette = Some(Palette { query: "tag".into(), ..Default::default() });
     let fresh = plain(listed(&st, "tag"));
-    assert_eq!(plain(listed_open(&mut st)), fresh);
+    let mut cache = std::mem::take(&mut st.view.palette_list);
+    assert_eq!(plain(listed_open(&st, &mut cache, "tag")), fresh);
+    st.view.palette_list = cache;
     assert_eq!(row_count(&mut st), fresh.0.len());
-    let p = st.palette.as_mut().expect("open");
-    assert_eq!((p.commands.ref_builds, p.commands.rankings), (1, 1), "the view's frame and update share one ranking");
+    let c = &st.view.palette_list;
+    assert_eq!((c.ref_builds, c.rankings), (1, 1), "the view's frame and update share one ranking");
 
+    let p = st.palette.as_mut().expect("open");
     p.mode = Mode::Pick(Pick::new(PickKind::Blame));
     p.mode = Mode::Commands;
     p.query = "checkout v1.2".into();
-    assert_eq!(plain(listed_open(&mut st)), plain(listed(&st, "checkout v1.2")), "back from a sub-list");
-    let p = st.palette.as_ref().expect("open");
-    assert_eq!((p.commands.ref_builds, p.commands.rankings), (1, 2));
+    let mut cache = std::mem::take(&mut st.view.palette_list);
+    assert_eq!(plain(listed_open(&st, &mut cache, "checkout v1.2")), plain(listed(&st, "checkout v1.2")), "back from a sub-list");
+    assert_eq!((cache.ref_builds, cache.rankings), (1, 2));
 
     st.palette = None;
-    assert!(listed_open(&mut st).rows.is_empty(), "nothing while closed");
+    assert!(listed_open(&st, &mut cache, "tag").rows.is_empty(), "nothing while closed");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -1,7 +1,9 @@
 //! Full-window Preferences: a navigation column with the search (nav.rs, index.rs), an optional
 //! sub-list (Integrations), and a form at most 760 px wide with right-aligned labels and help
 //! text (form.rs, form_help.rs), the page title with its "Saved" tick, and the Save / Revert bar
-//! under a page with unsaved edits (save_bar.rs).
+//! under a page with unsaved edits (save_bar.rs). The pages edit copies: of the settings (sent
+//! back as `EditMsg::Settings`) and of Preferences' own fields (`PrefsFields`, sent back as
+//! `EditMsg::Prefs`); the secrets they edit in place in `ViewState::secrets`.
 
 mod accessibility;
 mod appearance;
@@ -57,18 +59,18 @@ use glowfly_core::forge::Provider;
 use glowfly_model::msg::PrefsMsg;
 use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::prefs_save;
-use glowfly_model::state::{AppState, PrefPage};
+use glowfly_model::state::{AppState, PrefPage, ViewState};
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
-    let Some(page) = st.prefs.as_ref().map(|p| p.page) else { return };
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
+    let Some(prefs) = st.prefs.as_ref() else { return };
+    let page = prefs.page;
+    let mut fields = prefs.fields();
     let t = st.settings.lang();
     let repo_name = st.snap.as_ref().map(|s| s.name.clone());
     // Before the nav, which may set a new target this frame.
-    reveal::sync(ctx, page, st.prefs.as_ref().is_some_and(|p| p.leaving.is_some()));
-    if let Some(p) = st.prefs.as_mut() {
-        let view = nav::NavView { page, repo_name: repo_name.as_deref(), t };
-        nav::show(ctx, &view, &mut p.search, &mut p.focus_search, msgs);
-    }
+    reveal::sync(ctx, page, prefs.leaving.is_some());
+    let nav_view = nav::NavView { page, repo_name: repo_name.as_deref(), t };
+    nav::show(ctx, &nav_view, &mut fields.search, &mut fields.focus_search, msgs);
     form_help::set_lang(ctx, t);
     // Opened help texts close when the page changes.
     let shown_key = egui::Id::new("prefs-help-page");
@@ -79,12 +81,12 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     if page == PrefPage::Integrations {
         providers(ctx, st, msgs);
     }
-    st.view.prefs_bar_focused = false;
-    if st.prefs.as_ref().is_some_and(|p| prefs_save::unsaved(p, &st.settings, st.snap.as_ref())) {
+    view.prefs_bar_focused = false;
+    if prefs_save::unsaved(prefs, &st.settings, st.snap.as_ref()) {
         // Only Git Flow's and sparse checkout's saves run as a git job.
         let busy = st.job.is_some() && matches!(page, PrefPage::RepoGitFlow | PrefPage::RepoSparse);
-        let saving = st.prefs.as_ref().is_some_and(prefs_save::saving);
-        st.view.prefs_bar_focused = save_bar::show(ctx, t, save_bar::BarView { busy, saving }, msgs);
+        let saving = prefs_save::saving(prefs);
+        view.prefs_bar_focused = save_bar::show(ctx, t, save_bar::BarView { busy, saving }, msgs);
     }
 
     // While git is held in the repository, its pages read nothing with git (trust).
@@ -116,7 +118,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.cues.now, st.cues.utc_offset)),
     };
     let switching = st.profile_switch;
-    // Field by field, beside the `&mut` borrows of the settings and Preferences below.
+    // Field by field, beside the `&mut` borrows of the copies below.
     let here = st.snap.as_ref().map(|s| profile_rules::RepoHere {
         name: &s.name,
         git_dir: &s.git_dir,
@@ -136,7 +138,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let settings = &mut edited;
     let keymap = &st.keymap;
     let scheme = &st.deep_link.scheme;
-    let Some(prefs) = st.prefs.as_mut() else { return };
+    let secrets = &mut view.secrets;
     let fs = st.session.forge.as_ref();
     // Repository settings are keyed by where it really is (`settings::repo_keys`).
     let workdir = st.snap.as_ref().map(|s| s.real_workdir.clone());
@@ -169,8 +171,10 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 // Left-anchored and at most CONTENT_W wide, however wide the window.
                 ui.set_max_width(CONTENT_W.min(ui.available_width()));
                 let needs_git = matches!(page, PrefPage::Profile | PrefPage::Signing | PrefPage::RepoIdentity | PrefPage::RepoHooks);
-                if page == PrefPage::Signing && prefs.git.is_some() {
-                    signing::signing_page(ui, settings, prefs, msgs);
+                if page == PrefPage::Signing
+                    && let Some(git) = fields.git.as_mut()
+                {
+                    signing::signing_page(ui, settings, prefs, git, &mut secrets.signing_passphrase, msgs);
                     return;
                 }
                 if needs_git && prefs.git.is_none() {
@@ -183,29 +187,42 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 match page {
                     PrefPage::General => {
                         let cx = general::GeneralContext { program: git_state.info.as_ref(), keys: keymap, scheme, updates };
-                        general::general_page(ui, settings, prefs.git.as_mut(), &cx, msgs)
+                        general::general_page(ui, settings, fields.git.as_mut(), &cx, msgs)
                     }
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
-                    PrefPage::Integrations => integrations::integration_page(ui, settings, prefs, fs, msgs),
-                    PrefPage::RepoTracker => integrations::tracker_page(ui, settings, prefs, fs, workdir.as_deref(), msgs),
+                    PrefPage::Integrations => {
+                        let form = integrations::SignIn { prefs, fields: &mut fields, token: &mut secrets.int_token };
+                        integrations::integration_page(ui, settings, form, fs, msgs)
+                    }
+                    PrefPage::RepoTracker => {
+                        integrations::tracker_page(ui, settings, prefs, &mut fields.jira_project, fs, workdir.as_deref(), msgs)
+                    }
                     PrefPage::Ui => appearance::ui_page(ui, settings, themes, keymap, frame_rows, msgs),
                     PrefPage::Accessibility => accessibility::accessibility_page(ui, settings, &a11y, msgs),
                     PrefPage::Language => language::language_page(ui, settings, now),
                     PrefPage::DiffViewer => diff_viewer::diff_viewer_page(ui, settings),
-                    PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &mut prefs.keys, keymap, msgs),
+                    PrefPage::Keyboard => keyboard::keyboard_page(ui, t, &prefs.keys, &mut fields.keys_filter, keymap, msgs),
                     PrefPage::Tools => {
                         let git = tools::GitToolsView { tools: prefs.git_tools.as_ref(), held: tools_held };
                         tools::tools_page(ui, settings, &git, msgs)
                     }
                     PrefPage::Terminal => terminal::terminal_page(ui, settings, themes, msgs),
-                    PrefPage::RepoLfs => lfs::lfs_page(ui, &mut prefs.lfs, &lfs_cx, msgs),
-                    PrefPage::RepoGitFlow => gitflow::gitflow_page(ui, &mut prefs.gitflow, &gitflow_cx, msgs),
-                    PrefPage::RepoSparse => sparse::sparse_page(ui, &mut prefs.sparse, &sparse_cx, msgs),
-                    PrefPage::Ssh => ssh::ssh_page(ui, t, &mut prefs.ssh, &ssh_cx, msgs),
+                    PrefPage::RepoLfs => lfs::lfs_page(ui, &prefs.lfs, &mut fields.lfs_pattern, &lfs_cx, msgs),
+                    PrefPage::RepoGitFlow => {
+                        let form = gitflow::FlowForm { form: &mut fields.gitflow, finish: &mut fields.finish_branch };
+                        gitflow::gitflow_page(ui, &prefs.gitflow, form, &gitflow_cx, msgs)
+                    }
+                    PrefPage::RepoSparse => {
+                        sparse::sparse_page(ui, &prefs.sparse, (&mut fields.sparse_paths, &mut fields.sparse_mode), &sparse_cx, msgs)
+                    }
+                    PrefPage::Ssh => ssh::ssh_page(ui, t, &prefs.ssh, &mut fields.ssh_upload_title, &ssh_cx, msgs),
                     _ => {
-                        let Some(git) = prefs.git.as_mut() else { return };
+                        let Some(git) = fields.git.as_mut() else { return };
                         match page {
-                            PrefPage::Profile => profiles::profile_page(ui, &*settings, &mut prefs.profiles, git, switching, here, msgs),
+                            PrefPage::Profile => {
+                                let page = &prefs.profiles;
+                                profiles::profile_page(ui, &*settings, page, &mut fields.profile, git, switching, here, msgs)
+                            }
                             PrefPage::RepoIdentity => git::identity_page(ui, git, here.and_then(|h| h.identity), settings),
                             _ => git::hooks_page(ui, git, &monitor, t, msgs),
                         }
@@ -215,6 +232,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         });
     if edited != st.settings {
         msgs.push(Msg::Edit(EditMsg::Settings(Box::new(edited))));
+    }
+    if fields != prefs.fields() {
+        msgs.push(Msg::Edit(EditMsg::Prefs(Box::new(fields))));
     }
 }
 

@@ -353,7 +353,7 @@ fn commit_signing_flow() {
     assert_eq!(st.prefs.as_ref().unwrap().signing.keys.as_ref().map(Vec::len), Some(1));
 
     // Generating uses the profile identity and the typed passphrase (then forgets it).
-    st.prefs.as_mut().unwrap().signing.passphrase = "s3cret".into();
+    st.view.secrets.signing_passphrase = "s3cret".into();
     let fx = update(&mut st, Msg::Prefs(PrefsMsg::GenerateGpgKey), Instant::now());
     match &fx[..] {
         [Effect::Prefs(PrefsEffect::GenerateGpgKey { name, email, passphrase, .. })] => {
@@ -361,7 +361,7 @@ fn commit_signing_flow() {
         }
         other => panic!("expected key generation, got {other:?}"),
     }
-    assert!(st.prefs.as_ref().unwrap().signing.passphrase.is_empty());
+    assert!(st.view.secrets.signing_passphrase.is_empty());
     assert!(st.prefs.as_ref().unwrap().signing.generating);
 
     // The new key becomes the signing key.

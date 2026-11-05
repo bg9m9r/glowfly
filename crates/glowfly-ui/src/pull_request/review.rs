@@ -12,6 +12,7 @@ use eframe::egui::{self, Ui};
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::PullRequestMsg;
+use glowfly_model::state::pull_request::actions::PrForms;
 use glowfly_model::state::pull_request::actions::{
     error_for, review_blocked, review_button, review_choice_blocked, review_choice_line, review_choice_text, review_choices,
     review_placeholder,
@@ -19,7 +20,7 @@ use glowfly_model::state::pull_request::actions::{
 use glowfly_model::state::pull_request::{PrAction, PrView};
 
 /// Shown once the page is loaded. Command+Enter in the summary submits too.
-pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &PrView, forms: &mut PrForms, msgs: &mut Vec<Msg>) {
     let Some(page) = v.loaded() else { return };
     let pending = page.detail.pending_review.is_some();
     let detail = page.detail.clone();
@@ -27,9 +28,9 @@ pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Ms
     for ev in review_choices(&detail) {
         let label = review_choice_text(ev).0;
         let blocked = review_choice_blocked(v, ev);
-        let checked = v.forms.review_event == ev;
+        let checked = forms.review_event == ev;
         if ui.add_enabled(blocked.is_none(), controls::Radio::new(checked, label)).clicked() {
-            v.forms.review_event = ev;
+            forms.review_event = ev;
         }
         // The help, or why this choice is unavailable, starts where the label does (the space
         // that opens a row takes no item spacing after it).
@@ -43,7 +44,7 @@ pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &mut PrView, msgs: &mut Vec<Ms
         ui.add_space(4.0);
     }
     let hint = review_placeholder(v);
-    let summary = egui::TextEdit::multiline(&mut v.forms.review_body).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY);
+    let summary = egui::TextEdit::multiline(&mut forms.review_body).hint_text(hint).desired_rows(3).desired_width(f32::INFINITY);
     let field = controls::field(ui, summary);
     crate::access::name_field(&field, "Review summary");
     if send_key(ui, &field) && review_blocked(v).is_none() {

@@ -34,15 +34,18 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffTarget;
 use glowfly_core::text::printable;
 use glowfly_model::keymap::Keymap;
-use glowfly_model::msg::Msg;
+use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::pull_request::PullRequestMsg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::pull_request::commits::tab_label;
 use glowfly_model::state::pull_request::line_map::on_local_file;
 use glowfly_model::state::pull_request::{Files, PrTab, PrView, Tone};
+use glowfly_model::state::{AppState, ViewState};
 
-pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+/// Draws the panel. What its forms and the new code comment's box write is drawn from one copy
+/// (`PrView::fields`) and sent back as `EditMsg::PullRequest` when it changed.
+pub fn show(ui: &mut Ui, st: &AppState, vs: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.pull_request.view else { return };
+    let mut f = view.fields();
     // Also while the file being opened waits for contents a partial clone hasn't downloaded (in
     // the tab it opened in).
     let waiting = st.for_diff().is_some();
@@ -64,52 +67,47 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
                 egui::ScrollArea::vertical().id_salt("pr-side").auto_shrink([false, false]).show(ui, |ui| {
                     let default_branch = st.session.forge.as_ref().and_then(|f| f.default_branch.clone());
                     let (lang, now) = (st.settings.lang(), st.cues.now);
-                    let Some(view) = st.session.pull_request.view.as_mut() else { return };
                     info::show(ui, view);
                     checks::show(ui, view, lang, now, msgs);
-                    review::show(ui, &st.keymap, view, msgs);
-                    merge::show(ui, st.settings.lang(), view, st.snap.as_ref(), default_branch.as_deref(), msgs);
+                    review::show(ui, &st.keymap, view, &mut f.forms, msgs);
+                    merge::show(ui, lang, view, &mut f.forms, st.snap.as_ref(), default_branch.as_deref(), msgs);
                 });
             });
-            center.show_inside(ui, |ui| conversation::show(ui, st, &mut cache.markdown, msgs));
+            center.show_inside(ui, |ui| conversation::show(ui, st, vs, &mut cache.markdown, &mut f.forms, msgs));
         }
         PrTab::Commits => {
-            side.show_inside(ui, |ui| {
-                let Some(view) = &st.session.pull_request.view else { return };
-                commits::show(ui, st, view, msgs);
-            });
+            side.show_inside(ui, |ui| commits::show(ui, st, view, msgs));
             center.show_inside(ui, |ui| {
                 if shows_commit {
-                    st.with_view(|st, view| super::diff::show(ui, st, view, cache, msgs));
+                    super::diff::show(ui, st, vs, cache, msgs);
                 } else {
                     weak_hint(ui, commits::HINT);
                 }
             });
         }
         PrTab::Files => {
-            side.show_inside(ui, |ui| {
-                let Some(view) = &st.session.pull_request.view else { return };
-                files::show(ui, st, view, msgs);
-            });
+            side.show_inside(ui, |ui| files::show(ui, st, view, msgs));
             center.show_inside(ui, |ui| {
                 if shows_file {
                     let path = st.session.diff.view.as_ref().map(|(t, _)| t.path().to_owned()).unwrap_or_default();
-                    let commented = st.session.pull_request.view.as_ref().is_some_and(|v| {
-                        on_local_file(v, &path) > 0 || glowfly_model::state::pull_request::line_comment::draft_on(v, &path)
-                    });
+                    let commented =
+                        on_local_file(view, &path) > 0 || glowfly_model::state::pull_request::line_comment::draft_on(view, &path);
                     if commented {
                         let room = ui.available_height();
                         let threads = egui::TopBottomPanel::bottom("pr-file-threads");
                         crate::panel_size::inner_bottom(threads, glowfly_model::state::panel_layout::PR_THREADS, room)
                             .frame(egui::Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(12, 4)))
-                            .show_inside(ui, |ui| threads::file_pane(ui, st, &path, &mut cache.markdown, msgs));
+                            .show_inside(ui, |ui| threads::file_pane(ui, st, vs, &path, &mut cache.markdown, &mut f, msgs));
                     }
-                    st.with_view(|st, view| super::diff::show(ui, st, view, cache, msgs));
+                    super::diff::show(ui, st, vs, cache, msgs);
                 } else {
                     weak_hint(ui, "Select a file to see its changes.");
                 }
             });
         }
+    }
+    if f != view.fields() {
+        msgs.push(Msg::Edit(EditMsg::PullRequest(Box::new(f))));
     }
 }
 

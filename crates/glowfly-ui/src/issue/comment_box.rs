@@ -10,20 +10,21 @@ use crate::widgets::{buttons, reason};
 use eframe::egui::{self, Align, Ui};
 use glowfly_model::msg::{IssueMsg, Msg};
 use glowfly_model::state::issue::IssueView;
-use glowfly_model::state::issue_comment::{FIELD, comment_blocked, field_problem};
+use glowfly_model::state::issue_comment::{CommentFields, FIELD, comment_blocked, field_problem};
 
 /// The tallest the draft gets before it scrolls.
 const MAX_FIELD_H: f32 = 160.0;
 
-/// Draws the box for panel `v`; `focus` puts the cursor at the end of the draft (after a Reply).
-pub(super) fn show(ui: &mut Ui, v: &mut IssueView, trusted: bool, focus: bool, msgs: &mut Vec<Msg>) {
+/// Draws the box for panel `v` from `f`, the frame's copy of its draft (sent back by the
+/// caller); `focus` puts the cursor at the end of the draft (after a Reply).
+pub(super) fn show(ui: &mut Ui, v: &IssueView, f: &mut CommentFields, trusted: bool, focus: bool, msgs: &mut Vec<Msg>) {
     if let Some(e) = &v.comment.error {
         form_message::form(ui, Message::error(format!("Couldn't post the comment: {e}")));
         ui.add_space(6.0);
     }
     let posting = v.comment.posting;
     let r = egui::ScrollArea::vertical().id_salt("issue-comment-field").max_height(MAX_FIELD_H).auto_shrink([false, true]).show(ui, |ui| {
-        let edit = egui::TextEdit::multiline(&mut v.comment.text)
+        let edit = egui::TextEdit::multiline(&mut f.text)
             .hint_text("Write a comment")
             .desired_rows(3)
             .desired_width(f32::INFINITY)
@@ -32,17 +33,17 @@ pub(super) fn show(ui: &mut Ui, v: &mut IssueView, trusted: bool, focus: bool, m
     });
     let r = r.inner;
     access::name_field(&r, "Comment");
-    form_message::track(&mut v.comment.touched, FIELD, &r);
+    form_message::track(&mut f.touched, FIELD, &r);
     if focus {
         r.request_focus();
         let mut state = egui::text_edit::TextEditState::load(ui.ctx(), r.id).unwrap_or_default();
-        let end = egui::text::CCursor::new(v.comment.text.chars().count());
+        let end = egui::text::CCursor::new(f.text.chars().count());
         state.cursor.set_char_range(Some(egui::text::CCursorRange::one(end)));
         state.store(ui.ctx(), r.id);
     }
     let problem = field_problem(v);
-    let shown = problem.clone().filter(|_| v.comment.touched.shows(FIELD));
-    form_message::field(ui, &v.comment.touched, FIELD, problem.map(Message::error));
+    let shown = problem.clone().filter(|_| f.touched.shows(FIELD));
+    form_message::field(ui, &f.touched, FIELD, problem.map(Message::error));
     ui.add_space(4.0);
     let blocked = comment_blocked(v, trusted);
     let label = if posting { "Posting…" } else { "Comment" };

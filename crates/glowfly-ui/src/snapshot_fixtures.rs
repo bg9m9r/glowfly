@@ -187,7 +187,7 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, d
                 if keys {
                     st.with_view(|st, view| crate::shortcuts::input(ctx, st, view, msgs));
                 }
-                draw(ctx, st, cache, msgs);
+                st.with_view(|st, view| draw(ctx, st, view, cache, msgs));
                 // The shell dispatches the views' edits; the tests read the state they set.
                 EDITS.with(|n| n.set(n.get() + msgs.iter().filter(|m| m.is_edit()).count()));
                 glowfly_model::testing::apply_edits(st, msgs);

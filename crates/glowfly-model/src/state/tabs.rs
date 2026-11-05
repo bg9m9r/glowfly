@@ -151,6 +151,7 @@ impl ClosedTab {
 }
 
 /// The Rename tab dialog.
+#[derive(Clone, Debug, PartialEq)]
 pub struct RenameTabForm {
     pub tab: TabId,
     pub path: PathBuf,

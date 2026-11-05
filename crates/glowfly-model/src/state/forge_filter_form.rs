@@ -8,6 +8,7 @@ use glowfly_core::settings::RepoForgeFilters;
 /// The longest name a saved filter may have, in characters.
 const MAX_NAME: usize = 60;
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct FilterForm {
     /// The saved filter being changed; None for a new one.
     pub editing: Option<u64>,
