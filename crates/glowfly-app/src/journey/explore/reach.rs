@@ -50,7 +50,8 @@ impl Search {
     fn commit(&mut self, repo: &Repository, id: Oid) {
         let Ok(commit) = repo.find_commit(id) else { return };
         let message = String::from_utf8_lossy(commit.message_bytes()).into_owned();
-        self.summaries.retain(|s| !message.contains(s.as_str()));
+        let first = message.lines().next().unwrap_or_default().trim_end();
+        self.summaries.retain(|s| s != first);
         self.tree(repo, commit.tree_id());
     }
 
@@ -91,6 +92,8 @@ pub(super) fn missing(repo: &Path, markers: &BTreeSet<String>, summaries: &BTree
     }
     let mut starts: Vec<Oid> = Vec::new();
     let mut names: Vec<String> = vec!["HEAD".to_owned()];
+    // HEAD itself: a detached one may have no reflog entry; an unborn one has no target.
+    starts.extend(repository.head().ok().and_then(|h| h.target()));
     if let Ok(refs) = repository.references() {
         for reference in refs.flatten() {
             names.extend(reference.name().map(str::to_owned));
