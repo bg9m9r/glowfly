@@ -1,5 +1,4 @@
-//! Repository model built on libgit2.
-//! Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
+//! Repository model built on libgit2. Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
 //! The types are here (the diff ones in `diff_types`, a branch's upstream in `tracking`, a loaded commit and its shared author in
@@ -8,8 +7,7 @@
 //! history, `walk_reuse` takes what an earlier load read, `load_more` goes on from where a cut
 //! walk stopped, `branch_merged` which local branches HEAD contains), `branch_colours` (laying the graph out with each lane's owner and colour), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up) and `fsmonitor`
-//! (git's built-in file system monitor), `diff` (and `diff_view`, a file's diff for the viewer, narrowed to it by `diff_scope`; `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
-//! file of a commit or of the working tree),
+//! (git's built-in file system monitor), `diff` (and `diff_view`, a file's diff for the viewer, narrowed to it by `diff_scope`; `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the picks a
 //! file saved with markers holds), `template` (commit.template), `tool_sides` (versions for external
@@ -310,6 +308,8 @@ mod load_more_tests;
 mod markers_tests;
 #[cfg(test)]
 mod merge_msg_tests;
+#[cfg(test)]
+mod offsite_tests;
 #[cfg(test)]
 mod op_state_tests;
 #[cfg(test)]

@@ -29,12 +29,14 @@ pub struct WorktreeInfo {
     pub current: bool,
     /// Some(reason) when locked ("" without a reason).
     pub locked: Option<String>,
-    /// Its folder (or the gitdir link) is gone: `Worktree::validate()` fails.
+    /// Its folder (or the gitdir link) is gone: `Worktree::validate()` fails. Never for a folder
+    /// on another network place than the repository, which is never looked at.
     pub missing: bool,
     /// `git worktree prune` would drop it: `Worktree::is_prunable(None)` (missing and not locked).
     pub prunable: bool,
     /// The folder's identity on disk when listed (`paths::FolderId`): what tells whether a tab
-    /// shows this worktree under another spelling. None when it is missing.
+    /// shows this worktree under another spelling. None when it is missing or on another
+    /// network place.
     pub folder: Option<crate::paths::FolderId>,
     /// Its uncommitted changes, counted by full loads (or the background count after one) for
     /// worktrees other than the current one. Zero unless `read` is Counted, and for one that
@@ -105,18 +107,21 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
         .flatten()
         .filter_map(|name| {
             let wt = common.find_worktree(name).ok()?;
+            // A folder on another network place than the repository is never looked at: it is
+            // listed from its admin dir alone, neither missing nor prunable, and never counted.
+            let near = crate::net_path::may_follow(wt.path(), common.commondir());
             let path = normalize(wt.path());
             let locked = match wt.is_locked() {
                 Ok(WorktreeLockStatus::Locked(r)) => Some(r.unwrap_or_default().trim_end().to_owned()),
                 _ => None,
             };
-            let missing = wt.validate().is_err();
-            let prunable = wt.is_prunable(None).unwrap_or(false);
+            let missing = near && wt.validate().is_err();
+            let prunable = near && wt.is_prunable(None).unwrap_or(false);
             let git_dir = common.commondir().join("worktrees").join(name);
             let (branch, head) = read_head(&git_dir, &common);
             let held = held_branch(&git_dir);
             let current = is_current(&path);
-            let folder = crate::paths::FolderId::of(&path);
+            let folder = if near { crate::paths::FolderId::of(&path) } else { None };
             Some(WorktreeInfo {
                 name: Some(name.to_owned()),
                 path,

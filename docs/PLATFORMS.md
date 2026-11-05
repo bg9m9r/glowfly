@@ -121,6 +121,62 @@ second one next to it.
     text through `commit_text` and git's message files (MERGE_MSG) as bytes, never with
     libgit2's `Repository::message`, which panics on bytes that aren't UTF-8.
 
+### Paths a repository names
+
+A repository's own files name other places: a `.git` file's `gitdir:` (a nested repository, a
+submodule), a git dir's `commondir`, a linked worktree's record `<common>/worktrees/<id>/gitdir`,
+links in a git dir, and for a repository Glowfly opens on its own (a nested repository in the
+sweep, a submodule) the files its config includes, its `core.worktree`, `core.excludesFile` and
+`core.attributesFile`. Touching a network place one names (a stat, an open, `canonicalize`, a
+libgit2 open) reaches another machine on the repository's say-so, and the sweep, the load and the
+trust scan all run for untrusted repositories too.
+
+1. **Follow nothing a repository's files name until `net_path::may_follow(named, home)` allows
+   it,** with `home` the place already in use (the sweep's outer work tree; the opened
+   repository's git dir for its own commondir in the watcher; its work tree for submodules; its
+   common dir for linked worktrees). Read those files through `git_file` (`dirs_of`,
+   `other_repo`, `common_dir_of`, `worktree_folder`, `read_small_in`), never directly. A file
+   directly inside an allowed folder is checked with that folder as `home`: one stat.
+2. **The spelling is checked before anything is touched.** On Windows, with either separator:
+   UNC (`\server\share`), `\?\UNC\`, `\.\UNC\` and `\??\UNC\`, `\wsl$` and
+   `\wsl.localhost`, and any other device-namespace path (`\?\GLOBALROOT\…`, `\.\pipe\…`) that
+   isn't a drive letter or `Volume{guid}`, which is always refused: its target can't be told.
+   Then a drive letter `GetDriveTypeW("X:\")` calls `DRIVE_REMOTE` (`volume::mapped_drive`).
+   `GetDriveTypeW` is only ever asked about a drive letter's root, never a share's, whose query
+   reaches its server (`volume::remote_kind` does that for the folder the user opened only). On
+   macOS and Linux: `/net/<host>`, `/Network/Servers/<host>` and their `/System/Volumes/Data/`
+   forms, where a lookup mounts the host; `//server/share` is a local name there. Then each part
+   past what the path shares with `home` is looked at without following it, and a link's target
+   goes through the same checks (at most 32 links, past which it is refused). Win32 drops `..`
+   lexically before any I/O (never above a share's root), so on Windows `..` is applied first; on
+   Unix `..` is physical, so the walk steps back out of the link-free part it knows.
+3. **The same network root as `home` is allowed:** the same server and share (any case, any
+   spelling: `\?\UNC\nas\team` is `\NAS\Team`), `\wsl$\<distro>` and
+   `\wsl.localhost\<distro>` as one, the same mapped drive letter, the same automounted host. So
+   a repository on `\nas\team` may name `\nas\team\…`.
+4. **WSL counts as network:** touching `\wsl$\<distro>` starts the distro's virtual machine. A
+   repository opened inside a distro may name its own distro; one on `C:` naming
+   `\wsl$\Ubuntu\…` is refused.
+5. **This holds before trust.** Once a repository is trusted, git itself (`git status` recursing
+   into submodules) follows what git follows.
+6. **The opened repository's own `.git` file, `commondir` and config are followed by libgit2 at
+   open,** as git does; the user chose that folder. The guard covers what Glowfly follows on its
+   own beyond it. These read only through libgit2's `commondir()` of the opened repository, which
+   libgit2 already followed, so they reach nothing new: `lfs/sources.rs`, `link/find.rs` (it
+   opens a folder the user or the link named), `history_size.rs`, `stop_cleanup.rs`,
+   `rebase/update_refs.rs` (admin dirs under the common dir), `lock_file.rs`, `repo_pool`,
+   `trust/stamp.rs` and `repo_identity.rs`; `repo_scan.rs` reads only the first bytes of a
+   `.git` and never follows it. `trust/follow.rs` resolves config-named paths (`core.hooksPath`,
+   hook links, program paths), like the opened repository's include files: a follow-up.
+7. **What a refusal looks like** (logged once at debug level, no toast): a nested repository in
+   the sweep is walked as a plain folder by the outer rules (one tracked before is named once as
+   `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,
+   left out of the trust scan, stamped as offsite in `refs_key`, and libgit2's status leaves out
+   every submodule row (an empty Submodules list when a gitlink folder is itself a link there,
+   since libgit2's listing stats it through the link); a linked worktree is listed with its branch
+   and HEAD from its admin dir, never missing or prunable, with no folder id and never counted;
+   the watcher doesn't watch a common dir on another network root.
+
 ### Names Glowfly creates or accepts
 
 1. **One rule set for every name Glowfly creates:** `names::win_name_problem` (and
@@ -639,7 +695,7 @@ second one next to it.
 
 1. **Don't follow links** (`notify::Config::with_follow_symlinks(false)` in `watcher.rs`): a link
    to `$HOME` exhausts inotify's watch limit.
-2. **For a linked worktree, also watch the common dir** (`watch::common_dir`): its `refs/`
+2. **For a linked worktree, also watch the common dir** (`watch::common_dir(git_dir, home)`, never one on another network root than the git dir's): its `refs/`
    recursively, `HEAD` and `packed-refs`. Watch the folder (not recursively) of each file the
    config includes outside the watched folders (`config_includes`, `watcher/includes.rs`), and
    follow the includes again after every full reload.
@@ -784,7 +840,8 @@ for every OS on every machine.
   `trash::volume_trash_usable`, `home::move_into` with an injected rename, `untrash::newest_ours`,
   `untrash::recycle_record` and `same_place` with `windows: bool`,
   `git_version::missing_for`, `poll_every`, `custom_commands::sh_for`, `repo::monitor_offer_for`,
-  `app_update::install_method_for`, `swap::plan` with an injected `exists`) and test every OS's
+  `app_update::install_method_for`, `swap::plan` with an injected `exists`,
+  `net_path::spelled_root_for` and `net_path::root_for` with an injected mapped drive) and test every OS's
   rows on every runner. The
   wrapper that passes `cfg!(windows)` or `Os::current()` stays one line.
 - **Fixtures that no file system has to allow.** Build trees with names that aren't UTF-8,
@@ -849,6 +906,13 @@ Gaps that are accepted for now:
   overflow); the 30 s poll's sweep finds files created, removed or renamed at once, but a
   content-only edit lost that way shows only within about 5 minutes (when its folder's turn in
   the rotation comes), or on F5.
+- **Paths a repository names are guarded only where Glowfly follows them on its own**
+  (`net_path`): the opened repository's own `.git` file, `commondir` and config includes are
+  followed by libgit2 at open, and config-named paths (`core.hooksPath`, program files) are
+  read by the trust scan unguarded. A file swapped between the check and the read isn't caught.
+  A local repository's linked worktree or submodule on a share is shown but not validated or
+  counted (the submodule as not checked out). A refused nested repository that later stops
+  naming a network place is tracked again only once its folder's `.git` comes or goes.
 - **Some desktop notifications still post under another app's identity:** a portable Windows
   copy's are attributed to PowerShell, and an unbundled macOS binary's (cargo run) to another
   app, through the deprecated NSUserNotification API. A Windows toast clicked in the

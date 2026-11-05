@@ -180,7 +180,11 @@ fn libgit2_rows(repo: &Repository, covered: &[String], staged: bool) -> Result<(
     for p in covered {
         opts.pathspec(p);
     }
-    // A .gitmodules that can't be parsed fails the status of every gitlink, as in a whole read.
+    // An offsite submodule leaves every submodule out, and a .gitmodules that can't be parsed
+    // fails the status of every gitlink, as in a whole read (`status::libgit2_lists`).
+    if !crate::git_file::offsite_gitlinks(repo).is_empty() {
+        opts.exclude_submodules(true);
+    }
     let statuses = match repo.statuses(Some(&mut opts)) {
         Ok(s) => s,
         Err(_) => repo.statuses(Some(opts.exclude_submodules(true)))?,

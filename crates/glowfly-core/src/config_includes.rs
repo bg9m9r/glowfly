@@ -63,11 +63,30 @@ pub struct Included {
 /// The files `roots` include, directly or through each other, for `cx`. The roots themselves
 /// are never listed.
 pub fn included(roots: &[PathBuf], cx: &Context) -> Included {
-    let mut walk = Walk { cx, seen: roots.iter().map(|r| crate::paths::resolve(r)).collect(), out: Included::default() };
+    let mut walk =
+        Walk { cx, seen: roots.iter().map(|r| crate::paths::resolve(r)).collect(), out: Included::default(), may: None, refused: None };
     for root in roots {
         walk.read(root, 0);
     }
     walk.out
+}
+
+/// `included`, touching a file (a root too) only when `may` allows it: the first one refused
+/// stops the walk and is given back. For a repository Glowfly opens on its own, whose include
+/// paths its own files name (`git_file`), before libgit2 follows them.
+pub(crate) fn included_within(roots: &[PathBuf], cx: &Context, may: &dyn Fn(&Path) -> bool) -> Result<Included, PathBuf> {
+    if let Some(r) = roots.iter().find(|r| !may(r)) {
+        return Err(r.clone());
+    }
+    let seen = roots.iter().map(|r| crate::paths::resolve(r)).collect();
+    let mut walk = Walk { cx, seen, out: Included::default(), may: Some(may), refused: None };
+    for root in roots {
+        walk.read(root, 0);
+        if let Some(r) = walk.refused.take() {
+            return Err(r);
+        }
+    }
+    Ok(walk.out)
 }
 
 /// The files the repository's own config files (the common dir's `config`, the worktree's
@@ -87,19 +106,32 @@ struct Walk<'a> {
     /// Every file listed or a root, so each is read once.
     seen: Vec<PathBuf>,
     out: Included,
+    /// Whether a file may be touched; None touches every one.
+    may: Option<&'a dyn Fn(&Path) -> bool>,
+    /// The first file `may` refused; the walk stops there.
+    refused: Option<PathBuf>,
 }
 
 impl Walk<'_> {
     /// Lists what `file` (at `depth` below the roots) includes, and reads those in turn.
     fn read(&mut self, file: &Path, depth: usize) {
+        if !self.allowed(file) {
+            return;
+        }
         let Some(text) = read_small(file) else { return };
         for entry in parse::includes(&text) {
+            if self.refused.is_some() {
+                return;
+            }
             if let Some(c) = &entry.condition
                 && !self.met(c, file)
             {
                 continue;
             }
             let Some(path) = self.resolve(&entry.path, file) else { continue };
+            if !self.allowed(&path) {
+                return;
+            }
             let real = crate::paths::resolve(&path);
             if self.seen.contains(&real) {
                 continue;
@@ -113,6 +145,18 @@ impl Walk<'_> {
                 self.read(&path, depth + 1);
             }
         }
+    }
+
+    /// Whether `file` may be touched; records the first one refused.
+    fn allowed(&mut self, file: &Path) -> bool {
+        if self.refused.is_some() {
+            return false;
+        }
+        if self.may.is_some_and(|may| !may(file)) {
+            self.refused = Some(file.to_path_buf());
+            return false;
+        }
+        true
     }
 
     /// Where an include's `value`, written in `file`, points, as git names it: a relative value
