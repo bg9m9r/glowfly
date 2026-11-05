@@ -22,10 +22,12 @@ const SAID: &str = "Access is denied. (os error 5)";
 
 /// Each variant, with its English, German and Spanish text.
 fn variants() -> Vec<(E, [&'static str; 3])> {
+    [check_variants(), download_variants(), open_variants(), install_variants()].concat()
+}
+
+/// The variants a check for an update can fail with: the feed, the service and reading.
+fn check_variants() -> Vec<(E, [&'static str; 3])> {
     let read = E::ReadFailed { path: FILE.into(), said: SAID.into() };
-    let write = E::WriteFailed { path: "/tmp/glowfly-update-1/plan.json".into(), said: SAID.into() };
-    let rollback = E::RollbackFailed { failed: vec![("/opt/glowfly/glowfly.bak".into(), SAID.into())] };
-    let late = E::DownloadFailed { name: "glowfly.msi".into(), why: Box::new(E::LargerThanExpected { name: "glowfly.msi".into() }) };
     vec![
         (
             E::FeedNotAbsolute { value: "feed".into() },
@@ -71,6 +73,13 @@ fn variants() -> Vec<(E, [&'static str; 3])> {
                 "No se encontró el programa de Glowfly: Access is denied. (os error 5)",
             ],
         ),
+    ]
+}
+
+/// The variants a download can fail with.
+fn download_variants() -> Vec<(E, [&'static str; 3])> {
+    let late = E::DownloadFailed { name: "glowfly.msi".into(), why: Box::new(E::LargerThanExpected { name: "glowfly.msi".into() }) };
+    vec![
         (
             E::NoDownload,
             [
@@ -161,6 +170,12 @@ fn variants() -> Vec<(E, [&'static str; 3])> {
                 "El archivo descargado cambió después de comprobarse, así que no se instaló. Vuelve a descargarlo.",
             ],
         ),
+    ]
+}
+
+/// The variants opening or unpacking a download for Install and restart can fail with.
+fn open_variants() -> Vec<(E, [&'static str; 3])> {
+    vec![
         (
             E::OpenFailed { path: "/downloads/glowfly.dmg".into(), said: SAID.into(), install_with: None },
             [
@@ -238,6 +253,14 @@ fn variants() -> Vec<(E, [&'static str; 3])> {
             E::NoProgram { program: "glowfly.exe".into() },
             ["The archive has no glowfly.exe.", "Das Archiv enthält kein glowfly.exe.", "El archivo comprimido no contiene glowfly.exe."],
         ),
+    ]
+}
+
+/// The variants putting the new program in place can fail with.
+fn install_variants() -> Vec<(E, [&'static str; 3])> {
+    let write = E::WriteFailed { path: "/tmp/glowfly-update-1/plan.json".into(), said: SAID.into() };
+    let rollback = E::RollbackFailed { failed: vec![("/opt/glowfly/glowfly.bak".into(), SAID.into())] };
+    vec![
         (
             write.clone(),
             [

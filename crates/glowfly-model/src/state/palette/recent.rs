@@ -57,6 +57,7 @@ impl RecentCommands {
 impl PaletteCommand {
     /// The key this command is remembered by among recent commands; None for a command about a
     /// particular ref, file, stash or path, and for a step's pick or typed text.
+    #[expect(clippy::too_many_lines, reason = "one arm per palette command; split by area")]
     pub fn recall_key(&self) -> Option<&'static str> {
         use PaletteCommand as C;
         Some(match self {

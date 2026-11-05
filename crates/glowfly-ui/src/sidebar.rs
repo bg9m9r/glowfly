@@ -75,6 +75,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, fit: Fit, 
     panel_size::track(ctx, view, SizedPanel::Sidebar, id, resp.response.rect.width(), msgs);
 }
 
+#[expect(clippy::too_many_lines, reason = "every sidebar section; split one function per section")]
 fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &GraphFilter, msgs: &mut Vec<Msg>) {
     let actions = glowfly_model::state::section_actions::all(st);
     let hint =

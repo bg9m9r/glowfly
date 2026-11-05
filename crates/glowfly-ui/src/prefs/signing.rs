@@ -31,6 +31,7 @@ your system keychain. Needs git 2.31 or newer and GnuPG 2.1.12 or newer; with ol
 /// `settings` is edited in place (the shell saves it after the frame).
 /// `git` is the frame's copy of the git config values, `passphrase` the new key's passphrase
 /// (`ViewState::secrets`).
+#[expect(clippy::too_many_lines, reason = "the whole signing page; split by section")]
 pub fn signing_page(
     ui: &mut Ui,
     settings: &mut Settings,

@@ -190,6 +190,7 @@ pub fn paint_icon_stroked(p: &Painter, c: Pos2, icon: Icon, col: Color32, size: 
     p.ctx().graphics_mut(|g| g.entry(layer).transform_range(start, end, transform));
 }
 
+#[expect(clippy::too_many_lines, reason = "one arm per stroked icon; split by icon group")]
 fn paint_icon_stroke(p: &Painter, c: Pos2, icon: Icon, s: Stroke) {
     let col = s.color;
     if crate::icons::paint(p, c, icon, s) || crate::icons_panel::paint(p, c, icon, s) || crate::icons::lists::paint(p, c, icon, s) {

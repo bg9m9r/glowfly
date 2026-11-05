@@ -94,6 +94,9 @@ is listed per area in [docs/architecture/](docs/architecture/). The short versio
   glowfly-flows' `flows/<area>_tests.rs` when they run effects through the runner).
 - Keep files under about 400 lines; split by responsibility. When you add, move or remove a
   source file, update its line in the matching `docs/architecture/<area>.md`.
+- Keep functions under 120 code lines: clippy's `too_many_lines` fails a longer one. Split it
+  by responsibility rather than marking it; `tests/source_checks/fn_length.rs` lists today's
+  marked functions and only lets that list shrink.
 - Operations that should honour the user's git config, hooks or credentials go through the git
   CLI (`gitcli`); everything else uses libgit2.
 - Code that touches paths, files, processes, the environment or git calls follows
@@ -109,8 +112,9 @@ Tests come in three kinds: core logic runs against small fixture repositories (s
 `egui_kittest` snapshots. `tests/source_checks/hygiene.rs` keeps some of these rules from slipping: a new file
 over 400 lines, a source file without a `//!` doc comment, English text in a log line or toast in
 `update/` or `state/` (use the translations, `t.tr`), or a copied test fixture helper fails it,
-and `tests/source_checks/dead_pub.rs` fails a public item in the model, runner or views that no
-other file names. Their allowlists only ever shrink.
+`tests/source_checks/dead_pub.rs` fails a public item in the model, runner or views that no
+other file names, and `tests/source_checks/fn_length.rs` fails a function marked as long that
+isn't on its list. Their allowlists only ever shrink.
 
 ## Original work only
 

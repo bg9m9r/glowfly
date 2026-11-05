@@ -166,6 +166,7 @@ pub(super) fn want_issues(st: &mut AppState, keys: Vec<String>, fx: &mut Vec<Eff
     request(st, tracker, false, ForgeCall::Issues(missing), fx);
 }
 
+#[expect(clippy::too_many_lines, reason = "one arm per forge reply; split by reply kind")]
 fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effect>) {
     let mut logs: Vec<(bool, String)> = Vec::new();
     let mut prs_changed = false;

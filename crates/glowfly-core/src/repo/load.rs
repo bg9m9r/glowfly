@@ -1,16 +1,20 @@
-//! Loading a repository: history, refs, stashes and working-tree status.
+//! Loading a repository: history, refs, stashes and working-tree status. The refs are read in
+//! `load_refs.rs`, the history in `load_walk.rs`.
 
 use super::graph_cache::GraphCache;
 use super::*;
 use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::graph;
-use git2::{BranchType, Oid, Repository};
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use git2::Repository;
+use std::path::{Path, PathBuf};
 
 #[path = "head_ahead.rs"]
 mod head_ahead;
+#[path = "load_refs.rs"]
+mod load_refs;
+#[path = "load_walk.rs"]
+mod load_walk;
 
 /// Loads the repository at (or above) `path`.
 pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
@@ -35,188 +39,28 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
 
     // Taken first, so a change made while loading shows up in the next comparison.
     let refs_key = super::refs_key::key_of(&repo)?;
-    // stash_foreach needs &mut, so collect stashes before taking shared borrows.
-    let mut stashes = Vec::new();
-    repo.stash_foreach(|index, message, oid| {
-        stashes.push(StashInfo { index, message: message.to_owned(), oid: *oid });
-        true
-    })?;
-
-    let workdir = repo.workdir().ok_or_else(|| Error::Unsupported("repository has no working directory".into()))?.to_path_buf();
-    let real_workdir = crate::paths::resolve(&workdir);
-    // The spelling it was opened by, when that is another name for the work dir (not a folder
-    // inside it): a short 8.3 name or a link the caller may still hold.
-    let folder = crate::paths::FolderId::of(&workdir);
-    let opened_as = (path != workdir
-        && (crate::paths::same_spelling(&crate::paths::resolve(path), &real_workdir)
-            || folder.is_some_and(|f| crate::paths::FolderId::of(path) == Some(f))))
-    .then(|| path.to_path_buf());
-    let git_dir = repo.path().to_path_buf();
-    let common = common_dir::CommonDir::of(&repo);
-    let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
+    let stashes = stashes_of(&mut repo)?;
+    let Place { workdir, real_workdir, opened_as, folder, git_dir, common, name } = place_of(path, &repo)?;
     let state = op_state::state(&repo);
     let rebase = crate::rebase::progress_of(&repo);
     let am = crate::patch_ops::progress_of(&repo);
 
-    let (head_oid, head_branch, detached) = match repo.head() {
-        Ok(h) => {
-            let branch = if h.is_branch() { h.shorthand().map(str::to_owned) } else { None };
-            (h.target(), branch, !h.is_branch())
-        }
-        Err(_) => {
-            // Unborn branch: HEAD is symbolic but points nowhere yet.
-            let branch =
-                repo.find_reference("HEAD").ok().and_then(|r| r.symbolic_target().map(|s| s.trim_start_matches("refs/heads/").to_owned()));
-            (None, branch, false)
-        }
-    };
-    // A checked-out branch whose name git could read as an option shows as a detached HEAD, so
-    // no command is built from its name.
-    let (head_branch, detached) = match head_branch {
-        Some(b) if !super::is_safe_ref_name(&b) => (None, true),
-        b => (b, detached),
-    };
-
-    // The checked-out branch is always shown: a saved filter may still hide it after a checkout.
-    let mut opts = opts.clone();
-    if let Some(b) = &head_branch {
-        let full = format!("refs/heads/{b}");
-        opts.hidden.retain(|h| *h != full);
-    }
-    let opts = &opts;
-
-    let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).map(|c| commit_text::message(&c).trim_end().to_owned());
-    let commit_template = template::commit_template(&repo, &workdir);
-    let commit_encoding = crate::commit_encoding::MessageEncoding::of(&repo);
-    let merge_message = op_state::has_merge_msg(state).then(|| merge_msg::merge_message(&repo, &commit_encoding)).flatten();
-    let gitflow = crate::gitflow::read_config(&repo);
-    let lfs_patterns = crate::lfs::patterns_in(&repo, &workdir);
-    let mut refs: HashMap<Oid, Vec<RefLabel>> = HashMap::new();
-    if detached && let Some(o) = head_oid {
-        refs.entry(o).or_default().push(RefLabel { name: "HEAD".into(), full: String::new(), kind: RefKind::Head, is_head: true });
-    }
-    for r in repo.references()?.flatten() {
-        let Some(full) = r.name() else { continue };
-        let (kind, short) = if let Some(s) = full.strip_prefix("refs/heads/") {
-            (RefKind::Local, s)
-        } else if let Some(s) = full.strip_prefix("refs/remotes/") {
-            if s.ends_with("/HEAD") {
-                continue;
-            }
-            (RefKind::Remote, s)
-        } else if let Some(s) = full.strip_prefix("refs/tags/") {
-            (RefKind::Tag, s)
-        } else {
-            continue;
-        };
-        // A name git could read as an option is left out.
-        if opts.hidden.iter().any(|h| h == full) || !super::is_safe_ref_name(short) {
-            continue;
-        }
-        let Ok(commit) = r.peel_to_commit() else { continue };
-        refs.entry(commit.id()).or_default().push(RefLabel {
-            name: short.to_owned(),
-            full: full.to_owned(),
-            kind,
-            is_head: kind == RefKind::Local && Some(short) == head_branch.as_deref(),
-        });
-    }
-    for labels in refs.values_mut() {
-        labels.sort_by(|a, b| (!a.is_head, a.kind, &a.name).cmp(&(!b.is_head, b.kind, &b.name)));
-    }
+    let (head_oid, head_branch, detached) = load_refs::head_of(&repo);
+    let opts = &shown_opts(opts, head_branch.as_deref());
+    let BoxReads { head_message, commit_template, commit_encoding, merge_message, gitflow, lfs_patterns } =
+        box_reads(&repo, &workdir, state);
+    let mut refs = load_refs::ref_labels(&repo, opts, (head_oid, head_branch.as_deref(), detached))?;
 
     let refs_span = tracing::debug_span!("load.refs").entered();
-    let mut locals = Vec::new();
-    for b in repo.branches(Some(BranchType::Local))? {
-        let (b, _) = b?;
-        let name = b.name()?.unwrap_or_default().to_owned();
-        if !super::is_safe_ref_name(&name) {
-            continue;
-        }
-        let oid = b.get().target();
-        let full = format!("refs/heads/{name}");
-        let tracking = match (repo.branch_upstream_remote(&full), repo.branch_upstream_merge(&full)) {
-            (Ok(r), Ok(m)) => match (r.as_str(), m.as_str()) {
-                (Some(r), Some(m)) => Some(Tracking { remote: r.to_owned(), merge: m.strip_prefix("refs/heads/").unwrap_or(m).to_owned() }),
-                _ => None,
-            },
-            _ => None,
-        };
-        // An upstream whose remote or branch name git could misread is dropped as a whole.
-        let tracking = tracking.filter(|t| super::safe_names::upstream_remote_ok(&t.remote) && super::is_safe_ref_name(&t.merge));
-        let (upstream, upstream_ref, ahead, behind) = match b.upstream() {
-            Ok(u) if tracking.is_some() => {
-                let (a, bh) = match (oid, u.get().target()) {
-                    (Some(x), Some(y)) => cache.ahead_behind(&repo, x, y),
-                    _ => (0, 0),
-                };
-                (u.name().ok().flatten().map(str::to_owned), u.get().name().map(str::to_owned), a, bh)
-            }
-            _ => (None, None, 0, 0),
-        };
-        // `merged` is worked out after the walk, from the loaded rows (`branch_merged`).
-        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged: false });
-    }
-
-    let mut remotes: Vec<(String, Vec<(String, Oid)>)> =
-        repo.remotes()?.iter().flatten().filter(|r| super::safe_names::remote_ok(r)).map(|r| (r.to_owned(), Vec::new())).collect();
-    for b in repo.branches(Some(BranchType::Remote))? {
-        let (b, _) = b?;
-        let (Some(name), Some(oid)) = (b.name()?.map(str::to_owned), b.get().target()) else {
-            continue;
-        };
-        if name.ends_with("/HEAD") || !super::is_safe_ref_name(&name) {
-            continue;
-        }
-        // Remote names may contain '/', so pick the longest matching remote prefix.
-        if let Some(slot) = remotes.iter_mut().filter(|(r, _)| name.starts_with(&format!("{r}/"))).max_by_key(|(r, _)| r.len()) {
-            let short = name[slot.0.len() + 1..].to_owned();
-            slot.1.push((short, oid));
-        }
-    }
-
-    let names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
-    let remote_info = super::remotes::remote_info(&repo, &names);
-    let remote_heads = super::remotes::remote_heads(&repo, &names);
-    let push_remotes = super::push_config::push_remotes(&repo);
-    let pull_rebase = super::push_config::pull_rebases(&repo, head_branch.as_deref());
-    let remote_urls: Vec<(String, String)> =
-        remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
-
-    let (mut tags, mut other_tags, mut lightweight_tags) = (Vec::new(), Vec::new(), HashSet::new());
-    for t in repo.tag_names(None)?.iter().flatten().filter(|t| super::is_safe_ref_name(t)) {
-        // A ref that names the commit itself has no tag object: a lightweight tag.
-        let found = repo.revparse_single(&format!("refs/tags/{t}")).and_then(|o| {
-            let light = o.kind() == Some(git2::ObjectType::Commit);
-            o.peel_to_commit().map(|c| (c, light))
-        });
-        match found {
-            Ok((c, light)) => {
-                if light {
-                    lightweight_tags.insert(t.to_owned());
-                }
-                tags.push((t.to_owned(), c.id()));
-            }
-            Err(_) => other_tags.push(t.to_owned()),
-        }
-    }
-    tags.reverse();
-
-    // Git's own status read can run the repository's fsmonitor hook or filters: only once the
-    // user trusts it (and nothing was added since), or when nothing in it would run.
+    let mut locals = load_refs::local_branches(&repo, cache)?;
+    let remotes = load_refs::remote_branches(&repo)?;
+    let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls, fetched_remotes } =
+        load_refs::remote_reads(&repo, &remotes, head_branch.as_deref(), &git_dir, &common.dir);
+    let (tags, other_tags, lightweight_tags) = load_refs::tags(&repo)?;
     drop(refs_span);
-    let trust_scan = crate::trust::scan(&repo);
-    let trust_print = trust_scan.print();
-    let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_some_and(|p| p.covers(&trust_print)));
-    // Found once per load, before the status read that marks its rows with them.
-    let collisions = tracing::debug_span!("load.collisions").in_scope(|| repo.index().map(|mut i| super::collide::collisions(&mut i)))?;
-    let started = std::time::Instant::now();
-    // Read before the status, so a change made during the read shows up in the next comparison.
-    let index_memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i)).map(std::sync::Arc::new);
-    let (unstaged, staged) = tracing::debug_span!("load.status")
-        .in_scope(|| super::status::load_status_with(&repo, git_status, &collisions, Some(cache.records())))?;
-    let slow_status = super::status_speed::slow(started.elapsed(), &workdir);
-    let changes = ChangeCounts::of(&staged, &unstaged);
+
+    let StatusRead { trust_scan, trust_print, collisions, index_memo, unstaged, staged, slow_status, changes } =
+        read_status(&repo, opts, cache, &workdir)?;
     let folding = super::collide::folding(repo.path());
     let ignorecase = super::collide::ignorecase(&repo);
     let submodules = submodules::list(&repo, Some(&unstaged), Some(cache.submodules()));
@@ -226,44 +70,10 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     }
     let shallow_roots = super::shallow::roots(&repo);
     let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);
-    let fetched_remotes = super::fetch_time::fetched_remotes(&git_dir, &common.dir, &remote_info, &remote_urls);
 
-    let mut starts: Vec<Oid> = head_oid.into_iter().collect();
-    let tips = visible_tips(&repo, opts, head_branch.as_deref(), &locals);
-    match &tips {
-        Some(list) => {
-            for full in list {
-                if let Ok(c) = repo.revparse_single(full).and_then(|o| o.peel_to_commit()) {
-                    starts.push(c.id());
-                }
-            }
-        }
-        None => {
-            for r in repo.references()?.flatten() {
-                let Some(full) = r.name() else { continue };
-                let wanted = full.starts_with("refs/heads/") || full.starts_with("refs/remotes/") || full.starts_with("refs/tags/");
-                if !wanted || opts.hidden.iter().any(|h| h == full) {
-                    continue;
-                }
-                if let Ok(c) = r.peel_to_commit() {
-                    starts.push(c.id());
-                }
-            }
-        }
-    }
-    // Labels follow the same visibility as the history.
-    if let Some(list) = &tips {
-        for labels in refs.values_mut() {
-            labels.retain(|l| l.kind == RefKind::Head || l.is_head || list.contains(&l.full));
-        }
-        refs.retain(|_, v| !v.is_empty());
-    }
-    let reuse = prior.and_then(|p| super::walk_reuse::CommitCache::new(p, &repo, &shallow_roots));
-    let walked = tracing::debug_span!("load.walk").in_scope(|| super::walk::newest_commits(&repo, &starts, max_commits, reuse.as_ref()))?;
-    drop(reuse);
-    let (commits, truncated) = (walked.commits, walked.truncated);
-    let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();
-    super::branch_merged::mark(&repo, cache, head_oid, &commits, &row_of, &mut locals);
+    let head = (head_oid, head_branch.as_deref());
+    let load_walk::History { starts, commits, row_of, truncated, frontier } =
+        load_walk::history(&repo, (opts, max_commits), (cache, prior), head, &shallow_roots, &mut refs, &mut locals)?;
     let head_ahead = head_ahead::first_parent(&repo, head_oid, &locals);
 
     let mut snap = Snapshot {
@@ -289,7 +99,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         commits: commits.into(),
         row_of,
         truncated,
-        frontier: walked.frontier.map(std::sync::Arc::new),
+        frontier: frontier.map(std::sync::Arc::new),
         starts,
         refs,
         locals,
@@ -329,56 +139,110 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     Ok(snap)
 }
 
-/// Ref names to walk when the graph is filtered; None means everything.
-fn visible_tips(repo: &Repository, opts: &LoadOptions, head_branch: Option<&str>, locals: &[BranchInfo]) -> Option<Vec<String>> {
-    if !opts.solo.is_empty() {
-        return Some(opts.solo.clone());
-    }
-    if !opts.smart {
-        return None;
-    }
-    let mut out: Vec<String> = Vec::new();
-    let mut add = |name: String| {
-        // Hidden refs are not walked as smart tips; HEAD is pushed separately.
-        if opts.hidden.contains(&name) {
-            return;
-        }
-        if !out.contains(&name) && repo.revparse_single(&name).is_ok() {
-            out.push(name);
-        }
-    };
+/// Collects the stashes (`stash_foreach` needs `&mut`, so before any shared borrows).
+fn stashes_of(repo: &mut Repository) -> Result<Vec<StashInfo>> {
+    let mut stashes = Vec::new();
+    repo.stash_foreach(|index, message, oid| {
+        stashes.push(StashInfo { index, message: message.to_owned(), oid: *oid });
+        true
+    })?;
+    Ok(stashes)
+}
+
+/// Where the repository is: its work dir (as found and resolved), the spelling it was opened
+/// by, its folder's identity, its git and common dirs, and the name it is shown by.
+struct Place {
+    workdir: PathBuf,
+    real_workdir: PathBuf,
+    opened_as: Option<PathBuf>,
+    folder: Option<crate::paths::FolderId>,
+    git_dir: PathBuf,
+    common: CommonDir,
+    name: String,
+}
+
+/// The `Place` of `repo`, opened by `path`; an error for a repository without a work dir.
+fn place_of(path: &Path, repo: &Repository) -> Result<Place> {
+    let workdir = repo.workdir().ok_or_else(|| Error::Unsupported("repository has no working directory".into()))?.to_path_buf();
+    let real_workdir = crate::paths::resolve(&workdir);
+    let folder = crate::paths::FolderId::of(&workdir);
+    let opened_as = opened_as(path, &workdir, &real_workdir, folder);
+    let git_dir = repo.path().to_path_buf();
+    let common = common_dir::CommonDir::of(repo);
+    let name = workdir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| workdir.display().to_string());
+    Ok(Place { workdir, real_workdir, opened_as, folder, git_dir, common, name })
+}
+
+/// The spelling the repository was opened by (`path`), when that is another name for the work
+/// dir (not a folder inside it): a short 8.3 name or a link the caller may still hold.
+fn opened_as(path: &Path, workdir: &Path, real_workdir: &Path, folder: Option<crate::paths::FolderId>) -> Option<PathBuf> {
+    (path != workdir
+        && (crate::paths::same_spelling(&crate::paths::resolve(path), real_workdir)
+            || folder.is_some_and(|f| crate::paths::FolderId::of(path) == Some(f))))
+    .then(|| path.to_path_buf())
+}
+
+/// `opts` with the checked-out branch never hidden: a saved filter may still hide it after a
+/// checkout.
+fn shown_opts(opts: &LoadOptions, head_branch: Option<&str>) -> LoadOptions {
+    let mut opts = opts.clone();
     if let Some(b) = head_branch {
-        add(format!("refs/heads/{b}"));
+        let full = format!("refs/heads/{b}");
+        opts.hidden.retain(|h| *h != full);
     }
-    // Upstreams of the current and default branches.
-    for b in locals {
-        let default = matches!(b.name.as_str(), "main" | "master" | "develop" | "trunk");
-        if b.is_head || default {
-            add(format!("refs/heads/{}", b.name));
-            if let Some(u) = &b.upstream {
-                add(format!("refs/remotes/{u}"));
-            }
-        }
-    }
-    // Each remote's default branch (refs/remotes/<remote>/HEAD).
-    if let Ok(remotes) = repo.remotes() {
-        for r in remotes.iter().flatten() {
-            if let Ok(target) = repo.find_reference(&format!("refs/remotes/{r}/HEAD")).and_then(|h| h.resolve())
-                && let Some(name) = target.name()
-            {
-                add(name.to_owned());
-            }
-        }
-    }
-    for b in &opts.extra_tips {
-        add(format!("refs/heads/{b}"));
-        if let Ok(remotes) = repo.remotes() {
-            for r in remotes.iter().flatten() {
-                add(format!("refs/remotes/{r}/{b}"));
-            }
-        }
-    }
-    Some(out)
+    opts
+}
+
+/// What the commit box and the operation banners start from: HEAD's message, the commit
+/// template and encoding, a stopped merge's message, the git-flow settings and the LFS patterns.
+struct BoxReads {
+    head_message: Option<String>,
+    commit_template: Option<CommitTemplate>,
+    commit_encoding: crate::commit_encoding::MessageEncoding,
+    merge_message: Option<String>,
+    gitflow: crate::gitflow::GitFlowConfig,
+    lfs_patterns: Vec<crate::lfs::LfsPattern>,
+}
+
+/// Reads the `BoxReads` of `repo` (work dir `workdir`) in operation `state`.
+fn box_reads(repo: &Repository, workdir: &Path, state: git2::RepositoryState) -> BoxReads {
+    let head_message = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).map(|c| commit_text::message(&c).trim_end().to_owned());
+    let commit_template = template::commit_template(repo, workdir);
+    let commit_encoding = crate::commit_encoding::MessageEncoding::of(repo);
+    let merge_message = op_state::has_merge_msg(state).then(|| merge_msg::merge_message(repo, &commit_encoding)).flatten();
+    let gitflow = crate::gitflow::read_config(repo);
+    let lfs_patterns = crate::lfs::patterns_in(repo, workdir);
+    BoxReads { head_message, commit_template, commit_encoding, merge_message, gitflow, lfs_patterns }
+}
+
+/// A load's read of the working tree's status, with what it took into account.
+struct StatusRead {
+    trust_scan: crate::trust::TrustScan,
+    trust_print: crate::trust::TrustPrint,
+    collisions: Vec<Collision>,
+    index_memo: Option<std::sync::Arc<IndexMemo>>,
+    unstaged: Vec<FileEntry>,
+    staged: Vec<FileEntry>,
+    slow_status: Option<SlowStatus>,
+    changes: ChangeCounts,
+}
+
+/// Reads the status. Git's own status read can run the repository's fsmonitor hook or filters:
+/// only once the user trusts it (and nothing was added since), or when nothing in it would run.
+fn read_status(repo: &Repository, opts: &LoadOptions, cache: &GraphCache, workdir: &Path) -> Result<StatusRead> {
+    let trust_scan = crate::trust::scan(repo);
+    let trust_print = trust_scan.print();
+    let git_status = trust_scan.is_empty() || (opts.trusted && opts.trusted_print.as_ref().is_some_and(|p| p.covers(&trust_print)));
+    // Found once per load, before the status read that marks its rows with them.
+    let collisions = tracing::debug_span!("load.collisions").in_scope(|| repo.index().map(|mut i| super::collide::collisions(&mut i)))?;
+    let started = std::time::Instant::now();
+    // Read before the status, so a change made during the read shows up in the next comparison.
+    let index_memo = repo.index().ok().and_then(|i| super::IndexMemo::of(&i)).map(std::sync::Arc::new);
+    let (unstaged, staged) = tracing::debug_span!("load.status")
+        .in_scope(|| super::status::load_status_with(repo, git_status, &collisions, Some(cache.records())))?;
+    let slow_status = super::status_speed::slow(started.elapsed(), workdir);
+    let changes = ChangeCounts::of(&staged, &unstaged);
+    Ok(StatusRead { trust_scan, trust_print, collisions, index_memo, unstaged, staged, slow_status, changes })
 }
 
 /// Messages of commits reachable from `source` but not from `target` (newest first, capped).

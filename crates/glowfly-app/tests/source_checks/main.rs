@@ -3,7 +3,8 @@
 //! fixtures, harness builders and `cfg(test)` switches; `layering` keeps I/O out of the views
 //! and the model; `i18n_keys` matches the code's translation keys with the English catalog;
 //! `dependencies` keeps the crate graph pointing one way; `dead_pub` ratchets unused public items
-//! in the library crates; `access_names` ratchets controls the view snapshots show without a
+//! in the library crates; `fn_length` keeps clippy's function-length cap on and its marked
+//! functions only shrinking; `access_names` ratchets controls the view snapshots show without a
 //! screen-reader name; `architecture_docs` checks that `docs/architecture/` names every source
 //! file. All of them read the sources through glowfly-ui's string-aware
 //! `view_checks/support/lexer.rs`.
@@ -17,6 +18,7 @@ mod access_names;
 mod architecture_docs;
 mod dead_pub;
 mod dependencies;
+mod fn_length;
 mod hygiene;
 mod i18n_keys;
 mod layering;

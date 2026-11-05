@@ -86,6 +86,8 @@ start with `state/`, `update/` or `ui/`.
 - `graph/nodes.rs`: the row's nodes (and this tab's WIP lantern), sized by the row density.
 - `graph/marks.rs`: the painted remote (in sync) and tag marks.
 - `graph/row_look.rs`: the row's background: the lane band (none on a WIP row) and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
+- `graph/row.rs`: one graph row from what the frame worked out once (`Frame`): which commit, WIP or other worktree it shows, its look, lanes and lantern; this tab's and other worktrees' WIP rows.
+- `graph/commit_row.rs`: a commit row's node, ref chips and New branch… ghost button, cells, tooltips, clicks and menu.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
 - `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
 - `graph/lane_colours.rs`: the graph's per-row colours, and each lane line's width (HEAD's branch wider) and dash pattern (`graph/paint.rs`, colour-safe colours only).

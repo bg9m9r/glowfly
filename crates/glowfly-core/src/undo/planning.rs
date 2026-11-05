@@ -78,6 +78,7 @@ pub fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
 }
 
 /// `plan`, with the choices the user made for this undo.
+#[expect(clippy::too_many_lines, reason = "one arm per undoable action; split by action")]
 pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> Result<Plan> {
     // Only one file's bytes change, so a merge or rebase in progress doesn't matter.
     match action {
