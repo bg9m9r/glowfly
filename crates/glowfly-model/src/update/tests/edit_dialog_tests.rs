@@ -84,6 +84,30 @@ fn forms_copy_and_compare_but_questions_and_notes_do_not() {
     assert!(!printed.contains("secret-name"), "Debug shows no form contents: {printed}");
 }
 
+/// Every kind of form (struct-like, one-field, filter) compares equal to its untouched copy and
+/// unequal to another dialog, so an idle dialog sends no edit (`same_form` has no catch-all).
+#[test]
+fn each_form_matches_its_own_copy_and_no_other_dialog() {
+    let upstream = Modal::SetUpstream { branch: "main".into(), remote: "origin".into(), name: "main".into(), touched: Default::default() };
+    let forms = [
+        new_branch(),
+        upstream,
+        tag("v1"),
+        rename_tab("tab"),
+        Modal::Shortcuts { filter: "f".into() },
+        Modal::FindRepos { filter: "f".into() },
+    ];
+    for (i, form) in forms.iter().enumerate() {
+        let copy = form.form_copy().expect("a form");
+        assert!(form.same_form(&copy), "form {i} against its copy");
+        for (j, other) in forms.iter().enumerate().filter(|&(j, _)| j != i) {
+            assert!(!form.same_form(other), "form {i} against form {j}");
+        }
+        assert!(!form.same_form(&Modal::About), "form {i} against a note");
+        assert!(!Modal::About.same_form(form), "a note against form {i}");
+    }
+}
+
 #[test]
 fn a_parent_typed_with_its_check_in_one_frame_is_the_one_checked() {
     let mut st = state();

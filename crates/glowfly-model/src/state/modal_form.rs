@@ -73,36 +73,37 @@ macro_rules! modal_forms {
             }
 
             /// Whether `other` is this form unchanged: the same variant with equal fields.
-            /// False for the dialogs that aren't forms.
+            /// False for the dialogs that aren't forms. Matched per variant of `self`, with no
+            /// catch-all, so a new variant fails to compile until it is compared here too.
             pub fn same_form(&self, other: &Modal) -> bool {
-                match (self, other) {
-                    (
-                        Modal::NewBranch { start, name, checkout, track, touched },
-                        Modal::NewBranch { start: s, name: n, checkout: c, track: t, touched: to },
-                    ) => start == s && name == n && checkout == c && track == t && touched == to,
-                    (
-                        Modal::CreatePr { source, target, targets, title, description, draft, items, repos },
-                        Modal::CreatePr { source: s, target: t, targets: ts, title: ti, description: d, draft: dr, items: i, repos: r },
-                    ) => {
-                        source == s
-                            && target == t
-                            && targets == ts
-                            && title == ti
-                            && description == d
-                            && draft == dr
-                            && items == i
-                            && repos == r
-                    }
-                    (
-                        Modal::SetUpstream { branch, remote, name, touched },
-                        Modal::SetUpstream { branch: b, remote: r, name: n, touched: t },
-                    ) => branch == b && remote == r && name == n && touched == t,
-                    (Modal::RenameFile { old, form }, Modal::RenameFile { old: o, form: f }) => old == o && form == f,
-                    (Modal::Shortcuts { filter }, Modal::Shortcuts { filter: f })
-                    | (Modal::FindRepos { filter }, Modal::FindRepos { filter: f }) => filter == f,
-                    $((Modal::$f(a), Modal::$f(b)) => a == b,)*
-                    // Two different dialogs, or one that isn't a form.
-                    _ => false,
+                match self {
+                    Modal::NewBranch { start, name, checkout, track, touched } => matches!(
+                        other,
+                        Modal::NewBranch { start: s, name: n, checkout: c, track: t, touched: to }
+                            if start == s && name == n && checkout == c && track == t && touched == to
+                    ),
+                    Modal::CreatePr { source, target, targets, title, description, draft, items, repos } => matches!(
+                        other,
+                        Modal::CreatePr { source: s, target: t, targets: ts, title: ti, description: d, draft: dr, items: i, repos: r }
+                            if source == s
+                                && target == t
+                                && targets == ts
+                                && title == ti
+                                && description == d
+                                && draft == dr
+                                && items == i
+                                && repos == r
+                    ),
+                    Modal::SetUpstream { branch, remote, name, touched } => matches!(
+                        other,
+                        Modal::SetUpstream { branch: b, remote: r, name: n, touched: t }
+                            if branch == b && remote == r && name == n && touched == t
+                    ),
+                    Modal::RenameFile { old, form } => matches!(other, Modal::RenameFile { old: o, form: f } if old == o && form == f),
+                    Modal::Shortcuts { filter } => matches!(other, Modal::Shortcuts { filter: f } if filter == f),
+                    Modal::FindRepos { filter } => matches!(other, Modal::FindRepos { filter: f } if filter == f),
+                    $(Modal::$f(a) => matches!(other, Modal::$f(b) if a == b),)*
+                    $($n)|* => false,
                 }
             }
         }
