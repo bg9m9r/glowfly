@@ -92,15 +92,18 @@ pub(super) fn took_effect(action: &Action, before: &Reading, after: &Reading) ->
     let head_moved = before.head != after.head;
     Some(match action {
         SelectWip | Refresh | SwitchTab(_) | CloseTab(_) | StageHunk(_) | Confirm(_) | Outside(_) => return None,
+        UnstageAll if before.staged.is_empty() => return None,
         UnstageAll => after.staged.is_empty(),
         Commit(text) => head_moved && after.head_summary.as_deref() == Some(text.as_str()),
         Amend => head_moved && before.head_parents == after.head_parents,
         CreateBranch(n) => after.branches.contains_key(n),
         Checkout(n) => after.branch.as_deref() == Some(n.as_str()),
         DeleteBranch(n) => !after.branches.contains_key(n),
-        Merge(_) | Rebase(_) => head_moved || mid_merge_or_rebase(after),
+        Merge(_) | Rebase(_) => head_moved || (!mid_merge_or_rebase(before) && mid_merge_or_rebase(after)),
         Stash => after.stashes == before.stashes + 1,
-        Unstash => after.stashes + 1 == before.stashes || (after.stashes == before.stashes && !after.conflicted.is_empty()),
+        Unstash => {
+            after.stashes + 1 == before.stashes || (after.stashes == before.stashes && !after.conflicted.is_subset(&before.conflicted))
+        }
         DropStash => after.stashes + 1 == before.stashes,
         Stage(p) => after.staged.contains(p),
         Unstage(p) => !after.staged.contains(p),
@@ -108,7 +111,7 @@ pub(super) fn took_effect(action: &Action, before: &Reading, after: &Reading) ->
         Discard(p) => !after.changed.contains(p),
         ResolveOurs(p) | ResolveTheirs(p) => !after.conflicted.contains(p),
         Continue => {
-            after.state == RepositoryState::Clean
+            (before.state != RepositoryState::Clean && after.state == RepositoryState::Clean)
                 || (matches!(after.state, RepositoryState::Rebase | RepositoryState::RebaseInteractive | RepositoryState::RebaseMerge)
                     && (head_moved || before.conflicted != after.conflicted))
         }
