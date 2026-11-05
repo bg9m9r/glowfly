@@ -24,15 +24,15 @@ fn a_load_counts_only_small_worktrees_within_its_budget() {
     let listed = || super::super::worktrees::list(&repo);
 
     let mut small = listed();
-    count_in_load(&mut small, &LoadLimits { max_entries: 1, ..LoadLimits::DEFAULT });
+    count_in_load(&mut small, repo.commondir(), &LoadLimits { max_entries: 1, ..LoadLimits::DEFAULT });
     assert_eq!((small[1].read, small[1].changes), (ChangesRead::Pending, ChangeCounts::default()), "its index is too large");
 
     let mut late = listed();
-    count_in_load(&mut late, &LoadLimits { budget: Duration::ZERO, ..LoadLimits::DEFAULT });
+    count_in_load(&mut late, repo.commondir(), &LoadLimits { budget: Duration::ZERO, ..LoadLimits::DEFAULT });
     assert_eq!(late[1].read, ChangesRead::Pending, "the budget is spent");
 
     let mut all = listed();
-    count_in_load(&mut all, &LoadLimits::DEFAULT);
+    count_in_load(&mut all, repo.commondir(), &LoadLimits::DEFAULT);
     assert_eq!((all[1].read, all[1].changes), (ChangesRead::Counted, DIRTY));
     for list in [&small, &late, &all] {
         assert!(list[0].current);

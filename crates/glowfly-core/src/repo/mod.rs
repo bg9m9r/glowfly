@@ -1,5 +1,4 @@
-//! Repository model built on libgit2.
-//! Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
+//! Repository model built on libgit2. Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
 //! The types are here (the diff ones in `diff_types`, a branch's upstream in `tracking`, a loaded commit and its shared author in
@@ -309,6 +308,8 @@ mod load_more_tests;
 mod markers_tests;
 #[cfg(test)]
 mod merge_msg_tests;
+#[cfg(test)]
+mod offsite_tests;
 #[cfg(test)]
 mod op_state_tests;
 #[cfg(test)]

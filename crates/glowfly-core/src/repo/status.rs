@@ -167,6 +167,11 @@ pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<F
 pub(super) fn libgit2_lists(repo: &Repository, opts: &mut StatusOptions) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let mut unstaged = Vec::new();
     let mut staged = Vec::new();
+    // A submodule whose files name another network place would be opened by the read: leave
+    // every submodule out, as for the .gitmodules fallback below.
+    if !crate::git_file::offsite_gitlinks(repo).is_empty() {
+        opts.exclude_submodules(true);
+    }
     // A .gitmodules that can't be parsed fails the status of every gitlink; read it again
     // without submodules rather than failing the whole load.
     let statuses = match repo.statuses(Some(opts)) {

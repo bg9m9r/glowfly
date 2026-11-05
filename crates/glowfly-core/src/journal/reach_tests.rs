@@ -94,3 +94,30 @@ fn unreachable_ignores_missing_commits() {
     drop(r);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_offsite_worktree_s_head_is_read_from_its_admin_dir() {
+    let dir = repo("journal-reach-offsite");
+    commit(&dir, "one");
+    git(&dir, &["checkout", "-q", "-b", "side"]);
+    let on_side = commit(&dir, "on side");
+    git(&dir, &["checkout", "-q", "main"]);
+    let admin = dir.join(".git/worktrees/wt");
+    std::fs::create_dir_all(&admin).unwrap();
+    write(&admin, "HEAD", "ref: refs/heads/side\n");
+    write(&admin, "commondir", "../..\n");
+    let r = Repository::open(&dir).unwrap();
+    assert_eq!(crate::git_file::worktree_head(&r, "wt"), Some(on_side), "a branch it has checked out");
+    write(&admin, "HEAD", "ref: refs/../../x\n");
+    assert_eq!(crate::git_file::worktree_head(&r, "wt"), None, "a ref outside refs/ isn't read");
+    git(&dir, &["branch", "-q", "-D", "side"]);
+    assert!(marked(&dir, on_side));
+    // Now only the worktree's detached HEAD keeps it, and its folder (written after the last
+    // git command) is never opened.
+    write(&admin, "HEAD", &format!("{on_side}\n"));
+    let far = net_place().join("wt/.git").display().to_string().replace('\\', "/");
+    write(&admin, "gitdir", &format!("{far}\n"));
+    assert!(unreachable(&r, [on_side].into_iter()).is_empty(), "kept by the offsite worktree's HEAD");
+    drop(r);
+    let _ = std::fs::remove_dir_all(&dir);
+}

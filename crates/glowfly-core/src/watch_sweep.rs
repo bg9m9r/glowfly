@@ -14,7 +14,8 @@
 //!
 //! Never walked: a `.git` entry (the repository's or a nested one's), the git dir, symbolic
 //! links and junctions (kept as entries, never followed), and ignored folders that hold no
-//! tracked files. Names are kept as the OS gives them, so a name that isn't UTF-8 still reaches
+//! tracked files. A nested repository whose files name a network place is walked as a plain
+//! folder, by the outer rules. Names are kept as the OS gives them, so a name that isn't UTF-8 still reaches
 //! classification (which reads the whole status for it).
 
 use crate::repo::{RACY_WINDOW, refs_key};
@@ -362,6 +363,9 @@ fn entries(folders: &BTreeMap<PathBuf, Folder>) -> usize {
     folders.values().map(|f| f.entries.len()).sum()
 }
 
+#[cfg(test)]
+#[path = "watch_sweep_net_tests.rs"]
+mod net_tests;
 #[cfg(test)]
 #[path = "watch_sweep_tests.rs"]
 mod tests;

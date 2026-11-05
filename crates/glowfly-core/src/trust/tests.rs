@@ -214,6 +214,27 @@ fn checked_out_submodules_are_scanned_too() {
 }
 
 #[test]
+fn a_submodule_naming_a_network_place_is_not_scanned() {
+    let (top, sub) = (scratch_repo("trust-sub-net-top"), scratch_repo("trust-sub-net-lib"));
+    write(&sub, "lib.txt", "lib\n");
+    git(&sub, &["add", "."]);
+    git(&sub, &["commit", "-q", "-m", "lib"]);
+    git(&top, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &sub.display().to_string(), "deps/lib"]);
+    git(&top.join("deps/lib"), &["config", "core.fsmonitor", ".git/fsmon.sh"]);
+    let head = Repository::open(&sub).unwrap().head().unwrap().target().unwrap().to_string();
+    git(&top, &["update-index", "--add", "--cacheinfo", &format!("160000,{head},deps/far")]);
+    // Written after the last git command, so git never sees it.
+    std::fs::create_dir_all(top.join("deps/far")).unwrap();
+    let far = crate::testutil::net_place().join("far/.git").display().to_string().replace('\\', "/");
+    write(&top.join("deps/far"), ".git", &format!("gitdir: {far}\n"));
+    let s = scan_at(&top).unwrap();
+    let paths: Vec<&str> = s.submodules.iter().map(|m| m.path.as_str()).collect();
+    assert_eq!(paths, ["deps/lib"], "the local one is still scanned, the far one never opened");
+    let _ = std::fs::remove_dir_all(&top);
+    let _ = std::fs::remove_dir_all(&sub);
+}
+
+#[test]
 fn hook_names_match_any_case_on_every_os() {
     // A Linux FAT, exFAT, CIFS or casefold mount runs Post-Checkout as post-checkout, so the
     // check can't depend on the OS.

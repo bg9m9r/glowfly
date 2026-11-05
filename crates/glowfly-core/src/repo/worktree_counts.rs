@@ -60,10 +60,11 @@ pub(crate) fn index_entries(index: &Path) -> Option<u32> {
 /// Counts the uncommitted changes of every listed worktree other than the current one and the
 /// missing ones, while they are small and the budget lasts; the rest are left Pending. Read by
 /// libgit2 alone, so no hook, fsmonitor or filter runs: safe while the repository isn't trusted.
-/// One that can't be opened or read counts as clean.
-pub(super) fn count_in_load(list: &mut [WorktreeInfo], limits: &LoadLimits) {
+/// One that can't be opened or read counts as clean. One on another network place than `home`
+/// (the common dir) is never opened and stays NotCounted.
+pub(super) fn count_in_load(list: &mut [WorktreeInfo], home: &Path, limits: &LoadLimits) {
     let started = Instant::now();
-    for wt in list.iter_mut().filter(|w| !w.current && !w.missing) {
+    for wt in list.iter_mut().filter(|w| !w.current && !w.missing && crate::net_path::may_follow(&w.path, home)) {
         let repo = Repository::open(&wt.path).ok();
         let entries = repo.as_ref().and_then(|r| index_entries(&r.path().join("index"))).unwrap_or(0);
         if entries > limits.max_entries || started.elapsed() >= limits.budget {

@@ -118,7 +118,7 @@ fn start(target: &WatchTarget, tx: Sender<Msg>, waker: Waker) -> Result<RepoWatc
     if !target.git_dir.starts_with(&target.workdir) {
         inner.watch(&target.git_dir, RecursiveMode::Recursive).map_err(|e| describe(&target.git_dir, e))?;
     }
-    let common = glowfly_core::watch::common_dir(&target.git_dir);
+    let common = glowfly_core::watch::common_dir(&target.git_dir, &target.git_dir);
     if let Some(common) = &common {
         let refs = common.join("refs");
         if refs.is_dir() {

@@ -72,7 +72,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let submodules = submodules::list(&repo, Some(&unstaged), Some(cache.submodules()));
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {
-        super::worktree_counts::count_in_load(&mut worktrees, &super::worktree_counts::LoadLimits::DEFAULT);
+        super::worktree_counts::count_in_load(&mut worktrees, repo.commondir(), &super::worktree_counts::LoadLimits::DEFAULT);
     }
     let shallow_roots = super::shallow::roots(&repo);
     let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);

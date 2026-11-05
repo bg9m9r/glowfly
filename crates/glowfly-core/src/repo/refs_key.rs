@@ -6,6 +6,7 @@
 //! load, re-reading the status is enough and the history needn't be walked again.
 
 use crate::error::Result;
+use crate::git_file::{self, Found, Named};
 use git2::Repository;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -72,10 +73,14 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
         for p in names {
             p.hash(&mut h);
             std::fs::read(p.join("HEAD")).ok().hash(&mut h);
-            let gitdir = std::fs::read_to_string(p.join("gitdir")).ok();
-            // A worktree whose folder is gone shows as missing.
-            gitdir.as_deref().map(|g| Path::new(g.trim()).exists()).hash(&mut h);
-            gitdir.hash(&mut h);
+            // A worktree whose folder is gone shows as missing; one on another network place
+            // is never looked at.
+            match git_file::worktree_folder(&p, common) {
+                Named::At(f) => Some(f.exists()).hash(&mut h),
+                Named::Refused(_) => OFFSITE.hash(&mut h),
+                Named::None => None::<bool>.hash(&mut h),
+            }
+            git_file::read_small_in(&p.join("gitdir"), &p).hash(&mut h);
             p.join("locked").exists().hash(&mut h);
             super::op_state::held_branch(&p).hash(&mut h);
         }
@@ -87,8 +92,9 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
 /// `modules/` (any depth: names may hold `/`, and nested submodules sit in `modules/` of their
 /// parent's), and for each submodule `.gitmodules` lists or the index has a gitlink for (git's
 /// status runs git in an unlisted one too), its own `.git` folder or the git dir its `.git`
-/// file points to (which may be outside `modules/`). Only stats and small reads, and the index
-/// re-read only when its file changed; never opens a repository.
+/// file points to (which may be outside `modules/`). One whose files name another network place
+/// than the work tree's (`git_file::other_repo`) is stamped as offsite instead. Only stats and
+/// small reads, and the index re-read only when its file changed; never opens a repository.
 pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut DefaultHasher) {
     modules_stamps(&repo.commondir().join("modules"), 0, now, h);
     let Some(workdir) = repo.workdir() else { return };
@@ -108,25 +114,26 @@ pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut Defau
     paths.sort();
     paths.dedup();
     for p in paths {
-        let dot_git = workdir.join(&p).join(".git");
-        let Ok(meta) = std::fs::symlink_metadata(&dot_git) else { continue };
-        let git_dir = if meta.is_dir() {
-            dot_git
-        } else if meta.is_file() {
-            // A `.git` file: `gitdir: <path>`, relative to the submodule's folder.
-            let Some(target) =
-                std::fs::read_to_string(&dot_git).ok().and_then(|t| t.trim().strip_prefix("gitdir:").map(|g| g.trim().to_owned()))
-            else {
-                continue;
-            };
-            workdir.join(&p).join(target)
-        } else {
-            continue;
-        };
-        p.hash(h);
-        git_dir_stamps(&git_dir, now, h);
+        // One part at a time, so the folder uses the platform's separators.
+        let folder = p.split('/').fold(workdir.to_path_buf(), |f, c| f.join(c));
+        match git_file::other_repo(&folder, workdir) {
+            Found::Repo(d) => {
+                p.hash(h);
+                git_dir_stamps(&d.git_dir, now, h);
+            }
+            // Its files name another network place: never looked at, git's status there is
+            // the user's to run once trusted.
+            Found::Refused(_) => {
+                p.hash(h);
+                OFFSITE.hash(h);
+            }
+            Found::None => {}
+        }
     }
 }
+
+/// Stamped instead of what a submodule or worktree on a refused network place holds.
+const OFFSITE: &str = "offsite";
 
 /// How deep `modules_stamps` looks.
 const MAX_MODULES_DEPTH: usize = 24;
@@ -140,7 +147,10 @@ fn modules_stamps(dir: &Path, depth: usize, now: SystemTime, h: &mut DefaultHash
     dirs.sort();
     for d in dirs {
         d.hash(h);
-        if d.join("config").is_file() {
+        let config = d.join("config");
+        if !crate::net_path::may_follow(&config, &d) {
+            OFFSITE.hash(h);
+        } else if config.is_file() {
             git_dir_stamps(&d, now, h);
             modules_stamps(&d.join("modules"), depth + 1, now, h);
         } else {
@@ -150,17 +160,28 @@ fn modules_stamps(dir: &Path, depth: usize, now: SystemTime, h: &mut DefaultHash
     }
 }
 
-/// One git dir's config files and the hooks in its hooks folder (`*.sample` left out).
+/// One git dir's config files and the hooks in its hooks folder (`*.sample` left out); a file
+/// or link leading to another network place is stamped as such, never looked at.
 fn git_dir_stamps(git_dir: &Path, now: SystemTime, h: &mut DefaultHasher) {
-    file_stamp(&git_dir.join("config"), now).hash(h);
-    file_stamp(&git_dir.join("config.worktree"), now).hash(h);
-    let Ok(read) = std::fs::read_dir(git_dir.join("hooks")) else { return };
+    let near = |p: &Path, base: &Path| crate::net_path::may_follow(p, base);
+    for name in ["config", "config.worktree"] {
+        let p = git_dir.join(name);
+        if near(&p, git_dir) { file_stamp(&p, now).hash(h) } else { OFFSITE.hash(h) }
+    }
+    let dir = git_dir.join("hooks");
+    if !near(&dir, git_dir) {
+        OFFSITE.hash(h);
+        return;
+    }
+    let Ok(read) = std::fs::read_dir(&dir) else { return };
     let mut hooks: Vec<_> = read.flatten().map(|e| e.path()).filter(|p| p.extension().is_none_or(|x| x != "sample")).collect();
     hooks.sort();
     for p in hooks {
         p.hash(h);
+        if !near(&p, &dir) {
+            OFFSITE.hash(h);
         // Never read anything but a plain file: reading a FIFO blocks.
-        if std::fs::metadata(&p).is_ok_and(|m| m.is_file()) {
+        } else if std::fs::metadata(&p).is_ok_and(|m| m.is_file()) {
             file_stamp(&p, now).hash(h);
         }
     }
