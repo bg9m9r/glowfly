@@ -74,7 +74,7 @@ fn working_check(workdir: &Path, path: &str, expect: Option<Saved>, before: Opti
         Err(Error::Unsupported(_)) => None,
         Err(e) => return Err(e),
     };
-    if now.is_some_and(|n| n.map(Saved::content) == expect.map(Saved::content)) {
+    if now.is_some_and(|n| saved::holds(workdir, n, expect)) {
         return Ok(None);
     }
     let kept = match before {
