@@ -15,6 +15,8 @@ pub(super) enum Region {
     Sidebar,
     /// The right panel: the commit or working-tree details.
     Details,
+    /// The tab strip: one tab per open repository, and the tab list.
+    Tabs,
     /// What no panel covers: the graph, a diff, the conflict view, the welcome; never the
     /// open command palette.
     Central,
@@ -58,6 +60,7 @@ fn in_region(ctx: &egui::Context, region: Region, node: &Node<'_>) -> bool {
         Region::Toolbar => inside("toolbar"),
         Region::Sidebar => inside("refs"),
         Region::Details => inside("detail"),
+        Region::Tabs => inside("tabs"),
         Region::Central => !PANELS.iter().any(|id| inside(id)) && !in_palette(),
         Region::Palette => in_palette(),
     }

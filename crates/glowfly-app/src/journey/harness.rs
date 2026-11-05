@@ -91,6 +91,20 @@ impl Journey {
         Self::start_with(fx, open, trusted, Chrome::System, |_| {})
     }
 
+    /// `start` with the repositories `also` opened as tabs first, so `open` is the active tab.
+    pub fn start_many(fx: Fixture, open: PathBuf, also: Vec<PathBuf>, trusted: Vec<PathBuf>) -> Self {
+        let start = TestStart {
+            settings: settings(),
+            files: fx.config(),
+            trusted,
+            open: Some(open),
+            also_open: also,
+            chrome: Chrome::System,
+            problem: None,
+        };
+        Self::launch(fx, start)
+    }
+
     /// `start` with the window frame `chrome` drawn and the settings changed by `tweak`.
     pub fn start_with(
         fx: Fixture,
@@ -101,7 +115,7 @@ impl Journey {
     ) -> Self {
         let mut settings = settings();
         tweak(&mut settings);
-        let start = TestStart { settings, files: fx.config(), trusted, open, chrome, problem: None };
+        let start = TestStart { settings, files: fx.config(), trusted, open, also_open: Vec::new(), chrome, problem: None };
         Self::launch(fx, start)
     }
 
@@ -112,6 +126,7 @@ impl Journey {
             files: fx.config(),
             trusted: Vec::new(),
             open: None,
+            also_open: Vec::new(),
             chrome: Chrome::System,
             problem: Some(problem),
         };
