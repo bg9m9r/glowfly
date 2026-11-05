@@ -130,8 +130,8 @@ fn apply_sends_what_the_menu_item_sends() {
     let (mut st, dir, c, f) = with_feature("opp-apply");
     deliver_open(&mut st, merge(f));
     let fx = up(&mut st, Msg::OpPreview(OpPreviewMsg::Apply(None)));
-    let into = st.snap.as_ref().unwrap().merge_into.clone();
-    assert_eq!(git_cmds(&fx), [merge_cmd(&BranchRef::Local("feature".into()), into.as_deref())]);
+    let names = st.snap.as_ref().unwrap().merge_names.clone();
+    assert_eq!(git_cmds(&fx), [merge_cmd(&BranchRef::Local("feature".into()), &names)]);
     assert!(!matches!(st.modal, Some(Modal::OpPreview(_))), "the dialog closed");
     st.job = None;
 

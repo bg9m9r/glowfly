@@ -3,6 +3,7 @@
 
 use super::graph_cache::GraphCache;
 use super::*;
+use crate::branch_ref::BranchRef;
 use crate::commit_text;
 use crate::error::{Error, Result};
 use crate::graph;
@@ -58,7 +59,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let remotes = load_refs::remote_branches(&repo)?;
     let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } =
         load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
-    let merge_into = merge_dest::merge_into(&repo, head_branch.as_deref());
+    let merge_names = merge_dest::merge_names(&repo, head_branch.as_deref(), &branch_refs(&locals, &remotes));
     let (tags, other_tags, lightweight_tags) = load_refs::tags(&repo)?;
     drop(refs_span);
 
@@ -113,7 +114,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         remote_heads,
         push_remotes,
         pull_rebase,
-        merge_into,
+        merge_names,
         tags,
         other_tags,
         lightweight_tags,
@@ -142,6 +143,12 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     tracing::debug_span!("load.layout").in_scope(|| snap.lay_out_graph());
     snap.stacks = crate::stack::read(&repo, &snap);
     Ok(snap)
+}
+
+/// Every local and remote-tracking branch, as the menus name them.
+fn branch_refs(locals: &[BranchInfo], remotes: &load_refs::Remotes) -> Vec<BranchRef> {
+    let remote = remotes.iter().flat_map(|(r, bs)| bs.iter().map(move |(b, _)| BranchRef::Remote(format!("{r}/{b}"))));
+    locals.iter().map(|b| BranchRef::Local(b.name.clone())).chain(remote).collect()
 }
 
 /// Where the repository is: its work dir (as found and resolved), the spelling it was opened

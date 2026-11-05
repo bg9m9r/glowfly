@@ -3,7 +3,7 @@
 //! remote branch). Everything here is pure; the app runs the commands through `gitcli` so hooks,
 //! credentials and the user's git config apply.
 
-use crate::branch_ref::BranchRef;
+use crate::branch_ref::{BranchRef, MergeNames};
 use crate::gitcli::args;
 use crate::names::{RefClash, WinNameProblem, blocks_here, ref_clash, ref_name_problem};
 use crate::repo::{BranchInfo, Tracking};
@@ -131,8 +131,8 @@ pub fn rename_cmd(old: &str, new: &str) -> Vec<String> {
 }
 
 /// git's own merge title: "Merge branch 'x'" / "Merge remote-tracking branch 'origin/x'", then
-/// " into <into>" when `into` is Some (`Snapshot::merge_into`: None where merge.suppressDest
-/// leaves it out).
+/// " into <into>" when `into` is Some (`MergeNames::into`: None where merge.suppressDest leaves it
+/// out).
 fn merge_title(theirs: &BranchRef, into: Option<&str>) -> String {
     let kind = match theirs {
         BranchRef::Local(_) => "branch",
@@ -145,11 +145,19 @@ fn merge_title(theirs: &BranchRef, into: Option<&str>) -> String {
     }
 }
 
-/// `git merge -m <title> -- <full ref>`: the full ref so a same-named tag is never merged, and the
-/// title git would write for the short name (merge.log still appends its shortlog; a stopped
-/// merge's MERGE_MSG starts with it). `--` keeps the ref from reading as an option.
-pub fn merge_cmd(theirs: &BranchRef, into: Option<&str>) -> Vec<String> {
-    args(&["merge", "-m", &merge_title(theirs, into), "--", &theirs.full()])
+/// Merges the branch `theirs` into HEAD. When git's lookup takes its short name for it,
+/// `git merge -- <short name>`, so git writes its own message (the title, merge.log's shortlog
+/// headed "* x:", a stopped merge's MERGE_MSG). When a same-named tag or other ref shadows it
+/// (`MergeNames::shadowed`), `git merge -m <title> -- <full ref>`: the full ref so the branch is
+/// merged, and the title git writes for the short name; merge.log's shortlog then heads the
+/// branch's commits with the full ref, the name git was given. `--` keeps a name from reading
+/// as an option.
+pub fn merge_cmd(theirs: &BranchRef, names: &MergeNames) -> Vec<String> {
+    if names.is_shadowed(theirs) {
+        args(&["merge", "-m", &merge_title(theirs, names.into.as_deref()), "--", &theirs.full()])
+    } else {
+        args(&["merge", "--", theirs.shown()])
+    }
 }
 
 /// `git rebase -- <full ref>`: onto the branch itself, never a same-named tag.

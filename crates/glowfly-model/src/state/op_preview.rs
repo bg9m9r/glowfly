@@ -229,7 +229,7 @@ pub fn apply_blocker(t: Lang, job_running: bool, snap: &Snapshot, d: &PreviewDia
 /// None for a reset sends nothing).
 pub fn apply_msg(t: Lang, snap: &Snapshot, op: &PreviewOp, mode: Option<ResetMode>) -> Option<Msg> {
     Some(match op {
-        PreviewOp::Merge { theirs, .. } => Msg::git_cmd("Merge", merge_cmd(theirs, snap.merge_into.as_deref())),
+        PreviewOp::Merge { theirs, .. } => Msg::git_cmd("Merge", merge_cmd(theirs, &snap.merge_names)),
         PreviewOp::Rebase { onto: Some(b), .. } => Msg::git_cmd("Rebase", rebase_cmd(b)),
         // The commit menu's own item (onto a commit by its sha).
         PreviewOp::Rebase { onto: None, oid } => Msg::git("Rebase", &["rebase", &oid.to_string()]),

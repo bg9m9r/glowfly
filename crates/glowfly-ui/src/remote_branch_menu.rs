@@ -173,7 +173,7 @@ fn current_items(ui: &mut egui::Ui, c: &RemoteMenu, (remote, name): (&str, &str)
     let theirs = BranchRef::Remote(full.clone());
     let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Merge { theirs: theirs.clone(), oid }));
     let merge = item_named(named(t.tr("branch.menu.merge_into"), &on));
-    let merge_msg = Msg::git_cmd("Merge", merge_cmd(&theirs, snap.merge_into.as_deref()));
+    let merge_msg = Msg::git_cmd("Merge", merge_cmd(&theirs, &snap.merge_names));
     menu_row_preview(msgs, ui, merge, (t.tr("op_preview.menu.merge"), None), merge_msg, preview);
     let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: Some(theirs.clone()), oid }));
     let rebase = item_named(named(t.tr("branch.menu.rebase_onto"), &on));

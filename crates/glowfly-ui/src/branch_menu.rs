@@ -188,7 +188,7 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
         let merge = item_named(named(t.tr("branch.menu.merge_into"), &on));
         let rebase = item_named(named(t.tr("branch.menu.rebase_onto"), &on));
         let theirs = BranchRef::Local(name.to_owned());
-        let merge_msg = Msg::git_cmd("Merge", merge_cmd(&theirs, snap.merge_into.as_deref()));
+        let merge_msg = Msg::git_cmd("Merge", merge_cmd(&theirs, &snap.merge_names));
         let rebase_msg = Msg::git_cmd("Rebase", rebase_cmd(&theirs));
         match b.oid {
             Some(oid) => {

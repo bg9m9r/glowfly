@@ -16,6 +16,7 @@ use crate::theme::type_scale;
 use crate::widgets::menu::popover_below;
 use eframe::egui::{self, Align, Id, Layout, RichText, Sense};
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
+use glowfly_core::branch_ref::MergeNames;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_core::i18n::Lang;
 use glowfly_model::conflict_check::ConflictCheckMsg;
@@ -61,7 +62,7 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     if resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }
-    let gates = Gates { remote, idle: st.job.is_none(), merge_into: snap.merge_into.as_deref() };
+    let gates = Gates { remote, idle: st.job.is_none(), merge_names: Some(&snap.merge_names) };
     popover_below(ui, id, &resp, POPOVER_W, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
         popover(ui, t, report, paths, gates, msgs);
     });
@@ -74,8 +75,9 @@ pub struct Gates<'a> {
     pub remote: bool,
     /// No job runs, so Merge and Rebase are on.
     pub idle: bool,
-    /// What git's merge title ends with (`Snapshot::merge_into`).
-    pub merge_into: Option<&'a str>,
+    /// What a merge needs to write git's own message (`Snapshot::merge_names`); None without a
+    /// loaded repository.
+    pub merge_names: Option<&'a MergeNames>,
 }
 
 /// The popover's width with its frame (narrower only in a narrower window).
@@ -95,7 +97,7 @@ const TIP_W: f32 = 520.0;
 /// and the command on hover; and a quiet footer under a divider saying where to turn the
 /// check off. Every gap is set here, on the 8 px grid.
 fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String], gates: Gates, msgs: &mut Vec<Msg>) {
-    let Gates { remote, idle, merge_into } = gates;
+    let Gates { remote, idle, merge_names } = gates;
     ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
     header(ui, t, report, msgs);
     ui.add_space(8.0);
@@ -107,7 +109,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String]
         parts::file_list(ui, t, paths, true);
     }
     // The chip shows only a result for the inputs on screen.
-    let actions = actions(ui, t, report, merge_into);
+    let actions = actions(ui, t, report, merge_names);
     if !actions.is_empty() {
         ui.add_space(GROUP_GAP);
         ui.horizontal_wrapped(|ui| {
@@ -162,7 +164,7 @@ fn header(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, msgs: &mut Vec<Ms
 /// for what is checked out now (otherwise it offers no Merge or Rebase). Its body matches the
 /// popover's: the names block, then the file list (every path) or the result's sentence.
 pub fn report_modal(ui: &mut egui::Ui, cx: Cx, report: &ConflictReport, gates: Gates, on_head: bool, msgs: &mut Vec<Msg>) -> bool {
-    let Gates { remote, idle, merge_into } = gates;
+    let Gates { remote, idle, merge_names } = gates;
     let t = cx.t;
     let mut d = Dialog::new(cx, t.tr("conflict_check.dialog.title")).size(Size::Wide).resizable("conflict-report").begin(ui);
     d.body(ui, |ui| {
@@ -183,7 +185,7 @@ pub fn report_modal(ui: &mut egui::Ui, cx: Cx, report: &ConflictReport, gates: G
             ui.add(egui::Label::new(RichText::new(t.tr("conflict_check.head_moved")).color(color::weak())).wrap());
         }
     });
-    let actions = if on_head { actions(ui, t, report, merge_into) } else { Vec::new() };
+    let actions = if on_head { actions(ui, t, report, merge_names) } else { Vec::new() };
     let mut footer = Footer::new().extra(buttons::secondary(t.tr("conflict_check.check_again.button"))).close();
     for a in &actions {
         footer = footer.alt(
@@ -222,7 +224,7 @@ struct Action {
 /// labels that name no branch, against the default branch its name cut in its middle to
 /// `NAME_W`, and against a branch the user picked the full sentence with each name cut. The hover
 /// text says what the action does and, on its own line, the git command it runs.
-fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport, merge_into: Option<&str>) -> Vec<Action> {
+fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport, merge_names: Option<&MergeNames>) -> Vec<Action> {
     if !cc::offers_actions(report) {
         return Vec::new();
     }
@@ -266,7 +268,10 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport, merge_into: Option<&
         let name = name.unwrap_or_else(|| label.clone());
         Action { label, name, tip, msg: Msg::git_cmd(verb, cmd) }
     };
-    vec![action(merge, merge_says, "Merge", merge_cmd(target, merge_into)), action(rebase, rebase_says, "Rebase", rebase_cmd(target))]
+    vec![
+        action(merge, merge_says, "Merge", merge_cmd(target, merge_names.unwrap_or(&MergeNames::default()))),
+        action(rebase, rebase_says, "Rebase", rebase_cmd(target)),
+    ]
 }
 
 /// The command line as typed: `git`, then each argument, one with whitespace or `"` in double

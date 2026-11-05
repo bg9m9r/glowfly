@@ -24,7 +24,7 @@ source file, update its line here.
 ## Command lines and checks (`*_ops.rs`)
 
 - `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`: command lines and input checks for branches, tags and remotes; branch_ops merges and rebases by full ref, with git's own merge title (`branch_ops/merge_ref_tests.rs` checks both against git).
-- `branch_ref.rs`: `BranchRef`, a local or remote-tracking branch given to git by its full ref and shown by its short name.
+- `branch_ref.rs`: `BranchRef`, a local or remote-tracking branch given to git by its full ref and shown by its short name; `MergeNames`, what a merge needs to keep git's own message.
 - `push_all.rs`: Push to all remotes: one branch pushed to every remote in turn, going on past a failure, never forced and setting no upstream.
 - `clone_https.rs`: the `-c` options that fetch a host's SSH URLs over https for one command, and the https URL of an SSH clone URL.
 - `clone_ops.rs`: cloning (with `--recurse-submodules` for Clone submodules too), with the sparse clone job: the clone, then the folders to check out, then only those folders' submodules (`sparse_submodule_cmds`; git's sparse checkout leaves gitlinks out); `CloneOutcome::folders_set` tells a failed submodule step from failed folders, each with its own toast.

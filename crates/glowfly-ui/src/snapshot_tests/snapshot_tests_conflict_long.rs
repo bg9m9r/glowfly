@@ -48,7 +48,7 @@ fn on_long_branch(theme: ThemeChoice, name: &str, paths: &[&str]) -> (AppState, 
 /// Opens the popover with the long names and checks it.
 fn popover_long(theme: ThemeChoice, dark: bool, name: &str) {
     let (st, dir) = on_long_branch(theme, name, &["CHANGELOG.md"]);
-    let merge_into = st.snap.as_ref().unwrap().merge_into.clone();
+    let names = st.snap.as_ref().unwrap().merge_names.clone();
     let mut h = harness(st, dark);
     open(&mut h);
     h.check_snapshot(name);
@@ -60,9 +60,8 @@ fn popover_long(theme: ThemeChoice, dark: bool, name: &str) {
     assert!(h.query_by_label("CHANGELOG.md").is_some());
     h.get_by_label("Merge upstream").click();
     h.run();
-    let merge = vec![merge_cmd(&BranchRef::Remote(UPSTREAM.into()), merge_into.as_deref())];
-    let title = format!("Merge remote-tracking branch '{UPSTREAM}' into {BRANCH}");
-    assert_eq!(merge[0], args(&["merge", "-m", &title, "--", &format!("refs/remotes/{UPSTREAM}")]));
+    let merge = vec![merge_cmd(&BranchRef::Remote(UPSTREAM.into()), &names)];
+    assert_eq!(merge[0], args(&["merge", "--", UPSTREAM]), "no ref shadows the upstream");
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if *cmds == merge)));
     drop(h);
     remove_fixture(&dir);
@@ -150,8 +149,7 @@ fn conflict_popover_merge_tip_dark() {
     for _ in 0..4 {
         h.run();
     }
-    let typed = format!("git merge -m \"Merge remote-tracking branch '{UPSTREAM}' into {BRANCH}\" -- refs/remotes/{UPSTREAM}");
-    assert!(h.query_by_label_contains(&typed).is_some(), "the command on hover, quoted as typed");
+    assert!(h.query_by_label_contains(&format!("git merge -- {UPSTREAM}")).is_some(), "the command on hover");
     assert!(h.query_by_label_contains("Merges it into the checked-out branch. Runs:").is_some(), "what it does");
     h.check_snapshot("conflict_popover_merge_tip_dark");
     drop(h);

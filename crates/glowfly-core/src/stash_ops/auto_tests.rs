@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::branch_ops::merge_cmd;
-use crate::branch_ref::BranchRef;
+use crate::branch_ref::{BranchRef, MergeNames};
 use crate::gitcli::args;
 use crate::testutil::{git, scratch_repo, write};
 use std::path::{Path, PathBuf};
@@ -30,7 +30,11 @@ fn classifies_guarded_commands() {
     assert_eq!(of(&["checkout", "--theirs", "--", "a.txt"]), None);
     assert_eq!(of(&["pull", "--ff"]), Some(Pull { branch: s("main") }));
     assert_eq!(of(&["merge", "refs/remotes/origin/x"]), Some(Merge { from: s("origin/x"), into: s("main") }));
-    let built = AutoStashFor::of_command(&merge_cmd(&BranchRef::Local("x".into()), None), Some("main"));
+    let x = BranchRef::Local("x".into());
+    let plain = AutoStashFor::of_command(&merge_cmd(&x, &MergeNames::default()), Some("main"));
+    assert_eq!(plain, Some(Merge { from: s("x"), into: s("main") }));
+    let shadowed = MergeNames { into: None, shadowed: [x.full()].into() };
+    let built = AutoStashFor::of_command(&merge_cmd(&x, &shadowed), Some("main"));
     assert_eq!(built, Some(Merge { from: s("x"), into: s("main") }), "merge_cmd's -m title is no target");
     assert_eq!(built.unwrap().message(), "Auto-stash before merging x into main");
     assert_eq!(of(&["merge", "--ff-only", "topic"]), Some(Merge { from: s("topic"), into: s("main") }));
