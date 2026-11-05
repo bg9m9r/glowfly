@@ -118,3 +118,64 @@ fn nothing_to_probe() {
         assert_eq!(took_effect(&a, &r, &r), None);
     }
 }
+
+#[test]
+fn an_old_conflict_is_not_the_steps_effect() {
+    let (_fx, dir) = repo("old-conflict");
+    git(&dir, &["branch", "other"]);
+    commit_files(
+        &dir,
+        &[(
+            "a.txt", "mine
+",
+        )],
+        "mine",
+    );
+    git(&dir, &["checkout", "-q", "other"]);
+    commit_files(
+        &dir,
+        &[(
+            "a.txt", "theirs
+",
+        )],
+        "theirs",
+    );
+    git(&dir, &["checkout", "-q", "-"]);
+    assert!(!git_try(&dir, &["merge", "other"]));
+    let mid = read(&dir);
+    assert_eq!(took_effect(&Action::Merge("other".into()), &mid, &mid), Some(false));
+    assert_eq!(took_effect(&Action::Rebase("other".into()), &mid, &mid), Some(false));
+    assert_eq!(took_effect(&Action::Unstash, &mid, &mid), Some(false));
+    assert_eq!(took_effect(&Action::Continue, &read(&repo("clean").1), &read(&repo("clean2").1)), Some(false));
+}
+
+#[test]
+fn unstash_conflict_is_an_effect_only_when_new() {
+    let (_fx, dir) = repo("unstash");
+    write(
+        &dir, "a.txt", "stashed
+",
+    );
+    git(&dir, &["stash", "push", "-q"]);
+    commit_files(
+        &dir,
+        &[(
+            "a.txt",
+            "committed
+",
+        )],
+        "other change",
+    );
+    let before = read(&dir);
+    assert!(!git_try(&dir, &["stash", "pop"]));
+    let after = read(&dir);
+    assert_eq!(after.stashes, before.stashes);
+    assert_eq!(took_effect(&Action::Unstash, &before, &after), Some(true));
+}
+
+#[test]
+fn unstage_all_has_nothing_to_probe_when_nothing_was_staged() {
+    let (_fx, dir) = repo("unstage-all");
+    let r = read(&dir);
+    assert_eq!(took_effect(&Action::UnstageAll, &r, &r), None);
+}
