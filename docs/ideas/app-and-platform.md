@@ -55,18 +55,12 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
   it reads (today the file's settings replace them)
 - Try reading the file again on its own now and then (or when the window regains focus), not
   only on Try again
-- Prune old `settings.json.bak-N` copies: each start after a passing read failure keeps another
 - When the read file names a git that no longer runs, the PATH git stays in effect until the
   next start, while the settings name the other: offer to forget it on the refusal toast
 - Trust Glowfly records for a repository created while settings are held is dropped by a
   successful Try again, so the repository asks again.
 - `carry_records` adds `status_tip_shown` entries with a plain insert rather than
   `repo_keys::set`, so two spellings of one path can both be kept.
-- A recent/tabs file whose lines are all undecodable reads as empty and is overwritten on the
-  next save: keep a copy when lines are skipped.
-- A blocked recent/tabs save should try one read, merge with what's on disk and clear the block,
-  and tell the user; while blocked, Clear recent is silently ignored.
-- Strip a UTF-8 BOM when reading recent.txt and tabs.txt.
 - On Windows a private write drops a read-only attribute on settings.json; fix the
   WriteOptions::private doc ('Elsewhere nothing changes').
 
@@ -122,7 +116,6 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 
 ### Logs
 
-- Search and filter inside the activity panel and the error and performance tabs
 - Show hook runs (pre-commit, pre-push) as their own titled entries in the activity log
 - Show each entry's time in the current session (on hover or in a column)
 - Settings for the slow-operation threshold and the log size limits

@@ -32,8 +32,6 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Notice tracked code that no word of a command names: `python -m pkg.mod`, `npm run x`, `make x`
 - Send a job's `on_fail_check` command through the trust gate like its own commands.
 - Make the merges of a rebase-merges todo, an octopus merge and an `am -3` fallback in memory, so they are compared instead of held.
-- A Preferences list to review and revoke trust decisions (they are already remembered per
-  repository)
 - Bring back the dialog a held job came from (New tag, Remote, worktree…) after Cancel, with its
   fields intact
 - Don't count hooks Glowfly installed itself (git lfs install) as a reason to ask about a
@@ -100,12 +98,7 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 ### Submodules
 
 - Nested (recursive) submodules shown as a tree under their parent
-- Commit the current checkout as the new recorded commit (stage the gitlink) from the row menu,
-  and discard a submodule's uncommitted changes
-- Show a gitlink change in the WIP and commit diffs as the commit range it moves over, and
-  explain that a submodule's own changes are committed inside it
-- Fetch and pull inside a submodule; recurse-submodules options for fetch, pull and push; a
-  clear message when checkout or reset fails because of submodule changes
+- Recurse-submodules options for fetch, pull and push
 - Add recursively, cloning the new submodule's own submodules too
 - Shallow add (`--depth`) and a single-branch clone for large submodules
 - Choose a submodule name other than its path (`--name`), which also gets past a leftover stored
@@ -188,14 +181,9 @@ Clone and init, submodules, worktrees, LFS, sparse checkout, trust and the git e
 - Initialize with LFS when creating or cloning a repository
 - File locking: lockable patterns (`track --lockable`), locking and unlocking files, and showing
   who holds locks
-- Check for a minimum git and git-lfs version and say clearly when either is too old
 - After auto-fetch, also download the LFS files of the checked-out branch's upstream, so a later
   pull doesn't wait on them
 - A per-repository switch to leave LFS downloads out of auto-fetch
-- Warn in the main-window banner when git-lfs is installed but too old for the repository (no
-  filter-process support), next to the not-installed case
-- Check for git-lfs again when the window regains focus, so the missing-git-lfs banner clears
-  after installing it without opening Preferences
 - LFS badges in file history rows, stash file lists and the palette's file search
 - Say in the diff's LFS summary whether the object is downloaded locally, and offer to fetch it
 - Preview LFS-stored images or text (the smudged content) in the diff instead of only sizes

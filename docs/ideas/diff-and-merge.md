@@ -37,13 +37,10 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
   that don't start at the end of a line
 - Color Kotlin annotations (`@Suppress(...)`), which the bundled grammar leaves unscoped
 - Color Dockerfile `RUN` commands as shell (the hidden "Dockerfile (with bash)" grammar)
-- Hunk view: show the lines above the first hunk and below the last hunk too
-- Hunk view: Expand all / Collapse all for the gaps between hunks in the diff header
 - Fill in gaps with whitespace hidden, taking the new side's lines
 - Colour filled-in gap lines from the in-context parse (new side's states) instead of the old
   file on its own
 - Code comment marks on filled-in gap lines of pull request diffs
-- Show a loading state on a gap control while its lines are read
 - Trim the bundled syntax set to the languages Glowfly wants, if the extra ~0.6 MB of binary
   size matters
 - A per-file language picker (e.g. in the diff header), remembered per path
@@ -165,11 +162,7 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 ### Merge conflict tool
 
 - Syntax highlighting in the conflict panes
-- Mark several selected files resolved or conflicted at once (needs multi-select in the WIP
-  file lists)
 - Mark all resolved for one folder, once the WIP list has a folder view
-- A Preferences switch to turn off automatic picks for trivial conflicts
-- Pick trivial conflicts in every conflicted file at once, without opening each one
 - Mark conflicted for a submodule resolved in Glowfly (no resolve-undo record is written for
   gitlinks)
 - Mark conflicted for modify/delete conflicts (git can't recreate a conflict missing one side)

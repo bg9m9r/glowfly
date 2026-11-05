@@ -59,8 +59,6 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Show a kept discarded file's contents (and its diff against the file now) in the Lost preview
 - Forget a kept discard from the Lost list without waiting 30 days, and a setting for how long
   they are kept
-- Keep the working copy a file restore or a saved conflict resolution replaced, as discards are
-- Say in the Lost tab's subtitle that it lists discarded changes too, not only commits
 - Tell the user a Restore that finished after its tab was switched away (the toast is dropped)
 - Keep the stash "Discard all" makes as a record too, in case it is dropped from the list
 
@@ -107,7 +105,6 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Undo across restarts by rebuilding actions from the HEAD, branch and stash reflogs
 - Undo of Create tag and push: also delete the tag from the remote it was pushed to
 - Undo a rebase whose branch can't be known (a detached HEAD rebase continued from the banner)
-- Undo of branch rename and of the new branch made by `worktree add -b`
 - Undo of a Git Flow start or finish as one step
 - Roll back the remote-tracking refs a pull fetched when undoing it
 - Restore a popped or dropped stash at its original position in the list instead of at the top
@@ -115,7 +112,6 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Name the picked or reverted commits in the undo label of a sequence finished after conflicts
   (it now says N commits)
 - Undo of a merge, cherry-pick or revert continued in the terminal panel or outside Glowfly
-- Undo of discarding an untracked file or a symbolic link (only regular files are saved for undo)
 - Undo of a stash drop across restarts, by finding the dropped commit in the stash reflog or with
   fsck
 - Offer Stash changes and undo for a restack's undo refused for local changes
@@ -159,20 +155,13 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 
 ### Errors say what to do
 
-- Explain Schannel's revocation-check failures (CRYPT_E_NO_REVOCATION_CHECK, common behind
-  proxies on Windows) apart from untrusted certificates
-- A fix on the certificate toast that shows the http.sslCAInfo and http.sslBackend values in use
 - A Fetch-then-fast-forward fix for a sidebar Fast-forward that was rejected as non-fast-forward
   on a non-HEAD branch
-- Certificate phrases also match a failing signing helper (gitsign's x509 text) and `remote:` hook lines of a rejected push; match only git's own transport errors
-- Under Schannel, `http.sslCAInfo` is used only with `http.schannelUseSSLCAInfo=true`; say so in the certificate help
 - Force push with lease on the rejected-push toast also when `url.<base>.insteadOf` / `pushInsteadOf` rewrites the URL git prints in `To` (today nothing is offered)
 - Read push options that take a separate value (`-o x`, `--push-option x`, `--repo x`, `--receive-pack x`) when finding a rejected push's remote and refspec
 - Match git-lfs's other Go certificate wordings
 - Try again for jobs started as effects (`begin_job`: stash, undo, rebase) and for auto-stash-wrapped jobs, which `start_job`'s kept spec doesn't cover
-- Delete lock file for libgit2's own lock errors (an index.lock met by a stage or discard), which `git_errors::classify` doesn't read
 - Narrow "git is running" to this repository on Linux and macOS (a process's cwd, `-C`, `GIT_DIR`) instead of any git on the machine
-- Offer View conflicts on a conflicts toast once the status names the files, when git's CONFLICT lines named none
 - Carry the status's conflict count into the activity file's line and the desktop note, which keep git's count
 - Keep the file names of folded line-ending warnings reachable (a fold-out row in the activity log, or in Show output and Copy log)
 - Fold git's pre-2.37 line-ending warnings ("LF will be replaced by CRLF in <path>." with its "original line endings" line) too
@@ -181,5 +170,3 @@ Previews, the operation journal, undo, in-progress operations, disabled actions 
 - Cancelling the Delete lock file confirmation drops both buttons; keep them until one runs
 - Try again for a job that failed past its first command, from the failed command on (`cmds[at..]`), where each step allows it
 - Lock holders Delete lock file can't see: libgit2 or JGit tools and a second Glowfly (not named git), WSL2 work with no `wsl.exe` left running, and containers on the macOS or Windows VM backends
-- Count conflicts only from a whole status read: a partial read after a failed job can shrink the count
-- Keep conflicted paths that aren't UTF-8 in the recount's file list instead of leaving it empty
