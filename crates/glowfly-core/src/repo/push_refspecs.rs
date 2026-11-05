@@ -70,11 +70,17 @@ fn full_name(name: &str) -> String {
 
 /// Where the push specs send the branch ref `full`: the first spec whose source matches. A
 /// source of `HEAD` (or `@`) is the checked-out branch, so it matches only when `is_head`; it
-/// keeps the branch's name without a destination. None: a plain push doesn't send it.
+/// keeps the branch's name without a destination, or with `HEAD`/`@` as one (libgit2 fills a
+/// push spec's missing destination with its source, so a bare `HEAD` reads as `HEAD:HEAD`).
+/// None: a plain push doesn't send it.
 pub(super) fn push_dest(specs: &[Spec], full: &str, is_head: bool) -> Option<String> {
+    let is_head_name = |n: &str| n == "HEAD" || n == "@";
     specs.iter().find_map(|s| {
-        if s.src == "HEAD" || s.src == "@" {
-            return is_head.then(|| s.dst.as_deref().map(full_name).unwrap_or_else(|| full.to_owned()));
+        if is_head_name(&s.src) {
+            return is_head.then(|| match s.dst.as_deref() {
+                Some(d) if !is_head_name(d) => full_name(d),
+                _ => full.to_owned(),
+            });
         }
         s.map(full)
     })

@@ -81,6 +81,9 @@ fn refspecs_map_names_as_git_does() {
     let head = [Spec::new("HEAD", Some("refs/for/main"))];
     assert_eq!(push_dest(&head, "refs/heads/x", true).as_deref(), Some("refs/for/main"));
     assert_eq!(push_dest(&head, "refs/heads/x", false), None);
+    let bare = [Spec::new("HEAD", Some("HEAD")), Spec::new("@", Some("@"))];
+    assert_eq!(push_dest(&bare, "refs/heads/x", true).as_deref(), Some("refs/heads/x"), "HEAD:HEAD keeps the name");
+    assert_eq!(push_dest(&bare[1..], "refs/heads/x", true).as_deref(), Some("refs/heads/x"), "@:@ keeps the name");
     let fetch = [Spec::new("refs/heads/*", Some("refs/remotes/fork/*"))];
     assert_eq!(tracking_ref(&fetch, "refs/heads/main").as_deref(), Some("refs/remotes/fork/main"));
     assert_eq!(tracking_ref(&fetch, "refs/for/main"), None);
