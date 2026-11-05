@@ -2,8 +2,9 @@
 //! at its own path when nothing is there, or as a copy next to it.
 
 use super::kept::{Kept, KeptItem, find};
-use super::saved;
+use super::saved::{self, Saved};
 use crate::error::{Error, Result};
+use crate::repo::workfile_unrm::symlinks;
 use git2::{Oid, Repository};
 use std::path::Path;
 
@@ -29,7 +30,7 @@ pub fn restore(workdir: &Path, id: Oid, copy: bool) -> Result<Restored> {
     let full = workdir.join(crate::repo::contained(&path)?);
     let target = if copy {
         copy_name(workdir, &path)?
-    } else if saved::current(workdir, &path).ok().flatten().is_some_and(|s| s.content() == (blob, link)) {
+    } else if (Saved { blob, executable, link }).held_by(saved::current(workdir, &path).ok().flatten(), symlinks(&repo)) {
         return Ok(Restored::AlreadyThere { path });
     } else if full.symlink_metadata().is_ok() {
         return Ok(Restored::Occupied { path });

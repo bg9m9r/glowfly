@@ -1,8 +1,8 @@
 //! Undo, redo and the journal for symbolic links against real repositories: a discarded,
 //! deleted or replaced link is kept as git stores one (its target as a mode-120000 blob) and
 //! comes back as a link, never over anything, or as a plain file holding its target when
-//! `core.symlinks` is false. Every test skips where links can't be made (Windows without
-//! Developer Mode or admin rights).
+//! `core.symlinks` is false, which then counts as the link. Every test that makes a link skips
+//! where links can't be made (Windows without Developer Mode or admin rights).
 
 use super::kept::{self, KeptItem, KeptWhat, Restored};
 use super::test_bin::never;
@@ -210,6 +210,115 @@ fn with_core_symlinks_off_a_link_comes_back_as_a_plain_file() {
     assert!(full.symlink_metadata().unwrap().is_file(), "a plain file, as git checks a link out then");
     assert_eq!(std::fs::read(&full).unwrap(), b"a.txt");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The default on Windows: `core.symlinks` false, with a real link made outside git.
+#[test]
+fn with_core_symlinks_off_an_untracked_link_put_back_as_a_file_redoes_and_leaves_the_lost_tab() {
+    let dir = base("lnk-nosymlinks-redo");
+    git(&dir, &["config", "core.symlinks", "false"]);
+    if !file_link("a.txt", &dir.join("new-link")) {
+        let _ = std::fs::remove_dir_all(&dir);
+        return eprintln!("{SKIPPED}");
+    }
+    let a = discard_untracked_saving(&dir, "new-link", DeleteVia::Trash, false, NO_TRASH).unwrap().undo.expect("undoable");
+    let id = kept::list(&dir).unwrap()[0].id;
+    put_link_back(&dir, &a);
+    assert!(dir.join("new-link").symlink_metadata().unwrap().is_file(), "a plain file holding the target");
+    assert!(kept::list(&dir).unwrap().is_empty(), "the file holding the target counts as the link");
+    assert_eq!(kept::restore(&dir, id, false).unwrap(), Restored::AlreadyThere { path: "new-link".into() });
+    match plan(&dir, &a, true).unwrap() {
+        // The plain file put back goes to the trash like any file.
+        Plan::DeleteAgain { path, via, staged } => assert!(delete_again(&dir, &path, via, staged, super::test_bin::T).is_ok()),
+        other => panic!("redo isn't refused as stale: {other:?}"),
+    }
+    assert!(dir.join("new-link").symlink_metadata().is_err());
+    put_link_back(&dir, &a);
+    assert_eq!(std::fs::read(dir.join("new-link")).unwrap(), b"a.txt", "undo works again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The tracked link re-pointed and discarded with `core.symlinks` false all along.
+#[test]
+fn with_core_symlinks_off_a_discarded_link_undoes_and_redoes() {
+    let Some(dir) = with_link("lnk-nosymlinks-discard") else { return eprintln!("{SKIPPED}") };
+    git(&dir, &["config", "core.symlinks", "false"]);
+    std::fs::remove_file(dir.join("l")).unwrap();
+    assert!(file_link("b.txt", &dir.join("l")));
+    let a = discard_saving(&dir, "l", Discarded::File, || repo::discard_file(&dir, "l")).unwrap().expect("undoable");
+    let Action::Discard { before: Some(before), .. } = &a else { panic!("{a:?}") };
+    assert!(before.link && before.blob == hash("b.txt"), "{a:?}");
+    apply(&dir, &a, false);
+    assert_eq!(std::fs::read(dir.join("l")).unwrap(), b"b.txt", "undo puts the target back (a plain file here)");
+    assert!(kept::list(&dir).unwrap().is_empty(), "the discarded target is back");
+    apply(&dir, &a, true);
+    assert_eq!(std::fs::read(dir.join("l")).unwrap(), b"a.txt", "redo isn't refused as stale");
+    apply(&dir, &a, false);
+    assert_eq!(std::fs::read(dir.join("l")).unwrap(), b"b.txt");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The undo history and journal as a discard of a real link left them, with `core.symlinks`
+/// false: needs no link, so it runs everywhere. The link `new-link` to a.txt was discarded
+/// (kept, and undoable as a delete).
+fn discarded_link_record(name: &str) -> (PathBuf, Action, git2::Oid) {
+    let dir = base(name);
+    git(&dir, &["config", "core.symlinks", "false"]);
+    let blob = git2::Repository::open(&dir).unwrap().blob(b"a.txt").unwrap();
+    let link = Saved { blob, executable: false, link: true };
+    let id = kept::keep_file(&dir, "new-link", link, KeptWhat::Untracked).unwrap();
+    let a = Action::DeleteFile { path: "new-link".into(), before: link, via: DeleteVia::Permanent, staged: None };
+    (dir, a, id)
+}
+
+#[test]
+fn without_core_symlinks_a_link_put_back_as_a_file_redoes_and_leaves_the_lost_tab() {
+    let (dir, a, id) = discarded_link_record("lnk-nosymlinks-record");
+    assert_eq!(kept::list(&dir).unwrap().len(), 1);
+    put_link_back(&dir, &a);
+    assert!(dir.join("new-link").symlink_metadata().unwrap().is_file());
+    assert!(kept::list(&dir).unwrap().is_empty(), "the file holding the target counts as the link");
+    assert_eq!(kept::restore(&dir, id, false).unwrap(), Restored::AlreadyThere { path: "new-link".into() });
+    match plan(&dir, &a, true).unwrap() {
+        Plan::DeleteAgain { path, via, staged } => assert!(delete_again(&dir, &path, via, staged, NO_TRASH).is_ok()),
+        other => panic!("redo isn't refused as stale: {other:?}"),
+    }
+    assert!(dir.join("new-link").symlink_metadata().is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn without_core_symlinks_a_discarded_link_target_written_back_redoes() {
+    let dir = base("lnk-nosymlinks-write");
+    git(&dir, &["config", "core.symlinks", "false"]);
+    let repo = git2::Repository::open(&dir).unwrap();
+    let before = Saved { blob: repo.blob(b"b.txt").unwrap(), executable: false, link: true };
+    let after = Saved::file(repo.blob(b"a.txt").unwrap(), false);
+    drop(repo);
+    write(&dir, "l", "a.txt");
+    let a = Action::Discard { path: "l".into(), what: Discarded::File, before: Some(before), after: Some(after) };
+    apply(&dir, &a, false);
+    assert_eq!(std::fs::read(dir.join("l")).unwrap(), b"b.txt");
+    apply(&dir, &a, true);
+    assert_eq!(std::fs::read(dir.join("l")).unwrap(), b"a.txt", "redo isn't refused as stale");
+    // Where links are made as links, a plain file isn't the link, so redo is refused.
+    apply(&dir, &a, false);
+    git(&dir, &["config", "core.symlinks", "true"]);
+    assert!(matches!(plan(&dir, &a, true).unwrap(), Plan::Refuse(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Runs everywhere, also where links can't be made.
+#[test]
+fn a_plain_file_holding_the_target_counts_as_the_link_only_without_core_symlinks() {
+    let link = Saved { blob: hash("a.txt"), executable: false, link: true };
+    let file = Saved::file(hash("a.txt"), false);
+    assert!(link.held_by(Some(link), true) && link.held_by(Some(link), false));
+    assert!(link.held_by(Some(file), false), "how a link is put back there");
+    assert!(!link.held_by(Some(file), true));
+    assert!(!file.held_by(Some(link), false), "a link never counts as a plain file");
+    assert!(!link.held_by(Some(Saved::file(hash("b.txt"), false)), false));
+    assert!(!link.held_by(None, false));
 }
 
 #[cfg(windows)]

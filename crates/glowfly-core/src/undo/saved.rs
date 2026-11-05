@@ -40,9 +40,24 @@ impl Saved {
         }
     }
 
-    /// What a path must hold to count as holding this: the bytes, and whether as a link.
-    pub(super) fn content(self) -> (Oid, bool) {
-        (self.blob, self.link)
+    /// Whether `now` (what a path holds, as `current` reads it) counts as holding this: the same
+    /// bytes, and a link still a link. Where a link is put back as a plain file holding its
+    /// target (`links` false: `core.symlinks` is), such a file counts as the link too.
+    pub(super) fn held_by(self, now: Option<Saved>, links: bool) -> bool {
+        now.is_some_and(|n| n.blob == self.blob && (n.link == self.link || (self.link && !links)))
+    }
+}
+
+/// Whether `workdir` makes links as links (`core.symlinks`), for [`Saved::held_by`].
+pub(super) fn makes_links(workdir: &Path) -> bool {
+    Repository::open(workdir).map_or(!cfg!(windows), |r| crate::repo::workfile_unrm::symlinks(&r))
+}
+
+/// Whether a path holding `now` holds `expect` ([`Saved::held_by`]; `None`: absent).
+pub(super) fn holds(workdir: &Path, now: Option<Saved>, expect: Option<Saved>) -> bool {
+    match expect {
+        Some(e) => e.held_by(now, makes_links(workdir)),
+        None => now.is_none(),
     }
 }
 
@@ -190,9 +205,9 @@ pub(super) fn saving<T>(
 }
 
 /// Drops the record `id` kept before an operation on `path` when the file still holds what it
-/// held `before` (the same bytes, a link still a link): nothing was thrown away.
+/// held `before` ([`Saved::held_by`]): nothing was thrown away.
 pub(super) fn settle(workdir: &Path, path: &str, id: git2::Oid, before: Saved) {
-    if current(workdir, path).ok().flatten().is_some_and(|s| s.content() == before.content()) {
+    if before.held_by(current(workdir, path).ok().flatten(), makes_links(workdir)) {
         kept::forget(workdir, id);
     }
 }
@@ -291,7 +306,7 @@ pub(super) fn plan(workdir: &Path, path: &str, before: Option<Saved>, after: Opt
         Err(Error::Unsupported(m)) => return Ok(stale(m)),
         Err(e) => return Err(e),
     };
-    if now.map(Saved::content) != expect.map(Saved::content) {
+    if !holds(workdir, now, expect) {
         let kept = match before {
             Some(s) if !redo => format!("; the {kept_as} version is kept as blob {} (git cat-file -p {})", s.blob, s.blob),
             _ => String::new(),

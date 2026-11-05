@@ -118,7 +118,7 @@ pub(crate) fn write_link(workdir: &Path, path: &str, target: &[u8]) -> Result<()
 }
 
 /// Whether links are made as links (`core.symlinks`, true unless set except on Windows).
-fn symlinks(repo: &Repository) -> bool {
+pub(crate) fn symlinks(repo: &Repository) -> bool {
     repo.config().and_then(|c| c.get_bool("core.symlinks")).unwrap_or(!cfg!(windows))
 }
 
