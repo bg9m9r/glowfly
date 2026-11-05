@@ -55,7 +55,7 @@ Button "Read the journal again"
 Button "States" [off]
 Button "Lost commits" [on]
 Label "Operation journal"
-Label "Commits no branch, tag, remote branch or stash keeps"
+Label "Discarded and replaced files Glowfly kept, and commits no branch, tag, remote branch or stash keeps"
 Button "On main: try the wider search box"
 Button "Add login page"
 Button "Add app skeleton"

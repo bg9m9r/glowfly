@@ -101,7 +101,7 @@ fn undo_never_overwrites_and_redo_never_deletes_edits() {
 }
 
 #[test]
-fn links_and_large_files_get_no_undo() {
+fn large_files_get_no_undo() {
     let dir = base("udel-nokeep");
     write(&dir, "ten.txt", "0123456789");
     let objects = || {
@@ -110,20 +110,19 @@ fn links_and_large_files_get_no_undo() {
     let d = super::deleted::delete_saving_with(&dir, "ten.txt", DeleteVia::Permanent, false, T, 4).unwrap();
     assert!(d.too_large && d.undo.is_none(), "{d:?}");
     assert!(!objects(), "no blob was written");
+    let _ = std::fs::remove_dir_all(&dir);
+}
 
+#[test]
+fn links_get_undo() {
+    let dir = base("udel-link");
     let target = dir.join("f.txt");
-    let link = dir.join("link.txt");
-    #[cfg(unix)]
-    let made = std::os::unix::fs::symlink(&target, &link).is_ok();
-    #[cfg(windows)]
-    let made = std::os::windows::fs::symlink_file(&target, &link).is_ok();
-    if !made {
-        eprintln!("skipped the link case: symbolic links are unavailable here");
-        return;
+    if !file_link("f.txt", &dir.join("link.txt")) {
+        return eprintln!("skipped: symbolic links can't be made here");
     }
     let d = delete_saving(&dir, "link.txt", DeleteVia::Trash, false, T).unwrap();
-    assert_eq!((d.how, d.undo.is_none(), d.too_large), (Deleted::LinkRemoved, true, false));
-    assert!(target.exists(), "the target is untouched");
+    assert_eq!((d.how, d.undo.is_some(), d.too_large), (Deleted::LinkRemoved, true, false), "{d:?}");
+    assert_eq!(std::fs::read(&target).unwrap(), b"one\ntwo\n", "the target is untouched");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

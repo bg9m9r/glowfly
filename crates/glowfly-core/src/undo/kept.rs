@@ -1,18 +1,22 @@
 //! Discarded work kept where git can't lose it, so it survives an unrelated job, a closed tab, a
-//! restart or a crash, and the journal's Lost tab can list it under "Discarded changes".
+//! restart or a crash, and the journal's Lost tab can list it under "Discarded changes". Besides
+//! discards, deletes and dropped stashes, records also keep the working copy a restore from a
+//! commit or a conflict view save replaced.
 //!
 //! Each record is a commit referenced by `refs/glowfly/discarded/<its id>`, written before the
 //! discard runs (and removed again when the discard turned out to change nothing): for a file,
-//! its tree holds the bytes as they were (`file`); for a dropped stash, the stash commit is its
-//! parent. Either way the content stays reachable, so `git gc` keeps it. The message's last line
-//! is the note itself, one JSON object (`Note`): what was discarded, the path and blob, or the
-//! stash and its list message. A record older than `KEEP_DAYS` is dropped at the next one,
-//! except those made since this app run started: Undo's history is in memory only, so it can
-//! name nothing older.
+//! its tree holds the bytes as they were (`file`; a symbolic link's target as a mode-120000
+//! entry); for a dropped stash, the stash commit is its parent. Either way the content stays
+//! reachable, so `git gc` keeps it. The message's last line is the note itself, one JSON object
+//! (`Note`): what was discarded, the path and blob, or the stash and its list message. A record
+//! older than `KEEP_DAYS` is dropped at the next one, except those made since this app run
+//! started: Undo's history is in memory only, so it can name nothing older. Restore from the
+//! journal is `kept_restore.rs`.
 
+pub use super::kept_restore::{Restored, copy_name, restore};
 use super::{Discarded, Saved};
 use crate::error::{Error, Result};
-use git2::{ObjectType, Oid, Repository, Signature, Time};
+use git2::{Oid, Repository, Signature, Time};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::Path;
@@ -24,6 +28,9 @@ pub const KEPT_REF_PREFIX: &str = "refs/glowfly/discarded/";
 pub const KEEP_DAYS: i64 = 30;
 /// The note's format version.
 pub const VERSION: u32 = 1;
+/// The format version of a record of a symbolic link: older builds skip those rather than
+/// restore the target as a plain file.
+pub const LINK_VERSION: u32 = 2;
 /// The most records listed (the newest).
 pub const MAX_LISTED: usize = 200;
 
@@ -44,8 +51,25 @@ pub enum KeptWhat {
     /// A stash dropped from the stash list.
     Stash,
     /// A file written over while resolving a conflict, or by undoing or redoing that (Mark
-    /// conflicted, a whole side taken).
+    /// conflicted, a whole side taken); also the working copy a conflict view save (a
+    /// resolution or a save with markers) wrote over.
     Conflict,
+    /// The working copy a restore from a commit replaced.
+    Restore,
+}
+
+impl KeptWhat {
+    /// What the record's message says the bytes were kept before.
+    pub(crate) fn before(self) -> &'static str {
+        match self {
+            KeptWhat::File | KeptWhat::Hunk | KeptWhat::Lines | KeptWhat::Untracked => "the discard",
+            KeptWhat::Revert => "the revert",
+            KeptWhat::Delete => "the delete",
+            KeptWhat::Conflict => "the conflict change",
+            KeptWhat::Restore => "the restore",
+            KeptWhat::Stash => "the drop",
+        }
+    }
 }
 
 impl From<Discarded> for KeptWhat {
@@ -62,8 +86,8 @@ impl From<Discarded> for KeptWhat {
 /// The kept content.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum KeptItem {
-    /// `path`'s exact bytes as they were, in `blob`.
-    File { path: String, blob: Oid, executable: bool },
+    /// `path`'s exact bytes as they were, in `blob` (a symbolic link's target when `link`).
+    File { path: String, blob: Oid, executable: bool, link: bool },
     /// The dropped stash commit and its list message.
     Stash { stash: Oid, message: String },
 }
@@ -90,6 +114,8 @@ struct Note {
     blob: Option<String>,
     #[serde(default)]
     executable: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    link: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     stash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -109,20 +135,26 @@ fn run_started() -> i64 {
 /// Keeps `path`'s bytes `saved` (what a discard of `what` is about to throw away). Returns the
 /// record's id, for `forget` when the discard changed nothing.
 pub(crate) fn keep_file(workdir: &Path, path: &str, saved: Saved, what: KeptWhat) -> Result<Oid> {
+    keep_file_dated(workdir, path, saved, what, None)
+}
+
+/// `keep_file` dated `at` (now when `None`).
+fn keep_file_dated(workdir: &Path, path: &str, saved: Saved, what: KeptWhat, at: Option<i64>) -> Result<Oid> {
     let repo = Repository::open(workdir)?;
     let mut tree = repo.treebuilder(None)?;
-    tree.insert("file", saved.blob, if saved.executable { 0o100755 } else { 0o100644 })?;
+    tree.insert("file", saved.blob, saved.mode())?;
     let tree = tree.write()?;
     let note = Note {
-        v: VERSION,
+        v: if saved.link { LINK_VERSION } else { VERSION },
         what,
         path: Some(path.to_owned()),
         blob: Some(saved.blob.to_string()),
         executable: saved.executable,
+        link: saved.link,
         stash: None,
         message: None,
     };
-    record(&repo, tree, None, &note, &format!("{path} as it was before the discard"), None)
+    record(&repo, tree, None, &note, &format!("{path} as it was before {}", what.before()), at)
 }
 
 /// Keeps the stash commit `stash` (list `message`), about to be dropped.
@@ -135,6 +167,7 @@ pub(crate) fn keep_stash(workdir: &Path, stash: Oid, message: &str) -> Result<Oi
         path: None,
         blob: None,
         executable: false,
+        link: false,
         stash: Some(stash.to_string()),
         message: Some(message.to_owned()),
     };
@@ -190,13 +223,13 @@ fn parse(c: &git2::Commit) -> Option<Kept> {
     let message = String::from_utf8_lossy(c.message_bytes()).into_owned();
     let line = message.lines().rev().find(|l| !l.trim().is_empty())?;
     let note: Note = serde_json::from_str(line).ok()?;
-    if note.v != VERSION {
+    if note.v != VERSION && note.v != LINK_VERSION {
         return None;
     }
     let oid = |s: &Option<String>| s.as_deref().and_then(|s| Oid::from_str(s).ok());
     let item = match note.what {
         KeptWhat::Stash => KeptItem::Stash { stash: oid(&note.stash)?, message: note.message.unwrap_or_default() },
-        _ => KeptItem::File { path: note.path?, blob: oid(&note.blob)?, executable: note.executable },
+        _ => KeptItem::File { path: note.path?, blob: oid(&note.blob)?, executable: note.executable, link: note.link },
     };
     Some(Kept { id: c.id(), at: c.time().seconds(), what: note.what, item })
 }
@@ -213,18 +246,14 @@ fn all(repo: &Repository) -> Result<Vec<Kept>> {
     Ok(out)
 }
 
-/// The blob `path` would be now (`None`: absent or not a regular file).
-fn blob_at(workdir: &Path, path: &str) -> Option<Oid> {
-    let full = workdir.join(crate::repo::contained(path).ok()?);
-    let meta = full.symlink_metadata().ok()?;
-    if !meta.is_file() {
-        return None;
-    }
-    Oid::hash_object(ObjectType::Blob, &std::fs::read(full).ok()?).ok()
+/// The record `id`, `None` when it isn't one this version understands.
+pub(super) fn find(repo: &Repository, id: Oid) -> Result<Option<Kept>> {
+    Ok(parse(&repo.find_reference(&format!("{KEPT_REF_PREFIX}{id}"))?.peel_to_commit()?))
 }
 
 /// The records still worth listing, newest first: not a file whose path holds those bytes again
-/// (undone, restored), nor a stash back in the stash list; each path's bytes once.
+/// (undone, restored; a link only as a link), nor a stash back in the stash list; each path's
+/// bytes once.
 pub fn list(workdir: &Path) -> Result<Vec<Kept>> {
     let repo = Repository::open(workdir)?;
     let stashed: HashSet<Oid> = match repo.reflog("refs/stash") {
@@ -235,7 +264,10 @@ pub fn list(workdir: &Path) -> Result<Vec<Kept>> {
     let mut out = Vec::new();
     for k in all(&repo)? {
         let shown = match &k.item {
-            KeptItem::File { path, blob, .. } => seen.insert((path.clone(), *blob)) && blob_at(workdir, path) != Some(*blob),
+            KeptItem::File { path, blob, link, .. } => {
+                let now = super::saved::current(workdir, path).ok().flatten().map(Saved::content);
+                seen.insert((path.clone(), *blob)) && now != Some((*blob, *link))
+            }
             KeptItem::Stash { stash, .. } => seen.insert((String::new(), *stash)) && !stashed.contains(stash),
         };
         if shown {
@@ -248,77 +280,10 @@ pub fn list(workdir: &Path) -> Result<Vec<Kept>> {
     Ok(out)
 }
 
-/// How a Restore of a kept file went.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Restored {
-    /// Written at `path` (its own path, or the copy's next to it).
-    Wrote { path: String },
-    /// Its path already holds exactly those bytes; nothing was written.
-    AlreadyThere { path: String },
-    /// Something else is at its path, which Restore never replaces; nothing was written.
-    Occupied { path: String },
-}
-
-/// Writes the kept file `id` back: at its own path when nothing is there (`copy` false), or as a
-/// new file next to it ("name (restored).ext"). Never writes over anything.
-pub fn restore(workdir: &Path, id: Oid, copy: bool) -> Result<Restored> {
-    let repo = Repository::open(workdir)?;
-    let record = parse(&repo.find_reference(&format!("{KEPT_REF_PREFIX}{id}"))?.peel_to_commit()?);
-    let Some(Kept { item: KeptItem::File { path, blob, executable }, .. }) = record else {
-        return Err(Error::Unsupported("This record isn't a kept file".into()));
-    };
-    let full = workdir.join(crate::repo::contained(&path)?);
-    let target = if copy {
-        copy_name(workdir, &path)?
-    } else if blob_at(workdir, &path) == Some(blob) {
-        return Ok(Restored::AlreadyThere { path });
-    } else if full.symlink_metadata().is_ok() {
-        return Ok(Restored::Occupied { path });
-    } else {
-        path
-    };
-    let bytes = repo.find_blob(blob)?.content().to_vec();
-    let file_mode = repo.config().and_then(|c| c.get_bool("core.fileMode")).unwrap_or(true);
-    drop(repo);
-    crate::repo::undelete_file(workdir, &target, &bytes, file_mode.then_some(executable), None)?;
-    Ok(Restored::Wrote { path: target })
-}
-
-/// The first free "name (restored).ext", "name (restored 2).ext", … next to `path`.
-pub fn copy_name(workdir: &Path, path: &str) -> Result<String> {
-    let (dir, name) = path.rsplit_once('/').map_or(("", path), |(d, n)| (d, n));
-    let (stem, ext) = match name.rfind('.') {
-        Some(i) if i > 0 => (&name[..i], &name[i..]),
-        _ => (name, ""),
-    };
-    for n in 1..=100 {
-        let tag = if n == 1 { "restored".to_owned() } else { format!("restored {n}") };
-        let file = format!("{stem} ({tag}){ext}");
-        let candidate = if dir.is_empty() { file } else { format!("{dir}/{file}") };
-        if workdir.join(crate::repo::contained(&candidate)?).symlink_metadata().is_err() {
-            return Ok(candidate);
-        }
-    }
-    Err(Error::Other(format!("Too many restored copies of {path} are already next to it")))
-}
-
 /// A record dated `at`, for tests of pruning.
 #[cfg(test)]
 pub(super) fn keep_file_at(workdir: &Path, path: &str, saved: Saved, at: i64) -> Result<Oid> {
-    let repo = Repository::open(workdir)?;
-    let mut tree = repo.treebuilder(None)?;
-    tree.insert("file", saved.blob, 0o100644)?;
-    let tree = tree.write()?;
-    let note = Note {
-        v: VERSION,
-        what: KeptWhat::File,
-        path: Some(path.into()),
-        blob: Some(saved.blob.to_string()),
-        executable: false,
-        stash: None,
-        message: None,
-    };
-    record(&repo, tree, None, &note, path, Some(at))
+    keep_file_dated(workdir, path, saved, KeptWhat::File, Some(at))
 }
 
 /// Every record, also those `list` hides, for tests.

@@ -8,13 +8,12 @@
 //! history, `walk_reuse` takes what an earlier load read, `load_more` goes on from where a cut
 //! walk stopped, `branch_merged` which local branches HEAD contains), `branch_colours` (laying the graph out with each lane's owner and colour), `status_paths` and `status_merge`
 //! (re-reading only some work-tree paths), `status_speed` (what speeds git's status up) and `fsmonitor`
-//! (git's built-in file system monitor), `diff` (and `diff_view`, a file's diff for the viewer, narrowed to it by `diff_scope`; `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per
-//! file of a commit or of the working tree),
+//! (git's built-in file system monitor), `diff` (and `diff_view`, a file's diff for the viewer, narrowed to it by `diff_scope`; `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the picks a
 //! file saved with markers holds), `template` (commit.template), `tool_sides` (versions for external
 //! tools) and `binary_sides` (a binary diff's sizes, image, SVG and font previews), `touching` (commits that
-//! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file back for undo), `noclobber` and
+//! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file or link back for undo), `noclobber` and
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes, read from the source `attr_source` picks for the version shown), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
@@ -75,7 +74,7 @@ mod remotes;
 mod removal;
 mod resolve;
 mod resolve_undo;
-mod restore;
+pub(crate) mod restore;
 mod revert;
 mod revert_file;
 mod revert_merge;
@@ -108,7 +107,7 @@ mod workfile_disk;
 mod workfile_mv;
 mod workfile_rename;
 mod workfile_rm;
-mod workfile_unrm;
+pub(crate) mod workfile_unrm;
 mod worktree_counts;
 mod worktrees;
 

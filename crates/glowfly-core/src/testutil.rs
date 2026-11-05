@@ -273,3 +273,21 @@ pub(crate) fn rewrite_reflog(dir: &Path, reference: &str, from: &[u8], to: &[u8]
     }
     std::fs::write(&file, out).unwrap();
 }
+
+/// Makes `link` a symbolic link to the file `target` (a Windows file link), returning whether
+/// it could: Windows refuses without Developer Mode or admin rights, so link tests skip then.
+pub(crate) fn file_link(target: &str, link: &Path) -> bool {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(target, link).is_ok()
+    }
+    #[cfg(windows)]
+    {
+        std::os::windows::fs::symlink_file(target, link).is_ok()
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = (target, link);
+        false
+    }
+}

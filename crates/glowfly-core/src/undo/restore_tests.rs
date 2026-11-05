@@ -132,15 +132,52 @@ fn would_overwrite_and_failures_record_nothing() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-#[cfg(unix)]
 #[test]
-fn restore_over_a_symlink_still_runs_without_undo() {
+fn restore_over_a_symlink_undoes() {
     let (dir, v1) = two_versions("rs-symlink");
+    git(&dir, &["config", "core.symlinks", "true"]);
     std::fs::remove_file(dir.join("f.txt")).unwrap();
-    std::os::unix::fs::symlink("elsewhere", dir.join("f.txt")).unwrap();
-    let (_, a) = restore_saving(&dir, v1, "f.txt", true).unwrap();
-    assert_eq!(a, None);
+    if !file_link("elsewhere", &dir.join("f.txt")) {
+        return eprintln!("skipped: symbolic links can't be made here");
+    }
+    let a = restore_saving(&dir, v1, "f.txt", true).unwrap().1.expect("undoable");
+    assert!(matches!(&a, Action::Restore { before: Some(b), after: Some(f), .. } if b.link && !f.link), "{a:?}");
     assert_eq!(read(&dir, "f.txt").unwrap(), b"v1\n");
+    apply(&dir, &a, false);
+    let link = dir.join("f.txt");
+    assert!(link.symlink_metadata().unwrap().file_type().is_symlink(), "the link is back");
+    assert_eq!(std::fs::read_link(&link).unwrap(), Path::new("elsewhere"));
+    apply(&dir, &a, true);
+    assert_eq!(read(&dir, "f.txt").unwrap(), b"v1\n", "redo replaced the link with the file again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn restore_over_changes_keeps_the_replaced_copy() {
+    let (dir, v1) = two_versions("rs-keeps");
+    write(&dir, "f.txt", "local");
+    let a = restore_saving(&dir, v1, "f.txt", true).unwrap().1.expect("undoable");
+    let list = kept::list(&dir).unwrap();
+    let [k] = &list[..] else { panic!("one record: {list:?}") };
+    assert_eq!(k.what, kept::KeptWhat::Restore);
+    let local = git2::Oid::hash_object(git2::ObjectType::Blob, b"local").unwrap();
+    assert!(matches!(&k.item, kept::KeptItem::File { path, blob, link: false, .. } if path == "f.txt" && *blob == local), "{k:?}");
+    apply(&dir, &a, false);
+    assert!(kept::list(&dir).unwrap().is_empty(), "the path holds those bytes again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn restoring_a_clean_file_keeps_nothing() {
+    let (dir, v1) = two_versions("rs-clean");
+    assert!(restore_saving(&dir, v1, "f.txt", true).unwrap().1.is_some());
+    assert!(kept::all_for_test(&dir).is_empty(), "the index held the bytes it replaced");
+    write(&dir, "f.txt", "local\n");
+    match restore_saving(&dir, head(&dir), "f.txt", false) {
+        Err(RestoreFailed { error: Error::WouldOverwrite(_), undo: None }) => {}
+        r => panic!("expected WouldOverwrite, got {r:?}"),
+    }
+    assert!(kept::all_for_test(&dir).is_empty(), "a refused restore keeps nothing");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

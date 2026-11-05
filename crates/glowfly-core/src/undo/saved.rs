@@ -3,7 +3,9 @@
 //! restoring a file from a commit and for conflict resolutions saved in the conflict view
 //! (`resolved.rs`): the working copy's exact bytes are written to the object database as a blob
 //! before and after, so undo can put the earlier version back and redo can write the later one
-//! again.
+//! again. A symbolic link is kept as git stores one (a blob of its target path, mode 120000)
+//! and put back as a link; on Windows only file links are (folder links and junctions aren't).
+//! A restore over contents nothing else holds keeps them for the journal's Lost tab too.
 
 use super::kept::{self, KeptWhat};
 use super::{Action, DeleteVia, Discarded, Plan, stale};
@@ -19,24 +21,87 @@ pub struct Saved {
     pub blob: Oid,
     /// The executable bit, on systems that have one.
     pub executable: bool,
+    /// A symbolic link: `blob` holds its target path, as git stores a mode-120000 entry.
+    pub link: bool,
+}
+
+impl Saved {
+    /// A regular file's saved bytes.
+    pub fn file(blob: Oid, executable: bool) -> Saved {
+        Saved { blob, executable, link: false }
+    }
+
+    /// The git mode of a tree entry holding it.
+    pub(crate) fn mode(self) -> i32 {
+        match (self.link, self.executable) {
+            (true, _) => 0o120000,
+            (false, true) => 0o100755,
+            (false, false) => 0o100644,
+        }
+    }
+
+    /// What a path must hold to count as holding this: the bytes, and whether as a link.
+    pub(super) fn content(self) -> (Oid, bool) {
+        (self.blob, self.link)
+    }
 }
 
 fn file(workdir: &Path, path: &str) -> Result<PathBuf> {
     Ok(workdir.join(crate::repo::contained(path)?))
 }
 
-/// Reads `path` as it is: `None` when it is absent; refused for anything but a regular file.
-fn read(workdir: &Path, path: &str) -> Result<Option<(Vec<u8>, bool)>> {
+/// Reads `path` as it is (its bytes, whether executable, whether a link): `None` when it is
+/// absent; refused for anything but a regular file or a symbolic link `saveable_link` accepts.
+fn read(workdir: &Path, path: &str) -> Result<Option<(Vec<u8>, bool, bool)>> {
     let f = file(workdir, path)?;
     let meta = match f.symlink_metadata() {
         Ok(m) => m,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(e) => return Err(e.into()),
     };
-    if !meta.is_file() {
-        return Err(Error::Unsupported(format!("{path} is not a regular file, so its contents can't be saved for undo")));
+    if saveable_link(&meta) {
+        return Ok(Some((link_target(&f)?, false, true)));
     }
-    Ok(Some((std::fs::read(&f)?, executable(&meta))))
+    if !meta.is_file() {
+        return Err(Error::Unsupported(format!(
+            "{path} is not a regular file or a symbolic link, so its contents can't be saved for undo"
+        )));
+    }
+    Ok(Some((std::fs::read(&f)?, executable(&meta), false)))
+}
+
+/// Whether `meta` is a symbolic link whose target can be saved and made again: every link on
+/// Unix, only file links on Windows (a folder link or junction needs another kind of link).
+pub(crate) fn saveable_link(meta: &std::fs::Metadata) -> bool {
+    #[cfg(unix)]
+    {
+        meta.file_type().is_symlink()
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::FileTypeExt;
+        meta.file_type().is_symlink_file()
+    }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = meta;
+        false
+    }
+}
+
+/// The target of the link at `full` as git stores it: the exact bytes on Unix; elsewhere the
+/// text (lossily) with each backslash turned into a slash.
+pub(crate) fn link_target(full: &Path) -> std::io::Result<Vec<u8>> {
+    let target = std::fs::read_link(full)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        Ok(target.into_os_string().into_vec())
+    }
+    #[cfg(not(unix))]
+    {
+        Ok(target.to_string_lossy().replace('\\', "/").into_bytes())
+    }
 }
 
 #[cfg(unix)]
@@ -52,15 +117,15 @@ pub(super) fn executable(_: &std::fs::Metadata) -> bool {
 
 /// Writes `path`'s current bytes to the object database (`None` when it is absent).
 pub fn save(workdir: &Path, path: &str) -> Result<Option<Saved>> {
-    let Some((bytes, executable)) = read(workdir, path)? else { return Ok(None) };
+    let Some((bytes, executable, link)) = read(workdir, path)? else { return Ok(None) };
     let repo = Repository::open(workdir)?;
-    Ok(Some(Saved { blob: repo.blob(&bytes)?, executable }))
+    Ok(Some(Saved { blob: repo.blob(&bytes)?, executable, link }))
 }
 
 /// What `path` holds now, as `save` would record it, without writing anything.
 pub(super) fn current(workdir: &Path, path: &str) -> Result<Option<Saved>> {
     Ok(match read(workdir, path)? {
-        Some((bytes, executable)) => Some(Saved { blob: Oid::hash_object(ObjectType::Blob, &bytes)?, executable }),
+        Some((bytes, executable, link)) => Some(Saved { blob: Oid::hash_object(ObjectType::Blob, &bytes)?, executable, link }),
         None => None,
     })
 }
@@ -79,11 +144,11 @@ pub struct RestoreFailed {
 
 /// Runs `op` with `path`'s contents saved before and after it. The pair comes back only when
 /// they differ, and not at all when the file before isn't one whose contents can be saved (a
-/// symbolic link or a folder: `op` still runs). Any other failure to save first refuses `op`.
-/// A failure to save afterwards is returned when `strict_after` is set, and otherwise just
-/// leaves the operation without a pair. When `op` fails but the file changed anyway (or can no
-/// longer be read), its error names the blob that keeps the earlier contents, and the pair
-/// comes back with it when the file as it is now could be saved. With `keep`, the earlier
+/// folder, a Windows folder link or junction: `op` still runs). Any other failure to save first
+/// refuses `op`. A failure to save afterwards is returned when `strict_after` is set, and
+/// otherwise just leaves the operation without a pair. When `op` fails but the file changed
+/// anyway (or can no longer be read), its error names the blob that keeps the earlier contents,
+/// and the pair comes back with it when the file as it is now could be saved. With `keep`, the earlier
 /// contents are also kept for the journal (`kept.rs`) before `op` runs, a failure to keep them
 /// refusing it, and dropped again when the file still holds them afterwards.
 pub(super) fn saving<T>(
@@ -99,12 +164,12 @@ pub(super) fn saving<T>(
         Err(e) => return Err((e, None)),
     };
     let kept = match (keep, before) {
-        (Some(what), Some(Some(s))) => Some((kept::keep_file(workdir, path, s, what).map_err(|e| (e, None))?, s.blob)),
+        (Some(what), Some(Some(s))) => Some((kept::keep_file(workdir, path, s, what).map_err(|e| (e, None))?, s)),
         _ => None,
     };
     let out = op();
-    if let Some((id, blob)) = kept {
-        settle(workdir, path, id, blob);
+    if let Some((id, s)) = kept {
+        settle(workdir, path, id, s);
     }
     let out = match out {
         Ok(out) => out,
@@ -124,10 +189,10 @@ pub(super) fn saving<T>(
     Ok((out, (before != after).then_some((before, after))))
 }
 
-/// Drops the record `id` kept before an operation on `path` when the file still holds its `blob`:
-/// nothing was thrown away.
-fn settle(workdir: &Path, path: &str, id: git2::Oid, blob: Oid) {
-    if current(workdir, path).ok().flatten().is_some_and(|s| s.blob == blob) {
+/// Drops the record `id` kept before an operation on `path` when the file still holds what it
+/// held `before` (the same bytes, a link still a link): nothing was thrown away.
+pub(super) fn settle(workdir: &Path, path: &str, id: git2::Oid, before: Saved) {
+    if current(workdir, path).ok().flatten().is_some_and(|s| s.content() == before.content()) {
         kept::forget(workdir, id);
     }
 }
@@ -151,9 +216,10 @@ pub(super) fn failed_after_saving(workdir: &Path, path: &str, before: Option<Sav
 }
 
 /// Runs `discard` on `path` (`what` says which part) with its contents saved first. Returns the action that undoes it,
-/// or `None` when nothing changed or the file isn't one whose contents can be saved (a symbolic
-/// link or a folder: the discard still runs). Any other failure to save refuses the discard. A
-/// discard that fails after changing the file says where its earlier contents are kept.
+/// or `None` when nothing changed or the file isn't one whose contents can be saved (a folder,
+/// a Windows folder link or junction: the discard still runs). Any other failure to save
+/// refuses the discard. A discard that fails after changing the file says where its earlier
+/// contents are kept.
 pub fn discard_saving(workdir: &Path, path: &str, what: Discarded, discard: impl FnOnce() -> Result<()>) -> Result<Option<Action>> {
     let ((), pair) = saving(workdir, path, true, Some(what.into()), discard).map_err(|(e, _)| e)?;
     Ok(pair.map(|(before, after)| Action::Discard { path: path.to_owned(), what, before, after }))
@@ -164,7 +230,10 @@ pub fn discard_saving(workdir: &Path, path: &str, what: Discarded, discard: impl
 /// `None` when nothing changed or the file before or after isn't one whose contents can be
 /// saved (the restore still runs). Errors from the restore, such as [`Error::WouldOverwrite`],
 /// come back unchanged unless the file changed anyway, when they come with the action that puts
-/// it back; any other failure to save first refuses the restore.
+/// it back; any other failure to save first refuses the restore. With `overwrite`, the working
+/// copy it replaces is also kept for the journal (`KeptWhat::Restore`) when nothing else holds
+/// it (when [`Error::WouldOverwrite`] would have refused), and dropped again when the restore
+/// left it as it was.
 pub fn restore_saving(
     workdir: &Path,
     oid: Oid,
@@ -172,7 +241,8 @@ pub fn restore_saving(
     overwrite: bool,
 ) -> std::result::Result<(RestoredFrom, Option<Action>), RestoreFailed> {
     let action = |(before, after): Pair| Action::Restore { path: path.to_owned(), oid, before, after };
-    match saving(workdir, path, false, None, || crate::repo::restore_file(workdir, oid, path, overwrite)) {
+    let keep = (overwrite && crate::repo::restore::restore_would_lose(workdir, path).unwrap_or(true)).then_some(KeptWhat::Restore);
+    match saving(workdir, path, false, keep, || crate::repo::restore_file(workdir, oid, path, overwrite)) {
         Ok((from, pair)) => Ok((from, pair.map(action))),
         Err((error, pair)) => Err(RestoreFailed { error, undo: pair.map(|p| Box::new(action(p))) }),
     }
@@ -221,7 +291,7 @@ pub(super) fn plan(workdir: &Path, path: &str, before: Option<Saved>, after: Opt
         Err(Error::Unsupported(m)) => return Ok(stale(m)),
         Err(e) => return Err(e),
     };
-    if now.map(|s| s.blob) != expect.map(|s| s.blob) {
+    if now.map(Saved::content) != expect.map(Saved::content) {
         let kept = match before {
             Some(s) if !redo => format!("; the {kept_as} version is kept as blob {} (git cat-file -p {})", s.blob, s.blob),
             _ => String::new(),
@@ -231,10 +301,12 @@ pub(super) fn plan(workdir: &Path, path: &str, before: Option<Saved>, after: Opt
     Ok(Plan::Write { path: path.to_owned(), content: target })
 }
 
-/// Makes `path` hold `content` exactly (deleting it for `None`). The file is replaced
-/// crash-safely, keeping its permissions (and a read-only attribute); a symbolic link there is
-/// refused rather than written through. The executable bit is set as saved unless the
-/// repository ignores it (`core.fileMode=false`), and failing to set it doesn't fail the write.
+/// Makes `path` hold `content` exactly (deleting it for `None`; a link is removed itself). The
+/// file is replaced crash-safely, keeping its permissions (and a read-only attribute); a
+/// symbolic link there is replaced, never written through. The executable bit is set as saved
+/// unless the repository ignores it (`core.fileMode=false`), and failing to set it doesn't fail
+/// the write. A saved link is made again as `core.symlinks` says (`repo/workfile_unrm.rs`),
+/// replacing the file or link there; a folder there is refused.
 pub fn write(workdir: &Path, path: &str, content: Option<Saved>) -> Result<()> {
     let f = file(workdir, path)?;
     let Some(saved) = content else {
@@ -242,6 +314,16 @@ pub fn write(workdir: &Path, path: &str, content: Option<Saved>) -> Result<()> {
     };
     let repo = Repository::open(workdir)?;
     let blob = repo.find_blob(saved.blob)?;
+    if saved.link {
+        let target = blob.content().to_vec();
+        drop(blob);
+        drop(repo);
+        return crate::repo::workfile_unrm::write_link(workdir, path, &target);
+    }
+    // A link there is replaced, never written through (`refuse_links` still guards the write).
+    if f.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
+        crate::persist::remove_file(&f)?;
+    }
     let file_mode = repo.config().and_then(|c| c.get_bool("core.fileMode")).unwrap_or(true);
     let opts = WriteOptions { refuse_links: true, executable: file_mode.then_some(saved.executable), private: false };
     Ok(crate::persist::write_file(&f, blob.content(), opts)?)

@@ -169,6 +169,17 @@ fn discard_toasts() {
         run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", mode), result: Ok(WorkFileOk::deleted(how)) }));
         assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()), "{mode:?} {how:?}");
     }
+    // A discarded link kept for Undo: the toast says Undo makes it again.
+    let before = glowfly_core::undo::Saved { blob: git2::Oid::zero(), executable: false, link: true };
+    let undo =
+        glowfly_core::undo::Action::DeleteFile { path: "u.txt".into(), before, via: glowfly_core::undo::DeleteVia::Trash, staged: None };
+    let ok = WorkFileOk::Deleted { how: Deleted::LinkRemoved, undo: Some(Box::new(undo)), too_large: false };
+    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: Ok(ok) }));
+    let want = format!(
+        "Deleted the symbolic link u.txt. Links don't go to the {TRASH}; what it points to is untouched. Undo ({}) puts it back.",
+        keys("Ctrl+Z")
+    );
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

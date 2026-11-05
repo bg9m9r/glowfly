@@ -169,6 +169,7 @@ source file, update its line here.
 - `advisory_ignores_tests.rs`: `deny.toml`'s advisory ignores and `osv-scanner.toml`'s `[[IgnoredVulns]]` list the same ids with the same reasons, each osv-scanner entry with an `ignoreUntil` date, and SECURITY.md's Known advisories table names the same ids.
 - `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
 - `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
+- `persist/link.rs`: symbolic links Undo and the journal put back: made beside the path and renamed over it (`write_link`), or only where nothing is (`create_link`); on Windows file links with backslashes.
 - `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
 - `i18n/catalog.rs`: the bundled catalogs: per language, one flat JSON object of key → text per area (`locales/<lang>/<area>.json`), compiled in and merged on first use; tests in `catalog_tests.rs` (each file parses, holds only its area's sorted keys, no key in two files, the area list matches the folders).
 - `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.

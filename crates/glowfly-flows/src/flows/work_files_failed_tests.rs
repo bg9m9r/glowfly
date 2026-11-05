@@ -14,7 +14,7 @@ fn delete(path: &str) -> FileOp {
 }
 
 fn undo_entry(path: &str) -> Box<Action> {
-    let before = Saved { blob: git2::Oid::zero(), executable: false };
+    let before = Saved::file(git2::Oid::zero(), false);
     Box::new(Action::DeleteFile { path: path.into(), before, via: DeleteVia::Trash, staged: None })
 }
 
@@ -51,12 +51,8 @@ fn a_failed_discard_whose_file_went_is_undone_from_the_kept_copy() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let blob = git2::Repository::open(&dir).unwrap().blob(b"work\n").unwrap();
     std::fs::remove_file(dir.join("u.txt")).unwrap();
-    let undo = Box::new(Action::DeleteFile {
-        path: "u.txt".into(),
-        before: Saved { blob, executable: false },
-        via: DeleteVia::Permanent,
-        staged: None,
-    });
+    let undo =
+        Box::new(Action::DeleteFile { path: "u.txt".into(), before: Saved::file(blob, false), via: DeleteVia::Permanent, staged: None });
     let op = FileOp::Discard { path: "u.txt".into(), mode: DeleteMode::Permanent, seen: None };
     drive(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileFailed { op, error: "the index is locked".into(), undo }));
     drive(&mut st, Msg::Job(JobMsg::Undo));

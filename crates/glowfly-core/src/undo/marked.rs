@@ -125,12 +125,8 @@ fn work_kept(workdir: &Path, path: &str, limit: Option<u64>) -> Result<WorkAt> {
         Err(e) => return Err(e.into()),
     };
     if meta.file_type().is_symlink() {
-        let target = std::fs::read_link(&full)?.to_string_lossy().replace('\\', "/");
-        let blob = if limit.is_some() {
-            Repository::open(workdir)?.blob(target.as_bytes())?
-        } else {
-            Oid::hash_object(ObjectType::Blob, target.as_bytes())?
-        };
+        let target = saved::link_target(&full)?;
+        let blob = if limit.is_some() { Repository::open(workdir)?.blob(&target)? } else { Oid::hash_object(ObjectType::Blob, &target)? };
         return Ok(WorkAt::Link(blob));
     }
     if meta.is_dir() {
@@ -140,7 +136,7 @@ fn work_kept(workdir: &Path, path: &str, limit: Option<u64>) -> Result<WorkAt> {
         return Ok(saved::save(workdir, path)?.map_or(WorkAt::Absent, WorkAt::File));
     }
     let executable = saved::executable(&meta);
-    Ok(WorkAt::File(Saved { blob: Oid::hash_file(ObjectType::Blob, &full)?, executable }))
+    Ok(WorkAt::File(Saved::file(Oid::hash_file(ObjectType::Blob, &full)?, executable)))
 }
 
 /// Each of `paths` as it is now; refused for an index holding a stage-0 entry beside a conflict.

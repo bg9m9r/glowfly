@@ -38,7 +38,7 @@ fn a_discard_keeps_its_bytes_reachable_and_listed() {
     let list = kept::list(&dir).unwrap();
     let [k] = &list[..] else { panic!("one record: {list:?}") };
     assert_eq!(k.what, KeptWhat::File);
-    assert_eq!(k.item, KeptItem::File { path: "f.txt".into(), blob: before.blob, executable: false });
+    assert_eq!(k.item, KeptItem::File { path: "f.txt".into(), blob: before.blob, executable: false, link: false });
     let name = format!("{}{}", kept::KEPT_REF_PREFIX, k.id);
     let refs = git_out(&dir, &["for-each-ref", "--format=%(refname)", "refs/glowfly/"]);
     assert!(refs.lines().any(|l| l == name), "{refs}");
@@ -149,7 +149,7 @@ fn a_dropped_stash_is_kept_until_it_is_back_in_the_list() {
 fn old_records_are_pruned_at_the_next_one() {
     let dir = base("kept-prune");
     let blob = Repository::open(&dir).unwrap().blob(b"old\n").unwrap();
-    let saved = Saved { blob, executable: false };
+    let saved = Saved::file(blob, false);
     let day = 86_400;
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
     let recent = kept::keep_file_at(&dir, "recent.txt", saved, now - (kept::KEEP_DAYS - 1) * day).unwrap();
@@ -160,5 +160,27 @@ fn old_records_are_pruned_at_the_next_one() {
     discard(&dir);
     let left = ids(&dir);
     assert!(!left.contains(&old) && left.contains(&recent) && left.len() == 2, "{left:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn an_old_format_record_still_reads_and_restore_round_trips() {
+    let dir = base("kept-v1");
+    let repo = Repository::open(&dir).unwrap();
+    let blob = repo.blob(b"from an older build\n").unwrap();
+    let mut tree = repo.treebuilder(None).unwrap();
+    tree.insert("file", blob, 0o100644).unwrap();
+    let tree = repo.find_tree(tree.write().unwrap()).unwrap();
+    let sig = git2::Signature::now("Glowfly", "glowfly@localhost").unwrap();
+    // The note as builds before links wrote it: version 1, no `link` field.
+    let note = format!(r#"{{"v":1,"what":"file","path":"old.txt","blob":"{blob}","executable":false}}"#);
+    let id = repo.commit(None, &sig, &sig, &format!("Glowfly: kept old.txt\n\n{note}\n"), &tree, &[]).unwrap();
+    repo.reference(&format!("{}{id}", kept::KEPT_REF_PREFIX), id, true, "test").unwrap();
+    let list = kept::list(&dir).unwrap();
+    let [k] = &list[..] else { panic!("{list:?}") };
+    assert_eq!(k.item, KeptItem::File { path: "old.txt".into(), blob, executable: false, link: false });
+
+    assert_eq!(serde_json::to_string(&KeptWhat::Restore).unwrap(), r#""restore""#);
+    assert_eq!(serde_json::from_str::<KeptWhat>(r#""restore""#).unwrap(), KeptWhat::Restore);
     let _ = std::fs::remove_dir_all(&dir);
 }
