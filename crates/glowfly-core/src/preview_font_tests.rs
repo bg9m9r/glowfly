@@ -1,6 +1,7 @@
-//! The font preview's render: the bundled fonts' names, formats and white specimens, a
-//! collection's first face (and only that one loaded), broken and foreign files, and the pure parts (the specimen's
-//! lines, escaping, name cleaning and the path check).
+//! The font preview's render: the bundled fonts' names, formats and white specimens (a capped
+//! one keeping its size in points), a collection's first face (and only that one loaded),
+//! broken and foreign files, and the pure parts (the specimen's lines, escaping, name cleaning
+//! and the path check).
 
 use super::*;
 use crate::bundled_fonts::{JETBRAINS_MONO, NOTO_SANS, NOTO_SANS_SEMIBOLD};
@@ -108,6 +109,18 @@ fn lines_wider_than_the_canvas_are_drawn_whole() {
 }
 
 #[test]
+fn a_name_wider_than_the_raster_cap_keeps_its_size_in_points() {
+    let lines = specimen(&"W".repeat(40), latin, (0x20..0x7f).collect::<Vec<u32>>());
+    let bbox = Tree::from_str(&sample_svg(&lines), &options(NOTO_SANS)).unwrap().root().abs_bounding_box();
+    assert!(bbox.width() > 512.0, "wide enough to be capped: {}", bbox.width());
+    let img = rasterize(NOTO_SANS, &lines, "TrueType").unwrap();
+    assert!((img.width as i64 - bbox.width().ceil() as i64).abs() <= 1, "{} vs {}", img.width, bbox.width());
+    assert!((img.height as i64 - bbox.height().ceil() as i64).abs() <= 1, "{} vs {}", img.height, bbox.height());
+    assert!(img.shown[0] <= SHOWN_MAX as usize, "{:?}", img.shown);
+    assert!(img.shown[0] < (bbox.width() * PX_PER_POINT) as usize, "it really was capped: {:?}", img.shown);
+}
+
+#[test]
 fn broken_and_foreign_files_are_unreadable_without_a_panic() {
     let mut woff = b"wOFF\0\x01\0\0".to_vec();
     woff.resize(256, 0);
@@ -124,8 +137,11 @@ fn latin(c: char) -> bool {
 fn a_latin_font_gets_its_name_the_sample_and_the_digits() {
     let lines = specimen("Noto Sans Regular", latin, (0x20..0x7f).collect::<Vec<u32>>());
     let texts: Vec<&str> = lines.iter().map(|l| l.1.as_str()).collect();
-    assert_eq!(texts, ["Noto Sans Regular", SAMPLE, DIGITS]);
-    assert_eq!((lines[0].0, lines[1].0), (NAME_PT, SAMPLE_PT));
+    assert_eq!(texts, ["Noto Sans Regular", SAMPLE[0], SAMPLE[1], DIGITS]);
+    assert_eq!(SAMPLE, ["The quick brown fox", "jumps over the lazy dog"]);
+    let sizes: Vec<f32> = lines.iter().map(|l| l.0).collect();
+    assert_eq!(sizes, [NAME_PT, SAMPLE_PT, SAMPLE_PT, SAMPLE_PT]);
+    assert_eq!(NAME_PT, 24.0);
 }
 
 #[test]

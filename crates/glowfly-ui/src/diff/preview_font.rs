@@ -15,7 +15,8 @@ use glowfly_core::preview_font::FontFace;
 use glowfly_core::preview_image::PreviewImage;
 
 /// The scale both specimens are drawn at in a card of `card`'s size: the smaller of the scales
-/// that fit each present one in the card's padded room, and never above 1.
+/// that fit each present one in the card's padded room, and never above 1. Image sizes are
+/// points, so a side rasterised below 2x still compares at the same size.
 pub(super) fn shared_scale(card: Rect, imgs: [Option<&PreviewImage>; 2]) -> f32 {
     let room = card.shrink(PAD);
     imgs.into_iter()

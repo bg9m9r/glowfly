@@ -292,7 +292,7 @@ start with `state/`, `update/` or `ui/`.
 
 ## Snapshot tests
 
-- `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `snapshot_fixtures.rs`; `snapshot_tests_painted.rs` reads what a frame painted inside a widget (fills, shapes, underlined text) for the hover tests.
+- `snapshot_tests/`: the views' snapshot tests, one file per view group (`mod.rs` lists them), with the shared fixtures in `snapshot_fixtures.rs`; `snapshot_tests_painted.rs` reads what a frame painted inside a widget (fills, shapes, drawn images, underlined text) for the hover and preview tests.
 - `snapshot_fixtures.rs` (tests, and the app's tests through glowfly-ui's `test-support` feature): the fixture repository, harnesses and `render`; `snapshot_fixtures/scenes.rs`: the merge stopped on conflicts and the two-author history the tests share.
 - The app's `runner_snapshots/` holds the view snapshot tests that run effects through the runner (the whole-file and wrapped diffs, the conflict markers warning, the path search), on these fixtures and snapshots; glowfly-ui never depends on the runner.
 - `readme_screenshots/` (tests): the README's screenshots in `docs/screenshots/`, rendered at 2x from a made-up demo repository (`demo.rs`, its files in `demo_files.rs`): the main window, a split diff and the conflict resolver (`shots.rs`) and a pull request review (`pull_request.rs`), each in Graphite and Porcelain; `UPDATE_SCREENSHOTS=1` writes them, otherwise the stored sizes are checked.
