@@ -58,3 +58,53 @@ fn a_star_stops_at_a_slash() {
     assert!(!suppressed(&globs(&["team/*"]), "team/x/y"));
     assert!(!suppressed(&[], "main"));
 }
+
+/// Which of `branches` `merge_names` finds shadowed in the repository at `dir`.
+fn shadowed_in(dir: &Path, branches: &[BranchRef]) -> Vec<String> {
+    let names = merge_names(&Repository::open(dir).unwrap(), Some("main"), branches);
+    let mut got: Vec<String> = names.shadowed.into_iter().collect();
+    got.sort();
+    got
+}
+
+#[test]
+fn a_ref_git_looks_up_first_shadows_the_branch() {
+    let dir = scratch_repo("mdest-shadow");
+    git(&dir, &["commit", "-q", "--allow-empty", "-m", "base"]);
+    for b in ["x", "y", "z", "v", "ORIG", "origin/w"] {
+        git(&dir, &["branch", b]);
+    }
+    let sha = crate::testkit::git_out(&dir, &["rev-parse", "HEAD"]).trim().to_owned();
+    git(&dir, &["branch", &sha]);
+    for r in ["refs/remotes/origin/x", "refs/remotes/origin/w", "refs/remotes/origin/u", "refs/remotes/v"] {
+        git(&dir, &["update-ref", r, "HEAD"]);
+    }
+    git(&dir, &["tag", "x"]);
+    git(&dir, &["update-ref", "refs/y", "HEAD"]);
+    std::fs::write(Repository::open(&dir).unwrap().path().join("ORIG"), format!("{sha}\n")).unwrap();
+    let local = |n: &str| BranchRef::Local(n.into());
+    let remote = |n: &str| BranchRef::Remote(n.into());
+    let all = [
+        local("x"),
+        local("y"),
+        local("z"),
+        local("ORIG"),
+        local("origin/w"),
+        local("v"),
+        local(&sha),
+        remote("origin/x"),
+        remote("origin/w"),
+        remote("origin/u"),
+    ];
+    let mut want = vec![
+        "refs/heads/x",          // a same-named tag
+        "refs/heads/y",          // refs/y
+        "refs/heads/ORIG",       // an all-caps file in the git dir
+        "refs/remotes/origin/w", // a local branch spelled like it
+    ];
+    let hex = format!("refs/heads/{sha}"); // a full object id
+    want.push(&hex);
+    want.sort();
+    assert_eq!(shadowed_in(&dir, &all), want, "z, v (refs/remotes/v comes after refs/heads/v), origin/x and origin/u are their own");
+    let _ = std::fs::remove_dir_all(&dir);
+}

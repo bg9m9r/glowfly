@@ -144,12 +144,14 @@ fn remote_branch_menu_several_trackers() {
 #[test]
 fn remote_branch_menu_names_the_remote_tracking_ref() {
     let (st, dir) = with_remote(ThemeChoice::Dark, "remote-branch-menu-full-ref", &[]);
-    let into = st.snap.as_ref().unwrap().merge_into.clone();
+    let names = st.snap.as_ref().unwrap().merge_names.clone();
     let theirs = BranchRef::Remote("origin/search".into());
     let mut h = harness(st, true);
     h.run();
-    let (merge, rebase) = (merge_cmd(&theirs, into.as_deref()), rebase_cmd(&theirs));
-    assert_eq!(merge[merge.len() - 1], "refs/remotes/origin/search");
+    let (merge, rebase) = (merge_cmd(&theirs, &names), rebase_cmd(&theirs));
+    // Nothing shadows origin/search, so the merge keeps git's own message for it.
+    assert_eq!(merge, ["merge", "--", "origin/search"]);
+    assert_eq!(rebase[rebase.len() - 1], "refs/remotes/origin/search");
     let job = |m: &Msg, want: &[String]| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if cmds == &[want.to_vec()]);
     let check = |m: &Msg| matches!(m, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(b)) if *b == theirs);
     let mut click_item = |item: &str| {
@@ -159,7 +161,7 @@ fn remote_branch_menu_names_the_remote_tracking_ref() {
         h.run();
         std::mem::take(&mut h.state_mut().1)
     };
-    assert!(click_item("Merge into main").iter().any(|m| job(m, &merge)), "the merge names the full ref");
+    assert!(click_item("Merge into main").iter().any(|m| job(m, &merge)), "the merge names the branch");
     assert!(click_item("Rebase main onto this branch").iter().any(|m| job(m, &rebase)), "the rebase names the full ref");
     assert!(click_item("Check for conflicts with main").iter().any(check), "the check names the remote-tracking branch");
     drop(h);

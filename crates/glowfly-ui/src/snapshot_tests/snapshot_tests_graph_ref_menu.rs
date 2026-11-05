@@ -153,13 +153,14 @@ fn branch_menu_merges_the_branch_not_a_tag() {
     reload(&mut st, &dir, &LoadOptions::all(500));
     let tip = repo.find_reference("refs/heads/search").unwrap().peel_to_commit().unwrap().id();
     let theirs = BranchRef::Local("search".into());
-    let into = st.snap.as_ref().unwrap().merge_into.clone();
+    let names = st.snap.as_ref().unwrap().merge_names.clone();
+    assert!(names.is_shadowed(&theirs), "the load sees the tag shadow the branch");
     let mut h = harness(st, true);
     h.run();
     let sent_cmds = |h: &super::snapshot_tests_worktrees::H, want: &[String]| {
         h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if cmds == &[want.to_vec()]))
     };
-    for (item, want) in [("Merge into main", merge_cmd(&theirs, into.as_deref())), ("Rebase main onto this branch", rebase_cmd(&theirs))] {
+    for (item, want) in [("Merge into main", merge_cmd(&theirs, &names)), ("Rebase main onto this branch", rebase_cmd(&theirs))] {
         click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
         h.state_mut().1.clear();
         h.get_by_label(item).click();

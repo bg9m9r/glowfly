@@ -3,9 +3,14 @@
 //! accepts the builders' `--` forms.
 
 use super::*;
-use crate::branch_ref::BranchRef;
+use crate::branch_ref::{BranchRef, MergeNames};
 use crate::testkit::git_out;
 use crate::testutil::*;
+
+/// `MergeNames` where `b` is shadowed, so `merge_cmd` takes its `-m <title>` form.
+fn shadowing(b: &BranchRef, into: Option<&str>) -> MergeNames {
+    MergeNames { into: into.map(str::to_owned), shadowed: [b.full()].into() }
+}
 
 /// The names a repository supplies, as the snapshot holds them.
 fn supplied_names(s: &Snapshot) -> Vec<String> {
@@ -85,7 +90,9 @@ fn names_that_read_as_options_never_load_or_reach_a_command() {
         cmds.push(crate::shallow_ops::deepen_cmd(r, crate::shallow_ops::Deepen::Full));
         for (b, oid) in branches {
             cmds.extend(branch_ops::delete_remote_cmds(r, b, std::slice::from_ref(b)));
-            cmds.push(branch_ops::merge_cmd(&BranchRef::Remote(format!("{r}/{b}")), None));
+            let theirs = BranchRef::Remote(format!("{r}/{b}"));
+            cmds.push(branch_ops::merge_cmd(&theirs, &MergeNames::default()));
+            cmds.push(branch_ops::merge_cmd(&theirs, &shadowing(&theirs, None)));
             cmds.push(branch_ops::rebase_cmd(&BranchRef::Remote(format!("{r}/{b}"))));
             cmds.extend(branch_ops::set_upstream_cmds("main", r, b, true));
             cmds.extend(branch_ops::rename_with_remote_cmds("main", "next", r, b, *oid));
@@ -101,7 +108,9 @@ fn names_that_read_as_options_never_load_or_reach_a_command() {
         }
     }
     for b in &s.locals {
-        cmds.push(branch_ops::merge_cmd(&BranchRef::Local(b.name.clone()), None));
+        let theirs = BranchRef::Local(b.name.clone());
+        cmds.push(branch_ops::merge_cmd(&theirs, &MergeNames::default()));
+        cmds.push(branch_ops::merge_cmd(&theirs, &shadowing(&theirs, None)));
         cmds.push(branch_ops::rebase_cmd(&BranchRef::Local(b.name.clone())));
         cmds.push(branch_ops::rename_cmd(&b.name, "renamed"));
         cmds.push(branch_ops::unset_upstream_cmd(&b.name));
@@ -150,7 +159,8 @@ fn every_builder_ends_options_before_a_supplied_name() {
         remote_ops::remove_cmd(e),
         crate::shallow_ops::deepen_cmd(e, crate::shallow_ops::Deepen::By(3)),
         branch_ops::push_cmd(e, e, e, true),
-        branch_ops::merge_cmd(&BranchRef::Local(e.into()), Some(e)),
+        branch_ops::merge_cmd(&BranchRef::Local(e.into()), &MergeNames::default()),
+        branch_ops::merge_cmd(&BranchRef::Local(e.into()), &shadowing(&BranchRef::Local(e.into()), Some(e))),
         branch_ops::rebase_cmd(&BranchRef::Local(e.into())),
         branch_ops::rename_cmd(e, e),
         branch_ops::unset_upstream_cmd(e),
@@ -190,8 +200,11 @@ fn git_accepts_the_forms_with_dashes() {
     git(&work, &["checkout", "-q", "main"]);
     let side = git_out(&work, &["rev-parse", "side"]).trim().to_owned();
     let side_ref = BranchRef::Local("side".into());
-    let mut cmds =
-        vec![branch_ops::merge_cmd(&side_ref, None), branch_ops::rebase_cmd(&side_ref), tag_ops::annotate_tag_cmd("n", &side, "m")];
+    let mut cmds = vec![
+        branch_ops::merge_cmd(&side_ref, &MergeNames::default()),
+        branch_ops::rebase_cmd(&side_ref),
+        tag_ops::annotate_tag_cmd("n", &side, "m"),
+    ];
     cmds.extend(remote_ops::add_cmds("up", "https://example.invalid/r.git", Some("https://example.invalid/p.git"), false));
     for c in &cmds {
         let (ok, out) = run(&work, c);

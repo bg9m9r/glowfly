@@ -4,6 +4,7 @@
 use super::*;
 use crate::msg::JobMsg;
 use crate::state::op_fixture::{rows, snapshot};
+use glowfly_core::branch_ref::MergeNames;
 use glowfly_core::gitcli::args;
 use glowfly_core::op_preview::{Count, Request, Stop};
 
@@ -23,7 +24,7 @@ fn snap(name: &str) -> Snapshot {
     s.locals.push(feature);
     s.remotes = vec![("origin".into(), vec![("x".into(), oid(3))])];
     // git leaves " into main" out by default.
-    s.merge_into = None;
+    s.merge_names = MergeNames::default();
     s
 }
 
@@ -68,11 +69,16 @@ fn line(n: u8, summary: &str) -> CommitLine {
 
 #[test]
 fn apply_sends_what_the_menus_send() {
-    let s = snap("opp-apply");
+    let mut s = snap("opp-apply");
     let t = Lang::En;
-    let merge = apply_msg(t, &s, &PreviewOp::Merge { theirs: local("feature"), oid: oid(2) }, None).unwrap();
+    let feature = PreviewOp::Merge { theirs: local("feature"), oid: oid(2) };
+    let merge = apply_msg(t, &s, &feature, None).unwrap();
+    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![args(&["merge", "--", "feature"])])), "git's own message");
+    s.merge_names.shadowed.insert("refs/heads/feature".into());
+    let merge = apply_msg(t, &s, &feature, None).unwrap();
     let expected = args(&["merge", "-m", "Merge branch 'feature'", "--", "refs/heads/feature"]);
-    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![expected])));
+    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![expected])), "a shadowed branch by its full ref");
+    s.merge_names.shadowed.clear();
     let rebase = apply_msg(t, &s, &PreviewOp::Rebase { onto: Some(remote("origin/x")), oid: oid(3) }, None).unwrap();
     assert_eq!(git_cmd(&rebase), Some(("Rebase".into(), vec![args(&["rebase", "--", "refs/remotes/origin/x"])])));
     let sha = oid(7).to_string();

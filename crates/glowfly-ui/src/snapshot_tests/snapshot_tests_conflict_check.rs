@@ -42,7 +42,7 @@ pub(crate) fn conflicts(paths: &[&str]) -> Result<Prediction, String> {
 fn conflict_popover() {
     let files = conflicts(&["src/app.rs", "README.md", "docs/guide with space.md"]);
     let (st, dir, request) = on_search(ThemeChoice::Dark, "conflict-popover", files);
-    let merge_into = st.snap.as_ref().unwrap().merge_into.clone();
+    let names = st.snap.as_ref().unwrap().merge_names.clone();
     let mut h = harness(st, true);
     h.run();
     h.get_by_label("Conflicts with main").click();
@@ -51,9 +51,9 @@ fn conflict_popover() {
     assert!(h.query_by_label("docs/guide with space.md").is_some());
     h.get_by_label("Merge main").click();
     h.run();
-    let merge = vec![merge_cmd(&request.target.branch, merge_into.as_deref())];
-    assert_eq!(merge_into.as_deref(), Some("search"), "git names the branch merged into");
-    assert_eq!(merge[0], args(&["merge", "-m", "Merge branch 'main' into search", "--", "refs/heads/main"]));
+    let merge = vec![merge_cmd(&request.target.branch, &names)];
+    assert_eq!(names.into.as_deref(), Some("search"), "git names the branch merged into");
+    assert_eq!(merge[0], args(&["merge", "--", "main"]), "no ref shadows main: git writes its own message");
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if *cmds == merge)));
     drop(h);
     remove_fixture(&dir);

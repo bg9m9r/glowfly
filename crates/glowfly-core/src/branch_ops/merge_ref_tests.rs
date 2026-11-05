@@ -1,6 +1,6 @@
-//! Merging and rebasing by full ref: a tag (or a local branch spelled like a remote one) with the
-//! branch's short name is never taken for it, and the merge commit's message is the one git
-//! writes for `git merge <short name>`. Each expected message is recorded from git itself on a
+//! Merging and rebasing the branch picked: a tag (or a local branch spelled like a remote one)
+//! with the branch's short name is never taken for it, and the merge commit's message is the one
+//! git writes for `git merge <short name>`. Each expected message is recorded from git itself on a
 //! twin merge without the shadowing refs, so the developer's own config cancels out.
 
 use super::*;
@@ -55,19 +55,31 @@ fn twin_message(dir: &Path, short: &str) -> String {
     msg
 }
 
-/// What the loaded snapshot says git's title ends with; `head` is the branch checked out now.
-fn into(dir: &Path, head: Option<&str>) -> Option<String> {
+/// What the loaded snapshot says a merge needs; `head` is the branch checked out now.
+fn names(dir: &Path, head: Option<&str>) -> MergeNames {
     let snap = load(dir, &LoadOptions::all(10)).unwrap();
     assert_eq!(snap.head_branch.as_deref(), head);
-    snap.merge_into
+    snap.merge_names
+}
+
+/// The merge command the menus build for `theirs` now, checking whether the load saw it shadowed.
+fn menu_merge(dir: &Path, theirs: &BranchRef, head: &str, shadowed: bool) -> Vec<String> {
+    let names = names(dir, Some(head));
+    assert_eq!(names.is_shadowed(theirs), shadowed, "{theirs:?}: {names:?}");
+    merge_cmd(theirs, &names)
 }
 
 #[test]
 fn builders_name_the_full_ref() {
     let x = BranchRef::Local("x".into());
-    assert_eq!(merge_cmd(&x, None), ["merge", "-m", "Merge branch 'x'", "--", "refs/heads/x"]);
+    let origin_x = BranchRef::Remote("origin/x".into());
+    let plain = MergeNames { into: Some("trunk".into()), shadowed: Default::default() };
+    assert_eq!(merge_cmd(&x, &plain), ["merge", "--", "x"], "git's own message for an unshadowed branch");
+    assert_eq!(merge_cmd(&origin_x, &plain), ["merge", "--", "origin/x"]);
+    let shadowed = |into: Option<&str>| MergeNames { into: into.map(str::to_owned), shadowed: [x.full(), origin_x.full()].into() };
+    assert_eq!(merge_cmd(&x, &shadowed(None)), ["merge", "-m", "Merge branch 'x'", "--", "refs/heads/x"]);
     assert_eq!(
-        merge_cmd(&BranchRef::Remote("origin/x".into()), Some("trunk")),
+        merge_cmd(&origin_x, &shadowed(Some("trunk"))),
         ["merge", "-m", "Merge remote-tracking branch 'origin/x' into trunk", "--", "refs/remotes/origin/x"]
     );
     assert_eq!(rebase_cmd(&x), ["rebase", "--", "refs/heads/x"]);
@@ -94,7 +106,7 @@ fn merge_takes_the_branch_not_a_same_named_tag() {
             let expected = twin_message(&dir, "x");
             assert_eq!(expected.contains(" into trunk"), head == "trunk", "{expected}");
             tag(&dir);
-            ok(&dir, &merge_cmd(&theirs, into(&dir, Some(head)).as_deref()));
+            ok(&dir, &menu_merge(&dir, &theirs, head, true));
             assert_eq!(rev(&dir, "HEAD^2"), rev(&dir, "refs/heads/x"), "merged the branch, not the tag ({head})");
             assert_eq!(message(&dir), expected, "git's own message ({head}, annotated: {annotated})");
             git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
@@ -103,15 +115,31 @@ fn merge_takes_the_branch_not_a_same_named_tag() {
     }
 }
 
+/// With merge.log on, a branch nothing shadows gets git's whole message, shortlog header ("* x:")
+/// included; a shadowed one keeps git's title and its shortlog lists the branch's commits.
 #[test]
-fn merge_log_still_appends_the_shortlog() {
+fn merge_log_message_is_git_s_own() {
     let (dir, base) = fixture("mref-log");
     set_config(&dir, &[("merge.log", "true")]);
+    let x = BranchRef::Local("x".into());
     let expected = twin_message(&dir, "x");
+    assert!(expected.contains("\n* x:\n  x work"), "{expected}");
+    ok(&dir, &menu_merge(&dir, &x, "main", false));
+    assert_eq!(message(&dir), expected, "the whole message, shortlog and its header too");
+    git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+
+    let remote = BranchRef::Remote("origin/x".into());
+    git(&dir, &["remote", "add", "origin", "https://example.invalid/r.git"]);
+    git(&dir, &["update-ref", "refs/remotes/origin/x", &rev(&dir, "refs/heads/x")]);
+    let expected = twin_message(&dir, "origin/x");
+    ok(&dir, &menu_merge(&dir, &remote, "main", false));
+    assert_eq!(message(&dir), expected, "a remote-tracking branch's too");
+    git(&dir, &["reset", "-q", "--hard", "HEAD~1"]);
+
     git(&dir, &["tag", "x", &base]);
-    ok(&dir, &merge_cmd(&BranchRef::Local("x".into()), into(&dir, Some("main")).as_deref()));
+    ok(&dir, &menu_merge(&dir, &x, "main", true));
     let got = message(&dir);
-    assert_eq!(got.lines().next(), expected.lines().next(), "the title");
+    assert_eq!(got.lines().next(), Some("Merge branch 'x'"), "git's title");
     assert!(got.contains("  x work"), "{got}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -122,12 +150,13 @@ fn merge_takes_the_remote_tracking_branch_not_a_shadow() {
     git(&dir, &["checkout", "-q", "-b", "side", &base]);
     let side = commit(&dir, "s.txt", "s\n", "side work");
     git(&dir, &["checkout", "-q", "main"]);
+    git(&dir, &["remote", "add", "origin", "https://example.invalid/r.git"]);
     git(&dir, &["update-ref", "refs/remotes/origin/x", &side]);
     let expected = twin_message(&dir, "origin/x");
     assert!(expected.starts_with("Merge remote-tracking branch 'origin/x'"), "{expected}");
     git(&dir, &["tag", "origin/x", &base]);
     git(&dir, &["update-ref", "refs/heads/origin/x", &rev(&dir, "refs/heads/x")]);
-    ok(&dir, &merge_cmd(&BranchRef::Remote("origin/x".into()), into(&dir, Some("main")).as_deref()));
+    ok(&dir, &menu_merge(&dir, &BranchRef::Remote("origin/x".into()), "main", true));
     assert_eq!(rev(&dir, "HEAD^2"), side, "the remote-tracking tip");
     assert_eq!(message(&dir), expected);
     let _ = std::fs::remove_dir_all(&dir);
@@ -139,7 +168,7 @@ fn the_title_ends_as_git_ends_it() {
     let theirs = BranchRef::Local("x".into());
     let check = |head: Option<&str>| {
         let expected = twin_message(&dir, "x");
-        assert_eq!(expected.lines().next(), Some(merge_title(&theirs, into(&dir, head).as_deref()).as_str()), "{head:?}");
+        assert_eq!(expected.lines().next(), Some(merge_title(&theirs, names(&dir, head).into.as_deref()).as_str()), "{head:?}");
     };
     check(Some("main"));
     git(&dir, &["checkout", "-q", "-b", "trunk"]);
@@ -172,7 +201,7 @@ fn a_stopped_merge_prefills_git_s_title() {
     git(&dir, &["checkout", "-q", "main"]);
     commit(&dir, "a.txt", "ours\n", "main work");
     git(&dir, &["tag", "x", &base]);
-    let (merged, _) = run(&dir, &merge_cmd(&BranchRef::Local("x".into()), into(&dir, Some("main")).as_deref()));
+    let (merged, _) = run(&dir, &menu_merge(&dir, &BranchRef::Local("x".into()), "main", true));
     assert!(!merged, "the merge stops for the conflict");
     let draft = merge_message(&Repository::open(&dir).unwrap(), &MessageEncoding::UTF8).unwrap();
     assert!(draft.starts_with("Merge branch 'x'"), "{draft}");

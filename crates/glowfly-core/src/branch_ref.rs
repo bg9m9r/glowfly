@@ -1,6 +1,10 @@
 //! A branch picked in a menu, held so git is given its full ref (`refs/heads/x`,
 //! `refs/remotes/origin/x`) while people see its short name. Git's short-name lookup tries tags
 //! (and `refs/<name>`) before branches, so the short name alone can name the wrong commit.
+//! `MergeNames` says which branches that happens to, so a merge can still use the short name (and
+//! get git's own message) for every other branch.
+
+use std::collections::HashSet;
 
 /// A branch a merge, rebase, preview or conflict check names. Git is given its full ref, so no tag
 /// or other ref with the same short name is picked; people see its short name.
@@ -37,6 +41,27 @@ impl BranchRef {
         } else {
             full.strip_prefix("refs/remotes/").map(|n| BranchRef::Remote(n.to_owned()))
         }
+    }
+}
+
+/// What a merge from the menus needs to write the message `git merge <short name>` writes. Read at
+/// load (`Snapshot::merge_names`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct MergeNames {
+    /// What git's merge title ends with when merging into HEAD (" into <this>"): the checked-out
+    /// branch, "HEAD" when detached, None when merge.suppressDest leaves it out (main and master by
+    /// default).
+    pub into: Option<String>,
+    /// The full refs of the branches whose short name git takes for something else first: a
+    /// same-named tag, `refs/<name>`, an all-caps file in the git dir such as ORIG_HEAD, a local
+    /// branch spelled like a remote one, or a name spelled like a full object id.
+    pub shadowed: HashSet<String>,
+}
+
+impl MergeNames {
+    /// Whether git's short-name lookup would take `b`'s short name for another ref or object.
+    pub fn is_shadowed(&self, b: &BranchRef) -> bool {
+        self.shadowed.contains(&b.full())
     }
 }
 
