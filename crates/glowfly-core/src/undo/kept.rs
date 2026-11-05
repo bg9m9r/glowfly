@@ -252,21 +252,23 @@ pub(super) fn find(repo: &Repository, id: Oid) -> Result<Option<Kept>> {
 }
 
 /// The records still worth listing, newest first: not a file whose path holds those bytes again
-/// (undone, restored; a link only as a link), nor a stash back in the stash list; each path's
-/// bytes once.
+/// (undone, restored; a link only as a link, see `Saved::held_by`), nor a stash back in the
+/// stash list; each path's bytes once.
 pub fn list(workdir: &Path) -> Result<Vec<Kept>> {
     let repo = Repository::open(workdir)?;
     let stashed: HashSet<Oid> = match repo.reflog("refs/stash") {
         Ok(log) => log.iter().map(|e| e.id_new()).collect(),
         Err(_) => HashSet::new(),
     };
+    let links = crate::repo::workfile_unrm::symlinks(&repo);
     let mut seen = HashSet::new();
     let mut out = Vec::new();
     for k in all(&repo)? {
         let shown = match &k.item {
             KeptItem::File { path, blob, link, .. } => {
-                let now = super::saved::current(workdir, path).ok().flatten().map(Saved::content);
-                seen.insert((path.clone(), *blob)) && now != Some((*blob, *link))
+                let now = super::saved::current(workdir, path).ok().flatten();
+                let kept = Saved { blob: *blob, executable: false, link: *link };
+                seen.insert((path.clone(), *blob)) && !kept.held_by(now, links)
             }
             KeptItem::Stash { stash, .. } => seen.insert((String::new(), *stash)) && !stashed.contains(stash),
         };

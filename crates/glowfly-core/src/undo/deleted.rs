@@ -185,7 +185,7 @@ pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> 
             Err(Error::Unsupported(m)) => return Ok(stale(m)),
             Err(e) => return Err(e),
         };
-        if now.map(Saved::content) != Some(before.content()) {
+        if !before.held_by(now, repo::workfile_unrm::symlinks(&git)) {
             return Ok(stale(format!("{path} has changed since it was put back")));
         }
         if let Some(s) = staged
