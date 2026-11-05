@@ -5,7 +5,7 @@
 use super::rebase_quick_tests::{last_toast, up};
 use super::rebase_tests::{repo, running_job};
 use super::selection_tests::{commit_on, git};
-use super::tests::drive;
+use super::tests::{drive, said};
 use git2::Oid;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::gitcli::args;
@@ -78,7 +78,7 @@ fn opening_asks_and_results_fill_only_the_dialog_that_asked() {
     // A result for another request changes nothing.
     let mut other = job(&fx).clone();
     other.request.op = PreviewOp::Reset { to: f };
-    let stray = Msg::OpPreview(OpPreviewMsg::Loaded { job: other, result: Err("no".into()) });
+    let stray = Msg::OpPreview(OpPreviewMsg::Loaded { job: other, result: Err(said("no")) });
     assert!(up(&mut st, stray).is_empty());
     assert!(dialog(&st).result.is_none());
 
@@ -91,6 +91,21 @@ fn opening_asks_and_results_fill_only_the_dialog_that_asked() {
     st.modal = None;
     deliver(&mut st, fx);
     assert!(st.modal.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_failed_preview_reads_in_the_users_language() {
+    let (mut st, dir, _, f) = with_feature("opp-failed-de");
+    st.settings.language = "de".into();
+    let fx = open(&mut st, merge(f));
+    let result = Err(glowfly_core::error::ReadFailed::NotARepository { path: "/r".into() });
+    up(&mut st, Msg::OpPreview(OpPreviewMsg::Loaded { job: job(&fx).clone(), result }));
+    let want = "/r ist kein Git-Repository";
+    assert!(matches!(&dialog(&st).result, Some(Err(e)) if e == want), "the dialog keeps the German words");
+    let line = st.settings.lang().trf("op_preview.failed", &[("error", &want)]);
+    assert_eq!(line, format!("Die Vorschau konnte nicht ermittelt werden: {want}"));
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == line), "{:?}", st.log.last().map(|l| &l.text));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

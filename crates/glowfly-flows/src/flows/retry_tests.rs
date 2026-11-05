@@ -4,7 +4,7 @@
 
 use super::history_tests::{oid, with_view};
 use super::selection_tests::fixture;
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, said, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::HistoryStart;
 use glowfly_model::effect::HistoryEffect;
@@ -70,12 +70,26 @@ fn blame_try_again_asks_again() {
     up(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }));
     assert!(blame_loads(&up(&mut st, Msg::Blame(BlameMsg::Retry))).is_empty(), "nothing while it loads");
     let generation = st.session.blame.generation;
-    up(&mut st, Msg::Blame(BlameMsg::Loaded { path: "a.txt".into(), generation, result: Err("not found: a.txt".into()) }));
+    up(&mut st, Msg::Blame(BlameMsg::Loaded { path: "a.txt".into(), generation, result: Err(said("not found: a.txt")) }));
     assert!(st.session.blame.view.as_ref().unwrap().error.is_some());
     let fx = up(&mut st, Msg::Blame(BlameMsg::Retry));
     assert_eq!(blame_loads(&fx), [generation + 1]);
     let v = st.session.blame.view.as_ref().unwrap();
     assert!(v.loading && v.error.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_failed_blame_reads_in_the_users_language() {
+    let (mut st, dir) = opened("retry-blame-de");
+    st.settings.language = "de".into();
+    up(&mut st, Msg::Blame(BlameMsg::Open { path: "a.txt".into(), at: None }));
+    let generation = st.session.blame.generation;
+    let result = Err(glowfly_core::error::ReadFailed::NotARepository { path: "/r".into() });
+    up(&mut st, Msg::Blame(BlameMsg::Loaded { path: "a.txt".into(), generation, result }));
+    let want = "/r ist kein Git-Repository";
+    assert_eq!(st.session.blame.view.as_ref().unwrap().error.as_deref(), Some(want));
+    assert!(st.log.last().is_some_and(|l| !l.ok && l.text == want), "{:?}", st.log.last().map(|l| &l.text));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

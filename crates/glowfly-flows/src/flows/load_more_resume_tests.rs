@@ -5,7 +5,7 @@
 //! large history's old commits and lets an index jump land.
 
 use super::history_index_tests::{past_the_delay, run_build};
-use super::tests::{drive, finish, finish_keeping, git, long_repo, state};
+use super::tests::{drive, finish, finish_keeping, git, long_repo, said, state};
 use super::update;
 use glowfly_model::effect::{BackgroundEffect, Effect, LoadKind};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, SearchMsg, WatchMsg};
@@ -130,7 +130,7 @@ fn a_failed_page_is_held_and_tried_again_as_more() {
     let (mut st, dir) = opened("resume-failed", 1200, 500);
     let t0 = Instant::now();
     let fail = |st: &mut AppState| {
-        let failed = LoadMsg::HistoryExtended { generation: st.load_gen, result: Err("walk failed".into()) };
+        let failed = LoadMsg::HistoryExtended { generation: st.load_gen, result: Err(said("walk failed")) };
         update(st, Msg::Load(failed), t0)
     };
     one_more(load_more(&mut st));
@@ -155,7 +155,7 @@ fn an_old_page_is_ignored() {
     let reload = update(&mut st, Msg::Repo(RepoMsg::Refresh), Instant::now());
     assert!(st.load_gen > old_gen);
     let before = std::sync::Arc::clone(&st.snap.as_ref().unwrap().commits);
-    let stale = LoadMsg::HistoryExtended { generation: old_gen, result: Err("old".into()) };
+    let stale = LoadMsg::HistoryExtended { generation: old_gen, result: Err(said("old")) };
     assert!(update(&mut st, Msg::Load(stale), Instant::now()).is_empty());
     assert!(st.loading && st.refresh.more_failed.is_none());
     assert!(std::sync::Arc::ptr_eq(&before, &st.snap.as_ref().unwrap().commits));

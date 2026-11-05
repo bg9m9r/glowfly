@@ -4,9 +4,11 @@
 
 use super::AppState;
 use super::dashboard::{AccountRow, AccountState, LocalRepo, MAX_REPOS, MAX_TARGETS, TargetData};
+use super::error_words::typed;
 use super::forge::tracker_target;
 use super::repo_lists;
 use crate::effect::{AccountJob, TargetJob};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::forge::dashboard::ScannedRepo;
 use glowfly_core::forge::{self, Target};
 use glowfly_core::paths::same_spelling;
@@ -69,14 +71,14 @@ fn add_local(data: &mut TargetData, local: LocalRepo) {
 }
 
 /// Plans a refresh from `scans` (each folder asked, with what reading it found).
-pub fn plan(st: &AppState, scans: &[(PathBuf, Result<ScannedRepo, String>)]) -> Plan {
+pub fn plan(st: &AppState, scans: &[(PathBuf, Result<ScannedRepo, ReadFailed>)]) -> Plan {
     let mut p = Plan::default();
     let mut reals: Vec<&std::path::Path> = Vec::new();
     for (path, result) in scans {
         let s = match result {
             Ok(s) => s,
             Err(e) => {
-                p.unreadable.push((path.clone(), e.clone()));
+                p.unreadable.push((path.clone(), typed::unreadable(st.settings.lang(), e)));
                 continue;
             }
         };

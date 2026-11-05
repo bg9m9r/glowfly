@@ -21,7 +21,7 @@ use glowfly_model::msg::StageMsg;
 use glowfly_model::patch::PatchEffect;
 use glowfly_model::ssh::SshEffect;
 use glowfly_model::state::{AppState, ForgeState, Modal, Selection, Status};
-use glowfly_model::testing::{git, scratch_repo, state};
+use glowfly_model::testing::{git, said, scratch_repo, state};
 use std::time::{Duration, Instant};
 
 /// Answers the open auto-stash prompt with its primary ("Stash and ...") and runs what follows:
@@ -142,7 +142,7 @@ fn opening_ignores_stale_results() {
     // A newer load supersedes the first; the first's result is ignored.
     update(&mut st, Msg::Repo(RepoMsg::Open("C:/b".into())), Instant::now());
     let fx =
-        update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation: 1, kind: LoadKind::Open, result: Err("boom".into()) }), Instant::now());
+        update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation: 1, kind: LoadKind::Open, result: Err(said("boom")) }), Instant::now());
     assert!(fx.is_empty());
     assert!(st.log.is_empty(), "stale errors are not reported");
     assert!(st.loading);

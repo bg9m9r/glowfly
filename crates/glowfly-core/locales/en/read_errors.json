@@ -5,7 +5,11 @@
   "read_errors.missing_content": "the contents of {path} haven't been downloaded from {remote} yet",
   "read_errors.no_folder": "A folder history needs a folder",
   "read_errors.no_thread": "could not start a thread: {said}",
+  "read_errors.not_a_repository": "{path} is not a git repository",
   "read_errors.not_conflicted": "not found: {path} is not conflicted",
+  "read_errors.not_owned": "git won't open {root} because another user owns it",
   "read_errors.old_file_unreadable": "the old file can't be read",
+  "read_errors.open_failed": "Could not open {path}: {why}",
+  "read_errors.panicked": "Glowfly hit an internal error ({effect}): {panic}",
   "read_errors.stopped": "stopped"
 }

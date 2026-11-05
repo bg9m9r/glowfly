@@ -5,6 +5,7 @@
 use super::Inactive;
 use crate::state::stash_confirm::StashAsk;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::stash_ops::{SavedAutoStash, StashScope};
 use std::path::PathBuf;
 
@@ -25,7 +26,7 @@ pub enum StashMsg {
     Ask(StashAsk),
     /// The stash's files for `ask` (runner/stashes.rs), or why they couldn't be read: open the
     /// question.
-    PathsRead { ask: StashAsk, paths: Result<Vec<String>, String> },
+    PathsRead { ask: StashAsk, paths: Result<Vec<String>, ReadFailed> },
 }
 
 impl StashMsg {

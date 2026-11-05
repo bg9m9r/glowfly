@@ -295,7 +295,7 @@ fn two_commit_diff_end_to_end() {
         target: target.clone(),
         reload: false,
         generation: st.session.diff.generation - 1,
-        result: Err("old".into()),
+        result: Err(said("old")),
         lfs: None,
         raw: None,
     });

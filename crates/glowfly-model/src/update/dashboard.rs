@@ -85,12 +85,13 @@ fn open(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 fn start(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (b, repos, missing) = basis(st);
     let connections = b.connections.clone();
+    let gone = st.settings.lang().tr("dashboard.unreadable.missing");
     let d = &mut st.dashboard;
     d.generation += 1;
     d.phase = Phase::Scanning;
     d.in_flight = 0;
     d.basis = Some(b);
-    d.unreadable = missing.into_iter().map(|p| (p, "missing".to_owned())).collect();
+    d.unreadable = missing.into_iter().map(|p| (p, gone.to_owned())).collect();
     fx.push(Effect::Dashboard(DashboardEffect::Scan { generation: d.generation, repos, connections }));
 }
 

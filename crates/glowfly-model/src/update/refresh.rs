@@ -8,9 +8,11 @@
 use crate::effect::LoadEffect;
 use crate::effect::{Effect, KnownRepo, LoadKind, StatusRead};
 use crate::msg::LoadMsg;
+use crate::state::error_words::typed;
 use crate::state::refresh::{Depth, RefreshState, Wanted, can_load_more, only_more};
 use crate::state::{AppState, Selection};
 use git2::RepositoryState;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{ChangeCounts, FileEntry, Snapshot, SubmoduleInfo};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -301,7 +303,7 @@ fn remember_index(st: &mut AppState, ok: bool, index: Option<std::sync::Arc<glow
 
 fn apply_status(
     st: &mut AppState,
-    result: Result<Status, String>,
+    result: Result<Status, ReadFailed>,
     submodules: Option<Vec<SubmoduleInfo>>,
     open_stamp: Option<u64>,
     now: Instant,
@@ -319,7 +321,7 @@ fn apply_status(
             super::compare_wip::status_read(st, fx);
         }
         Err(e) => {
-            st.log(false, e);
+            st.log(false, typed::read(st.settings.lang(), &e));
             // Re-read the open diff anyway, so it doesn't stay stale after a hunk operation.
             super::repo::reload_diff(st, fx);
         }

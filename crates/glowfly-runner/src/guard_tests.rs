@@ -162,7 +162,7 @@ fn a_panicking_blame_ends_the_views_loading() {
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
     assert!(
-        matches!(*msg, Msg::Blame(BlameMsg::Loaded { generation: 4, ref path, result: Err(ref e) }) if path == "a.txt" && e.contains("boom"))
+        matches!(*msg, Msg::Blame(BlameMsg::Loaded { generation: 4, ref path, result: Err(ReadFailed::Panicked { ref effect, ref panic }) }) if path == "a.txt" && panic == "boom" && effect == "blame")
     );
 }
 
@@ -172,13 +172,17 @@ fn a_panicking_line_count_reports_a_failed_result() {
     let effect = Effect::LineCounts(LineCountsEffect::Wip { workdir: "r".into(), generation: 3 });
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
-    assert!(matches!(*msg, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation: 3, result: Err(ref e) }) if e.contains("boom")));
+    assert!(
+        matches!(*msg, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation: 3, result: Err(ReadFailed::Panicked { ref panic, .. }) }) if panic == "boom")
+    );
 
     let oid = git2::Oid::from_bytes(&[7; 20]).unwrap();
     let effect = Effect::LineCounts(LineCountsEffect::Commit { workdir: "r".into(), oid });
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
-    assert!(matches!(*msg, Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid: o, result: Err(_) }) if o == oid));
+    assert!(
+        matches!(*msg, Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid: o, result: Err(ReadFailed::Panicked { ref panic, .. }) }) if o == oid && panic == "boom")
+    );
 }
 
 #[test]
@@ -204,7 +208,9 @@ fn a_panicking_load_ends_the_load() {
         prior: None,
     });
     let msg = guarded(Recovery::of(&effect, "load-repo"), || panic!("boom")).unwrap();
-    assert!(matches!(&msg, Msg::Repo(RepoMsg::RepoLoaded { generation: 3, result: Err(e), .. }) if e.contains("boom")));
+    let Msg::Repo(RepoMsg::RepoLoaded { generation: 3, result: Err(e), .. }) = &msg else { panic!("a failed load") };
+    assert_eq!(e, &ReadFailed::Panicked { effect: "load-repo".into(), panic: "boom".into() });
+    assert_eq!(e.to_string(), "Glowfly hit an internal error (load-repo): boom");
     update(&mut st, msg, Instant::now());
     assert!(!st.loading, "the next refresh isn't left waiting for it");
 
@@ -218,7 +224,9 @@ fn a_panicking_load_ends_the_load() {
     });
     let msg = guarded(Recovery::of(&effect, "load-status"), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
-    assert!(matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(_), .. })));
+    assert!(
+        matches!(*msg, Msg::Load(LoadMsg::StatusLoaded { generation: 3, result: Err(ReadFailed::Panicked { ref effect, ref panic }), .. }) if effect == "load-status" && panic == "boom")
+    );
 
     let old = std::sync::Arc::new(glowfly_core::repo::IndexMemo::of(&git2::Index::new().unwrap()).unwrap());
     let read = glowfly_model::effect::IndexRequest { old, partners: Vec::new(), paths: Vec::new() };

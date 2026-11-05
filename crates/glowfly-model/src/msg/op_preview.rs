@@ -2,6 +2,7 @@
 //! result, Preview again and Apply.
 
 use crate::effect::OpPreviewJob;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::op_preview::{OpPreview, PreviewOp};
 
 /// Which reset the preview's footer runs.
@@ -17,7 +18,7 @@ pub enum OpPreviewMsg {
     /// A Preview… menu item: open the dialog and work the result out.
     Open(PreviewOp),
     /// The runner worked out `job`.
-    Loaded { job: OpPreviewJob, result: Result<Box<OpPreview>, String> },
+    Loaded { job: OpPreviewJob, result: Result<Box<OpPreview>, ReadFailed> },
     /// Preview again, against the branch as it is now.
     Again,
     /// Run the operation as its direct menu item does; `Some` only for a reset.

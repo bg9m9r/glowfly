@@ -7,6 +7,7 @@
 
 use crate::effect::{Effect, OpPreviewJob};
 use crate::msg::OpPreviewMsg;
+use crate::state::error_words::typed;
 use crate::state::op_preview::{PreviewDialog, apply_blocker, apply_msg, resolve};
 use crate::state::trust::WaitingFor;
 use crate::state::{AppState, Modal};
@@ -18,16 +19,18 @@ pub(super) fn handle(st: &mut AppState, msg: OpPreviewMsg, now: Instant, fx: &mu
     match msg {
         OpPreviewMsg::Open(op) => open(st, op, fx),
         OpPreviewMsg::Loaded { job, result } => {
+            let t = st.settings.lang();
             let Some(Modal::OpPreview(d)) = &mut st.modal else { return };
             if d.job != job || d.result.is_some() {
                 return;
             }
+            let result = result.map(|b| *b).map_err(|e| typed::read(t, &e));
             if let Err(e) = &result {
-                let line = st.settings.lang().trf("op_preview.failed", &[("error", &glowfly_core::error::plain_message(e))]);
-                d.result = Some(result.map(|b| *b));
+                let line = t.trf("op_preview.failed", &[("error", &glowfly_core::error::plain_message(e))]);
+                d.result = Some(result);
                 st.log(false, line);
             } else {
-                d.result = Some(result.map(|b| *b));
+                d.result = Some(result);
             }
         }
         OpPreviewMsg::Again => again(st, fx),

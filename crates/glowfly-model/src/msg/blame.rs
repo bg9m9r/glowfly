@@ -5,6 +5,7 @@ use super::Inactive;
 use crate::state::blame::BlameData;
 use crate::state::history::HistoryPane;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::settings::BlameMoves;
 
 /// The blame view (update/blame.rs).
@@ -20,7 +21,7 @@ pub enum BlameMsg {
     Loaded {
         path: String,
         generation: u64,
-        result: Result<Box<BlameData>, String>,
+        result: Result<Box<BlameData>, ReadFailed>,
     },
     /// Back to the blame before the last "Blame before this commit".
     Back,

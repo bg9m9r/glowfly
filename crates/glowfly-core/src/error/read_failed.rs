@@ -1,17 +1,28 @@
-//! Why a background read of the repository failed, as the graph's and the diff's result
-//! messages carry it (#367): libgit2's or the system's own words kept as they came, Glowfly's
-//! own causes as variants the model words (state/error_words/typed.rs).
+//! Why a background read of the repository failed, as the graph's, diff's and repository's reads'
+//! result messages carry it (#367): libgit2's or the system's own words kept as they came,
+//! Glowfly's own causes as variants the model words (state/error_words/typed.rs).
 
 use super::Error;
 use std::fmt;
 
-/// Why a read for the graph (a comparison, stacked lists, path search, history index) or the
-/// diff (hunk patch, unchanged lines, binary sides, conflict, conflict markers, file history)
-/// failed.
+/// Why a read for the graph (a comparison, stacked lists, path search, history index), the
+/// diff (hunk patch, unchanged lines, binary sides, conflict, conflict markers, file history) or
+/// the repository (a load, the status, a commit's detail, a file diff, a signature check, line
+/// counts, blame, the unmerged count, the dashboard scan, an operation preview, the sparse
+/// status, a stash's files) failed.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ReadFailed {
     /// libgit2's or the system's own words (what `Error::Git` / `Error::Io` said).
     Said { said: String },
+    /// The folder holds no git repository (`Error::NotARepository`).
+    NotARepository { path: String },
+    /// git refuses the repository at `root` (as shown) because another user owns it
+    /// (`Error::NotOwned`).
+    NotOwned { root: String },
+    /// A repository load couldn't open `path` (as shown); why.
+    OpenFailed { path: String, why: Box<ReadFailed> },
+    /// A read's runner worker panicked: which one, and the panic's own words.
+    Panicked { effect: String, panic: String },
     /// A partial clone hasn't downloaded contents the read needs.
     MissingContent { path: String, remote: String },
     /// Copy hunk as patch: git no longer produces the hunk on screen.
@@ -39,6 +50,8 @@ impl From<Error> for ReadFailed {
         match e {
             Error::Git(e) => ReadFailed::Said { said: e.to_string() },
             Error::Io(e) => ReadFailed::Said { said: e.to_string() },
+            Error::NotARepository(path) => ReadFailed::NotARepository { path },
+            Error::NotOwned(r) => ReadFailed::NotOwned { root: crate::native_path::shown(&r.root) },
             Error::MissingContent(m) => ReadFailed::MissingContent { path: m.path, remote: m.remote },
             other => ReadFailed::Other { said: other.to_string() },
         }
@@ -63,6 +76,10 @@ impl fmt::Display for ReadFailed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ReadFailed::Said { said } | ReadFailed::Other { said } => f.write_str(said),
+            ReadFailed::NotARepository { path } => write!(f, "{path} is not a git repository"),
+            ReadFailed::NotOwned { root } => write!(f, "git won't open {root} because another user owns it"),
+            ReadFailed::OpenFailed { path, why } => write!(f, "Could not open {path}: {why}"),
+            ReadFailed::Panicked { effect, panic } => write!(f, "Glowfly hit an internal error ({effect}): {panic}"),
             ReadFailed::MissingContent { path, remote } => {
                 write!(f, "the contents of {path} haven't been downloaded from {remote} yet")
             }
@@ -82,6 +99,7 @@ impl fmt::Display for ReadFailed {
 mod tests {
     use super::*;
     use crate::partial::MissingContent;
+    use crate::safe_directory::Refusal;
 
     #[test]
     fn git_and_io_errors_keep_their_own_words() {
@@ -106,13 +124,54 @@ mod tests {
     #[test]
     fn other_errors_keep_their_old_text() {
         for e in [
-            Error::NotARepository("/x".into()),
             Error::Other("could not parse the merged file".into()),
             Error::Unsupported("is a folder".into()),
             Error::NotFound("no changes in a.txt".into()),
         ] {
             let shown = e.to_string();
             assert_eq!(ReadFailed::from(e), ReadFailed::Other { said: shown });
+        }
+    }
+
+    #[test]
+    fn not_a_repository_and_not_owned_get_their_own_variants() {
+        let shown = Error::NotARepository("/x".into()).to_string();
+        let e = ReadFailed::from(Error::NotARepository("/x".into()));
+        assert_eq!(e, ReadFailed::NotARepository { path: "/x".into() });
+        assert_eq!(e.to_string(), shown);
+        let root = crate::paths::temp_dir().join("theirs");
+        let refusal = || Refusal { root: root.clone(), owner: None, admins: false };
+        let shown = Error::NotOwned(refusal()).to_string();
+        let e = ReadFailed::from(Error::NotOwned(refusal()));
+        assert_eq!(e, ReadFailed::NotOwned { root: crate::native_path::shown(&root) });
+        assert_eq!(e.to_string(), shown);
+    }
+
+    #[test]
+    fn open_failed_and_panicked_display_as_before() {
+        let said = "could not find repository at 'r'; class=Repository (6)";
+        let e = ReadFailed::OpenFailed { path: "r".into(), why: Box::new(ReadFailed::Said { said: said.into() }) };
+        assert_eq!(e.to_string(), format!("Could not open r: {said}"));
+        let e = ReadFailed::Panicked { effect: "load-repo".into(), panic: "boom".into() };
+        assert_eq!(e.to_string(), "Glowfly hit an internal error (load-repo): boom");
+    }
+
+    #[test]
+    fn every_mapping_keeps_the_errors_english() {
+        let root = crate::paths::temp_dir().join("theirs");
+        let missing = MissingContent { oids: vec![], remote: "origin".into(), path: "big.bin".into() };
+        for e in [
+            Error::Git(git2::Error::from_str("object not found")),
+            Error::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "gone")),
+            Error::NotARepository("/x".into()),
+            Error::NotOwned(Refusal { root, owner: Some("someone".into()), admins: false }),
+            Error::NotFound("no changes in a.txt".into()),
+            Error::Unsupported("is a folder".into()),
+            Error::Other("could not parse the merged file".into()),
+            Error::MissingContent(missing),
+        ] {
+            let shown = e.to_string();
+            assert_eq!(ReadFailed::from(e).to_string(), shown);
         }
     }
 

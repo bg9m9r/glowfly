@@ -3,6 +3,7 @@
 pub(super) use super::refresh::{load, refresh, refresh_status};
 use crate::effect::{CommitEffect, Effect, OsEffect};
 use crate::msg::{FolderPurpose, RepoMsg};
+use crate::state::error_words::typed;
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::repo::DiffTarget;
@@ -31,7 +32,10 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             super::recent::check_folders(st, fx);
             super::profile_rules::want_identity(st, fx);
         }
-        RepoMsg::RepoLoaded { generation, kind, result } => super::repo_loaded::finished(st, generation, kind, result, now, fx),
+        RepoMsg::RepoLoaded { generation, kind, result } => {
+            let t = st.settings.lang();
+            super::repo_loaded::finished(st, generation, kind, result.map_err(|e| typed::read(t, &e)), now, fx)
+        }
         RepoMsg::SelectWip => select_wip(st, fx),
         RepoMsg::ShowInProgress => super::op_progress::show(st, fx),
         RepoMsg::SelectCommit(oid) => select_commit(st, oid, false, fx),
@@ -49,12 +53,14 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 }
                 Err(e) => {
                     st.session.detail = None;
-                    st.log(false, e);
+                    st.log(false, typed::read(st.settings.lang(), &e));
                 }
             }
         }
         RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
         RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw } => {
+            let t = st.settings.lang();
+            let result = result.map_err(|e| typed::read(t, &e));
             super::diff_loaded::loaded(st, target, reload, generation, result, lfs, raw, fx)
         }
         RepoMsg::CloseDiff => close_diff(st),

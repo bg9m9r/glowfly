@@ -52,7 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
 /// the stash and the working tree both change (the general warning when the stash's files
 /// couldn't be read). Conflicts that appeared meanwhile refuse it instead; another dialog that
 /// opened meanwhile keeps its place.
-fn open_question(st: &mut AppState, ask: &StashAsk, paths: Result<Vec<String>, String>) {
+fn open_question(st: &mut AppState, ask: &StashAsk, paths: Result<Vec<String>, glowfly_core::error::ReadFailed>) {
     let t = st.settings.lang();
     let Some(snap) = st.snap.as_ref() else { return };
     if let Some(why) = stash_confirm::apply_blocked(snap, t) {

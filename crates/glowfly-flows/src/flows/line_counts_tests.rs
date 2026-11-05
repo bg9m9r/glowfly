@@ -1,7 +1,7 @@
 //! Line counts: a selected commit's asked for once and cached per tab, the working tree's
 //! following every status read with at most one request running.
 
-use super::tests::{drive, finish, git, scratch_repo, state};
+use super::tests::{drive, finish, git, said, scratch_repo, state};
 use super::update;
 use git2::Oid;
 use glowfly_core::repo::{LineCount, WipLineCounts};
@@ -139,7 +139,7 @@ fn a_status_read_while_wip_counts_run_is_queued() {
     let [next] = wip_asks(&fx)[..] else { panic!("the queued request is sent") };
     assert!(next > generation);
 
-    let fx = run(&mut st, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation: next, result: Err("boom".into()) }));
+    let fx = run(&mut st, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation: next, result: Err(said("boom")) }));
     assert!(wip_asks(&fx).is_empty(), "nothing was queued");
     assert!(st.session.reads.line_counts.wip().is_none(), "a failure shows no counts");
     let mut fx = Vec::new();

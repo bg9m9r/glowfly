@@ -3,6 +3,7 @@
 //! (`SparseEffect::Checkout`).
 
 use super::execute::{Cx, Execute};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::sparse_ops::{self, SparseCommand};
 use glowfly_model::effect::SparseEffect;
 use glowfly_model::msg::{Msg, SparseMsg};
@@ -19,7 +20,7 @@ impl Execute for SparseEffect {
 
 /// Reads the status; `run_git` false leaves the paths unread (git is held there).
 pub(super) fn load(workdir: &Path, generation: u64, run_git: bool) -> Msg {
-    Msg::Sparse(SparseMsg::Loaded { generation, result: sparse_ops::status(workdir, run_git).map_err(|e| e.to_string()) })
+    Msg::Sparse(SparseMsg::Loaded { generation, result: sparse_ops::status(workdir, run_git).map_err(ReadFailed::from) })
 }
 
 pub(super) fn run(cwd: &Path, command: &SparseCommand) -> Msg {

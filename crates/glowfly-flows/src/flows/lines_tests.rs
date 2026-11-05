@@ -1,8 +1,9 @@
 //! Headless tests for line-level staging: selecting diff lines, applying them, and when the
 //! selection resets.
 
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, said, scratch_repo, state};
 use super::update;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, Hunk, HunkOp, LoadOptions};
 use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
@@ -61,7 +62,7 @@ pub(super) fn selected(st: &AppState) -> Option<(usize, Vec<usize>)> {
     (!s.is_empty()).then(|| (s.hunk, s.lines.iter().copied().collect()))
 }
 
-pub(super) fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
+pub(super) fn loaded(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, ReadFailed>) {
     let generation = st.session.diff.generation;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None, raw: None }));
 }
@@ -215,7 +216,7 @@ fn reload_keeps_identical_clears_changed() {
 
     st.session.diff.view = Some((unstaged(), two_hunks().into()));
     select(&mut st);
-    loaded(&mut st, unstaged(), true, Err("no changes in f.txt".into()));
+    loaded(&mut st, unstaged(), true, Err(said("no changes in f.txt")));
     assert!(st.session.diff.view.is_none() && selected(&st).is_none(), "a reload that finds nothing closes it");
 
     let (mut st, dir) = with_repo("lines-commit", unstaged());

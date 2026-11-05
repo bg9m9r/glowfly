@@ -2,9 +2,10 @@
 //! an unsigned one or while the repository's git is held, cached per commit and tab, and
 //! forgotten on a manual refresh, when Preferences closes or on Check again.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo;
 use glowfly_core::signature_check::{SigStatus, SignatureCheck, parse_check};
 use glowfly_core::signing::SigningFormat;
@@ -50,7 +51,7 @@ fn checks(fx: &[Effect]) -> Vec<(Oid, SigningFormat, u64)> {
         .collect()
 }
 
-fn good() -> Result<SignatureCheck, String> {
+fn good() -> Result<SignatureCheck, ReadFailed> {
     Ok(parse_check(SigningFormat::OpenPgp, "G\0Ada\0ABCD\0ABCD\0ultimate\0gpg: Good\n", "").unwrap())
 }
 
@@ -147,12 +148,28 @@ fn check_again() {
     let mut st = opened(&dir);
     let oid = head(&st);
     let [(_, _, generation)] = checks(&show(&mut st, &dir, oid, Some(SigningFormat::Ssh)))[..] else { panic!("one check") };
-    run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid, generation, result: Err("boom".into()) }));
+    run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid, generation, result: Err(said("boom")) }));
     assert!(st.session.reads.signatures.get(oid).is_some());
     assert!(st.log.iter().all(|l| !l.text.contains("boom")), "failures show in the badge, not the log");
     let fx = run(&mut st, Msg::Repo(RepoMsg::CheckSignatureAgain(oid)));
     assert!(st.session.reads.signatures.get(oid).is_none());
     assert_eq!(checks(&fx).iter().map(|c| (c.0, c.1)).collect::<Vec<_>>(), [(oid, SigningFormat::Ssh)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_failed_check_reads_in_the_users_language_in_the_tooltip() {
+    use glowfly_model::state::signatures::{BadgeState, badge};
+    let dir = scratch_repo("sig-failed-de");
+    let mut st = opened(&dir);
+    st.settings.language = "de".into();
+    let oid = head(&st);
+    let [(_, _, generation)] = checks(&show(&mut st, &dir, oid, Some(SigningFormat::Ssh)))[..] else { panic!("one check") };
+    let result = Err(ReadFailed::NotARepository { path: "/r".into() });
+    run(&mut st, Msg::Repo(RepoMsg::SignatureChecked { oid, generation, result }));
+    let done = st.session.reads.signatures.get(oid).expect("kept");
+    let tip = badge(st.settings.lang(), SigningFormat::Ssh, BadgeState::Done(done)).tooltip;
+    assert!(tip.contains("/r ist kein Git-Repository"), "{tip}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

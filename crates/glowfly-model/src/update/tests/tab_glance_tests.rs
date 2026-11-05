@@ -3,7 +3,7 @@
 //! read of some paths leaves them, a job's failure marks the tab it ran in until it is dismissed
 //! (`LogsMsg::DismissFailure`) or a later run succeeds, and the running job marks its tab.
 
-use super::tests::{scratch_repo, state};
+use super::tests::{said, scratch_repo, state};
 use super::update;
 use crate::effect::{LoadKind, StatusRead};
 use crate::logs::LogsMsg;
@@ -86,7 +86,7 @@ fn a_load_for_a_parked_tab_keeps_its_counts() {
     assert_eq!(st.active_tab, 1, "still parked");
     assert_eq!(st.tab_glance(0).counts.map(|c| c.changed), Some(2));
     // A failed load leaves them.
-    send(&mut st, scoped(&dir, Msg::Repo(RepoMsg::RepoLoaded { generation: 0, kind: LoadKind::Refresh, result: Err("gone".into()) })));
+    send(&mut st, scoped(&dir, Msg::Repo(RepoMsg::RepoLoaded { generation: 0, kind: LoadKind::Refresh, result: Err(said("gone")) })));
     assert_eq!(st.tab_glance(0).counts.map(|c| c.changed), Some(2));
     let _ = std::fs::remove_dir_all(&dir);
 }

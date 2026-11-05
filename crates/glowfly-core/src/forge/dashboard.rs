@@ -56,16 +56,6 @@ pub fn read_repo(path: &Path, connections: &[Connection]) -> Result<ScannedRepo>
     Ok(ScannedRepo { workdir, real_workdir, folder, name, remotes, host })
 }
 
-/// A short reason a folder couldn't be read, for a list that already names the folder.
-pub fn unreadable_reason(e: &Error) -> String {
-    match e {
-        Error::NotARepository(_) => "not a Git repository".into(),
-        Error::NotOwned(_) => "owned by another user".into(),
-        Error::Unsupported(m) => m.clone(),
-        e => e.to_string(),
-    }
-}
-
 /// Every remote URL `parse_remote` recognizes, origin first and then in the order given, each
 /// target once (two remotes for one repository, say over https and ssh, collapse).
 pub fn recognized(remote_urls: &[(String, String)], connections: &[Connection]) -> Vec<RemoteTarget> {

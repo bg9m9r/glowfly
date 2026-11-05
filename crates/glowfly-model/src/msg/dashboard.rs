@@ -2,6 +2,7 @@
 
 use crate::effect::FetchReply;
 pub use crate::state::dashboard::DashShow;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::forge::dashboard::ScannedRepo;
 use glowfly_core::forge::{Account, Target};
 use std::path::PathBuf;
@@ -30,7 +31,7 @@ pub enum DashboardMsg {
     /// The folders read for refresh `generation`, each with what was found or why it couldn't be read.
     Scanned {
         generation: u64,
-        repos: Vec<(PathBuf, Result<ScannedRepo, String>)>,
+        repos: Vec<(PathBuf, Result<ScannedRepo, ReadFailed>)>,
     },
     Fetched(Box<FetchReply>),
 }

@@ -1,4 +1,4 @@
-//! The words of the graph's and the diff's failed reads (#367, `ReadFailed`): every variant in
+//! The words of the graph's, the diff's and the repository's failed reads (#367, `ReadFailed`): every variant in
 //! English, German and Spanish through `typed::read`, English exactly as the error has always
 //! read (its `Display`), and libgit2's words, paths and remote names kept as they came.
 
@@ -69,6 +69,34 @@ pub(super) fn variants() -> Vec<(R, [&'static str; 3])> {
             ],
         ),
         (R::Stopped, ["stopped", "angehalten", "detenido"]),
+        (
+            R::NotARepository { path: "/r".into() },
+            ["/r is not a git repository", "/r ist kein Git-Repository", "/r no es un repositorio git"],
+        ),
+        (
+            R::NotOwned { root: "/r".into() },
+            [
+                "git won't open /r because another user owns it",
+                "git öffnet /r nicht, weil der Ordner einem anderen Benutzer gehört",
+                "git no abrirá /r porque pertenece a otro usuario",
+            ],
+        ),
+        (
+            R::OpenFailed { path: "/r".into(), why: Box::new(R::NotARepository { path: "/r".into() }) },
+            [
+                "Could not open /r: /r is not a git repository",
+                "/r konnte nicht geöffnet werden: /r ist kein Git-Repository",
+                "No se pudo abrir /r: /r no es un repositorio git",
+            ],
+        ),
+        (
+            R::Panicked { effect: "load-repo".into(), panic: "boom".into() },
+            [
+                "Glowfly hit an internal error (load-repo): boom",
+                "In Glowfly ist ein interner Fehler aufgetreten (load-repo): boom",
+                "Glowfly tuvo un error interno (load-repo): boom",
+            ],
+        ),
     ]
 }
 
@@ -96,6 +124,13 @@ fn paths_remotes_and_said_text_are_kept_in_every_language() {
             R::MissingContent { path, remote } => vec![path, remote],
             R::NotConflicted { path } => vec![path],
             R::Internal { effect } => vec![effect],
+            R::NotARepository { path } => vec![path],
+            R::NotOwned { root } => vec![root],
+            R::OpenFailed { path, why } => match why.as_ref() {
+                R::NotARepository { path: inner } => vec![path, inner],
+                _ => vec![path],
+            },
+            R::Panicked { effect, panic } => vec![effect, panic],
             R::DiffChanged | R::FileChanged | R::OldFileUnreadable | R::NoFolder | R::Stopped => vec![],
         };
         for t in LANGS {

@@ -3,7 +3,7 @@
 //! it in full and as deep, keeping the selection and the scroll, or shows why it couldn't with
 //! Try again; and a small history stays.
 
-use super::tests::{long_repo, scratch_repo, state};
+use super::tests::{long_repo, said, scratch_repo, state};
 use super::update;
 use crate::effect::{BackgroundEffect, Effect, LoadKind};
 use crate::msg::{Msg, RepoMsg, TabsMsg};
@@ -143,7 +143,7 @@ fn a_failed_reload_of_a_freed_history_is_shown_and_tried_again() {
     assert!(st.loading);
 
     // The folder went away while the tab was parked.
-    let (generation, result) = (st.load_gen, Err("not found: could not find repository".to_owned()));
+    let (generation, result) = (st.load_gen, Err(said("not found: could not find repository")));
     update(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Refresh, result }), Instant::now());
     assert!(!st.loading, "nothing loads, so the graph shows the failure rather than a spinner");
     assert_eq!(st.session.tab_view.history_freed, Some(n), "still a stub");

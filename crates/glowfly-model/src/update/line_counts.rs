@@ -5,6 +5,7 @@ use crate::effect::HistoryEffect;
 use crate::effect::{Effect, LineCountsEffect};
 use crate::state::{AppState, Selection};
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{FileLineCounts, WipLineCounts};
 use std::sync::Arc;
 
@@ -43,7 +44,7 @@ pub(super) fn want_commit(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     }
 }
 
-pub(super) fn commit_loaded(st: &mut AppState, oid: Oid, result: Result<Arc<FileLineCounts>, String>) {
+pub(super) fn commit_loaded(st: &mut AppState, oid: Oid, result: Result<Arc<FileLineCounts>, ReadFailed>) {
     match result {
         Ok(counts) => st.session.reads.line_counts.finish_commit(oid, counts),
         Err(e) => {
@@ -67,7 +68,7 @@ pub fn status_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-pub(super) fn wip_loaded(st: &mut AppState, generation: u64, result: Result<Box<WipLineCounts>, String>, fx: &mut Vec<Effect>) {
+pub(super) fn wip_loaded(st: &mut AppState, generation: u64, result: Result<Box<WipLineCounts>, ReadFailed>, fx: &mut Vec<Effect>) {
     if let Err(e) = &result {
         tracing::debug!("line counts of the working tree: {e}");
     }

@@ -40,6 +40,7 @@ pub(super) mod read_errors_tests;
 pub(super) mod read_headlines_tests;
 pub(super) mod repo_colour_tests;
 pub(super) mod repo_groups_tests;
+pub(super) mod repo_read_errors_tests;
 pub(super) mod system_a11y_tests;
 pub(super) mod tab_glance_tests;
 pub(super) mod terminal_schemes_tests;

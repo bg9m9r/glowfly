@@ -74,7 +74,14 @@ Translations and Glowfly's own wording. Untriaged; see [README.md](README.md).
 - A conflict that can't be opened logs the bare cause; give it a translated headline naming the file ("Couldn't open the conflict in {path}: ...")
 - Compare, workdir compare and stacked-list failures log the bare cause; give the activity-log line a translated headline
 - A failed match of the loaded history (`LoadedMatched`) is only a tracing warning; consider an activity-log line
-- Reuse `ReadFailed` for repo.rs's reads (snapshot, commit detail, file diff, signatures, line counts, status) as the next #367 area
+- Core's own read refusals still reach users as `ReadFailed::Other`, untranslated: blame.rs's (no commits yet, not in commit, folder, submodule, binary, too large, took too long, git blame failed) and the bare repository and no working directory refusals in load.rs and forge/dashboard.rs; give them variants
+- Operation preview's refusals (stale, unborn, fast-forward only, unrelated, picking a merge, rebase merges, octopus, steps, ref moved, too many, a rebase in progress) are `Error::Unsupported` text; give them a typed cause
+- signature_check's "git printed no signature status" and "git log failed: …" and sparse_ops' "git sparse-checkout list failed" fallback: give them variants
+- The trust re-check's failure (runner/trust.rs: couldn't check what a repository runs, didn't run git in it) reaches loads and status as `ReadFailed::Other`; type it
+- Commit detail, status and diff failures log the bare cause; give them translated headlines ("Couldn't read commit {short}: …", "Couldn't read the status: …", "Couldn't open the diff of {path}: …")
+- The signature badge, blame pane, Delete dialog, sparse page and load-more row keep the text worded on arrival; store the `ReadFailed` and word it in the view model so a language switch follows
+- `WatchMsg::WatchFailed { error: String }` and `ReposMsg::Scanned`'s `ScanFound.unreadable` still carry English strings outside a `Result`, which the ratchet doesn't count
+- Next #367 landing: the git-CLI write results (rebase.rs's 7, work.rs's LocalOpDone and Reverted, files.rs's FileRestored and WorkFileDone, `Inactive::WorkFile`, stack's StackPush)
 
 ### Locale catalogs per area
 

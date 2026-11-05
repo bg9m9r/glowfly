@@ -2,6 +2,7 @@
 //! highlighting in the background. `Runner::run` gives each background job a cancel ticket, so a
 //! newer `DiffEffect::Highlight` cancels the older one.
 
+use glowfly_core::error::ReadFailed;
 use glowfly_core::highlight::{self, DiffHighlight, OldText, SyntaxHint};
 use glowfly_core::intraline;
 use glowfly_core::repo::{self, DiffTarget, FileDiff, FileEntry, LoadDiffOptions};
@@ -66,7 +67,7 @@ pub(super) fn load_job(
             );
             (v.diff, v.lfs, v.raw)
         })
-        .map_err(|e| e.to_string());
+        .map_err(ReadFailed::from);
     let (result, lfs, raw) = match result {
         Ok((d, lfs, raw)) => (Ok(d), lfs, raw),
         Err(e) => (Err(e), None, None),

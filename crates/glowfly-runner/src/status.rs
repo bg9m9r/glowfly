@@ -3,6 +3,7 @@
 //! entries changed; the last two fall back to the whole status (in the same effect) when those
 //! paths can't be read on their own.
 
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo;
 use glowfly_model::effect::{IndexRequest, StatusRead};
 use glowfly_model::msg::{LoadMsg, Msg};
@@ -33,7 +34,7 @@ pub(super) fn load(
                 return loaded(generation, result, submodules, open_stamp, None);
             }
             Ok(None) => {}
-            Err(e) => return loaded(generation, Err(e.to_string()), None, open_stamp, None),
+            Err(e) => return loaded(generation, Err(ReadFailed::from(e)), None, open_stamp, None),
         }
     }
     whole(workdir, generation, submodules, open_stamp, git_status, cache)
@@ -61,14 +62,14 @@ pub(super) fn load_index(
             loaded(generation, result, submodules, open_stamp, Some(Arc::new(r.memo)))
         }
         Ok(None) => whole(workdir, generation, submodules, open_stamp, git_status, cache),
-        Err(e) => loaded(generation, Err(e.to_string()), None, open_stamp, None),
+        Err(e) => loaded(generation, Err(ReadFailed::from(e)), None, open_stamp, None),
     }
 }
 
 /// A read of some paths: no slow note, no LFS patterns.
 fn loaded(
     generation: u64,
-    result: Result<StatusRead, String>,
+    result: Result<StatusRead, ReadFailed>,
     submodules: Option<Vec<repo::SubmoduleInfo>>,
     open_stamp: Option<u64>,
     index: Option<Arc<repo::IndexMemo>>,
@@ -83,7 +84,7 @@ fn whole(workdir: &Path, generation: u64, submodules: bool, open_stamp: Option<u
     let started = Instant::now();
     let (result, index) = match repo::status_and_index_with(workdir, git_status, Some(cache.records())) {
         Ok((u, s, state, memo)) => (Ok(StatusRead::Whole(u, s, state)), memo.map(Arc::new)),
-        Err(e) => (Err(e.to_string()), None),
+        Err(e) => (Err(ReadFailed::from(e)), None),
     };
     let slow = repo::slow(started.elapsed(), workdir);
     let rows = match &result {

@@ -5,7 +5,7 @@
 //! view.
 
 use super::lines_tests::{click, loaded, run, two_hunks};
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::work_files_tests::entry;
 use glowfly_core::repo::{self, DiffTarget, HunkOp, LoadOptions};
 use glowfly_model::effect::FilesEffect;
@@ -176,7 +176,7 @@ fn an_emptied_staged_diff_closes_unless_its_file_is_untracked() {
         let mut st = state();
         st.snap = Some(repo::load(dir, &LoadOptions::all(100)).unwrap());
         st.session.diff.view = Some((staged.clone(), two_hunks().into()));
-        loaded(&mut st, staged.clone(), true, Err("no changes in f.txt".into()));
+        loaded(&mut st, staged.clone(), true, Err(said("no changes in f.txt")));
         st
     };
     // Gone from both lists (unstaged and deleted, say): closed.

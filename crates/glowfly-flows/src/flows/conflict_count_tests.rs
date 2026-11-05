@@ -4,7 +4,7 @@
 
 use super::auto_stash_tests::up;
 use super::failure_headline_tests::{last_toast, opened, running};
-use super::tests::{finish, git};
+use super::tests::{finish, git, said};
 use glowfly_core::gitcli::{args, run_with_input};
 use glowfly_model::logs::LogsMsg;
 use glowfly_model::msg::{ConflictMsg, JobMsg, LoadMsg, Msg};
@@ -81,7 +81,7 @@ fn a_failed_first_read_ends_the_wait() {
     let fx = merge_ended(&mut st, &dir, &line);
     let failed = LoadMsg::RepoUnchanged {
         generation: st.load_gen,
-        result: Err("could not read the status".into()),
+        result: Err(said("could not read the status")),
         submodules: None,
         open_stamp: None,
         slow: None,

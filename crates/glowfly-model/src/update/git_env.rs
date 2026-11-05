@@ -65,7 +65,7 @@ pub(super) fn handle(st: &mut AppState, msg: GitEnvMsg, now: Instant, fx: &mut V
             let ask = generation == st.load_gen && st.modal.is_none();
             let announced = st.logs.announce.is_some();
             let text = not_owned_text(st.settings.lang(), &refusal);
-            super::repo::handle(st, RepoMsg::RepoLoaded { generation, kind, result: Err(text) }, now, fx);
+            super::repo_loaded::finished(st, generation, kind, Err(text), now, fx);
             if ask {
                 // The dialog says it all: the log keeps the line, but no toast repeats it.
                 if !announced {
