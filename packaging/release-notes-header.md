@@ -1,8 +1,8 @@
 <!-- glowfly-release-header:start -->
 **These builds are not code-signed yet.** None of them is signed with a code-signing certificate,
 so Windows and macOS may warn that the publisher is unknown or that the app can't be checked.
-To confirm that a file is the one this release published, check it against `SHA256SUMS`. The
-checksums show that a download matches what this release published, not who published it.
+`SHA256SUMS` lists every file's checksum and is signed with the Glowfly project's minisign key,
+so a file that matches it is the one the project released.
 
 **Check a download.** Download `SHA256SUMS` into the same folder as the file, then run this in
 that folder. Every file you downloaded should show OK.
@@ -23,6 +23,15 @@ Windows (PowerShell):
 
 ```powershell
 Get-Content SHA256SUMS | ForEach-Object { $h, $f = $_ -split '\s+\*?', 2; if (Test-Path -LiteralPath $f) { "${f}: $(if ((Get-FileHash -LiteralPath $f).Hash -eq $h) { 'OK' } else { 'FAILED' })" } }
+```
+
+**Check the signature.** With [minisign](https://jedisct1.github.io/minisign/) installed,
+download `SHA256SUMS.minisig` into the same folder as `SHA256SUMS` and run this there. It should
+say "Signature and comment signature verified". Glowfly's updater makes the same check before it
+installs an update.
+
+```sh
+minisign -Vm SHA256SUMS -P RWSGpsIplprFQ/toKF1uFX1qZOySLsmrcaXgRecNj/C5j+CYKPZYMB1K
 ```
 
 **Check where it was built.** Every file listed in `SHA256SUMS`, and `SHA256SUMS` itself, also has

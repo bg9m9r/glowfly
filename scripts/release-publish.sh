@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Publishes a Release run's draft once every file is on it: run by the Release workflow's
 # publish job, after the build, flatpak, checksums and manifests jobs. With release immutability
-# on, a published release's files and tag can't change, so it is checked first: SHA256SUMS and
-# the provenance bundle are attached, and so is every file SHA256SUMS lists, with the same
-# SHA-256 where GitHub reports the attached file's digest.
+# on, a published release's files and tag can't change, so it is checked first: SHA256SUMS, its
+# signature (SHA256SUMS.minisig) and the provenance bundle are attached, and so is every file
+# SHA256SUMS lists, with the same SHA-256 where GitHub reports the attached file's digest.
 #
 #   bash scripts/release-publish.sh v0.3.0 <release id>    # needs gh, GH_TOKEN and GH_REPO
 #   bash scripts/release-publish.sh --check v0.3.0 <SHA256SUMS> <assets file>
@@ -26,8 +26,9 @@ usage() {
   exit 2
 }
 
-# Fails unless the release's files (<assets>) hold SHA256SUMS (<sums>), the provenance bundle and
-# every file SHA256SUMS lists, each with the listed SHA-256 when its digest is known.
+# Fails unless the release's files (<assets>) hold SHA256SUMS (<sums>), its signature, the
+# provenance bundle and every file SHA256SUMS lists, each with the listed SHA-256 when its digest
+# is known.
 check() {
   local tag="$1" sums="$2" assets="$3"
   if ! { [ -f "$sums" ] && [ -f "$assets" ]; }; then usage; fi
@@ -52,6 +53,7 @@ check() {
     END {
       if (!listed) { print "::error::SHA256SUMS lists no files"; bad = 1 }
       if (!("SHA256SUMS" in digest)) { print "::error::SHA256SUMS is not attached"; bad = 1 }
+      if (!("SHA256SUMS.minisig" in digest)) { print "::error::SHA256SUMS.minisig is not attached"; bad = 1 }
       if (!(bundle in digest)) { print "::error::" bundle " is not attached"; bad = 1 }
       if (bad) exit 1
       print "release files: " listed " listed in SHA256SUMS, all attached"

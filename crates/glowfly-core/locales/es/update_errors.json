@@ -2,6 +2,7 @@
   "update_errors.archive_too_large": "El archivo comprimido ocupa más de {mb} MB al descomprimirlo.",
   "update_errors.archive_unreadable": "No se pudo leer el archivo comprimido {file}: {said}",
   "update_errors.bad_file_name": "{name} no es un nombre de archivo que Glowfly lea",
+  "update_errors.bad_signature": "Las sumas de comprobación de esta versión no están firmadas con la clave de Glowfly, así que no se descargó nada.",
   "update_errors.changed": "El archivo descargado cambió después de comprobarse, así que no se instaló. Vuelve a descargarlo.",
   "update_errors.checksum_mismatch": "La descarga no coincidía con su suma de comprobación publicada y se descartó.",
   "update_errors.checksums": "No se pudieron leer las sumas de comprobación: {why}",
@@ -32,9 +33,11 @@
   "update_errors.remove_failed": "No se pudo eliminar {path}: {said}",
   "update_errors.replace_failed": "No se pudo reemplazar el programa de Glowfly en {folder}: {said}. Usa «Mostrar archivo» para instalar la actualización a mano.",
   "update_errors.save_failed": "No se pudo guardar {path}: {said}",
+  "update_errors.signature_unreadable": "No se pudo leer la firma de las sumas de comprobación: {why}",
   "update_errors.stopped": "La descarga se detuvo.",
   "update_errors.too_large": "{name} ocupa más de {mb} MB, así que no se descargó.",
   "update_errors.two_copies": "El archivo comprimido contiene dos copias de {name}.",
+  "update_errors.unsigned": "Las sumas de comprobación de esta versión no están firmadas, así que no se descargó nada.",
   "update_errors.write_failed": "No se pudo escribir {path}: {said}",
   "update_errors.wrong_size": "La descarga de {name} tenía {got} bytes en lugar de {want}, así que se descartó."
 }

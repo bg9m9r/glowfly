@@ -29,6 +29,12 @@ pub enum UpdateError {
     NoChecksum { name: String },
     /// The checksums couldn't be read, for `why`.
     Checksums(Box<UpdateError>),
+    /// The release publishes no signature of its checksums (`SHA256SUMS.minisig`).
+    Unsigned,
+    /// The checksums' signature couldn't be read, for `why`.
+    SignatureUnreadable(Box<UpdateError>),
+    /// The checksums' signature isn't valid, or isn't by one of the pinned keys.
+    BadSignature,
     /// `name` is announced larger than Glowfly downloads.
     TooLarge { name: String, mb: u64 },
     /// The Downloads folder couldn't be created.
@@ -122,6 +128,9 @@ impl std::fmt::Display for UpdateError {
             Self::NoDownloadsFolder => f.write_str("No folder to download into"),
             Self::NoChecksum { name } => write!(f, "This release doesn't publish a checksum for {name}, so it wasn't downloaded."),
             Self::Checksums(why) => write!(f, "Couldn't read the checksums: {why}"),
+            Self::Unsigned => f.write_str("This release's checksums aren't signed, so nothing was downloaded."),
+            Self::SignatureUnreadable(why) => write!(f, "Couldn't read the checksums' signature: {why}"),
+            Self::BadSignature => f.write_str("This release's checksums aren't signed with Glowfly's key, so nothing was downloaded."),
             Self::TooLarge { name, mb } => write!(f, "{name} is larger than {mb} MB, so it wasn't downloaded."),
             Self::CreateFailed { path, said } => write!(f, "Couldn't create {path}: {said}"),
             Self::DownloadFailed { name, why } => write!(f, "Couldn't download {name}: {why}"),

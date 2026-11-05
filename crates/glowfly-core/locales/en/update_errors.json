@@ -2,6 +2,7 @@
   "update_errors.archive_too_large": "The archive is larger than {mb} MB when unpacked.",
   "update_errors.archive_unreadable": "Couldn't read the archive {file}: {said}",
   "update_errors.bad_file_name": "{name} isn't a file name Glowfly reads",
+  "update_errors.bad_signature": "This release's checksums aren't signed with Glowfly's key, so nothing was downloaded.",
   "update_errors.changed": "The downloaded file changed after it was checked, so it wasn't installed. Download it again.",
   "update_errors.checksum_mismatch": "The download didn't match its published checksum and was discarded.",
   "update_errors.checksums": "Couldn't read the checksums: {why}",
@@ -32,9 +33,11 @@
   "update_errors.remove_failed": "Couldn't remove {path}: {said}",
   "update_errors.replace_failed": "Couldn't replace Glowfly's program in {folder}: {said}. Use Show file to install the update by hand.",
   "update_errors.save_failed": "Couldn't save {path}: {said}",
+  "update_errors.signature_unreadable": "Couldn't read the checksums' signature: {why}",
   "update_errors.stopped": "The download was stopped.",
   "update_errors.too_large": "{name} is larger than {mb} MB, so it wasn't downloaded.",
   "update_errors.two_copies": "The archive has two copies of {name}.",
+  "update_errors.unsigned": "This release's checksums aren't signed, so nothing was downloaded.",
   "update_errors.write_failed": "Couldn't write {path}: {said}",
   "update_errors.wrong_size": "The download of {name} was {got} bytes instead of {want}, so it was discarded."
 }

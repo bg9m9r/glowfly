@@ -211,6 +211,7 @@ Dialog
   Button "MIT: matchers 0.2.0"
   Button "MIT: memmap2 0.9.12"
   Button "MIT: memoffset 0.9.1"
+  Button "MIT: minisign-verify 0.3.0"
   Button "MIT: miniz_oxide 0.8.9, miniz_oxide 0.9.1"
   Button "MIT: miniz_oxide 0.8.9, miniz_oxide 0.9.1 (2)"
   Button "MIT: mio 1.2.4"

@@ -32,17 +32,26 @@ pub(super) fn sum_line(name: &str, bytes: &[u8]) -> String {
     format!("{}  {name}\n", hex(sha256(bytes)))
 }
 
-/// Writes `files` into `dir` with a release.json for `tag` listing them, plus SHA256SUMS
-/// (listed too) when `sums` is Some.
+/// Writes `files` into `dir` with a release.json for `tag` listing them, plus SHA256SUMS and its
+/// signature by the test key (both listed too) when `sums` is Some.
 pub(super) fn write_feed(dir: &Path, tag: &str, files: &[(&str, &[u8])], sums: Option<String>) {
+    let signature = sums.as_deref().map(|s| super::signature_tests::sign(s.as_bytes()));
+    write_feed_signed(dir, tag, files, sums, signature);
+}
+
+/// [`write_feed`] with `signature` as SHA256SUMS.minisig (None: no signature file).
+pub(super) fn write_feed_signed(dir: &Path, tag: &str, files: &[(&str, &[u8])], sums: Option<String>, signature: Option<String>) {
     let mut names: Vec<&str> = Vec::new();
     for (name, bytes) in files {
         std::fs::write(dir.join(name), bytes).unwrap();
         names.push(name);
     }
-    if let Some(sums) = sums {
-        std::fs::write(dir.join("SHA256SUMS"), sums).unwrap();
-        names.push("SHA256SUMS");
+    for (name, text) in [("SHA256SUMS", sums), ("SHA256SUMS.minisig", signature)] {
+        let _ = std::fs::remove_file(dir.join(name));
+        if let Some(text) = text {
+            std::fs::write(dir.join(name), text).unwrap();
+            names.push(name);
+        }
     }
     let assets: Vec<serde_json::Value> = names.iter().map(|n| serde_json::json!({ "name": n })).collect();
     let json = serde_json::json!({ "tag_name": tag, "name": format!("Glowfly {tag}"), "body": "notes", "assets": assets });
@@ -213,14 +222,15 @@ fn a_folder_feed_without_the_files_sum_downloads_nothing() {
     let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum") && err.contains(MSI), "{err}");
     assert!(is_empty(&dl));
-    // Without SHA256SUMS, the file's own .sha256 is used.
+    // Without SHA256SUMS, the file's own .sha256 isn't used: only SHA256SUMS is signed.
     let single = format!("{MSI}.sha256");
     let line = sum_line(MSI, MSI_BYTES);
-    std::fs::remove_file(feed_dir.join("SHA256SUMS")).unwrap();
     write_feed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES), (single.as_str(), line.as_bytes())], None);
     let o = offer_for(&feed, InstallKind::Installer);
-    assert!(matches!(&o.sums, SumsSource::Single(a) if a.name == single));
-    assert_eq!(std::fs::read(download(&feed, &o, &dl).unwrap()).unwrap(), MSI_BYTES);
+    assert_eq!(o.sums, SumsSource::None);
+    let err = download(&feed, &o, &dl).unwrap_err().to_string();
+    assert!(err.contains("doesn't publish a checksum") && err.contains(MSI), "{err}");
+    assert!(is_empty(&dl));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

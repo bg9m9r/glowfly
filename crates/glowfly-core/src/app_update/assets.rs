@@ -220,22 +220,17 @@ pub fn pick(release: &Release, platform: Platform, kind: InstallKind) -> Option<
 /// Where the checksum of a release's file is published.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SumsSource {
-    /// `SHA256SUMS`, covering every file.
+    /// `SHA256SUMS`, covering every file, which `SHA256SUMS.minisig` signs.
     Combined(Asset),
-    /// `<file>.sha256`, covering that file.
-    Single(Asset),
-    /// Nowhere: the file isn't downloaded.
+    /// Nowhere: the file isn't downloaded. A file's own `<file>.sha256` isn't used, since only
+    /// `SHA256SUMS` is signed.
     None,
 }
 
-/// The checksum file for `asset`: `SHA256SUMS` when the release has one, else `<name>.sha256`.
-pub fn sums_source(release: &Release, asset: &Asset) -> SumsSource {
-    let find = |name: &str| release.assets.iter().find(|a| a.name == name).cloned();
-    if let Some(all) = find("SHA256SUMS") {
-        return SumsSource::Combined(all);
-    }
-    match find(&format!("{}.sha256", asset.name)) {
-        Some(one) => SumsSource::Single(one),
+/// The checksum file for a release's files: `SHA256SUMS` when the release has one.
+pub fn sums_source(release: &Release) -> SumsSource {
+    match release.assets.iter().find(|a| a.name == "SHA256SUMS") {
+        Some(all) => SumsSource::Combined(all.clone()),
         None => SumsSource::None,
     }
 }

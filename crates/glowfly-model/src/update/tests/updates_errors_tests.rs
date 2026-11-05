@@ -106,6 +106,30 @@ fn download_variants() -> Vec<(E, [&'static str; 3])> {
             ],
         ),
         (
+            E::Unsigned,
+            [
+                "This release's checksums aren't signed, so nothing was downloaded.",
+                "Die Prüfsummen dieses Releases sind nicht signiert, deshalb wurde nichts heruntergeladen.",
+                "Las sumas de comprobación de esta versión no están firmadas, así que no se descargó nada.",
+            ],
+        ),
+        (
+            E::SignatureUnreadable(Box::new(E::Service(ServiceError::Http { status: 404, message: "Not Found".into() }))),
+            [
+                "Couldn't read the checksums' signature: HTTP 404: Not Found",
+                "Die Signatur der Prüfsummen konnte nicht gelesen werden: HTTP 404: Not Found",
+                "No se pudo leer la firma de las sumas de comprobación: HTTP 404: Not Found",
+            ],
+        ),
+        (
+            E::BadSignature,
+            [
+                "This release's checksums aren't signed with Glowfly's key, so nothing was downloaded.",
+                "Die Prüfsummen dieses Releases sind nicht mit dem Schlüssel von Glowfly signiert, deshalb wurde nichts heruntergeladen.",
+                "Las sumas de comprobación de esta versión no están firmadas con la clave de Glowfly, así que no se descargó nada.",
+            ],
+        ),
+        (
             E::TooLarge { name: "glowfly.msi".into(), mb: 512 },
             [
                 "glowfly.msi is larger than 512 MB, so it wasn't downloaded.",

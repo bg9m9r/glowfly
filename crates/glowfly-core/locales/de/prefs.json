@@ -171,7 +171,7 @@
   "prefs.general.updates.check_now.button": "Jetzt prüfen",
   "prefs.general.updates.couldnt_check": "Prüfung fehlgeschlagen: {error}",
   "prefs.general.updates.downloaded_to": "Heruntergeladen nach {path}",
-  "prefs.general.updates.help": "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. GitHub sieht dabei deine IP-Adresse und die Version von Glowfly, aber nichts über deine Repositorys. Downloads werden mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen. Die Builds von Glowfly sind noch nicht codesigniert. Das bestätigt also, dass ein Download dem entspricht, was das Release veröffentlicht hat, aber nicht, wer es veröffentlicht hat.",
+  "prefs.general.updates.help": "Glowfly fragt einmal täglich die Releases-API von GitHub nach dem neuesten Release seines Repositorys. GitHub sieht dabei deine IP-Adresse und die Version von Glowfly, aber nichts über deine Repositorys. Downloads werden mit den SHA-256-Prüfsummen des Releases abgeglichen, die mit dem Schlüssel des Glowfly-Projekts signiert sind. Ein Download ist also die Datei, die das Projekt veröffentlicht hat. Die Builds selbst sind noch nicht codesigniert.",
   "prefs.general.updates.label": "Updates",
   "prefs.general.updates.open_quit_deb.help": "Glowfly öffnet das Paket in deiner Softwareinstallation und beendet sich. Starte Glowfly wieder, sobald es installiert ist.",
   "prefs.general.updates.open_quit_dmg.help": "Glowfly öffnet das Disk-Image und beendet sich. Ziehe Glowfly in den Ordner Programme, um diese Kopie zu ersetzen, und öffne es dann wieder.",

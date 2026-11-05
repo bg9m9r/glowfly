@@ -270,8 +270,9 @@ second one next to it.
    The sessions a Glowfly process made (`<pid>-<hex>`) are removed when its window closes
    (`temp::remove_own_sessions`); a copy a tool still holds open on Windows stays for the
    24-hour sweep.
-8. **A downloaded update is opened only after its SHA-256 matches the release's published
-   checksum, and only on the user's click** (`app_update::download`, `runner/updates.rs`). The
+8. **A downloaded update is opened only after its SHA-256 matches the release's `SHA256SUMS`,
+   whose minisign signature verifies against the pinned keys, and only on the user's click**
+   (`app_update::download`, `app_update/signature.rs`, `runner/updates.rs`). The
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
    128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
    bytes are streamed into a temporary sibling (`persist::write_streamed`) and hashed on the way,

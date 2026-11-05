@@ -60,6 +60,9 @@ toml.workspace = true
 zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 tar = { version = "0.4", default-features = false }
 flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+# Checking a release's SHA256SUMS.minisig against the pinned keys (app_update/signature.rs):
+# verification only, pure Rust, no dependencies.
+minisign-verify = "0.3"
 # SVG previews in the diff (preview_svg.rs): text set in the bundled fonts only (no system fonts),
 # embedded raster images through decoders already in the tree.
 resvg = { version = "0.49", default-features = false, features = ["text", "raster-images"] }
@@ -75,6 +78,10 @@ filetime = "0.2.29"
 # tests' mock server: closing a finished connection without leaving it in TIME_WAIT.
 socket2 = "0.6"
 two-face = { workspace = true, features = ["syntect-fancy"] }
+# Signing local update feeds with the committed test key in the updater's tests
+# (app_update/signature_tests.rs): minisign's Ed25519 over BLAKE2b-512, without its CLI.
+ed25519-compact = { version = "2.6", default-features = false }
+blake2 = "0.10"
 
 # Linux: save tokens in the desktop keyring (GNOME Keyring, KWallet) through the Secret Service.
 [target."cfg(target_os = \"linux\")".dependencies]

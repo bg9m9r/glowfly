@@ -63,7 +63,7 @@ pub(super) fn release(tag: &str, names: &[&str]) -> Release {
 
 /// Every file the Release workflow publishes for v0.3.0.
 pub(super) fn full_release() -> Release {
-    let mut names = vec!["SHA256SUMS".to_owned()];
+    let mut names = vec!["SHA256SUMS".to_owned(), "SHA256SUMS.minisig".to_owned()];
     for (triple, exts) in [
         ("x86_64-pc-windows-msvc", &["zip", "msi"][..]),
         ("aarch64-pc-windows-msvc", &["zip", "msi"]),
@@ -98,11 +98,11 @@ fn offers_only_newer_releases() {
 #[test]
 fn where_checksums_come_from() {
     let r = full_release();
-    let a = asset("glowfly-v0.3.0-x86_64-pc-windows-msvc.msi");
-    assert!(matches!(sums_source(&r, &a), SumsSource::Combined(s) if s.name == "SHA256SUMS"));
+    assert!(matches!(sums_source(&r), SumsSource::Combined(s) if s.name == "SHA256SUMS"));
+    // A file's own .sha256 isn't signed, so it isn't used.
     let single = release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"]);
-    assert!(matches!(sums_source(&single, &a), SumsSource::Single(s) if s.name == "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi.sha256"));
-    assert_eq!(sums_source(&release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"]), &a), SumsSource::None);
+    assert_eq!(sums_source(&single), SumsSource::None);
+    assert_eq!(sums_source(&release("v0.3.0", &["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi"])), SumsSource::None);
 }
 
 const HASH_A: &str = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
@@ -182,104 +182,50 @@ fn hosted() -> Feed {
 const NAME: &str = "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi";
 const BODY: &str = "pretend installer bytes";
 
-/// An offer for `NAME` (of `size` bytes) with the checksum published as `sums`.
-fn download_offer(size: usize, sums: &str) -> Offer {
+/// An offer for `NAME` from a release that publishes SHA256SUMS and its signature (`sums`), or
+/// neither.
+fn download_offer(sums: bool) -> Offer {
     let host = "https://github.com/bg9m9r/glowfly/releases/download/v0.3.0";
-    let asset = Asset { name: NAME.into(), size: size as u64, url: format!("{host}/{NAME}") };
-    let sums = match sums {
-        "combined" => SumsSource::Combined(Asset { name: "SHA256SUMS".into(), size: 0, url: format!("{host}/SHA256SUMS") }),
-        "single" => SumsSource::Single(Asset { name: format!("{NAME}.sha256"), size: 0, url: format!("{host}/{NAME}.sha256") }),
-        _ => SumsSource::None,
+    let asset = Asset { name: NAME.into(), size: BODY.len() as u64, url: format!("{host}/{NAME}") };
+    let (files, sums): (&[&str], _) = match sums {
+        true => (&["SHA256SUMS", "SHA256SUMS.minisig"], SumsSource::Combined(super::tests::asset("SHA256SUMS"))),
+        false => (&[], SumsSource::None),
     };
-    Offer { release: release("v0.3.0", &[]), version: v("0.3.0"), asset: Some(asset), sums, install: InstallKind::Installer }
+    Offer { release: release("v0.3.0", files), version: v("0.3.0"), asset: Some(asset), sums, install: InstallKind::Installer }
 }
 
-fn line_for(body: &str) -> String {
-    let d = sha256(body.as_bytes());
-    format!("{}  {NAME}\n", d.iter().map(|b| format!("{b:02x}")).collect::<String>())
-}
-
-/// Serves `NAME` as `served`, with SHA256SUMS and the single .sha256 as given (None is a 404).
-fn serve(served: &'static str, combined: Option<String>, single: Option<String>) -> Mock {
+/// Serves `NAME`, with SHA256SUMS and its signature as given (None is a 404).
+fn serve(sums: Option<String>, signature: Option<String>) -> Mock {
     Mock::start(move |req| {
-        let file = req.path.rsplit('/').next().unwrap_or("");
         let answer = |t: &Option<String>| t.clone().map_or_else(Reply::not_found, Reply::text);
-        match file {
-            "SHA256SUMS" => answer(&combined),
-            f if f == format!("{NAME}.sha256") => answer(&single),
-            f if f == NAME => Reply::text(served),
+        match req.path.rsplit('/').next().unwrap_or("") {
+            "SHA256SUMS" => answer(&sums),
+            "SHA256SUMS.minisig" => answer(&signature),
+            f if f == NAME => Reply::text(BODY),
             _ => Reply::not_found(),
         }
     })
 }
 
 #[test]
-fn a_verified_download_is_saved() {
-    let dir = scratch("ok");
-    let mock = serve(BODY, Some(format!("{}  other.zip\n{}", HASH_A, line_for(BODY))), None);
-    let path = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap();
-    assert_eq!(path, dir.join(NAME));
-    assert_eq!(std::fs::read(&path).unwrap(), BODY.as_bytes());
-    let hosts: Vec<String> = mock.requests().iter().map(|r| r.host.clone()).collect();
-    assert!(hosts.iter().all(|h| h == "github.com"), "{hosts:?}");
-    assert!(mock.requests().iter().all(|r| r.header("Authorization").is_none()));
-    // Again: the same file is reused; a different one gets a free name.
-    assert_eq!(download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap(), dir.join(NAME));
-    std::fs::write(dir.join(NAME), "something else").unwrap();
-    let again = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap();
-    assert_eq!(again, dir.join("glowfly-v0.3.0-x86_64-pc-windows-msvc (1).msi"));
-    assert_eq!(std::fs::read_to_string(dir.join(NAME)).unwrap(), "something else", "never overwritten");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn a_mismatched_download_leaves_nothing() {
-    let dir = scratch("bad");
-    let _mock = serve(BODY, Some(line_for("the real installer bytes")), None);
-    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err().to_string();
-    assert!(err.contains("didn't match its published checksum"), "{err}");
-    let left: Vec<_> = std::fs::read_dir(&dir).map(|d| d.flatten().map(|e| e.file_name()).collect()).unwrap_or_default();
-    assert!(left.is_empty(), "no file and no temp file: {left:?}");
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
-fn the_single_checksum_file_is_the_fallback() {
-    let dir = scratch("single");
-    let mock = serve(BODY, None, Some(line_for(BODY)));
-    assert_eq!(download(&hosted(), &download_offer(BODY.len(), "single"), &dir).unwrap(), dir.join(NAME));
-    assert_eq!(mock.requests().len(), 2);
-    let _ = std::fs::remove_dir_all(&dir);
-}
-
-#[test]
 fn no_checksum_means_no_download() {
     let dir = scratch("nosum");
-    let mock = serve(BODY, None, None);
-    let err = download(&hosted(), &download_offer(BODY.len(), "none"), &dir).unwrap_err().to_string();
+    let mock = serve(None, None);
+    let err = download(&hosted(), &download_offer(false), &dir).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum") && err.contains(NAME), "{err}");
     assert!(mock.requests().is_empty(), "nothing fetched");
     // Published, but the server has none: the file isn't fetched either.
-    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err().to_string();
+    let err = download(&hosted(), &download_offer(true), &dir).unwrap_err().to_string();
     assert!(err.contains("checksums"), "{err}");
     assert!(mock.requests().iter().all(|r| !r.path.ends_with(".msi")), "the file itself was never asked for");
-    // A checksum file that doesn't list the file.
+    // A list without a signature: nothing past it is fetched.
     drop(mock);
-    let mock = serve(BODY, Some(format!("{HASH_A}  other.zip\n")), None);
-    let err = download(&hosted(), &download_offer(BODY.len(), "combined"), &dir).unwrap_err().to_string();
-    assert!(err.contains("doesn't publish a checksum"), "{err}");
-    assert_eq!(mock.requests().len(), 1);
+    let mock = serve(Some(format!("{HASH_A}  {NAME}\n")), None);
+    let err = download(&hosted(), &download_offer(true), &dir).unwrap_err().to_string();
+    assert!(err.contains("signature"), "{err}");
+    assert!(mock.requests().iter().all(|r| !r.path.ends_with(".msi")));
+    assert!(mock.requests().iter().all(|r| r.host == "github.com" && r.header("Authorization").is_none()));
     assert!(!dir.exists());
-}
-
-#[test]
-fn a_download_of_the_wrong_size_is_refused() {
-    let dir = scratch("size");
-    let _mock = serve(BODY, Some(line_for(BODY)), None);
-    assert!(download(&hosted(), &download_offer(BODY.len() - 1, "combined"), &dir).is_err(), "longer than announced");
-    assert!(download(&hosted(), &download_offer(BODY.len() + 1, "combined"), &dir).unwrap_err().to_string().contains("bytes instead of"));
-    assert!(!dir.join(NAME).exists());
-    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

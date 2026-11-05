@@ -1,7 +1,7 @@
 //! Where releases are read from: the hosting service, or a local folder named by
 //! GLOWFLY_UPDATE_FEED for testing installers and updates without the network.
 
-use super::{Asset, Release, UpdateError, release};
+use super::{Asset, Release, UpdateError, release, signature};
 use crate::forge::ServiceError;
 use crate::native_path::shown;
 use std::ffi::OsStr;
@@ -71,6 +71,17 @@ impl Feed {
                     .map_err(|e| UpdateError::ReadFailed { path: shown(&path), said: e.to_string() })
             }
         }
+    }
+
+    /// The minisign keys whose signature of `SHA256SUMS` this feed's downloads accept: the
+    /// project's pinned keys, and for a feed folder (a local test of installers and updates)
+    /// the test key too, whose secret half is committed.
+    pub(super) fn trusted_keys(&self) -> Vec<&'static str> {
+        let mut keys = signature::KEYS.to_vec();
+        if let Feed::Folder(_) = self {
+            keys.push(signature::TEST_KEY);
+        }
+        keys
     }
 
     /// The bytes of `asset`, at most `limit` of them.
