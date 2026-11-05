@@ -3,8 +3,10 @@
 avoid-breaking-exported-api = false
 # View tests compare images through `CheckSnapshot::check_snapshot` (glowfly-ui's src/snapshot_check/),
 # which GLOWFLY_SKIP_SNAPSHOTS can turn off on CI runners without the approved renderer.
+# The stash list is read from the reflog by glowfly-core's stash_ops::list (bytes decoded lossily).
 disallowed-methods = [
   { path = "egui_kittest::Harness::snapshot", reason = "use CheckSnapshot::check_snapshot" },
+  { path = "git2::Repository::stash_foreach", reason = "panics on a stash message that isn't UTF-8; use glowfly_core::stash_ops::list or list_in" },
 ]
 # Functions past this many code lines fail clippy (`too_many_lines`); split them by responsibility.
 too-many-lines-threshold = 120

@@ -276,14 +276,7 @@ fn discard_all_round_trip() {
     assert_eq!(undo, cmds(&[&["stash", "pop", "--index", "stash@{1}"]]));
     run_plan(&dir, undo);
     assert_eq!(split(&dir), dirty, "staged, unstaged and untracked come back exactly");
-    let mut repo = Repository::open(&dir).unwrap();
-    let mut left = 0;
-    repo.stash_foreach(|_, _, _| {
-        left += 1;
-        true
-    })
-    .unwrap();
-    assert_eq!(left, 1);
+    assert_eq!(crate::stash_ops::list(&dir).unwrap().len(), 1);
 
     assert!(matches!(refused(plan(&dir, &action, false).unwrap()), Refusal::Dirty(_)));
     let redo = plan(&dir, &action, true).unwrap();

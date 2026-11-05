@@ -2,8 +2,10 @@
 //! `git stash store`. It runs through `gitcli`, so the reference-transaction hook and the user's
 //! config apply. Only the reflog message changes; the stash commit and its position stay.
 //!
-//! Two limits follow from that: the stash commit's own message (what the commit details show)
-//! keeps the old text, and the reflog dates of `stash@{0..N}` become the time of the rename.
+//! Three limits follow from that: the stash commit's own message (what the commit details show)
+//! keeps the old text, the reflog dates of `stash@{0..N}` become the time of the rename, and the
+//! entries above the renamed one are stored again with their listed text, so one whose message
+//! wasn't UTF-8 comes back with U+FFFD in place of the bad bytes.
 //!
 //! `push` builds the Stash dialog's `git stash push` command lines (every change, only the
 //! staged changes, or chosen paths, optionally keeping the staged changes with `--keep-index`).
@@ -16,14 +18,17 @@
 //! kept "autostash" in the list, and puts it back with `git stash pop --index` (a plain pop when
 //! the staged state no longer fits) once nothing is in progress. `saved` keeps the ones still
 //! waiting to go back across restarts. `paths` lists the files a stash changes.
+//!
+//! `list` reads the stash list from the `refs/stash` reflog, a message that isn't UTF-8 decoded
+//! lossily.
 
-use crate::error::Result;
 use crate::gitcli::{self, args};
 use crate::repo::StashInfo;
 use git2::Oid;
 use std::path::Path;
 
 mod auto;
+mod list;
 mod paths;
 mod push;
 mod renames;
@@ -31,6 +36,7 @@ mod saved;
 pub use auto::{
     AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, pop_index, pop_index_with, pop_put_back, prepare_put_back,
 };
+pub use list::{list, list_in};
 pub use paths::changed_paths;
 pub use push::{PATHS_ON_COMMAND_LINE, PushCommand, STAGED_MIN_GIT, StashScope, push_command, push_message, staged_unsupported};
 pub use renames::{RESTORE_BLOCKED, rename_sources, restore_blocked, restore_blocked_output, restore_commands};
@@ -66,17 +72,6 @@ pub fn edited_message(original: &str, body: &str) -> Option<String> {
         Some(branch) => format!("On {branch}: {body}"),
         None => body,
     })
-}
-
-/// The stash list of the repository at `workdir`, newest first (as a repository load reads it).
-pub fn list(workdir: &Path) -> Result<Vec<StashInfo>> {
-    let mut repo = git2::Repository::open(workdir)?;
-    let mut out = Vec::new();
-    repo.stash_foreach(|index, message, oid| {
-        out.push(StashInfo { index, message: message.to_owned(), oid: *oid });
-        true
-    })?;
-    Ok(out)
 }
 
 /// What a rename did: whether it worked, and the commands with their output for the log.
@@ -193,3 +188,7 @@ mod saved_tests;
 #[cfg(test)]
 #[path = "stash_ops/paths_tests.rs"]
 mod paths_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/list_tests.rs"]
+mod list_tests;

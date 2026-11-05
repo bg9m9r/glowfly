@@ -212,6 +212,8 @@ mod reverted_tests;
 #[cfg(test)]
 mod saved_tests;
 #[cfg(test)]
+mod stash_bytes_tests;
+#[cfg(test)]
 mod stash_tests;
 #[cfg(test)]
 mod test_bin;

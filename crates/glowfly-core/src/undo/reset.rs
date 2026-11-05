@@ -18,15 +18,7 @@ pub fn hard_reset_commands(rev: &str) -> Vec<Vec<String>> {
 
 /// The position of stash `oid` in the stash list, if it is still there.
 pub(super) fn stash_index(workdir: &Path, oid: Oid) -> Result<Option<usize>> {
-    let mut repo = Repository::open(workdir)?;
-    let mut index = None;
-    repo.stash_foreach(|i, _, id| {
-        if *id == oid {
-            index = Some(i);
-        }
-        index.is_none()
-    })?;
-    Ok(index)
+    Ok(crate::stash_ops::list(workdir)?.into_iter().find(|s| s.oid == oid).map(|s| s.index))
 }
 
 /// The stash a hard reset from `from` just made, if the top of the stash list is one.

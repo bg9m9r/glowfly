@@ -6,7 +6,6 @@ use super::*;
 use crate::gitcli::run;
 use crate::repo::status_at;
 use crate::testutil::*;
-use git2::Repository;
 use std::path::{Path, PathBuf};
 
 /// Status as "<code><path>" lists: (unstaged, staged).
@@ -16,24 +15,17 @@ fn split(dir: &Path) -> (Vec<String>, Vec<String>) {
     (names(unstaged), names(staged))
 }
 
-fn clean(dir: &Path) -> bool {
+pub(super) fn clean(dir: &Path) -> bool {
     split(dir) == (vec![], vec![])
 }
 
 /// (index, oid, message) of every stash, newest first.
-fn stashes(dir: &Path) -> Vec<(usize, Oid, String)> {
-    let mut repo = Repository::open(dir).unwrap();
-    let mut out = Vec::new();
-    repo.stash_foreach(|i, m, id| {
-        out.push((i, *id, m.to_owned()));
-        true
-    })
-    .unwrap();
-    out
+pub(super) fn stashes(dir: &Path) -> Vec<(usize, Oid, String)> {
+    crate::stash_ops::list(dir).unwrap().into_iter().map(|s| (s.index, s.oid, s.message)).collect()
 }
 
 /// A repository with a.txt and b.txt committed.
-fn base(name: &str) -> (PathBuf, Oid) {
+pub(super) fn base(name: &str) -> (PathBuf, Oid) {
     let dir = scratch_repo(name);
     write(&dir, "b.txt", "b\n");
     let head = commit(&dir, "a.txt", "a\n", "base");
@@ -41,7 +33,7 @@ fn base(name: &str) -> (PathBuf, Oid) {
 }
 
 /// Runs `git <a>` as Glowfly would and returns what it recorded, checking `irreversible` first.
-fn record_kind(dir: &Path, a: &[&str]) -> (bool, Option<Action>) {
+pub(super) fn record_kind(dir: &Path, a: &[&str]) -> (bool, Option<Action>) {
     let kind = UndoKind::classify(&args(a)).expect("an undoable command");
     let b = before(dir, &kind).unwrap();
     git(dir, a);

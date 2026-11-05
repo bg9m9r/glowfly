@@ -252,3 +252,24 @@ pub(crate) const LATIN1_WHO: &[u8] = b"Ren\xe9 M\xfcller <ren\xe9@example.com>";
 
 /// A Latin-1 message for `raw_commit`: "Café au lait", then "Crème brûlée for everyöne.".
 pub(crate) const LATIN1_MSG: &[u8] = b"Caf\xe9 au lait\n\nCr\xe8me br\xfbl\xe9e for every\xf6ne.\n";
+
+/// Replaces every `from` in the reflog of `reference` (e.g. "refs/stash") in `dir` with `to`,
+/// failing the test when `from` isn't there. It writes bytes git itself would keep, such as a
+/// Latin-1 message, which the git CLI can't take on Windows.
+pub(crate) fn rewrite_reflog(dir: &Path, reference: &str, from: &[u8], to: &[u8]) {
+    let file = reference.split('/').fold(dir.join(".git").join("logs"), |p, part| p.join(part));
+    let text = std::fs::read(&file).unwrap();
+    assert!(!from.is_empty() && text.windows(from.len()).any(|w| w == from), "{} has no {from:?}", file.display());
+    let mut out = Vec::with_capacity(text.len());
+    let mut rest = &text[..];
+    while !rest.is_empty() {
+        if rest.starts_with(from) {
+            out.extend_from_slice(to);
+            rest = &rest[from.len()..];
+        } else {
+            out.push(rest[0]);
+            rest = &rest[1..];
+        }
+    }
+    std::fs::write(&file, out).unwrap();
+}

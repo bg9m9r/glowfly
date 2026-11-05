@@ -32,14 +32,14 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let _span = tracing::debug_span!("load", path = %path.display(), max = opts.max_commits).entered();
     let loaded_with = opts.clone();
     let max_commits = opts.max_commits.max(1);
-    let mut repo = crate::safe_directory::discover(path)?;
+    let repo = crate::safe_directory::discover(path)?;
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }
 
     // Taken first, so a change made while loading shows up in the next comparison.
     let refs_key = super::refs_key::key_of(&repo)?;
-    let stashes = stashes_of(&mut repo)?;
+    let stashes = crate::stash_ops::list_in(&repo)?;
     let Place { workdir, real_workdir, opened_as, folder, git_dir, common, name } = place_of(path, &repo)?;
     let state = op_state::state(&repo);
     let rebase = crate::rebase::progress_of(&repo);
@@ -138,16 +138,6 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     tracing::debug_span!("load.layout").in_scope(|| snap.lay_out_graph());
     snap.stacks = crate::stack::read(&repo, &snap);
     Ok(snap)
-}
-
-/// Collects the stashes (`stash_foreach` needs `&mut`, so before any shared borrows).
-fn stashes_of(repo: &mut Repository) -> Result<Vec<StashInfo>> {
-    let mut stashes = Vec::new();
-    repo.stash_foreach(|index, message, oid| {
-        stashes.push(StashInfo { index, message: message.to_owned(), oid: *oid });
-        true
-    })?;
-    Ok(stashes)
 }
 
 /// Where the repository is: its work dir (as found and resolved), the spelling it was opened

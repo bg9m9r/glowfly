@@ -4,6 +4,10 @@
 //! undone by putting the stash back in the list (when it was dropped) and clearing what it
 //! applied, as long as the working tree is exactly as the pop left it: `changes` fingerprints it.
 //! A drop is undone by storing the dropped commit back at the top of the list.
+//!
+//! Putting a stash back stores it with its list text (`git stash store -m`), so one whose
+//! reflog message wasn't UTF-8 comes back with the right commit and position, but with U+FFFD
+//! in place of the bad bytes (the list reads them lossily).
 
 use super::planning::{dirty, gone, is_clean, stale};
 use super::{Action, Changes, Plan, Refusal, reset::stash_index};
