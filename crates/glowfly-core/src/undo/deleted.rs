@@ -4,8 +4,9 @@
 //! that fails after the file went (the trash reported an error, or the index couldn't be
 //! changed) keeps its undo too. Undo takes the file back out of the Recycle Bin / Trash when it
 //! went there and the trash still holds those bytes, and otherwise writes the kept copy back
-//! (never over anything); a staged one is staged again. Redo deletes it again the way it went
-//! the first time.
+//! (never over anything); a staged one is staged again. A symbolic link is removed itself,
+//! never trashed, with its target kept, and Undo makes the link again. Redo deletes it again
+//! the way it went the first time.
 
 use super::kept::{self, KeptWhat};
 use super::planning::{busy_name, stale, unsafe_};
@@ -51,8 +52,9 @@ impl Trashers {
 /// Files larger than this are deleted without a copy kept for undo.
 pub const MAX_KEPT_BYTES: u64 = 64 * 1024 * 1024;
 
-/// A delete that ran: how the working copy went, the action that undoes it (none for a
-/// symbolic link, or a file too large to keep a copy of), and whether it was too large.
+/// A delete that ran: how the working copy went, the action that undoes it (none for a file
+/// too large to keep a copy of, or a Windows folder link or junction), and whether it was too
+/// large.
 #[derive(Debug)]
 pub struct DeletedSaving {
     pub how: Deleted,
@@ -137,19 +139,22 @@ fn saving(
 }
 
 /// Whether a delete of `path` keeps a copy for Undo: it is a regular file of at most
-/// [`MAX_KEPT_BYTES`]. Asked when the trash refused the file, to word the permanent offer.
+/// [`MAX_KEPT_BYTES`], or a symbolic link whose target can be kept. Asked when the trash refused
+/// the file, to word the permanent offer.
 pub fn keeps_copy(workdir: &Path, path: &str) -> bool {
-    repo::contained(path)
-        .is_ok_and(|rel| std::fs::symlink_metadata(workdir.join(rel)).is_ok_and(|m| m.is_file() && m.len() <= MAX_KEPT_BYTES))
+    repo::contained(path).is_ok_and(|rel| {
+        std::fs::symlink_metadata(workdir.join(rel)).is_ok_and(|m| (m.is_file() && m.len() <= MAX_KEPT_BYTES) || saved::saveable_link(&m))
+    })
 }
 
 /// The working copy's bytes saved as a blob, when it is a regular file of at most `limit`
-/// bytes, and whether it was larger. Links and folders aren't kept.
+/// bytes, and whether it was larger. Links are kept too (their target, which is never large);
+/// folders aren't.
 fn keep(workdir: &Path, path: &str, limit: u64) -> Result<(Option<Saved>, bool)> {
     let full = workdir.join(repo::contained(path)?);
     match std::fs::symlink_metadata(full) {
         Ok(m) if m.is_file() && m.len() > limit => Ok((None, true)),
-        Ok(m) if m.is_file() => match saved::save(workdir, path) {
+        Ok(m) if m.is_file() || saved::saveable_link(&m) => match saved::save(workdir, path) {
             Ok(s) => Ok((s, false)),
             Err(Error::Unsupported(_)) => Ok((None, false)),
             Err(e) => Err(e),
@@ -159,8 +164,7 @@ fn keep(workdir: &Path, path: &str, limit: u64) -> Result<(Option<Saved>, bool)>
 }
 
 fn finish(path: &str, how: Deleted, before: Option<Saved>, via: DeleteVia, staged: Option<StagedNew>, too_large: bool) -> DeletedSaving {
-    let undo =
-        before.filter(|_| how != Deleted::LinkRemoved).map(|before| Action::DeleteFile { path: path.to_owned(), before, via, staged });
+    let undo = before.map(|before| Action::DeleteFile { path: path.to_owned(), before, via, staged });
     DeletedSaving { how, undo, too_large }
 }
 
@@ -181,7 +185,7 @@ pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> 
             Err(Error::Unsupported(m)) => return Ok(stale(m)),
             Err(e) => return Err(e),
         };
-        if now.map(|s| s.blob) != Some(before.blob) {
+        if now.map(Saved::content) != Some(before.content()) {
             return Ok(stale(format!("{path} has changed since it was put back")));
         }
         if let Some(s) = staged
@@ -245,8 +249,14 @@ impl PutBackHow {
 /// Puts the deleted file `path` back (it must be absent), with `staged` back in the index: out
 /// of the trash when it went there via `via` and the trash still holds exactly `content`'s
 /// bytes, otherwise by writing `content` with the executable bit unless the repository ignores
-/// it (`core.fileMode=false`).
+/// it (`core.fileMode=false`). A link is made again with its kept target.
 pub fn put_back(workdir: &Path, path: &str, content: Saved, staged: Option<&StagedNew>, via: DeleteVia, t: Trashers) -> Result<PutBackHow> {
+    if content.link {
+        // A link never went to the trash: it was removed itself.
+        let target = Repository::open(workdir)?.find_blob(content.blob)?.content().to_vec();
+        repo::workfile_unrm::undelete_link(workdir, path, &target, staged)?;
+        return Ok(PutBackHow::Written { trash: None });
+    }
     let trash = match via {
         DeleteVia::Permanent => None,
         DeleteVia::Trash | DeleteVia::HomeTrash => match repo::untrash_file(workdir, path, content.blob, staged, t.restore)? {

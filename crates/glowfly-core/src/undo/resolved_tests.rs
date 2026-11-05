@@ -230,3 +230,30 @@ fn no_entry_when_markers_save_changes_nothing() {
     assert_eq!(bytes(&dir, "f.txt"), saved);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn saving_a_resolution_keeps_the_conflicted_copy() {
+    let dir = one_chunk("rsv-keeps");
+    let markers = git2::Oid::hash_object(git2::ObjectType::Blob, &bytes(&dir, "a.txt")).unwrap();
+    let a = save(&dir, "a.txt", &[Choice::Theirs]);
+    let list = kept::list(&dir).unwrap();
+    let [k] = &list[..] else { panic!("one record: {list:?}") };
+    assert_eq!(k.what, kept::KeptWhat::Conflict);
+    assert!(matches!(&k.item, kept::KeptItem::File { path, blob, .. } if path == "a.txt" && *blob == markers), "{k:?}");
+    apply(&dir, &a, false);
+    assert!(kept::list(&dir).unwrap().is_empty(), "the markers are back");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_save_that_changes_nothing_keeps_nothing() {
+    let dir = one_chunk("rsv-keeps-nothing");
+    let ids = load_conflict(&dir, "a.txt").unwrap().ids;
+    let same = String::from_utf8(bytes(&dir, "a.txt")).unwrap();
+    assert_eq!(resolve_saving(&dir, "a.txt", &ids, || write_partial_resolution(&dir, "a.txt", &same, &ids)).unwrap(), None);
+    assert!(kept::all_for_test(&dir).is_empty(), "the same bytes: nothing was written over");
+    let failed = resolve_saving(&dir, "a.txt", &ids, || Err(crate::error::Error::Other("no".into())));
+    assert!(failed.is_err());
+    assert!(kept::all_for_test(&dir).is_empty(), "a failed save that left the file keeps none");
+    let _ = std::fs::remove_dir_all(&dir);
+}

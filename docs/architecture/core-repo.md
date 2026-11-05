@@ -88,7 +88,7 @@ source file, update its line here.
 - `repo/workfile_mv.rs`: renaming a tracked working-tree file so the index records the rename too.
 - `repo/workfile_rename.rs`: renaming one working-tree file (working tree only; `workfile_mv` also moves it in the index), and the checks both renames share.
 - `repo/workfile_rm.rs`: deleting a new file that is staged (or the new path of a staged rename): the working copy and its index entries together, and taking one whose working copy is already gone out of the index.
-- `repo/workfile_unrm.rs`: putting a deleted working-tree file back for undo, and the staged entry of a new file Unstage and delete removed.
+- `repo/workfile_unrm.rs`: putting a deleted working-tree file or symbolic link back for undo (a link as `core.symlinks` says), pointing a link at a saved target again, and the staged entry of a new file Unstage and delete removed.
 
 ## Conflicts
 

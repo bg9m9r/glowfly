@@ -109,6 +109,8 @@ fn kept_files_are_named_and_their_restores_reported() {
     assert_eq!(chip(en, &stash(3).kind), Some("Dropped stash"));
     assert_eq!(chip(en, &kept_file(KeptWhat::Hunk).kind), Some("Discarded hunk"));
     assert_eq!(chip(en, &kept_file(KeptWhat::Delete).kind), Some("Deleted file"));
+    assert_eq!(chip(en, &kept_file(KeptWhat::Restore).kind), Some("Replaced by a restore"));
+    assert_ne!(chip(Lang::De, &kept_file(KeptWhat::Restore).kind), chip(en, &kept_file(KeptWhat::Restore).kind));
     assert_ne!(chip(Lang::De, &kept_file(KeptWhat::Lines).kind), chip(en, &kept_file(KeptWhat::Lines).kind));
     assert_eq!(restore_file_blocked(true, en), Some(en.tr("commit.blocked.job_running")));
     assert_eq!(restore_file_blocked(false, en), None);

@@ -2,9 +2,12 @@
 //! markers. The conflict's stages come back from git's resolve-undo record (`git checkout -m`)
 //! and go away again by staging the saved blob (`git update-index --cacheinfo`, which records
 //! resolve-undo once more); the working file's exact bytes come from the blobs `saved.rs`
-//! keeps. Every refusal is stale and drops only this entry: each older entry checks the
-//! repository again when it is planned.
+//! keeps. The working copy a save writes over (its markers and any hand edits beside them, which
+//! git's resolve-undo record doesn't hold) is also kept for the journal's Lost tab (`kept.rs`).
+//! Every refusal is stale and drops only this entry: each older entry checks the repository
+//! again when it is planned.
 
+use super::kept::{self, KeptWhat};
 use super::record::head;
 use super::{Action, Plan, Refusal, Saved, Staged, saved};
 use crate::error::{Error, Result};
@@ -16,8 +19,10 @@ use std::path::Path;
 /// Runs `write` (a conflict view save of `path`, whose conflict has the stages `ids`) with the
 /// working copy saved before and after it. Returns the action that undoes it, or `None` when a
 /// save with markers changed nothing, or the file isn't one whose contents can be saved (a
-/// symbolic link or a folder: `write` still runs). Any other failure to save first refuses the
-/// write; a write that fails after changing the file says where its earlier contents are kept.
+/// folder: `write` still runs). Any other failure to save first refuses the write; a write that
+/// fails after changing the file says where its earlier contents are kept. The working copy
+/// written over is kept for the journal (`KeptWhat::Conflict`) before the write, a failure to
+/// keep it refusing the write, and dropped again when the file still holds it afterwards.
 pub fn resolve_saving(workdir: &Path, path: &str, ids: &ConflictIds, write: impl FnOnce() -> Result<()>) -> Result<Option<Action>> {
     let before = match saved::save(workdir, path) {
         Ok(b) => b,
@@ -27,9 +32,17 @@ pub fn resolve_saving(workdir: &Path, path: &str, ids: &ConflictIds, write: impl
         }
         Err(e) => return Err(e),
     };
+    let record = match before {
+        Some(s) => Some(kept::keep_file(workdir, path, s, KeptWhat::Conflict)?),
+        None => None,
+    };
     // Closed before `write` runs git: Windows locks files that are held open.
     let at = head(&Repository::open(workdir)?).1;
-    if let Err(e) = write() {
+    let written = write();
+    if let (Some(id), Some(s)) = (record, before) {
+        saved::settle(workdir, path, id, s);
+    }
+    if let Err(e) = written {
         return Err(saved::failed_after_saving(workdir, path, before, e).0);
     }
     let Ok(after) = saved::save(workdir, path) else { return Ok(None) };
@@ -61,7 +74,7 @@ fn working_check(workdir: &Path, path: &str, expect: Option<Saved>, before: Opti
         Err(Error::Unsupported(_)) => None,
         Err(e) => return Err(e),
     };
-    if now.is_some_and(|n| n.map(|s| s.blob) == expect.map(|s| s.blob)) {
+    if now.is_some_and(|n| n.map(Saved::content) == expect.map(Saved::content)) {
         return Ok(None);
     }
     let kept = match before {

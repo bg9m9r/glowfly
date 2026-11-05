@@ -117,6 +117,7 @@ pub fn chip(t: Lang, kind: &LostKind) -> Option<&'static str> {
             KeptWhat::Delete => t.tr("journal.lost.what.delete"),
             KeptWhat::Untracked => t.tr("journal.lost.what.untracked"),
             KeptWhat::Conflict => t.tr("journal.lost.what.conflict"),
+            KeptWhat::Restore => t.tr("journal.lost.what.restore"),
             KeptWhat::Stash => t.tr("journal.lost.stash_chip"),
         },
     })

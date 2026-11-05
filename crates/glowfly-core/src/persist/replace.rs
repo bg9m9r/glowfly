@@ -143,7 +143,8 @@ pub(super) fn clean_stale_temps(dir: &Path, name: &str) {
             continue;
         }
         let old = entry.metadata().ok().and_then(|m| m.modified().ok()).and_then(|t| t.elapsed().ok()).is_some_and(|age| age > STALE_AFTER);
-        if old && entry.file_type().is_ok_and(|t| t.is_file()) {
+        // A link a crashed `write_link` left is one too (removed as a link, never followed).
+        if old && entry.file_type().is_ok_and(|t| t.is_file() || t.is_symlink()) {
             let _ = remove(&entry.path());
         }
     }

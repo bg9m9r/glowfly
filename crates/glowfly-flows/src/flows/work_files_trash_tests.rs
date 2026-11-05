@@ -6,6 +6,7 @@
 use super::tests::{drive, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
 use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
+use glowfly_core::undo::{Action, DeleteVia, Saved};
 use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
@@ -245,6 +246,16 @@ fn delete_toasts() {
         run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op.clone(), result: Ok(WorkFileOk::deleted(how)) }));
         assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()), "{op:?} {how:?}");
     }
+    // A link kept for Undo: the toast says Undo makes it again.
+    let before = Saved { blob: git2::Oid::zero(), executable: false, link: true };
+    let undo = Some(Box::new(Action::DeleteFile { path: "a.txt".into(), before, via: DeleteVia::Trash, staged: None }));
+    let ok = WorkFileOk::Deleted { how: Deleted::LinkRemoved, undo, too_large: false };
+    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: delete("a.txt", DeleteMode::Trash), result: Ok(ok) }));
+    let want = format!(
+        "Deleted the symbolic link a.txt. Links don't go to the {TRASH}; what it points to is untouched. Undo ({}) puts it back.",
+        keys("Ctrl+Z")
+    );
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some(want.as_str()));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
