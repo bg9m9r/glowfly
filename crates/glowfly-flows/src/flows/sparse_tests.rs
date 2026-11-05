@@ -2,7 +2,7 @@
 //! each action starts (or why it doesn't), what follows a finished job, the palette entry, and
 //! turning sparse checkout on and off end to end against a real repository.
 
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use glowfly_core::sparse_ops::{SparseCommand, SparseMode, SparseStatus};
 use glowfly_model::effect::Effect;
@@ -137,8 +137,15 @@ fn loaded_results_fill_the_form() {
 
     sparse(&mut st, SparseMsg::Reload);
     let g = page(&st).generation;
-    sparse(&mut st, SparseMsg::Loaded { generation: g, result: Err("git is missing".into()) });
+    sparse(&mut st, SparseMsg::Loaded { generation: g, result: Err(said("git is missing")) });
     assert_eq!((page(&st).status.is_none(), page(&st).error.as_deref()), (true, Some("git is missing")));
+
+    st.settings.language = "de".into();
+    sparse(&mut st, SparseMsg::Reload);
+    let g = page(&st).generation;
+    let result = Err(glowfly_core::error::ReadFailed::NotARepository { path: "/r".into() });
+    sparse(&mut st, SparseMsg::Loaded { generation: g, result });
+    assert_eq!(page(&st).error.as_deref(), Some("/r ist kein Git-Repository"));
     cleanup(&dir);
 }
 

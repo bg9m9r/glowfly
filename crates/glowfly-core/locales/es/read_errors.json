@@ -5,7 +5,11 @@
   "read_errors.missing_content": "el contenido de {path} aún no se ha descargado de {remote}",
   "read_errors.no_folder": "Un historial de carpeta necesita una carpeta",
   "read_errors.no_thread": "no se pudo iniciar un hilo: {said}",
+  "read_errors.not_a_repository": "{path} no es un repositorio git",
   "read_errors.not_conflicted": "no encontrado: {path} no tiene conflictos",
+  "read_errors.not_owned": "git no abrirá {root} porque pertenece a otro usuario",
   "read_errors.old_file_unreadable": "no se puede leer el archivo anterior",
+  "read_errors.open_failed": "No se pudo abrir {path}: {why}",
+  "read_errors.panicked": "Glowfly tuvo un error interno ({effect}): {panic}",
   "read_errors.stopped": "detenido"
 }

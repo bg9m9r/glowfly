@@ -1,6 +1,7 @@
 //! Headless tests for per-tab activity logs: failures announced by a toast with Details instead
 //! of opening the panel, lines that follow their tab, and earlier entries handed out at load.
 
+use super::tests::said;
 use crate::flows::settings_file_tests::{DAMAGED_TEXT, damaged};
 use crate::flows::state;
 use glowfly_core::gitcli::GitRun;
@@ -355,7 +356,7 @@ fn a_failed_open_keeps_its_error() {
     run(&mut st, Msg::Repo(RepoMsg::Open(c.clone())));
     assert_eq!(st.tabs.len(), 2, "a new tab for c");
     let generation = st.load_gen;
-    run(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Open, result: Err("not a repository".into()) }));
+    run(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Open, result: Err(said("not a repository")) }));
     assert_eq!(st.tabs.len(), 1, "back to a");
     assert_eq!(st.tabs[st.active_tab].path.as_deref(), Some(a.as_path()));
     assert_eq!(texts(&st.log), ["in a", "not a repository"]);

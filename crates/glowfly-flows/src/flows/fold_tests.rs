@@ -2,10 +2,11 @@
 //! them all with the top line and the stepped-to change kept, ignoring stale clicks, when the
 //! opened set resets, stepping between changes with folds closed, and parking with a tab.
 
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, said, scratch_repo, state};
 use super::update;
 use super::whole_file_tests::{blocks, three_changes, with_diff};
 use glowfly_core::diff_rows::{DiffRow, SplitRow};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{DiffLine, DiffTarget, FileDiff, Hunk};
 use glowfly_core::settings::{DiffLayout, DiffMode};
 use glowfly_core::whole_file::{Expanded, Fold, WholeFile, block_rows, folds, inline_rows, row_of_line, split_rows};
@@ -50,7 +51,7 @@ fn late_changes() -> FileDiff {
 }
 
 /// Delivers `d` for `target` as the result of the request in flight.
-fn arrive(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, String>) {
+fn arrive(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, ReadFailed>) {
     let generation = st.session.diff.generation;
     run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None, raw: None }));
 }
@@ -137,7 +138,7 @@ fn folds_reset_only_for_another_file() {
 
     st.session.diff.view = Some((g.clone(), three_changes(true).into()));
     open(&mut st);
-    arrive(&mut st, g, true, Err("no changes".into()));
+    arrive(&mut st, g, true, Err(said("no changes")));
     assert!(st.session.diff.view.is_none());
     assert!(st.session.tab_view.diff_expanded.is_empty(), "a failed reload closes the diff");
     let _ = std::fs::remove_dir_all(&dir);

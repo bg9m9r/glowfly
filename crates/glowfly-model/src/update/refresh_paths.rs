@@ -43,7 +43,7 @@ pub(super) fn merge_into(snap: &mut Snapshot, ps: PathsStatus, submodules: Optio
 /// path read, so the next read checks its stamp in place of this one.
 pub(super) fn show_deferred(
     st: &mut AppState,
-    result: Result<StatusRead, String>,
+    result: Result<StatusRead, glowfly_core::error::ReadFailed>,
     submodules: Option<Vec<SubmoduleInfo>>,
     queued: Wanted,
 ) -> Wanted {

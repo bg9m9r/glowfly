@@ -6,6 +6,7 @@
 use super::execute::{Cx, Execute};
 use super::expect;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::stash_ops::{self, PutBack};
 use glowfly_core::undo::{self, UndoKind};
 use glowfly_model::effect::{PutBackRequest, StashEffect, UndoResult};
@@ -24,7 +25,7 @@ pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>, trashe
             .err()
             .map(|e| Msg::Logged { ok: false, text: format!("Could not save the stashes waiting to go back: {e}") }),
         StashEffect::ReadPaths { cwd, ask } => {
-            let paths = stash_ops::changed_paths(&cwd, ask.oid).map_err(|e| e.to_string());
+            let paths = stash_ops::changed_paths(&cwd, ask.oid).map_err(ReadFailed::from);
             Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
         }
         StashEffect::AbortKeeping { cwd, keep } => {

@@ -1,6 +1,7 @@
 //! Messages of the Sparse Checkout preferences page (state/sparse.rs, update/sparse.rs,
 //! ui/prefs/sparse.rs).
 
+use glowfly_core::error::ReadFailed;
 use glowfly_core::sparse_ops::SparseStatus;
 
 pub enum SparseMsg {
@@ -18,7 +19,7 @@ pub enum SparseMsg {
     // ---- from the runner
     Loaded {
         generation: u64,
-        result: Result<SparseStatus, String>,
+        result: Result<SparseStatus, ReadFailed>,
     },
     /// A sparse job ended (unscoped: it ends the active job).
     Done {

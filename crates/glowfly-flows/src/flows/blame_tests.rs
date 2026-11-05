@@ -2,9 +2,10 @@
 //! what closes it, tab parking and held repositories.
 
 use super::blame::HELD;
-use super::tests::{drive, git, scratch_repo, state};
+use super::tests::{drive, git, said, scratch_repo, state};
 use super::update;
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::rebase::RebaseBase;
 use glowfly_core::repo::{self, Blame, BlameOptions, DiffTarget, FileDiff, LoadOptions};
 use glowfly_core::settings::{BlameMoves, BlamePrefs};
@@ -50,7 +51,7 @@ fn data(path: &str) -> Box<BlameData> {
     Box::new(BlameData::new(blame, None))
 }
 
-fn loaded(path: &str, generation: u64, result: Result<Box<BlameData>, String>) -> Msg {
+fn loaded(path: &str, generation: u64, result: Result<Box<BlameData>, ReadFailed>) -> Msg {
     Msg::Blame(BlameMsg::Loaded { path: path.into(), generation, result })
 }
 
@@ -112,7 +113,7 @@ fn loaded_fills_the_view_and_stale_results_are_dropped() {
 
     update(&mut st, open("a.txt", None), Instant::now());
     let g = st.session.blame.generation;
-    update(&mut st, loaded("a.txt", g, Err("boom".into())), Instant::now());
+    update(&mut st, loaded("a.txt", g, Err(said("boom"))), Instant::now());
     let v = st.session.blame.view.as_ref().unwrap();
     assert_eq!(v.error.as_deref(), Some("boom"));
     assert!(!v.loading && v.data.is_none());

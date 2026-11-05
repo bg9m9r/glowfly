@@ -7,9 +7,11 @@
 use super::branches::find;
 use crate::effect::{BranchEffect, Effect};
 use crate::state::branch_delete::{DeleteForm, Lost};
+use crate::state::error_words::typed;
 use crate::state::worktree_branches;
 use crate::state::{AppState, Modal};
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::gitcli::args;
 
 /// Opens the Delete dialog for local branch `name`, unless it is checked out here or in another
@@ -30,14 +32,15 @@ pub(super) fn open(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
 }
 
 /// The count for the dialog still open for `name` at `tip`; anything else is stale.
-pub(super) fn counted(st: &mut AppState, name: &str, tip: Oid, count: Result<usize, String>) {
+pub(super) fn counted(st: &mut AppState, name: &str, tip: Oid, count: Result<usize, ReadFailed>) {
+    let t = st.settings.lang();
     let Some(Modal::DeleteBranch(form)) = st.modal.as_mut() else { return };
     if form.name != name || form.tip != tip || form.lost != Lost::Counting {
         return;
     }
     form.lost = match count {
         Ok(n) => Lost::Known(n),
-        Err(e) => Lost::Failed(e),
+        Err(e) => Lost::Failed(typed::read(t, &e)),
     };
 }
 

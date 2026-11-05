@@ -8,6 +8,8 @@ use crate::effect::{BlameRequest, Effect};
 use crate::msg::{BlameMsg, Msg, TrustMsg};
 use crate::state::AppState;
 use crate::state::blame::{BlameLanding, BlameView};
+use crate::state::error_words::typed;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{BlameOptions, Snapshot};
 use std::time::Instant;
 
@@ -73,10 +75,12 @@ pub(super) fn handle(st: &mut AppState, msg: BlameMsg, now: Instant, fx: &mut Ve
     }
 }
 
-fn loaded(st: &mut AppState, path: String, generation: u64, result: Result<Box<crate::state::blame::BlameData>, String>) {
+fn loaded(st: &mut AppState, path: String, generation: u64, result: Result<Box<crate::state::blame::BlameData>, ReadFailed>) {
     if generation != st.session.blame.generation {
         return; // superseded: closed, reopened, or parked with its tab
     }
+    let t = st.settings.lang();
+    let result = result.map_err(|e| typed::read(t, &e));
     let Some(view) = st.session.blame.view.as_mut().filter(|v| v.path == path) else { return };
     view.loading = false;
     let land = view.land.take();

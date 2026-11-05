@@ -4,7 +4,7 @@
 //! that still uses `-D`. Stale counts are dropped, a moved branch is refused, a checked-out one
 //! never opens it, and Undo brings the deleted branch back.
 
-use super::tests::{drive, finish, git, scratch_repo, state};
+use super::tests::{drive, finish, git, said, scratch_repo, state};
 use super::update;
 use git2::Oid;
 use glowfly_core::gitcli::args;
@@ -132,13 +132,25 @@ fn stale_counts_are_dropped() {
     drive(&mut st, counted("other", at));
     drive(&mut st, counted("topic", Oid::zero()));
     assert_eq!(form(&st).lost, Lost::Counting, "another branch's or tip's count");
-    drive(&mut st, Msg::Branch(BranchMsg::UnmergedCounted { name: "topic".into(), tip: at, count: Err("broken".into()) }));
+    drive(&mut st, Msg::Branch(BranchMsg::UnmergedCounted { name: "topic".into(), tip: at, count: Err(said("broken")) }));
     let f = form(&st);
     assert_eq!(f.lost_note(T).as_deref(), Some("Couldn't check whether its commits are on another branch: broken"));
     assert_eq!(f.button(T), "Delete anyway", "a failed count may lose work");
     drive(&mut st, Msg::CloseModal);
     drive(&mut st, counted("topic", at));
     assert!(st.modal.is_none(), "a count for a closed dialog opens nothing");
+    cleanup(&dir);
+}
+
+#[test]
+fn a_failed_count_reads_in_the_users_language() {
+    let (mut st, dir) = with_topic("bd-failed-de");
+    st.settings.language = "de".into();
+    let at = tip(&st, "topic").unwrap();
+    let _ = open_dialog(&mut st, "topic");
+    let count = Err(glowfly_core::error::ReadFailed::NotARepository { path: "/r".into() });
+    drive(&mut st, Msg::Branch(BranchMsg::UnmergedCounted { name: "topic".into(), tip: at, count }));
+    assert_eq!(form(&st).lost, Lost::Failed("/r ist kein Git-Repository".into()));
     cleanup(&dir);
 }
 

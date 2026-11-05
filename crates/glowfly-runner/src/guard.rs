@@ -2,6 +2,7 @@
 //! into the failure result the effect's sender is waiting for (a finished job clears `st.job`).
 
 use glowfly_core::app_update::UpdateError;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::forge::{Account, Target};
 use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::JobEffect;
@@ -149,27 +150,30 @@ impl Recovery {
 
     fn message(self, panic: String) -> Msg {
         let text = format!("Glowfly hit an internal error ({}): {panic}", self.name);
+        let read = ReadFailed::Panicked { effect: self.name.to_owned(), panic: panic.clone() };
         let internal = UpdateError::Internal { effect: self.name.to_owned(), panic };
-        self.failed_as(text, internal)
+        self.failed_as(text, internal, read)
     }
 
     /// The failure message the effect's sender waits for, saying `text` (a trust re-check that
     /// couldn't be made, runner/trust.rs).
     pub(super) fn failed(self, text: String) -> Msg {
         let said = UpdateError::Said { said: text.clone() };
-        self.failed_as(text, said)
+        let read = ReadFailed::Other { said: text.clone() };
+        self.failed_as(text, said, read)
     }
 
-    /// [`Self::failed`], with `update` the typed error an update's result carries instead.
-    fn failed_as(self, text: String, update: UpdateError) -> Msg {
+    /// [`Self::failed`], with `update` and `read` the typed errors an update's and a read's
+    /// results carry instead.
+    fn failed_as(self, text: String, update: UpdateError, read: ReadFailed) -> Msg {
         let msg = match self.kind {
             Kind::Job(undo) => Msg::Job(JobMsg::JobDone { ok: false, output: text, undo }),
             Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(text), undo: None }),
             Kind::EditTodo => Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(text) }),
             Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(text))),
-            Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(text) }),
+            Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(read) }),
             Kind::Status(generation) => {
-                let result = Err(text);
+                let result = Err(read);
                 Msg::Load(LoadMsg::StatusLoaded {
                     generation,
                     result,
@@ -186,7 +190,7 @@ impl Recovery {
                 let result = Box::new(Err(ForgeError { message: text, auth: false }));
                 Msg::Clone(CloneMsg::ReposLoaded { account, result })
             }
-            Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(text) }),
+            Kind::Blame { path, generation } => Msg::Blame(BlameMsg::Loaded { path, generation, result: Err(read) }),
             Kind::Update(Some(manual)) => Msg::Updates(UpdateMsg::Checked { manual, result: Err(update) }),
             Kind::Update(None) => Msg::Updates(UpdateMsg::Downloaded(Err(update))),
             Kind::UpdateRestart => Msg::Updates(UpdateMsg::RestartReady(Err(update))),
@@ -199,9 +203,9 @@ impl Recovery {
                 let outcome = glowfly_core::repo_sync::Outcome::Failed { reason: text, detail: String::new() };
                 Msg::Repos(glowfly_model::msg::ReposMsg::Synced { generation, index, outcome })
             }
-            Kind::LineCounts(FailedLineCounts::Commit(oid)) => Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Err(text) }),
+            Kind::LineCounts(FailedLineCounts::Commit(oid)) => Msg::Repo(RepoMsg::CommitLineCountsLoaded { oid, result: Err(read) }),
             Kind::LineCounts(FailedLineCounts::Wip(generation)) => {
-                Msg::Repo(RepoMsg::WipLineCountsLoaded { generation, result: Err(text) })
+                Msg::Repo(RepoMsg::WipLineCountsLoaded { generation, result: Err(read) })
             }
             Kind::PutBack(workdir, oid) => {
                 let outcome = glowfly_core::stash_ops::PutBack::Failed;

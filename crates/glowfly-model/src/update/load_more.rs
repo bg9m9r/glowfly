@@ -7,8 +7,10 @@
 
 use crate::effect::Effect;
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::load_more::retry_delay;
 use crate::state::refresh::large;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::HistoryPage;
 use std::time::Instant;
 
@@ -50,14 +52,20 @@ pub(super) fn tick(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
 
 /// A load for more of generation `generation` went on from the walk: takes the next commits in
 /// below the rows on screen (the selection, scroll and search cursor stay), or holds the failure.
-pub(super) fn extended(st: &mut AppState, generation: u64, result: Result<Box<HistoryPage>, String>, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn extended(
+    st: &mut AppState,
+    generation: u64,
+    result: Result<Box<HistoryPage>, ReadFailed>,
+    now: Instant,
+    fx: &mut Vec<Effect>,
+) {
     if generation != st.load_gen {
         return; // superseded by a newer load
     }
     st.loading = false;
     let status = std::mem::take(&mut st.refresh.status_after);
     match result {
-        Err(e) => failed(st, e, now),
+        Err(e) => failed(st, typed::read(st.settings.lang(), &e), now),
         Ok(page) => {
             st.refresh.more_retries = 0;
             // A worker's layout asked for before the page no longer fits: ask again.

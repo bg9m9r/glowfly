@@ -2,7 +2,7 @@
 //! a delay, at once by Try again or Load more with the same commit count, and given up by any
 //! load that starts meanwhile, a success or a tab switch.
 
-use super::tests::{drive, finish, scratch_repo, state};
+use super::tests::{drive, finish, said, scratch_repo, state};
 use super::update;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg, TabsMsg};
@@ -43,7 +43,7 @@ fn one_full_load(fx: &[Effect]) -> usize {
 
 /// The running load fails with `error` at `at`.
 fn fail(st: &mut AppState, error: &str, at: Instant) -> Vec<Effect> {
-    let failed = RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Err(error.into()) };
+    let failed = RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Err(said(error)) };
     update(st, Msg::Repo(failed), at)
 }
 

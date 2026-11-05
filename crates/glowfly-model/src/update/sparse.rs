@@ -6,8 +6,10 @@ use super::ops;
 use crate::effect::Effect;
 use crate::effect::SparseEffect;
 use crate::msg::SparseMsg;
+use crate::state::error_words::typed;
 use crate::state::sparse::{DISABLE_LABEL, REAPPLY_LABEL, kept_headline};
 use crate::state::{AppState, PrefPage};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::sparse_ops::{self, SparseCommand, SparseStatus};
 use std::time::Instant;
 
@@ -100,7 +102,8 @@ fn start(st: &mut AppState, label: &str, command: SparseCommand, fx: &mut Vec<Ef
     ops::begin_job(st, label, false, move |cwd| Effect::Sparse(SparseEffect::Checkout { cwd, command }), fx)
 }
 
-fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, String>) {
+fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, ReadFailed>) {
+    let t = st.settings.lang();
     let Some(p) = st.prefs.as_mut() else { return };
     let page = &mut p.sparse;
     if page.generation != generation {
@@ -118,7 +121,7 @@ fn loaded(st: &mut AppState, generation: u64, result: Result<SparseStatus, Strin
         }
         Err(e) => {
             page.status = None;
-            page.error = Some(e);
+            page.error = Some(typed::read(t, &e));
         }
     }
 }

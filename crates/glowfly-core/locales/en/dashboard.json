@@ -2,5 +2,8 @@
   "dashboard.empty.connect.button": "Connect a service…",
   "dashboard.empty.hint": "Open or clone repositories to see their pull requests and issues here.",
   "dashboard.empty.title": "No repositories yet",
+  "dashboard.unreadable.missing": "missing",
+  "dashboard.unreadable.not_a_repository": "not a Git repository",
+  "dashboard.unreadable.not_owned": "owned by another user",
   "dashboard.updated": "Updated {age}"
 }

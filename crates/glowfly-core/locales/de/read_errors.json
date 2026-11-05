@@ -5,7 +5,11 @@
   "read_errors.missing_content": "der Inhalt von {path} wurde noch nicht von {remote} heruntergeladen",
   "read_errors.no_folder": "Ein Ordnerverlauf braucht einen Ordner",
   "read_errors.no_thread": "konnte keinen Thread starten: {said}",
+  "read_errors.not_a_repository": "{path} ist kein Git-Repository",
   "read_errors.not_conflicted": "nicht gefunden: {path} hat keinen Konflikt",
+  "read_errors.not_owned": "git öffnet {root} nicht, weil der Ordner einem anderen Benutzer gehört",
   "read_errors.old_file_unreadable": "die alte Datei kann nicht gelesen werden",
+  "read_errors.open_failed": "{path} konnte nicht geöffnet werden: {why}",
+  "read_errors.panicked": "In Glowfly ist ein interner Fehler aufgetreten ({effect}): {panic}",
   "read_errors.stopped": "angehalten"
 }

@@ -1,6 +1,7 @@
 //! Blaming a file for the blame view, with its syntax spans (`Effect::LoadBlame`).
 
 use super::execute::{Cx, Execute};
+use glowfly_core::error::ReadFailed;
 use glowfly_core::highlight::{self, SyntaxHint};
 use glowfly_core::repo;
 use glowfly_model::effect::BlameRequest;
@@ -24,7 +25,7 @@ pub(super) fn load(r: BlameRequest) -> Msg {
         }
         read => read,
     };
-    let result = read.map_err(|e| e.to_string()).map(|blame| {
+    let result = read.map_err(ReadFailed::from).map(|blame| {
         let spans = if r.highlight {
             highlight::highlight_file(SyntaxHint { path: &path, language: blame.language.as_deref() }, &blame.lines)
         } else {

@@ -6,6 +6,7 @@ use crate::effect::StatusRead;
 use crate::msg::Inactive;
 use crate::state::tabs::glance::{CountsRead, Glance};
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{CommitDetail, DiffTarget, FileDiff, FileEntry, FileLineCounts, IndexMemo, SlowStatus, Snapshot, WipLineCounts};
 use glowfly_core::signature_check::SignatureCheck;
 use std::path::PathBuf;
@@ -32,17 +33,17 @@ pub enum RepoMsg {
     RepoLoaded {
         generation: u64,
         kind: LoadKind,
-        result: Result<Box<Snapshot>, String>,
+        result: Result<Box<Snapshot>, ReadFailed>,
     },
     DetailLoaded {
         oid: Oid,
-        result: Result<CommitDetail, String>,
+        result: Result<CommitDetail, ReadFailed>,
     },
     DiffLoaded {
         target: DiffTarget,
         reload: bool,
         generation: u64,
-        result: Result<FileDiff, String>,
+        result: Result<FileDiff, ReadFailed>,
         /// The two sides when either is a Git LFS pointer (`repo::ViewDiff::lfs`); None on an error.
         lfs: Option<glowfly_core::lfs::pointer::LfsChange>,
         /// The hunk's exact bytes, hashed (`repo::ViewDiff::raw`); None on an error.
@@ -60,17 +61,17 @@ pub enum RepoMsg {
     SignatureChecked {
         oid: Oid,
         generation: u64,
-        result: Result<SignatureCheck, String>,
+        result: Result<SignatureCheck, ReadFailed>,
     },
     /// Commit `oid`'s per-file line counts (update/line_counts.rs).
     CommitLineCountsLoaded {
         oid: Oid,
-        result: Result<Arc<FileLineCounts>, String>,
+        result: Result<Arc<FileLineCounts>, ReadFailed>,
     },
     /// The working tree's per-file line counts for request `generation`.
     WipLineCountsLoaded {
         generation: u64,
-        result: Result<Box<WipLineCounts>, String>,
+        result: Result<Box<WipLineCounts>, ReadFailed>,
     },
 }
 
@@ -125,7 +126,7 @@ pub enum LoadMsg {
     /// status was read (as for `StatusLoaded`).
     RepoUnchanged {
         generation: u64,
-        result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), String>,
+        result: Result<(Vec<FileEntry>, Vec<FileEntry>, git2::RepositoryState), ReadFailed>,
         submodules: Option<Vec<glowfly_core::repo::SubmoduleInfo>>,
         open_stamp: Option<u64>,
         /// The status read was slow (`repo::SLOW_STATUS`), and what could speed it up.
@@ -136,11 +137,11 @@ pub enum LoadMsg {
         index: Option<Arc<IndexMemo>>,
     },
     /// A load for more went on from the walk: the next commits, or why reading them failed.
-    HistoryExtended { generation: u64, result: Result<Box<glowfly_core::repo::HistoryPage>, String> },
+    HistoryExtended { generation: u64, result: Result<Box<glowfly_core::repo::HistoryPage>, ReadFailed> },
     StatusLoaded {
         generation: u64,
         /// The whole status, or only some work-tree paths' unstaged rows.
-        result: Result<StatusRead, String>,
+        result: Result<StatusRead, ReadFailed>,
         /// The submodules read again; None when the repository has none (or they couldn't be read).
         submodules: Option<Vec<glowfly_core::repo::SubmoduleInfo>>,
         /// `repo::open_file_stamp` of the file asked about; while it stays the same, the open

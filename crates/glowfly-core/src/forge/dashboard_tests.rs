@@ -1,4 +1,5 @@
 use super::*;
+use crate::error::ReadFailed;
 use crate::forge::mock::{Mock, Reply};
 use crate::forge::{Account, PrFacets, Provider};
 use crate::testutil::{git, scratch_repo, set_config};
@@ -87,11 +88,14 @@ fn read_repo_refuses_missing_plain_and_bare_folders() {
     assert!(matches!(read_repo(&missing, &[]), Err(Error::NotARepository(_))));
     let e = read_repo(&plain, &[]).unwrap_err();
     assert!(matches!(e, Error::NotARepository(_)));
-    assert_eq!(unreadable_reason(&e), "not a Git repository");
+    assert!(matches!(ReadFailed::from(e), ReadFailed::NotARepository { .. }));
     let bare = base.join("bare.git");
     std::fs::create_dir_all(&bare).unwrap();
     git(&bare, &["init", "-q", "--bare"]);
-    assert!(matches!(read_repo(&bare, &[]), Err(Error::Unsupported(_))));
+    let e = read_repo(&bare, &[]).unwrap_err();
+    assert!(matches!(e, Error::Unsupported(_)));
+    let shown = e.to_string();
+    assert_eq!(ReadFailed::from(e), ReadFailed::Other { said: shown });
     let _ = std::fs::remove_dir_all(&base);
 }
 

@@ -68,6 +68,7 @@ mod dashboard_assigned_tests;
 mod dashboard_open_tests;
 mod dashboard_team_tests;
 mod dashboard_tests;
+mod dashboard_unreadable_tests;
 mod deep_link_folder_tests;
 mod deep_link_open_tests;
 mod deep_link_tests;

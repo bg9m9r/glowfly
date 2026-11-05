@@ -3,8 +3,8 @@
 //! repository and asking its targets, a few calls at a time.
 
 use super::execute::{Cx, Execute};
-use glowfly_core::error::Error;
-use glowfly_core::forge::dashboard::{CONCURRENCY, fetch_target, read_repo, run_bounded, unreadable_reason};
+use glowfly_core::error::{Error, ReadFailed};
+use glowfly_core::forge::dashboard::{CONCURRENCY, fetch_target, read_repo, run_bounded};
 use glowfly_core::forge::{self, Auth, filters};
 use glowfly_model::effect::{AccountJob, AccountReply, DashboardEffect, FetchJob, FetchReply, ForgeError, TargetJob, TargetReply};
 use glowfly_model::msg::{DashboardMsg, Msg};
@@ -14,7 +14,7 @@ pub(super) fn run(e: DashboardEffect) -> Msg {
     match e {
         DashboardEffect::Scan { generation, repos, connections } => {
             let repos = run_bounded(repos, CONCURRENCY, |p| {
-                let r = read_repo(&p, &connections).map_err(|e| unreadable_reason(&e));
+                let r = read_repo(&p, &connections).map_err(ReadFailed::from);
                 (p, r)
             });
             Msg::Dashboard(DashboardMsg::Scanned { generation, repos })
@@ -75,4 +75,24 @@ fn fetch(job: FetchJob) -> FetchReply {
         replies[i].targets.push(t);
     }
     FetchReply { generation, partial, fetched_at: chrono::Utc::now().timestamp(), accounts: replies }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_plain_folder_scans_as_not_a_repository() {
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-dash-plain-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let msg = run(DashboardEffect::Scan { generation: 2, repos: vec![dir.clone()], connections: Vec::new() });
+        let _ = std::fs::remove_dir_all(&dir);
+        let Msg::Dashboard(DashboardMsg::Scanned { generation: 2, repos }) = msg else { panic!("a scan result") };
+        assert!(
+            matches!(&repos[..], [(p, Err(ReadFailed::NotARepository { .. }))] if *p == dir),
+            "{:?}",
+            repos.iter().map(|(_, r)| r.as_ref().err()).collect::<Vec<_>>()
+        );
+    }
 }

@@ -3,8 +3,10 @@
 
 use crate::effect::CommitEffect;
 use crate::effect::Effect;
+use crate::state::error_words::typed;
 use crate::state::{AppState, Selection};
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::signature_check::SignatureCheck;
 
 /// Asks for a check of `oid` when it is the commit on screen, it is signed, nothing is known or
@@ -26,6 +28,7 @@ pub(super) fn again(st: &mut AppState, oid: Oid, fx: &mut Vec<Effect>) {
     want(st, oid, fx);
 }
 
-pub(super) fn checked(st: &mut AppState, oid: Oid, generation: u64, result: Result<SignatureCheck, String>) {
-    st.session.reads.signatures.finish(oid, generation, result);
+pub(super) fn checked(st: &mut AppState, oid: Oid, generation: u64, result: Result<SignatureCheck, ReadFailed>) {
+    let t = st.settings.lang();
+    st.session.reads.signatures.finish(oid, generation, result.map_err(|e| typed::read(t, &e)));
 }

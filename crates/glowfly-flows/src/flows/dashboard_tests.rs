@@ -2,6 +2,7 @@
 //! the service calls, replies filling the rows, sign-in, staleness and connection changes.
 
 use crate::flows::state;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::forge::dashboard::{ScannedRepo, code_host, recognized};
 use glowfly_core::forge::{Account, Auth, Connection, Issue, Me, PrFacets, Provider, PullRequest, Target};
 use glowfly_core::settings::TrackerChoice;
@@ -42,7 +43,7 @@ pub(super) fn gh(owner: &str, repo: &str) -> Target {
 }
 
 /// What reading the folder `name` with these remotes would find.
-pub(super) fn scanned(name: &str, remotes: &[(&str, &str)], conns: &[Connection]) -> (PathBuf, Result<ScannedRepo, String>) {
+pub(super) fn scanned(name: &str, remotes: &[(&str, &str)], conns: &[Connection]) -> (PathBuf, Result<ScannedRepo, ReadFailed>) {
     let p = path(name);
     let urls: Vec<(String, String)> = remotes.iter().map(|(n, u)| (n.to_string(), u.to_string())).collect();
     let remotes = recognized(&urls, conns);
@@ -51,7 +52,7 @@ pub(super) fn scanned(name: &str, remotes: &[(&str, &str)], conns: &[Connection]
     (p, Ok(s))
 }
 
-pub(super) fn deliver(st: &mut AppState, repos: Vec<(PathBuf, Result<ScannedRepo, String>)>) -> Vec<Effect> {
+pub(super) fn deliver(st: &mut AppState, repos: Vec<(PathBuf, Result<ScannedRepo, ReadFailed>)>) -> Vec<Effect> {
     let generation = st.dashboard.generation;
     run(st, DashboardMsg::Scanned { generation, repos })
 }

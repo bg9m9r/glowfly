@@ -1,7 +1,7 @@
 //! Headless tests for tabs: each repository keeps its own state, results for other tabs are
 //! dropped, and tabs close, reopen and restore as expected.
 
-use super::tests::{drive, scratch_repo, state};
+use super::tests::{drive, said, scratch_repo, state};
 use super::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_model::effect::ConflictEffect;
@@ -86,7 +86,7 @@ fn results_for_other_tabs_are_dropped() {
         target: DiffTarget::Unstaged("a.txt".into()),
         reload: false,
         generation: 0,
-        result: Err("from A".into()),
+        result: Err(said("from A")),
         lfs: None,
         raw: None,
     });

@@ -55,7 +55,7 @@ pub enum BranchMsg {
     UnmergedCounted {
         name: String,
         tip: git2::Oid,
-        count: Result<usize, String>,
+        count: Result<usize, glowfly_core::error::ReadFailed>,
     },
     /// The Delete dialog's danger button: delete local branch `name` (`git branch -d`, or `-D`
     /// when `force`), unless it has moved off `tip`.

@@ -4,10 +4,10 @@
 //! the commits on screen instead of reading them again (`repo::load_reusing`). The status reads
 //! are in status.rs.
 
-use super::execute::err;
 use super::execute::{Cx, Execute};
 use super::git_env;
 use super::status;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{self, GraphCache, LoadOptions, MoreLoaded, Prior};
 use glowfly_model::effect::{KnownRepo, LoadEffect, LoadKind};
 use glowfly_model::msg::{LoadMsg, Msg, RepoMsg};
@@ -46,7 +46,7 @@ fn load_repo(
     {
         match repo::load_more(&path, p, opts.max_commits) {
             Ok(MoreLoaded::Page(page)) => return Msg::Load(LoadMsg::HistoryExtended { generation, result: Ok(page) }),
-            Err(e) => return Msg::Load(LoadMsg::HistoryExtended { generation, result: Err(err(e)) }),
+            Err(e) => return Msg::Load(LoadMsg::HistoryExtended { generation, result: Err(ReadFailed::from(e)) }),
             // A new commit would go above a loaded one: walk it all.
             Ok(MoreLoaded::NeedsFullLoad) => {}
         }
@@ -56,7 +56,7 @@ fn load_repo(
     {
         let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
         let started = std::time::Instant::now();
-        let read = repo::status_and_index_with(&path, k.git_status, Some(graph_cache.records())).map_err(err);
+        let read = repo::status_and_index_with(&path, k.git_status, Some(graph_cache.records())).map_err(ReadFailed::from);
         let slow = repo::slow(started.elapsed(), &path);
         let rows = read.as_ref().ok().map(|(u, ..)| u.as_slice());
         let submodules = repo::submodules_if_any(&path, k.submodules, rows, Some(graph_cache.submodules())).ok().flatten();
@@ -71,7 +71,33 @@ fn load_repo(
     let kind = if kind == LoadKind::More { LoadKind::Refresh } else { kind };
     let result = match repo::load_reusing(&path, &opts, graph_cache, prior.as_ref()) {
         Err(glowfly_core::error::Error::NotOwned(refusal)) => return git_env::not_owned(generation, kind, refusal),
-        r => r.map(Box::new).map_err(|e| format!("Could not open {}: {e}", glowfly_core::native_path::shown(&path))),
+        r => r
+            .map(Box::new)
+            .map_err(|e| ReadFailed::OpenFailed { path: glowfly_core::native_path::shown(&path), why: Box::new(ReadFailed::from(e)) }),
     };
     Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use glowfly_core::error::ReadFailed;
+
+    #[test]
+    fn a_folder_with_no_repository_fails_to_open_naming_it() {
+        let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-load-plain-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let msg = load_repo(dir.clone(), LoadOptions::default(), 1, LoadKind::Open, None, None, &GraphCache::default());
+        let _ = std::fs::remove_dir_all(&dir);
+        let Msg::Repo(RepoMsg::RepoLoaded { result: Err(e), .. }) = msg else { panic!("a failed load") };
+        assert!(e.to_string().starts_with("Could not open "), "{e}");
+        let ReadFailed::OpenFailed { path, why } = e else { panic!("an open failure: {e:?}") };
+        assert_eq!(path, glowfly_core::native_path::shown(&dir));
+        match *why {
+            ReadFailed::NotARepository { .. } => {}
+            ReadFailed::Said { said } => assert!(!said.is_empty()),
+            other => panic!("not a repository, or libgit2's words: {other:?}"),
+        }
+    }
 }

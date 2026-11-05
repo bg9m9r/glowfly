@@ -2,7 +2,7 @@
 //! batches, one load at a time, a budget per query, only with the filter and the preference on,
 //! after the path search, resumed after a failure and started again after a tab switch.
 
-use super::tests::{drive, finish, scratch_repo, state};
+use super::tests::{drive, finish, said, scratch_repo, state};
 use super::update;
 use glowfly_core::commit_query::CommitQuery;
 use glowfly_model::effect::HistoryEffect;
@@ -185,7 +185,7 @@ fn a_failed_batch_holds_the_search_and_resumes() {
     let (mut st, dir) = truncated("deeper-failed");
     let limit = st.settings.commit_limit();
     assert_eq!(loads(&filter(&mut st, "zzz")).len(), 1);
-    let failed = RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Err("walk failed".into()) };
+    let failed = RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Err(said("walk failed")) };
     update(&mut st, Msg::Repo(failed), Instant::now());
     assert_eq!(st.search_reach(&st.view), Reach::Failed("walk failed"));
     assert!(loads(&send(&mut st, SearchMsg::QueryChanged)).is_empty(), "the failure holds the search");

@@ -1,7 +1,7 @@
 //! The words for the typed errors that result messages carry instead of English text (#367):
 //! one function per area's error type, the only place its variants become text in the user's
 //! language (hosting services, credentials, signing keys, Preferences writes, updates, and the
-//! graph's and the diff's reads). Each gives the fragment that follows a headline's colon
+//! graph's, the diff's and the repository's reads, the dashboard's short reasons too). Each gives the fragment that follows a headline's colon
 //! ("Couldn't save the sign-in for github.com: <this>"); git's own words, when an error has
 //! them, are kept as they are. Pure.
 
@@ -58,13 +58,19 @@ pub fn signing_key(t: Lang, e: &KeyError) -> String {
     }
 }
 
-/// Why a read for the graph (a comparison, stacked lists, path search, history index) or the
-/// diff (hunk patch, unchanged lines, binary sides, conflict, conflict markers, file history)
-/// failed; libgit2's and the system's words and the paths kept as they are.
+/// Why a read for the graph (a comparison, stacked lists, path search, history index), the
+/// diff (hunk patch, unchanged lines, binary sides, conflict, conflict markers, file history) or
+/// the repository (a load, the status, a commit's detail, a file diff, a signature check, line
+/// counts, blame, the unmerged count, an operation preview, the sparse status, a stash's files)
+/// failed; libgit2's and the system's words, the paths and effect names kept as they are.
 pub fn read(t: Lang, e: &ReadFailed) -> String {
     use ReadFailed as R;
     match e {
         R::Said { said } | R::Other { said } => said.clone(),
+        R::NotARepository { path } => t.trf("read_errors.not_a_repository", &[("path", path)]),
+        R::NotOwned { root } => t.trf("read_errors.not_owned", &[("root", root)]),
+        R::OpenFailed { path, why } => t.trf("read_errors.open_failed", &[("path", path), ("why", &read(t, why))]),
+        R::Panicked { effect, panic } => t.trf("read_errors.panicked", &[("effect", effect), ("panic", panic)]),
         R::MissingContent { path, remote } => t.trf("read_errors.missing_content", &[("path", path), ("remote", remote)]),
         R::DiffChanged => t.tr("read_errors.diff_changed").to_owned(),
         R::FileChanged => t.tr("read_errors.file_changed").to_owned(),
@@ -74,6 +80,16 @@ pub fn read(t: Lang, e: &ReadFailed) -> String {
         R::NoThread { said } => t.trf("read_errors.no_thread", &[("said", said)]),
         R::Internal { effect } => t.trf("read_errors.internal", &[("effect", effect)]),
         R::Stopped => t.tr("read_errors.stopped").to_owned(),
+    }
+}
+
+/// Why a folder the dashboard lists couldn't be read, short, for a line that already names the
+/// folder (`DashboardMsg::Scanned`).
+pub fn unreadable(t: Lang, e: &ReadFailed) -> String {
+    match e {
+        ReadFailed::NotARepository { .. } => t.tr("dashboard.unreadable.not_a_repository").to_owned(),
+        ReadFailed::NotOwned { .. } => t.tr("dashboard.unreadable.not_owned").to_owned(),
+        e => read(t, e),
     }
 }
 

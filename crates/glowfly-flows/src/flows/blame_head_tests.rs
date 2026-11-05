@@ -2,8 +2,10 @@
 //! keeping the old blame and the top line, stale results, errors, following a rename, held
 //! repositories, parked tabs and the toggles while a re-run is in flight.
 
+use super::tests::said;
 use crate::flows::{drive, git, scratch_repo, state};
 use git2::Oid;
+use glowfly_core::error::ReadFailed;
 use glowfly_core::repo::{self, Blame, LoadOptions};
 use glowfly_model::effect::{BlameRequest, Effect, LoadKind};
 use glowfly_model::msg::{BlameMsg, Msg, RepoMsg, TabsMsg};
@@ -75,7 +77,7 @@ fn send(st: &mut AppState, m: BlameMsg) -> Vec<Effect> {
     update(st, Msg::Blame(m), Instant::now())
 }
 
-fn loaded(path: &str, generation: u64, result: Result<Box<BlameData>, String>) -> BlameMsg {
+fn loaded(path: &str, generation: u64, result: Result<Box<BlameData>, ReadFailed>) -> BlameMsg {
     BlameMsg::Loaded { path: path.into(), generation, result }
 }
 
@@ -162,7 +164,7 @@ fn rerun_error_replaces_the_blame() {
     let (mut st, dir) = shown("blame-head-error");
     refresh_with_head(&mut st, Some(oid(9)));
     let now = st.session.blame.generation;
-    send(&mut st, loaded("a.txt", now, Err("a.txt is not in commit 0909090".into())));
+    send(&mut st, loaded("a.txt", now, Err(said("a.txt is not in commit 0909090"))));
     let v = view(&st);
     assert!(v.data.is_none() && !v.loading && v.follow.is_none());
     assert_eq!(v.error.as_deref(), Some("a.txt is not in commit 0909090"));
