@@ -6,3 +6,5 @@ avoid-breaking-exported-api = false
 disallowed-methods = [
   { path = "egui_kittest::Harness::snapshot", reason = "use CheckSnapshot::check_snapshot" },
 ]
+# Functions past this many code lines fail clippy (`too_many_lines`); split them by responsibility.
+too-many-lines-threshold = 120

@@ -61,6 +61,7 @@ use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::prefs_save;
 use glowfly_model::state::{AppState, PrefPage, ViewState};
 
+#[expect(clippy::too_many_lines, reason = "the preferences window; split its frame from its pages")]
 pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let Some(prefs) = st.prefs.as_ref() else { return };
     let page = prefs.page;

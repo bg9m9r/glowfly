@@ -205,6 +205,7 @@ fn global_unmodeled(cmd: &[String], at: usize) -> Option<String> {
 /// What the git command `cmd` (its arguments, without `git`) brings into the working tree.
 /// Empty for a command that brings in nothing (`checkout -b new`, `merge --abort`, `commit`)
 /// and for a pull (pinned by pull.rs); Unmodeled for one Glowfly doesn't read.
+#[expect(clippy::too_many_lines, reason = "one arm per git command; split by command family")]
 pub fn targets(cmd: &[String]) -> Result<Vec<Target>, Unchecked> {
     let Some(at) = sub_at(cmd) else { return Ok(Vec::new()) };
     if let Some(g) = global_unmodeled(cmd, at) {

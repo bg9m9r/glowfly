@@ -59,6 +59,7 @@ pub fn run_split(path: &Path, pull: &Pull, git: &mut Git<'_>) -> PullRun {
     run(path, pull, &[], None, None, git, true)
 }
 
+#[expect(clippy::too_many_lines, reason = "a pull's run in one pass; split its steps out")]
 fn run(
     path: &Path,
     pull: &Pull,

@@ -172,3 +172,14 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Group glowfly-ui's snapshot_tests/snapshot_tests_* files into per-area subfolders (views.rs's test-file rule must first cover folders)
 - Group glowfly-runner's terminal_* files (terminal.rs, terminal_hold.rs, terminal_out.rs) into runner/terminal/
 - Split update/tests/ per area further if it grows (one <area>_tests.rs per area today)
+
+### Function length cap (clippy too_many_lines)
+
+- Split ui/icons.rs `paint` and widgets/icon.rs `paint_icon_stroke` by icon group (one fn per family), then drop their LONG_FUNCTIONS entries.
+- Split shortcuts/global.rs `fire`, update/palette.rs `run` and state/palette/recent.rs `recall_key` by area (one helper per command family).
+- Split sidebar.rs `sections` (one fn per section), prefs/mod.rs `show` (window frame vs pages), prefs/signing.rs `signing_page` (by section) and tabs.rs `strip` (tab, + button, tab list).
+- Split core trust/targets.rs `targets` (by command family), trust/pull_run.rs `run` (by step) and undo/planning.rs `plan_with` (by action), plus update/forge.rs `replied` (by reply kind).
+- Once LONG_FUNCTIONS is empty, lower `too-many-lines-threshold` (and THRESHOLD) toward 100; several update `handle`s sit at 103-115 today.
+- Measure function length textually in fn_length.rs too (clippy's counting rule over the lexer's blanked text), so `cfg(target_os = "macos")` functions, which no PR runner lints, are capped as well.
+- A nesting-depth cap (clippy `excessive_nesting` with `excessive-nesting-threshold`) for the deep update and view functions (depth 7-9), with its own ratchet.
+- CLAUDE.md's Conventions could mention the 120-line function cap next to the 400-line file cap.

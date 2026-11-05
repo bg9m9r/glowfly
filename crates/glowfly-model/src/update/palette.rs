@@ -222,6 +222,7 @@ pub(super) fn enter_input(st: &mut AppState, kind: InputKind) {
 }
 
 /// Runs `cmd` through the message the toolbar, menus and sidebar already send for it.
+#[expect(clippy::too_many_lines, reason = "one arm per palette command; split by area")]
 pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut Vec<Effect>) {
     use PaletteCommand as C;
     let msg = match cmd {

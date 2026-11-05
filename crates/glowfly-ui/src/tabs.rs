@@ -82,6 +82,7 @@ fn needed(natural: &[f32]) -> f32 {
 }
 
 /// The tabs `height` tall, then + and the tab list, left to right in `ui`.
+#[expect(clippy::too_many_lines, reason = "the whole tab strip; split the tab, + and list drawing")]
 pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     ui.allocate_ui_with_layout(vec2(ui.available_width(), height), Layout::left_to_right(Align::Center), |ui| {

@@ -50,6 +50,10 @@ glowfly-ui = { path = "crates/glowfly-ui" }
 [workspace.lints.rust]
 unsafe_op_in_unsafe_fn = "warn"
 
+# Function length: the threshold is in clippy.toml.
+[workspace.lints.clippy]
+too_many_lines = "warn"
+
 # Smaller, faster release builds. Panics still unwind: effect threads catch them.
 [profile.release]
 lto = "thin"

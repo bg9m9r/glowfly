@@ -28,12 +28,13 @@ use crate::widgets::{buttons, reason, truncate_label};
 use button::{Act, MenuAction};
 use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, vec2};
 use glowfly_core::i18n::Lang;
+use glowfly_core::repo::Snapshot;
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::CommitMsg;
 use glowfly_model::msg::EditMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::commit::stop::{amend_blocked_in, edit_stop, rebase_stopped};
-use glowfly_model::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, commit_label, summary_length};
+use glowfly_model::state::commit::{CommitFields, SUMMARY_HARD, SummaryLength, commit_blocked, commit_label, summary_length};
 use glowfly_model::state::repo_identity::{commit_identity_line, env_tip};
 use glowfly_model::state::{AppState, ViewState};
 
@@ -81,43 +82,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache
         ui.separator();
         ui.add_space(4.0);
     }
-    let identity = st.identities.get(&snap.git_dir).map(|id| (commit_identity_line(t, id, &st.settings), env_tip(t, id)));
-    if style.titled || identity.is_some() {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = TITLE_GAP;
-            if style.titled {
-                ui.label(type_scale::section_text(ui, t.tr("commit.title")));
-            }
-            // It reads on from the title ("Commit as Ada"), cut to the room left, smaller than
-            // the title so the row keeps its height.
-            if let Some(((line, warn), tip)) = identity {
-                let tone = if warn { color::warn() } else { color::faint() };
-                let max_w = ui.available_width();
-                let label = truncate_label(ui, RichText::new(line).size(type_scale::SMALL).color(tone), max_w);
-                if let Some(tip) = tip {
-                    label.on_hover_text(tip);
-                }
-            }
-        });
-    }
-
-    // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
-    if let Some((fs, key)) = st.session.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
-        let tag = fs.mention(&key);
-        let mentioned = fs.links_issue(&f.summary, &key) || fs.links_issue(&f.description, &key);
-        ui.horizontal(|ui| {
-            issue_chip(ui, fs, &key, msgs);
-            let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
-            if !mentioned
-                && ui
-                    .add(buttons::secondary(t.trf("commit.link_button", &[("tag", &tag)])).size(ControlSize::Small))
-                    .on_hover_text(hover)
-                    .clicked()
-            {
-                msgs.push(Msg::Commit(CommitMsg::AppendToDescription(fs.message_ref(&key))));
-            }
-        });
-    }
+    title_row(ui, st, snap, t, style);
+    issue_link_row(ui, st, snap, &f, t, msgs);
 
     let spell = st.settings.spellcheck;
     let s = summary_field(ui, &mut f.summary, cache, t, spell);
@@ -207,6 +173,52 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache
     }
     if let Some(tab) = st.active_tab_id().filter(|_| f != st.session.draft.fields()) {
         msgs.push(Msg::Edit(EditMsg::Commit { tab, fields: f }));
+    }
+}
+
+/// The header: the "Commit" title when the box is `titled`, then the author identity git gives
+/// (in the warning tone, with the variables on hover, when the environment sets it).
+fn title_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, t: Lang, style: BoxStyle) {
+    let identity = st.identities.get(&snap.git_dir).map(|id| (commit_identity_line(t, id, &st.settings), env_tip(t, id)));
+    if style.titled || identity.is_some() {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = TITLE_GAP;
+            if style.titled {
+                ui.label(type_scale::section_text(ui, t.tr("commit.title")));
+            }
+            // It reads on from the title ("Commit as Ada"), cut to the room left, smaller than
+            // the title so the row keeps its height.
+            if let Some(((line, warn), tip)) = identity {
+                let tone = if warn { color::warn() } else { color::faint() };
+                let max_w = ui.available_width();
+                let label = truncate_label(ui, RichText::new(line).size(type_scale::SMALL).color(tone), max_w);
+                if let Some(tip) = tip {
+                    label.on_hover_text(tip);
+                }
+            }
+        });
+    }
+}
+
+/// The issue named by the branch, as a chip, with a button that links it from the description
+/// until the message mentions it.
+fn issue_link_row(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, f: &CommitFields, t: Lang, msgs: &mut Vec<Msg>) {
+    // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
+    if let Some((fs, key)) = st.session.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
+        let tag = fs.mention(&key);
+        let mentioned = fs.links_issue(&f.summary, &key) || fs.links_issue(&f.description, &key);
+        ui.horizontal(|ui| {
+            issue_chip(ui, fs, &key, msgs);
+            let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
+            if !mentioned
+                && ui
+                    .add(buttons::secondary(t.trf("commit.link_button", &[("tag", &tag)])).size(ControlSize::Small))
+                    .on_hover_text(hover)
+                    .clicked()
+            {
+                msgs.push(Msg::Commit(CommitMsg::AppendToDescription(fs.message_ref(&key))));
+            }
+        });
     }
 }
 

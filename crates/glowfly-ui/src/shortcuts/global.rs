@@ -74,6 +74,7 @@ pub fn input(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mu
 
 /// Does what `id` does; `chord` is the key pressed (its digit picks the tab for Go to tab), and
 /// `pane` the pane with the keyboard focus (F6 goes on from it).
+#[expect(clippy::too_many_lines, reason = "one arm per shortcut; split by area")]
 fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     use BindingId as I;
     // A history's File pane has no diff on screen: a folder history steps to the entry's next

@@ -10,6 +10,7 @@ use super::widgets::Icon;
 use eframe::egui::{self, Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
 
 /// Paints `icon` centred on `c`; returns false for icons painted by `paint_icon` itself.
+#[expect(clippy::too_many_lines, reason = "one arm per icon shape; split by icon group")]
 pub(super) fn paint(p: &Painter, c: Pos2, icon: Icon, s: Stroke) -> bool {
     let line = |a: Pos2, b: Pos2| p.line_segment([a, b], s);
     match icon {
