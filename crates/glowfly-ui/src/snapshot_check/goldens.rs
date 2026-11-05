@@ -232,6 +232,9 @@ pub(crate) const GOLDENS: &[(&str, Crop)] = &[
     ("diff_svg_linked_light", Window),
     ("diff_svg_binary_light", Window),
     ("diff_svg_header_narrow_light", Window),
+    ("diff_font_changed_light", Window),
+    ("diff_font_changed_dark", Window),
+    ("diff_font_unreadable_light", Window),
     ("diff_lines_gutter_selected_dark", Window),
     ("diff_lines_gutter_selected_light", Window),
     ("diff_commit_gutter_hover", Window),
@@ -448,6 +451,8 @@ const IMAGE_ONLY: &[&str] = &[
     "diff_image_before_after_light",
     // `diff_svg_preview_light` in Graphite.
     "diff_svg_preview_dark",
+    // `diff_font_changed_light` in Graphite.
+    "diff_font_changed_dark",
     "blame_view_light",
     // `blame_loading` in Light: only its look differs.
     "blame_loading_light",

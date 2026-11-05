@@ -152,17 +152,23 @@ pub fn render(bytes: &[u8]) -> Result<SvgRender, SvgError> {
     let mut pixmap = Pixmap::new(px(w), px(h)).ok_or(SvgError::Empty)?;
     resvg::render(&tree, Transform::from_scale(scale, scale), &mut pixmap.as_mut());
     let shown = [pixmap.width() as usize, pixmap.height() as usize];
-    let rgba: Vec<u8> = pixmap
+    let rgba = unmultiplied(&pixmap);
+    let own = |v: f32| (v.round() as u32).max(1);
+    let image = PreviewImage { width: own(w), height: own(h), format: "SVG", shown, rgba: Arc::new(rgba) };
+    Ok(SvgRender { image, linked: linked.load(Ordering::Relaxed) })
+}
+
+/// `pixmap`'s pixels as unmultiplied RGBA, as `PreviewImage::rgba` holds them (the font
+/// preview's renderer uses it too).
+pub(crate) fn unmultiplied(pixmap: &Pixmap) -> Vec<u8> {
+    pixmap
         .pixels()
         .iter()
         .flat_map(|p| {
             let c = p.demultiply();
             [c.red(), c.green(), c.blue(), c.alpha()]
         })
-        .collect();
-    let own = |v: f32| (v.round() as u32).max(1);
-    let image = PreviewImage { width: own(w), height: own(h), format: "SVG", shown, rgba: Arc::new(rgba) };
-    Ok(SvgRender { image, linked: linked.load(Ordering::Relaxed) })
+        .collect()
 }
 
 /// Whether `path` names an SVG file, by its `.svg` extension in any case.

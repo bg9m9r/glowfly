@@ -15,7 +15,8 @@
 //! that diff; once a hunk has a selection, all its changed lines show their boxes. The code
 //! beside it picks no lines, and a drag on it doesn't scroll: it selects text, as in an editor
 //! (`text_sel`), which Ctrl+C copies; a right-click on it opens the row menu (`row_menu`). A
-//! changed PNG or JPEG shows its before and after images (`preview`); another small binary file
+//! changed PNG or JPEG shows its before and after images (`preview`), a font its specimen in
+//! each side's font (`preview_font`); another small binary file
 //! shows its bytes (`hex`). On a pull request's file, a hovered line offers a button that starts
 //! a code comment on it (`comment_add`), and the unposted one is marked.
 
@@ -28,6 +29,7 @@ mod inline;
 mod lfs_note;
 mod line_check;
 pub(super) mod preview;
+mod preview_font;
 mod row_menu;
 pub(super) mod rows_cache;
 mod split;

@@ -1,14 +1,14 @@
-//! A binary diff's sides: sizes from blobs and working files, images decoded for image paths, and
-//! the added, deleted, renamed, oversized and corrupt cases.
+//! A binary diff's sides: sizes from blobs and working files, images decoded for image paths,
+//! SVGs and fonts drawn, and the added, deleted, renamed, oversized and corrupt cases.
 
 use super::*;
 use crate::testutil::*;
 use image::{ImageFormat, Rgba, RgbaImage};
 use std::path::PathBuf;
 
-/// The sides within `caps`, SVGs drawn by `preview_svg::render`.
+/// The sides within `caps`, SVGs drawn by `preview_svg::render` and fonts by `preview_font::render`.
 fn binary_sides_with(workdir: &Path, target: &DiffTarget, caps: Caps) -> Result<BinarySides> {
-    sides_within(workdir, target, caps, &preview_svg::render)
+    sides_within(workdir, target, caps, Renderers { svg: &preview_svg::render, font: &preview_font::render })
 }
 
 fn png(w: u32, h: u32) -> Vec<u8> {
@@ -105,7 +105,7 @@ fn large_files_are_not_decoded_and_renames_use_the_old_path() {
     let (dir, old) = with_logo("binary-sides-limit");
     let new = png(6, 5);
     put(&dir, "logo.png", &new);
-    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("logo.png".into()), Caps { image: 8, svg: 8, hex: 8 }).unwrap();
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("logo.png".into()), Caps { image: 8, svg: 8, font: 8, hex: 8 }).unwrap();
     assert_eq!((size(&s.old), size(&s.new)), (Some(old.len() as u64), Some(new.len() as u64)));
     assert!(dims(&s.old).is_none() && dims(&s.new).is_none(), "over the limit");
 
@@ -162,7 +162,7 @@ fn files_over_the_hex_cap_keep_their_size_only() {
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "first"]);
     put(&dir, "data.bin", b"\x00123");
-    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, hex: 8 };
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, font: FONT_MAX_BYTES, hex: 8 };
     let s = binary_sides_with(&dir, &DiffTarget::Unstaged("data.bin".into()), caps).unwrap();
     assert_eq!((size(&s.old), size(&s.new)), (Some(10), Some(4)));
     assert!(bytes(&s.old).is_none() && bytes(&s.new).is_none(), "10 bytes is over the 8-byte cap, so neither side shows");
@@ -194,7 +194,7 @@ fn an_svg_over_its_cap_or_broken_has_its_size_only() {
     let dir = scratch_repo("binary-sides-svg-cap");
     put(&dir, "big.svg", ICON.as_bytes());
     put(&dir, "broken.svg", b"<svg");
-    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: 8, hex: HEX_MAX_BYTES };
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: 8, font: FONT_MAX_BYTES, hex: HEX_MAX_BYTES };
     let s = binary_sides_with(&dir, &DiffTarget::Unstaged("big.svg".into()), caps).unwrap();
     assert_eq!((size(&s.new), dims(&s.new)), (Some(ICON.len() as u64), None));
     assert!(s.hex().is_none(), "nor its bytes for the hex view");
@@ -217,8 +217,65 @@ fn an_svg_naming_another_file_says_so() {
 fn an_svg_of_exactly_its_cap_is_rendered() {
     let dir = scratch_repo("binary-sides-svg-at-cap");
     put(&dir, "icon.svg", ICON.as_bytes());
-    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: ICON.len() as u64, hex: HEX_MAX_BYTES };
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: ICON.len() as u64, font: FONT_MAX_BYTES, hex: HEX_MAX_BYTES };
     let s = binary_sides_with(&dir, &DiffTarget::Unstaged("icon.svg".into()), caps).unwrap();
     assert_eq!(dims(&s.new), Some((24, 16)), "size <= cap renders");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+use crate::bundled_fonts::{NOTO_SANS, NOTO_SANS_SEMIBOLD};
+
+fn style(s: &Option<BinarySide>) -> Option<&str> {
+    s.as_ref().and_then(|s| s.font.as_ref()).map(|f| f.style.as_str())
+}
+
+/// A repository with fonts/brand.ttf (Noto Sans Regular) committed.
+fn with_font(name: &str) -> PathBuf {
+    let dir = scratch_repo(name);
+    std::fs::create_dir_all(dir.join("fonts")).unwrap();
+    put(&dir, "fonts/brand.ttf", NOTO_SANS);
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "font"]);
+    dir
+}
+
+#[test]
+fn a_changed_font_has_both_sides_drawn_with_their_names() {
+    let dir = with_font("binary-sides-font");
+    put(&dir, "fonts/brand.ttf", NOTO_SANS_SEMIBOLD);
+    for target in [DiffTarget::Unstaged("fonts/brand.ttf".into()), DiffTarget::Staged("fonts/brand.ttf".into())] {
+        if matches!(target, DiffTarget::Staged(_)) {
+            git(&dir, &["add", "fonts/brand.ttf"]);
+        }
+        let s = binary_sides(&dir, &target).unwrap();
+        assert_eq!((style(&s.old), style(&s.new)), (Some("Regular"), Some("SemiBold")), "{target:?}");
+        assert!(s.old.iter().chain(&s.new).all(|s| s.image.is_some() && s.bytes.is_none()));
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_font_over_its_cap_broken_or_added_and_a_woff_file() {
+    let dir = with_font("binary-sides-font-cap");
+    put(&dir, "fonts/brand.ttf", NOTO_SANS_SEMIBOLD);
+    let caps = Caps { image: PREVIEW_MAX_BYTES, svg: SVG_MAX_BYTES, font: 8, hex: HEX_MAX_BYTES };
+    let s = binary_sides_with(&dir, &DiffTarget::Unstaged("fonts/brand.ttf".into()), caps).unwrap();
+    assert_eq!(size(&s.new), Some(NOTO_SANS_SEMIBOLD.len() as u64));
+    assert!(s.old.iter().chain(&s.new).all(|s| s.image.is_none() && s.font.is_none() && s.bytes.is_none()), "over the cap");
+
+    put(&dir, "fonts/brand.ttf", &NOTO_SANS[..1024]);
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("fonts/brand.ttf".into())).unwrap();
+    assert_eq!(size(&s.new), Some(1024));
+    assert!(s.new.as_ref().is_some_and(|s| s.image.is_none() && s.font.is_none() && s.bytes.is_none()), "truncated: size only");
+    assert!(s.hex().is_none(), "a font never goes to the hex view");
+
+    put(&dir, "fonts/web.woff", b"wOFF    not drawn");
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("fonts/web.woff".into())).unwrap();
+    assert!(bytes(&s.new).is_some(), "WOFF isn't drawn: its bytes go to the hex view");
+
+    put(&dir, "fonts/new.ttf", NOTO_SANS);
+    let s = binary_sides(&dir, &DiffTarget::Unstaged("fonts/new.ttf".into())).unwrap();
+    assert!(s.old.is_none(), "untracked");
+    assert_eq!(style(&s.new), Some("Regular"));
     let _ = std::fs::remove_dir_all(&dir);
 }

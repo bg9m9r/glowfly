@@ -78,6 +78,7 @@ pub mod paths;
 pub mod persist;
 pub mod pick_ops;
 pub mod preview;
+pub mod preview_font;
 pub mod preview_image;
 pub mod preview_svg;
 mod preview_svg_budget;

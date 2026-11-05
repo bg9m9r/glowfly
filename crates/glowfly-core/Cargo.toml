@@ -63,6 +63,9 @@ flate2 = { version = "1.1", default-features = false, features = ["rust_backend"
 # SVG previews in the diff (preview_svg.rs): text set in the bundled fonts only (no system fonts),
 # embedded raster images through decoders already in the tree.
 resvg = { version = "0.49", default-features = false, features = ["text", "raster-images"] }
+# Font previews (preview_font.rs): names and cmap; the same version usvg draws glyphs with, keep
+# in step with resvg.
+skrifa = "0.44"
 
 [build-dependencies]
 syntect = { workspace = true, features = ["parsing", "yaml-load", "dump-create", "regex-fancy"] }

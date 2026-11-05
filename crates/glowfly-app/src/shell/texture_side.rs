@@ -3,7 +3,8 @@
 //! wide atlas grows in steps of megabytes, each also copied for the upload. Capped, the atlas
 //! is narrower and its doublings come in smaller steps: never larger, often half the size
 //! (tests below). The other textures stay under the cap: image
-//! previews at most `preview_image::FILE_VIEW_SHOWN_MAX` a side, avatars and the app mark far less.
+//! previews at most `preview_image::FILE_VIEW_SHOWN_MAX` a side, the diff's SVG and font
+//! specimens at most `preview_image::SHOWN_MAX`, avatars and the app mark far less.
 
 use eframe::egui::RawInput;
 
@@ -73,6 +74,7 @@ mod tests {
     #[test]
     fn the_largest_image_preview_fits_under_the_cap() {
         assert!(FILE_VIEW_SHOWN_MAX as usize <= MAX_TEXTURE_SIDE);
+        assert!(glowfly_core::preview_image::SHOWN_MAX as usize <= MAX_TEXTURE_SIDE, "the diff's drawn previews");
     }
 
     /// Both atlases double, but the narrow one doubles from a quarter of the width, so its

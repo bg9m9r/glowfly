@@ -55,7 +55,7 @@ start with `state/`, `update/` or `ui/`.
 - `history_text_cache.rs`: the File view's measured line widths and wrapped heights.
 - `history_preview.rs`: the File view's previews: the Text | Preview switch and a Markdown file drawn by the shared `markdown.rs` renderer through `MarkdownCache`, or an image.
 - `preview_cache.rs`: frees an image preview's texture at the end of a frame that drew none.
-- `image_paint.rs`: a decoded image's texture and checkerboard, shared with the binary diff.
+- `image_paint.rs`: a decoded image's texture (always smooth for a font's specimen) and checkerboard, shared with the binary diff.
 - `file_view_switch.rs`: the Diff | File | Blame switch the file history and blame headers share.
 - `blame/gutter.rs`: a run's gutter: its author, date, commit and summary, the age strip and tint, and the hover text with the commit's whole message.
 - `blame/header.rs`: the blame header.
@@ -141,7 +141,8 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/fit.rs`: which parts fit, in narrowing order.
 - `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
 - `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
-- `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary; an SVG on Preview (or stored binary) shows the same way, with too-large, unreadable, linked-files and loading states.
+- `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary; an SVG on Preview (or stored binary) shows the same way, with too-large, unreadable, linked-files and loading states, and a font as its specimen (`diff/preview_font.rs`) with the same states.
+- `diff/preview_font.rs`: a font side of the binary diff's preview: the specimen tinted to the text colour on the raised card at one scale shared by both sides, and its name, format, face count and size under it.
 - `diff/hex.rs`: a small binary's hex view (offset, sign, hex bytes, ASCII), changed rows and bytes filled like diff lines and words, inline or split, unchanged rows folded in the hunk view. Snapshots: `snapshot_tests/snapshot_tests_diff_hex.rs`.
 - `conflict_header.rs`: the conflict view's file bar (path and sides, the centred counter and progress meter, Mark resolved, the more-actions menu and ×).
 - `conflict_band.rs`: a conflict's band in the panes: amber mark while unresolved, the side-coloured Take checkboxes, and the order with Swap when both sides are taken.
