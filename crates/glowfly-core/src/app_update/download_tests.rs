@@ -103,3 +103,18 @@ fn a_saved_file_is_checked_again() {
     assert_eq!(check_saved(&saved.path, &saved.sha256), Some(SavedProblem::Missing), "a folder in its place");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_different_file_of_the_same_name_is_never_overwritten() {
+    let dir = scratch("taken");
+    let bytes = large();
+    let (feed, dl) = feed_with(&dir, &bytes, &bytes);
+    let o = offer_for(&feed, InstallKind::Installer);
+    std::fs::create_dir_all(&dl).unwrap();
+    std::fs::write(dl.join(MSI), "something else").unwrap();
+    let saved = download_saved(&feed, &o, &dl).unwrap();
+    assert_eq!(saved.path, dl.join("glowfly-v0.1.1-x86_64-pc-windows-msvc (1).msi"));
+    assert_eq!(std::fs::read(&saved.path).unwrap(), bytes);
+    assert_eq!(std::fs::read_to_string(dl.join(MSI)).unwrap(), "something else", "never overwritten");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -36,18 +36,20 @@ case_check() {
   fi
 }
 
-attached=("a.zip sha256:$ha 1" "b.msi sha256:$hb 2" "SHA256SUMS - 3" "$bundle - 4")
+attached=("a.zip sha256:$ha 1" "b.msi sha256:$hb 2" "SHA256SUMS - 3" "SHA256SUMS.minisig - 4" "$bundle - 5")
 case_check "every file attached with its digest" 0 "2 listed in SHA256SUMS, all attached" SHA256SUMS "${attached[@]}"
 case_check "a listed file not attached" 1 "b.msi is in SHA256SUMS but not attached" SHA256SUMS \
   "a.zip sha256:$ha" "SHA256SUMS -" "$bundle -"
 case_check "a digest that doesn't match" 1 "a.zip on the release has digest sha256:$hb, SHA256SUMS lists $ha" SHA256SUMS \
   "a.zip sha256:$hb" "b.msi sha256:$hb" "SHA256SUMS -" "$bundle -"
 case_check "an upper-case digest matches" 0 "all attached" SHA256SUMS \
-  "a.zip SHA256:${ha^^}" "b.msi sha256:$hb" "SHA256SUMS -" "$bundle -"
+  "a.zip SHA256:${ha^^}" "b.msi sha256:$hb" "SHA256SUMS -" "SHA256SUMS.minisig -" "$bundle -"
 case_check "a - digest (none given) is only checked for presence" 0 "all attached" SHA256SUMS \
-  "a.zip -" "b.msi -" "SHA256SUMS -" "$bundle -"
+  "a.zip -" "b.msi -" "SHA256SUMS -" "SHA256SUMS.minisig -" "$bundle -"
 case_check "SHA256SUMS not attached" 1 "::error::SHA256SUMS is not attached" SHA256SUMS \
   "a.zip sha256:$ha" "b.msi sha256:$hb" "$bundle -"
+case_check "the signature not attached" 1 "::error::SHA256SUMS.minisig is not attached" SHA256SUMS \
+  "a.zip sha256:$ha" "b.msi sha256:$hb" "SHA256SUMS -" "$bundle -"
 case_check "the provenance bundle not attached" 1 "::error::$bundle is not attached" SHA256SUMS \
   "a.zip sha256:$ha" "b.msi sha256:$hb" "SHA256SUMS -"
 case_check "another tag's bundle doesn't count" 1 "::error::$bundle is not attached" SHA256SUMS \
@@ -58,7 +60,7 @@ printf '%s *a.zip\n%s *b.msi\n' "$ha" "$hb" > star
 case_check "*name (binary mode) lines" 0 "2 listed in SHA256SUMS, all attached" star "${attached[@]}"
 printf '%s  a.zip\r\n%s  b.msi\r\n' "$ha" "$hb" > crlf
 case_check "CRLF lines" 0 "2 listed in SHA256SUMS, all attached" crlf "${attached[@]}"
-printf 'a.zip sha256:%s\r\nb.msi sha256:%s\r\nSHA256SUMS -\r\n%s -\r\n' "$ha" "$hb" "$bundle" > crlf-assets
+printf 'a.zip sha256:%s\r\nb.msi sha256:%s\r\nSHA256SUMS -\r\nSHA256SUMS.minisig -\r\n%s -\r\n' "$ha" "$hb" "$bundle" > crlf-assets
 if out="$(bash "$script" --check "$tag" SHA256SUMS crlf-assets 2>&1)" && grep -qF "all attached" <<< "$out"; then
   echo "ok   CRLF asset lines"
 else

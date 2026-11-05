@@ -17,3 +17,5 @@ packaging/flatpak/*.desktop text eol=lf
 packaging/linux/package-format.* text eol=lf
 # Fuzz seeds are byte-exact inputs (mixed line endings, NUL bytes): never converted.
 fuzz/seeds/** binary
+# The signed update fixtures are checked byte for byte against their minisign signatures.
+crates/glowfly-core/src/app_update/minisign_fixtures/** text eol=lf

@@ -22,8 +22,9 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
    git source archive it was built from (see [Licences and notices](#licences-and-notices)).
 4. The **checksums** job downloads every `glowfly-*` file of the release and the git source
    archive, fails when a `.flatpak` is there without its git source
-   (`scripts/release-check-git-source.sh`), and publishes `SHA256SUMS` over them. It then
-   attests their build provenance with `actions/attest-build-provenance`: one signed SLSA
+   (`scripts/release-check-git-source.sh`), and publishes `SHA256SUMS` over them, signed with
+   minisign as `SHA256SUMS.minisig` (it runs in the `release` environment for the key, so it waits
+   for a second approval; see [Signing SHA256SUMS](#signing-sha256sums)). It then attests their build provenance with `actions/attest-build-provenance`: one signed SLSA
    provenance statement covering every file in `SHA256SUMS` and `SHA256SUMS` itself, which says
    they were built by this workflow from this repository at the tag's commit. The attestation is
    signed through Sigstore with the job's OIDC identity (no key to keep), stored by GitHub, and
@@ -34,7 +35,7 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
    from `SHA256SUMS` and attaches them to the release (see
    [Homebrew, Scoop, winget and Flathub](#homebrew-scoop-winget-and-flathub)).
 6. The **publish** job runs last, and only when every job above succeeded. It
-   (`scripts/release-publish.sh`) checks that `SHA256SUMS`, the provenance bundle and every file
+   (`scripts/release-publish.sh`) checks that `SHA256SUMS`, its signature, the provenance bundle and every file
    `SHA256SUMS` lists are on the draft, each with the listed SHA-256 where GitHub reports the
    file's digest, and then publishes it: a `vX.Y.Z` tag as the latest release when it is newer
    than every published full release (an older version built by hand stays out of the way), any
@@ -69,11 +70,13 @@ folder, so a cache entry written by another run can never end up in a download.
 
 Publishing runs in the `release` deployment environment (Settings > Environments), which has the
 owner as its required reviewer and accepts only the `main` branch and `v*` tags. The **prepare**
-job is the only job in that environment, and every job that uploads to, edits or publishes the
-release (build, flatpak, checksums, manifests, publish) needs it, so a release takes one
-approval: open the Release run in the Actions tab, choose **Review deployments**, tick `release`
-and approve. Until then nothing is built, uploaded or published; rejecting it skips every
-publishing job. The draft that release-please created stays an unpublished draft without
+job runs in that environment, and every job that uploads to, edits or publishes the release
+(build, flatpak, checksums, manifests, publish) needs it: open the Release run in the Actions
+tab, choose **Review deployments**, tick `release` and approve. Until then nothing is built,
+uploaded or published; rejecting it skips every publishing job. The **checksums** job runs in
+the environment too, because it signs `SHA256SUMS` with the environment's minisign key (see
+[Signing SHA256SUMS](#signing-sha256sums)), so once the builds are done the run asks for a
+second approval the same way; rejecting that one leaves the draft unpublished. The draft that release-please created stays an unpublished draft without
 downloads until the run is approved, or until the workflow is run by hand for its tag; its tag
 is public from the start. The **release-please** job itself isn't gated, so pushes to `main`
 don't wait.
@@ -127,6 +130,7 @@ once the release is published.
 | `glowfly-vX.Y.Z-<linux target>.tar.gz` | The Linux program on its own |
 | `<file>.sha256` | The SHA-256 of each file above |
 | `SHA256SUMS` | Every file's SHA-256, in `sha256sum` format |
+| `SHA256SUMS.minisig` | The minisign signature of `SHA256SUMS`, by the project's key (`packaging/glowfly-minisign.pub`); the updater checks it |
 | `glowfly-vX.Y.Z.intoto.jsonl` | The Sigstore bundle of the build provenance attestation over every file in `SHA256SUMS` and `SHA256SUMS` itself |
 | `glowfly.rb`, `glowfly.json`, `Glowfly.Glowfly.yaml`, `Glowfly.Glowfly.installer.yaml`, `Glowfly.Glowfly.locale.en-US.yaml` | The Homebrew cask, the Scoop manifest and the winget manifests for this release (not for a pre-release) |
 
@@ -212,8 +216,8 @@ When git is updated, change its url and sha256 in the manifest and the version, 
 
 The **prepare** job runs `scripts/release-notes-header.sh <tag>`, which puts
 `packaging/release-notes-header.md` above the release's notes: the builds aren't code-signed
-yet and the checksums confirm a download matches what the release published, not who published
-it, how to check a download against `SHA256SUMS` (a command for each system) and its build
+yet, `SHA256SUMS` is signed with the project's minisign key, how to check a download against
+`SHA256SUMS` (a command for each system), its signature (`minisign -Vm`) and its build
 provenance (`gh attestation verify`), how to open the unsigned builds anyway after checking them
 (SmartScreen's "More info" > "Run anyway" and unblocking the zip on Windows; Privacy & Security >
 "Open Anyway" or `xattr -dr com.apple.quarantine` on macOS 15 and later, where right-click > Open
@@ -257,6 +261,62 @@ What gets signed:
 The temporary keychain and certificate files are removed at the end of each job, whether it
 succeeded or not.
 
+## Signing SHA256SUMS
+
+The **checksums** job signs `SHA256SUMS` with [minisign](https://jedisct1.github.io/minisign/),
+giving `SHA256SUMS.minisig`, which goes up with the release's other files (and which the publish
+job's check requires). The updater refuses to install a download unless that signature verifies
+against one of the public keys compiled into the app (`KEYS` in
+`crates/glowfly-core/src/app_update/signature.rs`) and the signed list names the file with its
+digest, so a download is the file the project signed, not only whatever the release page lists.
+The builds themselves are still not code-signed (see Code signing).
+
+- **The key**: the secret key lives only in the `release` environment's secret
+  `MINISIGN_SECRET_KEY` (Settings > Environments > release): the whole contents of a minisign
+  secret key file made with `-W` (no password; the environment's approval protects it). Only a
+  job in that environment can read it, so nothing is signed without the owner's approval. The
+  job writes it to a file only the runner's user can read (`umask 077`, under `$RUNNER_TEMP`),
+  signs, and deletes it; it never prints it. The owner keeps an offline backup of the key file.
+- **The public key**: `packaging/glowfly-minisign.pub` (ID `43C59A9629C2A686`). The job checks
+  the new signature against it before uploading, and the app pins the same key.
+- **minisign itself**: `scripts/install-minisign.sh` downloads minisign 0.12 from its author's
+  release and checks it against a pinned SHA-256 (the release file whose signature was verified
+  with the author's key when it was pinned); the Installers workflow uses it, and
+  `scripts/install-minisign.ps1` on Windows, to sign its local feeds with the test key.
+- **The attestation**: `SHA256SUMS.minisig` isn't one of the provenance attestation's subjects.
+  It is a signature itself, made after `SHA256SUMS`, like the attestation's own bundle; the
+  attestation covers `SHA256SUMS`, which is what it signs.
+- **The test key**: `crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key` is a
+  secret key committed on purpose, labelled as a test key, for the tests and the installer
+  checks' local feeds. The app trusts it only for a feed folder named by `GLOWFLY_UPDATE_FEED`,
+  never for releases from GitHub.
+
+Check a release's `SHA256SUMS` by hand with minisign, in the folder you downloaded both files to:
+
+```
+minisign -Vm SHA256SUMS -P RWSGpsIplprFQ/toKF1uFX1qZOySLsmrcaXgRecNj/C5j+CYKPZYMB1K
+```
+
+It prints `Signature and comment signature verified` and the trusted comment, `Glowfly vX.Y.Z:
+SHA256SUMS`; then check the files against `SHA256SUMS` as below.
+
+### Changing the key
+
+The app accepts a signature by any key in `KEYS`, so a new key goes in one release ahead:
+
+1. Make the new key pair: `minisign -G -W -p glowfly-minisign-next.pub -s glowfly-minisign-next.key`.
+2. Add its public key to `KEYS` (keep the current one) and release that version. Copies updated
+   to it accept both keys.
+3. Switch the secret (`gh secret set MINISIGN_SECRET_KEY --env release < glowfly-minisign-next.key`),
+   replace `packaging/glowfly-minisign.pub` and the key in the README and in this file's manual
+   check with the new one, and release again: that release is signed with the new key.
+4. A release or more later, drop the old key from `KEYS`.
+
+A copy older than step 2's release can't verify releases signed with the new key: it refuses
+the download, and its user updates by hand from the releases page once. If the key is lost or
+leaks, do steps 1 to 3 at once (a leaked key is also dropped from `KEYS` at once): every copy
+from before then has to be updated by hand.
+
 ## Verifying a download
 
 Download `SHA256SUMS` next to the file and run:
@@ -280,7 +340,8 @@ gh attestation verify <file> --repo bg9m9r/glowfly
 
 It looks the attestation up on GitHub by the file's digest; `--bundle glowfly-vX.Y.Z.intoto.jsonl`
 checks it against the release's bundle instead. The app's update check doesn't read the
-provenance yet: it checks a download against `SHA256SUMS` only.
+provenance: it checks a download against `SHA256SUMS`, once its minisign signature verifies
+(see [Signing SHA256SUMS](#signing-sha256sums)).
 
 ## The update check
 
@@ -311,8 +372,9 @@ The format is chosen before the processor, so an installed copy on Windows on Ar
 MSI before an arm64 zip.
 
 A download happens only when you click Download: it is fetched into your Downloads folder,
-checked against `SHA256SUMS` (or the file's `.sha256`), and discarded if the checksum is missing
-or doesn't match. Install checks it again before anything runs or is replaced; an AppImage swap
+checked against `SHA256SUMS` once `SHA256SUMS.minisig` verifies against the pinned keys, and
+discarded if the signature or the checksum is missing or doesn't match (a file's own `.sha256`
+isn't used: it isn't signed). Install checks it again before anything runs or is replaced; an AppImage swap
 also checks that the file is an AppImage. A file the copy can't install (an archive for an
 installed copy, for example) is only shown. No copy ever takes the `.flatpak` bundle: file
 formats are matched by their exact extension.
@@ -382,13 +444,17 @@ feed/
   glowfly-v0.1.1-x86_64-pc-windows-msvc.msi     the current package, renamed to the feed's tag
   glowfly-v0.1.1-x86_64-pc-windows-msvc.zip
   SHA256SUMS                                    "<sha256>  <name>" lines, LF, no BOM
+  SHA256SUMS.minisig                            signed with the committed test key
 ```
 
 and runs `glowfly --check-update <folder>` for each case: the same version (exit 3), an empty
 folder (3), a newer release (0, the installer or archive by install kind, byte for byte), a wrong
-or missing checksum and a file changed after `SHA256SUMS` was written (1, nothing saved), and a
-relative `GLOWFLY_UPDATE_FEED` (2). It installs nothing and opens no window, so it runs locally
-against a debug build, which counts as portable, with stand-in package files of any bytes:
+or missing checksum, a file changed after `SHA256SUMS` was written, no signature and a
+`SHA256SUMS` changed after it was signed (1, nothing saved), and a relative `GLOWFLY_UPDATE_FEED`
+(2). It signs the feeds with minisign and the test key, so minisign has to be on the PATH (or
+named by `-Minisign`; `scripts/install-minisign.ps1 -Dir <folder>` puts one in a folder). It
+installs nothing and opens no window, so it runs locally against a debug build, which counts as
+portable, with stand-in package files of any bytes:
 
 ```
 cargo build -p glowfly

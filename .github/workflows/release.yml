@@ -18,7 +18,9 @@ on:
 
 # Read-only by default; each job asks for what it writes. Publishing waits for the owner: the
 # prepare job runs in the `release` environment (required reviewer, main and v* tags only), and
-# every job that uploads to or edits the release needs it (docs/RELEASING.md).
+# every job that uploads to or edits the release needs it (docs/RELEASING.md). The checksums job
+# runs in that environment too, for the minisign key it signs SHA256SUMS with, so the owner
+# approves it as well once the builds are done.
 permissions:
   contents: read
 
@@ -231,14 +233,19 @@ jobs:
   # through Sigstore with this workflow's identity and kept by GitHub, for
   # `gh attestation verify <file> --repo <owner>/glowfly`; its bundle goes up as
   # glowfly-<tag>.intoto.jsonl. The bundle stays out of SHA256SUMS: it is made after it, from
-  # the digests of the files it lists, and carries its own signature.
+  # the digests of the files it lists, and carries its own signature. SHA256SUMS is signed with
+  # minisign (SHA256SUMS.minisig), with the key in the `release` environment's
+  # MINISIGN_SECRET_KEY secret, which is why this job runs there; the app's updater checks that
+  # signature against the keys it pins before it trusts any checksum. The signature stays out of
+  # SHA256SUMS and out of the attestation's subjects, like the bundle: it is a signature itself.
   checksums:
     name: Publish SHA256SUMS and the build provenance
     needs: [prepare, build, flatpak]
     if: ${{ !cancelled() && needs.prepare.result == 'success' }}
     runs-on: ubuntu-latest
+    environment: release
     permissions:
-      contents: write # reads the draft's files, uploads SHA256SUMS and the provenance bundle
+      contents: write # reads the draft's files, uploads SHA256SUMS, its signature and the provenance bundle
       id-token: write # gets the OIDC token Sigstore signs the provenance with
       attestations: write # stores the provenance attestation in the repository
     env:
@@ -261,17 +268,36 @@ jobs:
           (cd dist && sha256sum -- *) | sort -k2 > "$RUNNER_TEMP/SHA256SUMS"
           mv "$RUNNER_TEMP/SHA256SUMS" dist/SHA256SUMS
           cat dist/SHA256SUMS
+      - name: Install minisign
+        run: bash scripts/install-minisign.sh "$RUNNER_TEMP/minisign"
+      # The key goes to a file only this user can read, outside dist, for as long as minisign
+      # needs it; the signature is written outside dist too, so the attestation leaves it out.
+      # Checked against packaging/glowfly-minisign.pub before it goes up.
+      - name: Sign SHA256SUMS
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          if [ -z "$MINISIGN_SECRET_KEY" ]; then
+            echo "::error::The release environment has no MINISIGN_SECRET_KEY secret (docs/RELEASING.md, Signing SHA256SUMS)"
+            exit 1
+          fi
+          key="$RUNNER_TEMP/minisign.key"
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key")
+          "$RUNNER_TEMP/minisign/minisign" -S -s "$key" -m dist/SHA256SUMS -x "$RUNNER_TEMP/SHA256SUMS.minisig" -t "Glowfly $TAG: SHA256SUMS"
+          rm -f "$key"
+          "$RUNNER_TEMP/minisign/minisign" -V -p packaging/glowfly-minisign.pub -m dist/SHA256SUMS -x "$RUNNER_TEMP/SHA256SUMS.minisig"
       - name: Attest the build provenance
         id: attest
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/*
-      - name: Publish SHA256SUMS and the provenance bundle
+      - name: Publish SHA256SUMS, its signature and the provenance bundle
         env:
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}
         run: |
           cp "$BUNDLE" "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl"
-          gh release upload "$TAG" dist/SHA256SUMS "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl" --clobber
+          gh release upload "$TAG" dist/SHA256SUMS "$RUNNER_TEMP/SHA256SUMS.minisig" "$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl" --clobber
 
   # The Homebrew cask, the Scoop manifest and the winget manifests for this release, filled in
   # from SHA256SUMS (scripts/fill-manifests.sh) and attached to the release for publishing
@@ -303,8 +329,8 @@ jobs:
 
   # Publishes the draft, last and only when every job above succeeded, so a published release
   # already has all its files: with release immutability on, they and the tag are locked from
-  # then on. scripts/release-publish.sh first checks that SHA256SUMS, the provenance bundle and
-  # every file SHA256SUMS lists are attached, then publishes a vX.Y.Z tag (as the latest release
+  # then on. scripts/release-publish.sh first checks that SHA256SUMS, its signature, the provenance
+  # bundle and every file SHA256SUMS lists are attached, then publishes a vX.Y.Z tag (as the latest release
   # only when it is newer than every published one, so an older version built by hand doesn't
   # take it) and any other tag (v0.3.0-rc.1) as a pre-release that is never the latest. A failed job
   # leaves the draft for "Re-run failed jobs". A release that was already published when the run

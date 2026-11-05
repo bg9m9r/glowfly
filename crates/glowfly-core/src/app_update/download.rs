@@ -1,11 +1,12 @@
-//! Downloading an offered file: its checksum first, then the file, streamed to a temporary file
+//! Downloading an offered file: its checksum first, from the release's `SHA256SUMS` once its
+//! minisign signature verifies, then the file, streamed to a temporary file
 //! beside its final name and hashed on the way. It is renamed into place (through
 //! `persist::write_streamed`) only once it is the announced size and matches the checksum, so a
 //! half-written or mismatched file never appears under the final name. A cancelled or failed
 //! download removes the temporary file. [`check_saved`] tells whether a saved file is still there
 //! and unchanged.
 
-use super::{Asset, Feed, Offer, SumsSource, UpdateError, sums};
+use super::{Asset, Feed, Offer, SumsSource, UpdateError, signature, sums};
 use crate::native_path::shown;
 use sha2::{Digest, Sha256};
 use std::io::{self, Read, Write};
@@ -70,8 +71,9 @@ pub enum SavedProblem {
 }
 
 /// Downloads `offer`'s file from `feed` into `dir` once its SHA-256 matches the release's
-/// published checksum (read from the same feed); returns where it was saved. Nothing is left
-/// behind when the checksum is missing or doesn't match, or the file isn't the announced size.
+/// signed checksum (read from the same feed); returns where it was saved. Nothing is left
+/// behind when the checksum or its signature is missing or doesn't match, or the file isn't
+/// the announced size.
 pub fn download(feed: &Feed, offer: &Offer, dir: &Path) -> Result<PathBuf, UpdateError> {
     download_saved(feed, offer, dir).map(|s| s.path)
 }
@@ -94,13 +96,7 @@ pub fn download_streamed(
     cancelled: &dyn Fn() -> bool,
 ) -> Result<Option<Saved>, UpdateError> {
     let Some(asset) = &offer.asset else { return Err(UpdateError::NoDownload) };
-    let no_sum = || UpdateError::NoChecksum { name: asset.name.clone() };
-    let sums_asset = match &offer.sums {
-        SumsSource::Combined(a) | SumsSource::Single(a) => a,
-        SumsSource::None => return Err(no_sum()),
-    };
-    let text = feed.fetch(sums_asset, MAX_SUMS).map_err(|e| UpdateError::Checksums(Box::new(e)))?;
-    let want = sums::expected(&String::from_utf8_lossy(&text), &asset.name).ok_or_else(no_sum)?;
+    let want = signed_sum(feed, offer, asset)?;
     if asset.size > MAX_DOWNLOAD {
         return Err(UpdateError::TooLarge { name: asset.name.clone(), mb: MAX_DOWNLOAD / (1024 * 1024) });
     }
@@ -130,6 +126,20 @@ pub fn download_streamed(
         (Err(_), Some(Stop::Failed(e))) => Err(e),
         (Err(e), None) => Err(UpdateError::SaveFailed { path: shown(&path), said: e.to_string() }),
     }
+}
+
+/// The SHA-256 the release's signed `SHA256SUMS` gives for `asset`. The signature is fetched
+/// and checked against the keys `feed` trusts before any line of the list is read; a release
+/// without one, a signature that doesn't verify, or a list without `asset` fails it, and
+/// `asset` itself is never fetched then.
+fn signed_sum(feed: &Feed, offer: &Offer, asset: &Asset) -> Result<[u8; 32], UpdateError> {
+    let no_sum = || UpdateError::NoChecksum { name: asset.name.clone() };
+    let SumsSource::Combined(sums_asset) = &offer.sums else { return Err(no_sum()) };
+    let signature_asset = signature::signature_asset(&offer.release).ok_or(UpdateError::Unsigned)?;
+    let text = feed.fetch(sums_asset, MAX_SUMS).map_err(|e| UpdateError::Checksums(Box::new(e)))?;
+    let sig = feed.fetch(&signature_asset, signature::MAX_SIGNATURE).map_err(|e| UpdateError::SignatureUnreadable(Box::new(e)))?;
+    signature::verify(&text, &sig, &feed.trusted_keys())?;
+    sums::expected(&String::from_utf8_lossy(&text), &asset.name).ok_or_else(no_sum)
 }
 
 /// Why a transfer ended before the file was complete.

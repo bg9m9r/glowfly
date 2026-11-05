@@ -50,7 +50,6 @@ Journey tests, packaging, installers and updates. Untriaged; see [README.md](REA
 - Show GIT-NOTICE.md in Help > About when Glowfly runs inside the Flatpak, beside the third-party notices
 - Link the privacy notice from the release notes header once PRIVACY.md exists
 - Check the arm64 MSI's licence files in the Release workflow (an administrative install, msiexec /a), not only the installed x64 MSI in Installers
-- The release notes header says twice what `SHA256SUMS` confirms (the file this release published, not who published it); say it in one sentence
 - The final rename of a streamed update download can replace a file that appeared under the chosen name meanwhile; refuse or pick a free name
 - Clear temp files a killed update download left in Downloads (on the next start or the next download)
 - `check_saved` hashes the whole downloaded file on every Preferences open, and repeated opens queue several reads; remember the result by size and modified time, and run one read at a time

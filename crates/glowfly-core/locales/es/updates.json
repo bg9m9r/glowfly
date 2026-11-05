@@ -3,7 +3,7 @@
   "updates.cancelling": "Cancelando…",
   "updates.check_failed": "No se pudo buscar actualizaciones: {error}",
   "updates.checking": "Comprobando…",
-  "updates.checksum.help": "La descarga se verifica con las sumas de comprobación SHA-256 publicadas en la versión. Las compilaciones de Glowfly aún no tienen firma de código, así que esto confirma que el archivo coincide con lo que publicó la versión, no quién la publicó.",
+  "updates.checksum.help": "La descarga se verifica con las sumas de comprobación SHA-256 de la versión, firmadas con la clave del proyecto Glowfly, así que es el archivo que publicó el proyecto. Las compilaciones en sí aún no tienen firma de código.",
   "updates.chip.available": "Actualización disponible ({version})",
   "updates.chip.downloaded": "Actualización descargada",
   "updates.chip.downloading": "Descargando Glowfly {version}…",

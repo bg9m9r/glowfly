@@ -1,11 +1,14 @@
 # Checks `glowfly --check-update` against local update feeds (GLOWFLY_UPDATE_FEED): a folder
-# holding release.json, the packages and SHA256SUMS, built here from the given package files.
+# holding release.json, the packages, SHA256SUMS and its signature, built here from the given
+# package files. SHA256SUMS is signed with minisign and the committed test key
+# (crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key), which Glowfly trusts for
+# a feed folder only; -Minisign names the minisign program (default: minisign on the PATH).
 # Installs nothing and opens no window, so it runs on any build; the installer checks
 # (installer-check-windows.ps1, installer-check-linux.sh) run it with the installed program.
 #
 #   pwsh -NoProfile -File scripts/update-feed-check.ps1 -Glowfly <program> -Version 0.1.0 `
 #     -Installer <dir>/glowfly-v0.1.0-<triple>.msi -Archive <dir>/glowfly-v0.1.0-<triple>.zip `
-#     -Expect installer -Out <work folder>
+#     -Expect installer -Out <work folder> [-Minisign <minisign program>]
 #
 # -Expect names the file the program should choose: `installer` for an installed copy,
 # `archive` for any other (a cargo-built debug program counts as portable). The packages may be
@@ -16,7 +19,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Installer,
     [Parameter(Mandatory = $true)][string]$Archive,
     [Parameter(Mandatory = $true)][ValidateSet('installer', 'archive')][string]$Expect,
-    [Parameter(Mandatory = $true)][string]$Out
+    [Parameter(Mandatory = $true)][string]$Out,
+    [string]$Minisign = 'minisign'
 )
 $ErrorActionPreference = 'Stop'
 
@@ -24,6 +28,11 @@ $Glowfly = (Resolve-Path -LiteralPath $Glowfly).Path
 $Installer = (Resolve-Path -LiteralPath $Installer).Path
 $Archive = (Resolve-Path -LiteralPath $Archive).Path
 $Out = [IO.Path]::GetFullPath($Out)
+$found = Get-Command -Name $Minisign -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $found) { throw "minisign isn't at $Minisign or on the PATH: install it (scripts/install-minisign.sh, -.ps1) or pass -Minisign" }
+$Minisign = $found.Source
+# TEST KEY ONLY: committed on purpose, trusted by Glowfly for a feed folder, never for releases.
+$testKey = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key')).Path
 New-Item -ItemType Directory -Force $Out | Out-Null
 $utf8 = [Text.UTF8Encoding]::new($false)
 
@@ -70,15 +79,18 @@ function Assert-FeedText([string]$Path) {
 
 # A feed folder for $Tag: both packages under the tag's names, SHA256SUMS (the format
 # sha256sum writes, LF, no BOM) and release.json (UTF-8 without a BOM, which the JSON reader
-# refuses). -Digest replaces the tested package's checksum, -OmitSum leaves its line out and
-# -TamperAfter changes the package once SHA256SUMS is written.
+# refuses), with SHA256SUMS.minisig signed by the test key. -Digest replaces the tested package's
+# checksum, -OmitSum leaves its line out, -TamperAfter changes the package once SHA256SUMS is
+# written, -Unsigned leaves the signature out and -TamperSums changes SHA256SUMS once it is signed.
 function New-Feed {
     param(
         [Parameter(Mandatory = $true)][string]$Dir,
         [Parameter(Mandatory = $true)][string]$Tag,
         [string]$Digest,
         [switch]$OmitSum,
-        [switch]$TamperAfter
+        [switch]$TamperAfter,
+        [switch]$Unsigned,
+        [switch]$TamperSums
     )
     New-Item -ItemType Directory -Force $Dir | Out-Null
     $tested = Get-FeedName $underTest $Tag
@@ -95,8 +107,16 @@ function New-Feed {
         $hash = if ($name -eq $tested -and $Digest) { $Digest } else { Get-Sha256 (Join-Path $Dir $name) }
         "$hash  $name`n"
     }
-    [IO.File]::WriteAllText((Join-Path $Dir 'SHA256SUMS'), (-join $lines), $utf8)
-    $assets = @($sorted + 'SHA256SUMS' | ForEach-Object { @{ name = $_ } })
+    $sums = Join-Path $Dir 'SHA256SUMS'
+    [IO.File]::WriteAllText($sums, (-join $lines), $utf8)
+    $published = @($sorted + 'SHA256SUMS')
+    if (-not $Unsigned) {
+        & $Minisign -S -s $testKey -m $sums -x (Join-Path $Dir 'SHA256SUMS.minisig') -t 'Glowfly installer check feed' | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "minisign couldn't sign $sums (exit $LASTEXITCODE)" }
+        $published += 'SHA256SUMS.minisig'
+    }
+    if ($TamperSums) { [IO.File]::AppendAllText($sums, "$('0' * 64)  extra.zip`n", $utf8) }
+    $assets = @($published | ForEach-Object { @{ name = $_ } })
     $release = [ordered]@{ tag_name = $Tag; name = "Glowfly $Tag"; body = 'Installer check feed'; assets = $assets }
     # ConvertTo-Json separates lines with the system's newline (CRLF on Windows).
     $json = ($release | ConvertTo-Json -Depth 4) -replace "`r`n", "`n"
@@ -214,6 +234,24 @@ New-Feed -Dir $c.Feed -Tag $newTag -OmitSum
 $script:run = Invoke-Check $c.Feed $c.Dl $script:case
 Assert-That ($script:run.Code -eq 1) 'expected exit 1 (refused)'
 Assert-That ($script:run.Err -match "doesn't publish a checksum") 'expected the missing-checksum error'
+Assert-Empty $c.Dl
+Complete-Case
+
+# SHA256SUMS without its signature.
+$c = Start-Case 'unsigned'
+New-Feed -Dir $c.Feed -Tag $newTag -Unsigned
+$script:run = Invoke-Check $c.Feed $c.Dl $script:case
+Assert-That ($script:run.Code -eq 1) 'expected exit 1 (refused)'
+Assert-That ($script:run.Err -match "checksums aren't signed, so") 'expected the unsigned error'
+Assert-Empty $c.Dl
+Complete-Case
+
+# SHA256SUMS changed after it was signed.
+$c = Start-Case 'bad-signature'
+New-Feed -Dir $c.Feed -Tag $newTag -TamperSums
+$script:run = Invoke-Check $c.Feed $c.Dl $script:case
+Assert-That ($script:run.Code -eq 1) 'expected exit 1 (refused)'
+Assert-That ($script:run.Err -match "aren't signed with Glowfly's key") 'expected the signature error'
 Assert-Empty $c.Dl
 Complete-Case
 

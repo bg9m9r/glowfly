@@ -37,9 +37,10 @@ fn asset(name: &str) -> Asset {
     Asset { name: name.into(), size: 100, url: format!("https://github.com/bg9m9r/glowfly/releases/download/v0.3.0/{name}") }
 }
 
-/// Release `tag` with the Windows files; `files: false` publishes none.
+/// Release `tag` with the Windows files, SHA256SUMS and its signature; `files: false` publishes none.
 pub(super) fn release(tag: &str, files: bool) -> Release {
-    let names = ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.zip", "SHA256SUMS"];
+    let names =
+        ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "glowfly-v0.3.0-x86_64-pc-windows-msvc.zip", "SHA256SUMS", "SHA256SUMS.minisig"];
     Release {
         tag: tag.into(),
         name: tag.into(),

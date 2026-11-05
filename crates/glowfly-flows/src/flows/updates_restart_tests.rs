@@ -24,12 +24,13 @@ use std::time::Instant;
 const MSI: &str = "glowfly-v0.3.0-x86_64-pc-windows-msvc.msi";
 const ZIP: &str = "glowfly-v0.3.0-x86_64-pc-windows-msvc.zip";
 
-/// The 0.3.0 release with these files (and SHA256SUMS).
+/// The 0.3.0 release with these files (and SHA256SUMS with its signature).
 fn release_with(files: &[&str]) -> Release {
     let asset =
         |n: &str| Asset { name: n.into(), size: 100, url: format!("https://github.com/bg9m9r/glowfly/releases/download/v0.3.0/{n}") };
     let mut assets: Vec<Asset> = files.iter().map(|n| asset(n)).collect();
     assets.push(asset("SHA256SUMS"));
+    assets.push(asset("SHA256SUMS.minisig"));
     Release {
         tag: "v0.3.0".into(),
         name: "v0.3.0".into(),

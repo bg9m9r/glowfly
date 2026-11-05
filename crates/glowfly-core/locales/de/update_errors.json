@@ -2,6 +2,7 @@
   "update_errors.archive_too_large": "Das Archiv ist entpackt größer als {mb} MB.",
   "update_errors.archive_unreadable": "Das Archiv {file} konnte nicht gelesen werden: {said}",
   "update_errors.bad_file_name": "{name} ist kein Dateiname, den Glowfly liest",
+  "update_errors.bad_signature": "Die Prüfsummen dieses Releases sind nicht mit dem Schlüssel von Glowfly signiert, deshalb wurde nichts heruntergeladen.",
   "update_errors.changed": "Die heruntergeladene Datei hat sich nach der Prüfung geändert und wurde deshalb nicht installiert. Lade sie erneut herunter.",
   "update_errors.checksum_mismatch": "Der Download stimmte nicht mit seiner veröffentlichten Prüfsumme überein und wurde verworfen.",
   "update_errors.checksums": "Die Prüfsummen konnten nicht gelesen werden: {why}",
@@ -32,9 +33,11 @@
   "update_errors.remove_failed": "{path} konnte nicht entfernt werden: {said}",
   "update_errors.replace_failed": "Glowflys Programm in {folder} konnte nicht ersetzt werden: {said}. Installiere das Update über „Datei zeigen“ von Hand.",
   "update_errors.save_failed": "{path} konnte nicht gespeichert werden: {said}",
+  "update_errors.signature_unreadable": "Die Signatur der Prüfsummen konnte nicht gelesen werden: {why}",
   "update_errors.stopped": "Der Download wurde angehalten.",
   "update_errors.too_large": "{name} ist größer als {mb} MB, deshalb wurde die Datei nicht heruntergeladen.",
   "update_errors.two_copies": "Das Archiv enthält {name} zweimal.",
+  "update_errors.unsigned": "Die Prüfsummen dieses Releases sind nicht signiert, deshalb wurde nichts heruntergeladen.",
   "update_errors.write_failed": "{path} konnte nicht geschrieben werden: {said}",
   "update_errors.wrong_size": "Der Download von {name} war {got} statt {want} Bytes groß und wurde deshalb verworfen."
 }

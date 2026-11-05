@@ -3,7 +3,7 @@
   "updates.cancelling": "Cancelling…",
   "updates.check_failed": "Couldn't check for updates: {error}",
   "updates.checking": "Checking…",
-  "updates.checksum.help": "The download is checked against the release's published SHA-256 checksums. Glowfly's builds aren't code-signed yet, so this confirms the file matches what the release published, not who published it.",
+  "updates.checksum.help": "The download is checked against the release's SHA-256 checksums, which are signed with the Glowfly project's key, so it is the file the project released. The builds themselves aren't code-signed yet.",
   "updates.chip.available": "Update available ({version})",
   "updates.chip.downloaded": "Update downloaded",
   "updates.chip.downloading": "Downloading Glowfly {version}…",

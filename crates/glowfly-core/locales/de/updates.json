@@ -3,7 +3,7 @@
   "updates.cancelling": "Wird abgebrochen…",
   "updates.check_failed": "Die Suche nach Updates ist fehlgeschlagen: {error}",
   "updates.checking": "Wird geprüft…",
-  "updates.checksum.help": "Der Download wird mit den veröffentlichten SHA-256-Prüfsummen des Releases abgeglichen. Die Builds von Glowfly sind noch nicht codesigniert. Das bestätigt also, dass die Datei dem entspricht, was das Release veröffentlicht hat, aber nicht, wer es veröffentlicht hat.",
+  "updates.checksum.help": "Der Download wird mit den SHA-256-Prüfsummen des Releases abgeglichen, die mit dem Schlüssel des Glowfly-Projekts signiert sind. Die Datei ist also die, die das Projekt veröffentlicht hat. Die Builds selbst sind noch nicht codesigniert.",
   "updates.chip.available": "Update verfügbar ({version})",
   "updates.chip.downloaded": "Update heruntergeladen",
   "updates.chip.downloading": "Glowfly {version} wird heruntergeladen…",

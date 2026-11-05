@@ -1,8 +1,9 @@
 //! The Release workflow (.github/workflows/release.yml) and release-please's config, read line by
 //! line: a release is created as a draft with its tag pushed at once, every job that uploads a
-//! file runs before the one job that publishes it, and the `release` environment's approval
-//! stays on the prepare job alone. With release immutability on, a published release's files
-//! can't change, so nothing may upload after publishing (docs/RELEASING.md).
+//! file runs before the one job that publishes it, the `release` environment's approval stays on
+//! the prepare job and the checksums job (which needs its minisign key), and SHA256SUMS is signed
+//! and its signature uploaded. With release immutability on, a published release's files can't
+//! change, so nothing may upload after publishing (docs/RELEASING.md).
 
 use std::path::Path;
 
@@ -76,7 +77,8 @@ fn the_approval_stays_on_prepare_which_finds_the_draft() {
     let workflow = workspace_file(".github/workflows/release.yml");
     let jobs = jobs(&workflow);
     let gated: Vec<&str> = jobs.iter().filter(|(_, j)| j.contains("\n    environment:")).map(|(n, _)| n.as_str()).collect();
-    assert_eq!(gated, ["prepare"], "one approval, before anything is built or published");
+    // The approval before anything is built, and the checksums job, for the signing key.
+    assert_eq!(gated, ["prepare", "checksums"], "only these jobs reach the release environment");
     let (_, prepare) = jobs.iter().find(|(n, _)| n == "prepare").unwrap();
     assert!(prepare.contains("      name: release\n"));
     let draft = prepare.find("bash scripts/release-draft.sh \"$TAG\"").expect("prepare finds or creates the draft");
@@ -135,4 +137,49 @@ fn sha256sums_never_lists_itself() {
     let (_, sums) = jobs.iter().find(|(n, _)| n == "checksums").unwrap();
     assert!(sums.contains("(cd dist && sha256sum -- *) | sort -k2 > \"$RUNNER_TEMP/SHA256SUMS\"\n"), "written outside dist");
     assert!(sums.contains("mv \"$RUNNER_TEMP/SHA256SUMS\" dist/SHA256SUMS\n"));
+}
+
+#[test]
+fn sha256sums_is_signed_with_the_release_key_and_uploaded() {
+    let workflow = workspace_file(".github/workflows/release.yml");
+    let jobs = jobs(&workflow);
+    let (_, sums) = jobs.iter().find(|(n, _)| n == "checksums").unwrap();
+    assert!(sums.contains("\n    environment: release\n"), "the secret is the release environment's");
+    let at = |needle: &str| sums.find(needle).unwrap_or_else(|| panic!("the checksums job has {needle:?}"));
+    let written = at("mv \"$RUNNER_TEMP/SHA256SUMS\" dist/SHA256SUMS\n");
+    let install = at("run: bash scripts/install-minisign.sh \"$RUNNER_TEMP/minisign\"\n");
+    let signed = at("- name: Sign SHA256SUMS\n");
+    let attest = at("uses: actions/attest-build-provenance@");
+    let upload = at(
+        "gh release upload \"$TAG\" dist/SHA256SUMS \"$RUNNER_TEMP/SHA256SUMS.minisig\" \"$RUNNER_TEMP/glowfly-$TAG.intoto.jsonl\" --clobber\n",
+    );
+    assert!(written < install && install < signed && signed < attest && attest < upload, "write, install, sign, attest, upload");
+    // The signing step: the secret through env (never `${{ }}` in the script), into a file only
+    // this user reads, removed after signing; the signature checked with the project's public key.
+    let step = &sums[signed..attest];
+    assert!(step.contains("        env:\n          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}\n"));
+    let script = step.split_once("        run: |\n").map(|(_, s)| s).expect("a run block");
+    assert!(!script.contains("${{"), "nothing interpolated into the script");
+    for line in [
+        r#"key="$RUNNER_TEMP/minisign.key""#,
+        r#"trap 'rm -f "$key"' EXIT"#,
+        r#"(umask 077 && printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key")"#,
+        r#""$RUNNER_TEMP/minisign/minisign" -S -s "$key" -m dist/SHA256SUMS -x "$RUNNER_TEMP/SHA256SUMS.minisig" -t "Glowfly $TAG: SHA256SUMS""#,
+        r#"rm -f "$key""#,
+        r#""$RUNNER_TEMP/minisign/minisign" -V -p packaging/glowfly-minisign.pub -m dist/SHA256SUMS -x "$RUNNER_TEMP/SHA256SUMS.minisig""#,
+    ] {
+        assert!(script.lines().any(|l| l.trim() == line), "the signing step runs {line}");
+    }
+    assert!(!script.contains("echo \"$MINISIGN_SECRET_KEY") && !script.contains("cat \"$key"), "the key is never printed");
+    // The signature is written outside dist, so the attestation over dist/* leaves it out.
+    assert!(sums.contains("          subject-path: dist/*\n"));
+    assert!(!sums.contains("dist/SHA256SUMS.minisig"));
+    // minisign itself comes from its author's release, checked against a pinned digest.
+    let install = workspace_file("scripts/install-minisign.sh");
+    assert!(install.contains("echo \"$sha256  $tarball\" | sha256sum -c --quiet -\n"));
+    assert!(install.lines().any(|l| l.strip_prefix("sha256=").is_some_and(|h| h.len() == 64)));
+    let pwsh = workspace_file("scripts/install-minisign.ps1");
+    assert!(pwsh.contains("if ($got -ne $sha256) { throw"));
+    // And the publish job's check refuses a draft without it.
+    assert!(workspace_file("scripts/release-publish.sh").contains(r#"if (!("SHA256SUMS.minisig" in digest))"#));
 }

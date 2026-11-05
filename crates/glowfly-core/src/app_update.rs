@@ -1,6 +1,7 @@
 //! Glowfly's own updates: whether a check is due, which release is newer than this copy, which
 //! of its files fits this system and how this copy was installed, and downloading that file
-//! after checking it against the release's published SHA-256 checksums.
+//! after checking it against the release's SHA-256 checksums, whose minisign signature is checked
+//! first against the project's pinned keys.
 //!
 //! - `version.rs`: semantic versions and their precedence.
 //! - `release.rs`: the hosting service's release (tag, notes, files), with unsafe links and file
@@ -9,7 +10,8 @@
 //!   is offered no file), and which file to fetch.
 //! - `host.rs`: the machine's real processor (an emulated x64 or Rosetta build is on Arm).
 //! - `appimage.rs`: whether this copy runs from an AppImage, and which file that is.
-//! - `sums.rs`: `SHA256SUMS` and `<file>.sha256` files.
+//! - `sums.rs`: `SHA256SUMS` files.
+//! - `signature.rs`: `SHA256SUMS.minisig`, checked against the pinned minisign keys.
 //! - `download.rs`: fetching a file to disk as it arrives, verifying it on the way, and checking
 //!   a saved one again (I/O).
 //! - `feed.rs`: where releases are read from: the hosting service, or a local folder named by
@@ -49,6 +51,7 @@ mod plan;
 mod release;
 mod report;
 mod restart;
+mod signature;
 mod staging;
 mod sums;
 mod swap;
@@ -60,6 +63,8 @@ mod assets_tests;
 mod download_tests;
 #[cfg(test)]
 mod feed_tests;
+#[cfg(test)]
+mod signature_tests;
 #[cfg(test)]
 mod tests;
 
@@ -138,7 +143,7 @@ pub fn offer(release: &Release, current: &Version, platform: Option<Platform>, k
         return None;
     }
     let asset = platform.and_then(|p| pick(release, p, kind));
-    let sums = asset.as_ref().map_or(SumsSource::None, |a| sums_source(release, a));
+    let sums = if asset.is_some() { sums_source(release) } else { SumsSource::None };
     Some(Offer { release: release.clone(), version, asset, sums, install: kind })
 }
 
