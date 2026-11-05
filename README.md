@@ -99,7 +99,7 @@ cargo run --release -- C:\path\to\repo
 With no path it reopens the last repository. Plans and status are on GitHub: the
 [Glowfly Project](https://github.com/users/bg9m9r/projects/2) and the
 [milestones](https://github.com/bg9m9r/glowfly/milestones). [ROADMAP.md](ROADMAP.md) gives the
-goal and scope, and [docs/ideas](docs/ideas/README.md) holds untriaged ideas.
+goal and scope, and the [`idea`-labelled issues](https://github.com/bg9m9r/glowfly/issues?q=label%3Aidea) hold untriaged ideas.
 
 ## What it does
 

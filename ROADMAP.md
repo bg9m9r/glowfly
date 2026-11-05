@@ -37,9 +37,10 @@ These need a vendor account or cloud service rather than git:
   Project's columns are Inbox (not triaged), Backlog (triaged and scheduled, not next), Ready
   (the focused set to build next, refilled from Backlog by milestone, then Priority), In progress,
   In review and Done, and its Priority field (P0 to P3) orders Backlog and Ready. Issues labelled `needs-decision` wait on the owner.
-- **Follow-ups go to [docs/ideas](docs/ideas/README.md)**, which is not planned work. Finishing an
-  item tends to suggest more follow-ups than it closes, so nothing there is built until a triage
-  promotes it to an issue. Triage when a milestone closes.
+- **Follow-ups go to the [`idea` issues](https://github.com/bg9m9r/glowfly/issues?q=label%3Aidea)** (one checklist issue per feature, in Backlog;
+  see [docs/ideas](docs/ideas/README.md)), which are not planned work. Finishing an item tends to
+  suggest more follow-ups than it closes, so no line there is built until a triage promotes it to
+  its own issue. Triage when a milestone closes.
 
 ## Milestones
 
