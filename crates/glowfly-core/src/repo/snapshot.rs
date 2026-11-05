@@ -87,6 +87,10 @@ pub struct Snapshot {
     pub push_remotes: PushRemotes,
     /// Whether a plain `git pull` on the head branch rebases (`push_config::pull_rebases`).
     pub pull_rebase: bool,
+    /// What git's merge title ends with when merging into HEAD (" into <this>"): the checked-out
+    /// branch, "HEAD" when detached, None when merge.suppressDest leaves it out (main and master
+    /// by default).
+    pub merge_into: Option<String>,
     pub tags: Vec<(String, Oid)>,
     /// Tags that point at a tree or blob instead of a commit: not shown, but their names are taken.
     pub other_tags: Vec<String>,

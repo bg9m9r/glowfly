@@ -4,6 +4,7 @@
 use super::replay::{Applied, Replay};
 use super::shape::{after, arriving, gone, line};
 use super::{AfterRow, FF_ONLY, Limits, OpPreview, Outcome, PICK_MERGE, Stop, StopWhy, UNRELATED, ref_moved, too_many};
+use crate::branch_ref::BranchRef;
 use crate::conflict_check::{Prediction, predict};
 use crate::error::{Error, Result};
 use git2::{Oid, Repository};
@@ -79,11 +80,11 @@ impl Cx<'_> {
         Ok(a == b || self.repo.graph_descendant_of(a, b)?)
     }
 
-    /// Refuses when `name` no longer names `oid`.
-    fn check_ref(&self, name: &str, oid: Oid) -> Result<()> {
-        let now = self.repo.revparse_single(name).and_then(|o| o.peel_to_commit()).map(|c| c.id()).ok();
+    /// Refuses when the branch `b` (its exact ref, never a same-named tag) no longer names `oid`.
+    fn check_ref(&self, b: &BranchRef, oid: Oid) -> Result<()> {
+        let now = self.repo.find_reference(&b.full()).and_then(|r| r.peel_to_commit()).map(|c| c.id()).ok();
         if now != Some(oid) {
-            return Err(Error::Unsupported(ref_moved(name)));
+            return Err(Error::Unsupported(ref_moved(b.shown())));
         }
         Ok(())
     }
@@ -126,7 +127,7 @@ pub(super) fn ff_mode(repo: &Repository, branch: Option<&str>) -> FfMode {
 
 /// `git merge <theirs>` (at `oid`): up to date and fast-forwards from the graph, a real merge
 /// from merge-tree. The branch's history afterwards starts with the merge it makes.
-pub(super) fn merge(cx: &Cx, theirs: &str, oid: Oid) -> Result<OpPreview> {
+pub(super) fn merge(cx: &Cx, theirs: &BranchRef, oid: Oid) -> Result<OpPreview> {
     cx.check_ref(theirs, oid)?;
     let head = cx.head;
     if cx.contains(head, oid)? {
@@ -140,7 +141,7 @@ pub(super) fn merge(cx: &Cx, theirs: &str, oid: Oid) -> Result<OpPreview> {
     if !can_ff && mode == FfMode::Only {
         return Err(Error::Unsupported(FF_ONLY.into()));
     }
-    let merge_row = AfterRow::NewMerge { theirs: theirs.to_owned() };
+    let merge_row = AfterRow::NewMerge { theirs: theirs.shown().to_owned() };
     let (outcome, first) = if can_ff {
         (Outcome::Done, vec![merge_row])
     } else {

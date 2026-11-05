@@ -3,6 +3,8 @@
 //! "rebase (finish)"); `GIT_REFLOG_ACTION` can put a longer command in its place ("rebase -i",
 //! "pull --rebase", "pull origin main"), so only the action's first word and its phase decide.
 
+use crate::branch_ref::short_ref as ref_label;
+
 /// One reflog entry's meaning. `Other` is anything not recognised: its raw text is shown.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
@@ -73,11 +75,6 @@ impl Event {
 /// A full commit id cut to its short form; anything else as it is.
 pub(crate) fn short_rev(rev: &str) -> String {
     if rev.len() == 40 && rev.bytes().all(|b| b.is_ascii_hexdigit()) { rev[..7].to_owned() } else { rev.to_owned() }
-}
-
-/// A ref name as people say it: without refs/heads/ or refs/remotes/.
-fn ref_label(name: &str) -> &str {
-    name.strip_prefix("refs/heads/").or_else(|| name.strip_prefix("refs/remotes/")).unwrap_or(name)
 }
 
 /// The meaning of reflog message `message`.

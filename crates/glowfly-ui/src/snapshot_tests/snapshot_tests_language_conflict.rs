@@ -318,7 +318,11 @@ fn the_check_knows_the_chip_tooltip() {
     use glowfly_core::conflict_check::MergeTarget;
     use glowfly_model::conflict_check::CheckRequest;
     use glowfly_model::state::conflict_check::{ConflictReport, chip_tooltip};
-    let target = MergeTarget { name: "main".into(), oid: git2::Oid::zero(), kind: TargetKind::DefaultBranch };
+    let target = MergeTarget {
+        branch: glowfly_core::branch_ref::BranchRef::Local("main".into()),
+        oid: git2::Oid::zero(),
+        kind: TargetKind::DefaultBranch,
+    };
     let request = CheckRequest { branch: "search".into(), ours: git2::Oid::zero(), target };
     let report = ConflictReport { request, result: conflicts(&["a.txt", "b.txt"]) };
     let entries = checkable(ENGLISH);

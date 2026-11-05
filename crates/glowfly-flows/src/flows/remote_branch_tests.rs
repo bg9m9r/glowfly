@@ -6,6 +6,7 @@ use super::branch_tests::{remote_commit, with_origin};
 use super::tests::{drive, git};
 use super::update;
 use git2::Oid;
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::Tracking;
 use glowfly_core::undo::UndoKind;
@@ -167,11 +168,19 @@ fn conflict_check_remote_branch() {
     git(&work, &["fetch", "-q", "origin"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let tip = remote_tip(&st, "origin", "feature");
-    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("origin/feature".into())), Instant::now());
-    assert!(
-        matches!(fx.as_slice(), [Effect::CheckConflicts(j)] if j.request.target.name == "origin/feature" && j.request.target.oid == tip),
-        "{fx:?}"
-    );
+    let theirs = BranchRef::Remote("origin/feature".into());
+    let checks = |st: &mut AppState| {
+        let fx = update(st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(theirs.clone())), Instant::now());
+        let [Effect::CheckConflicts(j)] = fx.as_slice() else { panic!("{fx:?}") };
+        assert_eq!((&j.request.target.branch, j.request.target.name()), (&theirs, "origin/feature"));
+        j.request.target.oid
+    };
+    assert_eq!(checks(&mut st), tip);
+    // A local branch spelled like the remote one, elsewhere, changes nothing.
+    git(&work, &["branch", "origin/feature", "main"]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(st.snap.as_ref().unwrap().locals.iter().any(|b| b.name == "origin/feature" && b.oid != Some(tip)));
+    assert_eq!(checks(&mut st), tip, "the remote-tracking tip");
     cleanup(&[&work, &bare]);
 }
 

@@ -1,11 +1,13 @@
 //! The preview dialog's data and its pure rules: the subject and the refs it names, whether the
 //! preview is out of date, its title and headline, the tags of its rows, why Apply is off, and
-//! the message Apply sends, which is exactly what the operation's direct menu item sends.
+//! the message Apply sends, which is exactly what the operation's direct menu item sends. A merge
+//! or rebase names its branch by full ref (`BranchRef`); the texts show its short name.
 
 use crate::effect::OpPreviewJob;
 use crate::msg::{Msg, RebaseMsg, ResetMode, SelectionMsg};
 use git2::Oid;
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::i18n::Lang;
 use glowfly_core::op_preview::{AfterRow, CommitLine, GoneWhy, OpPreview, Outcome, PreviewOp, StopWhy};
 use glowfly_core::rebase::QuickEdit;
@@ -24,28 +26,14 @@ pub fn subject(snap: &Snapshot) -> String {
     snap.head_branch.clone().unwrap_or_else(|| "HEAD".to_owned())
 }
 
-/// A full commit id ("1a2b…", 40 or 64 hex digits).
-fn is_sha(name: &str) -> bool {
-    matches!(name.len(), 40 | 64) && name.bytes().all(|b| b.is_ascii_hexdigit())
-}
-
 fn short(oid: Oid) -> String {
     oid.to_string()[..7].to_owned()
 }
 
-/// A name as the texts show it: a full sha cut to seven digits.
-fn shown(name: &str) -> String {
-    if is_sha(name) { name[..7].to_owned() } else { name.to_owned() }
-}
-
-/// The commit `name` names in the snapshot: a local branch, "remote/branch", or a full sha.
-pub fn resolve(snap: &Snapshot, name: &str) -> Option<Oid> {
-    if let Some(o) = snap.local_oid(name) {
-        return Some(o);
-    }
-    let remote =
-        snap.remotes.iter().find_map(|(r, _)| name.strip_prefix(r.as_str())?.strip_prefix('/').and_then(|b| snap.remote_oid(r, b)));
-    remote.or_else(|| is_sha(name).then(|| Oid::from_str(name).ok()).flatten())
+/// What a rebase is onto, as the texts show it: the branch's short name, else the commit cut to
+/// seven digits.
+fn onto_name(onto: &Option<BranchRef>, oid: Oid) -> String {
+    onto.as_ref().map_or_else(|| short(oid), |b| b.shown().to_owned())
 }
 
 /// Whether HEAD or the ref the operation names moved since the preview was asked for.
@@ -54,7 +42,9 @@ pub fn stale(snap: &Snapshot, job: &OpPreviewJob) -> bool {
         return true;
     }
     match &job.request.op {
-        PreviewOp::Merge { theirs: name, oid } | PreviewOp::Rebase { onto: name, oid } => resolve(snap, name) != Some(*oid),
+        PreviewOp::Merge { theirs: b, oid } | PreviewOp::Rebase { onto: Some(b), oid } => snap.branch_oid(b) != Some(*oid),
+        // A commit always names itself.
+        PreviewOp::Rebase { onto: None, .. } => false,
         PreviewOp::Reset { .. } | PreviewOp::CherryPick(_) | PreviewOp::Drop(_) => false,
     }
 }
@@ -63,8 +53,8 @@ pub fn stale(snap: &Snapshot, job: &OpPreviewJob) -> bool {
 pub fn title(t: Lang, snap: &Snapshot, op: &PreviewOp) -> String {
     let branch = subject(snap);
     match op {
-        PreviewOp::Merge { theirs, .. } => t.trf("op_preview.title.merge", &[("theirs", &shown(theirs)), ("branch", &branch)]),
-        PreviewOp::Rebase { onto, .. } => t.trf("op_preview.title.rebase", &[("branch", &branch), ("onto", &shown(onto))]),
+        PreviewOp::Merge { theirs, .. } => t.trf("op_preview.title.merge", &[("theirs", &theirs.shown()), ("branch", &branch)]),
+        PreviewOp::Rebase { onto, oid } => t.trf("op_preview.title.rebase", &[("branch", &branch), ("onto", &onto_name(onto, *oid))]),
         PreviewOp::Reset { to } => t.trf("op_preview.title.reset", &[("branch", &branch), ("commit", &short(*to))]),
         PreviewOp::CherryPick(oids) => t.trn("op_preview.title.cherry_pick", oids.len(), &[("branch", &branch)]),
         PreviewOp::Drop(oids) => t.trn("op_preview.title.drop", oids.len(), &[("branch", &branch)]),
@@ -84,15 +74,18 @@ pub fn headline(t: Lang, p: &OpPreview) -> Vec<String> {
     let mut lines = Vec::new();
     match (&p.op, &p.outcome) {
         (PreviewOp::Merge { theirs, .. }, Outcome::Nothing) => {
-            lines.push(t.trf("op_preview.nothing.merge", &[("branch", &branch), ("theirs", &shown(theirs))]))
+            lines.push(t.trf("op_preview.nothing.merge", &[("branch", &branch), ("theirs", &theirs.shown())]))
         }
-        (PreviewOp::Rebase { onto, .. }, Outcome::Nothing) => {
-            lines.push(t.trf("op_preview.nothing.rebase", &[("branch", &branch), ("onto", &shown(onto))]))
+        (PreviewOp::Rebase { onto, oid }, Outcome::Nothing) => {
+            lines.push(t.trf("op_preview.nothing.rebase", &[("branch", &branch), ("onto", &onto_name(onto, *oid))]))
         }
         (PreviewOp::Reset { .. }, Outcome::Nothing) => lines.push(t.trf("op_preview.nothing.reset", &[("branch", &branch)])),
         (PreviewOp::CherryPick(_) | PreviewOp::Drop(_), Outcome::Nothing) => lines.push(t.tr("op_preview.nothing_to_do").to_owned()),
-        (PreviewOp::Merge { theirs: name, .. } | PreviewOp::Rebase { onto: name, .. }, Outcome::FastForward) => {
-            lines.push(t.trn("op_preview.fast_forward", arrived, &[("branch", &branch), ("target", &shown(name))]))
+        (PreviewOp::Merge { theirs, .. }, Outcome::FastForward) => {
+            lines.push(t.trn("op_preview.fast_forward", arrived, &[("branch", &branch), ("target", &theirs.shown())]))
+        }
+        (PreviewOp::Rebase { onto, oid }, Outcome::FastForward) => {
+            lines.push(t.trn("op_preview.fast_forward", arrived, &[("branch", &branch), ("target", &onto_name(onto, *oid))]))
         }
         (PreviewOp::Merge { .. }, Outcome::Done) => lines.push(t.tr("op_preview.done.merge").to_owned()),
         (PreviewOp::Merge { .. }, Outcome::Stopped(stop)) => {
@@ -103,9 +96,9 @@ pub fn headline(t: Lang, p: &OpPreview) -> Vec<String> {
             lines.push(t.trn("op_preview.stops.merge_conflicts", n, &[]));
         }
         (PreviewOp::Reset { to }, _) => lines.push(t.trf("op_preview.done.reset", &[("branch", &branch), ("commit", &short(*to))])),
-        (PreviewOp::Rebase { onto, .. }, _) => {
+        (PreviewOp::Rebase { onto, oid }, _) => {
             let n = p.moved.len() + stopped_applied(p) + stop_waiting(p) + usize::from(matches!(p.outcome, Outcome::Stopped(_)));
-            lines.push(t.trn("op_preview.done.rebase", n, &[("onto", &shown(onto))]));
+            lines.push(t.trn("op_preview.done.rebase", n, &[("onto", &onto_name(onto, *oid))]));
         }
         (PreviewOp::CherryPick(oids), _) => lines.push(t.trn("op_preview.done.cherry_pick", oids.len(), &[("branch", &branch)])),
         (PreviewOp::Drop(oids), _) => {
@@ -197,9 +190,9 @@ pub fn gone_tag(t: Lang, why: GoneWhy) -> &'static str {
 pub fn notes(t: Lang, snap: &Snapshot, p: &OpPreview) -> Vec<String> {
     let mut out = Vec::new();
     if p.patch_check_skipped
-        && let PreviewOp::Rebase { onto, .. } = &p.op
+        && let PreviewOp::Rebase { onto, oid } = &p.op
     {
-        out.push(t.trf("op_preview.note.patch_skipped", &[("onto", &shown(onto))]));
+        out.push(t.trf("op_preview.note.patch_skipped", &[("onto", &onto_name(onto, *oid))]));
     }
     if !snap.staged.is_empty() || !snap.unstaged.is_empty() {
         out.push(t.tr("op_preview.note.dirty").to_owned());
@@ -236,8 +229,10 @@ pub fn apply_blocker(t: Lang, job_running: bool, snap: &Snapshot, d: &PreviewDia
 /// None for a reset sends nothing).
 pub fn apply_msg(t: Lang, snap: &Snapshot, op: &PreviewOp, mode: Option<ResetMode>) -> Option<Msg> {
     Some(match op {
-        PreviewOp::Merge { theirs, .. } => Msg::git_cmd("Merge", merge_cmd(theirs)),
-        PreviewOp::Rebase { onto, .. } => Msg::git_cmd("Rebase", rebase_cmd(onto)),
+        PreviewOp::Merge { theirs, .. } => Msg::git_cmd("Merge", merge_cmd(theirs, snap.merge_into.as_deref())),
+        PreviewOp::Rebase { onto: Some(b), .. } => Msg::git_cmd("Rebase", rebase_cmd(b)),
+        // The commit menu's own item (onto a commit by its sha).
+        PreviewOp::Rebase { onto: None, oid } => Msg::git("Rebase", &["rebase", &oid.to_string()]),
         PreviewOp::Reset { to } => {
             let sha = to.to_string();
             match mode? {

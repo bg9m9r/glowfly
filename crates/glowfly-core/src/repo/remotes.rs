@@ -33,7 +33,7 @@ impl RemoteInfo {
 }
 
 /// Every value of the multivar `key`, in config order; empty when it can't be read.
-fn values(cfg: &git2::Config, key: &str) -> Vec<String> {
+pub(super) fn values(cfg: &git2::Config, key: &str) -> Vec<String> {
     let mut out = Vec::new();
     let Ok(mut entries) = cfg.multivar(key, None) else { return out };
     while let Some(Ok(e)) = entries.next() {

@@ -9,6 +9,7 @@
 //! [`crate::conflict_check::predict`], so the user's merge config and drivers apply there.
 //! `ops.rs` holds one function per operation and `shape.rs` the rows they share.
 
+use crate::branch_ref::BranchRef;
 use crate::error::{Error, Result};
 use crate::journal::preview::MAX_COUNT;
 use git2::{Oid, Repository};
@@ -36,11 +37,11 @@ mod tests;
 /// The operation to preview, as the menus would run it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PreviewOp {
-    /// `git merge <theirs>`: `theirs` is the name git is given ("feature", "origin/x"), `oid`
-    /// the commit it named when the preview was asked for.
-    Merge { theirs: String, oid: Oid },
-    /// `git rebase <onto>`: a branch name or a full sha, and the commit it named.
-    Rebase { onto: String, oid: Oid },
+    /// `git merge`: the branch (given to git by its full ref) and the commit it named when asked.
+    Merge { theirs: BranchRef, oid: Oid },
+    /// `git rebase`: onto the branch (full ref), or None for the commit `oid` itself (the commit
+    /// menu).
+    Rebase { onto: Option<BranchRef>, oid: Oid },
     /// `git reset <to>` (soft, mixed and hard move the branch the same way).
     Reset { to: Oid },
     /// `git cherry-pick`, oldest first.
@@ -201,7 +202,7 @@ pub(crate) fn preview_with(workdir: &Path, req: &Request, lim: &Limits) -> Resul
     let cx = ops::Cx { repo: &repo, workdir, head, subject: subject(&repo), lim };
     match &req.op {
         PreviewOp::Merge { theirs, oid } => ops::merge(&cx, theirs, *oid),
-        PreviewOp::Rebase { onto, oid } => ops::rebase(&cx, onto, *oid),
+        PreviewOp::Rebase { onto, oid } => ops::rebase(&cx, onto.as_ref(), *oid),
         PreviewOp::Reset { to } => ops::reset(&cx, *to),
         PreviewOp::CherryPick(oids) => ops::cherry_pick(&cx, oids),
         PreviewOp::Drop(oids) => ops::drop(&cx, oids),

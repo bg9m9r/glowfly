@@ -5,6 +5,7 @@
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
 use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
+use glowfly_core::branch_ops::merge_cmd;
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::LoadOptions;
@@ -27,7 +28,7 @@ pub(crate) fn on_search(theme: ThemeChoice, name: &str, result: Result<Predictio
     git(&dir, &["checkout", "-q", "search"], "2026-01-10T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
     let request = current_request(st.snap.as_ref().unwrap()).expect("search compares with main");
-    assert_eq!((request.target.name.as_str(), request.target.kind), ("main", TargetKind::DefaultBranch));
+    assert_eq!((request.target.name(), request.target.kind), ("main", TargetKind::DefaultBranch));
     let generation = st.session.reads.conflict_checks.start().unwrap();
     st.session.reads.conflict_checks.finish(generation, ConflictReport { request: request.clone(), result });
     (st, dir, request)
@@ -40,7 +41,8 @@ pub(crate) fn conflicts(paths: &[&str]) -> Result<Prediction, String> {
 #[test]
 fn conflict_popover() {
     let files = conflicts(&["src/app.rs", "README.md", "docs/guide with space.md"]);
-    let (st, dir, _) = on_search(ThemeChoice::Dark, "conflict-popover", files);
+    let (st, dir, request) = on_search(ThemeChoice::Dark, "conflict-popover", files);
+    let merge_into = st.snap.as_ref().unwrap().merge_into.clone();
     let mut h = harness(st, true);
     h.run();
     h.get_by_label("Conflicts with main").click();
@@ -49,7 +51,9 @@ fn conflict_popover() {
     assert!(h.query_by_label("docs/guide with space.md").is_some());
     h.get_by_label("Merge main").click();
     h.run();
-    let merge = vec![args(&["merge", "--", "main"])];
+    let merge = vec![merge_cmd(&request.target.branch, merge_into.as_deref())];
+    assert_eq!(merge_into.as_deref(), Some("search"), "git names the branch merged into");
+    assert_eq!(merge[0], args(&["merge", "-m", "Merge branch 'main' into search", "--", "refs/heads/main"]));
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if *cmds == merge)));
     drop(h);
     remove_fixture(&dir);
@@ -73,7 +77,7 @@ fn conflict_popover_many() {
 
 /// A check of merging search into main, made for main's tip as checked out in `st`.
 pub(crate) fn report(st: &AppState, kind: TargetKind, result: Result<Prediction, String>) -> ConflictReport {
-    let target = MergeTarget { name: "search".into(), oid: git2::Oid::zero(), kind };
+    let target = MergeTarget { branch: glowfly_core::branch_ref::BranchRef::Local("search".into()), oid: git2::Oid::zero(), kind };
     let ours = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     ConflictReport { request: CheckRequest { branch: "main".into(), ours, target }, result }
 }

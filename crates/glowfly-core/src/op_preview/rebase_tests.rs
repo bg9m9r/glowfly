@@ -1,13 +1,14 @@
 //! Rebase previews: a clean replay, a stop at the second of three commits, up to date and
 //! fast-forward, a branch with the target merged in replayed rather than up to date, patch-equivalent commits left out, merges left out (and refused with
-//! rebase.rebaseMerges), and an unrelated history replayed from its root.
+//! rebase.rebaseMerges), an unrelated history replayed from its root, a same-named tag that is
+//! never taken for the branch, and a rebase onto a commit.
 
 use super::tests::{commit, diverged, is_kept, is_rewritten, message, oid, row_oid, run, run_with};
 use super::*;
 use crate::testutil::{git, scratch_repo, set_config};
 
 fn onto(dir: &Path, name: &str) -> PreviewOp {
-    PreviewOp::Rebase { onto: name.into(), oid: oid(dir, name) }
+    PreviewOp::Rebase { onto: Some(BranchRef::Local(name.into())), oid: oid(dir, &format!("refs/heads/{name}")) }
 }
 
 #[test]
@@ -126,5 +127,28 @@ fn an_unrelated_history_is_replayed_from_its_root() {
     assert_eq!(p.moved.iter().map(|m| m.oid).collect::<Vec<_>>(), [o1, o2]);
     assert!(is_rewritten(&p.after[0], o2) && is_rewritten(&p.after[1], o1));
     assert!(matches!(&p.after[2], AfterRow::Kept { line, .. } if line.oid == main));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_same_named_tag_is_not_the_branch() {
+    let (dir, [base, m1, f1, f2]) = diverged("opp-rebase-tag");
+    git(&dir, &["tag", "main", &base.to_string()]);
+    let p = run(&dir, onto(&dir, "main")).unwrap();
+    assert_eq!(p.outcome, Outcome::Done, "onto the branch, not the tag (which feature contains)");
+    assert!(is_rewritten(&p.after[0], f2) && is_rewritten(&p.after[1], f1), "{:?}", p.after);
+    assert!(is_kept(&p.after[2], m1), "replayed onto main's tip: {:?}", p.after);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_rebase_onto_a_commit_needs_the_commit() {
+    let (dir, [_, m1, f1, f2]) = diverged("opp-rebase-commit");
+    let p = run(&dir, PreviewOp::Rebase { onto: None, oid: m1 }).unwrap();
+    assert_eq!(p.outcome, Outcome::Done);
+    assert!(is_rewritten(&p.after[0], f2) && is_rewritten(&p.after[1], f1), "{:?}", p.after);
+    let missing = Oid::from_str("1234567890123456789012345678901234567890").unwrap();
+    let e = run(&dir, PreviewOp::Rebase { onto: None, oid: missing }).unwrap_err();
+    assert!(matches!(e, Error::NotFound(_)), "{e:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

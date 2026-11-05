@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 mod parse;
 #[cfg(test)]
 mod tests;
-mod wildmatch;
+pub(crate) mod wildmatch;
 
 /// The deepest include read (git refuses a config nested deeper).
 pub const MAX_DEPTH: usize = 10;

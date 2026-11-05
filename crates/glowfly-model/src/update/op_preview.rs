@@ -8,7 +8,7 @@
 use crate::effect::{Effect, OpPreviewJob};
 use crate::msg::OpPreviewMsg;
 use crate::state::error_words::typed;
-use crate::state::op_preview::{PreviewDialog, apply_blocker, apply_msg, resolve};
+use crate::state::op_preview::{PreviewDialog, apply_blocker, apply_msg};
 use crate::state::trust::WaitingFor;
 use crate::state::{AppState, Modal};
 use glowfly_core::git_version::Feature;
@@ -94,15 +94,16 @@ fn again(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     };
     let op = match &d.job.request.op {
-        PreviewOp::Merge { theirs: name, .. } | PreviewOp::Rebase { onto: name, .. } => {
-            let Some(oid) = resolve(snap, name) else {
+        PreviewOp::Merge { theirs: b, .. } | PreviewOp::Rebase { onto: Some(b), .. } => {
+            let Some(oid) = snap.branch_oid(b) else {
+                let name = b.shown();
                 let line = format!("There is no branch {name}.");
                 st.log(false, line);
                 return;
             };
             match &d.job.request.op {
-                PreviewOp::Merge { .. } => PreviewOp::Merge { theirs: name.clone(), oid },
-                _ => PreviewOp::Rebase { onto: name.clone(), oid },
+                PreviewOp::Merge { .. } => PreviewOp::Merge { theirs: b.clone(), oid },
+                _ => PreviewOp::Rebase { onto: Some(b.clone()), oid },
             }
         }
         other => other.clone(),

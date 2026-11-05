@@ -5,6 +5,7 @@ use super::super::replay::{Applied, Replay};
 use super::super::shape::{arriving, gone, line, line_of};
 use super::super::{AfterRow, CommitLine, GoneWhy, OCTOPUS, OpPreview, Outcome, REBASE_MERGES, STEPS, Stop, StopWhy, too_many};
 use super::Cx;
+use crate::branch_ref::BranchRef;
 use crate::error::{Error, Result};
 use crate::rebase::{QuickEdit, RebaseAction, TodoStep, Upstream, prepare_edit};
 use git2::{Oid, Repository, Sort};
@@ -14,8 +15,13 @@ use std::collections::{HashMap, HashSet};
 /// whose patch the target already has, replayed onto it; a commit that becomes empty is left
 /// out as already applied. Like git, a branch that contains the target is up to date only when
 /// its history down to it is linear; a merge in between makes the rebase replay the rest.
-pub(in super::super) fn rebase(cx: &Cx, onto: &str, oid: Oid) -> Result<OpPreview> {
-    cx.check_ref(onto, oid)?;
+pub(in super::super) fn rebase(cx: &Cx, onto: Option<&BranchRef>, oid: Oid) -> Result<OpPreview> {
+    match onto {
+        Some(b) => cx.check_ref(b, oid)?,
+        None => {
+            cx.repo.find_commit(oid).map_err(|_| Error::NotFound(format!("commit {oid}")))?;
+        }
+    }
     let (repo, head) = (cx.repo, cx.head);
     if cx.contains(head, oid)? && linear(repo, head, oid)? {
         return cx.nothing();

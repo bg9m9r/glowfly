@@ -1,6 +1,8 @@
 //! The auto-stash: which commands it guards, its messages, and putting it back.
 
 use super::*;
+use crate::branch_ops::merge_cmd;
+use crate::branch_ref::BranchRef;
 use crate::gitcli::args;
 use crate::testutil::{git, scratch_repo, write};
 use std::path::{Path, PathBuf};
@@ -28,6 +30,9 @@ fn classifies_guarded_commands() {
     assert_eq!(of(&["checkout", "--theirs", "--", "a.txt"]), None);
     assert_eq!(of(&["pull", "--ff"]), Some(Pull { branch: s("main") }));
     assert_eq!(of(&["merge", "refs/remotes/origin/x"]), Some(Merge { from: s("origin/x"), into: s("main") }));
+    let built = AutoStashFor::of_command(&merge_cmd(&BranchRef::Local("x".into()), None), Some("main"));
+    assert_eq!(built, Some(Merge { from: s("x"), into: s("main") }), "merge_cmd's -m title is no target");
+    assert_eq!(built.unwrap().message(), "Auto-stash before merging x into main");
     assert_eq!(of(&["merge", "--ff-only", "topic"]), Some(Merge { from: s("topic"), into: s("main") }));
     assert_eq!(of(&["merge", "--squash", "topic"]), Some(Merge { from: s("topic"), into: s("main") }));
     assert_eq!(of(&["merge", "--abort"]), None);

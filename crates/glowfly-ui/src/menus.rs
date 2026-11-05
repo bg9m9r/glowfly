@@ -108,7 +108,7 @@ fn rebase_items(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, msg
         let blocked = onto_commit_blocker(t, snap, oid);
         let (plain, interactive) = onto_menu_labels(t, &cut_name(current));
         let (plain_full, interactive_full) = onto_menu_labels(t, current);
-        let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: sha.clone(), oid }));
+        let preview = Msg::OpPreview(OpPreviewMsg::Open(PreviewOp::Rebase { onto: None, oid }));
         let row = item_named(Named { shown: plain, full: plain_full }).blocked(blocked.as_deref());
         menu_row_preview(msgs, ui, row, (t.tr("op_preview.menu.rebase"), None), Msg::git("Rebase", &["rebase", &sha]), preview);
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoCommit(oid)));

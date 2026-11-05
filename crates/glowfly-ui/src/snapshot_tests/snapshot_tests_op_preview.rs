@@ -42,7 +42,11 @@ fn op_preview_rebase_stops() {
     commit(&dir, "app.txt", "app\nlogin\n", "Link the login page from the app", "2026-01-11T10:00:00+00:00");
     commit(&dir, "form.txt", "form\n", "Validate the login form", "2026-01-12T10:00:00+00:00");
     reload(&mut st, &dir, &LoadOptions::all(500));
-    open(&mut st, PreviewOp::Rebase { onto: "main".into(), oid: rev(&dir, "main") }, true);
+    open(
+        &mut st,
+        PreviewOp::Rebase { onto: Some(glowfly_core::branch_ref::BranchRef::Local("main".into())), oid: rev(&dir, "refs/heads/main") },
+        true,
+    );
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("op_preview_rebase_stops");
@@ -101,7 +105,11 @@ fn op_preview_reset_stale() {
 fn op_preview_old_git() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "op-preview-old-git");
     st.git.info = Some(GitInfo { path: Some("git".into()), version: Some((2, 37, 1)), chosen: false });
-    open(&mut st, PreviewOp::Merge { theirs: "search".into(), oid: rev(&dir, "search") }, false);
+    open(
+        &mut st,
+        PreviewOp::Merge { theirs: glowfly_core::branch_ref::BranchRef::Local("search".into()), oid: rev(&dir, "refs/heads/search") },
+        false,
+    );
     let why = st.git.blocked(Feature::MergeTree).unwrap();
     if let Some(Modal::OpPreview(d)) = st.modal.as_mut() {
         d.result = Some(Err(why));

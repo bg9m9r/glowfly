@@ -1,8 +1,9 @@
 //! Command lines and checks for branch operations (rename, also on the remote, upstream,
-//! fast-forward, push, deleting a remote branch and delete with the remote branch). Everything
-//! here is pure; the app runs the commands through `gitcli` so hooks, credentials and the user's
-//! git config apply.
+//! fast-forward, merge and rebase by full ref, push, deleting a remote branch and delete with the
+//! remote branch). Everything here is pure; the app runs the commands through `gitcli` so hooks,
+//! credentials and the user's git config apply.
 
+use crate::branch_ref::BranchRef;
 use crate::gitcli::args;
 use crate::names::{RefClash, WinNameProblem, blocks_here, ref_clash, ref_name_problem};
 use crate::repo::{BranchInfo, Tracking};
@@ -129,15 +130,31 @@ pub fn rename_cmd(old: &str, new: &str) -> Vec<String> {
     args(&["branch", "-m", "--", old, new])
 }
 
-/// `git merge -- <name>`. The name stays as the menus show it, since git puts it in the merge
-/// commit's message (`refs/heads/x` would show there); `--` keeps it from reading as an option.
-pub fn merge_cmd(name: &str) -> Vec<String> {
-    args(&["merge", "--", name])
+/// git's own merge title: "Merge branch 'x'" / "Merge remote-tracking branch 'origin/x'", then
+/// " into <into>" when `into` is Some (`Snapshot::merge_into`: None where merge.suppressDest
+/// leaves it out).
+fn merge_title(theirs: &BranchRef, into: Option<&str>) -> String {
+    let kind = match theirs {
+        BranchRef::Local(_) => "branch",
+        BranchRef::Remote(_) => "remote-tracking branch",
+    };
+    let title = format!("Merge {kind} '{}'", theirs.shown());
+    match into {
+        Some(dest) => format!("{title} into {dest}"),
+        None => title,
+    }
 }
 
-/// `git rebase -- <onto>`: `--` keeps the name from reading as an option.
-pub fn rebase_cmd(onto: &str) -> Vec<String> {
-    args(&["rebase", "--", onto])
+/// `git merge -m <title> -- <full ref>`: the full ref so a same-named tag is never merged, and the
+/// title git would write for the short name (merge.log still appends its shortlog; a stopped
+/// merge's MERGE_MSG starts with it). `--` keeps the ref from reading as an option.
+pub fn merge_cmd(theirs: &BranchRef, into: Option<&str>) -> Vec<String> {
+    args(&["merge", "-m", &merge_title(theirs, into), "--", &theirs.full()])
+}
+
+/// `git rebase -- <full ref>`: onto the branch itself, never a same-named tag.
+pub fn rebase_cmd(onto: &BranchRef) -> Vec<String> {
+    args(&["rebase", "--", &onto.full()])
 }
 
 /// The command that fast-forwards `b` to its upstream, when it can. The checked-out branch
@@ -238,5 +255,7 @@ pub fn push_cmd(branch: &str, remote: &str, remote_branch: &str, set_upstream: b
     cmd
 }
 
+#[cfg(test)]
+mod merge_ref_tests;
 #[cfg(test)]
 mod tests;

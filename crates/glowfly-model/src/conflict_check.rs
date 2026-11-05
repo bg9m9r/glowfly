@@ -5,6 +5,7 @@
 use crate::effect::EffectMeta;
 use crate::effect::SandboxRule;
 use git2::Oid;
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::conflict_check::{MergeTarget, Prediction};
 use std::path::{Path, PathBuf};
 
@@ -55,9 +56,9 @@ pub enum ConflictCheckMsg {
     /// Check the checked-out branch against its target now and show the result (head branch
     /// menu, the popover's Check again).
     CheckNow,
-    /// Check merging local or remote-tracking branch .0 into the checked-out branch (that
-    /// branch's menu).
-    CheckBranch(String),
+    /// Check merging local or remote-tracking branch .0 (exactly that ref, never a same-named
+    /// tag) into the checked-out branch (that branch's menu).
+    CheckBranch(BranchRef),
     /// A check ended.
     Checked { request: CheckRequest, manual: bool, generation: u64, result: Result<Prediction, String> },
 }

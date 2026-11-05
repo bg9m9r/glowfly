@@ -12,7 +12,7 @@
 use super::{list, split_message};
 use crate::gitcli::{self, args};
 use crate::repo::StashInfo;
-use crate::undo::{commits_label, move_targets};
+use crate::undo::{PICK_VALUED, commits_label, move_targets};
 use git2::{Oid, RepositoryState};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -95,8 +95,10 @@ impl AutoStashFor {
                         let onto = rest.iter().position(|f| *f == "--onto").and_then(|i| rest.get(i + 1)).copied();
                         onto.or_else(|| first_target(rest)).map(|o| Self::Rebase { branch: head, onto: short(o) })
                     }
-                    "cherry-pick" => commits_label(&move_targets(rest, true)).map(|commits| Self::CherryPick { commits, onto: head }),
-                    _ => commits_label(&move_targets(rest, true)).map(|commits| Self::Revert { commits, on: head }),
+                    "cherry-pick" => {
+                        commits_label(&move_targets(rest, &PICK_VALUED)).map(|commits| Self::CherryPick { commits, onto: head })
+                    }
+                    _ => commits_label(&move_targets(rest, &PICK_VALUED)).map(|commits| Self::Revert { commits, on: head }),
                 }
             }
             _ => None,

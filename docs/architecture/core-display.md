@@ -77,4 +77,4 @@ source file, update its line here.
 - `watch_sweep.rs`: the Windows safety poll's sweep of a watched tree: a baseline of every non-ignored folder's listing, then each sweep stats them, lists again the changed, racy and a rotating tenth, and names the paths (and the git dir's refs, index, exclude and attributes, and the config files with those they include) that may have changed.
 - `watch_sweep/nested.rs`: the submodules and nested repositories the sweep walks into, each by its own ignore rules, with their HEAD and refs compared every sweep.
 - `config_includes.rs`: the files git's `include.path` and `includeIf` pull in, resolved as git does (relative to the including file, `~/`, `gitdir:`, `gitdir/i:`, `onbranch:`), bounded in depth and count and never following a cycle.
-- `config_includes/parse.rs`: the include entries of one config file's text; `config_includes/wildmatch.rs`: git's pattern matching for the conditions.
+- `config_includes/parse.rs`: the include entries of one config file's text; `config_includes/wildmatch.rs`: git's pattern matching for the conditions (also used by `repo/merge_dest.rs`).

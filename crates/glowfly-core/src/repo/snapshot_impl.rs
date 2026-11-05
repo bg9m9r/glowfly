@@ -1,6 +1,7 @@
 //! The small queries on a loaded `Snapshot`.
 
 use super::*;
+use crate::branch_ref::BranchRef;
 use std::collections::HashSet;
 
 impl Snapshot {
@@ -73,6 +74,18 @@ impl Snapshot {
     /// The commit the local branch `name` points at.
     pub fn local_oid(&self, name: &str) -> Option<Oid> {
         self.locals.iter().find(|b| b.name == name)?.oid
+    }
+
+    /// The commit the branch `b` points at: a local branch, or the remote-tracking branch whose
+    /// "<remote>/<branch>" is `b`'s.
+    pub fn branch_oid(&self, b: &BranchRef) -> Option<Oid> {
+        match b {
+            BranchRef::Local(name) => self.local_oid(name),
+            BranchRef::Remote(s) => self.remotes.iter().find_map(|(r, bs)| {
+                let branch = s.strip_prefix(r.as_str())?.strip_prefix('/')?;
+                bs.iter().find(|(n, _)| n == branch).map(|(_, o)| *o)
+            }),
+        }
     }
 
     /// Whether status says `path` is gone from the working tree: deleted there (unstaged 'D'),

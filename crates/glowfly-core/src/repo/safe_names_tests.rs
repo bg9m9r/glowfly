@@ -3,6 +3,7 @@
 //! accepts the builders' `--` forms.
 
 use super::*;
+use crate::branch_ref::BranchRef;
 use crate::testkit::git_out;
 use crate::testutil::*;
 
@@ -84,8 +85,8 @@ fn names_that_read_as_options_never_load_or_reach_a_command() {
         cmds.push(crate::shallow_ops::deepen_cmd(r, crate::shallow_ops::Deepen::Full));
         for (b, oid) in branches {
             cmds.extend(branch_ops::delete_remote_cmds(r, b, std::slice::from_ref(b)));
-            cmds.push(branch_ops::merge_cmd(&format!("{r}/{b}")));
-            cmds.push(branch_ops::rebase_cmd(&format!("{r}/{b}")));
+            cmds.push(branch_ops::merge_cmd(&BranchRef::Remote(format!("{r}/{b}")), None));
+            cmds.push(branch_ops::rebase_cmd(&BranchRef::Remote(format!("{r}/{b}"))));
             cmds.extend(branch_ops::set_upstream_cmds("main", r, b, true));
             cmds.extend(branch_ops::rename_with_remote_cmds("main", "next", r, b, *oid));
         }
@@ -100,8 +101,8 @@ fn names_that_read_as_options_never_load_or_reach_a_command() {
         }
     }
     for b in &s.locals {
-        cmds.push(branch_ops::merge_cmd(&b.name));
-        cmds.push(branch_ops::rebase_cmd(&b.name));
+        cmds.push(branch_ops::merge_cmd(&BranchRef::Local(b.name.clone()), None));
+        cmds.push(branch_ops::rebase_cmd(&BranchRef::Local(b.name.clone())));
         cmds.push(branch_ops::rename_cmd(&b.name, "renamed"));
         cmds.push(branch_ops::unset_upstream_cmd(&b.name));
         cmds.push(crate::journal::restore::create_branch(&b.name, git2::Oid::zero()));
@@ -149,8 +150,8 @@ fn every_builder_ends_options_before_a_supplied_name() {
         remote_ops::remove_cmd(e),
         crate::shallow_ops::deepen_cmd(e, crate::shallow_ops::Deepen::By(3)),
         branch_ops::push_cmd(e, e, e, true),
-        branch_ops::merge_cmd(e),
-        branch_ops::rebase_cmd(e),
+        branch_ops::merge_cmd(&BranchRef::Local(e.into()), Some(e)),
+        branch_ops::rebase_cmd(&BranchRef::Local(e.into())),
         branch_ops::rename_cmd(e, e),
         branch_ops::unset_upstream_cmd(e),
         tag_ops::push_tag_cmd(e, e),
@@ -188,7 +189,9 @@ fn git_accepts_the_forms_with_dashes() {
     git(&work, &["commit", "-q", "-m", "second"]);
     git(&work, &["checkout", "-q", "main"]);
     let side = git_out(&work, &["rev-parse", "side"]).trim().to_owned();
-    let mut cmds = vec![branch_ops::merge_cmd("side"), tag_ops::annotate_tag_cmd("n", &side, "m")];
+    let side_ref = BranchRef::Local("side".into());
+    let mut cmds =
+        vec![branch_ops::merge_cmd(&side_ref, None), branch_ops::rebase_cmd(&side_ref), tag_ops::annotate_tag_cmd("n", &side, "m")];
     cmds.extend(remote_ops::add_cmds("up", "https://example.invalid/r.git", Some("https://example.invalid/p.git"), false));
     for c in &cmds {
         let (ok, out) = run(&work, c);

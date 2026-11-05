@@ -7,6 +7,8 @@ use super::snapshot_tests::{git, harness, harness_sized, reload, remove_fixture,
 use crate::snapshot_check::CheckSnapshot;
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
+use glowfly_core::branch_ops::merge_cmd;
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::LoadOptions;
@@ -36,7 +38,7 @@ fn on_long_branch(theme: ThemeChoice, name: &str, paths: &[&str]) -> (AppState, 
     git(&dir, &["branch", "-q", "--set-upstream-to", UPSTREAM], when);
     reload(&mut st, &dir, &LoadOptions::all(500));
     let request = current_request(st.snap.as_ref().unwrap()).expect("the branch compares with its upstream");
-    assert_eq!((request.target.name.as_str(), request.target.kind), (UPSTREAM, TargetKind::Upstream));
+    assert_eq!((request.target.name(), request.target.kind), (UPSTREAM, TargetKind::Upstream));
     let generation = st.session.reads.conflict_checks.start().unwrap();
     let result = Ok(Prediction::Conflicts(paths.iter().map(|p| p.to_string()).collect()));
     st.session.reads.conflict_checks.finish(generation, ConflictReport { request, result });
@@ -46,6 +48,7 @@ fn on_long_branch(theme: ThemeChoice, name: &str, paths: &[&str]) -> (AppState, 
 /// Opens the popover with the long names and checks it.
 fn popover_long(theme: ThemeChoice, dark: bool, name: &str) {
     let (st, dir) = on_long_branch(theme, name, &["CHANGELOG.md"]);
+    let merge_into = st.snap.as_ref().unwrap().merge_into.clone();
     let mut h = harness(st, dark);
     open(&mut h);
     h.check_snapshot(name);
@@ -57,7 +60,9 @@ fn popover_long(theme: ThemeChoice, dark: bool, name: &str) {
     assert!(h.query_by_label("CHANGELOG.md").is_some());
     h.get_by_label("Merge upstream").click();
     h.run();
-    let merge = vec![args(&["merge", "--", UPSTREAM])];
+    let merge = vec![merge_cmd(&BranchRef::Remote(UPSTREAM.into()), merge_into.as_deref())];
+    let title = format!("Merge remote-tracking branch '{UPSTREAM}' into {BRANCH}");
+    assert_eq!(merge[0], args(&["merge", "-m", &title, "--", &format!("refs/remotes/{UPSTREAM}")]));
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if *cmds == merge)));
     drop(h);
     remove_fixture(&dir);
@@ -145,7 +150,8 @@ fn conflict_popover_merge_tip_dark() {
     for _ in 0..4 {
         h.run();
     }
-    assert!(h.query_by_label_contains(&format!("git merge -- {UPSTREAM}")).is_some(), "the command on hover");
+    let typed = format!("git merge -m \"Merge remote-tracking branch '{UPSTREAM}' into {BRANCH}\" -- refs/remotes/{UPSTREAM}");
+    assert!(h.query_by_label_contains(&typed).is_some(), "the command on hover, quoted as typed");
     assert!(h.query_by_label_contains("Merges it into the checked-out branch. Runs:").is_some(), "what it does");
     h.check_snapshot("conflict_popover_merge_tip_dark");
     drop(h);

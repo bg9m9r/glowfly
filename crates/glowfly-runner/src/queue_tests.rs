@@ -177,7 +177,7 @@ fn which_effects_queue() {
         branch: "feature".into(),
         ours: git2::Oid::zero(),
         target: glowfly_core::conflict_check::MergeTarget {
-            name: "main".into(),
+            branch: glowfly_core::branch_ref::BranchRef::Local("main".into()),
             oid: git2::Oid::zero(),
             kind: glowfly_core::conflict_check::TargetKind::DefaultBranch,
         },
