@@ -69,13 +69,14 @@ fn three_stashes(name: &str) -> PathBuf {
 }
 
 /// `(sha, message)` of each `git stash list` entry, newest first.
-fn listed(dir: &Path) -> Vec<(String, String)> {
+pub(super) fn listed(dir: &Path) -> Vec<(String, String)> {
     let (ok, out) = run(dir, &args(&["stash", "list", "--format=%H %gs"]));
     assert!(ok, "{out}");
     out.lines().map(|l| l.split_once(' ').map(|(a, b)| (a.to_owned(), b.to_owned())).unwrap()).collect()
 }
 
-fn rev(dir: &Path, r: &str) -> String {
+/// `git rev-parse <r>` in `dir`.
+pub(super) fn rev(dir: &Path, r: &str) -> String {
     let (ok, out) = run(dir, &args(&["rev-parse", r]));
     assert!(ok, "{out}");
     out.trim().to_owned()

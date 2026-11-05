@@ -31,6 +31,7 @@ source file, update its line here.
 - `worktree_ops.rs`: worktrees; moving one: `worktree_ops/moving.rs`.
 - `submodule_ops.rs`: submodules: the Add dialog's fields; removing one (deinit, `git rm`, then its stored module, with what would be lost); `set-url` / `set-branch` for editing one; batch `submodule update` command lines; resolving relative URLs; which commands, undos and redos move the work tree (and which commit finishes a stopped operation), after which submodules may be updated.
 - `stash_ops.rs`: renaming a stash list entry by dropping and storing the top of `refs/stash` again; stash push command lines: all, staged only, chosen paths, optionally keeping the staged changes.
+- `stash_ops/list.rs`: the stash list read from the `refs/stash` reflog, newest first, indexed as `stash@{n}`, a message that isn't UTF-8 decoded lossily (git2's `stash_foreach` panics on one; `clippy.toml` keeps callers off it); tests in `list_tests.rs`.
 - `stash_ops/renames.rs`: a chosen staged rename stashed whole: its old path put back from HEAD after the stash, refused beforehand when something is on disk there.
 - `stash_ops/auto.rs`: auto-stashes: which single commands the guard covers (plus Git Flow start and finish, a pull request's checkout and a restack, named by their entry points), their fixed English stash messages, and putting a stash back with `git stash pop --index` once nothing is in progress (a plain pop when the staged state no longer fits), telling restored, restored unstaged, conflicted, failed and gone apart; `pop_index` is the same pop without the plain-pop fallback, for Stash changes and undo; tests in `auto_tests.rs` and `auto_put_back_tests.rs`.
 - `stash_ops/saved.rs`: the auto-stashes waiting to go back, kept across restarts in the worktree's `glowfly/auto-stashes.json`; tests in `saved_tests.rs`.
@@ -95,7 +96,7 @@ source file, update its line here.
 - `kinds.rs` recognises their command lines; `action.rs` holds the recorded actions and their labels; `record.rs` the state before and after; `planning.rs` plans the reversal.
 - `refs.rs`: branches and tags.
 - `moved.rs`: merges, pulls, cherry-picks, reverts and rebases.
-- `stash.rs`: stashes, pops, applies and drops.
+- `stash.rs`: stashes, pops, applies and drops; tests in `stash_tests.rs` and `stash_bytes_tests.rs`.
 - `reset.rs`: resets.
 - `saved.rs`: file, hunk and line discards and file restores.
 - `reverted.rs`: reverts of part of a commit in the working tree (also one that failed after changing the file).

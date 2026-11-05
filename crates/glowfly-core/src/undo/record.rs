@@ -81,15 +81,9 @@ fn local_names(repo: &Repository) -> Result<HashSet<String>> {
 
 /// The stash commit `rev` names, and its message in the stash list.
 pub(super) fn apply_target(workdir: &Path, rev: &str) -> Result<(Oid, Option<String>)> {
-    let mut repo = Repository::open(workdir)?;
+    let repo = Repository::open(workdir)?;
     let oid = repo.revparse_single(rev)?.peel_to_commit()?.id();
-    let mut message = None;
-    repo.stash_foreach(|_, m, id| {
-        if *id == oid {
-            message = Some(m.to_owned());
-        }
-        message.is_none()
-    })?;
+    let message = crate::stash_ops::list_in(&repo)?.into_iter().find(|s| s.oid == oid).map(|s| s.message);
     Ok((oid, message))
 }
 

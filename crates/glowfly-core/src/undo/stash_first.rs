@@ -40,15 +40,10 @@ pub fn stash_top_at(workdir: &Path) -> Result<Option<Oid>> {
 /// tab may have stashed on top of it since): the one whose message ends with `message`, whose
 /// nonce no other run has. `None` when git stashed nothing; an error when the list can't be read.
 pub fn undo_stash_made(workdir: &Path, message: &str) -> Result<Option<Oid>> {
-    let mut repo = Repository::open(workdir)?;
-    let mut found = None;
-    repo.stash_foreach(|_, m, id| {
-        if m.lines().next().unwrap_or_default().trim_end().ends_with(message) {
-            found = Some(*id);
-        }
-        found.is_none()
-    })?;
-    Ok(found)
+    Ok(crate::stash_ops::list(workdir)?
+        .into_iter()
+        .find(|s| s.message.lines().next().unwrap_or_default().trim_end().ends_with(message))
+        .map(|s| s.oid))
 }
 
 /// The files the index marks intent-to-add (`git add -N`), which `git stash push` can't stash.
