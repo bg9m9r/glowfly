@@ -130,15 +130,16 @@ pub fn download_streamed(
 
 /// The SHA-256 the release's signed `SHA256SUMS` gives for `asset`. The signature is fetched
 /// and checked against the keys `feed` trusts before any line of the list is read; a release
-/// without one, a signature that doesn't verify, or a list without `asset` fails it, and
-/// `asset` itself is never fetched then.
+/// without one, a signature that doesn't verify, a signature made for another release (its
+/// trusted comment), or a list without `asset` fails it, and `asset` itself is never fetched
+/// then.
 fn signed_sum(feed: &Feed, offer: &Offer, asset: &Asset) -> Result<[u8; 32], UpdateError> {
     let no_sum = || UpdateError::NoChecksum { name: asset.name.clone() };
     let SumsSource::Combined(sums_asset) = &offer.sums else { return Err(no_sum()) };
     let signature_asset = signature::signature_asset(&offer.release).ok_or(UpdateError::Unsigned)?;
     let text = feed.fetch(sums_asset, MAX_SUMS).map_err(|e| UpdateError::Checksums(Box::new(e)))?;
     let sig = feed.fetch(&signature_asset, signature::MAX_SIGNATURE).map_err(|e| UpdateError::SignatureUnreadable(Box::new(e)))?;
-    signature::verify(&text, &sig, &feed.trusted_keys())?;
+    signature::verify(&text, &sig, &feed.trusted_keys(), &offer.release.tag)?;
     sums::expected(&String::from_utf8_lossy(&text), &asset.name).ok_or_else(no_sum)
 }
 

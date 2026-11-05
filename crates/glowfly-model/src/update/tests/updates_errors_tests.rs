@@ -22,7 +22,7 @@ const SAID: &str = "Access is denied. (os error 5)";
 
 /// Each variant, with its English, German and Spanish text.
 fn variants() -> Vec<(E, [&'static str; 3])> {
-    [check_variants(), download_variants(), open_variants(), install_variants()].concat()
+    [check_variants(), download_variants(), signature_variants(), open_variants(), install_variants()].concat()
 }
 
 /// The variants a check for an update can fail with: the feed, the service and reading.
@@ -106,30 +106,6 @@ fn download_variants() -> Vec<(E, [&'static str; 3])> {
             ],
         ),
         (
-            E::Unsigned,
-            [
-                "This release's checksums aren't signed, so nothing was downloaded.",
-                "Die Prüfsummen dieses Releases sind nicht signiert, deshalb wurde nichts heruntergeladen.",
-                "Las sumas de comprobación de esta versión no están firmadas, así que no se descargó nada.",
-            ],
-        ),
-        (
-            E::SignatureUnreadable(Box::new(E::Service(ServiceError::Http { status: 404, message: "Not Found".into() }))),
-            [
-                "Couldn't read the checksums' signature: HTTP 404: Not Found",
-                "Die Signatur der Prüfsummen konnte nicht gelesen werden: HTTP 404: Not Found",
-                "No se pudo leer la firma de las sumas de comprobación: HTTP 404: Not Found",
-            ],
-        ),
-        (
-            E::BadSignature,
-            [
-                "This release's checksums aren't signed with Glowfly's key, so nothing was downloaded.",
-                "Die Prüfsummen dieses Releases sind nicht mit dem Schlüssel von Glowfly signiert, deshalb wurde nichts heruntergeladen.",
-                "Las sumas de comprobación de esta versión no están firmadas con la clave de Glowfly, así que no se descargó nada.",
-            ],
-        ),
-        (
             E::TooLarge { name: "glowfly.msi".into(), mb: 512 },
             [
                 "glowfly.msi is larger than 512 MB, so it wasn't downloaded.",
@@ -192,6 +168,52 @@ fn download_variants() -> Vec<(E, [&'static str; 3])> {
                 "The downloaded file changed after it was checked, so it wasn't installed. Download it again.",
                 "Die heruntergeladene Datei hat sich nach der Prüfung geändert und wurde deshalb nicht installiert. Lade sie erneut herunter.",
                 "El archivo descargado cambió después de comprobarse, así que no se instaló. Vuelve a descargarlo.",
+            ],
+        ),
+    ]
+}
+
+/// The variants a download can fail with for the checksums' signature.
+fn signature_variants() -> Vec<(E, [&'static str; 3])> {
+    vec![
+        (
+            E::Unsigned,
+            [
+                "This release's checksums aren't signed, so nothing was downloaded.",
+                "Die Prüfsummen dieses Releases sind nicht signiert, deshalb wurde nichts heruntergeladen.",
+                "Las sumas de comprobación de esta versión no están firmadas, así que no se descargó nada.",
+            ],
+        ),
+        (
+            E::SignatureUnreadable(Box::new(E::Service(ServiceError::Http { status: 404, message: "Not Found".into() }))),
+            [
+                "Couldn't read the checksums' signature: HTTP 404: Not Found",
+                "Die Signatur der Prüfsummen konnte nicht gelesen werden: HTTP 404: Not Found",
+                "No se pudo leer la firma de las sumas de comprobación: HTTP 404: Not Found",
+            ],
+        ),
+        (
+            E::BadSignature,
+            [
+                "This release's checksums aren't signed with Glowfly's key, so nothing was downloaded.",
+                "Die Prüfsummen dieses Releases sind nicht mit dem Schlüssel von Glowfly signiert, deshalb wurde nichts heruntergeladen.",
+                "Las sumas de comprobación de esta versión no están firmadas con la clave de Glowfly, así que no se descargó nada.",
+            ],
+        ),
+        (
+            E::SignedForAnotherRelease { tag: "v0.3.0".into(), signed: Some("v0.2.0".into()) },
+            [
+                "This release's checksums were signed for v0.2.0, not v0.3.0, so nothing was downloaded.",
+                "Die Prüfsummen dieses Releases wurden für v0.2.0 signiert, nicht für v0.3.0, deshalb wurde nichts heruntergeladen.",
+                "Las sumas de comprobación de esta versión se firmaron para v0.2.0, no para v0.3.0, así que no se descargó nada.",
+            ],
+        ),
+        (
+            E::SignedForAnotherRelease { tag: "v0.3.0".into(), signed: None },
+            [
+                "This release's checksums weren't signed for v0.3.0, so nothing was downloaded.",
+                "Die Prüfsummen dieses Releases wurden nicht für v0.3.0 signiert, deshalb wurde nichts heruntergeladen.",
+                "Las sumas de comprobación de esta versión no se firmaron para v0.3.0, así que no se descargó nada.",
             ],
         ),
     ]

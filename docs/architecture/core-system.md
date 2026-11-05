@@ -190,7 +190,7 @@ source file, update its line here.
 - `host.rs`: the machine's real processor under emulation.
 - `appimage.rs`: whether this copy runs from an AppImage and which file that is.
 - `sums.rs`: `SHA256SUMS` files.
-- `signature.rs`: `SHA256SUMS.minisig`, verified with `minisign-verify` against the pinned keys (`KEYS`; a feed folder also trusts the committed test key) before any checksum is trusted; fixtures in `minisign_fixtures/`, tests in `signature_tests.rs`.
+- `signature.rs`: `SHA256SUMS.minisig`, verified with `minisign-verify` against the pinned keys (`KEYS`; a feed folder also trusts the committed test key), and its trusted comment checked against the offered tag (`Glowfly <tag>: SHA256SUMS`), before any checksum is trusted; fixtures in `minisign_fixtures/`, tests in `signature_tests.rs`.
 - `download.rs`: downloading a file into the Downloads folder once the signed `SHA256SUMS` lists it, streamed to a temporary file beside it and renamed into place only after its SHA-256 matches, with progress and Cancel; `check_saved` reads a saved file again.
 - `download_tests.rs`: streamed downloads from a local feed (progress, Cancel and a mismatch removing the partial file).
 - `feed.rs`: where releases are read from: the hosting service or a local folder named by `GLOWFLY_UPDATE_FEED`.

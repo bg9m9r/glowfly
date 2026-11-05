@@ -79,19 +79,23 @@ function Assert-FeedText([string]$Path) {
 
 # A feed folder for $Tag: both packages under the tag's names, SHA256SUMS (the format
 # sha256sum writes, LF, no BOM) and release.json (UTF-8 without a BOM, which the JSON reader
-# refuses), with SHA256SUMS.minisig signed by the test key. -Digest replaces the tested package's
-# checksum, -OmitSum leaves its line out, -TamperAfter changes the package once SHA256SUMS is
-# written, -Unsigned leaves the signature out and -TamperSums changes SHA256SUMS once it is signed.
+# refuses), with SHA256SUMS.minisig signed by the test key with the trusted comment the Release
+# workflow writes, "Glowfly <tag>: SHA256SUMS". -SignedFor names the tag that comment names
+# (default: $Tag), -Digest replaces the tested package's checksum, -OmitSum leaves its line out,
+# -TamperAfter changes the package once SHA256SUMS is written, -Unsigned leaves the signature out
+# and -TamperSums changes SHA256SUMS once it is signed.
 function New-Feed {
     param(
         [Parameter(Mandatory = $true)][string]$Dir,
         [Parameter(Mandatory = $true)][string]$Tag,
+        [string]$SignedFor,
         [string]$Digest,
         [switch]$OmitSum,
         [switch]$TamperAfter,
         [switch]$Unsigned,
         [switch]$TamperSums
     )
+    if (-not $SignedFor) { $SignedFor = $Tag }
     New-Item -ItemType Directory -Force $Dir | Out-Null
     $tested = Get-FeedName $underTest $Tag
     $names = [Collections.Generic.List[string]]::new()
@@ -111,7 +115,7 @@ function New-Feed {
     [IO.File]::WriteAllText($sums, (-join $lines), $utf8)
     $published = @($sorted + 'SHA256SUMS')
     if (-not $Unsigned) {
-        & $Minisign -S -s $testKey -m $sums -x (Join-Path $Dir 'SHA256SUMS.minisig') -t 'Glowfly installer check feed' | Out-Null
+        & $Minisign -S -s $testKey -m $sums -x (Join-Path $Dir 'SHA256SUMS.minisig') -t "Glowfly ${SignedFor}: SHA256SUMS" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "minisign couldn't sign $sums (exit $LASTEXITCODE)" }
         $published += 'SHA256SUMS.minisig'
     }
@@ -252,6 +256,16 @@ New-Feed -Dir $c.Feed -Tag $newTag -TamperSums
 $script:run = Invoke-Check $c.Feed $c.Dl $script:case
 Assert-That ($script:run.Code -eq 1) 'expected exit 1 (refused)'
 Assert-That ($script:run.Err -match "aren't signed with Glowfly's key") 'expected the signature error'
+Assert-Empty $c.Dl
+Complete-Case
+
+# A validly signed SHA256SUMS, but signed for this version's release, offered under the newer tag.
+$c = Start-Case 'replayed-sums'
+New-Feed -Dir $c.Feed -Tag $newTag -SignedFor "v$Version"
+$script:run = Invoke-Check $c.Feed $c.Dl $script:case
+Assert-That ($script:run.Code -eq 1) 'expected exit 1 (refused)'
+$replayed = "were signed for $([regex]::Escape("v$Version")), not $([regex]::Escape($newTag))"
+Assert-That ($script:run.Err -match $replayed) 'expected the signed-for-another-release error'
 Assert-Empty $c.Dl
 Complete-Case
 
