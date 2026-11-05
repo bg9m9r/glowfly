@@ -1,14 +1,20 @@
 //! The views' edits (`EditMsg`), each set back on the state it was drawn from: an edit for a
-//! rename, terminal session, blame or welcome that has since gone is dropped, and only the
-//! fields the view writes are taken (the matches, the template, the read and save stay update's).
+//! tab no longer active, a File view version no longer shown, or a rename, terminal session,
+//! blame or welcome that has since gone is dropped, and only the fields the view writes are
+//! taken (the matches, the template, the read and save stay update's).
 
 use crate::effect::Effect;
 use crate::msg::EditMsg;
 use crate::state::AppState;
+use crate::state::history::FileHistoryView;
 
 pub(super) fn handle(st: &mut AppState, msg: EditMsg, fx: &mut Vec<Effect>) {
     match msg {
-        EditMsg::Commit(f) => st.session.draft.apply(f),
+        EditMsg::Commit { tab, fields } => {
+            if st.active_tab_id() == Some(tab) {
+                st.session.draft.apply(fields);
+            }
+        }
         EditMsg::Welcome(f) => {
             if let Some(w) = &mut st.onboarding.welcome {
                 w.apply(f);
@@ -29,8 +35,9 @@ pub(super) fn handle(st: &mut AppState, msg: EditMsg, fx: &mut Vec<Effect>) {
                 v.apply(*f);
             }
         }
-        EditMsg::FileNav(nav) => {
-            if let Some(v) = &mut st.session.history.view {
+        EditMsg::FileNav { oid, path, nav } => {
+            let shown = |v: &&mut FileHistoryView| v.shown().is_some_and(|(o, p, _)| o == oid && p == path);
+            if let Some(v) = st.session.history.view.as_mut().filter(shown) {
                 v.nav.apply_view(*nav);
             }
         }

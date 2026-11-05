@@ -68,11 +68,6 @@ pub struct CommitRun {
     pub tidy_check: bool,
 }
 
-/// The active tab's id, if there is a tab.
-fn active_tab(st: &AppState) -> Option<TabId> {
-    st.tabs.get(st.active_tab).map(|t| t.id)
-}
-
 /// Whether something keeps a new hint away: a dialog, Preferences, a job, or a conflict (files
 /// conflicted, or a merge, rebase, cherry-pick or revert in progress) in the active tab.
 pub fn blocked(st: &AppState) -> bool {
@@ -95,7 +90,7 @@ fn may_offer(st: &AppState, id: HintId) -> bool {
         && o.hints_shown_this_session == 0
         && o.hint.is_none()
         && !blocked(st)
-        && active_tab(st).is_some()
+        && st.active_tab_id().is_some()
         && (id.place() != Place::LeftPanel || st.settings.show_left_panel)
         && !(id == HintId::Connect && connect_covered(st, st.view.sections.prs))
 }
@@ -111,7 +106,7 @@ pub fn connect_covered(st: &AppState, prs_open: bool) -> bool {
 /// Shows `id` in the active tab when every rule allows it; otherwise the offer is dropped, not
 /// queued. Returns whether it shows.
 pub fn offer(st: &mut AppState, id: HintId) -> bool {
-    let Some(tab) = active_tab(st).filter(|_| may_offer(st, id)) else { return false };
+    let Some(tab) = st.active_tab_id().filter(|_| may_offer(st, id)) else { return false };
     st.onboarding.hint = Some(ShownHint { id, tab });
     st.onboarding.hints_shown_this_session += 1;
     true
@@ -137,7 +132,7 @@ pub fn ignore(st: &mut AppState) -> bool {
 /// closed, or (Connect) the left panel is hidden.
 pub fn place_gone(st: &AppState) -> bool {
     let Some(h) = st.onboarding.hint else { return false };
-    active_tab(st) != Some(h.tab) || st.snap.is_none() || (h.id.place() == Place::LeftPanel && !st.settings.show_left_panel)
+    st.active_tab_id() != Some(h.tab) || st.snap.is_none() || (h.id.place() == Place::LeftPanel && !st.settings.show_left_panel)
 }
 
 /// A summary that marks a work-in-progress commit: it starts with "wip" as a word, or with
@@ -194,7 +189,7 @@ pub struct HintView {
 
 /// The hint showing in the active tab, worded; `prs_open` as for `connect_covered`.
 pub fn view(st: &AppState, prs_open: bool) -> Option<HintView> {
-    let h = st.onboarding.hint.filter(|h| active_tab(st) == Some(h.tab))?;
+    let h = st.onboarding.hint.filter(|h| st.active_tab_id() == Some(h.tab))?;
     let t = st.settings.lang();
     let (text, button) = match h.id {
         HintId::Undo => match st.keymap.hint(BindingId::Undo) {
