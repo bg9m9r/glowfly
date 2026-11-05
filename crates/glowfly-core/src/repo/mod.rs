@@ -2,7 +2,7 @@
 //! Reads (history, refs, status, diffs) and index/working-tree edits happen here; operations
 //! that should run hooks or talk to remotes go through `gitcli`.
 //!
-//! The types are here (the diff ones in `diff_types`, a loaded commit and its shared author in
+//! The types are here (the diff ones in `diff_types`, a branch's upstream in `tracking`, a loaded commit and its shared author in
 //! `commit_info`, `Snapshot`, `LoadOptions` and `CommitDetail` in `snapshot`, `Snapshot`'s
 //! queries in `snapshot_impl`); the work is split by area: `load` (history, refs, status; `walk` and `walk_order` read the
 //! history, `walk_reuse` takes what an earlier load read, `load_more` goes on from where a cut
@@ -19,7 +19,7 @@
 //! `attrs` (gitattributes, read from the source `attr_source` picks for the version shown), `submodules` (and `submodule_add`, the checks on a new submodule's
 //! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
 //! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `line_map` (a file's lines mapped across commits, following renames, for pull request threads), `divergence` (the commits on each side of a branch and its upstream, from the
-//! loaded graph), `unmerged` (the commits deleting a branch would leave on no branch) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
+//! loaded graph), `unmerged` (the commits deleting a branch would leave on no branch), `push_config` and `push_target` (where a plain push goes, or why git refuses it) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
 //! one path exactly) and `collide` (paths a file system can't keep apart).
 
@@ -70,6 +70,7 @@ mod noclobber;
 mod op_state;
 mod pr_compare;
 mod push_config;
+pub mod push_target;
 mod refs_key;
 mod remotes;
 mod removal;
@@ -98,6 +99,7 @@ mod template;
 mod tool_sides;
 mod touching;
 mod tracked;
+mod tracking;
 mod trash;
 mod unmerged;
 pub(crate) mod walk;
@@ -162,7 +164,8 @@ pub use markers::{MARKER_SCAN_MAX, conflict_markers, marker_regions};
 pub use merge_msg::merge_message;
 pub use op_state::{BranchUse, HeldBranch, held_branch, state};
 pub use pr_compare::{PR_COMMITS_MAX, PrCompare, RangeCommit, RangeCommits, SourceFrom, SourceTip, is_commit_prefix, pr_compare};
-pub use push_config::{PushRemotes, push_remotes};
+pub use push_config::{PushMode, PushRemotes, push_remotes};
+pub use push_target::{PushDest, PushRefusal, PushRule, PushTarget};
 pub(crate) use refs_key::submodule_stamps;
 pub use refs_key::{RACY_WINDOW, open_file_stamp, refs_key, stamp_trustworthy};
 pub use remotes::RemoteInfo;
@@ -190,6 +193,7 @@ pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};
 pub use touching::{Touching, commits_touching};
 pub use tracked::{ListFilesFailed, tracked_paths};
+pub use tracking::Tracking;
 pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os_trash, os_untrash};
 pub use unmerged::unmerged_count;
 pub(crate) use workfile::contained;
@@ -224,27 +228,6 @@ pub struct RefLabel {
     pub is_head: bool,
 }
 
-/// A branch's configured upstream (`branch.<name>.remote` and `.merge`).
-#[derive(Clone, Debug, PartialEq)]
-pub struct Tracking {
-    /// The remote name, or "." when the upstream is a local branch.
-    pub remote: String,
-    /// The upstream branch name on that remote, without refs/heads/.
-    pub merge: String,
-}
-
-impl Tracking {
-    /// Whether the upstream is on a remote rather than a local branch.
-    pub fn is_remote(&self) -> bool {
-        self.remote != "."
-    }
-
-    /// "remote/merge", or just the branch name for a local upstream.
-    pub fn display(&self) -> String {
-        if self.is_remote() { format!("{}/{}", self.remote, self.merge) } else { self.merge.clone() }
-    }
-}
-
 #[derive(Clone, PartialEq)]
 pub struct BranchInfo {
     pub name: String,
@@ -263,6 +246,9 @@ pub struct BranchInfo {
     /// the checked-out branch; false when HEAD is unborn. Worked out only for branches whose
     /// upstream is a remote-tracking ref (deleting both is what asks); false for the others.
     pub merged: bool,
+    /// Where a plain `git push` would send it were it checked out (`push_target`); None without
+    /// a configured upstream, or in snapshots built by hand.
+    pub push: Option<PushTarget>,
 }
 
 #[derive(Clone)]

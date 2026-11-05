@@ -24,12 +24,16 @@ pub fn head_contains(snap: &Snapshot, oid: Oid) -> bool {
     head == oid || snap.commits_between(head, None).iter().any(|c| c.oid == oid)
 }
 
-/// Whether the Push to submenu offers more than Push: two or more remotes, or one whose push
-/// would go elsewhere than Push's (an upstream on it under another name).
+/// Whether the Push to submenu offers more than Push: two or more remotes, one whose push
+/// would go elsewhere than Push's (an upstream on it under another name), or a Push that git
+/// refuses (push.default=nothing), which leaves Push to as the way to push.
 pub fn push_to_adds_a_choice(b: &BranchInfo, snap: &Snapshot) -> bool {
     match snap.remotes.as_slice() {
         [] => false,
-        [(only, _)] => b.tracking.as_ref().is_some_and(|t| t.is_remote() && (t.remote != *only || t.merge != b.name)),
+        [(only, _)] => {
+            b.tracking.as_ref().is_some_and(|t| t.is_remote() && (t.remote != *only || t.merge != b.name))
+                || crate::state::branches::plain_push::refused_any(b)
+        }
         _ => true,
     }
 }
@@ -55,6 +59,8 @@ mod tests {
             tracking: tracking.map(|(r, m)| Tracking { remote: r.into(), merge: m.into() }),
             upstream_ref: None,
             merged: false,
+
+            push: None,
         }
     }
 
@@ -74,6 +80,12 @@ mod tests {
         assert!(!push_to_adds_a_choice(&branch("topic", None), &snap), "Push goes to origin already");
         assert!(!push_to_adds_a_choice(&branch("topic", Some(("origin", "topic"))), &snap));
         assert!(push_to_adds_a_choice(&branch("topic", Some(("origin", "other"))), &snap), "Push goes to origin/other");
+        // push.default=nothing: Push is refused, so Push to is the way to push.
+        let mut refused = branch("topic", Some(("origin", "topic")));
+        refused.upstream = Some("origin/topic".into());
+        let dest = Err(glowfly_core::repo::PushRefusal::Nothing);
+        refused.push = Some(glowfly_core::repo::PushTarget { remote: "origin".into(), key: None, missing: None, dest });
+        assert!(push_to_adds_a_choice(&refused, &snap), "the plain push is refused");
         snap.remotes.push(("fork".into(), Vec::new()));
         assert!(push_to_adds_a_choice(&branch("topic", None), &snap));
         snap.remotes.clear();

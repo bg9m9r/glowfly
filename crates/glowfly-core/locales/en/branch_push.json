@@ -18,5 +18,14 @@
   "branch_push.force.upstream_changed": "The upstream of {branch} is no longer {upstream}, so it wasn't force pushed. Look at its new upstream, then try again.",
   "branch_push.force.warn.default": "{dest} is the default branch of {remote}, which others build on: this overwrites {upstream} with your local {branch}.",
   "branch_push.force.warn.development": "Git Flow uses {base} as its development branch: this overwrites {upstream} with your local {branch}.",
-  "branch_push.force.warn.production": "Git Flow uses {base} as its production branch: this overwrites {upstream} with your local {branch}."
+  "branch_push.force.warn.production": "Git Flow uses {base} as its production branch: this overwrites {upstream} with your local {branch}.",
+  "branch_push.plain.behind": "{branch} is behind {dest}, so git would reject the push. Bring in {dest}'s commits first, or force push.",
+  "branch_push.plain.invalid": "push.default is set to \"{value}\", which git doesn't accept (nothing, current, upstream, simple or matching), so git refuses to push. Fix push.default in your git config.",
+  "branch_push.plain.name_differs": "{branch} tracks {upstream}, which has another name, so a plain git push (push.default is simple) refuses it. Use Push to {remote} to update {upstream}, or set push.default to upstream.",
+  "branch_push.plain.no_remote": "{remote} isn't a remote in this repository, so git has nowhere to push {branch}. Set another upstream.",
+  "branch_push.plain.not_in_refspecs": "remote.{remote}.push doesn't include {branch}, so a plain push doesn't send it. Use Push to instead.",
+  "branch_push.plain.not_on_remote": "push.default is matching, and {remote} has no {branch} as last fetched, so a plain push doesn't send it. Use Push to instead.",
+  "branch_push.plain.not_upstream_remote": "push.default is upstream, and {key} sends {branch} to {remote} rather than {upstream_remote}, where its upstream {upstream} is. Git refuses that push. Use Push to, or set push.default to simple or current.",
+  "branch_push.plain.nothing": "push.default is \"nothing\", so a plain git push pushes only what it is told to and {branch} isn't sent. Use Push to, or set push.default to simple.",
+  "branch_push.plain.up_to_date": "{branch} is up to date with {dest}."
 }

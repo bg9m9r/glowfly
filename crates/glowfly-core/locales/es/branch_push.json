@@ -18,5 +18,14 @@
   "branch_push.force.upstream_changed": "El upstream de {branch} ya no es {upstream}, así que no se envió forzando. Revisa su nuevo upstream y vuelve a intentarlo.",
   "branch_push.force.warn.default": "{dest} es la rama por defecto de {remote}, sobre la que trabajan otros: esto sobrescribe {upstream} con tu {branch} local.",
   "branch_push.force.warn.development": "Git Flow usa {base} como rama de desarrollo: esto sobrescribe {upstream} con tu {branch} local.",
-  "branch_push.force.warn.production": "Git Flow usa {base} como rama de producción: esto sobrescribe {upstream} con tu {branch} local."
+  "branch_push.force.warn.production": "Git Flow usa {base} como rama de producción: esto sobrescribe {upstream} con tu {branch} local.",
+  "branch_push.plain.behind": "{branch} está por detrás de {dest}, así que git rechazaría el envío. Trae primero los commits de {dest}, o envía forzando.",
+  "branch_push.plain.invalid": "push.default vale \"{value}\", que git no acepta (nothing, current, upstream, simple o matching), así que git se niega a enviar. Corrige push.default en tu configuración de git.",
+  "branch_push.plain.name_differs": "{branch} sigue a {upstream}, que tiene otro nombre, así que un git push simple (push.default es simple) lo rechaza. Usa Enviar a {remote} para actualizar {upstream}, o pon push.default en upstream.",
+  "branch_push.plain.no_remote": "{remote} no es un remoto de este repositorio, así que git no tiene adónde enviar {branch}. Elige otro upstream.",
+  "branch_push.plain.not_in_refspecs": "remote.{remote}.push no incluye {branch}, así que un envío simple no la envía. Usa Enviar a en su lugar.",
+  "branch_push.plain.not_on_remote": "push.default es matching, y según la última obtención {remote} no tiene {branch}, así que un envío simple no la envía. Usa Enviar a en su lugar.",
+  "branch_push.plain.not_upstream_remote": "push.default es upstream, y {key} envía {branch} a {remote} en lugar de a {upstream_remote}, donde está su upstream {upstream}. Git rechaza ese envío. Usa Enviar a, o pon push.default en simple o current.",
+  "branch_push.plain.nothing": "push.default es \"nothing\", así que un git push simple solo envía lo que se le indica y {branch} no se envía. Usa Enviar a, o pon push.default en simple.",
+  "branch_push.plain.up_to_date": "{branch} está al día con {dest}."
 }

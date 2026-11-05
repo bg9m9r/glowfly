@@ -156,7 +156,7 @@ fn diverged_branch_is_refused() {
     assert!(st.job.is_none());
     assert!(st.modal.is_none());
     let b = st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == "feature").unwrap();
-    let why = branches::push_blocked(b, true).unwrap();
+    let why = branches::upstream_push_blocked(b, true).unwrap();
     assert!(why.contains("is behind"), "{why}");
     assert_eq!(last_log(&st), why);
     cleanup(&work, &bare);

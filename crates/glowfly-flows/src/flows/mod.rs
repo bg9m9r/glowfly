@@ -190,6 +190,7 @@ mod push_pr_config_tests;
 mod push_pr_fork_tests;
 mod push_pr_state_tests;
 mod push_pr_tests;
+mod push_target_tests;
 mod quit_busy_tests;
 mod quit_tests;
 mod quit_unsaved_tests;

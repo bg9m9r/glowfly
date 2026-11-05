@@ -1,8 +1,8 @@
 //! The restyled toolbar in the fixture window: its spacing (2 px within a group, none before a
 //! caret, 18 px from a button to the next group's), the pickers' long-name snapshots, tooltips for a
 //! focused button and near the window's edge, the reasons of a busy toolbar's dropdown items,
-//! and snapshots of the bar and of the rich tooltips. Motion is reduced so a tooltip settles at
-//! once.
+//! and snapshots of the bar and of the rich tooltips (Push's refused and missing-remote ones
+//! too). Motion is reduced so a tooltip settles at once.
 
 use crate::snapshot_check::CheckSnapshot;
 use crate::snapshot_tests::snapshot_tests_remotes::with_remotes;
@@ -10,10 +10,11 @@ use crate::snapshot_tests::snapshot_tests_worktrees::H;
 use crate::snapshot_tests::{NOW, harness, harness_sized, remove_fixture, with_repo};
 use eframe::egui;
 use egui_kittest::kittest::Queryable;
-use glowfly_core::repo::{StashInfo, Tracking};
+use glowfly_core::repo::{PushRefusal, StashInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::undo::Action;
 use glowfly_model::state::AppState;
+use glowfly_model::state::toolbar_tips::tests::push_to;
 use std::path::PathBuf;
 
 pub(super) fn settle(h: &mut H) {
@@ -265,6 +266,41 @@ fn tip_push_german() {
     h.run();
     hover(&mut h, "Push, 3 vor origin/main");
     h.check_snapshot("tip_push_german");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// push.default=upstream with remote.pushDefault=backup: git refuses a plain push, so Push is
+/// disabled and its tooltip says why.
+#[test]
+fn tip_push_refused() {
+    let (mut st, dir) = tracking(ThemeChoice::Dark, "tip-push-refused", "Add app skeleton", 3, 0);
+    let refusal = PushRefusal::NotUpstreamRemote { upstream_remote: "origin".into() };
+    push_to(st.snap.as_mut().unwrap(), "backup", Err(refusal), None, (0, 0));
+    let mut h = harness(st, true);
+    h.run();
+    hover(&mut h, "Push the current branch");
+    assert!(h.query_by_label("Push main to backup").is_some());
+    assert!(h.query_by_label_contains("Git refuses that push.").is_some());
+    h.check_snapshot("tip_push_refused");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// branch.main.pushRemote names a remote that isn't here: Push goes to the upstream, and the
+/// footer says so.
+#[test]
+fn tip_push_missing_remote() {
+    let (mut st, dir) = tracking(ThemeChoice::Dark, "tip-push-missing-remote", "Add app skeleton", 3, 0);
+    let snap = st.snap.as_mut().unwrap();
+    let tip = snap.remotes[0].1[0].1;
+    let p = push_to(snap, "origin", Ok("refs/heads/main"), Some(tip), (3, 0));
+    p.missing = Some(("branch.main.pushRemote".into(), "gone".into()));
+    let mut h = harness(st, true);
+    h.run();
+    hover(&mut h, "Push, 3 ahead of origin/main");
+    assert!(h.query_by_label_contains("isn't a remote here, so Push goes to origin/main").is_some());
+    h.check_snapshot("tip_push_missing_remote");
     drop(h);
     remove_fixture(&dir);
 }

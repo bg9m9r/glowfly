@@ -75,6 +75,8 @@ mod tests {
             tracking,
             upstream_ref: None,
             merged: false,
+
+            push: None,
         }
     }
 
