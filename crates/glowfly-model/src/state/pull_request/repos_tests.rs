@@ -32,6 +32,8 @@ fn branch(tracking: Option<(&str, &str)>) -> BranchInfo {
         tracking: tracking.map(|(remote, merge)| Tracking { remote: remote.into(), merge: merge.into() }),
         upstream_ref: None,
         merged: false,
+
+        push: None,
     }
 }
 

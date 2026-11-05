@@ -70,7 +70,7 @@ pub fn host_branch_on(b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, remote: 
             (false, _, _) => HostBranch::Missing,
             (true, 0, _) => HostBranch::Pushed,
             (true, n, 0) => HostBranch::Ahead(n),
-            (true, _, _) => HostBranch::Blocked(branches::push_blocked(b, true).unwrap_or_default()),
+            (true, _, _) => HostBranch::Blocked(branches::upstream_push_blocked(b, true).unwrap_or_default()),
         });
     }
     // Tracking nothing, a local branch, another remote or a base branch: the push goes to the

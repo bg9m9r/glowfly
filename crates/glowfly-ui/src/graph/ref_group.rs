@@ -194,6 +194,8 @@ mod tests {
             tracking: None,
             upstream_ref: upstream.map(|u| format!("refs/remotes/{u}")),
             merged: false,
+
+            push: None,
         }
     }
 

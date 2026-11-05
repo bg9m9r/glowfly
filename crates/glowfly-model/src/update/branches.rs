@@ -173,13 +173,27 @@ fn delete_with_remote(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     start_job(st, spec, fx);
 }
 
+/// Pushes `name`: to `remote` explicitly, or with None where a plain `git push` would send it
+/// were it checked out (`plain_push`, only this branch), else to its upstream or the default
+/// remote.
 fn push(st: &mut AppState, name: &str, remote: Option<&str>, fx: &mut Vec<Effect>) {
     let Some(b) = find(st, name) else { return };
     let Some(snap) = st.snap.as_ref() else { return };
+    if remote.is_none()
+        && let Some(p) = branches::plain_push::resolved(&b)
+    {
+        if let Some(why) = branches::push_blocked(st.settings.lang(), &b, !snap.remotes.is_empty()) {
+            st.log(false, why);
+            return;
+        }
+        let Some(cmd) = p.explicit_cmd(name) else { return };
+        start_job(st, JobSpec::new("Push".to_owned(), vec![cmd]), fx);
+        return;
+    }
     // The state against the upstream is known only for its own remote.
     let to_upstream = remote.is_none() || branches::remote_tracking(&b).is_some_and(|t| Some(t.remote.as_str()) == remote);
     let blocked = if to_upstream {
-        branches::push_blocked(&b, !snap.remotes.is_empty())
+        branches::upstream_push_blocked(&b, !snap.remotes.is_empty())
     } else {
         snap.remotes.is_empty().then(|| NO_REMOTES.to_owned())
     };

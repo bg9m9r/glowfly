@@ -1,9 +1,11 @@
 //! The rules the toolbar's buttons and their tooltips share: why each git button is disabled
 //! (the same sentence its tooltip shows), the head branch's ahead/behind line, when the
 //! repository last fetched, and the Push, Pull, Stash and Pop previews built from the loaded
-//! snapshot. Pure.
+//! snapshot. Push names, counts and previews against where a plain `git push` goes
+//! (`branches::plain_push`), which config may make another remote than the upstream's. Pure.
 
 use super::AppState;
+use super::branches::plain_push;
 use super::tip::{PREVIEW_ROWS, TipPreview, TipRow, commit_rows};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Divergence, Snapshot};
@@ -66,9 +68,13 @@ pub fn fetch_blocked(st: &AppState) -> Option<String> {
     })
 }
 
-/// Why Push can't run: a job or a detached HEAD. Without a remote it opens Publish instead.
+/// Why Push can't run: a job, a detached HEAD, or git refusing a plain push of the head
+/// branch (`plain_push::refused`). Without a remote it opens Publish instead.
 pub fn push_blocked(st: &AppState) -> Option<String> {
-    job_running(st).or_else(|| detached(st, |t| t.tr("toolbar.tip.blocked.detached_push")))
+    job_running(st).or_else(|| detached(st, |t| t.tr("toolbar.tip.blocked.detached_push"))).or_else(|| {
+        let snap = st.snap.as_ref()?;
+        head(snap).and_then(|b| plain_push::refused(st.settings.lang(), b))
+    })
 }
 
 pub fn branch_blocked(st: &AppState) -> Option<String> {
@@ -130,8 +136,8 @@ pub fn sync_line(t: Lang, snap: &Snapshot) -> Option<String> {
 }
 
 /// Where Push sends the head branch, as its menu's first item and its tooltip's title say:
-/// "Push main to origin/main" (or to the remote `branch.<b>.pushRemote` or `remote.pushDefault`
-/// names, which a plain `git push` prefers: "Push main to fork/main"), or without an upstream
+/// "Push main to origin/main", or where config sends a plain `git push` instead ("Push main to
+/// fork/main"), "Push main to fork" when git refuses that push, or without an upstream
 /// "Publish search to origin (creates origin/search)" on the remote Push picks. None on a
 /// detached HEAD or without a remote.
 pub fn push_target(t: Lang, snap: &Snapshot) -> Option<String> {
@@ -143,6 +149,9 @@ pub fn push_target(t: Lang, snap: &Snapshot) -> Option<String> {
 /// `push_target` as its template and the names that fill it, for a menu that cuts long names.
 pub fn push_target_parts(t: Lang, snap: &Snapshot) -> Option<(&'static str, [(&'static str, String); 2])> {
     let b = head(snap)?;
+    if let Some(p) = plain_push::resolved(b).filter(|p| p.dest.is_err()) {
+        return Some((t.tr("toolbar.tip.push_refused_title"), [("branch", b.name.clone()), ("remote", p.remote.clone())]));
+    }
     if let Some((dest, _)) = push_ahead(snap) {
         return Some((t.tr("toolbar.tip.push_title"), [("branch", b.name.clone()), ("upstream", dest)]));
     }
@@ -150,32 +159,26 @@ pub fn push_target_parts(t: Lang, snap: &Snapshot) -> Option<(&'static str, [(&'
     Some((t.tr("toolbar.tip.push_publish_title"), [("branch", b.name.clone()), ("remote", remote)]))
 }
 
-/// The remote a plain `git push` of `b` goes to when config names one other than its
-/// upstream's (`branch.<b>.pushRemote`, then `remote.pushDefault`); None when it goes to the
-/// upstream.
-fn push_elsewhere<'a>(snap: &'a Snapshot, b: &BranchInfo) -> Option<&'a str> {
-    let tracked = b.tracking.as_ref().map(|t| t.remote.as_str());
-    let (_, remote) = snap.push_remotes.for_branch(&b.name)?;
-    (Some(remote) != tracked).then_some(remote)
-}
-
-/// Where a plain `git push` of the head branch (which has an upstream) sends it and how many
-/// commits that lacks: its upstream with `ahead`, or, when config pushes it to another remote,
-/// `{remote}/{branch}` with the count from the loaded history (None when that ref isn't known
-/// or the history is cut short, rather than the upstream's count). None on a detached HEAD or
-/// without an upstream.
+/// Where a plain `git push` of the head branch (which has an upstream) sends it, as a label
+/// ("origin/main", "fork/main"), and how many commits that lacks, counted over the whole
+/// history at load (None when that ref isn't known: the push creates it). None on a detached
+/// HEAD, without an upstream, or when git refuses the push.
 pub fn push_ahead(snap: &Snapshot) -> Option<(String, Option<usize>)> {
     let b = head(snap)?;
-    let up = b.upstream.as_ref()?;
-    let Some(remote) = push_elsewhere(snap, b) else { return Some((up.clone(), Some(b.ahead))) };
-    let theirs = snap.remotes.iter().find(|(r, _)| r == remote).and_then(|(_, bs)| bs.iter().find(|(n, _)| *n == b.name));
-    let count = b.oid.zip(theirs.map(|(_, o)| *o)).and_then(|(ours, theirs)| snap.divergence(ours, theirs, 0));
-    Some((format!("{remote}/{}", b.name), count.filter(|d| d.complete).map(|d| d.ahead_total)))
+    match plain_push::resolved(b) {
+        Some(p) => {
+            let d = p.dest.as_ref().ok()?;
+            let known = d.tip.is_some() || plain_push::to_upstream(b, d);
+            Some((p.label(d), known.then(|| plain_push::counts(b, d).0)))
+        }
+        None => Some((b.upstream.clone()?, Some(b.ahead))),
+    }
 }
 
-/// Whether Push goes to the head's upstream (so its ahead/behind line and preview are Push's).
-pub fn pushes_to_upstream(snap: &Snapshot) -> bool {
-    head(snap).is_some_and(|b| b.upstream.is_some() && push_elsewhere(snap, b).is_none())
+/// The Push tooltip's note on where a plain push goes: a configured push remote that is
+/// missing, or a matching or mirror push (`plain_push::note`).
+pub fn push_note(t: Lang, snap: &Snapshot) -> Option<String> {
+    head(snap).and_then(|b| plain_push::note(t, b))
 }
 
 /// Pull's title: "Pull origin/main into main (rebase)", or "(merge)", as a plain `git pull` of
@@ -212,14 +215,24 @@ pub fn fetched_line(t: Lang, settings: &Settings, fetched_at: Option<i64>, now: 
     }
 }
 
-/// What Push sends: the head's commits its upstream lacks.
+/// What Push sends: the head's commits where a plain push goes lacks (its upstream, unless
+/// config sends it elsewhere). None when git refuses the push or nothing is known there.
 pub fn push_preview(t: Lang, snap: &Snapshot) -> Option<TipPreview> {
     let b = head(snap)?;
-    let up = b.upstream.as_deref()?;
-    let heading = t.trn("toolbar.tip.push_sends", b.ahead, &[]);
-    let mut p = side_preview(t, snap, b, b.ahead, heading, |d| &d.ahead)?;
-    if b.behind > 0 {
-        let behind = t.trf("toolbar.tip.push_behind_note", &[("upstream", &up), ("branch", &b.name)]);
+    b.upstream.as_ref()?;
+    let upstream = || (super::branches::upstream_label(b), snap.upstream_oid(b), (b.ahead, b.behind));
+    let (label, theirs, (ahead, behind)) = match plain_push::resolved(b) {
+        Some(p) => match p.dest.as_ref().ok()? {
+            d if plain_push::to_upstream(b, d) => upstream(),
+            d => (Some(p.label(d)), Some(d.tip?), (d.ahead, d.behind)),
+        },
+        None => upstream(),
+    };
+    let label = label?;
+    let heading = t.trn("toolbar.tip.push_sends", ahead, &[]);
+    let mut p = side_preview(t, snap, b, (theirs, ahead), heading, |d| &d.ahead)?;
+    if behind > 0 {
+        let behind = t.trf("toolbar.tip.push_behind_note", &[("upstream", &label), ("branch", &b.name)]);
         p.note = Some(match p.note.take() {
             Some(n) => format!("{behind}\n{n}"),
             None => behind,
@@ -233,23 +246,24 @@ pub fn pull_preview(t: Lang, snap: &Snapshot) -> Option<TipPreview> {
     let b = head(snap)?;
     b.upstream.as_ref()?;
     let heading = t.trn("toolbar.tip.pull_brings", b.behind, &[]);
-    side_preview(t, snap, b, b.behind, heading, |d| &d.behind)
+    side_preview(t, snap, b, (snap.upstream_oid(b), b.behind), heading, |d| &d.behind)
 }
 
-/// The preview of one side of `b` and its upstream: `count` (BranchInfo's, which counts the
-/// whole history) in the heading, the rows the loaded graph has, and a note when it lacks some.
+/// The preview of one side of `b` and `theirs` (its upstream's tip, or where Push goes): `count`
+/// (counted over the whole history at load) in the heading, the rows the loaded graph has, and
+/// a note when it lacks some.
 fn side_preview(
     t: Lang,
     snap: &Snapshot,
     b: &BranchInfo,
-    count: usize,
+    (theirs, count): (Option<git2::Oid>, usize),
     heading: String,
     side: fn(&Divergence) -> &Vec<git2::Oid>,
 ) -> Option<TipPreview> {
     if count == 0 {
         return None;
     }
-    let found = b.oid.zip(snap.upstream_oid(b)).and_then(|(ours, theirs)| snap.divergence(ours, theirs, PREVIEW_ROWS));
+    let found = b.oid.zip(theirs).and_then(|(ours, theirs)| snap.divergence(ours, theirs, PREVIEW_ROWS));
     let Some(d) = found else {
         return Some(TipPreview::new(heading, Vec::new()).note(Some(t.tr("toolbar.tip.not_loaded_all").to_owned())));
     };

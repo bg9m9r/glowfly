@@ -16,6 +16,8 @@ fn branch(name: &str, ahead: usize, behind: usize, tracked: bool, upstream: bool
         tracking: tracked.then(|| Tracking { remote: "origin".into(), merge: name.into() }),
         upstream_ref: upstream.then(|| format!("refs/remotes/origin/{name}")),
         merged: true,
+
+        push: None,
     }
 }
 

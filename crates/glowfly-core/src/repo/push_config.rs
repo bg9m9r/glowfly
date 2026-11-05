@@ -1,10 +1,52 @@
 //! Where git pushes a branch when no remote is named (`PushRemotes`): `branch.<name>.pushRemote`,
-//! then `remote.pushDefault`. Read with libgit2 from the repository's whole config (system,
-//! global, local and the files they include), the last value of a key winning as in git. Only
-//! remote names are read; whether the remote exists is up to the caller. Also whether a plain
-//! `git pull` rebases (`pull_rebases`), which the Pull button's tooltip names.
+//! then `remote.pushDefault`, and what it pushes there by `push.default` (`PushMode`). Read with
+//! libgit2 from the repository's whole config (system, global, local and the files they
+//! include), the last value of a key winning as in git. Only remote names are read; whether the
+//! remote exists is up to the caller (`push_target`). Also whether a plain `git pull` rebases
+//! (`pull_rebases`), which the Pull button's tooltip names.
 
 use git2::Repository;
+
+/// `push.default`: what a plain `git push` sends. Its values are compared case-sensitively,
+/// as git does; any other value (or none, in a key without one) is a config error git refuses.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum PushMode {
+    Nothing,
+    Current,
+    /// `upstream`, or its old name `tracking`.
+    Upstream,
+    #[default]
+    Simple,
+    Matching,
+    /// A value git doesn't accept, as written.
+    Invalid(String),
+}
+
+impl PushMode {
+    /// The value as git spells it, for messages.
+    pub fn config_value(&self) -> &str {
+        match self {
+            PushMode::Nothing => "nothing",
+            PushMode::Current => "current",
+            PushMode::Upstream => "upstream",
+            PushMode::Simple => "simple",
+            PushMode::Matching => "matching",
+            PushMode::Invalid(v) => v,
+        }
+    }
+
+    /// The mode a `push.default` value sets.
+    fn of(value: &str) -> PushMode {
+        match value {
+            "nothing" => PushMode::Nothing,
+            "current" => PushMode::Current,
+            "upstream" | "tracking" => PushMode::Upstream,
+            "simple" => PushMode::Simple,
+            "matching" => PushMode::Matching,
+            v => PushMode::Invalid(v.to_owned()),
+        }
+    }
+}
 
 /// The configured push remotes.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -13,6 +55,8 @@ pub struct PushRemotes {
     pub default: Option<String>,
     /// (branch, `branch.<branch>.pushRemote`), by branch name.
     pub branches: Vec<(String, String)>,
+    /// `push.default`, Simple when unset.
+    pub mode: PushMode,
 }
 
 impl PushRemotes {
@@ -31,15 +75,24 @@ impl PushRemotes {
     }
 }
 
-/// Reads the push remotes from `repo`'s config; none when it can't be read. Empty values are
-/// left out (git treats them as unset).
+/// Reads the push remotes and `push.default` from `repo`'s config; none when it can't be read.
+/// Empty remote names are left out (git treats them as unset).
 pub fn push_remotes(repo: &Repository) -> PushRemotes {
     let read = || -> Result<PushRemotes, git2::Error> {
         let cfg = repo.config()?.snapshot()?;
         let mut out = PushRemotes::default();
-        let mut entries = cfg.entries(Some(r"^(branch\..*\.pushremote|remote\.pushdefault)$"))?;
+        let mut entries = cfg.entries(Some(r"^(branch\..*\.pushremote|remote\.pushdefault|push\.default)$"))?;
         while let Some(e) = entries.next() {
             let e = e?;
+            if e.name().is_some_and(|n| n.eq_ignore_ascii_case("push.default")) {
+                // A value-less key has no value bytes to read (`value_bytes` would panic).
+                out.mode = if e.has_value() {
+                    PushMode::of(String::from_utf8_lossy(e.value_bytes()).trim())
+                } else {
+                    PushMode::Invalid(String::new())
+                };
+                continue;
+            }
             let (Some(name), true) = (e.name(), e.has_value()) else { continue };
             let value = String::from_utf8_lossy(e.value_bytes()).trim().to_owned();
             let set = (!value.is_empty()).then_some(value);
@@ -102,6 +155,44 @@ mod tests {
         assert_eq!(p.of_branch("Topic"), Some("other"), "the name keeps its case");
         assert_eq!(p.for_branch("main"), Some(("remote.pushDefault".to_owned(), "mine")));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn push_default_reads_each_value() {
+        let dir = scratch_repo("push-default");
+        let read = || push_remotes(&Repository::open(&dir).unwrap()).mode;
+        // Set here first, so the user's own global setting can't decide the rest.
+        set_config(&dir, &[("push.default", "simple")]);
+        assert_eq!(read(), PushMode::Simple);
+        let modes = [
+            ("nothing", PushMode::Nothing),
+            ("current", PushMode::Current),
+            ("upstream", PushMode::Upstream),
+            ("tracking", PushMode::Upstream),
+            ("matching", PushMode::Matching),
+            ("Simple", PushMode::Invalid("Simple".into())),
+            ("", PushMode::Invalid(String::new())),
+        ];
+        for (value, mode) in modes {
+            set_config(&dir, &[("push.default", value)]);
+            assert_eq!(read(), mode, "push.default = {value:?}");
+        }
+        assert_eq!(PushMode::Upstream.config_value(), "upstream");
+        // A key without a value is an error to git.
+        let local = dir.join(".git/config");
+        let text = std::fs::read_to_string(&local).unwrap();
+        std::fs::write(&local, format!("{text}\n[push]\n\tdefault\n")).unwrap();
+        assert_eq!(read(), PushMode::Invalid(String::new()), "value-less");
+        // The last value wins, through an include too.
+        std::fs::write(dir.join(".git/push-mode.cfg"), "[push]\n\tdefault = current\n").unwrap();
+        set_config(&dir, &[("include.path", "push-mode.cfg")]);
+        assert_eq!(read(), PushMode::Current, "the included value comes last");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unset_push_default_is_simple() {
+        assert_eq!(PushRemotes::default().mode, PushMode::Simple);
     }
 
     #[test]

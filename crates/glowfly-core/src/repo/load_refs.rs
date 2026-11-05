@@ -103,8 +103,20 @@ pub(super) fn local_branches(repo: &Repository, cache: &GraphCache) -> Result<Ve
             }
             _ => (None, None, 0, 0),
         };
-        // `merged` is worked out after the walk, from the loaded rows (`branch_merged`).
-        locals.push(BranchInfo { is_head: b.is_head(), name, oid, upstream, ahead, behind, tracking, upstream_ref, merged: false });
+        // `merged` is worked out after the walk, from the loaded rows (`branch_merged`); `push`
+        // once the remotes are read (`push_target`).
+        locals.push(BranchInfo {
+            is_head: b.is_head(),
+            name,
+            oid,
+            upstream,
+            ahead,
+            behind,
+            tracking,
+            upstream_ref,
+            merged: false,
+            push: None,
+        });
     }
     Ok(locals)
 }

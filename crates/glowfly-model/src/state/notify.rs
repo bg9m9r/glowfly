@@ -116,6 +116,8 @@ mod tests {
             tracking: None,
             upstream_ref: Some(format!("refs/remotes/{upstream}")),
             merged: true,
+
+            push: None,
         }
     }
 

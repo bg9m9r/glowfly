@@ -7,7 +7,7 @@ use crate::state::op_fixture;
 use crate::state::tip::TipRow;
 use crate::state::{AppState, RunningJob};
 use git2::Oid;
-use glowfly_core::repo::{CommitInfo, StashInfo, Tracking};
+use glowfly_core::repo::{CommitInfo, PushDest, PushRefusal, PushRule, PushTarget, StashInfo, Tracking};
 use std::time::Instant;
 
 /// The one-commit fixture with its branch called main.
@@ -70,6 +70,31 @@ pub fn diverge(snap: &mut Snapshot, ahead: u8, behind: u8, loaded: bool) {
     head.tracking = Some(Tracking { remote: "origin".into(), merge: "main".into() });
     head.ahead = ahead.into();
     head.behind = behind.into();
+}
+
+/// Sets where a plain push of the head branch (which `diverge` gave an upstream) goes: `remote`
+/// and `dest` (a ref, or why git refuses), with `tip`, `ahead` and `behind` there. Another
+/// remote than the upstream's comes from remote.pushDefault. Returns it for tests to adjust.
+pub fn push_to<'a>(
+    snap: &'a mut Snapshot,
+    remote: &str,
+    dest: Result<&str, PushRefusal>,
+    tip: Option<Oid>,
+    (ahead, behind): (usize, usize),
+) -> &'a mut PushTarget {
+    let head = snap.locals.iter_mut().find(|b| b.is_head).unwrap();
+    let t = head.tracking.clone().expect("an upstream from diverge");
+    head.upstream_ref.get_or_insert_with(|| format!("refs/remotes/{}/{}", t.remote, t.merge));
+    let dest = dest.map(|r| PushDest {
+        dest_ref: r.to_owned(),
+        tracking_ref: r.strip_prefix("refs/heads/").map(|b| format!("refs/remotes/{remote}/{b}")),
+        tip,
+        ahead,
+        behind,
+        rule: PushRule::Default,
+    });
+    let key = (remote != t.remote).then(|| "remote.pushDefault".to_owned());
+    head.push.insert(PushTarget { remote: remote.to_owned(), key, missing: None, dest })
 }
 
 pub fn running(st: &mut AppState) {
@@ -267,4 +292,74 @@ fn push_target_parts_name_the_branch_and_where_it_goes() {
     assert_eq!(template, t.tr("toolbar.tip.push_publish_title"));
     assert_eq!(names, [("branch", long.to_owned()), ("remote", "origin".to_owned())]);
     assert_eq!(push_target(t, snap).unwrap(), format!("Publish {long} to origin (creates origin/{long})"));
+}
+
+/// The fixture's own commit, which `diverge` builds main and origin/main on.
+fn base(snap: &Snapshot) -> Oid {
+    snap.commits.iter().find(|c| c.summary == "one").unwrap().oid
+}
+
+#[test]
+fn push_goes_where_a_plain_push_goes() {
+    let t = Lang::En;
+    let mut st = state("tips-push-fork");
+    let snap = st.snap.as_mut().unwrap();
+    diverge(snap, 2, 0, true);
+    let tip = base(snap);
+    push_to(snap, "fork", Ok("refs/heads/main"), Some(tip), (2, 1));
+    assert_eq!(push_ahead(snap), Some(("fork/main".into(), Some(2))), "the push target's own count");
+    assert_eq!(push_target(t, snap).as_deref(), Some("Push main to fork/main"));
+    let p = push_preview(t, snap).unwrap();
+    assert_eq!((p.heading.as_str(), p.rows.len()), ("Sends 2 commits", 2), "rows against fork/main's tip");
+    assert!(p.note.unwrap().contains("fork/main has commits main doesn't"), "behind fork/main");
+    assert_eq!(push_note(t, snap), None);
+    assert_eq!(push_blocked(&st), None);
+    // Not fetched there yet: named, without a count or preview.
+    let snap = st.snap.as_mut().unwrap();
+    push_to(snap, "fork", Ok("refs/heads/main"), None, (0, 0));
+    assert_eq!(push_ahead(snap), Some(("fork/main".into(), None)));
+    assert_eq!(push_preview(t, snap), None);
+}
+
+#[test]
+fn a_refused_push_says_why_and_names_the_remote() {
+    let t = Lang::En;
+    let mut st = state("tips-push-refused");
+    let snap = st.snap.as_mut().unwrap();
+    diverge(snap, 1, 0, true);
+    push_to(snap, "fork", Err(PushRefusal::NotUpstreamRemote { upstream_remote: "origin".into() }), None, (0, 0));
+    let why = "push.default is upstream, and remote.pushDefault sends main to fork rather than origin, where its upstream origin/main \
+               is. Git refuses that push. Use Push to, or set push.default to simple or current.";
+    assert_eq!(push_blocked(&st).as_deref(), Some(why));
+    let snap = st.snap.as_ref().unwrap();
+    let (template, names) = push_target_parts(t, snap).unwrap();
+    assert_eq!((template, &names), (t.tr("toolbar.tip.push_refused_title"), &[("branch", "main".into()), ("remote", "fork".into())]));
+    assert_eq!(push_target(t, snap).as_deref(), Some("Push main to fork"));
+    assert_eq!((push_ahead(snap), push_preview(t, snap)), (None, None));
+    // German too.
+    st.settings.language = "de".into();
+    assert_eq!(push_blocked(&st), plain_push::refused(Lang::De, st.snap.as_ref().unwrap().head_info().unwrap()));
+    assert_ne!(push_blocked(&st).as_deref(), Some(why));
+}
+
+#[test]
+fn push_notes_name_a_missing_remote_and_wider_pushes() {
+    let t = Lang::En;
+    let mut st = state("tips-push-notes");
+    let snap = st.snap.as_mut().unwrap();
+    diverge(snap, 1, 0, true);
+    let p = push_to(snap, "origin", Ok("refs/heads/main"), Some(fake(1)), (1, 0));
+    p.missing = Some(("branch.main.pushRemote".into(), "gone".into()));
+    assert_eq!(
+        push_note(t, snap).as_deref(),
+        Some("branch.main.pushRemote names \"gone\", which isn't a remote here, so Push goes to origin/main, the upstream, instead.")
+    );
+    assert_eq!(push_target(t, snap).as_deref(), Some("Push main to origin/main"));
+    let p = push_to(snap, "fork", Ok("refs/heads/main"), None, (0, 0));
+    p.dest.as_mut().unwrap().rule = PushRule::Matching;
+    let matching = "push.default is matching: a plain push also updates every other branch that has the same name on fork.";
+    assert_eq!(push_note(t, snap).as_deref(), Some(matching));
+    let p = push_to(snap, "fork", Ok("refs/heads/main"), None, (0, 0));
+    p.dest.as_mut().unwrap().rule = PushRule::Mirror;
+    assert!(push_note(t, snap).unwrap().starts_with("remote.fork.mirror is set"));
 }

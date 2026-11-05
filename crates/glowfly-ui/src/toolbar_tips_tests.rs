@@ -70,28 +70,42 @@ fn pull_names_the_configured_mode_and_push_drops_a_zero_count() {
 
 #[test]
 fn push_names_the_remote_config_pushes_to() {
+    use glowfly_core::repo::PushRefusal;
+    use glowfly_model::state::toolbar_tips::tests::{diverge, push_to};
     let mut st = state("tip-push-fork");
     let snap = st.snap.as_mut().unwrap();
-    glowfly_model::state::toolbar_tips::tests::diverge(snap, 2, 0, true);
-    let upstream = snap.remotes[0].1[0].1;
-    // remote.pushDefault=fork, which has no main yet: named, without origin's count.
-    snap.push_remotes.default = Some("fork".into());
+    diverge(snap, 2, 0, true);
+    let base = snap.commits.iter().find(|c| c.summary == "one").unwrap().oid;
     snap.remotes.push(("fork".into(), Vec::new()));
+    // remote.pushDefault=fork, which has no main yet: named, without a count.
+    push_to(snap, "fork", Ok("refs/heads/main"), None, (0, 0));
     let tip = push(&st);
     assert_eq!(tip.title, "Push main to fork/main");
-    assert_eq!((tip.body, tip.preview), (None, None), "origin's preview isn't what a push to fork sends");
-    assert_eq!(glowfly_model::state::toolbar_tips::push_ahead(st.snap.as_ref().unwrap()), Some(("fork/main".into(), None)));
-    // fork/main known: counted against it.
-    let snap = st.snap.as_mut().unwrap();
-    snap.remotes[1].1 = vec![("main".into(), upstream)];
-    assert_eq!(push(&st).title, "Push main to fork/main · 2 commits");
-    // branch.main.pushRemote wins over remote.pushDefault: back to the upstream's remote.
-    let snap = st.snap.as_mut().unwrap();
-    snap.push_remotes.branches = vec![("main".into(), "origin".into())];
+    assert_eq!((tip.body, tip.preview), (None, None), "nothing known of fork/main yet");
+    // fork/main known: counted and previewed against it.
+    push_to(st.snap.as_mut().unwrap(), "fork", Ok("refs/heads/main"), Some(base), (2, 0));
+    let tip = push(&st);
+    assert_eq!(tip.title, "Push main to fork/main · 2 commits");
+    assert_eq!(tip.preview.map(|p| (p.heading, p.rows.len())), Some(("Sends 2 commits".into(), 2)));
+    // Level with fork/main: nothing to push there.
+    push_to(st.snap.as_mut().unwrap(), "fork", Ok("refs/heads/main"), Some(base), (0, 0));
+    assert_eq!(push(&st).body.as_deref(), Some("Nothing to push: fork/main has every commit on main."));
+    // Back to the upstream.
+    push_to(st.snap.as_mut().unwrap(), "origin", Ok("refs/heads/main"), Some(base), (2, 0));
     assert_eq!(push(&st).title, "Push main to origin/main · 2 commits");
-    assert!(push(&st).preview.is_some());
-    // branch.main.pushRemote naming the fork, with no pushDefault.
-    let snap = st.snap.as_mut().unwrap();
-    (snap.push_remotes.default, snap.push_remotes.branches) = (None, vec![("main".into(), "fork".into())]);
-    assert_eq!(push(&st).title, "Push main to fork/main · 2 commits");
+    // Refused: named by remote, the reason as its body, no count or preview.
+    push_to(st.snap.as_mut().unwrap(), "fork", Err(PushRefusal::Nothing), None, (0, 0));
+    let tip = push(&st);
+    assert_eq!(tip.title, "Push main to fork");
+    assert!(tip.body.as_deref().is_some_and(|b| b.starts_with("push.default is \"nothing\"")), "{:?}", tip.body);
+    assert_eq!(tip.preview, None);
+    // A missing push remote passed over: the upstream, with a footer saying so.
+    let p = push_to(st.snap.as_mut().unwrap(), "origin", Ok("refs/heads/main"), Some(base), (2, 0));
+    p.missing = Some(("branch.main.pushRemote".into(), "gone".into()));
+    let tip = push(&st);
+    assert_eq!(tip.title, "Push main to origin/main · 2 commits");
+    assert_eq!(
+        tip.footer.as_deref(),
+        Some("branch.main.pushRemote names \"gone\", which isn't a remote here, so Push goes to origin/main, the upstream, instead.")
+    );
 }

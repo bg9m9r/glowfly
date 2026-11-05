@@ -121,6 +121,8 @@ mod tests {
             tracking: None,
             upstream_ref: None,
             merged: false,
+
+            push: None,
         }
     }
 

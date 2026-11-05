@@ -60,6 +60,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } =
         load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
     let merge_names = merge_dest::merge_names(&repo, head_branch.as_deref(), &branch_refs(&locals, &remotes));
+    let remote_names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
+    super::push_target::fill(&repo, cache, &mut locals, &push_remotes, &remote_names);
     let (tags, other_tags, lightweight_tags) = load_refs::tags(&repo)?;
     drop(refs_span);
 

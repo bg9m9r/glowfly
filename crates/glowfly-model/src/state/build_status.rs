@@ -167,6 +167,8 @@ mod tests {
             tracking: tracking.map(|(r, m)| Tracking { remote: r.into(), merge: m.into() }),
             upstream_ref: None,
             merged: false,
+
+            push: None,
         }
     }
 

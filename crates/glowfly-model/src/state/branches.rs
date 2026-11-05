@@ -1,7 +1,7 @@
 //! Branch actions: why one is blocked and where a push goes. The menu shows these reasons on
 //! disabled items and `update` logs the same text when it refuses a late message. Force push
-//! and Push to all remotes are in `push.rs`, the branch a rejected push was for in
-//! `rejected_push.rs`.
+//! and Push to all remotes are in `push.rs`, where a plain push goes (and why git refuses it)
+//! in `plain_push.rs`, the branch a rejected push was for in `rejected_push.rs`.
 
 use git2::RepositoryState;
 use glowfly_core::branch_ops::{FastForward, fast_forward_state};
@@ -9,6 +9,7 @@ use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot, Tracking};
 
+pub mod plain_push;
 pub mod push;
 pub(crate) mod rejected_push;
 
@@ -58,9 +59,9 @@ pub fn fast_forward_blocked(b: &BranchInfo, repo_state: RepositoryState) -> Opti
     }
 }
 
-/// Why pushing `b` to its upstream (or, without one, the default remote) is refused. Only the
-/// state against a remote upstream is known; pushes elsewhere are left to git.
-pub fn push_blocked(b: &BranchInfo, has_remotes: bool) -> Option<String> {
+/// Why pushing `b` to its upstream explicitly (or, without one, to the default remote) is
+/// refused. Only the state against a remote upstream is known; pushes elsewhere are left to git.
+pub fn upstream_push_blocked(b: &BranchInfo, has_remotes: bool) -> Option<String> {
     if !has_remotes {
         return Some(NO_REMOTES.to_owned());
     }
@@ -75,9 +76,26 @@ pub fn push_blocked(b: &BranchInfo, has_remotes: bool) -> Option<String> {
     None
 }
 
-/// Where a push of `b` goes: (remote, remote branch, whether to add -u). With `remote: None` it
-/// goes to the upstream on its remote, or to the default remote when the upstream is missing or
-/// local. A chosen remote other than the upstream's gets the branch's own name. -u is only
+/// Why the branch menu's Push of `b` is refused: where a plain `git push` would send it were
+/// it checked out (`plain_push`), git refuses it, or `b` is behind or level there as last
+/// fetched. A push to the upstream itself, or of a branch without a remote upstream, is judged
+/// as `upstream_push_blocked` judges it.
+pub fn push_blocked(t: Lang, b: &BranchInfo, has_remotes: bool) -> Option<String> {
+    if !has_remotes {
+        return Some(NO_REMOTES.to_owned());
+    }
+    let Some(p) = plain_push::resolved(b) else { return upstream_push_blocked(b, true) };
+    match &p.dest {
+        Err(_) => plain_push::refused(t, b),
+        Ok(d) if plain_push::to_upstream(b, d) => upstream_push_blocked(b, true),
+        Ok(d) => plain_push::blocked_elsewhere(t, b, p, d),
+    }
+}
+
+/// Where an explicit push of `b` goes (Push to, force push, stack push, Publish): (remote,
+/// remote branch, whether to add -u). With `remote: None` it goes to the upstream on its
+/// remote, or to the default remote when the upstream is missing or local; the branch menu's
+/// plain Push of a branch with a remote upstream goes where `plain_push` says instead. A chosen remote other than the upstream's gets the branch's own name. -u is only
 /// added when the branch tracks nothing, so an existing upstream is never moved.
 pub fn push_target(b: &BranchInfo, snap: &Snapshot, remote: Option<&str>) -> Option<(String, String, bool)> {
     let tracked = remote_tracking(b);

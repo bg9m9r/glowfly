@@ -213,12 +213,13 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
     }
 }
 
-/// Push, and the "Push to" submenu (one entry per remote, then All remotes when there are
-/// several) when it offers more than Push.
+/// Push (where a plain `git push` would send the branch, `branches::push_blocked`), and the
+/// "Push to" submenu (one entry per remote, then All remotes when there are several) when it
+/// offers more than Push.
 fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
     let name = b.name.as_str();
     let has_remotes = !snap.remotes.is_empty();
-    let push_blocked = branches::push_blocked(b, has_remotes);
+    let push_blocked = branches::push_blocked(t, b, has_remotes);
     menu_item_if(
         msgs,
         ui,
@@ -229,7 +230,8 @@ fn push_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs:
     if !menu_trim::push_to_adds_a_choice(b, snap) {
         return;
     }
-    push_to(ui, t, b, snap, push_blocked.as_deref(), msgs);
+    // The upstream's entry is an explicit push there, judged against the upstream.
+    push_to(ui, t, b, snap, branches::upstream_push_blocked(b, has_remotes).as_deref(), msgs);
 }
 
 /// The "Push to" submenu of local branch `b`: each remote (the upstream's marked, and refused

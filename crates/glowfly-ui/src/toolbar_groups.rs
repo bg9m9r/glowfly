@@ -63,7 +63,8 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
             msgs.push(Msg::Job(JobMsg::Push { force: false }));
         }
         if let Some(b) = snap.head_info().filter(|_| snap.remotes.len() >= 2) {
-            let blocked = why.or_else(|| glowfly_model::state::branches::push_blocked(b, true));
+            // Explicit pushes: a plain push git refuses doesn't block them.
+            let blocked = busy.clone().or_else(|| glowfly_model::state::branches::upstream_push_blocked(b, true));
             crate::branch_menu::push_to(ui, t, b, snap, blocked.as_deref(), msgs);
         }
     }

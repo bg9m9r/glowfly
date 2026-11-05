@@ -18,5 +18,14 @@
   "branch_push.force.upstream_changed": "Der Upstream von {branch} ist nicht mehr {upstream}, daher wurde nicht mit Force gepusht. Sieh dir den neuen Upstream an und versuche es dann erneut.",
   "branch_push.force.warn.default": "{dest} ist der Standard-Branch von {remote}, auf dem andere aufbauen: Das überschreibt {upstream} mit deinem lokalen {branch}.",
   "branch_push.force.warn.development": "Git Flow nutzt {base} als Entwicklungs-Branch: Das überschreibt {upstream} mit deinem lokalen {branch}.",
-  "branch_push.force.warn.production": "Git Flow nutzt {base} als Produktions-Branch: Das überschreibt {upstream} mit deinem lokalen {branch}."
+  "branch_push.force.warn.production": "Git Flow nutzt {base} als Produktions-Branch: Das überschreibt {upstream} mit deinem lokalen {branch}.",
+  "branch_push.plain.behind": "{branch} liegt hinter {dest}, daher würde git den Push ablehnen. Hol zuerst die Commits von {dest} oder pushe mit Force.",
+  "branch_push.plain.invalid": "push.default ist auf \"{value}\" gesetzt, was git nicht annimmt (nothing, current, upstream, simple oder matching), daher verweigert git den Push. Korrigiere push.default in deiner git-Konfiguration.",
+  "branch_push.plain.name_differs": "{branch} folgt {upstream}, der anders heißt, daher verweigert ein einfaches git push (push.default ist simple) ihn. Nutze Pushen nach {remote}, um {upstream} zu aktualisieren, oder setze push.default auf upstream.",
+  "branch_push.plain.no_remote": "{remote} ist kein Remote in diesem Repository, daher kann git {branch} nirgendwohin pushen. Setze einen anderen Upstream.",
+  "branch_push.plain.not_in_refspecs": "remote.{remote}.push enthält {branch} nicht, daher sendet ein einfacher Push ihn nicht. Nutze stattdessen Pushen nach.",
+  "branch_push.plain.not_on_remote": "push.default ist matching, und {remote} hat laut letztem Abruf kein {branch}, daher sendet ein einfacher Push ihn nicht. Nutze stattdessen Pushen nach.",
+  "branch_push.plain.not_upstream_remote": "push.default ist upstream, und {key} schickt {branch} nach {remote} statt nach {upstream_remote}, wo sein Upstream {upstream} liegt. Git verweigert diesen Push. Nutze Pushen nach oder setze push.default auf simple oder current.",
+  "branch_push.plain.nothing": "push.default ist \"nothing\", daher pusht ein einfaches git push nur, was ausdrücklich angegeben ist, und {branch} wird nicht gesendet. Nutze Pushen nach oder setze push.default auf simple.",
+  "branch_push.plain.up_to_date": "{branch} ist auf dem Stand von {dest}."
 }

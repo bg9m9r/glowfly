@@ -62,6 +62,7 @@ source file, update its line here.
 - `repo/blame_porcelain.rs`: parsing `git blame --porcelain` output, as bytes.
 - `repo/touching.rs`: which commits changed a path matching the search's path terms (`path_query`), for the graph search.
 - `repo/tracked.rs`: the files git tracks: the paths in the index, for finding a file by name.
+- `repo/tracking.rs`: a branch's configured upstream (`Tracking`: `branch.<name>.remote` and `.merge`).
 - `repo/shallow.rs`: shallow clones: the commits where the downloaded history stops, read from the repository's `shallow` file.
 
 ## Changing files
@@ -108,7 +109,9 @@ source file, update its line here.
 - Worktrees, with the branch each is rebasing or bisecting (`WorktreeInfo::held`, `uses`): `worktrees.rs`.
 - Other worktrees' changes, counted within the load's limits or in the background: `worktree_counts.rs`.
 - Remotes and shallow-clone boundaries.
-- Where git pushes a branch when no remote is named (`branch.<name>.pushRemote`, then `remote.pushDefault`, through config includes), and whether a plain pull rebases: `push_config.rs`.
+- Where git pushes a branch when no remote is named (`branch.<name>.pushRemote`, then `remote.pushDefault`, through config includes), what it pushes by `push.default` (`PushMode`), and whether a plain pull rebases: `push_config.rs`.
+- `repo/push_target.rs`: where a plain `git push` of a branch with an upstream goes (`BranchInfo::push`, filled at load), or why git refuses it: the push remote (a missing one passed over for the upstream's), then `remote.<r>.push`, `remote.<r>.mirror` and `push.default`, and the counts against the destination's remote-tracking ref. Tests: `push_target_tests.rs` (fixture repositories), `push_target_rules_tests.rs` (the pure rules).
+- `repo/push_refspecs.rs`: a remote's push and fetch refspecs and mirror setting as `push_target` maps a branch through them.
 - Which repository-supplied names a load keeps (`is_safe_ref_name`; remotes through `remote_ops::is_safe_remote_name`): a remote, upstream, branch or tag name git could read as an option is left out, and a checked-out one shows as a detached HEAD: `safe_names.rs`. Tests: `safe_names_tests.rs`.
 - `repo/remotes.rs`: the configured remotes with their raw fetch and push URLs, read from git config (the REMOTE section's tooltips and menus, and the Edit remote dialog's prefill).
 - `repo/submodule_add.rs`: whether git can add a submodule at a repo path: what the index already has there, what is on disk, its parent folders, .gitignore, and a stored module an earlier submodule left.

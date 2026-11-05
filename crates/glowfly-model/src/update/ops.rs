@@ -4,6 +4,7 @@
 use crate::effect::FilesEffect;
 use crate::effect::{Effect, LocalOp, SeenLines, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
+use crate::state::branches::plain_push;
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
 use glowfly_core::gitcli::args;
@@ -180,6 +181,10 @@ pub(super) fn default_remote(snap: &Snapshot) -> Option<String> {
     crate::state::branches::default_remote(snap)
 }
 
+/// The toolbar's Push: Publish (`push -u` to the default remote) without an upstream, else a
+/// plain `git push`, which git sends where its config says (`plain_push`). Nothing runs when
+/// git would refuse it; a configured push remote that is missing is passed over for an
+/// explicit push to the upstream's remote.
 pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let Some(branch) = snap.head_branch.clone() else {
@@ -198,6 +203,14 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
             return;
         };
         cmd.extend(["-u".to_owned(), "--".to_owned(), remote, branch]);
+    } else if let Some(b) = snap.head_info().filter(|b| plain_push::resolved(b).is_some()) {
+        if let Some(why) = plain_push::refused(st.settings.lang(), b) {
+            st.log(false, why);
+            return;
+        }
+        if let Some(explicit) = plain_push::resolved(b).filter(|p| p.missing.is_some()).and_then(|p| p.explicit_cmd(&branch)) {
+            cmd = explicit;
+        }
     }
     start_job(st, JobSpec::new("Push".into(), vec![cmd]), fx);
 }
