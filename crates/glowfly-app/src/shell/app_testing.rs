@@ -19,6 +19,8 @@ pub(crate) struct TestStart {
     pub trusted: Vec<PathBuf>,
     /// The repository to open, like a path on the command line.
     pub open: Option<PathBuf>,
+    /// Repositories opened as tabs before `open`, so `open` ends up the active tab.
+    pub also_open: Vec<PathBuf>,
     /// The window frame to draw from the first frame on, as `Chrome::current()` picks it.
     pub chrome: Chrome,
     /// What the settings load reported, as if the file couldn't be read.
@@ -44,13 +46,16 @@ impl GlowflyApp {
     /// askpass server, the single-instance listener, the log worker and the update check never
     /// start. The runner is sandboxed (see `runner/sandbox.rs`).
     pub(crate) fn for_test(ctx: &egui::Context, start: TestStart) -> Self {
-        let TestStart { mut settings, files, trusted, open, chrome, problem } = start;
+        let TestStart { mut settings, files, trusted, open, also_open, chrome, problem } = start;
         for path in &trusted {
             glowfly_model::state::trust::record(&mut settings, path, RepoTrust::Trusted);
         }
         let mut app = Self::assemble(ctx, settings, Vec::new(), |tx, waker| glowfly_runner::testing::sandboxed(tx, waker, files));
         app.st.cues.chrome = chrome;
         app.start(ctx, ThemeCatalog::default(), None, problem);
+        for path in also_open {
+            app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path)));
+        }
         if let Some(path) = open {
             app.dispatch(ctx, Msg::Repo(RepoMsg::Open(path)));
         }

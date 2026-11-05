@@ -102,3 +102,31 @@ fn the_palette_is_its_own_region() {
     assert!(j.state().palette.is_none());
     assert_eq!(j.count("Refresh", Region::Palette), 0, "a closed palette has no region");
 }
+
+#[test]
+fn two_repositories_open_as_tabs() {
+    let fx = Fixture::new("two-tabs");
+    let (app, lib) = (fx.work().join("app"), fx.work().join("lib"));
+    fx.init(
+        &app,
+        &[(
+            "a.txt", "one
+",
+        )],
+    );
+    fx.init(
+        &lib,
+        &[(
+            "b.txt", "two
+",
+        )],
+    );
+    let mut j = Journey::start_many(fx, app.clone(), vec![lib.clone()], vec![app.clone(), lib.clone()]);
+    j.see_contains("app", Region::Tabs);
+    j.see_contains("lib", Region::Tabs);
+    assert_eq!(j.state().tabs[j.state().active_tab].name, "app", "the opened repository is the active tab");
+    j.click_containing("lib", Region::Tabs, Pick::First);
+    assert_eq!(j.state().tabs[j.state().active_tab].name, "lib");
+    assert_eq!(super::fixture::head_branch(&app).as_deref(), Some("main"));
+    j.see("main, checked out", Region::Sidebar);
+}
