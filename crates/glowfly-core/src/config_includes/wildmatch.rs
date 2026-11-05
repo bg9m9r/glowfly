@@ -19,7 +19,7 @@ enum Found {
 }
 
 /// Whether the whole of `text` matches `pattern`.
-pub(super) fn matches(pattern: &[u8], text: &[u8], fold: bool) -> bool {
+pub(crate) fn matches(pattern: &[u8], text: &[u8], fold: bool) -> bool {
     walk(pattern, text, fold) == Found::Match
 }
 

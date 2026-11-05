@@ -7,6 +7,7 @@ use crate::effect::Effect;
 use crate::state::conflict_check::{ConflictReport, current_request, headline};
 use crate::state::trust::WaitingFor;
 use crate::state::{AppState, Modal};
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::conflict_check::{MergeTarget, TargetKind};
 use std::time::Instant;
 
@@ -38,7 +39,7 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictCheckMsg, now: Instant, fx:
             Some((_, None)) => st.log(false, no_request_reason(st)),
             None => {}
         },
-        ConflictCheckMsg::CheckBranch(name) => check_branch(st, &name, fx),
+        ConflictCheckMsg::CheckBranch(b) => check_branch(st, &b, fx),
         ConflictCheckMsg::Checked { request, manual: false, generation, result } => {
             let report = ConflictReport { request, result };
             let line = headline(st.settings.lang(), &report);
@@ -79,26 +80,24 @@ fn no_request_reason(st: &AppState) -> &'static str {
     }
 }
 
-/// Checks merging local or remote-tracking branch `name` (origin/x) into the checked-out branch.
-fn check_branch(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
+/// Checks merging local or remote-tracking branch `b` into the checked-out branch.
+fn check_branch(st: &mut AppState, b: &BranchRef, fx: &mut Vec<Effect>) {
+    let name = b.shown();
     let Some(snap) = &st.snap else { return };
     let (Some(head), Some(ours)) = (snap.head_branch.clone(), snap.head_oid) else {
         st.log(false, "Check out a branch with commits to check it for conflicts.");
         return;
     };
-    if head == name {
+    if matches!(b, BranchRef::Local(n) if *n == head) {
         st.log(false, format!("{name} is the checked-out branch."));
         return;
     }
-    let local = snap.locals.iter().find(|b| b.name == name).and_then(|b| b.oid);
-    let remote =
-        || snap.remotes.iter().flat_map(|(r, bs)| bs.iter().map(move |(n, o)| (r, n, *o))).find(|(r, n, _)| format!("{r}/{n}") == name);
-    let Some(oid) = local.or_else(|| remote().map(|(_, _, o)| o)) else {
+    let Some(oid) = snap.branch_oid(b) else {
         st.log(false, format!("There is no branch {name}."));
         return;
     };
     let workdir = snap.workdir.clone();
-    let target = MergeTarget { name: name.to_owned(), oid, kind: TargetKind::Chosen };
+    let target = MergeTarget { branch: b.clone(), oid, kind: TargetKind::Chosen };
     manual(st, workdir, CheckRequest { branch: head, ours, target }, fx);
 }
 

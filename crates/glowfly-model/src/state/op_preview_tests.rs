@@ -1,5 +1,5 @@
-//! The preview's pure rules: Apply sends what the menus send, staleness, resolving names, and
-//! the title and headline texts.
+//! The preview's pure rules: Apply sends what the menus send, staleness, finding a branch's tip,
+//! and the title and headline texts.
 
 use super::*;
 use crate::msg::JobMsg;
@@ -22,7 +22,17 @@ fn snap(name: &str) -> Snapshot {
     feature.is_head = false;
     s.locals.push(feature);
     s.remotes = vec![("origin".into(), vec![("x".into(), oid(3))])];
+    // git leaves " into main" out by default.
+    s.merge_into = None;
     s
+}
+
+fn local(name: &str) -> BranchRef {
+    BranchRef::Local(name.into())
+}
+
+fn remote(name: &str) -> BranchRef {
+    BranchRef::Remote(name.into())
 }
 
 fn job(s: &Snapshot, op: PreviewOp) -> OpPreviewJob {
@@ -60,10 +70,14 @@ fn line(n: u8, summary: &str) -> CommitLine {
 fn apply_sends_what_the_menus_send() {
     let s = snap("opp-apply");
     let t = Lang::En;
-    let merge = apply_msg(t, &s, &PreviewOp::Merge { theirs: "feature".into(), oid: oid(2) }, None).unwrap();
-    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![args(&["merge", "--", "feature"])])));
-    let rebase = apply_msg(t, &s, &PreviewOp::Rebase { onto: "origin/x".into(), oid: oid(3) }, None).unwrap();
-    assert_eq!(git_cmd(&rebase), Some(("Rebase".into(), vec![args(&["rebase", "--", "origin/x"])])));
+    let merge = apply_msg(t, &s, &PreviewOp::Merge { theirs: local("feature"), oid: oid(2) }, None).unwrap();
+    let expected = args(&["merge", "-m", "Merge branch 'feature'", "--", "refs/heads/feature"]);
+    assert_eq!(git_cmd(&merge), Some(("Merge".into(), vec![expected])));
+    let rebase = apply_msg(t, &s, &PreviewOp::Rebase { onto: Some(remote("origin/x")), oid: oid(3) }, None).unwrap();
+    assert_eq!(git_cmd(&rebase), Some(("Rebase".into(), vec![args(&["rebase", "--", "refs/remotes/origin/x"])])));
+    let sha = oid(7).to_string();
+    let onto_commit = apply_msg(t, &s, &PreviewOp::Rebase { onto: None, oid: oid(7) }, None).unwrap();
+    assert_eq!(git_cmd(&onto_commit), Some(("Rebase".into(), vec![args(&["rebase", &sha])])), "the commit menu's own item");
     let to = oid(4);
     let reset = PreviewOp::Reset { to };
     let soft = apply_msg(t, &s, &reset, Some(ResetMode::Soft)).unwrap();
@@ -79,21 +93,22 @@ fn apply_sends_what_the_menus_send() {
 }
 
 #[test]
-fn names_resolve_to_local_remote_and_sha() {
+fn branches_find_their_local_or_remote_tip() {
     let s = snap("opp-resolve");
-    assert_eq!(resolve(&s, "feature"), Some(oid(2)));
-    assert_eq!(resolve(&s, "origin/x"), Some(oid(3)));
-    assert_eq!(resolve(&s, &oid(7).to_string()), Some(oid(7)));
-    assert_eq!(resolve(&s, "origin/none"), None);
-    assert_eq!(resolve(&s, "nothing"), None);
+    assert_eq!(s.branch_oid(&local("feature")), Some(oid(2)));
+    assert_eq!(s.branch_oid(&remote("origin/x")), Some(oid(3)));
+    assert_eq!(s.branch_oid(&local("origin/x")), None, "only the remote-tracking branch exists");
+    assert_eq!(s.branch_oid(&remote("origin/none")), None);
+    assert_eq!(s.branch_oid(&local("nothing")), None);
 }
 
 #[test]
 fn a_preview_is_stale_once_head_or_the_named_ref_moves() {
     let mut s = snap("opp-stale");
-    let merge = job(&s, PreviewOp::Merge { theirs: "feature".into(), oid: oid(2) });
+    let merge = job(&s, PreviewOp::Merge { theirs: local("feature"), oid: oid(2) });
     let reset = job(&s, PreviewOp::Reset { to: oid(9) });
-    assert!(!stale(&s, &merge) && !stale(&s, &reset));
+    let onto_commit = job(&s, PreviewOp::Rebase { onto: None, oid: oid(7) });
+    assert!(!stale(&s, &merge) && !stale(&s, &reset) && !stale(&s, &onto_commit));
     s.locals[1].oid = Some(oid(8));
     assert!(stale(&s, &merge), "feature moved");
     assert!(!stale(&s, &reset));
@@ -123,10 +138,9 @@ fn apply_is_blocked_while_busy_loading_stale_or_with_nothing_to_do() {
 fn titles_name_the_operation() {
     let s = snap("opp-titles");
     let t = Lang::En;
-    assert_eq!(title(t, &s, &PreviewOp::Merge { theirs: "feature".into(), oid: oid(2) }), "Preview: merge feature into main");
-    assert_eq!(title(t, &s, &PreviewOp::Rebase { onto: "origin/x".into(), oid: oid(3) }), "Preview: rebase main onto origin/x");
-    let sha = oid(0x1a).to_string();
-    assert_eq!(title(t, &s, &PreviewOp::Rebase { onto: sha, oid: oid(0x1a) }), "Preview: rebase main onto 1a1a1a1");
+    assert_eq!(title(t, &s, &PreviewOp::Merge { theirs: local("feature"), oid: oid(2) }), "Preview: merge feature into main");
+    assert_eq!(title(t, &s, &PreviewOp::Rebase { onto: Some(remote("origin/x")), oid: oid(3) }), "Preview: rebase main onto origin/x");
+    assert_eq!(title(t, &s, &PreviewOp::Rebase { onto: None, oid: oid(0x1a) }), "Preview: rebase main onto 1a1a1a1");
     assert_eq!(title(t, &s, &PreviewOp::Reset { to: oid(0x1a) }), "Preview: reset main to 1a1a1a1");
     assert_eq!(title(t, &s, &PreviewOp::CherryPick(vec![oid(1), oid(2)])), "Preview: cherry-pick 2 commits onto main");
     assert_eq!(title(t, &s, &PreviewOp::Drop(vec![oid(1)])), "Preview: drop 1 commit from main");
@@ -138,7 +152,7 @@ fn titles_name_the_operation() {
 fn headlines_say_what_happens() {
     let s = snap("opp-headlines");
     let t = Lang::En;
-    let merge = PreviewOp::Merge { theirs: "feature".into(), oid: oid(2) };
+    let merge = PreviewOp::Merge { theirs: local("feature"), oid: oid(2) };
     assert_eq!(headline(t, &preview(&s, merge.clone(), Outcome::Done)), ["Merging makes a merge commit with no conflicts."]);
     assert_eq!(headline(t, &preview(&s, merge.clone(), Outcome::Nothing)), ["main already contains feature; merging changes nothing."]);
     let mut ff = preview(&s, merge.clone(), Outcome::FastForward);
@@ -148,7 +162,7 @@ fn headlines_say_what_happens() {
     let lines = headline(t, &preview(&s, merge, Outcome::Stopped(stop)));
     assert_eq!(lines, ["Merging stops with conflicts in 2 files.", "main moves only once the operation finishes."]);
 
-    let rebase = PreviewOp::Rebase { onto: "origin/main".into(), oid: oid(3) };
+    let rebase = PreviewOp::Rebase { onto: Some(remote("origin/main")), oid: oid(3) };
     let stop = Stop { why: StopWhy::Conflicts(vec!["a".into()]), applied: 1, waiting: vec![line(8, "w1"), line(9, "w2")] };
     let mut p = preview(&s, rebase.clone(), Outcome::Stopped(stop));
     p.after = vec![AfterRow::Stopped { at: Some(line(0x1a, "Fix parser")) }];
@@ -183,7 +197,7 @@ fn headlines_say_what_happens() {
 fn notes_and_pick_blockers() {
     let mut s = snap("opp-notes");
     let t = Lang::En;
-    let mut p = preview(&s, PreviewOp::Rebase { onto: "main".into(), oid: oid(3) }, Outcome::Done);
+    let mut p = preview(&s, PreviewOp::Rebase { onto: Some(local("main")), oid: oid(3) }, Outcome::Done);
     assert!(notes(t, &s, &p).is_empty());
     p.patch_check_skipped = true;
     s.unstaged = rows(&[("a.txt", 'M')]);

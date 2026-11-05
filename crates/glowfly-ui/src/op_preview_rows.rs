@@ -77,7 +77,7 @@ pub(super) fn after(ui: &mut Ui, env: &Env, p: &OpPreview, tone: Color32) {
                 summary: match (at, &p.op) {
                     (Some(l), _) => l.summary.clone(),
                     (None, glowfly_core::op_preview::PreviewOp::Merge { theirs, .. }) => {
-                        t.trf("op_preview.merge_row", &[("theirs", theirs), ("branch", &branch)])
+                        t.trf("op_preview.merge_row", &[("theirs", &theirs.shown()), ("branch", &branch)])
                     }
                     (None, _) => String::new(),
                 },

@@ -1,6 +1,7 @@
 //! Recorded operations and how they are named in tooltips and job labels.
 
 use super::{ConflictChange, ConflictFile, DeleteVia, MoveOp, ResetMode, Saved, short};
+use crate::branch_ref::short_ref as ref_label;
 use crate::repo::{ConflictIds, StagedNew};
 use git2::{Oid, RepositoryState};
 
@@ -223,11 +224,6 @@ fn cut50(message: &str) -> String {
     let summary = message.lines().next().unwrap_or_default();
     let cut: String = summary.chars().take(50).collect();
     if summary.chars().count() > 50 { format!("{cut}…") } else { cut }
-}
-
-/// A ref name as the user knows it: without refs/heads/ or refs/remotes/.
-fn ref_label(name: &str) -> &str {
-    name.strip_prefix("refs/heads/").or_else(|| name.strip_prefix("refs/remotes/")).unwrap_or(name)
 }
 
 fn moved(op: MoveOp, detail: Option<&str>) -> String {

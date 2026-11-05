@@ -97,7 +97,7 @@ fn previews_leave_the_repository_as_it_was() {
     write(&dir, "untracked.txt", "u\n");
     let before = (state_of(&dir), object_files(&dir));
     let ops = [
-        PreviewOp::Rebase { onto: "main".into(), oid: oid(&dir, "main") },
+        PreviewOp::Rebase { onto: Some(BranchRef::Local("main".into())), oid: oid(&dir, "refs/heads/main") },
         PreviewOp::CherryPick(vec![m1]),
         PreviewOp::Drop(vec![f1]),
         PreviewOp::Reset { to: base },
@@ -108,11 +108,11 @@ fn previews_leave_the_repository_as_it_was() {
         assert_eq!(p.op, op);
         assert_eq!((state_of(&dir), object_files(&dir)), before, "{op:?} changed something on disk");
     }
-    let p = run(&dir, PreviewOp::Rebase { onto: "main".into(), oid: oid(&dir, "main") }).unwrap();
+    let p = run(&dir, PreviewOp::Rebase { onto: Some(BranchRef::Local("main".into())), oid: oid(&dir, "refs/heads/main") }).unwrap();
     assert!(matches!(p.outcome, Outcome::Stopped(_)), "{:?}", p.outcome);
     // A merge runs merge-tree, which may write unreferenced objects; refs, index and status stay.
     if crate::gitcli::version(&dir).is_some_and(|v| (v.0, v.1) >= crate::conflict_check::MIN_GIT) {
-        let p = run(&dir, PreviewOp::Merge { theirs: "main".into(), oid: oid(&dir, "main") }).unwrap();
+        let p = run(&dir, PreviewOp::Merge { theirs: BranchRef::Local("main".into()), oid: oid(&dir, "refs/heads/main") }).unwrap();
         assert!(matches!(p.outcome, Outcome::Stopped(_)), "{:?}", p.outcome);
         assert_eq!(state_of(&dir), before.0);
     }

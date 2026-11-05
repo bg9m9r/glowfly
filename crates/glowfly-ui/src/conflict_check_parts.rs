@@ -60,7 +60,7 @@ pub(super) fn names(ui: &mut Ui, t: Lang, report: &ConflictReport, remote: bool)
     let label_w =
         labels.iter().map(|l| ui.painter().layout_no_wrap((*l).to_owned(), small.clone(), color::weak()).size().x).fold(0.0, f32::max)
             + LABEL_GAP;
-    let rows = [(labels[0], report.request.branch.as_str()), (labels[1], report.request.target.name.as_str())];
+    let rows = [(labels[0], report.request.branch.as_str()), (labels[1], report.request.target.name())];
     for (label, name) in rows {
         let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::hover());
         // The label's bottom on the name's, so their baselines line up.

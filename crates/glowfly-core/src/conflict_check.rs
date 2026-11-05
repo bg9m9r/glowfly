@@ -5,6 +5,7 @@
 //! Also choosing the branch to compare the checked-out branch with ([`target_for`]), from a
 //! loaded [`Snapshot`] alone.
 
+use crate::branch_ref::BranchRef;
 use crate::error::{Error, Result};
 use crate::gitcli::{self, GitOutput};
 use crate::repo::{BranchInfo, Snapshot};
@@ -38,10 +39,18 @@ pub enum TargetKind {
 /// The branch a check merges into the checked-out one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MergeTarget {
-    /// A short ref name git accepts: "origin/main" or "main".
-    pub name: String,
+    /// The branch, given to git by its full ref so no same-named tag is merged; shown by its
+    /// short name ("origin/main" or "main").
+    pub branch: BranchRef,
     pub oid: Oid,
     pub kind: TargetKind,
+}
+
+impl MergeTarget {
+    /// The branch's short name, as people see it.
+    pub fn name(&self) -> &str {
+        self.branch.shown()
+    }
 }
 
 /// What merging the target would do.
@@ -67,26 +76,27 @@ pub fn target_for(snap: &Snapshot) -> Option<MergeTarget> {
     let branch = snap.head_branch.as_deref()?;
     snap.head_oid?;
     let head = snap.head_info()?;
-    let upstream = head.upstream.as_deref();
-    if let (Some(name), Some(oid)) = (upstream, snap.upstream_oid(head))
+    let upstream = head.upstream_ref.as_deref().and_then(BranchRef::from_full);
+    if let (Some(up), Some(oid)) = (&upstream, snap.upstream_oid(head))
         && head.behind > 0
     {
-        return Some(MergeTarget { name: name.to_owned(), oid, kind: TargetKind::Upstream });
+        return Some(MergeTarget { branch: up.clone(), oid, kind: TargetKind::Upstream });
     }
     let remote = home_remote(snap, head);
-    let mut candidates: Vec<(String, Option<Oid>)> = Vec::new();
+    let mut candidates: Vec<(BranchRef, Option<Oid>)> = Vec::new();
     if let Some(r) = remote {
         let recorded = snap.remote_heads.iter().find(|(name, _)| name == r).map(|(_, b)| b.as_str());
         for b in recorded.into_iter().chain(["main", "master"]) {
-            candidates.push((format!("{r}/{b}"), snap.remote_oid(r, b)));
+            candidates.push((BranchRef::Remote(format!("{r}/{b}")), snap.remote_oid(r, b)));
         }
     }
     for b in ["main", "master"] {
-        candidates.push((b.to_owned(), snap.local_oid(b)));
+        candidates.push((BranchRef::Local(b.to_owned()), snap.local_oid(b)));
     }
-    candidates.into_iter().find_map(|(name, oid)| {
-        let usable = name != branch && Some(name.as_str()) != upstream;
-        usable.then_some(MergeTarget { name, oid: oid?, kind: TargetKind::DefaultBranch })
+    let own = BranchRef::Local(branch.to_owned());
+    candidates.into_iter().find_map(|(cand, oid)| {
+        let usable = cand != own && Some(&cand) != upstream.as_ref();
+        usable.then_some(MergeTarget { branch: cand, oid: oid?, kind: TargetKind::DefaultBranch })
     })
 }
 

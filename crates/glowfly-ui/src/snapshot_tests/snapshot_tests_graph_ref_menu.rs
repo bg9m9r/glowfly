@@ -1,18 +1,22 @@
 //! Right-clicking a graph row's BRANCH / TAG chips: the ref's own menu, a submenu per ref when
 //! the row has several (a remote branch's among them), and the commit menu elsewhere on the
-//! row; a tag's push items, the same as in the TAGS menu. Shares the fixture repository with
+//! row; a tag's push items, the same as in the TAGS menu; and a branch's Merge, Rebase and
+//! preview naming the branch, not a same-named tag. Shares the fixture repository with
 //! `snapshot_tests`.
 
 use super::menu_testing::{open_submenu, submenu_item};
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use super::snapshot_tests::{harness, reload, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::{click_steps, running};
 use super::snapshot_tests_select::{click, row_y};
 use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
-use glowfly_core::repo::{RefKind, RefLabel};
+use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
+use glowfly_core::branch_ref::BranchRef;
+use glowfly_core::op_preview::PreviewOp;
+use glowfly_core::repo::{LoadOptions, RefKind, RefLabel};
 use glowfly_core::settings::ThemeChoice;
-use glowfly_model::msg::{Msg, SelectionMsg};
+use glowfly_model::msg::{JobMsg, Msg, OpPreviewMsg, SelectionMsg};
 use glowfly_model::tag::TagMsg;
 
 /// Where the first chip of a row sits in the BRANCH / TAG column.
@@ -135,6 +139,39 @@ fn graph_label_menu_tag_push() {
     open_submenu(&mut h, "Tag v0.1.0");
     open_submenu(&mut h, "Push to");
     assert!(submenu_item(&h, "Push to", "origin").is_disabled(), "a job is running");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn branch_menu_merges_the_branch_not_a_tag() {
+    // A tag named like the branch, on main's first commit: git's short-name lookup would take it.
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "label-menu-not-a-tag");
+    let repo = git2::Repository::open(&dir).unwrap();
+    let root = st.snap.as_ref().unwrap().commits.iter().find(|c| c.parents.is_empty()).unwrap().oid;
+    repo.tag_lightweight("search", repo.find_commit(root).unwrap().as_object(), false).unwrap();
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    let tip = repo.find_reference("refs/heads/search").unwrap().peel_to_commit().unwrap().id();
+    let theirs = BranchRef::Local("search".into());
+    let into = st.snap.as_ref().unwrap().merge_into.clone();
+    let mut h = harness(st, true);
+    h.run();
+    let sent_cmds = |h: &super::snapshot_tests_worktrees::H, want: &[String]| {
+        h.state().1.iter().any(|m| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if cmds == &[want.to_vec()]))
+    };
+    for (item, want) in [("Merge into main", merge_cmd(&theirs, into.as_deref())), ("Rebase main onto this branch", rebase_cmd(&theirs))] {
+        click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
+        h.state_mut().1.clear();
+        h.get_by_label(item).click();
+        h.run();
+        assert!(sent_cmds(&h, &want), "{item} sends {want:?}");
+    }
+    click(&mut h, pos2(CHIP_X, row_y(SEARCH_ROW)), PointerButton::Secondary);
+    h.state_mut().1.clear();
+    h.get_by_label("Preview merge").click();
+    h.run();
+    let want = PreviewOp::Merge { theirs, oid: tip };
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::OpPreview(OpPreviewMsg::Open(op)) if *op == want)), "the preview names the branch");
     drop(h);
     remove_fixture(&dir);
 }

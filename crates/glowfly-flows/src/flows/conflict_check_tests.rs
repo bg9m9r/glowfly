@@ -5,6 +5,7 @@
 use super::tests::{git, same_place, scratch_repo, skipped, state};
 use super::update;
 use git2::Oid;
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_model::conflict_check::{CheckJob, ConflictCheckMsg};
 use glowfly_model::effect::{Effect, LoadKind};
@@ -29,6 +30,10 @@ fn diverged(name: &str) -> PathBuf {
 fn commit(dir: &Path, text: &str) {
     std::fs::write(dir.join("a.txt"), text).unwrap();
     git(dir, &["commit", "-q", "-am", text.trim()]);
+}
+
+fn local(name: &str) -> BranchRef {
+    BranchRef::Local(name.into())
 }
 
 fn oid(dir: &Path, rev: &str) -> Oid {
@@ -90,7 +95,7 @@ fn opening_a_branch_checks_it_once() {
     let job = jobs.remove(0);
     assert!(!job.manual);
     assert!(same_place(&job.workdir, &dir));
-    assert_eq!((job.request.branch.as_str(), job.request.target.name.as_str()), ("feature", "main"));
+    assert_eq!((job.request.branch.as_str(), job.request.target.name()), ("feature", "main"));
     assert_eq!(job.request.target.kind, TargetKind::DefaultBranch);
     assert!(deliver(&mut st, job).is_empty());
     assert_eq!(shown(&st), conflicts_in_a());
@@ -240,11 +245,11 @@ fn checking_another_branch_opens_a_report() {
     let mut st = state();
     st.settings.conflict_check = false;
     open(&mut st, &dir);
-    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("feature".into())), Instant::now());
+    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(local("feature"))), Instant::now());
     let [Effect::CheckConflicts(job)] = fx.as_slice() else { panic!("{fx:?}") };
     assert!(job.manual);
     assert_eq!(job.request.ours, oid(&dir, "main"));
-    assert_eq!((job.request.target.name.as_str(), job.request.target.kind), ("feature", TargetKind::Chosen));
+    assert_eq!((job.request.target.name(), job.request.target.kind), ("feature", TargetKind::Chosen));
     let job = CheckJob { workdir: job.workdir.clone(), request: job.request.clone(), manual: true, generation: 0 };
     deliver(&mut st, job);
     let Some(Modal::ConflictReport(r)) = &st.modal else { panic!("the report opens") };
@@ -253,7 +258,7 @@ fn checking_another_branch_opens_a_report() {
 
     // With another dialog open, a toast instead.
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
-    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("feature".into())), Instant::now());
+    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(local("feature"))), Instant::now());
     super::tests::finish(&mut st, fx);
     assert!(matches!(st.modal, Some(Modal::Shortcuts { .. })));
     assert!(st.toasts.iter().any(|t| t.text.contains("would stop with conflicts")));
@@ -276,7 +281,7 @@ fn manual_checks_skip_the_preference_but_wait_for_trust() {
     st.settings.conflict_check = false;
     open(&mut st, &dir);
     st.modal = None;
-    for m in [ConflictCheckMsg::CheckNow, ConflictCheckMsg::CheckBranch("main".into())] {
+    for m in [ConflictCheckMsg::CheckNow, ConflictCheckMsg::CheckBranch(local("main"))] {
         let fx = update(&mut st, Msg::ConflictCheck(m), Instant::now());
         assert!(fx.is_empty(), "nothing runs in an untrusted repository: {fx:?}");
         let Some(Modal::Trust(p)) = &st.modal else { panic!("the trust prompt") };
@@ -289,8 +294,8 @@ fn manual_checks_skip_the_preference_but_wait_for_trust() {
     update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckNow), Instant::now());
     let real = st.snap.as_ref().unwrap().real_workdir.clone();
     let jobs = drive_holding(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
-    assert!(jobs.iter().any(|j| j.manual && j.request.target.name == "main"), "Trust and run checks: {jobs:?}");
-    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("main".into())), Instant::now());
+    assert!(jobs.iter().any(|j| j.manual && j.request.target.name() == "main"), "Trust and run checks: {jobs:?}");
+    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(local("main"))), Instant::now());
     assert!(matches!(fx.as_slice(), [Effect::CheckConflicts(j)] if j.manual && j.request.target.kind == TargetKind::Chosen), "{fx:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -304,13 +309,13 @@ fn refused_manual_checks() {
     let check = |st: &mut AppState, m: ConflictCheckMsg| update(st, Msg::ConflictCheck(m), Instant::now());
     assert!(check(&mut st, ConflictCheckMsg::CheckNow).is_empty());
     assert_eq!(st.log.last().unwrap().text, "No upstream with new commits or default branch to compare with.");
-    assert!(check(&mut st, ConflictCheckMsg::CheckBranch("main".into())).is_empty());
+    assert!(check(&mut st, ConflictCheckMsg::CheckBranch(local("main"))).is_empty());
     assert_eq!(st.log.last().unwrap().text, "main is the checked-out branch.");
-    assert!(check(&mut st, ConflictCheckMsg::CheckBranch("nope".into())).is_empty());
+    assert!(check(&mut st, ConflictCheckMsg::CheckBranch(local("nope"))).is_empty());
     assert_eq!(st.log.last().unwrap().text, "There is no branch nope.");
     git(&dir, &["checkout", "-q", "--detach"]);
     reload(&mut st, &dir);
-    assert!(check(&mut st, ConflictCheckMsg::CheckBranch("feature".into())).is_empty());
+    assert!(check(&mut st, ConflictCheckMsg::CheckBranch(local("feature"))).is_empty());
     assert!(st.log.last().unwrap().text.contains("Check out a branch"));
 }
 
@@ -323,7 +328,7 @@ fn the_report_line_follows_the_language() {
     st.settings.language = "de".into();
     open(&mut st, &dir);
     st.modal = Some(Modal::Shortcuts { filter: String::new() });
-    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch("feature".into())), Instant::now());
+    let fx = update(&mut st, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(local("feature"))), Instant::now());
     super::tests::finish(&mut st, fx);
     let de = glowfly_core::i18n::Lang::De;
     let line = de.trn("conflict_check.headline.conflicts_files", 1, &[("theirs", &"feature"), ("ours", &"main")]);

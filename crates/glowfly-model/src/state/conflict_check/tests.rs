@@ -9,8 +9,12 @@ fn oid(n: u8) -> Oid {
 }
 
 fn request(ours: u8, kind: TargetKind) -> CheckRequest {
-    let name = if kind == TargetKind::Upstream { "origin/feature" } else { "main" };
-    CheckRequest { branch: "feature".into(), ours: oid(ours), target: MergeTarget { name: name.into(), oid: oid(9), kind } }
+    let branch = if kind == TargetKind::Upstream {
+        glowfly_core::branch_ref::BranchRef::Remote("origin/feature".into())
+    } else {
+        glowfly_core::branch_ref::BranchRef::Local("main".into())
+    };
+    CheckRequest { branch: "feature".into(), ours: oid(ours), target: MergeTarget { branch, oid: oid(9), kind } }
 }
 
 fn report(req: CheckRequest, result: Result<Prediction, String>) -> ConflictReport {

@@ -61,7 +61,7 @@ pub use deleted::{
     discard_untracked_saving, keeps_copy, put_back,
 };
 pub use kinds::{MoveOp, ResetMode, UndoKind};
-pub(crate) use kinds::{commits_label, move_targets};
+pub(crate) use kinds::{PICK_VALUED, commits_label, move_targets};
 pub use marked::{ConflictChange, ConflictFile, ConflictsFailed, EntryFlags, IndexAt, PathState, WorkAt, conflicts_saving};
 pub use marked_put::put_conflicts;
 pub use op_start::{OpStart, in_progress, is_abort, op_start};

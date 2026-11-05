@@ -1,12 +1,15 @@
 //! Previewing an operation: opening asks the runner, results fill only the dialog that asked,
 //! a merge on an old git says why at once, Apply sends what the menu item sends (and is refused
-//! while busy or stale), Preview again asks anew, and a drop end to end.
+//! while busy or stale), Preview again asks anew, a drop end to end, and a merge and a rebase
+//! applied onto the branch despite a tag of the same name.
 
 use super::rebase_quick_tests::{last_toast, up};
 use super::rebase_tests::{repo, running_job};
 use super::selection_tests::{commit_on, git};
 use super::tests::{drive, said};
 use git2::Oid;
+use glowfly_core::branch_ops::merge_cmd;
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::git_version::GitInfo;
 use glowfly_core::gitcli::args;
 use glowfly_core::op_preview::{GoneWhy, PreviewOp};
@@ -47,7 +50,7 @@ fn with_feature(name: &str) -> (AppState, std::path::PathBuf, [Oid; 3], Oid) {
 }
 
 fn merge(f: Oid) -> PreviewOp {
-    PreviewOp::Merge { theirs: "feature".into(), oid: f }
+    PreviewOp::Merge { theirs: BranchRef::Local("feature".into()), oid: f }
 }
 
 /// Runs a held preview and hands its result to `update`.
@@ -116,7 +119,7 @@ fn a_merge_on_an_old_git_says_why_at_once() {
     assert!(open(&mut st, merge(f)).is_empty(), "no effect");
     let Some(Err(why)) = &dialog(&st).result else { panic!("expected the version error") };
     assert!(why.contains("needs git 2.38"), "{why}");
-    let fx = open(&mut st, PreviewOp::Rebase { onto: "feature".into(), oid: f });
+    let fx = open(&mut st, PreviewOp::Rebase { onto: Some(BranchRef::Local("feature".into())), oid: f });
     job(&fx);
     assert_eq!(job(&open(&mut st, PreviewOp::Reset { to: c[0] })).request.op, PreviewOp::Reset { to: c[0] });
     let _ = std::fs::remove_dir_all(&dir);
@@ -127,7 +130,8 @@ fn apply_sends_what_the_menu_item_sends() {
     let (mut st, dir, c, f) = with_feature("opp-apply");
     deliver_open(&mut st, merge(f));
     let fx = up(&mut st, Msg::OpPreview(OpPreviewMsg::Apply(None)));
-    assert_eq!(git_cmds(&fx), [args(&["merge", "--", "feature"])]);
+    let into = st.snap.as_ref().unwrap().merge_into.clone();
+    assert_eq!(git_cmds(&fx), [merge_cmd(&BranchRef::Local("feature".into()), into.as_deref())]);
     assert!(!matches!(st.modal, Some(Modal::OpPreview(_))), "the dialog closed");
     st.job = None;
 
@@ -227,5 +231,53 @@ fn a_merge_preview_waits_for_trust_where_a_merge_driver_would_run() {
     let fx = up(&mut st, Msg::Trust(glowfly_model::msg::TrustMsg::Decide { real, trusted: true }));
     assert!(fx.iter().any(|e| matches!(e, Effect::OpPreview(j) if matches!(j.request.op, PreviewOp::Merge { .. }))), "{fx:?}");
     assert!(matches!(st.modal, Some(Modal::OpPreview(_))), "Trust and run opens the preview");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `with_feature` with a tag `feature` on c1: git's short-name lookup takes the tag first.
+fn with_shadowing_tag(name: &str) -> (AppState, std::path::PathBuf, Oid) {
+    let (mut st, dir, c, f) = with_feature(name);
+    git(&dir, &["tag", "feature", &c[1].to_string()]);
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    (st, dir, f)
+}
+
+/// Applies the loaded preview and runs its job.
+fn apply(st: &mut AppState) {
+    let fx = up(st, Msg::OpPreview(OpPreviewMsg::Apply(None)));
+    super::tests::finish(st, fx);
+    assert!(st.job.is_none(), "the job finished");
+}
+
+fn last_undo(st: &AppState) -> String {
+    st.session.undo.undo.last().expect("an undo step").describe()
+}
+
+#[test]
+fn preview_apply_merges_the_branch_not_a_same_named_tag() {
+    let (mut st, dir, f) = with_shadowing_tag("opp-merge-not-tag");
+    deliver_open(&mut st, merge(f));
+    apply(&mut st);
+    let repo = git2::Repository::open(&dir).unwrap();
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    assert_eq!(head.parent_id(1).ok(), Some(f), "merged the branch's tip");
+    assert_eq!(head.summary(), Some("Merge branch 'feature'"));
+    assert_eq!(last_undo(&st), "merge of feature");
+    let note = glowfly_core::journal::notes::read(&dir).pop().expect("the merge's note");
+    assert_eq!(note.op, glowfly_core::journal::Op::Merge { from: Some("feature".into()) });
+    let label = glowfly_core::i18n::Lang::En.trf("journal.note.merge", &[("branch", &"main"), ("from", &"feature")]);
+    assert_eq!(label, "Before merging feature into main");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn preview_apply_rebases_onto_the_branch_not_a_same_named_tag() {
+    let (mut st, dir, f) = with_shadowing_tag("opp-rebase-not-tag");
+    deliver_open(&mut st, PreviewOp::Rebase { onto: Some(BranchRef::Local("feature".into())), oid: f });
+    apply(&mut st);
+    let repo = git2::Repository::open(&dir).unwrap();
+    let head = repo.head().unwrap().peel_to_commit().unwrap().id();
+    assert!(repo.graph_descendant_of(head, f).unwrap(), "main now sits on feature's tip");
+    assert_eq!(last_undo(&st), "rebase onto feature");
     let _ = std::fs::remove_dir_all(&dir);
 }

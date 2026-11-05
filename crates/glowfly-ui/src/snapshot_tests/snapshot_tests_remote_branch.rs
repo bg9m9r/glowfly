@@ -1,5 +1,6 @@
 //! The REMOTE row menu of the left panel: the local branches that track the remote branch
-//! (checkout, also with a fast-forward, and fast-forward) or a new one, and the operations against the checked-out branch.
+//! (checkout, also with a fast-forward, and fast-forward) or a new one, and the operations against the checked-out branch
+//! (which name the remote-tracking ref in full).
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
@@ -9,9 +10,12 @@ use eframe::egui::{self, PointerButton};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
+use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::repo::{BranchInfo, Tracking};
 use glowfly_core::settings::ThemeChoice;
-use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::conflict_check::ConflictCheckMsg;
+use glowfly_model::msg::{BranchMsg, JobMsg, Msg};
 use glowfly_model::state::AppState;
 use std::path::PathBuf;
 
@@ -133,6 +137,31 @@ fn remote_branch_menu_several_trackers() {
     h.get_by_label("New branch here…").click();
     h.run();
     assert!(sent(&h, |m| matches!(m, BranchMsg::NewTrackingBranch { remote, name } if remote == "origin" && name == "search")));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn remote_branch_menu_names_the_remote_tracking_ref() {
+    let (st, dir) = with_remote(ThemeChoice::Dark, "remote-branch-menu-full-ref", &[]);
+    let into = st.snap.as_ref().unwrap().merge_into.clone();
+    let theirs = BranchRef::Remote("origin/search".into());
+    let mut h = harness(st, true);
+    h.run();
+    let (merge, rebase) = (merge_cmd(&theirs, into.as_deref()), rebase_cmd(&theirs));
+    assert_eq!(merge[merge.len() - 1], "refs/remotes/origin/search");
+    let job = |m: &Msg, want: &[String]| matches!(m, Msg::Job(JobMsg::Git { cmds, .. }) if cmds == &[want.to_vec()]);
+    let check = |m: &Msg| matches!(m, Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(b)) if *b == theirs);
+    let mut click_item = |item: &str| {
+        open_remote_row(&mut h, "search");
+        h.state_mut().1.clear();
+        h.get_by_label(item).click();
+        h.run();
+        std::mem::take(&mut h.state_mut().1)
+    };
+    assert!(click_item("Merge into main").iter().any(|m| job(m, &merge)), "the merge names the full ref");
+    assert!(click_item("Rebase main onto this branch").iter().any(|m| job(m, &rebase)), "the rebase names the full ref");
+    assert!(click_item("Check for conflicts with main").iter().any(check), "the check names the remote-tracking branch");
     drop(h);
     remove_fixture(&dir);
 }

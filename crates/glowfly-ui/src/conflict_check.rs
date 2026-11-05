@@ -52,19 +52,30 @@ pub fn indicator(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (rect, _) = ui.allocate_exact_size(super::needs_you::control_size(galley.size().x), Sense::hover());
     let resp = ui.interact(rect, Id::new(CHIP_ID), Sense::click());
     super::needs_you::paint_control(ui.painter(), rect, resp.hovered(), galley);
-    let target = report.request.target.name.clone();
+    let target = report.request.target.name().to_owned();
     let label = t.trf("conflict_check.chip.name", &[("target", &target)]);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &label));
-    let remote = cc::is_remote(snap, &report.request.target);
+    let remote = cc::is_remote(&report.request.target);
     let resp = resp.on_hover_text(cc::chip_tooltip(t, report, remote)).on_hover_cursor(egui::CursorIcon::PointingHand);
     let id = Id::new(POPOVER_ID);
     if resp.clicked() {
         ui.memory_mut(|m| m.toggle_popup(id));
     }
-    let idle = st.job.is_none();
+    let gates = Gates { remote, idle: st.job.is_none(), merge_into: snap.merge_into.as_deref() };
     popover_below(ui, id, &resp, POPOVER_W, egui::PopupCloseBehavior::CloseOnClickOutside, |ui| {
-        popover(ui, t, report, paths, remote, idle, msgs);
+        popover(ui, t, report, paths, gates, msgs);
     });
+}
+
+/// What the popover and the report dialog read besides the report.
+#[derive(Clone, Copy)]
+pub struct Gates<'a> {
+    /// The target is a remote-tracking branch.
+    pub remote: bool,
+    /// No job runs, so Merge and Rebase are on.
+    pub idle: bool,
+    /// What git's merge title ends with (`Snapshot::merge_into`).
+    pub merge_into: Option<&'a str>,
 }
 
 /// The popover's width with its frame (narrower only in a narrower window).
@@ -83,7 +94,8 @@ const TIP_W: f32 = 520.0;
 /// again; the names block; the file list; Merge and Rebase under short labels with what they do
 /// and the command on hover; and a quiet footer under a divider saying where to turn the
 /// check off. Every gap is set here, on the 8 px grid.
-fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String], remote: bool, idle: bool, msgs: &mut Vec<Msg>) {
+fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String], gates: Gates, msgs: &mut Vec<Msg>) {
+    let Gates { remote, idle, merge_into } = gates;
     ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
     header(ui, t, report, msgs);
     ui.add_space(8.0);
@@ -95,7 +107,7 @@ fn popover(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, paths: &[String]
         parts::file_list(ui, t, paths, true);
     }
     // The chip shows only a result for the inputs on screen.
-    let actions = actions(ui, t, report);
+    let actions = actions(ui, t, report, merge_into);
     if !actions.is_empty() {
         ui.add_space(GROUP_GAP);
         ui.horizontal_wrapped(|ui| {
@@ -149,15 +161,8 @@ fn header(ui: &mut egui::Ui, t: Lang, report: &ConflictReport, msgs: &mut Vec<Ms
 /// The report dialog's contents; returns true when Close was clicked. `on_head`: the report is
 /// for what is checked out now (otherwise it offers no Merge or Rebase). Its body matches the
 /// popover's: the names block, then the file list (every path) or the result's sentence.
-pub fn report_modal(
-    ui: &mut egui::Ui,
-    cx: Cx,
-    report: &ConflictReport,
-    remote: bool,
-    on_head: bool,
-    idle: bool,
-    msgs: &mut Vec<Msg>,
-) -> bool {
+pub fn report_modal(ui: &mut egui::Ui, cx: Cx, report: &ConflictReport, gates: Gates, on_head: bool, msgs: &mut Vec<Msg>) -> bool {
+    let Gates { remote, idle, merge_into } = gates;
     let t = cx.t;
     let mut d = Dialog::new(cx, t.tr("conflict_check.dialog.title")).size(Size::Wide).resizable("conflict-report").begin(ui);
     d.body(ui, |ui| {
@@ -178,7 +183,7 @@ pub fn report_modal(
             ui.add(egui::Label::new(RichText::new(t.tr("conflict_check.head_moved")).color(color::weak())).wrap());
         }
     });
-    let actions = if on_head { actions(ui, t, report) } else { Vec::new() };
+    let actions = if on_head { actions(ui, t, report, merge_into) } else { Vec::new() };
     let mut footer = Footer::new().extra(buttons::secondary(t.tr("conflict_check.check_again.button"))).close();
     for a in &actions {
         footer = footer.alt(
@@ -217,11 +222,12 @@ struct Action {
 /// labels that name no branch, against the default branch its name cut in its middle to
 /// `NAME_W`, and against a branch the user picked the full sentence with each name cut. The hover
 /// text says what the action does and, on its own line, the git command it runs.
-fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport) -> Vec<Action> {
+fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport, merge_into: Option<&str>) -> Vec<Action> {
     if !cc::offers_actions(report) {
         return Vec::new();
     }
-    let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
+    let target = &report.request.target.branch;
+    let (ours, theirs) = (report.request.branch.as_str(), target.shown());
     let named = cut_middle_in(ui.painter(), theirs, &type_scale::font(type_scale::BODY), NAME_W);
     let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     let (cut_ours, cut_theirs) = (cut_name(ours), cut_name(theirs));
@@ -256,11 +262,22 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport) -> Vec<Action> {
         }
     };
     let action = |(label, name): (String, Option<String>), says: String, verb: &str, cmd: Vec<String>| {
-        // The command line as typed: the program's name, then its arguments.
-        let line = std::iter::once("git").chain(cmd.iter().map(String::as_str)).collect::<Vec<_>>().join(" ");
-        let tip = format!("{says}\n{line}");
+        let tip = format!("{says}\n{}", typed(&cmd));
         let name = name.unwrap_or_else(|| label.clone());
         Action { label, name, tip, msg: Msg::git_cmd(verb, cmd) }
     };
-    vec![action(merge, merge_says, "Merge", merge_cmd(theirs)), action(rebase, rebase_says, "Rebase", rebase_cmd(theirs))]
+    vec![action(merge, merge_says, "Merge", merge_cmd(target, merge_into)), action(rebase, rebase_says, "Rebase", rebase_cmd(target))]
+}
+
+/// The command line as typed: `git`, then each argument, one with whitespace or `"` in double
+/// quotes (`"` and `\` escaped in it).
+fn typed(cmd: &[String]) -> String {
+    let quoted = |a: &String| {
+        if a.is_empty() || a.chars().any(|c| c.is_whitespace() || c == '"') {
+            format!("\"{}\"", a.replace('\\', "\\\\").replace('"', "\\\""))
+        } else {
+            a.clone()
+        }
+    };
+    std::iter::once("git".to_owned()).chain(cmd.iter().map(quoted)).collect::<Vec<_>>().join(" ")
 }

@@ -15,6 +15,8 @@ fn parses_every_message_shape() {
         ("reset: moving to 1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b", Event::Reset { to: s("1a2b3c4") }),
         ("merge feature: Fast-forward", Event::Merge { from: s("feature"), fast_forward: true }),
         ("merge origin/main: Merge made by the 'ort' strategy.", Event::Merge { from: s("origin/main"), fast_forward: false }),
+        ("merge refs/heads/x: Merge made by the 'ort' strategy.", Event::Merge { from: s("x"), fast_forward: false }),
+        ("merge refs/remotes/origin/x: Fast-forward", Event::Merge { from: s("origin/x"), fast_forward: true }),
         ("pull: Fast-forward", Event::Pull { rebase: false }),
         ("pull origin main: Merge made by the 'ort' strategy.", Event::Pull { rebase: false }),
         ("pull --rebase (finish): refs/heads/main onto 1a2b3c4", Event::Pull { rebase: true }),

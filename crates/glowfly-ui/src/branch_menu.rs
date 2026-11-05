@@ -23,6 +23,7 @@ use crate::widgets::menu::{item, item_named, named, separator, submenu};
 use crate::widgets::reason::ItemState;
 use eframe::egui::{self, FontSelection, RichText, text::LayoutJob};
 use glowfly_core::branch_ops::{merge_cmd, rebase_cmd};
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::custom_commands::Place;
 use glowfly_core::i18n::Lang;
 use glowfly_core::op_preview::PreviewOp;
@@ -173,7 +174,7 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckNow);
         match glowfly_core::conflict_check::target_for(snap) {
             Some(target) => {
-                menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &[("branch", &target.name)])), check)
+                menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &[("branch", target.name())])), check)
             }
             // A fetch can bring a target only when there is an upstream; without one it is left out.
             None if b.tracking.is_some() => {
@@ -186,35 +187,24 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
         let preview = |op| Msg::OpPreview(OpPreviewMsg::Open(op));
         let merge = item_named(named(t.tr("branch.menu.merge_into"), &on));
         let rebase = item_named(named(t.tr("branch.menu.rebase_onto"), &on));
+        let theirs = BranchRef::Local(name.to_owned());
+        let merge_msg = Msg::git_cmd("Merge", merge_cmd(&theirs, snap.merge_into.as_deref()));
+        let rebase_msg = Msg::git_cmd("Rebase", rebase_cmd(&theirs));
         match b.oid {
             Some(oid) => {
-                let merge_preview = preview(PreviewOp::Merge { theirs: name.to_owned(), oid });
-                menu_row_preview(
-                    msgs,
-                    ui,
-                    merge,
-                    (t.tr("op_preview.menu.merge"), None),
-                    Msg::git_cmd("Merge", merge_cmd(name)),
-                    merge_preview,
-                );
-                let rebase_preview = preview(PreviewOp::Rebase { onto: name.to_owned(), oid });
-                menu_row_preview(
-                    msgs,
-                    ui,
-                    rebase,
-                    (t.tr("op_preview.menu.rebase"), None),
-                    Msg::git_cmd("Rebase", rebase_cmd(name)),
-                    rebase_preview,
-                );
+                let merge_preview = preview(PreviewOp::Merge { theirs: theirs.clone(), oid });
+                menu_row_preview(msgs, ui, merge, (t.tr("op_preview.menu.merge"), None), merge_msg, merge_preview);
+                let rebase_preview = preview(PreviewOp::Rebase { onto: Some(theirs.clone()), oid });
+                menu_row_preview(msgs, ui, rebase, (t.tr("op_preview.menu.rebase"), None), rebase_msg, rebase_preview);
             }
             None => {
-                menu_row(msgs, ui, merge, Msg::git_cmd("Merge", merge_cmd(name)));
-                menu_row(msgs, ui, rebase, Msg::git_cmd("Rebase", rebase_cmd(name)));
+                menu_row(msgs, ui, merge, merge_msg);
+                menu_row(msgs, ui, rebase, rebase_msg);
             }
         }
         let onto = Msg::Rebase(RebaseMsg::OpenRebase(RebaseBase::OntoBranch(name.to_owned())));
         menu_row(msgs, ui, item_named(named(t.tr("branch.menu.interactive_onto"), &on)), onto);
-        let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(name.to_owned()));
+        let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(theirs));
         menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &on)), check);
     }
     if b.oid.is_some() {

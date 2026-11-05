@@ -43,9 +43,11 @@ pub(super) fn draw(ui: &mut egui::Ui, cx: Cx, shown: &Modal, env: &DialogEnv, vi
         Modal::DeleteBranch(form) => crate::branch_delete_dialog::show(ui, cx, form, msgs),
         Modal::Trust(p) => crate::trust_dialog::show(ui, cx, p, msgs),
         Modal::ConflictReport(r) => {
-            let remote = snap.is_some_and(|s| glowfly_model::state::conflict_check::is_remote(s, &r.request.target));
+            let remote = glowfly_model::state::conflict_check::is_remote(&r.request.target);
             let on_head = snap.is_some_and(|s| glowfly_model::state::conflict_check::for_head(r, s));
-            crate::conflict_check::report_modal(ui, cx, r, remote, on_head, idle, msgs)
+            let merge_into = snap.and_then(|s| s.merge_into.as_deref());
+            let gates = crate::conflict_check::Gates { remote, idle, merge_into };
+            crate::conflict_check::report_modal(ui, cx, r, gates, on_head, msgs)
         }
         Modal::OpPreview(d) => crate::op_preview_dialog::show(ui, cx, d, &env.preview_env, msgs),
         Modal::DeepLink(d) => crate::deep_link_dialog::show(ui, cx, d, msgs),

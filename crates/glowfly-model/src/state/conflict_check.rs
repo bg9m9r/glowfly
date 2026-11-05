@@ -4,6 +4,7 @@
 
 use crate::conflict_check::CheckRequest;
 use git2::RepositoryState;
+use glowfly_core::branch_ref::BranchRef;
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind, target_for};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
@@ -156,15 +157,14 @@ pub fn current_request(snap: &Snapshot) -> Option<CheckRequest> {
     Some(CheckRequest { branch, ours, target: target_for(snap)? })
 }
 
-/// Whether `target` is a remote-tracking branch of `snap` (not a local branch).
-pub fn is_remote(snap: &Snapshot, target: &MergeTarget) -> bool {
-    !snap.locals.iter().any(|b| b.name == target.name)
-        && snap.remotes.iter().any(|(r, bs)| bs.iter().any(|(b, _)| format!("{r}/{b}") == target.name))
+/// Whether `target` is a remote-tracking branch (not a local branch, even one named like it).
+pub fn is_remote(target: &MergeTarget) -> bool {
+    matches!(target.branch, BranchRef::Remote(_))
 }
 
 /// The one sentence a result gets (dialog, toast, activity log).
 pub fn headline(t: Lang, report: &ConflictReport) -> String {
-    let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
+    let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name());
     let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     match &report.result {
         Ok(Prediction::Conflicts(paths)) if paths.is_empty() => t.trf("conflict_check.headline.conflicts", &names),
@@ -183,7 +183,7 @@ pub fn headline(t: Lang, report: &ConflictReport) -> String {
 /// it is a remote-tracking branch) and what a click shows. Any result gets a fitting text,
 /// though the chip is drawn only for conflicts.
 pub fn chip_tooltip(t: Lang, report: &ConflictReport, remote: bool) -> String {
-    let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name.as_str());
+    let (ours, theirs) = (report.request.branch.as_str(), report.request.target.name());
     let names: [(&str, &dyn std::fmt::Display); 2] = [("ours", &ours), ("theirs", &theirs)];
     let listed = matches!(&report.result, Ok(Prediction::Conflicts(paths)) if !paths.is_empty());
     let mut lines = vec![match &report.result {
@@ -199,7 +199,7 @@ pub fn chip_tooltip(t: Lang, report: &ConflictReport, remote: bool) -> String {
 /// Where the target came from, and for a remote one that its last fetched state counts. None
 /// for a branch the user picked.
 fn target_note(t: Lang, target: &MergeTarget, branch: &str, remote: bool) -> Option<String> {
-    let args: [(&str, &dyn std::fmt::Display); 2] = [("name", &target.name), ("branch", &branch)];
+    let args: [(&str, &dyn std::fmt::Display); 2] = [("name", &target.name()), ("branch", &branch)];
     let note = match (target.kind, remote) {
         (TargetKind::Upstream, false) => t.trf("conflict_check.note.upstream", &args),
         (TargetKind::Upstream, true) => t.trf("conflict_check.note.upstream_fetched", &args),

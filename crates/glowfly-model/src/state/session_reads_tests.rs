@@ -47,7 +47,11 @@ fn a_request() -> CheckRequest {
     CheckRequest {
         branch: "main".into(),
         ours: oid(7),
-        target: MergeTarget { name: "origin/main".into(), oid: oid(8), kind: TargetKind::Upstream },
+        target: MergeTarget {
+            branch: glowfly_core::branch_ref::BranchRef::Remote("origin/main".into()),
+            oid: oid(8),
+            kind: TargetKind::Upstream,
+        },
     }
 }
 

@@ -15,6 +15,8 @@ mod head_ahead;
 mod load_refs;
 #[path = "load_walk.rs"]
 mod load_walk;
+#[path = "merge_dest.rs"]
+mod merge_dest;
 
 /// Loads the repository at (or above) `path`.
 pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
@@ -56,6 +58,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let remotes = load_refs::remote_branches(&repo)?;
     let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } =
         load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
+    let merge_into = merge_dest::merge_into(&repo, head_branch.as_deref());
     let (tags, other_tags, lightweight_tags) = load_refs::tags(&repo)?;
     drop(refs_span);
 
@@ -110,6 +113,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         remote_heads,
         push_remotes,
         pull_rebase,
+        merge_into,
         tags,
         other_tags,
         lightweight_tags,

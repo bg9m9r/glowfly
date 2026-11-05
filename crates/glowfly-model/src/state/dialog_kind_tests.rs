@@ -82,7 +82,11 @@ fn forms_info_and_confirms_are_told_apart() {
     let request = CheckRequest {
         branch: "feature".into(),
         ours: Oid::zero(),
-        target: MergeTarget { name: "main".into(), oid: Oid::zero(), kind: TargetKind::DefaultBranch },
+        target: MergeTarget {
+            branch: glowfly_core::branch_ref::BranchRef::Local("main".into()),
+            oid: Oid::zero(),
+            kind: TargetKind::DefaultBranch,
+        },
     };
     let info = [
         Modal::About,

@@ -1,6 +1,7 @@
 //! Recognising the command lines Glowfly builds for undoable operations.
 
 use super::DISCARD_STASH_MESSAGE;
+use crate::branch_ref::short_ref;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResetMode {
@@ -173,11 +174,16 @@ fn move_kind(op: &str, rest: &[&str]) -> Option<UndoKind> {
     if rest.iter().any(|a| NOT_RECORDED.contains(a)) {
         return None;
     }
-    let picks = matches!(op, "cherry-pick" | "revert");
-    let targets = move_targets(rest, picks);
+    let valued: &[&str] = match op {
+        "cherry-pick" | "revert" => &PICK_VALUED,
+        "merge" => &MERGE_VALUED,
+        _ => &[],
+    };
+    let targets = move_targets(rest, valued);
+    let named = || targets.first().map(|t| short_ref(t).to_owned());
     let (op, detail) = match op {
-        "merge" => (MoveOp::Merge, targets.first().map(|t| (*t).to_owned())),
-        "rebase" => (MoveOp::Rebase, targets.first().map(|t| (*t).to_owned())),
+        "merge" => (MoveOp::Merge, named()),
+        "rebase" => (MoveOp::Rebase, named()),
         "cherry-pick" => (MoveOp::CherryPick, commits_label(&targets)),
         "revert" => (MoveOp::Revert, commits_label(&targets)),
         _ => (MoveOp::Pull, None),
@@ -185,14 +191,20 @@ fn move_kind(op: &str, rest: &[&str]) -> Option<UndoKind> {
     Some(UndoKind::Move { op, detail })
 }
 
-/// The plain arguments of a move command. For a cherry-pick or revert (`picks`), a mainline
-/// parent (`-m N`, `--mainline N`, `-mN`, `--mainline=N`) is left out: it isn't a commit.
-pub(crate) fn move_targets<'a>(rest: &[&'a str], picks: bool) -> Vec<&'a str> {
+/// The options of a cherry-pick or revert whose next argument is their value: a mainline parent
+/// (`-m N`, `--mainline N`; `-mN` and `--mainline=N` are one argument) isn't a commit.
+pub(crate) const PICK_VALUED: [&str; 2] = ["-m", "--mainline"];
+
+/// The options of a merge whose next argument is their value (`merge_cmd`'s `-m <title>`).
+const MERGE_VALUED: [&str; 9] = ["-m", "-F", "--file", "-s", "--strategy", "-X", "--strategy-option", "--into-name", "--cleanup"];
+
+/// The plain arguments of a move command, leaving out the value after each of `valued`.
+pub(crate) fn move_targets<'a>(rest: &[&'a str], valued: &[&str]) -> Vec<&'a str> {
     let mut out = Vec::new();
     let mut args = rest.iter();
     while let Some(a) = args.next() {
         match *a {
-            "-m" | "--mainline" if picks => {
+            s if valued.contains(&s) => {
                 args.next();
             }
             s if plain(s) => out.push(s),

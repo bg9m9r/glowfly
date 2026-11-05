@@ -10,6 +10,7 @@ pub mod auth_failure;
 pub mod avatars;
 pub mod branch_colour;
 pub mod branch_ops;
+pub mod branch_ref;
 pub mod bundled_fonts;
 pub mod changelog;
 pub mod clone_https;

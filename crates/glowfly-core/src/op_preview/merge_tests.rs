@@ -1,6 +1,6 @@
 //! Merge previews: a clean merge and one with conflicts (merge-tree, git 2.38 or newer),
 //! fast-forwards and up-to-date branches from the graph, merge.ff and the branch's
-//! mergeOptions, and a ref that moved.
+//! mergeOptions, a ref that moved, and a same-named tag that is never taken for the branch.
 
 use super::tests::{commit, diverged, is_kept, message, oid, run};
 use super::*;
@@ -16,7 +16,7 @@ fn new_git(dir: &Path, test: &str) -> bool {
 }
 
 fn merge_op(dir: &Path, name: &str) -> PreviewOp {
-    PreviewOp::Merge { theirs: name.into(), oid: oid(dir, name) }
+    PreviewOp::Merge { theirs: BranchRef::Local(name.into()), oid: oid(dir, &format!("refs/heads/{name}")) }
 }
 
 #[test]
@@ -104,8 +104,8 @@ fn merge_ff_and_the_branch_merge_options_are_honoured() {
 fn a_ref_that_moved_is_refused() {
     let (dir, [base, ..]) = diverged("opp-merge-moved");
     git(&dir, &["checkout", "-q", "main"]);
-    let e = run(&dir, PreviewOp::Merge { theirs: "feature".into(), oid: base }).unwrap_err();
-    assert!(message(e).contains("moved since"));
+    let e = run(&dir, PreviewOp::Merge { theirs: BranchRef::Local("feature".into()), oid: base }).unwrap_err();
+    assert_eq!(message(e), ref_moved("feature"), "the short name");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -119,5 +119,19 @@ fn unrelated_histories_are_refused() {
     git(&dir, &["checkout", "-q", "main"]);
     let e = run(&dir, merge_op(&dir, "other")).unwrap_err();
     assert_eq!(message(e), UNRELATED);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_same_named_tag_is_not_the_branch() {
+    let (dir, [base, ..]) = diverged("opp-merge-tag");
+    git(&dir, &["checkout", "-q", "main"]);
+    git(&dir, &["tag", "feature", &base.to_string()]);
+    if !new_git(&dir, "a_same_named_tag_is_not_the_branch") {
+        return;
+    }
+    let p = run(&dir, merge_op(&dir, "feature")).unwrap();
+    assert_eq!(p.outcome, Outcome::Done, "the branch, not the tag at base (which is up to date)");
+    assert_eq!(p.after[0], AfterRow::NewMerge { theirs: "feature".into() });
     let _ = std::fs::remove_dir_all(&dir);
 }
