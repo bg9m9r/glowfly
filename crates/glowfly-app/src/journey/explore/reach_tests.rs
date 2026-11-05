@@ -90,3 +90,39 @@ fn a_longer_number_is_not_the_marker() {
     write(&dir, "a.txt", "edit-6-10\n");
     assert_eq!(gone(&dir, "edit-6-1"), ["edit-6-1"]);
 }
+
+#[test]
+fn a_summary_is_the_whole_first_line() {
+    let (_fx, dir) = repo("whole");
+    commit_files(
+        &dir,
+        &[(
+            "a.txt", "changed
+",
+        )],
+        "msg 10
+
+msg 1 in the body",
+    );
+    assert_eq!(missing(&dir, &BTreeSet::new(), &set(&["msg 1", "msg 10"])), ["msg 1"]);
+}
+
+#[test]
+fn a_detached_head_is_walked_without_a_reflog() {
+    let (_fx, dir) = repo("detached");
+    git(&dir, &["checkout", "-q", "--detach"]);
+    commit_files(
+        &dir,
+        &[(
+            "m.txt",
+            "edit-7-1
+",
+        )],
+        "detached work",
+    );
+    // Only the commit HEAD points at holds the marker: out of the work tree and the index, on
+    // no branch, and with no reflog left to name it.
+    git(&dir, &["rm", "-q", "m.txt"]);
+    std::fs::remove_dir_all(dir.join(".git").join("logs")).unwrap();
+    assert!(gone(&dir, "edit-7-1").is_empty());
+}
