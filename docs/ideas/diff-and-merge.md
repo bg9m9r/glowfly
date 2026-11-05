@@ -161,7 +161,6 @@ The diff viewer, blame and file history, range-diff, the conflict check and the 
 - Render the specimen at the screen's pixels per point instead of a fixed 2x
 - Say why a font couldn't be previewed (the parser's message) in the card's tooltip
 - Fonts that .gitattributes marks as text never get the preview
-- When both sides share one scale, a side that was already scaled down to fit 1024 px at render time compares at a smaller size than the other
 
 ### Merge conflict tool
 

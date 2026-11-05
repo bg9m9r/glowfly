@@ -1,6 +1,6 @@
 //! Rendering a font file (TrueType, OpenType or a collection of them) for the diff viewer's
-//! before/after preview: a short specimen (the face's name, a pangram and the digits, or for a
-//! font without Latin letters the first characters it has) set in that font alone and drawn
+//! before/after preview: a short specimen (the face's name, a pangram over two lines and the digits,
+//! or for a font without Latin letters the first characters it has) set in that font alone and drawn
 //! by resvg into a `PreviewImage`, with the face's names read by skrifa. The glyphs are white
 //! on transparent so the view can tint them to its text colour. Each render builds its own
 //! font database holding only this font, pins every text run to it and has no fallback: no
@@ -27,13 +27,14 @@ const FONT_EXTS: [&str; 4] = ["ttf", "otf", "ttc", "otc"];
 pub const PX_PER_POINT: f32 = 2.0;
 
 /// The size of the face's name line, in points.
-const NAME_PT: f32 = 28.0;
+const NAME_PT: f32 = 24.0;
 /// The size of the sample lines, in points.
 const SAMPLE_PT: f32 = 18.0;
 /// The extra room under the name line, in points.
 const NAME_GAP: f32 = 6.0;
-/// The sample line, and the line of digits and signs under it.
-const SAMPLE: &str = "The quick brown fox jumps over the lazy dog";
+/// The sample pangram, over two lines so the specimen fits a default-size card at its real size.
+const SAMPLE: [&str; 2] = ["The quick brown fox", "jumps over the lazy dog"];
+/// The line of digits and signs under the pangram.
 const DIGITS: &str = "0123456789 &@?!";
 /// How many of its own characters a font without Latin letters shows, and how many a line.
 const OWN_CHARS: usize = 32;
@@ -144,18 +145,17 @@ fn clean_name(raw: &str) -> String {
 }
 
 /// The specimen's lines, each a size in points and its text: `name` when the font has every
-/// one of its characters, then the sample and digits when it has at least half of the sample's
-/// letters, else the first `OWN_CHARS` printable characters it maps (`mapped`, in cmap order).
+/// one of its characters, then the pangram's two lines and the digits when it has at least half
+/// of the pangram's letters, else the first `OWN_CHARS` printable characters it maps (`mapped`, in cmap order).
 /// Empty when the font maps nothing to show.
 fn specimen(name: &str, maps: impl Fn(char) -> bool, mapped: impl IntoIterator<Item = u32>) -> Vec<(f32, String)> {
     let mut lines = Vec::new();
     if !name.is_empty() && name.chars().filter(|c| *c != ' ').all(&maps) {
         lines.push((NAME_PT, name.to_owned()));
     }
-    let letters: Vec<char> = SAMPLE.chars().filter(|c| c.is_alphabetic()).collect();
+    let letters: Vec<char> = SAMPLE.iter().flat_map(|l| l.chars()).filter(|c| c.is_alphabetic()).collect();
     if letters.iter().filter(|&&c| maps(c)).count() * 2 >= letters.len() {
-        lines.push((SAMPLE_PT, SAMPLE.to_owned()));
-        lines.push((SAMPLE_PT, DIGITS.to_owned()));
+        lines.extend(SAMPLE.iter().chain([&DIGITS]).map(|l| (SAMPLE_PT, (*l).to_owned())));
         return lines;
     }
     let own: Vec<char> =
@@ -234,8 +234,9 @@ fn options(bytes: &[u8]) -> Options<'static> {
     }
 }
 
-/// `lines` set in face 0 of `bytes` and drawn at `PX_PER_POINT` (less when that would pass
-/// `SHOWN_MAX`), cropped to the glyphs.
+/// `lines` set in face 0 of `bytes`, cropped to the glyphs and drawn at `PX_PER_POINT` (less
+/// when that would pass `SHOWN_MAX`); `width` and `height` are the glyphs' box in points
+/// whatever the raster scale, so a capped specimen only loses resolution, not size.
 fn rasterize(bytes: &[u8], lines: &[(f32, String)], format: &'static str) -> Result<PreviewImage, FontError> {
     let opts = options(bytes);
     let tree = Tree::from_str(&sample_svg(lines), &opts).map_err(|e| {
@@ -254,7 +255,7 @@ fn rasterize(bytes: &[u8], lines: &[(f32, String)], format: &'static str) -> Res
     let transform = Transform::from_row(scale, 0.0, 0.0, scale, -bbox.x() * scale, -bbox.y() * scale);
     resvg::render(&tree, transform, &mut pixmap.as_mut());
     let shown = [pixmap.width() as usize, pixmap.height() as usize];
-    let points = |v: f32| ((v * scale / PX_PER_POINT).ceil() as u32).max(1);
+    let points = |v: f32| (v.ceil() as u32).max(1);
     let rgba = crate::preview_svg::unmultiplied(&pixmap);
     Ok(PreviewImage { width: points(bw), height: points(bh), format, shown, rgba: Arc::new(rgba) })
 }

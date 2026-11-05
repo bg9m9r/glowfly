@@ -1,7 +1,8 @@
 //! What a frame painted where, for tests whose point is a look the text snapshot can't see (a
-//! hover fill, buttons shown only on hover): the shapes and fills inside a widget's bounds.
+//! hover fill, buttons shown only on hover, the size an image is drawn at): the shapes, fills
+//! and drawn images inside a widget's bounds.
 
-use eframe::egui::{Color32, Pos2, Rect, Shape, pos2};
+use eframe::egui::{Color32, Pos2, Rect, Shape, TextureId, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Node;
 
@@ -40,6 +41,18 @@ pub(crate) fn shapes_inside<S>(h: &Harness<'_, S>, area: Rect) -> usize {
 /// The fills of the rectangles `h`'s last frame painted inside `area`, in paint order.
 pub(crate) fn fills_inside<S>(h: &Harness<'_, S>, area: Rect) -> Vec<Color32> {
     inside(h, area).into_iter().filter_map(|s| if let Shape::Rect(r) = s { Some(r.fill) } else { None }).filter(|c| c.a() > 0).collect()
+}
+
+/// The rects of the textured images (`Painter::image`) `h`'s last frame painted wholly inside
+/// `area`, in paint order.
+pub(crate) fn images_inside<S>(h: &Harness<'_, S>, area: Rect) -> Vec<Rect> {
+    inside(h, area)
+        .into_iter()
+        .filter_map(|s| match s {
+            Shape::Mesh(m) if m.texture_id != TextureId::default() => Some(m.calc_bounds()),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The fills of the rectangles `h`'s last frame painted under `at` (a row's background, its

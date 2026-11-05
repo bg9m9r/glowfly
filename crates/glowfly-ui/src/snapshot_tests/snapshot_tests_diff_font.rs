@@ -1,13 +1,18 @@
 //! The font preview (#472): fonts/brand.ttf changed from Noto Sans Regular to SemiBold (the
 //! bundled fonts, so the fixture is the same on every OS) drawn before and after in Porcelain
 //! and Graphite, added, with a truncated After, too large, loading, as a two-face collection,
-//! and the German texts.
+//! and the German texts; and checks that both specimens draw at one scale (1.0 at the default
+//! size, shared when one side is capped).
 
 use super::super::snapshot_tests::{git, harness, remove_fixture, with_repo};
 use super::snapshot_tests_language_check::shown_texts;
+use super::snapshot_tests_painted::{bounds, images_inside};
 use crate::snapshot_check::CheckSnapshot;
+use eframe::egui::Rect;
+use egui_kittest::kittest::Queryable;
 use glowfly_core::bundled_fonts::{NOTO_SANS, NOTO_SANS_SEMIBOLD};
 use glowfly_core::i18n::Lang;
+use glowfly_core::preview_image::PreviewImage;
 use glowfly_core::repo::{self, BinarySide, BinarySides, DiffTarget, LoadOptions};
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::state::AppState;
@@ -117,5 +122,43 @@ fn diff_font_german() {
     let (mut st, dir) = with_font("diff-font-de", ThemeChoice::Dark, Some(NOTO_SANS), &NOTO_SANS[..1024]);
     st.settings.language = "de".into();
     render(st, true, "diff_font_german", &[de.tr("diff.font.cant_preview"), "Noto Sans Regular"]);
+    remove_fixture(&dir);
+}
+
+/// The specimens `st` draws (Before, then After) and the rects they were painted in, from a
+/// frame at the harness's default size.
+fn drawn(st: AppState) -> Vec<(PreviewImage, Rect)> {
+    let sides = glowfly_model::state::diff_preview::shown(&st).unwrap();
+    let imgs: Vec<PreviewImage> = sides.old.iter().chain(&sides.new).filter_map(|s| s.image.clone()).collect();
+    let mut h = harness(st, false);
+    h.run();
+    let before = h.get_all_by_label("Before").map(|n| bounds(&n)).min_by(|a, b| a.min.y.total_cmp(&b.min.y)).expect("the Before caption");
+    let mut rects = images_inside(&h, Rect::from_min_max(before.min, h.ctx.screen_rect().max));
+    rects.sort_by(|a, b| a.min.x.total_cmp(&b.min.x));
+    assert_eq!(rects.len(), 2, "one specimen a side: {rects:?}");
+    imgs.into_iter().zip(rects).collect()
+}
+
+#[test]
+fn diff_font_shows_at_its_real_size_by_default() {
+    let (st, dir) = with_font("diff-font-real-size", ThemeChoice::Light, Some(NOTO_SANS), NOTO_SANS_SEMIBOLD);
+    for (img, rect) in drawn(st) {
+        assert!((rect.width() / img.width as f32 - 1.0).abs() <= 0.01, "{rect:?} for {}x{} pt", img.width, img.height);
+        assert!((rect.height() / img.height as f32 - 1.0).abs() <= 0.01, "{rect:?} for {}x{} pt", img.width, img.height);
+    }
+    remove_fixture(&dir);
+}
+
+#[test]
+fn diff_font_capped_side_draws_at_the_shared_scale() {
+    let (mut st, dir) = with_font("diff-font-capped", ThemeChoice::Light, Some(NOTO_SANS), NOTO_SANS_SEMIBOLD);
+    let capped =
+        PreviewImage { width: 900, height: 110, format: "TrueType", shown: [1024, 126], rgba: Arc::new(vec![255; 1024 * 126 * 4]) };
+    change_sides(&mut st, |s| s.new.as_mut().unwrap().image = Some(capped));
+    let sides = drawn(st);
+    let scale = |(img, rect): &(PreviewImage, Rect)| rect.height() / img.height as f32;
+    let (old, new) = (scale(&sides[0]), scale(&sides[1]));
+    assert!((old - new).abs() <= 0.01, "one scale for both sides: {old} vs {new}");
+    assert!(old < 1.0, "both shrank together to fit the capped side: {old}");
     remove_fixture(&dir);
 }
