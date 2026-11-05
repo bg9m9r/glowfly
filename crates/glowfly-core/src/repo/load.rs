@@ -54,8 +54,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let refs_span = tracing::debug_span!("load.refs").entered();
     let mut locals = load_refs::local_branches(&repo, cache)?;
     let remotes = load_refs::remote_branches(&repo)?;
-    let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls, fetched_remotes } =
-        load_refs::remote_reads(&repo, &remotes, head_branch.as_deref(), &git_dir, &common.dir);
+    let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } =
+        load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
     let (tags, other_tags, lightweight_tags) = load_refs::tags(&repo)?;
     drop(refs_span);
 
@@ -70,6 +70,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     }
     let shallow_roots = super::shallow::roots(&repo);
     let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);
+    let fetched_remotes = super::fetch_time::fetched_remotes(&git_dir, &common.dir, &remote_info, &remote_urls);
 
     let head = (head_oid, head_branch.as_deref());
     let load_walk::History { starts, commits, row_of, truncated, frontier } =

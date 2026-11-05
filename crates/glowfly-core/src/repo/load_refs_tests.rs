@@ -1,7 +1,7 @@
 //! `load_refs`, through a whole load: remote branches group under the longest remote name they
 //! start with, the tags split into those on commits (lightweight ones named) and the others, a
 //! detached HEAD's label comes first and a hidden ref has none, and a tracking branch counts
-//! its commits ahead and behind.
+//! its commits ahead and behind. FETCH_HEAD's remotes are read with its time, after the status.
 
 use crate::repo::*;
 use crate::testutil::*;
@@ -83,4 +83,18 @@ fn a_tracking_branch_counts_its_commits_ahead_and_behind() {
     assert_eq!((main.ahead, main.behind), (2, 1));
     assert_eq!(main.upstream.as_deref(), Some("origin/main"));
     assert_eq!(main.upstream_ref.as_deref(), Some("refs/remotes/origin/main"));
+}
+
+/// FETCH_HEAD's remotes are read straight after its time, after the status read and outside the
+/// `load.refs` span, so a fetch landing during a slow status read can't pair a new time with the
+/// old fetch's remotes.
+#[test]
+fn fetch_heads_remotes_are_read_with_its_time_after_the_status() {
+    let load = include_str!("load.rs");
+    let at = |needle: &str| load.find(needle).unwrap_or_else(|| panic!("load.rs has no `{needle}`"));
+    let (status, time, remotes) = (at("read_status(&repo"), at("fetch_time::fetched_at("), at("fetch_time::fetched_remotes("));
+    assert!(status < time && time < remotes, "load_reusing reads the status, then FETCH_HEAD's time, then its remotes");
+    let between = &load[time..remotes];
+    assert_eq!(between.matches(';').count(), 1, "nothing is read between FETCH_HEAD's time and its remotes");
+    assert!(!include_str!("load_refs.rs").contains("fetch_time"), "the refs reads leave FETCH_HEAD to the load");
 }

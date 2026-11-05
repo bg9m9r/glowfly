@@ -7,7 +7,6 @@ use crate::repo::graph_cache::GraphCache;
 use crate::repo::{BranchInfo, LoadOptions, PushRemotes, RefKind, RefLabel, RemoteInfo, Tracking, is_safe_ref_name, safe_names};
 use git2::{BranchType, Oid, Repository};
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
 
 /// HEAD's commit, its branch and whether it is detached. An unborn branch has its name and no
 /// commit; a branch whose name git could read as an option shows as a detached HEAD, so no
@@ -170,13 +169,11 @@ pub(super) struct RemoteReads {
     pub pull_rebase: bool,
     /// Each remote's fetch URL.
     pub remote_urls: Vec<(String, String)>,
-    /// The remotes FETCH_HEAD says were fetched.
-    pub fetched_remotes: Vec<String>,
 }
 
-/// Reads the settings of `remotes` (and the push and pull ones of `head_branch`), and which of
-/// them FETCH_HEAD (in `git_dir` or the `common` dir) names.
-pub(super) fn remote_reads(repo: &Repository, remotes: &Remotes, head_branch: Option<&str>, git_dir: &Path, common: &Path) -> RemoteReads {
+/// Reads the settings of `remotes` (and the push and pull ones of `head_branch`). Which of them
+/// FETCH_HEAD names is read by the load later, straight after FETCH_HEAD's time, so the two match.
+pub(super) fn remote_reads(repo: &Repository, remotes: &Remotes, head_branch: Option<&str>) -> RemoteReads {
     let names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
     let remote_info = crate::repo::remotes::remote_info(repo, &names);
     let remote_heads = crate::repo::remotes::remote_heads(repo, &names);
@@ -184,8 +181,7 @@ pub(super) fn remote_reads(repo: &Repository, remotes: &Remotes, head_branch: Op
     let pull_rebase = crate::repo::push_config::pull_rebases(repo, head_branch);
     let remote_urls: Vec<(String, String)> =
         remotes.iter().filter_map(|(r, _)| Some((r.clone(), repo.find_remote(r).ok()?.url()?.to_owned()))).collect();
-    let fetched_remotes = crate::repo::fetch_time::fetched_remotes(git_dir, common, &remote_info, &remote_urls);
-    RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls, fetched_remotes }
+    RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls }
 }
 
 #[cfg(test)]
