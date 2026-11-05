@@ -93,7 +93,7 @@ fn an_unchanged_rename_of_a_repeated_name_stays_automatic() {
 
     // The window title changes while the field is open.
     run(&mut st, T::StartRename(two));
-    st.terminal.sessions[1].screen.feed(b"]0;cargo test");
+    st.terminal.sessions[1].screen.feed(b"\x1b]0;cargo test\x07");
     run(&mut st, T::Rename { id: two, name: shown, submitted: false });
     assert_eq!(session(&st, two).name, None, "clicking away without typing");
     assert_eq!(name_of(&st, two).as_deref(), Some("cargo test"));

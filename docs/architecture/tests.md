@@ -14,6 +14,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `layering/view_state.rs`: no view takes `&mut AppState` (they take `&AppState` and `&mut ViewState`) or reaches `st.view`, which is lent out while they draw.
 - `layering/core_fns.rs`: finds a core file's function bodies (free functions and methods, inline modules); `layering/paths.rs` reads `use` trees and the calls on a line.
 - `crates/glowfly-app/tests/source_checks/hygiene.rs`: ratchets across every crate: non-test files stay under 400 lines (`LONG_FILES` holds today's longer files at their length as a ceiling) and open with a `//!` doc.
+- `hygiene.rs`: no source file holds a raw control character (git shows a file with a NUL as binary).
 - `hygiene.rs`: `update/` and `state/` add no log or toast call with English text (`ENGLISH_LOG_CALLS` only goes down).
 - `hygiene.rs`: the fixture builders (`scratch_repo`, `long_repo`, `with_repo`, the kit's `git`, …) are not redefined or handed one folder name twice.
 - `hygiene.rs`: view tests build their harnesses with glowfly-ui's `snapshot_check::builder()` (`HARNESS_MAKERS` names the exceptions).

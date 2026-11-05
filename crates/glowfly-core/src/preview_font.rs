@@ -169,7 +169,8 @@ fn specimen(name: &str, maps: impl Fn(char) -> bool, mapped: impl IntoIterator<I
 
 /// The specimen as SVG: one `<text>` in the family "sample", a line per `<tspan>`, white. A
 /// line sits its predecessor's descent plus its own ascent below it, with `NAME_GAP` more
-/// under a larger line (the name).
+/// under a larger line (the name). The canvas's 4096 width is only a placeholder that clips
+/// nothing: `rasterize` crops to the glyphs' bounding box, however wide the lines run.
 fn sample_svg(lines: &[(f32, String)]) -> String {
     let mut body = String::new();
     let mut baseline = 0.0;

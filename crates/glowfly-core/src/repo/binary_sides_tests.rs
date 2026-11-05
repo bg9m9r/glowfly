@@ -269,7 +269,7 @@ fn a_font_over_its_cap_broken_or_added_and_a_woff_file() {
     assert!(s.new.as_ref().is_some_and(|s| s.image.is_none() && s.font.is_none() && s.bytes.is_none()), "truncated: size only");
     assert!(s.hex().is_none(), "a font never goes to the hex view");
 
-    put(&dir, "fonts/web.woff", b"wOFF    not drawn");
+    put(&dir, "fonts/web.woff", b"wOFF\0\x01\0\0 not drawn");
     let s = binary_sides(&dir, &DiffTarget::Unstaged("fonts/web.woff".into())).unwrap();
     assert!(bytes(&s.new).is_some(), "WOFF isn't drawn: its bytes go to the hex view");
 
