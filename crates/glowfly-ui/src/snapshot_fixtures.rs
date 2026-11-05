@@ -188,9 +188,23 @@ fn build(mut st: AppState, p: Palette, size: egui::Vec2, ppp: f32, keys: bool, d
                     st.with_view(|st, view| crate::shortcuts::input(ctx, st, view, msgs));
                 }
                 draw(ctx, st, cache, msgs);
+                // The shell dispatches the views' edits; the tests read the state they set.
+                EDITS.with(|n| n.set(n.get() + msgs.iter().filter(|m| m.is_edit()).count()));
+                glowfly_model::testing::apply_edits(st, msgs);
             },
             (st, Vec::new()),
         )
+}
+
+thread_local! {
+    static EDITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How many `Msg::Edit`s the harnesses on this thread dispatched since the last call: an idle
+/// frame must send none.
+#[cfg(test)]
+pub(crate) fn edits_taken() -> usize {
+    EDITS.with(|n| n.replace(0))
 }
 
 pub fn render(name: &str, st: AppState, dark: bool) {

@@ -10,8 +10,8 @@ use super::{
 };
 use eframe::egui;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::layout::{DetailsShape, Panel, details_shape};
+use glowfly_model::state::{AppState, ViewState};
 
 /// Draws every panel of the window (Preferences in place of all but the status bar and a drawn
 /// title bar while open); returns where the chrome ends, for the toasts.
@@ -51,9 +51,9 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
     }
     let top = ctx.available_rect().top();
     st.with_view(|st, view| activity_log::show(ctx, st, view, msgs));
-    side_panels(ctx, st, cache, msgs);
+    st.with_view(|st, view| side_panels(ctx, st, view, cache, msgs));
     let central = if glowfly_model::state::terminal::maximized_shown(st) {
-        terminal::show_in_main(ctx, st, msgs)
+        st.with_view(|st, view| terminal::show_in_main(ctx, st, view, msgs))
     } else {
         central::show(ctx, st, cache, msgs)
     };
@@ -63,9 +63,9 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
 
 /// The left and details drawers, or the rails standing in for them, and the terminal. The rails
 /// go first, so the drawers are fitted to the room they leave.
-fn side_panels(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+fn side_panels(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     if st.snap.is_none() || st.dashboard.open {
-        st.view.terminal.focused = false;
+        view.terminal.focused = false;
         return;
     }
     if !st.settings.show_left_panel {
@@ -82,10 +82,10 @@ fn side_panels(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs
     }
     let (left, right) = panel_size::side_fits(ctx, st);
     if let Some(fit) = left {
-        st.with_view(|st, view| sidebar::show(ctx, st, view, fit, msgs));
+        sidebar::show(ctx, st, view, fit, msgs);
     }
     if let Some(fit) = right {
-        details::show(ctx, st, cache, fit, msgs);
+        details::show(ctx, st, view, cache, fit, msgs);
     }
-    terminal::show(ctx, st, msgs);
+    terminal::show(ctx, st, view, msgs);
 }

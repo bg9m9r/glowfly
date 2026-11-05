@@ -8,9 +8,10 @@ use git2::Oid;
 use glowfly_core::conflict_check::{Prediction, TargetKind};
 use glowfly_model::conflict_check::{CheckJob, ConflictCheckMsg};
 use glowfly_model::effect::{Effect, LoadKind};
-use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, TrustMsg};
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg, TrustMsg};
 use glowfly_model::state::conflict_check::current_request;
 use glowfly_model::state::{AppState, Modal};
+use glowfly_model::testing::settings_edit;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -141,14 +142,15 @@ fn late_replies_are_ignored() {
     let dir = diverged("cc-late");
     let mut st = state();
     let job = open(&mut st, &dir).pop().unwrap();
-    st.settings.conflict_check = false;
-    assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+    let edit = settings_edit(&st, |s| s.conflict_check = false);
+    assert!(drive_holding(&mut st, edit).is_empty());
     assert!(deliver(&mut st, job).is_empty());
     assert_eq!(st.session.reads.conflict_checks.shown(current_request(st.snap.as_ref().unwrap()).as_ref()), None, "cleared");
-    st.settings.conflict_check = true;
-    let jobs = drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = settings_edit(&st, |s| s.conflict_check = true);
+    let jobs = drive_holding(&mut st, edit);
     assert_eq!(jobs.len(), 1, "turning it on checks at once");
-    assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty(), "every frame is not a new check");
+    let edit = settings_edit(&st, |s| s.push_after_commit = !s.push_after_commit);
+    assert!(drive_holding(&mut st, edit).is_empty(), "another setting's edit is not a new check");
 }
 
 #[test]
@@ -188,14 +190,14 @@ fn f5_with_preferences_open_checks_once() {
     let mut st = state();
     let job = open(&mut st, &dir).pop().unwrap();
     deliver(&mut st, job);
-    // F5 while Preferences sends SettingsEdited every frame.
+    // F5, then a setting edited in Preferences while the check runs.
     let mut jobs = drive_holding(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert_eq!(jobs.len(), 1, "{jobs:?}");
-    for _ in 0..3 {
-        assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
-    }
+    let edit = settings_edit(&st, |s| s.push_after_commit = !s.push_after_commit);
+    assert!(drive_holding(&mut st, edit).is_empty());
     assert!(deliver(&mut st, jobs.remove(0)).is_empty(), "no second check");
-    assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+    let edit = settings_edit(&st, |s| s.push_after_commit = !s.push_after_commit);
+    assert!(drive_holding(&mut st, edit).is_empty());
 
     // An F5 where no check can start isn't owed later, either.
     git(&dir, &["checkout", "-q", "--detach"]);
@@ -203,9 +205,8 @@ fn f5_with_preferences_open_checks_once() {
     git(&dir, &["checkout", "-q", "feature"]);
     let mut jobs = reload(&mut st, &dir);
     assert_eq!(jobs.len(), 1, "the F5 is answered once back on the branch");
-    for _ in 0..3 {
-        assert!(drive_holding(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
-    }
+    let edit = settings_edit(&st, |s| s.push_after_commit = !s.push_after_commit);
+    assert!(drive_holding(&mut st, edit).is_empty());
     assert!(deliver(&mut st, jobs.remove(0)).is_empty(), "and only once");
 }
 

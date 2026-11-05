@@ -27,7 +27,8 @@ fn high_contrast_off_restores_the_exact_previous_theme() {
     assert_eq!(st.settings.theme, ThemeChoice::HighContrastLight, "as dark as the palette in effect");
     // Saving or editing another setting keeps what turning it off brings back.
     prefs(&mut st, PrefsMsg::SetToolbarLabels(false), now);
-    prefs(&mut st, PrefsMsg::SettingsEdited, now);
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    update(&mut st, edit, now);
     prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: false }, now);
     assert_eq!(st.settings.theme, ThemeChoice::Custom("ocean".into()));
     assert_eq!(st.settings.theme_before_contrast, None);
@@ -68,7 +69,8 @@ fn a_profile_switch_keeps_each_profiles_theme_to_bring_back() {
     prefs(&mut st, PrefsMsg::SetHighContrast { on: true, dark: false }, now);
     prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: false }, now);
     assert_eq!(st.settings.theme, ThemeChoice::Porcelain);
-    prefs(&mut st, PrefsMsg::SettingsEdited, now);
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    update(&mut st, edit, now);
     switched_to(&mut st, 1, now);
     assert_eq!(st.settings.theme, ThemeChoice::HighContrastDark, "A's theme, still high contrast");
     prefs(&mut st, PrefsMsg::SetHighContrast { on: false, dark: true }, now);

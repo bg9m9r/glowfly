@@ -53,7 +53,7 @@ fn a_job_that_ends_leaves_the_extend_prompt_open() {
     start_job(&mut st, "Fetch");
     extend_prompt(&mut st, 7);
     send(&mut st, Msg::Credentials(CredentialMsg::CredentialPrompt { id: 8, prompt: Prompt::new("Username for 'https://x.org': ", None) }));
-    st.askpass.secret = "typed".into();
+    st.view.askpass.secret = "typed".into();
     let fx = send(&mut st, Msg::Job(glowfly_model::msg::JobMsg::JobDone { ok: true, output: String::new(), undo: None }));
     let cancelled: Vec<u64> = fx
         .iter()
@@ -65,5 +65,5 @@ fn a_job_that_ends_leaves_the_extend_prompt_open() {
     assert_eq!(cancelled, [8], "only the job's own prompt is cancelled");
     assert!(st.askpass.showing());
     assert_eq!(st.askpass.queue.front().map(|q| q.id), Some(7));
-    assert_eq!(st.askpass.secret, "typed", "what is typed into the open prompt stays");
+    assert_eq!(st.view.askpass.secret, "typed", "what is typed into the open prompt stays");
 }

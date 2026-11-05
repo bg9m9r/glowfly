@@ -11,7 +11,6 @@ use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::msg::DiffMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::msg::PrefsMsg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::StageMsg;
 use glowfly_model::msg::TabsMsg;
@@ -213,7 +212,8 @@ fn turning_highlighting_off_saves_and_keeps_the_spans() {
     st.session.diff.view = Some((DiffTarget::Unstaged("f.rs".into()), d.into()));
 
     st.settings.syntax_highlighting = false;
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = run(&mut st, edit);
     assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if !s.syntax_highlighting));
     assert_eq!(st.session.diff.view.as_ref().unwrap().1.highlight, want, "only painting is gated, so turning it back on needs no reload");
 }

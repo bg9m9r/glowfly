@@ -34,7 +34,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - Let go, a held toast has at least `HOLD_GRACE` left, and the toast limit drops the oldest toast that isn't held.
 - The keyboard focus on a toast's button holds it as the pointer does; how long toasts stay is Accessibility's `toast_time`, and a failure with a fix or Details stays until closed.
 - Every toast leaves an activity line (`update/toast_log.rs`), so a dropped or expired one can still be read.
-- Toasts fade and expire by `cues.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength).
+- Toasts fade by `cues.frame_at`, the shell's time stamp for the frame (None in snapshot tests, so they draw at full strength), and expire on `Msg::Tick` (update/mod.rs); one whose time is up isn't drawn meanwhile.
 
 ## Zoom and panels
 

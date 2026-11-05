@@ -12,8 +12,8 @@ use eframe::egui::{self, Align, Color32, Layout, Rect, RichText, Sense, Ui, pos2
 use git2::Oid;
 use glowfly_core::lfs::pointer::size_text;
 use glowfly_model::msg::{HistoryMsg, Msg};
-use glowfly_model::state::AppState;
 use glowfly_model::state::history::{FileTextData, Preview};
+use glowfly_model::state::history_text::TextNav;
 use std::sync::Arc;
 
 /// The widest the rendered text gets, for lines that stay easy to read.
@@ -32,8 +32,9 @@ pub(super) fn toggle(ui: &mut Ui, toggle: Result<(), &str>, on: bool, msgs: &mut
 
 /// The rendered document, back at the top whenever the switch is used or another version is
 /// shown. `id`: the version's commit and path, which keep its widget ids apart from another's.
-pub(super) fn markdown(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, id: (Oid, String), source: &str, msgs: &mut Vec<Msg>) {
-    let to_top = st.session.history.view.as_mut().is_some_and(|v| std::mem::take(&mut v.nav.to_top));
+/// `nav` is the File view's copy (`history_file::show`), whose request to go to the top it takes.
+pub(super) fn markdown(ui: &mut Ui, nav: &mut TextNav, cache: &mut UiCache, id: (Oid, String), source: &str, msgs: &mut Vec<Msg>) {
+    let to_top = std::mem::take(&mut nav.to_top);
     ui.painter().rect_filled(ui.available_rect_before_wrap(), 0.0, color::bg());
     let mut area = egui::ScrollArea::vertical().id_salt("history-preview").auto_shrink([false, false]);
     if to_top {

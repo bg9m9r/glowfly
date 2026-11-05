@@ -1,5 +1,6 @@
 //! What the terminal grid asks of its active tab: scrolling the history (by rows, or a screen
-//! at a time from the keyboard), copying, a finished mouse selection and selecting all (each
+//! at a time from the keyboard), copying, a finished mouse selection, a word or line picked by a
+//! double or triple click and selecting all (each
 //! offered as the PRIMARY selection, and copied too with Copy on select), clearing, pasting from
 //! the clipboard or from PRIMARY (a middle click), and remembering the panel's height.
 
@@ -8,6 +9,7 @@ use crate::state::AppState;
 use crate::state::terminal::{Selection, TermSession};
 use crate::terminal::{ScrollStep, TerminalEffect as E};
 use crate::update::terminal::active_mut;
+use glowfly_core::terminal::TermPoint;
 
 pub(in crate::update) fn scroll(st: &mut AppState, rows: i32) {
     if let Some(s) = active_mut(st) {
@@ -56,6 +58,20 @@ pub(in crate::update) fn selected(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(s) = active_mut(st) else { return };
     offer(copy_text(s), copy_on_select, fx);
     st.view.terminal.focus_requested = true;
+}
+
+/// Selects the word at `at` (or with `line` its whole line) in session `id`, a double or triple
+/// click, and offers it as `selected` does; an empty pick offers nothing.
+pub(in crate::update) fn select_at(st: &mut AppState, id: u64, at: TermPoint, line: bool, fx: &mut Vec<Effect>) {
+    let copy_on_select = st.settings.terminal.copy_on_select;
+    let Some(s) = st.terminal.sessions.iter_mut().find(|s| s.id == id) else { return };
+    let (anchor, head) = if line { s.screen.line_at(at.line) } else { s.screen.word_at(at) };
+    let sel = Selection { anchor, head, epoch: s.screen.epoch() };
+    s.selection = Some(sel);
+    if sel.range(&s.screen).is_some() {
+        offer(copy_text(s), copy_on_select, fx);
+        st.view.terminal.focus_requested = true;
+    }
 }
 
 /// Selects the whole history and screen, which becomes the PRIMARY selection; with Copy on

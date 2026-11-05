@@ -242,6 +242,15 @@ Preferences, notifications, zoom, logs, onboarding, the welcome screen, performa
 - `TabViewState::graph_scroll`'s viewport height belongs to the window, not the tab: split it out if a keyboard step before the first frame after a switch ever needs the right height
 - Fold `TabView::parked_in` and `TabViewState::diff_top_row` into `DiffSlot`, so the open diff, its top row and the mode it was counted in live together
 
+### Lending ViewState to the views (#370)
+
+- A small derive or macro for the `fields()` / `apply()` pairs (CommitFields, WelcomeFields, BlameFields) if more forms move to frame copies
+- A debug-build warning when the same `Msg::Edit` repeats on consecutive idle frames (a widget and update normalising a value two different ways)
+- Wipe `PromptFields`' secret on drop as well as in `clear()`
+- `Lent` could name the field that was read while lent in its debug panic, to find mid-frame `st.view` readers faster
+- The commit box's caption, button and caret menu read the draft as it was at the start of the frame: compute them from the frame's copy so they keep up on the keystroke's own frame instead of the repaint after it
+- The blame and File view bodies highlight the find query as stored, one frame behind typing: pass the copy's query to the body
+
 ### Build and tooling
 
 - Build time: split core's libgit2-free parts (settings, forge, i18n) into their own crate so

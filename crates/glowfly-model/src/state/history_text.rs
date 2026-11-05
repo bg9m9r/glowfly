@@ -3,7 +3,9 @@
 
 use super::blame_find::BlameFind;
 
-#[derive(Clone, Debug, Default)]
+/// The File view's find, Line field, cursor and scroll; the view edits a copy and sends it back
+/// as `EditMsg::FileNav`.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct TextNav {
     pub find: BlameFind,
     /// The Line field's text.
@@ -26,6 +28,12 @@ impl TextNav {
     pub fn land_on(&mut self, line: usize) {
         self.cursor = Some(line);
         self.scroll_to = Some(line);
+    }
+
+    /// Takes the view's edited copy, all but the find's matches and current match (update's).
+    pub fn apply_view(&mut self, edited: TextNav) {
+        let find = BlameFind { hits: std::mem::take(&mut self.find.hits), current: self.find.current, query: edited.find.query };
+        *self = TextNav { find, ..edited };
     }
 
     /// A new version is shown: back to its top with no cursor or matches; the find and Line

@@ -84,11 +84,22 @@ impl WelcomeStep {
 pub struct Welcome {
     pub step: WelcomeStep,
     pub identity: IdentityForm,
-    /// "Show me around once it opens" (edited in place by the view): off until ticked; the tour
-    /// stays a click away from Help, the palette and this step.
+    /// "Show me around once it opens" (edited by the view, `EditMsg::Welcome`): off until
+    /// ticked; the tour stays a click away from Help, the palette and this step.
     pub tour_after: bool,
-    /// "Show authors' pictures from Gravatar" (edited in place by the view): seeded from
-    /// `settings.avatar_lookups` and written back when the welcome closes.
+    /// "Show authors' pictures from Gravatar" (edited by the view, `EditMsg::Welcome`): seeded
+    /// from `settings.avatar_lookups` and written back when the welcome closes.
+    pub avatars: bool,
+}
+
+/// The welcome's fields the view edits, drawn from a copy (`Welcome::fields`) and set back by
+/// `EditMsg::Welcome`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WelcomeFields {
+    pub name: String,
+    pub email: String,
+    pub touched: Touched,
+    pub tour_after: bool,
     pub avatars: bool,
 }
 
@@ -101,6 +112,20 @@ impl Welcome {
             tour_after: false,
             avatars: false,
         }
+    }
+
+    /// A copy of the fields the view edits.
+    pub fn fields(&self) -> WelcomeFields {
+        let id = &self.identity;
+        let (name, email, touched) = (id.name.clone(), id.email.clone(), id.touched.clone());
+        WelcomeFields { name, email, touched, tour_after: self.tour_after, avatars: self.avatars }
+    }
+
+    /// Takes the view's edited fields; the read, the save and their errors stay update's.
+    pub fn apply(&mut self, f: WelcomeFields) {
+        let id = &mut self.identity;
+        (id.name, id.email, id.touched) = (f.name, f.email, f.touched);
+        (self.tour_after, self.avatars) = (f.tour_after, f.avatars);
     }
 
     /// The name the header greets, after the identity step: the one git now holds (seeded from
@@ -130,7 +155,7 @@ pub struct IdentityForm {
     pub read_error: Option<String>,
     /// What git had (empty when the read failed).
     pub had: Identity,
-    /// Text buffers, edited in place.
+    /// Text buffers, edited by the view (`EditMsg::Welcome`).
     pub name: String,
     pub email: String,
     /// The write is running.

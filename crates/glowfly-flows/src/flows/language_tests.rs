@@ -9,7 +9,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::identity::Identity;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::SaveEffect;
-use glowfly_model::msg::{CommitMsg, Msg, PrefsMsg, RecentMsg, RepoMsg};
+use glowfly_model::msg::{CommitMsg, Msg, RecentMsg, RepoMsg};
 use glowfly_model::onboarding::OnboardingMsg;
 use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
 use glowfly_model::state::{Modal, PrefPage, PrefsState};
@@ -30,9 +30,11 @@ fn the_commit_refusal_toast_is_in_the_chosen_language() {
 fn choosing_a_language_saves_it() {
     let mut st = state();
     st.prefs = Some(PrefsState::new(PrefPage::Language));
-    update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    update(&mut st, edit, Instant::now());
     st.settings.language = "es".into();
-    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = update(&mut st, edit, Instant::now());
     let saved = fx.iter().find_map(|e| match e {
         Effect::Save(SaveEffect::Settings(s)) => Some(s.clone()),
         _ => None,

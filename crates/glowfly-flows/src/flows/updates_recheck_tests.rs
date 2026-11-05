@@ -106,6 +106,8 @@ fn a_newer_release_replaces_an_older_download() {
 #[test]
 fn an_offer_outlasts_later_checks() {
     let (mut st, t) = offered();
+    // The toasts stay up while the ticks move the clock on (`Msg::Tick` expires them).
+    st.settings.a11y.toast_time = glowfly_core::settings::ToastTime::UntilClosed;
     let toasts = st.toasts.len();
     // A failed automatic check keeps the offer.
     st.settings.updates.last_checked = Some(NOW - 86_400);

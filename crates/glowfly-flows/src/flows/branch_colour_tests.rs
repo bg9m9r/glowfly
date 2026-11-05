@@ -9,7 +9,7 @@ use glowfly_core::branch_colour::Swatch;
 use glowfly_core::settings::ColourPalette;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::SaveEffect;
-use glowfly_model::msg::{GraphMsg, Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
+use glowfly_model::msg::{GraphMsg, Msg, RepoMsg, TabsMsg, WatchMsg};
 use glowfly_model::state::AppState;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -136,8 +136,8 @@ fn switching_to_the_colour_blind_preset_moves_a_trunk_neighbour_off_a_near_slot(
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "main moves on"]);
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.settings.colour_palette = ColourPalette::ColourBlind;
-    drive(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = glowfly_model::testing::settings_edit(&st, |s| s.colour_palette = ColourPalette::ColourBlind);
+    drive(&mut st, edit);
     let Swatch::Slot(k) = swatch(&st, "fix-1") else { panic!("fix-1 is automatic") };
     // The shell reports the new palette's slots that pass for the trunk; say fix-1's is one.
     let fx = update(&mut st, Msg::Graph(GraphMsg::TrunkNear(1 << k)), Instant::now());
@@ -154,8 +154,8 @@ fn the_colour_blind_preset_reaches_the_snapshot_and_a_parked_tab() {
     let other = scratch_repo("branch-preset-other");
     drive(&mut st, Msg::Repo(RepoMsg::Open(other.clone())));
     assert_eq!(st.tabs.len(), 2);
-    st.settings.colour_palette = ColourPalette::ColourBlind;
-    drive(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = glowfly_model::testing::settings_edit(&st, |s| s.colour_palette = ColourPalette::ColourBlind);
+    drive(&mut st, edit);
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.graph.colouring.n(), 8);
     assert!(snap.graph.swatches.iter().all(|s| matches!(s, Swatch::Trunk) || matches!(s, Swatch::Slot(n) if *n < 8)));

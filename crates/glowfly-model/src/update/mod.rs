@@ -37,6 +37,7 @@ pub mod diff;
 mod diff_copy;
 mod diff_gaps;
 pub mod diff_preview;
+mod edit;
 mod file_list_keys;
 mod files;
 mod fold_keys;
@@ -294,6 +295,7 @@ crate::msg::msg_areas! { area_router! {
 
         // Cross-cutting messages, handled here (see `Msg`).
         Msg::Tick(t) => {
+            st.expire_toasts(t);
             ops::auto_fetch(st, t, fx);
             watch::poll(st, t, fx);
             build_status::tick(st, t, fx);

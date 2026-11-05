@@ -54,8 +54,8 @@ use super::widgets::{self, scroll_cue};
 use crate::theme::type_scale;
 use eframe::egui::{self, RichText};
 use glowfly_core::forge::Provider;
-use glowfly_model::msg::Msg;
 use glowfly_model::msg::PrefsMsg;
+use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::prefs_save;
 use glowfly_model::state::{AppState, PrefPage};
 
@@ -131,7 +131,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
         busy: st.job.is_some(),
     };
     let git_state = &st.git;
-    let settings = &mut st.settings;
+    // The pages edit a copy of the settings, sent back as one edit on a frame that changed it.
+    let mut edited = st.settings.clone();
+    let settings = &mut edited;
     let keymap = &st.keymap;
     let scheme = &st.deep_link.scheme;
     let Some(prefs) = st.prefs.as_mut() else { return };
@@ -211,6 +213,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
                 }
             });
         });
+    if edited != st.settings {
+        msgs.push(Msg::Edit(EditMsg::Settings(Box::new(edited))));
+    }
 }
 
 /// The Integrations sub-list of hosting services.

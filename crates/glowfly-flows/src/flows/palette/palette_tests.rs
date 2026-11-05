@@ -240,7 +240,8 @@ fn run_theme_saves_once() {
     assert!(st.palette.is_none());
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetTheme(ThemeChoice::Light))).is_empty());
     // Nothing left for the per-frame settings check to save.
-    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(run(&mut st, edit).is_empty());
 }
 
 #[test]

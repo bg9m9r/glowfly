@@ -77,7 +77,8 @@ fn an_unreadable_file_holds_every_save_back_until_a_try_reads_it() {
     assert_eq!(st.settings_file.saved(), before, "not recorded as saved");
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(glowfly_model::state::PrefPage::General)));
     st.settings.auto_fetch_minutes = 42;
-    assert_eq!(saves(&run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited))), 0, "Preferences doesn't save either");
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert_eq!(saves(&run(&mut st, edit)), 0, "Preferences doesn't save either");
     run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
 
     // Open settings folder shows the file's folder.

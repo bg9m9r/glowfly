@@ -11,6 +11,16 @@ use glowfly_core::forge::Provider;
 use glowfly_core::settings::TrackerChoice;
 use std::time::Instant;
 
+/// Settings Preferences changed (`EditMsg::Settings`): saves them if they differ from the file,
+/// and applies the ones that take effect at once.
+pub(super) fn settings_edited(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if st.settings_file.edited(&st.settings) {
+        fx.extend(save_settings(st));
+    }
+    sync_live_settings(st, fx);
+    super::diff_preview::settings_edited(st, fx);
+}
+
 pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         PrefsMsg::OpenPrefs(page) => open(st, page, fx),
@@ -18,14 +28,6 @@ pub(super) fn handle(st: &mut AppState, msg: PrefsMsg, now: Instant, fx: &mut Ve
         PrefsMsg::Navigate(page) => super::prefs_nav::navigate(st, page, fx),
         PrefsMsg::SelectIntegration(p) => select_integration(st, p),
         PrefsMsg::ShowAccountForm(on) => show_account_form(st, on),
-        // The settings file and the settings that apply at once.
-        PrefsMsg::SettingsEdited => {
-            if st.settings_file.edited(&st.settings) {
-                fx.extend(save_settings(st));
-            }
-            sync_live_settings(st, fx);
-            super::diff_preview::settings_edited(st, fx);
-        }
         PrefsMsg::SetTheme(t) => {
             if st.settings.theme != t {
                 st.settings.theme = t;
@@ -164,8 +166,8 @@ pub(super) fn save_settings(st: &mut AppState) -> Option<Effect> {
     Some(Effect::Save(SaveEffect::Settings(Box::new(st.settings.clone()))))
 }
 
-/// Makes the file watcher, the conflict check and the tab groups follow the settings. Sent every frame while
-/// Preferences is open (and after a profile switch): both are no-ops when nothing changed.
+/// Makes the file watcher, the conflict check and the tab groups follow the settings. Run on each
+/// edit Preferences sends (and after a profile switch): both are no-ops when nothing changed.
 pub fn sync_live_settings(st: &mut AppState, fx: &mut Vec<Effect>) {
     if st.settings.watch_files != st.watch.enabled {
         st.watch.enabled = st.settings.watch_files;

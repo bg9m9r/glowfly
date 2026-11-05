@@ -1,5 +1,5 @@
 //! The terminal grid's history, selection and menu: scrolled back with a selection and the
-//! thumb, the wheel, dragging to select (reported for PRIMARY and Copy on select), copying with
+//! thumb, the wheel, dragging to select (sent as an edit, reported for PRIMARY and Copy on select), copying with
 //! the keyboard, middle-click paste of PRIMARY, the right-click menu, and the Bar and Underline cursors with dimming.
 
 use super::snapshot_tests::{harness, remove_fixture};
@@ -96,7 +96,9 @@ fn dragging_selects_text() {
     st.terminal.sessions[0].selection = None;
     let mut h = harness(st, true);
     h.run();
+    crate::snapshot_fixtures::edits_taken();
     drag(&mut h);
+    assert!(crate::snapshot_fixtures::edits_taken() > 0, "the view sends the selection it draws as an edit");
     let s = &h.state().0.terminal.sessions[0];
     let sel = s.selection.expect("dragging selected text");
     let top = s.screen.top_line();

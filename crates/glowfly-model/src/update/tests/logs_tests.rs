@@ -6,7 +6,7 @@ use super::super::update;
 use crate::effect::Effect;
 use crate::effect::SaveEffect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
-use crate::msg::{Msg, PrefsMsg};
+use crate::msg::Msg;
 use crate::state::logs::{Earlier, LOG_LIMIT, LogFileView, Persist};
 use crate::state::{AppState, PrefPage, PrefsState};
 use glowfly_core::gitcli::GitRun;
@@ -193,7 +193,8 @@ fn set_extended_from_preferences_is_saved_once() {
     let fx = logs(&mut st, LogsMsg::SetExtended(true));
     assert_eq!(fx.iter().filter(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))).count(), 1);
     // The frame's SettingsEdited sees nothing new to save, and keeps the setting.
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    let fx = run(&mut st, edit);
     assert!(!fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(_)))), "{fx:?}");
     assert!(st.settings.extended_logging);
 }

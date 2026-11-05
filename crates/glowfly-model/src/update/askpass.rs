@@ -20,7 +20,7 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
             let p = &mut st.askpass;
             let Some(front) = p.queue.pop_front() else { return };
             fx.push(Effect::Control(ControlEffect::AnswerPrompt { id: front.id, reply: Reply::Cancel }));
-            p.clear_buffers();
+            st.view.askpass.clear();
             // Preferences' own prompt says nothing about the running job.
             if front.prompt.kind.is_app_own() {
                 return;
@@ -34,7 +34,7 @@ pub(super) fn handle(st: &mut AppState, msg: CredentialMsg, now: Instant, fx: &m
             let Some(i) = p.queue.iter().position(|q| q.id == id) else { return };
             let Some(gone) = p.queue.remove(i) else { return };
             if i == 0 {
-                p.clear_buffers();
+                st.view.askpass.clear();
             }
             // Preferences reports its own prompt's timeout (`PrefsMsg::KeyExtended`).
             if gone.prompt.kind.is_app_own() {
@@ -84,15 +84,16 @@ fn asked(st: &mut AppState, id: u64, prompt: Prompt, fx: &mut Vec<Effect>) {
     let first = p.queue.is_empty();
     p.queue.push_back(PendingPrompt { id, prompt, retry, rejected_before });
     if first {
-        p.clear_buffers();
-        p.remember = remember;
+        let f = &mut st.view.askpass;
+        f.clear();
+        f.remember = remember;
         fx.push(Effect::Ui(UiEffect::RequestAttention));
     }
 }
 
 fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let p = &mut st.askpass;
-    if !p.can_submit() {
+    let (p, f) = (&mut st.askpass, &mut st.view.askpass);
+    if !p.can_submit(f) {
         return;
     }
     let Some(front) = p.queue.pop_front() else { return };
@@ -102,10 +103,10 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
     let answer = match &front.prompt.kind {
         PromptKind::Username { url } => {
-            let user = p.user.trim().to_owned();
-            if !p.secret.is_empty() {
-                let password = Secret::new(std::mem::take(&mut p.secret));
-                if p.remember {
+            let user = f.user.trim().to_owned();
+            if !f.secret.is_empty() {
+                let password = Secret::new(std::mem::take(&mut f.secret));
+                if f.remember {
                     p.typed.extend(HttpsCredential::from_prompt(url, &user, password.clone()));
                 }
                 p.carry = Some(Carry { host: host.clone().unwrap_or_default(), user: user.clone(), password });
@@ -113,19 +114,19 @@ fn answer(st: &mut AppState, fx: &mut Vec<Effect>) {
             Secret::new(user)
         }
         PromptKind::Confirm | PromptKind::HostKey(_) => Secret::new("yes"),
-        PromptKind::Other { secret: false } => Secret::new(std::mem::take(&mut p.user)),
-        PromptKind::Password { target, user: Some(u) } if p.remember => {
-            let secret = Secret::new(std::mem::take(&mut p.secret));
+        PromptKind::Other { secret: false } => Secret::new(std::mem::take(&mut f.user)),
+        PromptKind::Password { target, user: Some(u) } if f.remember => {
+            let secret = Secret::new(std::mem::take(&mut f.secret));
             p.typed.extend(HttpsCredential::from_prompt(target, u, secret.clone()));
             secret
         }
-        _ => Secret::new(std::mem::take(&mut p.secret)),
+        _ => Secret::new(std::mem::take(&mut f.secret)),
     };
     if !front.prompt.kind.is_app_own() {
         p.answered.push(front.prompt.text);
         p.answered_hosts.extend(host);
     }
-    p.clear_buffers();
+    f.clear();
     fx.push(Effect::Control(ControlEffect::AnswerPrompt { id: front.id, reply: Reply::Answer(answer) }));
 }
 
@@ -172,7 +173,7 @@ pub(super) fn job_finished(
         if q.prompt.kind.is_app_own() { p.queue.push_back(q) } else { left.push(q) }
     }
     if !left.is_empty() && !front_was_app_own {
-        p.clear_buffers();
+        st.view.askpass.clear();
     }
     fx.extend(left.into_iter().map(|q| Effect::Control(ControlEffect::AnswerPrompt { id: q.id, reply: Reply::Cancel })));
     p.carry = None;

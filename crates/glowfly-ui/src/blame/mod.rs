@@ -17,32 +17,32 @@ pub(crate) mod rows;
 use super::UiCache;
 use super::pane_status::{self, Failure};
 use eframe::egui::Ui;
-use glowfly_model::msg::{BlameMsg, Msg};
+use glowfly_model::msg::{BlameMsg, EditMsg, Msg};
 use glowfly_model::state::AppState;
-use glowfly_model::state::blame::{BlameData, BlameView};
+use glowfly_model::state::blame::{BlameData, BlameFields, BlameView};
 use menu::LineTarget;
 
-pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let Some(view) = st.session.blame.view.as_mut() else { return };
-    let scroll_to = view.scroll_to.take();
+pub fn show(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    let Some(view) = st.session.blame.view.as_ref() else { return };
+    // The header and the body share one copy of the fields, sent back as one edit.
+    let mut f = view.fields();
+    let scroll_to = f.scroll_to.take();
     ui.add_space(6.0);
-    let over_history = st.session.history.view.is_some() && st.session.blame.view.as_ref().is_some_and(|v| v.over_history);
-    header::show(ui, &mut st.session.blame.view, &st.settings, st.snap.as_ref(), over_history, &st.keymap, msgs);
+    let over_history = st.session.history.view.is_some() && view.over_history;
+    header::show(ui, st, view, &mut f, over_history, msgs);
     ui.separator();
-    let Some(view) = &st.session.blame.view else { return };
     // The blame waits for contents a partial clone hasn't downloaded.
     if let Some(p) = st.for_blame() {
+        edited(view, f, msgs);
         return super::content_fetch::show(ui, st, p, msgs);
     }
     match &view.data {
         // A re-run after HEAD moved keeps the old blame on screen.
         Some(data) if !data.blame.lines.is_empty() => {
             let out = body::body(ui, st, cache, view, data, scroll_to, msgs);
-            if let Some(view) = st.session.blame.view.as_mut() {
-                view.top_line = out.top;
-                if out.clicked.is_some() {
-                    view.cursor = out.clicked;
-                }
+            f.top_line = out.top;
+            if out.clicked.is_some() {
+                f.cursor = out.clicked;
             }
         }
         _ if view.loading => pane_status::loader(ui, st.settings.lang().tr("blame.loading")),
@@ -55,6 +55,14 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
             }
             None => super::history_file::empty_file(ui),
         },
+    }
+    edited(view, f, msgs);
+}
+
+/// Sends the fields back when this frame changed them.
+fn edited(view: &BlameView, f: BlameFields, msgs: &mut Vec<Msg>) {
+    if f != view.fields() {
+        msgs.push(Msg::Edit(EditMsg::Blame(Box::new(f))));
     }
 }
 

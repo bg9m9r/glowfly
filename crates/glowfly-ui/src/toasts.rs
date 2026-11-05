@@ -52,13 +52,11 @@ pub(super) fn anchor(corner: Corner, b: ToastBounds, screen: Rect) -> (Align2, V
 }
 
 /// The toasts, newest last. Every toast has its x, so the area always takes clicks. A failure's
-/// fix and its Details sit side by side under the text, the fix first. They fade and expire by
-/// the frame's time stamp; without one (snapshot tests) they stay at full strength.
-pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, msgs: &mut Vec<Msg>) {
+/// fix and its Details sit side by side under the text, the fix first. They fade by the frame's
+/// time stamp (and expire on `Msg::Tick`, faded out by then); without one (snapshot tests) they
+/// stay at full strength.
+pub(super) fn show(ctx: &egui::Context, st: &AppState, bounds: ToastBounds, msgs: &mut Vec<Msg>) {
     let now = st.cues.frame_at;
-    if let Some(now) = now {
-        st.expire_toasts(now);
-    }
     if st.toasts.is_empty() {
         return;
     }
@@ -68,7 +66,8 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, bounds: ToastBounds, 
     let announce = st.settings.a11y.announce_jobs;
     let mut over = None;
     egui::Area::new(egui::Id::new("toasts")).anchor(align, offset).interactable(true).show(ctx, |ui| {
-        for t in &st.toasts {
+        // One whose time is up goes on this frame's Tick; it isn't drawn meanwhile.
+        for t in st.toasts.iter().filter(|t| !now.is_some_and(|n| t.expired(n, time))) {
             let fade = now.map_or(1.0, |n| t.opacity(n, time));
             let mut focused = false;
             // A failure stays red with a button too (Details); other toasts with one are blue.

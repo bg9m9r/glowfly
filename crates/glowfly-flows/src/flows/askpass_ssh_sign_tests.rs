@@ -19,7 +19,7 @@ fn ssh(st: &mut AppState, id: u64) -> Vec<Effect> {
 }
 
 fn answer(st: &mut AppState, secret: &str) -> Vec<Effect> {
-    st.askpass.secret = secret.into();
+    st.view.askpass.secret = secret.into();
     send(st, Msg::Credentials(CredentialMsg::AnswerCredentials))
 }
 
@@ -44,7 +44,7 @@ fn an_ssh_signing_prompt_is_never_a_retry() {
     start_job(&mut st, "Rebase");
     ssh(&mut st, 1);
     assert!(!st.askpass.front().unwrap().retry);
-    assert!(!st.askpass.can_submit(), "an empty passphrase can't be sent");
+    assert!(!st.askpass.can_submit(&st.view.askpass), "an empty passphrase can't be sent");
     let fx = answer(&mut st, "x");
     let answered: Vec<_> = fx
         .iter()
@@ -54,7 +54,7 @@ fn an_ssh_signing_prompt_is_never_a_retry() {
         })
         .collect();
     assert_eq!(answered, [(1, "x".to_owned())]);
-    assert!(st.askpass.secret.is_empty() && st.askpass.user.is_empty());
+    assert!(st.view.askpass.secret.is_empty() && st.view.askpass.user.is_empty());
     assert!(st.askpass.answered_hosts.is_empty(), "a signing key is not a host");
     // The next commit of the rebase asks again: the next signature, not a second try.
     ssh(&mut st, 2);

@@ -24,7 +24,7 @@ use glowfly_core::settings::Settings;
 use glowfly_model::msg::{Msg, PrefsMsg};
 use glowfly_model::state::panel_layout::{self, MAIN_MIN_HEIGHT, TERMINAL};
 use glowfly_model::state::terminal::{SessionStatus, TermSession, maximized_shown};
-use glowfly_model::state::{AppState, PrefPage};
+use glowfly_model::state::{AppState, PrefPage, ViewState};
 use glowfly_model::terminal::TerminalMsg;
 
 /// The shell menu, for its snapshot (drawn the same on every OS).
@@ -40,9 +40,9 @@ fn frame() -> egui::Frame {
 
 /// Draws the panel while it is open and a repository is, unless it is maximised (then
 /// `show_in_main` draws it).
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     if !st.terminal.open || st.snap.is_none() {
-        st.view.terminal.focused = false;
+        view.terminal.focused = false;
         return;
     }
     if maximized_shown(st) {
@@ -51,61 +51,61 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     // Sized from the height left under the bars and the logs panel, keeping the main view.
     let fit = panel_layout::fit_one(ctx.available_rect().height(), MAIN_MIN_HEIGHT, TERMINAL, st.settings.terminal.panel_height);
     let id = egui::Id::new("terminal-panel");
-    crate::panel_size::pin(ctx, id, fit.size, st.view.terminal.resizing);
+    crate::panel_size::pin(ctx, id, fit.size, view.terminal.resizing);
     let resp = egui::TopBottomPanel::bottom(id).resizable(true).default_height(fit.size).height_range(fit.lo..=fit.hi).frame(frame()).show(
         ctx,
         |ui| {
             header::show(ui, st, msgs);
-            body(ui, st, msgs);
+            body(ui, st, view, msgs);
         },
     );
     // Saved once a drag of the edge ends, not every frame or when the window clamps it.
     let dragging = crate::panel_size::dragging(ctx, id);
-    if st.view.terminal.resizing && !dragging {
+    if view.terminal.resizing && !dragging {
         msgs.push(Msg::Terminal(TerminalMsg::PanelHeight(resp.response.rect.height())));
     }
-    st.view.terminal.resizing = dragging;
+    view.terminal.resizing = dragging;
 }
 
 /// The maximised panel in the central area, in place of the main view (no resize edge).
 /// Returns where it was drawn, for the tour.
-pub fn show_in_main(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) -> egui::Rect {
-    st.view.terminal.resizing = false;
+pub fn show_in_main(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) -> egui::Rect {
+    view.terminal.resizing = false;
     egui::CentralPanel::default()
         .frame(frame())
         .show(ctx, |ui| {
             header::show(ui, st, msgs);
-            body(ui, st, msgs);
+            body(ui, st, view, msgs);
         })
         .response
         .rect
 }
 
-fn body(ui: &mut egui::Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+fn body(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let index = st.snap.as_ref().and_then(|s| st.terminal.active_id(&s.workdir)).and_then(|id| st.terminal.index_of(id));
     let Some(index) = index else {
-        st.view.terminal.focused = false;
+        view.terminal.focused = false;
         ui.label(RichText::new("Starting shell…").color(color::weak()));
         return;
     };
     match st.terminal.sessions[index].status.clone() {
         SessionStatus::Starting => {
-            st.view.terminal.focused = false;
+            view.terminal.focused = false;
             ui.label(RichText::new("Starting shell…").color(color::weak()));
         }
-        SessionStatus::Running => grid::show(ui, st, index, msgs),
+        SessionStatus::Running => grid::show(ui, st, view, index, msgs),
         SessionStatus::Exited(code) => {
             ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
                 exit_strip(ui, code, msgs);
-                ui.with_layout(Layout::top_down(Align::Min), |ui| grid::show(ui, st, index, msgs));
+                ui.with_layout(Layout::top_down(Align::Min), |ui| grid::show(ui, st, view, index, msgs));
             });
         }
         SessionStatus::Held => {
-            st.view.terminal.focused = false;
+            view.terminal.focused = false;
             held::show(ui, st, msgs);
         }
         SessionStatus::Failed(error) => {
-            st.view.terminal.focused = false;
+            view.terminal.focused = false;
             ui.label(RichText::new(format!("Could not start the shell: {error}")).color(color::removed()));
             ui.horizontal(|ui| {
                 if ui.add(buttons::secondary("Restart")).clicked() {

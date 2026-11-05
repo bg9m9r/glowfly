@@ -82,9 +82,17 @@ source file, update its line in the matching file.
   drag's preview until its release sends a `Msg`), never domain state such as the log, the
   selection or a form's checks. `AppState::with_view` lends `ViewState` out for the call, so a
   view gets `st: &AppState` and `view: &mut ViewState` and the compiler keeps it to that; while
-  lent, `st.view` must not be read (debug builds panic). Views that still write a text buffer,
-  form or panel state in the model in place take `&mut AppState` until it moves (#370; the
-  count only shrinks, `layering/view_state.rs`).
+  lent, `st.view` must not be read (debug builds panic). Text only views use (the search,
+  filters, the credential prompt's fields) lives in `ViewState`. A model field that update also
+  reads (the commit draft, the welcome's form, a terminal tab's rename and selection, the blame
+  and File view's find and Line fields, Preferences' settings) is drawn from a copy taken for
+  the frame and comes back as one `Msg::Edit` when it changed; the shell dispatches the edits
+  ahead of the frame's other messages (`msg::edits_first`), so a key handled in the same frame
+  sees them, and draws one more frame. The dialogs' forms, Preferences' own forms, the command
+  palette, the pull request and issue panels' drafts, the rebase message editor and the conflict
+  output editor still write in place and take `&mut AppState` (with `draw`, `frame_layout` and
+  `central`, which pass it down) until they move (#370; the count only shrinks,
+  `layering/view_state.rs`).
   What update and the shell set for the views to read (the frame's clock and window, the hover
   highlight, the file a change step lands on) is `cues` (`ViewCues`), which views never write.
   They never touch disk, network, processes or the clock. They may use core types and pure

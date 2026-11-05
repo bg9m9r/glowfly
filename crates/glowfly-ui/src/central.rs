@@ -143,7 +143,7 @@ pub(super) fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, 
             } else if st.session.blame.view.is_some() {
                 blame::show(ui, st, cache, msgs);
             } else if st.session.history.view.is_some() {
-                history::show(ui, st, cache, msgs);
+                st.with_view(|st, view| history::show(ui, st, view, cache, msgs));
             } else if st.session.pull_request.view.is_some() {
                 pull_request::show(ui, st, cache, msgs);
             } else if st.session.issue.view.is_some() {

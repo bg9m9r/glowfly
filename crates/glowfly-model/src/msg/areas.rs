@@ -148,6 +148,8 @@ macro_rules! msg_areas {
             App(crate::msg::AppMsg) "app" => app::handle(fx);
             /// Glowfly's own updates and the release notes (update/updates.rs).
             Updates(crate::msg::UpdateMsg) "updates" => updates::handle(now, fx);
+            /// What the views edited this frame, from a copy (update/edit.rs).
+            Edit(crate::msg::EditMsg) "edit" => edit::handle(fx);
             /// Fetch full history's size check and a partial clone's missing contents (update/partial.rs).
             Partial(crate::msg::PartialMsg) "partial" => partial::handle(fx);
         }
@@ -207,7 +209,7 @@ mod tests {
     #[test]
     fn area_names_are_unique_and_kebab_case() {
         let names = Msg::AREAS;
-        assert_eq!(names.len(), 67, "one per area row");
+        assert_eq!(names.len(), 68, "one per area row");
         for (i, name) in names.iter().enumerate() {
             assert!(!name.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'), "{name:?}");
             assert!(!name.starts_with('-') && !name.ends_with('-'), "{name:?}");

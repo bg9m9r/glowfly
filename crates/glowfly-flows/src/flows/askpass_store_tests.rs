@@ -26,8 +26,8 @@ fn ask(st: &mut AppState, id: u64, text: &str) -> Vec<Effect> {
 
 /// Types into the dialog and answers the shown prompt.
 fn type_in(st: &mut AppState, user: &str, secret: &str) -> Vec<Effect> {
-    st.askpass.user = user.into();
-    st.askpass.secret = secret.into();
+    st.view.askpass.user = user.into();
+    st.view.askpass.secret = secret.into();
     send(st, Msg::Credentials(CredentialMsg::AnswerCredentials))
 }
 
@@ -81,7 +81,7 @@ fn a_sign_in_that_worked_is_saved_once() {
         let mut st = state();
         start_job(&mut st, cwd.clone());
         ask(&mut st, 1, USERNAME);
-        assert!(st.askpass.remember, "on by default");
+        assert!(st.view.askpass.remember, "on by default");
         type_in(&mut st, "ada", "hunter2");
         // git's follow-up password prompt is answered with the kept password, not recorded again.
         ask(&mut st, 2, PASSWORD);
@@ -99,7 +99,7 @@ fn a_git_lfs_sign_in_is_saved_too() {
     let mut st = state();
     start_job(&mut st, None);
     ask(&mut st, 1, "Username for \"https://github.com/o/r.git/info/lfs\"");
-    assert!(st.askpass.remember);
+    assert!(st.view.askpass.remember);
     type_in(&mut st, "ada", "hunter2");
     let fx = ask(&mut st, 2, "Password for \"https://ada@github.com/o/r.git/info/lfs\"");
     assert!(st.askpass.queue.is_empty(), "answered with the kept password: {fx:?}");
@@ -139,7 +139,7 @@ fn nothing_is_saved_with_remember_off() {
     let mut st = state();
     start_job(&mut st, None);
     ask(&mut st, 1, USERNAME);
-    st.askpass.remember = false;
+    st.view.askpass.remember = false;
     type_in(&mut st, "ada", "hunter2");
     assert!(st.askpass.typed.is_empty());
     assert!(stored(&finish(&mut st, true, "")).is_empty());
@@ -226,9 +226,9 @@ fn the_box_starts_from_the_setting() {
     for on in [true, false] {
         let mut st = state();
         st.settings.remember_https_credentials = on;
-        st.askpass.remember = !on;
+        st.view.askpass.remember = !on;
         ask(&mut st, 1, USERNAME);
-        assert_eq!(st.askpass.remember, on);
+        assert_eq!(st.view.askpass.remember, on);
     }
 }
 

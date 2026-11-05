@@ -25,11 +25,11 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::pick_ops::{CHERRY_PICK_SKIP, REVERT_SKIP};
 use glowfly_core::repo::{FileEntry, ResolvedFile, Snapshot};
 use glowfly_model::msg::{ConflictMsg, LayoutMsg, Msg, RebaseMsg};
-use glowfly_model::state::AppState;
 use glowfly_model::state::op_actions::action_text;
 use glowfly_model::state::op_confirm::{Risky, banner_msg};
 use glowfly_model::state::op_steps::{self, OpKind, OpStep, StepState, step_state};
 use glowfly_model::state::rebase_banner::action_msg;
+use glowfly_model::state::{AppState, ViewState};
 
 /// The step marker's circle.
 const MARKER: f32 = 28.0;
@@ -94,7 +94,7 @@ pub(super) fn top(ui: &mut Ui, st: &AppState, snap: &Snapshot, a: TopArgs, msgs:
 
 /// Step 3, pinned at the bottom of the panel: the commit form for a merge (or conflicts alone);
 /// for the others Continue, Skip and Edit remaining steps, and the commit form on request.
-pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: OpKind, msgs: &mut Vec<Msg>) {
+pub(super) fn bottom(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, kind: OpKind, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
     let t = st.settings.lang();
     let n = op_steps::conflicted(snap);
@@ -119,14 +119,14 @@ pub(super) fn bottom(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, kind: 
         return;
     }
     indented(ui, |ui| match kind {
-        OpKind::Merge | OpKind::Conflicts => commit_box::show(ui, st, cache, BoxStyle { titled: false, primary: true }, msgs),
+        OpKind::Merge | OpKind::Conflicts => commit_box::show(ui, st, view, cache, BoxStyle { titled: false, primary: true }, msgs),
         _ => {
             let toggle = if form_open { t.tr("details.steps.commit_form.hide") } else { t.tr("details.steps.commit_form.show") };
             if ui.add(buttons::quiet(toggle).size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Layout(LayoutMsg::ToggleOpStep(OpStep::CommitForm)));
             }
             if form_open {
-                commit_box::show(ui, st, cache, BoxStyle { titled: false, primary: editing }, msgs);
+                commit_box::show(ui, st, view, cache, BoxStyle { titled: false, primary: editing }, msgs);
                 ui.add_space(4.0);
             }
             ui.horizontal(|ui| {

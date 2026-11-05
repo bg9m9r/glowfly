@@ -15,7 +15,7 @@ use glowfly_core::settings::Settings;
 use glowfly_model::msg::{Msg, PrefsMsg};
 use glowfly_model::onboarding::OnboardingMsg;
 use glowfly_model::state::git_env::GitState;
-use glowfly_model::state::onboarding::{EMAIL_FIELD, NAME_FIELD, Welcome};
+use glowfly_model::state::onboarding::{EMAIL_FIELD, NAME_FIELD, Welcome, WelcomeFields};
 use glowfly_model::state::{PrefPage, host_text};
 
 /// The identity fields' width (less when the content is narrower).
@@ -36,32 +36,33 @@ fn prefs_path(t: Lang, page: PrefPage) -> String {
 
 /// Step 1: the name and email for commits, filled from the global git config when it has them.
 /// `keyboard` is false under a credential prompt, which needs the keys.
-pub fn identity(ui: &mut egui::Ui, w: &mut Welcome, settings: &Settings, keyboard: bool) {
+/// The text fields edit `f`, the welcome's copy.
+pub fn identity(ui: &mut egui::Ui, w: &Welcome, f: &mut WelcomeFields, settings: &Settings, keyboard: bool) {
     let t = settings.lang();
     text(ui, t.tr("welcome.identity.intro"));
     ui.add_space(8.0);
-    let f = &mut w.identity;
-    if f.reading {
+    let form = &w.identity;
+    if form.reading {
         ui.horizontal(|ui| {
             ui.add(egui::Spinner::new());
             weak(ui, t.tr("welcome.identity.reading"));
         });
         return;
     }
-    if let Some(e) = &f.read_error {
+    if let Some(e) = &form.read_error {
         weak(ui, &t.trf("welcome.identity.read_error", &[("error", e)]));
-    } else if f.git_knows() {
+    } else if form.git_knows() {
         weak(ui, t.tr("welcome.identity.from_git"));
     } else {
         weak(ui, t.tr("welcome.identity.unknown"));
     }
     ui.add_space(12.0);
-    ui.add_enabled_ui(keyboard && !f.saving, |ui| {
+    ui.add_enabled_ui(keyboard && !form.saving, |ui| {
         ui.scope(|ui| {
             ui.set_max_width(FIELD_W.min(ui.available_width()));
             // A label above each field and one line under it: its problem once it was edited or
             // Continue was pressed, worked out from the text as it is now, or else its help.
-            let (name_p, email_p) = f.field_problems(t);
+            let (name_p, email_p) = form.field_problems(t);
             let r = FieldGroup::new(t.tr("welcome.identity.name.label"))
                 .help(t.tr("welcome.identity.name.help"))
                 .message(&f.touched, NAME_FIELD, name_p.map(Message::error))
@@ -79,7 +80,7 @@ pub fn identity(ui: &mut egui::Ui, w: &mut Welcome, settings: &Settings, keyboar
         weak(ui, &t.trf("welcome.identity.profile_note", &[("profile", &p.name)]));
     }
     // The answer to the last try: git's write error or a refusal.
-    if let Some(e) = &f.error {
+    if let Some(e) = &form.error {
         ui.add_space(12.0);
         form_message::form(ui, Message::error(e.as_str()));
     }
@@ -153,7 +154,7 @@ const LINK_GAP: f32 = 12.0;
 /// Step 4: open, clone or start a repository as cards, then the tour, the opt-in to author
 /// pictures with what it sends, and where the look is changed on its own line 12 px under it,
 /// with Help > Getting started beside it (unless hidden from Help).
-pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut Welcome, has_repo: bool, hidden: bool, msgs: &mut Vec<Msg>) {
+pub fn start(ui: &mut egui::Ui, t: Lang, w: &mut WelcomeFields, has_repo: bool, hidden: bool, msgs: &mut Vec<Msg>) {
     text(ui, t.tr("welcome.start.intro"));
     ui.add_space(16.0);
     super::welcome_cards::choices(ui, t, msgs);

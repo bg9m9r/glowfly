@@ -276,6 +276,7 @@ fn esc_closes_the_dashboard_and_the_repository_menu_opens_it() {
                 ref_upstreams: Default::default(),
             });
             draw(ctx, st, cache, msgs);
+            glowfly_model::testing::apply_edits(st, msgs);
         },
         (state(ThemeChoice::Dark), Vec::new()),
     );

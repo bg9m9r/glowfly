@@ -19,7 +19,6 @@ use glowfly_model::msg::AppMsg;
 use glowfly_model::msg::AvatarMsg;
 use glowfly_model::msg::GraphMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::msg::PrefsMsg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::TabsMsg;
 use glowfly_model::state::AppState;
@@ -263,17 +262,17 @@ impl GlowflyApp {
         if let Some(native) = &self.native {
             app_native::after_draw(native, ctx, &self.st);
         }
-        build_status::after_draw(&mut self.st, ctx, now, &mut msgs);
+        self.st.with_view(|st, view| build_status::after_draw(st, view, ctx, now, &mut msgs));
         self.cache.avatars.end_frame();
         let wanted = self.cache.avatars.take_wanted();
         if !wanted.is_empty() {
             msgs.push(Msg::Avatars(AvatarMsg::WantAvatars(wanted)));
         }
-        // Only Preferences edits settings in place; persist any change (also on the frame it closes).
-        if self.st.prefs.is_some() {
-            msgs.push(Msg::Prefs(PrefsMsg::SettingsEdited));
+        // The views' edits go first, so the keys and clicks of this frame see them, and the
+        // views drawn before the edited field catch up on one more frame.
+        if glowfly_model::msg::edits_first(&mut msgs) {
+            ctx.request_repaint();
         }
-
         self.phase("messages", |app| {
             for msg in msgs {
                 app.dispatch(ctx, msg);

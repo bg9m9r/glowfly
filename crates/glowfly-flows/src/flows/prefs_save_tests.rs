@@ -150,7 +150,8 @@ fn the_saved_tick_runs_on_the_frame_clock() {
     let mut st = state();
     st.prefs = Some(PrefsState::new(PrefPage::Ui));
     st.settings.show_toolbar = !st.settings.show_toolbar;
-    prefs(&mut st, PrefsMsg::SettingsEdited);
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     assert!(st.prefs.as_ref().unwrap().saved.pending, "an app setting that saves shows it too");
     let t0 = Instant::now();
     let flash = |st: &AppState| st.prefs.as_ref().unwrap().saved.clone();
@@ -163,7 +164,8 @@ fn the_saved_tick_runs_on_the_frame_clock() {
     assert!(!flash(&st).showing());
 
     st.settings.reduce_motion = true;
-    prefs(&mut st, PrefsMsg::SettingsEdited);
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     run(&mut st, Msg::Tick(t0));
     run(&mut st, Msg::Tick(t0 + Duration::from_millis(1800)));
     assert_eq!(flash(&st).alpha, 1.0, "no fade with Reduce motion");

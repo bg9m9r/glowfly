@@ -5,7 +5,7 @@ use super::tests::state;
 use super::update;
 use crate::effect::Effect;
 use crate::effect::SaveEffect;
-use crate::msg::{GraphMsg, Msg, PrefsMsg};
+use crate::msg::{GraphMsg, Msg};
 use crate::state::AppState;
 use glowfly_core::settings::ResizableColumn::{self, *};
 use std::time::Instant;
@@ -17,7 +17,8 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 /// A state with the settings as saved, so only the messages below count.
 fn synced() -> AppState {
     let mut st = state();
-    run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     st
 }
 
@@ -39,7 +40,8 @@ fn resize_column_saves_once() {
         assert_eq!(s.column_widths.get(col), col.default_width(), "{col:?}");
     }
     assert!(resize(&mut st, Commit, 220.0).is_empty(), "the same width saves nothing");
-    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty(), "no second save");
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    assert!(run(&mut st, edit).is_empty(), "no second save");
 }
 
 #[test]
