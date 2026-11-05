@@ -268,7 +268,7 @@ pub fn draw(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, msgs: &
     welcome::show(ctx, st, msgs);
     modals::show(ctx, st, msgs);
     // After the other dialogs, so a credential prompt stacks on top of them.
-    askpass::show(ctx, st, msgs);
+    st.with_view(|st, view| askpass::show(ctx, st, view, msgs));
     toasts::show(ctx, st, bounds, msgs);
     // Last, above every dialog: the drawn frame's window buttons and resize edges.
     window_frame::overlay(ctx, st, msgs);

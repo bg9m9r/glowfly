@@ -1,5 +1,7 @@
 //! Credential prompts from git and ssh (through the askpass helper) waiting for the user.
 //! Global, not parked with a tab: a prompt belongs to the running job, whichever tab is shown.
+//! The dialog's fields are `PromptFields` in `ViewState::askpass`, edited in place by the view so
+//! the secret is never copied into a message.
 
 use glowfly_core::askpass::{self, Prompt, PromptKind, Secret};
 use glowfly_core::git_credential::HttpsCredential;
@@ -35,12 +37,6 @@ pub struct Carry {
 pub struct CredentialPrompts {
     /// Oldest first; the front one is shown.
     pub queue: VecDeque<PendingPrompt>,
-    /// The dialog's text buffers (edited by the view).
-    pub user: String,
-    pub secret: String,
-    /// View state: show the masked field's text; focus the first field on the next frame.
-    pub reveal: bool,
-    pub focus_pending: bool,
     pub carry: Option<Carry>,
     /// Prompt texts answered during the current job.
     pub answered: Vec<String>,
@@ -54,9 +50,6 @@ pub struct CredentialPrompts {
     /// An SSH signing passphrase was given during the current job, so a failure that ssh-keygen
     /// calls a wrong passphrase gets its own headline.
     pub answered_ssh_signing: bool,
-    /// View state: the dialog's "Remember this sign-in" box, set from the setting whenever
-    /// prompts start queueing.
-    pub remember: bool,
     /// HTTPS sign-ins typed during the current job with Remember on, saved or dropped through
     /// git's credential helper when it ends (update/askpass_store.rs).
     pub typed: Vec<HttpsCredential>,
@@ -79,18 +72,34 @@ impl CredentialPrompts {
         *user == c.user && askpass::host(&prompt.kind).is_some_and(|h| h == c.host)
     }
 
-    /// Whether the shown prompt can be answered with what is typed.
-    pub fn can_submit(&self) -> bool {
+    /// Whether the shown prompt can be answered with what is typed in `f`.
+    pub fn can_submit(&self, f: &PromptFields) -> bool {
         match self.front().map(|p| &p.prompt.kind) {
             None => false,
-            Some(PromptKind::Username { .. }) => !self.user.trim().is_empty(),
+            Some(PromptKind::Username { .. }) => !f.user.trim().is_empty(),
             Some(PromptKind::Confirm | PromptKind::HostKey(_) | PromptKind::Other { secret: false }) => true,
-            Some(_) => !self.secret.is_empty(),
+            Some(_) => !f.secret.is_empty(),
         }
     }
+}
 
+/// The credential dialog's fields (`ViewState::askpass`): the view edits them in place and
+/// update reads and wipes them, so the secret never travels in a message.
+#[derive(Default)]
+pub struct PromptFields {
+    pub user: String,
+    pub secret: String,
+    /// Show the masked field's text.
+    pub reveal: bool,
+    /// Focus the first field on the next frame (taken by the view).
+    pub focus_pending: bool,
+    /// The "Remember this sign-in" box, set from the setting whenever prompts start queueing.
+    pub remember: bool,
+}
+
+impl PromptFields {
     /// Empties the text buffers (overwriting the secret) for the next prompt.
-    pub fn clear_buffers(&mut self) {
+    pub fn clear(&mut self) {
         askpass::wipe(&mut self.user);
         askpass::wipe(&mut self.secret);
         self.reveal = false;

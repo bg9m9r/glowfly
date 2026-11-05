@@ -45,8 +45,6 @@ pub enum PrefsMsg {
         key: String,
         value: Option<String>,
     },
-    /// Settings were edited in place by a view; persist them.
-    SettingsEdited,
     LoadSigningKeys,
     GenerateGpgKey,
     CopyPublicKey,
@@ -127,7 +125,6 @@ impl PrefsMsg {
             | Self::ClosePrefs
             | Self::SelectIntegration(..)
             | Self::GitConfig { .. }
-            | Self::SettingsEdited
             | Self::LoadSigningKeys
             | Self::GenerateGpgKey
             | Self::CopyPublicKey

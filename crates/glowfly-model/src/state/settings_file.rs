@@ -49,9 +49,9 @@ impl SettingsFile {
         self.seen = Some(Box::new(s.clone()));
     }
 
-    /// Whether `s` would save differently from the settings last saved. Sent every frame while
-    /// Preferences is open, so settings equal to the ones last seen saving the same answer at
-    /// once; only a change writes them out to compare with `saved`.
+    /// Whether `s` would save differently from the settings last saved. Asked on every edit
+    /// Preferences sends, so settings equal to the ones last seen give the same answer at once;
+    /// only a change writes them out to compare with `saved`.
     pub fn edited(&mut self, s: &Settings) -> bool {
         if let Some(seen) = self.seen.as_deref_mut() {
             // Never saved, so never a difference.

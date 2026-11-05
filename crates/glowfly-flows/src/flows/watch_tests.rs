@@ -9,7 +9,6 @@ use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::{Effect, LoadKind, WatchTarget};
 use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::msg::PrefsMsg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::StageMsg;
 use glowfly_model::msg::TabsMsg;
@@ -225,18 +224,22 @@ fn watcher_follows_the_active_tab() {
 #[test]
 fn preference_toggle_starts_and_stops_watching() {
     let (mut st, dir, workdir) = opened("watch-pref");
-    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "nothing changed");
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(update(&mut st, edit, Instant::now()).is_empty(), "nothing changed");
     st.settings.watch_files = false;
-    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = update(&mut st, edit, Instant::now());
     assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Control(ControlEffect::Watch(None))]), "{fx:?}");
     assert!(update(&mut st, changed(&workdir, false, Instant::now()), Instant::now()).is_empty(), "ignored while off");
     st.settings.watch_files = true;
-    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = update(&mut st, edit, Instant::now());
     assert!(
         matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_)), Effect::Control(ControlEffect::Watch(Some(t)))] if t.workdir == workdir),
         "{fx:?}"
     );
-    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(update(&mut st, edit, Instant::now()).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

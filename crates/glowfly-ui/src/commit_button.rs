@@ -16,7 +16,7 @@ use crate::widgets::reason::{ItemState, menu_button};
 use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_model::msg::{CommitMsg, Msg};
-use glowfly_model::state::CommitDraft;
+use glowfly_model::state::commit::CommitFields;
 
 /// The least width of the caret's menu.
 const MENU_W: f32 = 160.0;
@@ -54,7 +54,7 @@ pub(super) fn show(
     ui: &mut egui::Ui,
     b: Button,
     actions: &[MenuAction],
-    draft: &mut CommitDraft,
+    draft: &mut CommitFields,
     t: Lang,
     msgs: &mut Vec<Msg>,
 ) -> (egui::Response, Option<Act>) {

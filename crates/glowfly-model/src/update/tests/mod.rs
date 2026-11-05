@@ -15,6 +15,7 @@ pub(super) mod credentials_tests;
 pub(super) mod diff_lines_tests;
 pub(super) mod diff_pairs_tests;
 pub(super) mod diff_text_tests;
+pub(super) mod edit_tests;
 pub(super) mod editor_tests;
 pub(super) mod forge_errors_tests;
 pub(super) mod getting_started_tests;

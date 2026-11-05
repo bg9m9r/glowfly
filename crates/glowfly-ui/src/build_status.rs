@@ -9,7 +9,7 @@ use git2::Oid;
 use glowfly_core::forge::{CheckState, PullRequest, RunState};
 use glowfly_model::msg::{ForgeMsg, Msg};
 use glowfly_model::state::build_status::{MAX_SEEN, tip_queries};
-use glowfly_model::state::{AppState, ForgeState, Status};
+use glowfly_model::state::{AppState, ForgeState, Status, ViewState};
 use std::time::Instant;
 
 /// Width a row keeps free for the marker.
@@ -115,12 +115,12 @@ pub fn pr_menu_item(ui: &mut Ui, pr: &PullRequest, msgs: &mut Vec<Msg>) {
 
 /// After a frame is drawn: reports a changed set of tips on screen, and wakes the window when a
 /// shown tip is due to be asked about again (so pending markers update without input).
-pub fn after_draw(st: &mut AppState, ctx: &egui::Context, now: Instant, msgs: &mut Vec<Msg>) {
+pub fn after_draw(st: &AppState, view: &mut ViewState, ctx: &egui::Context, now: Instant, msgs: &mut Vec<Msg>) {
     // The pull request panel's running checks are read again once a minute.
     if let Some(d) = st.session.pull_request.view.as_ref().and_then(|v| v.checks.next_wake(now)) {
         ctx.request_repaint_after(d);
     }
-    let seen = std::mem::take(&mut st.view.tips_seen);
+    let seen = std::mem::take(&mut view.tips_seen);
     let (Some(fs), Some(snap)) = (st.session.forge.as_ref(), st.snap.as_ref()) else { return };
     // Only tips the host can be asked about (its remote's branches and what tracks them).
     let seen: Vec<Oid> = tip_queries(snap, &fs.remote, &seen).into_iter().map(|(o, _)| o).collect();

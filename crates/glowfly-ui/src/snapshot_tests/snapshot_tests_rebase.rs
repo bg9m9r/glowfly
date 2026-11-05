@@ -128,6 +128,7 @@ pub(crate) fn harness_with_keys(st: AppState) -> Harness<'static, (AppState, Vec
             });
             draw(ctx, st, cache, msgs);
             st.with_view(|st, view| super::escape_key(ctx, st, view, msgs));
+            glowfly_model::testing::apply_edits(st, msgs);
         },
         (st, Vec::new()),
     )

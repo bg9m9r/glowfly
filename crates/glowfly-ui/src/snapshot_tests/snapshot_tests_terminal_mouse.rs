@@ -10,8 +10,11 @@ use eframe::egui::{Event, Modifiers, MouseWheelUnit, PointerButton, Pos2, pos2, 
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey};
+use glowfly_model::effect::{Effect, UiEffect};
+use glowfly_model::msg::Msg;
 use glowfly_model::state::terminal::SessionStatus;
 use glowfly_model::terminal::TerminalMsg;
+use std::time::Instant;
 
 /// The text of session 0's selection.
 fn selected(h: &mut H) -> String {
@@ -30,6 +33,21 @@ fn triple_click(h: &mut H, pos: Pos2) {
     h.run_ok();
 }
 
+/// Runs the word or line pick (`line`) the clicks pushed, as the shell would: update finds it,
+/// since that reads the screen's history. Returns its effects.
+fn pick(h: &mut H, line: bool) -> Vec<Effect> {
+    let (st, msgs) = h.state_mut();
+    let i = msgs.iter().position(|m| matches!(m, Msg::Terminal(TerminalMsg::SelectAt { line: l, .. }) if *l == line)).expect("a pick");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::Terminal(TerminalMsg::Selected))), "the pick offers it, not Selected");
+    glowfly_model::update::update(st, msgs.remove(i), Instant::now())
+}
+
+/// Whether `fx` offers the selection as PRIMARY and copies it (Copy on select).
+fn offered(fx: &[Effect]) -> bool {
+    let has = |f: fn(&UiEffect) -> bool| fx.iter().any(|e| matches!(e, Effect::Ui(u) if f(u)));
+    has(|u| matches!(u, UiEffect::SetPrimary(_))) && has(|u| matches!(u, UiEffect::CopyText(_)))
+}
+
 #[test]
 fn double_and_triple_clicks_select_a_word_and_a_line() {
     let (mut st, dir) = with_session(ThemeChoice::Dark, "terminal-word", SessionStatus::Running);
@@ -39,14 +57,16 @@ fn double_and_triple_clicks_select_a_word_and_a_line() {
     // "PS C:\work\demo> git status": the path, without the prompt's ">".
     let at = cell(&h, 0, 8);
     double_click(&mut h, at, Modifiers::NONE);
+    let fx = pick(&mut h, false);
     assert_eq!(selected(&mut h), "C:\\work\\demo");
-    assert!(pushed(&h, |t| matches!(t, TerminalMsg::Selected)), "reported (PRIMARY, and copied with Copy on select)");
+    assert!(offered(&fx), "reported (PRIMARY, and copied with Copy on select): {fx:?}");
 
     h.state_mut().1.clear();
     let at = cell(&h, 3, 22);
     triple_click(&mut h, at);
+    let fx = pick(&mut h, true);
     assert_eq!(selected(&mut h), "        modified:   README.md", "the whole line");
-    assert!(pushed(&h, |t| matches!(t, TerminalMsg::Selected)));
+    assert!(offered(&fx), "{fx:?}");
 
     // A single click drops the selection.
     let at = cell(&h, 5, 3);

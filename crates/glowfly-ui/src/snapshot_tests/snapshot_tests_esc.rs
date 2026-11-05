@@ -37,6 +37,7 @@ pub(crate) fn app_harness(st: AppState) -> Harness<'static, (AppState, Vec<Msg>)
                 ref_upstreams: Default::default(),
             });
             draw(ctx, st, cache, msgs);
+            glowfly_model::testing::apply_edits(st, msgs);
         },
         (st, Vec::new()),
     )

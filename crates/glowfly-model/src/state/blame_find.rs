@@ -4,7 +4,7 @@
 
 use std::ops::Range;
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, PartialEq)]
 pub struct BlameFind {
     pub query: String,
     /// The lines with a match, in order (0-based).

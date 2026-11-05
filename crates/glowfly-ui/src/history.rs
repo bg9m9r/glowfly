@@ -25,9 +25,9 @@ use glowfly_model::keymap::Keymap;
 use glowfly_model::msg::BlameMsg;
 use glowfly_model::msg::HistoryMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::history::{FileHistoryView, HistoryKind, HistoryPane};
 use glowfly_model::state::tool_compare::{OPEN_IN_DIFF_TOOL, ToolSetup};
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::tools::ToolsMsg;
 
 const ROW_H: f32 = 44.0;
@@ -38,12 +38,12 @@ const NO_SELECTION_HINT: &str = "Select a commit to see its changes to the file.
 const LOADING_CHANGES: &str = "Loading the changes…";
 pub(super) const NOT_ON_GRAPH: &str = "Not visible on the graph: its branch is hidden or it is older than the commit limit";
 
-pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    let scroll_to = st.view.history_scroll_to.take();
-    let file_scroll = st.view.history_file_scroll.take();
-    let Some(view) = &st.session.history.view else { return };
+pub fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    let scroll_to = view.history_scroll_to.take();
+    let file_scroll = view.history_file_scroll.take();
+    let Some(hv) = &st.session.history.view else { return };
     ui.add_space(6.0);
-    header(ui, st.settings.lang(), &st.keymap, view, msgs);
+    header(ui, st.settings.lang(), &st.keymap, hv, msgs);
     ui.separator();
     let room = ui.available_width();
     super::panel_size::inner_side(egui::SidePanel::left("file-history-list"), glowfly_model::state::panel_layout::HISTORY_LIST, room)
@@ -51,7 +51,7 @@ pub fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<
         .show_inside(ui, |ui| list(ui, st, scroll_to, msgs));
     egui::CentralPanel::default()
         .frame(egui::Frame::new().fill(color::bg()))
-        .show_inside(ui, |ui| selected(ui, st, cache, file_scroll, msgs));
+        .show_inside(ui, |ui| selected(ui, st, view, cache, file_scroll, msgs));
 }
 
 /// "File history" or "Folder history", the path ("now <name>" when the file was renamed after
@@ -221,14 +221,14 @@ fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
 /// The selected commit: summary, author and date, links, (in a folder history) its changed
 /// files, and file buttons for the file shown (Restore this version, Open, Show, Open in
 /// external diff tool); then its diff of the file, or the whole file in the File view.
-fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Option<usize>, msgs: &mut Vec<Msg>) {
-    let Some(view) = &st.session.history.view else { return };
-    let (kind, pane, target) = (view.kind, view.pane, view.target());
-    let open_path = view.shown_today();
-    let in_wd = view.shown_in_workdir(st.snap.as_ref());
-    let shown = view.shown().map(|(oid, path, status)| (oid, path.to_owned(), status));
-    let Some(e) = view.selected_entry().cloned() else {
-        if !view.loading && !view.entries.is_empty() {
+fn selected(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, file_scroll: Option<usize>, msgs: &mut Vec<Msg>) {
+    let Some(hv) = &st.session.history.view else { return };
+    let (kind, pane, target) = (hv.kind, hv.pane, hv.target());
+    let open_path = hv.shown_today();
+    let in_wd = hv.shown_in_workdir(st.snap.as_ref());
+    let shown = hv.shown().map(|(oid, path, status)| (oid, path.to_owned(), status));
+    let Some(e) = hv.selected_entry().cloned() else {
+        if !hv.loading && !hv.entries.is_empty() {
             empty_state(ui, EmptyIcon::File, NO_SELECTION_TITLE, NO_SELECTION_HINT, &[]);
         }
         return;
@@ -267,9 +267,7 @@ fn selected(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, file_scroll: Op
         HistoryPane::File => super::history_file::show(ui, st, cache, msgs),
         HistoryPane::Diff => match st.for_diff() {
             Some(p) => super::content_fetch::show(ui, st, p, msgs),
-            None if st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == target) => {
-                st.with_view(|st, view| super::diff::body(ui, st, view, cache, msgs))
-            }
+            None if st.session.diff.view.as_ref().is_some_and(|(t, _)| *t == target) => super::diff::body(ui, st, view, cache, msgs),
             None => super::pane_status::loading(ui, LOADING_CHANGES),
         },
     }

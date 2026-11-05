@@ -92,3 +92,20 @@ pub fn same_place(a: &Path, b: &Path) -> bool {
 pub fn said(text: &str) -> glowfly_core::error::ReadFailed {
     glowfly_core::error::ReadFailed::Said { said: text.into() }
 }
+
+/// Runs the views' `Msg::Edit`s taken out of `msgs` (dropping their effects), as the shell does
+/// first each frame: for view tests, which draw without dispatching.
+pub fn apply_edits(st: &mut AppState, msgs: &mut Vec<crate::msg::Msg>) {
+    let (edits, rest): (Vec<_>, Vec<_>) = std::mem::take(msgs).into_iter().partition(crate::msg::Msg::is_edit);
+    *msgs = rest;
+    for m in edits {
+        crate::update::update(st, m, Instant::now());
+    }
+}
+
+/// The edit Preferences sends after `f` changed the settings (`EditMsg::Settings`).
+pub fn settings_edit(st: &AppState, f: impl FnOnce(&mut Settings)) -> crate::msg::Msg {
+    let mut s = st.settings.clone();
+    f(&mut s);
+    crate::msg::Msg::Edit(crate::msg::EditMsg::Settings(Box::new(s)))
+}

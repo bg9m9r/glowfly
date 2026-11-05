@@ -26,7 +26,7 @@ pub(super) const SIDE: f32 = 8.0;
 const RIGHT_W: f32 = 6.0 * ControlSize::Regular.metrics().h + 6.0 * ghost::SPACE + ghost::DIVIDER_W;
 
 /// Draws the header across the top of `ui`.
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::hover());
     let right = Rect::from_min_max(pos2(rect.right() - RIGHT_W, rect.top()), rect.max);
     let mut r = ui.new_child(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)));

@@ -9,7 +9,7 @@ use glowfly_core::repo::CommonDir;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::SaveEffect;
 use glowfly_model::effect::SessionEffect;
-use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg};
+use glowfly_model::msg::{Msg, RepoMsg, TabsMsg};
 use glowfly_model::state::{AppState, Tab};
 use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
@@ -232,12 +232,15 @@ fn drops_inside_and_outside_a_group() {
 fn turning_grouping_on_regroups_once() {
     let mut st = fake_tabs(&["a1", "x", "a2", "b1", "y", "b2"], 2);
     st.settings.group_worktree_tabs = false;
-    assert!(saved(&update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now())).is_empty());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(saved(&update(&mut st, edit, Instant::now())).is_empty());
     assert_eq!(names(&st), ["a1", "x", "a2", "b1", "y", "b2"], "off: left as it is");
     st.settings.group_worktree_tabs = true;
-    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = update(&mut st, edit, Instant::now());
     assert_eq!(names(&st), ["a1", "a2", "x", "b1", "b2", "y"]);
     assert_eq!(st.active_tab, 1, "a2 stays active");
     assert_eq!(saved(&fx).len(), 1);
-    assert!(saved(&update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now())).is_empty(), "nothing more to do");
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(saved(&update(&mut st, edit, Instant::now())).is_empty(), "nothing more to do");
 }

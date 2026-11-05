@@ -27,13 +27,13 @@ Are you sure you want to continue connecting (yes/no/[fingerprint])? ";
 
 fn prompt(st: &mut AppState, text: &str, retry: bool, rejected_before: bool) {
     st.askpass.queue.push_back(PendingPrompt { id: 1, prompt: Prompt::new(text, None), retry, rejected_before });
-    st.askpass.focus_pending = true;
+    st.view.askpass.focus_pending = true;
 }
 
 fn gpg_prompt(st: &mut AppState, retry: bool) {
     let ask = GpgAsk { key: "ABCDEF0123456789".into(), user: Some("Ada Lovelace <ada@example.com>".into()), retry, extend: false };
     st.askpass.queue.push_back(PendingPrompt { id: 1, prompt: Prompt::gpg(ask), retry, rejected_before: false });
-    st.askpass.focus_pending = true;
+    st.view.askpass.focus_pending = true;
 }
 
 fn pushed(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, want: fn(&Msg) -> bool) -> bool {
@@ -44,9 +44,9 @@ fn pushed(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, want: fn(&Msg) ->
 fn credential_prompt_sign_in() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "askpass-sign-in");
     prompt(&mut st, "Username for 'https://github.com': ", false, true);
-    st.askpass.user = "ada".into();
-    st.askpass.secret = "hunter2".into();
-    st.askpass.remember = true;
+    st.view.askpass.user = "ada".into();
+    st.view.askpass.secret = "hunter2".into();
+    st.view.askpass.remember = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("credential_prompt_sign_in");
@@ -61,7 +61,7 @@ fn credential_prompt_sign_in() {
     assert!(h.query_by_label_contains("saves this sign-in with git's credential helper").is_some());
     h.get_by_label("Remember this sign-in").click();
     h.run();
-    assert!(!h.state().0.askpass.remember, "the box is only this sign-in's");
+    assert!(!h.state().0.view.askpass.remember, "the box is only this sign-in's");
     assert!(h.query_by_label_contains("doesn't save what you type here").is_some());
     let sign_in = h.get_by_label("Sign in");
     assert!(!sign_in.is_disabled());
@@ -188,7 +188,7 @@ fn credential_prompt_gpg() {
     assert!(h.query_by_label_contains("Ada Lovelace <ada@example.com>").is_some());
     assert!(h.query_by_label_contains("gpg-agent remembers the passphrase").is_some());
     assert!(h.query_by_label_contains("didn't unlock").is_none());
-    h.state_mut().0.askpass.secret = "hunter2".into();
+    h.state_mut().0.view.askpass.secret = "hunter2".into();
     h.run();
     assert!(h.query_by_label_contains("hunter2").is_none(), "the passphrase is masked");
     h.get_by_label("Unlock").click();
@@ -218,7 +218,7 @@ fn credential_prompt_ssh_signing() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "askpass-ssh-signing");
     let prompt = Prompt::ssh_sign(SshSignAsk { key: "~/.ssh/id_ed25519".into() });
     st.askpass.queue.push_back(PendingPrompt { id: 1, prompt, retry: false, rejected_before: false });
-    st.askpass.focus_pending = true;
+    st.view.askpass.focus_pending = true;
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("credential_prompt_ssh_signing");
@@ -228,7 +228,7 @@ fn credential_prompt_ssh_signing() {
     assert!(h.query_by_label_contains("ssh-agent (ssh-add)").is_some());
     assert!(h.query_by_label_contains("didn't unlock").is_none());
     assert!(h.get_by_label("Unlock").is_disabled(), "nothing typed yet");
-    h.state_mut().0.askpass.secret = "hunter2".into();
+    h.state_mut().0.view.askpass.secret = "hunter2".into();
     h.run();
     assert!(h.query_by_label_contains("hunter2").is_none(), "the passphrase is masked");
     h.get_by_label("Unlock").click();

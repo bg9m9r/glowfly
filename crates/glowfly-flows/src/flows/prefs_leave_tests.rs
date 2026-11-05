@@ -246,7 +246,8 @@ fn the_approval_lets_one_message_through() {
     // An approval that wasn't used doesn't outlive the message it came with.
     let mut st = identity();
     st.prefs.as_mut().unwrap().leave_approved = true;
-    prefs(&mut st, PrefsMsg::SettingsEdited);
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     git_mut(&mut st).repo_name = "Grace".into();
     prefs(&mut st, PrefsMsg::ClosePrefs);
     assert!(asking(&st));

@@ -16,7 +16,8 @@ use glowfly_core::repo::CommitTemplate;
 pub use ready::{commit_blocked, commit_label, commit_merge_blocked};
 use std::path::Path;
 
-/// What the user is writing in the commit box. Views edit it in place.
+/// What the user is writing in the commit box. The view edits a copy of its fields
+/// (`CommitFields`) and sends it back as `EditMsg::Commit`.
 #[derive(Default)]
 pub struct CommitDraft {
     pub summary: String,
@@ -35,7 +36,28 @@ pub struct CommitDraft {
     pub amend_stop: Option<EditStop>,
 }
 
+/// The commit box's fields the view edits, drawn from a copy (`CommitDraft::fields`) and set
+/// back by `EditMsg::Commit`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CommitFields {
+    pub summary: String,
+    pub description: String,
+    pub amend: bool,
+    pub skip_hooks: bool,
+}
+
 impl CommitDraft {
+    /// A copy of the fields the commit box edits.
+    pub fn fields(&self) -> CommitFields {
+        let (summary, description) = (self.summary.clone(), self.description.clone());
+        CommitFields { summary, description, amend: self.amend, skip_hooks: self.skip_hooks }
+    }
+
+    /// Takes the commit box's edited fields; the template, merge message and edit stop stay.
+    pub fn apply(&mut self, f: CommitFields) {
+        (self.summary, self.description, self.amend, self.skip_hooks) = (f.summary, f.description, f.amend, f.skip_hooks);
+    }
+
     /// The full commit message: summary, blank line, description. The comment lines of the
     /// draft's template are left out; every line the user wrote is kept, including one that
     /// starts with the comment char (an issue mention such as "#123").

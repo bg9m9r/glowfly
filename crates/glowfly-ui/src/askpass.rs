@@ -14,8 +14,8 @@ use glowfly_core::askpass::{PromptKind, host, user_and_host};
 use glowfly_core::git_credential::is_http_url;
 use glowfly_model::msg::CredentialMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::askpass::PendingPrompt;
+use glowfly_model::state::{AppState, ViewState};
 
 /// The wording and fields for one kind of prompt.
 struct Layout {
@@ -146,10 +146,11 @@ fn notice(p: &PendingPrompt) -> Option<Message<'static>> {
 
 /// Draws the oldest waiting prompt, if any. A click outside does not cancel it; Esc and the
 /// close button do.
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>) {
     let Some(front) = st.askpass.front().cloned() else { return };
     let l = layout(&front);
-    let p = &mut st.askpass;
+    // Edited in place in the lent view state: the secret is never copied into a message.
+    let p = &mut view.askpass;
     let secret_id = Id::new("glowfly-credentials-secret");
     let id = Id::new("glowfly-credentials");
     // On top of everything, so it takes the keyboard.
@@ -244,7 +245,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             ui.add_space(6.0);
             ui.label(RichText::new(saved).color(color::weak()).size(type_scale::SMALL));
         }
-        let valid = p.can_submit();
+        let valid = st.askpass.can_submit(p);
         let cancel = ui.input(|i| i.key_pressed(Key::Escape));
         let button = buttons::primary(l.primary).enabled(valid);
         // A yes/no question isn't answered by a stray Enter: its button keeps the primary style,

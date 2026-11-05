@@ -30,11 +30,12 @@ use eframe::egui::{self, Align, Key, Layout, Modifiers, RichText, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_model::keymap::{BindingId, Keymap};
 use glowfly_model::msg::CommitMsg;
+use glowfly_model::msg::EditMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::commit::stop::{amend_blocked_in, edit_stop, rebase_stopped};
 use glowfly_model::state::commit::{SUMMARY_HARD, SummaryLength, commit_blocked, commit_label, summary_length};
 use glowfly_model::state::repo_identity::{commit_identity_line, env_tip};
+use glowfly_model::state::{AppState, ViewState};
 
 /// Height the commit box needs below the file lists (the lists share what is left), with its
 /// caption taking `lines` lines.
@@ -67,8 +68,10 @@ pub(super) struct BoxStyle {
     pub primary: bool,
 }
 
-pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, style: BoxStyle, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, style: BoxStyle, msgs: &mut Vec<Msg>) {
     let Some(snap) = &st.snap else { return };
+    // The fields are drawn from a copy, sent back as one edit when it changed.
+    let mut f = st.session.draft.fields();
     // The commit message pane: from here to the bottom of the panel (`pane_focus.rs`).
     let pane = egui::Rect::from_min_max(ui.cursor().min, ui.max_rect().max);
     super::pane_focus::drawn_at(ui.ctx(), glowfly_model::state::layout::Pane::Message, pane);
@@ -101,7 +104,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     // Link the issue encoded in the branch name (e.g. 1234-login or PROJ-12-crash).
     if let Some((fs, key)) = st.session.forge.as_ref().and_then(|f| Some((f, f.branch_issue(snap.head_branch.as_deref()?)?))) {
         let tag = fs.mention(&key);
-        let mentioned = fs.links_issue(&st.session.draft.summary, &key) || fs.links_issue(&st.session.draft.description, &key);
+        let mentioned = fs.links_issue(&f.summary, &key) || fs.links_issue(&f.description, &key);
         ui.horizontal(|ui| {
             issue_chip(ui, fs, &key, msgs);
             let hover = if fs.message_ref(&key) == tag { t.tr("commit.link_tip.mention") } else { t.tr("commit.link_tip.link") };
@@ -117,11 +120,11 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     }
 
     let spell = st.settings.spellcheck;
-    let s = summary_field(ui, &mut st.session.draft.summary, cache, t, spell);
-    if std::mem::take(&mut st.view.focus_message) {
+    let s = summary_field(ui, &mut f.summary, cache, t, spell);
+    if std::mem::take(&mut view.focus_message) {
         s.request_focus();
     }
-    let d = spell_text_edit(ui, &mut st.session.draft.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
+    let d = spell_text_edit(ui, &mut f.description, t.tr("commit.description_hint"), 4, &mut cache.speller, spell);
     super::access::name_field(&d, t.tr("commit.description_name"));
     if let Some(template) = &st.session.draft.template {
         let note = t.trf("commit.template_note", &[("char", &template.comment_char)]);
@@ -136,13 +139,13 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     let detached = snap.head_branch.is_none();
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = OPTION_GAP;
-        let enabled = amend_why.is_none() || st.session.draft.amend;
-        let amend = ui.add_enabled(enabled, controls::Check::new(&mut st.session.draft.amend, t.tr("commit.amend")));
+        let enabled = amend_why.is_none() || f.amend;
+        let amend = ui.add_enabled(enabled, controls::Check::new(&mut f.amend, t.tr("commit.amend")));
         let amend = match amend_why {
             Some(why) => amend.on_disabled_hover_text(why),
             None => amend,
         };
-        if amend.changed() && st.session.draft.amend {
+        if amend.changed() && f.amend {
             msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
         }
         if rebasing {
@@ -164,10 +167,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
     let continues = edit_stop(snap).is_some();
     let caption = commit_blocked(st, false);
     let label = commit_label(st);
-    let actions = if continues { Vec::new() } else { menu_actions(st, amend_why, caption.as_deref()) };
+    let actions = if continues { Vec::new() } else { menu_actions(st, f.amend, amend_why, caption.as_deref()) };
     let tip = shortcuts_tip(t, &st.keymap);
     let b = button::Button { label, enabled: caption.is_none(), primary: style.primary, caption: caption.as_deref(), tip: &tip };
-    let (commit, picked) = ui.horizontal(|ui| button::show(ui, b, &actions, &mut st.session.draft, t, msgs)).inner;
+    let (commit, picked) = ui.horizontal(|ui| button::show(ui, b, &actions, &mut f, t, msgs)).inner;
     if let Some(caption) = &caption {
         super::access::describe(&commit, caption);
     }
@@ -182,8 +185,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         }));
     }
     if picked == Some(Act::Amend) {
-        st.session.draft.amend = true;
-        st.view.focus_message = true;
+        f.amend = true;
+        view.focus_message = true;
         msgs.push(Msg::Commit(CommitMsg::PrefillAmend));
     }
     // Wrapped, never cut: a long caption (German, a narrow panel) takes a second line.
@@ -201,6 +204,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, st
         } else if one {
             msgs.push(Msg::Commit(if continues { CommitMsg::CommitAndContinue } else { CommitMsg::Commit }));
         }
+    }
+    if f != st.session.draft.fields() {
+        msgs.push(Msg::Edit(EditMsg::Commit(f)));
     }
 }
 
@@ -239,7 +245,7 @@ fn summary_field(ui: &mut egui::Ui, summary: &mut String, cache: &mut UiCache, t
 /// The caret menu's actions (none at a rebase stopped to edit, where only Skip hooks is
 /// offered): Stage all and commit, Commit and push (unless the button already pushes, or a
 /// rebase is stopped), Amend last commit (unless Amend is ticked).
-fn menu_actions(st: &AppState, amend_why: Option<&str>, caption: Option<&str>) -> Vec<MenuAction> {
+fn menu_actions(st: &AppState, amend: bool, amend_why: Option<&str>, caption: Option<&str>) -> Vec<MenuAction> {
     let t = st.settings.lang();
     let Some(snap) = &st.snap else { return Vec::new() };
     let mut actions = vec![MenuAction {
@@ -253,7 +259,7 @@ fn menu_actions(st: &AppState, amend_why: Option<&str>, caption: Option<&str>) -
         let why = why.map(str::to_owned);
         actions.push(MenuAction { label: t.tr("commit.menu.commit_push").to_owned(), key: String::new(), why, act: Act::CommitAndPush });
     }
-    if !st.session.draft.amend {
+    if !amend {
         let why = amend_why.map(str::to_owned);
         actions.push(MenuAction { label: t.tr("commit.amend").to_owned(), key: String::new(), why, act: Act::Amend });
     }

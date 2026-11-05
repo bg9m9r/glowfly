@@ -109,6 +109,8 @@ fn probed(workdir: &std::path::Path, probe: Probe) -> Msg {
 #[test]
 fn a_silent_watcher_is_warned_about_once_and_polled_until_events_arrive() {
     let (mut st, dir) = opened("watch-probe-silent");
+    // The toasts stay up while the ticks move the clock on (`Msg::Tick` expires them).
+    st.settings.a11y.toast_time = glowfly_core::settings::ToastTime::UntilClosed;
     let workdir = st.workdir().unwrap();
     assert_eq!(st.watch.live_updates(), Some(LiveUpdates::Checking), "the probe is out");
     let n = st.toasts.len();

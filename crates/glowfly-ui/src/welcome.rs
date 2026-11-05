@@ -13,7 +13,7 @@ use super::welcome_steps;
 use crate::widgets::buttons;
 use eframe::egui::{self, Id};
 use glowfly_core::i18n::Lang;
-use glowfly_model::msg::Msg;
+use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::onboarding::OnboardingMsg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::onboarding::{Welcome, WelcomeStep};
@@ -23,7 +23,7 @@ const WIDTH: f32 = 760.0;
 /// The body's least height, so the dialog doesn't jump between steps.
 const BODY_MIN_H: f32 = 200.0;
 
-pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
     if st.prefs.is_some() {
         return;
     }
@@ -33,7 +33,9 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
     let has_repo = st.snap.is_some();
     let (settings, git) = (&st.settings, &st.git);
     let t = settings.lang();
-    let Some(w) = st.onboarding.welcome.as_mut() else { return };
+    let Some(w) = st.onboarding.welcome.as_ref() else { return };
+    // The fields are drawn from a copy, sent back as one edit when it changed.
+    let mut f = w.fields();
     // Under a credential prompt or another dialog the welcome reads no keys.
     let cx = Cx { t, keyboard: !prompting && !covered, key: Id::new("glowfly-welcome-dialog") };
     let no_connections = settings.connections.is_empty();
@@ -48,14 +50,17 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, msgs: &mut Vec<Msg>) {
             .header(move |ui| welcome_header::draw(ui, t, step, greeting.as_deref()))
             .begin(ui);
         d.body(ui, |ui| match step {
-            WelcomeStep::Identity => welcome_steps::identity(ui, w, settings, !prompting),
+            WelcomeStep::Identity => welcome_steps::identity(ui, w, &mut f, settings, !prompting),
             WelcomeStep::Connect => welcome_steps::connect(ui, t, &settings.connections, msgs),
             WelcomeStep::Git => welcome_steps::git(ui, t, git, msgs),
-            WelcomeStep::Start => welcome_steps::start(ui, t, w, has_repo, gs_hidden, msgs),
+            WelcomeStep::Start => welcome_steps::start(ui, t, &mut f, has_repo, gs_hidden, msgs),
         });
         let out = d.finish(ui, footer(t, w, no_connections));
         answer(out, step, msgs);
     });
+    if f != w.fields() {
+        msgs.push(Msg::Edit(EditMsg::Welcome(f)));
+    }
     // Taken every frame, so a stale click never carries over. The close button, Esc or a click
     // outside ends the welcome early, unless a credential prompt is on top.
     let closed = dialog_frame::take_closed(&resp);

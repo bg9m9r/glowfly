@@ -19,7 +19,8 @@ use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{BlameMoves, Settings};
 use glowfly_model::keymap::Keymap;
 use glowfly_model::msg::{BlameMsg, Msg};
-use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::AppState;
+use glowfly_model::state::blame::{BlameFields, BlameView};
 use glowfly_model::state::history::HistoryPane;
 
 /// The Moves menu's button text.
@@ -43,17 +44,10 @@ fn moves(t: Lang) -> [(BlameMoves, &'static str); 3] {
 /// The least width find and go to line need; narrower, they move to a row of their own.
 const FIND_ROW_MIN: f32 = 340.0;
 
-/// `over_history`: opened over a file history on its shown file, which is still open.
-pub(super) fn show(
-    ui: &mut Ui,
-    blame: &mut Option<BlameView>,
-    settings: &Settings,
-    snap: Option<&Snapshot>,
-    over_history: bool,
-    keys: &Keymap,
-    msgs: &mut Vec<Msg>,
-) {
-    let Some(view) = blame.as_mut() else { return };
+/// `over_history`: opened over a file history on its shown file, which is still open. The find
+/// and Line fields edit `f`, the view's copy.
+pub(super) fn show(ui: &mut Ui, st: &AppState, view: &BlameView, f: &mut BlameFields, over_history: bool, msgs: &mut Vec<Msg>) {
+    let (settings, snap, keys) = (&st.settings, st.snap.as_ref(), &st.keymap);
     let t = settings.lang();
     first_row(ui, t, keys, view, over_history, msgs);
     ui.add_space(4.0);
@@ -85,7 +79,7 @@ pub(super) fn show(
         }
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.add_space(8.0);
-            find_and_line(ui, view, msgs);
+            find_and_line(ui, f, msgs);
         });
     });
     if own_row {
@@ -93,7 +87,7 @@ pub(super) fn show(
         ui.horizontal(|ui| {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(8.0);
-                find_and_line(ui, view, msgs);
+                find_and_line(ui, f, msgs);
             });
         });
     }
@@ -192,8 +186,8 @@ fn skipped_chip(ui: &mut Ui, t: Lang, view: &BlameView, snap: Option<&Snapshot>,
 }
 
 /// Right to left: the Line field, the find arrows, the match count and the Find field.
-fn find_and_line(ui: &mut Ui, view: &mut BlameView, msgs: &mut Vec<Msg>) {
-    for intent in crate::find_bar::find_and_line(ui, &mut view.find, &mut view.goto, &mut view.focus_find) {
+fn find_and_line(ui: &mut Ui, f: &mut BlameFields, msgs: &mut Vec<Msg>) {
+    for intent in crate::find_bar::find_and_line(ui, &mut f.find, &mut f.goto, &mut f.focus_find) {
         msgs.push(Msg::Blame(match intent {
             FindIntent::Changed => BlameMsg::FindChanged,
             FindIntent::Step(d) => BlameMsg::FindStep(d),

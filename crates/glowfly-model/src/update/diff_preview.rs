@@ -43,8 +43,8 @@ pub(super) fn set_svg_preview(st: &mut AppState, on: bool, fx: &mut Vec<Effect>)
     }
 }
 
-/// Preferences edited the settings in place: an SVG on screen whose Preview setting changed
-/// there asks for its sides, or drops them.
+/// Preferences edited the settings (`EditMsg::Settings`): an SVG on screen whose Preview setting
+/// changed there asks for its sides, or drops them.
 pub(super) fn settings_edited(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(on) = crate::state::diff_preview::svg_switch(st) else { return };
     if on != st.session.diff_preview.is_some() {

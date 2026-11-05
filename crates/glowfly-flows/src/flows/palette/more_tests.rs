@@ -217,7 +217,8 @@ fn toolbar_labels_toggle_saves_once() {
     assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(s))] if !s.toolbar_labels), "{fx:?}");
     assert!(st.palette.is_none());
     // Nothing left for the per-frame settings check to save.
-    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(run(&mut st, edit).is_empty());
     assert!(has(&st, "Show toolbar labels"));
     assert!(!has(&st, "Hide toolbar labels"));
     assert!(run(&mut st, Msg::Prefs(PrefsMsg::SetToolbarLabels(false))).is_empty());

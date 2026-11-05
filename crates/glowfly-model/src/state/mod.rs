@@ -1,4 +1,4 @@
-//! Application state: plain data, no egui types. Only `update` changes it, but views write `ViewState` and text buffers in place.
+//! Application state: plain data, no egui types. Only `update` changes it; views write `ViewState` and send their edits as `Msg::Edit`.
 
 pub mod activity_copy;
 pub mod activity_rows;

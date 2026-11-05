@@ -159,6 +159,9 @@ pub struct ViewState {
     /// The active tab's graph scroll and diff top row, recorded by the views; parked with the tab
     /// (`Parked::view`).
     pub tab: crate::state::session_view::TabViewState,
+    /// The credential dialog's fields, edited in place (never sent in a message); update reads
+    /// and wipes them (`update/askpass.rs`).
+    pub askpass: crate::state::askpass::PromptFields,
 }
 
 impl Default for ViewState {
@@ -199,6 +202,7 @@ impl Default for ViewState {
             menu_keys: Default::default(),
             terminal: Default::default(),
             tab: Default::default(),
+            askpass: Default::default(),
         }
     }
 }

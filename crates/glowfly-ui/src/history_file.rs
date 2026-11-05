@@ -20,10 +20,11 @@ use crate::widgets::paint_text;
 use eframe::egui::{self, Align, Align2, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::preview::{self, PreviewKind};
 use glowfly_core::repo::{BINARY_NOT_SHOWN, LfsState};
-use glowfly_model::msg::{DiffMsg, HistoryMsg, Msg};
+use glowfly_model::msg::{DiffMsg, EditMsg, HistoryMsg, Msg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::blame_find::ranges;
 use glowfly_model::state::history::{FileTextData, Preview, TextState};
+use glowfly_model::state::history_text::TextNav;
 use std::sync::Arc;
 
 pub(crate) const WRAP_LINES: &str = "Wrap lines";
@@ -43,7 +44,7 @@ pub(crate) const NO_PREVIEW_LONG: &str = "Too long to preview (over 512 KB)";
 /// The least width the toolbar needs to keep find and go to line on its one row.
 const ONE_ROW: f32 = 560.0;
 
-pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.history.view else { return };
     let Some((oid, path, status)) = view.shown() else { return };
     let before = status == 'D';
@@ -81,14 +82,20 @@ pub(super) fn show(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, msgs: &m
     });
     let previewing = view.previewing(st.settings.history.preview);
     let id = (oid, path.to_owned());
-    toolbar(ui, st, Bar { lines: data.lines.len(), notes: &notes, toggle, previewing }, msgs);
+    // The toolbar, the preview and the body share one copy of the find and Line fields, the
+    // cursor and the scroll, sent back as one edit when it changed.
+    let mut nav = view.nav.clone();
+    toolbar(ui, st, &mut nav, Bar { lines: data.lines.len(), notes: &notes, toggle, previewing }, msgs);
     for (text, col, _) in notes.iter().filter(|n| n.2) {
         note(ui, text, true, *col);
     }
     match &data.preview {
         _ if data.lines.is_empty() => empty_file(ui),
-        Some(Preview::Markdown { source }) if previewing => super::history_preview::markdown(ui, st, cache, id, source, msgs),
-        _ => body(ui, st, cache, data.clone()),
+        Some(Preview::Markdown { source }) if previewing => super::history_preview::markdown(ui, &mut nav, cache, id, source, msgs),
+        _ => body(ui, st, &mut nav, cache, data.clone()),
+    }
+    if nav != view.nav {
+        msgs.push(Msg::Edit(EditMsg::FileNav(Box::new(nav))));
     }
 }
 
@@ -138,10 +145,8 @@ struct Bar<'a> {
 /// "N lines" and the notes that ask for nothing (cut with "…") on the left; on the right, right
 /// to left, the Text / Preview switch (Markdown), find and go to line, then Wrap lines (neither
 /// over a preview). Narrower than `ONE_ROW`, find and go to line move to a row of their own.
-fn toolbar(ui: &mut Ui, st: &mut AppState, bar: Bar<'_>, msgs: &mut Vec<Msg>) {
+fn toolbar(ui: &mut Ui, st: &AppState, nav: &mut TextNav, bar: Bar<'_>, msgs: &mut Vec<Msg>) {
     let wrap = st.settings.diff_word_wrap;
-    let Some(view) = st.session.history.view.as_mut() else { return };
-    let nav = &mut view.nav;
     let one_row = ui.available_width() >= ONE_ROW;
     let text_tools = !bar.previewing;
     // Only as tall as the switch when it is there, so other files keep their toolbar.
@@ -202,7 +207,7 @@ pub(super) fn bar_row(ui: &mut Ui, id: &str, h: f32, add: impl FnOnce(&mut Ui)) 
 }
 
 /// The file's lines in a scroll area of their own, only those in view laid out.
-fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextData>) {
+fn body(ui: &mut Ui, st: &AppState, nav: &mut TextNav, cache: &mut UiCache, data: Arc<FileTextData>) {
     // The always-visible thin bar, set first so the text width and wrap columns allow for it.
     ui.spacing_mut().scroll = scroll_cue::style();
     let style = DiffStyle::new(&st.settings);
@@ -223,8 +228,6 @@ fn body(ui: &mut Ui, st: &mut AppState, cache: &mut UiCache, data: Arc<FileTextD
     let width = if wrap.is_some() { ui.available_width() } else { ui.available_width().max(code_x + tc.widest as f32 * char_w + 40.0) };
 
     let syntax = st.settings.syntax_highlighting;
-    let Some(view) = st.session.history.view.as_mut() else { return };
-    let nav = &mut view.nav;
     let scroll_row = if std::mem::take(&mut nav.to_top) {
         nav.scroll_to = None;
         Some(0)

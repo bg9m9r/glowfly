@@ -28,7 +28,8 @@ pub struct TerminalPanel {
     pub grid: Option<(u16, u16)>,
     /// Whether the panel takes the main area instead of sitting under it. Not saved.
     pub maximized: bool,
-    /// The tab being renamed in place, with the field's text; view state.
+    /// The tab being renamed in place, with the field's text (edited by the view,
+    /// `EditMsg::TerminalRename`).
     pub renaming: Option<TabRename>,
 }
 
@@ -98,7 +99,8 @@ pub struct TermSession {
     pub name: Option<String>,
     pub screen: TermScreen,
     pub status: SessionStatus,
-    /// Text selected with the mouse; written by the view, cleared by update.
+    /// Text selected with the mouse; written by the view (`EditMsg::TerminalSelection`), cleared
+    /// by update.
     pub selection: Option<Selection>,
 }
 

@@ -21,25 +21,25 @@ use glowfly_model::state::custom_commands::MenuCommands;
 use glowfly_model::state::layout::Pane;
 use glowfly_model::state::lfs::{TrackContext, track_items};
 use glowfly_model::state::panel_layout::Fit;
-use glowfly_model::state::{AppState, Selection};
+use glowfly_model::state::{AppState, Selection, ViewState};
 
 // Declared here rather than beside the other views: the file lists that use it are these panels.
 #[path = "file_reveal.rs"]
 pub(super) mod file_reveal;
 
 /// Draws the panel at `fit`'s width (`panel_size::side_fits`).
-pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fit, msgs: &mut Vec<Msg>) {
+pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cache: &mut UiCache, fit: Fit, msgs: &mut Vec<Msg>) {
     let id = egui::Id::new(panel_size::DETAILS_ID);
-    panel_size::pin(ctx, id, fit.size, st.view.panel_drag == Some(SizedPanel::Details));
+    panel_size::pin(ctx, id, fit.size, view.panel_drag == Some(SizedPanel::Details));
     let resp = panel_size::side(egui::SidePanel::right(id), fit)
         .frame(egui::Frame::new().fill(color::panel()).inner_margin(egui::Margin::same(super::theme::spacing::PANEL_PAD)))
         .show(ctx, |ui| {
             panel_size::fill(ui);
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
             super::pane_focus::drawn_at(ui.ctx(), Pane::Files, ui.max_rect());
-            super::pane_focus::begin_details(ui.ctx(), &mut st.view);
+            super::pane_focus::begin_details(ui.ctx(), view);
             match st.session.selection {
-                Selection::Wip => super::details_wip::wip_panel(ui, st, cache, msgs),
+                Selection::Wip => super::details_wip::wip_panel(ui, st, view, cache, msgs),
                 Selection::Commit(_) => super::details_commit::panel(ui, st, cache, msgs),
                 Selection::Commits(_) => super::details_multi::panel(ui, st, msgs),
                 Selection::VsWorkdir(_) => super::details_workdir::panel(ui, st, msgs),
@@ -56,7 +56,7 @@ pub fn show(ctx: &egui::Context, st: &mut AppState, cache: &mut UiCache, fit: Fi
             }
             super::pane_focus::end_details(ui.ctx());
         });
-    panel_size::track(ctx, &mut st.view, SizedPanel::Details, id, resp.response.rect.width(), msgs);
+    panel_size::track(ctx, view, SizedPanel::Details, id, resp.response.rect.width(), msgs);
 }
 
 /// What a file row draws and offers: where its change comes from, the commit its history and

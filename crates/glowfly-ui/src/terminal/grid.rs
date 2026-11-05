@@ -10,7 +10,7 @@ use crate::widgets::menu::context_menu;
 use eframe::egui::{self, Align2, EventFilter, FontId, Id, Rect, Sense, Stroke, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::terminal::TermSpan;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::terminal::TerminalMsg;
 
 /// Space between the grid and the panel's edges.
@@ -19,7 +19,7 @@ const MIN_ROWS: u16 = 2;
 const MIN_COLS: u16 = 10;
 
 /// Draws session `index` in the rest of `ui`.
-pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, index: usize, msgs: &mut Vec<Msg>) {
     let font = FontId::monospace(st.settings.terminal.font_px());
     let (cw, rh) = ui.fonts(|f| super::metrics::cell_size(f, &font));
     let id = Id::new("glowfly-terminal-grid");
@@ -27,9 +27,9 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     let resp = ui.interact(rect, id, Sense::click_and_drag());
     resp.widget_info(|| WidgetInfo::labeled(WidgetType::Other, true, "Terminal screen"));
 
-    if st.view.terminal.focus_requested || resp.clicked() {
+    if view.terminal.focus_requested || resp.clicked() {
         resp.request_focus();
-        st.view.terminal.focus_requested = false;
+        view.terminal.focus_requested = false;
     }
     if resp.clicked_elsewhere() {
         resp.surrender_focus();
@@ -37,15 +37,15 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
     let origin = rect.min + vec2(PAD, PAD);
     let (rows_now, cols_now) = st.terminal.sessions[index].screen.size();
     let g = Geometry { origin, cw, rh, rows: rows_now, cols: cols_now };
-    mouse::handle(ui, &resp, st, index, &g, msgs);
+    let selection = mouse::handle(ui, &resp, st, view, index, &g, msgs);
     let focused = resp.has_focus();
-    st.view.terminal.focused = focused;
+    view.terminal.focused = focused;
     if !focused {
         // Its key's release now goes elsewhere.
-        st.view.terminal.clip_pending = None;
+        view.terminal.clip_pending = None;
     }
     let session = &st.terminal.sessions[index];
-    let selected = session.selection.and_then(|s| s.range(&session.screen));
+    let selected = selection.and_then(|s| s.range(&session.screen));
     if focused {
         // Tab, arrows and Esc belong to the shell, not to egui's focus navigation.
         let filter = EventFilter { tab: true, horizontal_arrows: true, vertical_arrows: true, escape: true };
@@ -58,7 +58,7 @@ pub(super) fn show(ui: &mut egui::Ui, st: &mut AppState, index: usize, msgs: &mu
             alt_is_meta: st.settings.terminal.alt_is_meta(),
             alt_codes: cfg!(windows),
         };
-        let got = input::collect(&ui.input(|i| i.events.clone()), &mut st.view.terminal.clip_pending, opts);
+        let got = input::collect(&ui.input(|i| i.events.clone()), &mut view.terminal.clip_pending, opts);
         if got.copy {
             msgs.push(Msg::Terminal(TerminalMsg::CopySelection { keep: false }));
         }

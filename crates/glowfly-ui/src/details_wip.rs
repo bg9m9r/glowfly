@@ -37,18 +37,18 @@ use glowfly_model::msg::ConflictMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::StageMsg;
-use glowfly_model::state::AppState;
 use glowfly_model::state::custom_commands::MenuCommands;
 use glowfly_model::state::file_folds::FileFolds;
 use glowfly_model::state::lfs::{TrackContext, track_items};
 use glowfly_model::state::op_steps::op_kind;
 use glowfly_model::state::tool_compare::ToolAvail;
 use glowfly_model::state::wip_lists;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::tools::ToolsMsg;
 use std::collections::HashSet;
 
-pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
-    super::wip_keys::requested(ui.ctx(), &mut st.view);
+pub(super) fn wip_panel(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
+    super::wip_keys::requested(ui.ctx(), view);
     let Some(snap) = &st.snap else { return };
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.cues.diff_opening.as_ref().filter(|t| t.is_working_tree());
@@ -98,8 +98,8 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &mut AppState, cache: &mut UiCach
         });
     });
     let bottom = ui.scope(|ui| match kind {
-        Some(kind) => super::op_steps::bottom(ui, st, cache, kind, msgs),
-        None => super::commit_box::show(ui, st, cache, BoxStyle { titled: true, primary: true }, msgs),
+        Some(kind) => super::op_steps::bottom(ui, st, view, cache, kind, msgs),
+        None => super::commit_box::show(ui, st, view, cache, BoxStyle { titled: true, primary: true }, msgs),
     });
     ui.data_mut(|d| d.insert_temp(bottom_id, bottom.response.rect.height()));
 }

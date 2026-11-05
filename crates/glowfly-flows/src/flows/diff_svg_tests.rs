@@ -8,7 +8,7 @@ use super::update;
 use glowfly_core::repo::DiffTarget;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::SaveEffect;
-use glowfly_model::msg::{DiffMsg, Msg, PrefsMsg, RepoMsg};
+use glowfly_model::msg::{DiffMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::diff_header::{self, ChangeText, FileKind};
 use glowfly_model::state::diff_preview;
@@ -120,11 +120,14 @@ fn the_choice_holds_for_the_next_svg_and_follows_preferences() {
 
     // Preferences edits the setting in place: the diff on screen follows at once.
     st.settings.diff_svg_preview = false;
-    run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     assert!(st.session.diff_preview.is_none());
     st.settings.diff_svg_preview = true;
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = run(&mut st, edit);
     assert_eq!(asks(&fx), 1);
-    assert_eq!(asks(&run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited))), 0, "asked once");
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert_eq!(asks(&run(&mut st, edit)), 0, "asked once");
     cleanup(&dir);
 }

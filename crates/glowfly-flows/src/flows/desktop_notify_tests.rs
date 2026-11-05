@@ -131,6 +131,8 @@ fn quiet_auto_fetch_does_not_notify() {
 #[test]
 fn behind_alert_also_goes_to_the_desktop() {
     let (mut st, work, bare) = with_origin("desktop-behind");
+    // The toasts stay up while the ticks move the clock on (`Msg::Tick` expires them).
+    st.settings.a11y.toast_time = glowfly_core::settings::ToastTime::UntilClosed;
     st.settings.desktop_notifications = true;
     st.cues.focused = false;
     let name = tab_name(&st);

@@ -60,6 +60,7 @@ fn harness(mut st: AppState, p: Palette, bands: &'static [Color32; 9]) -> Harnes
             }
             paint_wallpaper(ctx, bands);
             draw(ctx, st, cache, msgs);
+            glowfly_model::testing::apply_edits(st, msgs);
         },
         (st, Vec::new()),
     )

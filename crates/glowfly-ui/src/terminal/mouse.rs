@@ -6,9 +6,9 @@
 
 use eframe::egui::{self, Event, MouseWheelUnit, PointerButton, Pos2};
 use glowfly_core::terminal::{KeyMods, TermInput, TermKey, TermPoint};
-use glowfly_model::msg::Msg;
-use glowfly_model::state::AppState;
+use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::terminal::Selection;
+use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::terminal::TerminalMsg;
 
 /// Rows one wheel notch scrolls.
@@ -98,21 +98,31 @@ pub(super) fn edge_rows(y: f32, top: f32, bottom: f32, rh: f32, dt: f32, rem: &m
 }
 
 /// The wheel, drag selection, word and line clicks, and middle click on the grid `resp` of
-/// session `index`.
-pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, index: usize, g: &Geometry, msgs: &mut Vec<Msg>) {
+/// session `index`. The selection is changed on a copy, sent back as an edit when it changed
+/// (ahead of the `Selected` that copies it); returns the copy, for this frame's painting.
+pub(super) fn handle(
+    ui: &egui::Ui,
+    resp: &egui::Response,
+    st: &AppState,
+    view: &mut ViewState,
+    index: usize,
+    g: &Geometry,
+    msgs: &mut Vec<Msg>,
+) -> Option<Selection> {
     if st.settings.terminal.middle_click_pastes() && resp.clicked_by(PointerButton::Middle) {
         msgs.push(Msg::Terminal(TerminalMsg::PastePrimary));
     }
-    let session = &mut st.terminal.sessions[index];
+    let session = &st.terminal.sessions[index];
+    let mut sel = session.selection;
     if resp.hovered() {
-        let rows = ui.input(|i| wheel_rows(&i.events, g.rh, g.rows, &mut st.view.terminal.wheel_rem));
+        let rows = ui.input(|i| wheel_rows(&i.events, g.rh, g.rows, &mut view.terminal.wheel_rem));
         if !session.screen.alternate() {
             if rows != 0 {
                 msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
             }
         } else if session.screen.mouse_reporting() {
             // The program asked for mouse events, which the terminal doesn't report yet.
-            st.view.terminal.wheel_rem = 0.0;
+            view.terminal.wheel_rem = 0.0;
         } else if rows != 0 {
             msgs.push(Msg::Terminal(TerminalMsg::Input(wheel_keys(rows))));
         }
@@ -126,49 +136,47 @@ pub(super) fn handle(ui: &egui::Ui, resp: &egui::Response, st: &mut AppState, in
     if resp.drag_started_by(PointerButton::Primary) {
         if let Some(pos) = pos {
             let from = ui.input(|i| i.pointer.press_origin()).unwrap_or(pos);
-            session.selection = Some(Selection { anchor: point(from), head: point(pos), epoch: screen.epoch() });
+            sel = Some(Selection { anchor: point(from), head: point(pos), epoch: screen.epoch() });
         }
-        st.view.terminal.edge_rem = 0.0;
+        view.terminal.edge_rem = 0.0;
         resp.request_focus();
     } else if resp.dragged_by(PointerButton::Primary)
         && let Some(pos) = pos
     {
-        if let Some(sel) = session.selection.as_mut() {
+        if let Some(sel) = sel.as_mut() {
             sel.head = point(pos);
         }
         // The last row, or the grid's edge while a smaller screen size is on its way.
         let bottom = (g.origin.y + f32::from(g.rows) * g.rh).min(resp.rect.max.y);
         if !screen.alternate() && !(g.origin.y..=bottom).contains(&pos.y) {
             let dt = ui.input(|i| i.stable_dt);
-            let rows = edge_rows(pos.y, g.origin.y, bottom, g.rh, dt, &mut st.view.terminal.edge_rem);
+            let rows = edge_rows(pos.y, g.origin.y, bottom, g.rh, dt, &mut view.terminal.edge_rem);
             if rows != 0 {
                 msgs.push(Msg::Terminal(TerminalMsg::Scroll(rows)));
             }
             // Keep scrolling while the pointer is held still out there.
             ui.ctx().request_repaint();
         } else {
-            st.view.terminal.edge_rem = 0.0;
+            view.terminal.edge_rem = 0.0;
         }
     }
-    let mut picked = false;
     if let Some(pos) = pos.filter(|_| resp.clicked()) {
         let (r, col) = cell_under(pos, g);
-        let line = session.screen.top_line() + u64::from(r);
-        let range = if resp.triple_clicked() {
-            Some(session.screen.line_at(line))
-        } else if resp.double_clicked() {
-            Some(session.screen.word_at(TermPoint { line, col }))
+        let at = TermPoint { line: session.screen.top_line() + u64::from(r), col };
+        if resp.triple_clicked() || resp.double_clicked() {
+            // Finding the word or line reads the screen's history, so update picks it.
+            msgs.push(Msg::Terminal(TerminalMsg::SelectAt { id: session.id, at, line: resp.triple_clicked() }));
         } else {
-            None
-        };
-        let epoch = session.screen.epoch();
-        session.selection = range.map(|(anchor, head)| Selection { anchor, head, epoch });
-        picked = range.is_some();
+            sel = None;
+        }
     }
-    let ended = picked || resp.drag_stopped_by(PointerButton::Primary);
-    if ended && session.selection.is_some_and(|s| s.range(&session.screen).is_some()) {
+    if sel != session.selection {
+        msgs.push(Msg::Edit(EditMsg::TerminalSelection { id: session.id, selection: sel }));
+    }
+    if resp.drag_stopped_by(PointerButton::Primary) && sel.is_some_and(|s| s.range(&session.screen).is_some()) {
         msgs.push(Msg::Terminal(TerminalMsg::Selected));
     }
+    sel
 }
 
 #[cfg(test)]

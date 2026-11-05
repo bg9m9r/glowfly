@@ -37,6 +37,8 @@ fn cleanup(dirs: &[&Path]) {
 #[test]
 fn auto_fetch_that_puts_the_branch_behind_alerts() {
     let (mut st, work, bare) = with_origin("notify-behind");
+    // The toasts stay up while the ticks move the clock on (`Msg::Tick` expires them).
+    st.settings.a11y.toast_time = glowfly_core::settings::ToastTime::UntilClosed;
     remote_commit(&bare, "main", "r1.txt");
     auto_fetch(&mut st);
     assert_eq!(behind(&st), 1);

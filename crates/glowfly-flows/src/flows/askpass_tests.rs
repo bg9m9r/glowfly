@@ -62,14 +62,14 @@ fn sign_in_answers_the_username_then_the_password_prompt() {
     let fx = ask(&mut st, 1, USERNAME);
     assert!(st.askpass.showing());
     assert!(fx.iter().any(|e| matches!(e, Effect::Ui(UiEffect::RequestAttention))));
-    assert!(st.askpass.focus_pending);
+    assert!(st.view.askpass.focus_pending);
 
-    st.askpass.user = "ada".into();
-    st.askpass.secret = "hunter2".into();
+    st.view.askpass.user = "ada".into();
+    st.view.askpass.secret = "hunter2".into();
     let fx = send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     assert_eq!(answers(&fx), [(1, Some("ada".into()))]);
     assert!(!st.askpass.showing());
-    assert!(st.askpass.user.is_empty() && st.askpass.secret.is_empty());
+    assert!(st.view.askpass.user.is_empty() && st.view.askpass.secret.is_empty());
     assert!(st.askpass.carry.is_some());
 
     // git's follow-up prompt is answered at once with the kept password.
@@ -84,8 +84,8 @@ fn the_kept_password_only_answers_its_own_host_and_user() {
     for other in ["Password for 'https://ada@gitlab.com': ", "Password for 'https://bob@github.com': "] {
         let mut st = state();
         ask(&mut st, 1, USERNAME);
-        st.askpass.user = "ada".into();
-        st.askpass.secret = "hunter2".into();
+        st.view.askpass.user = "ada".into();
+        st.view.askpass.secret = "hunter2".into();
         send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
         let fx = ask(&mut st, 2, other);
         assert!(answers(&fx).is_empty(), "{other}");
@@ -105,12 +105,12 @@ fn answers_by_kind() {
     assert_eq!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials))), [(2, Some("yes".into()))]);
 
     ask(&mut st, 3, "Verification code: ");
-    st.askpass.user = "123456".into();
+    st.view.askpass.user = "123456".into();
     assert_eq!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials))), [(3, Some("123456".into()))]);
 
     ask(&mut st, 4, PASSPHRASE);
     assert!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials))).is_empty(), "an empty passphrase can't be sent");
-    st.askpass.secret = "open sesame".into();
+    st.view.askpass.secret = "open sesame".into();
     assert_eq!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials))), [(4, Some("open sesame".into()))]);
 }
 
@@ -145,11 +145,11 @@ fn a_prompt_asked_again_in_the_same_job_is_a_retry() {
     start_job(&mut st, "Fetch");
     ask(&mut st, 1, PASSPHRASE);
     assert!(!st.askpass.front().unwrap().retry);
-    st.askpass.secret = "wrong".into();
+    st.view.askpass.secret = "wrong".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     ask(&mut st, 2, PASSPHRASE);
     assert!(st.askpass.front().unwrap().retry);
-    st.askpass.secret = "right".into();
+    st.view.askpass.secret = "right".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     finish(&mut st, true);
 
@@ -163,7 +163,7 @@ fn credentials_that_failed_are_flagged_next_time() {
     let mut st = state();
     start_job(&mut st, "Push");
     ask(&mut st, 1, USERNAME);
-    st.askpass.user = "ada".into();
+    st.view.askpass.user = "ada".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     finish(&mut st, false);
     assert_ne!(st.toasts.last().map(|t| t.text.as_str()), Some("Push cancelled: no credentials were given"));
@@ -171,7 +171,7 @@ fn credentials_that_failed_are_flagged_next_time() {
     start_job(&mut st, "Push");
     ask(&mut st, 2, USERNAME);
     assert!(st.askpass.front().unwrap().rejected_before);
-    st.askpass.user = "ada".into();
+    st.view.askpass.user = "ada".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     finish(&mut st, true);
 
@@ -210,10 +210,10 @@ fn carry_and_submit_rules() {
     let mut st = state();
     for (text, empty_ok) in [(USERNAME, false), (PASSWORD, false), (PASSPHRASE, false), ("Continue (yes/no)? ", true)] {
         ask(&mut st, 1, text);
-        assert_eq!(st.askpass.can_submit(), empty_ok, "{text}");
-        st.askpass.user = "ada".into();
-        st.askpass.secret = "s".into();
-        assert!(st.askpass.can_submit(), "{text}");
+        assert_eq!(st.askpass.can_submit(&st.view.askpass), empty_ok, "{text}");
+        st.view.askpass.user = "ada".into();
+        st.view.askpass.secret = "s".into();
+        assert!(st.askpass.can_submit(&st.view.askpass), "{text}");
         send(&mut st, Msg::Credentials(CredentialMsg::CancelCredentials));
     }
     assert!(matches!(Prompt::new("Enter PIN: ", None).kind, PromptKind::Other { secret: true }));
@@ -227,7 +227,7 @@ fn an_unknown_host_key_is_trusted_with_yes_or_cancelled() {
     let mut st = state();
     ask(&mut st, 1, host_key);
     assert!(matches!(st.askpass.front().map(|p| &p.prompt.kind), Some(PromptKind::HostKey(_))));
-    assert!(st.askpass.can_submit(), "nothing needs typing");
+    assert!(st.askpass.can_submit(&st.view.askpass), "nothing needs typing");
     assert_eq!(answers(&send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials))), [(1, Some("yes".into()))]);
 
     start_job(&mut st, "Fetch");

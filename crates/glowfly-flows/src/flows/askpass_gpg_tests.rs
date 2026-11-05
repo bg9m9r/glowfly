@@ -53,10 +53,10 @@ fn a_signing_prompt_is_shown_and_answered() {
     let fx = gpg(&mut st, 1, false);
     assert!(st.askpass.showing());
     assert!(fx.iter().any(|e| matches!(e, Effect::Ui(UiEffect::RequestAttention))));
-    assert!(!st.askpass.can_submit(), "an empty passphrase can't be sent");
+    assert!(!st.askpass.can_submit(&st.view.askpass), "an empty passphrase can't be sent");
 
-    st.askpass.secret = "right".into();
-    assert!(st.askpass.can_submit());
+    st.view.askpass.secret = "right".into();
+    assert!(st.askpass.can_submit(&st.view.askpass));
     let fx = send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     let answered: Vec<_> = fx
         .iter()
@@ -66,7 +66,7 @@ fn a_signing_prompt_is_shown_and_answered() {
         })
         .collect();
     assert_eq!(answered, [(1, "right".to_owned())]);
-    assert!(st.askpass.secret.is_empty() && st.askpass.user.is_empty());
+    assert!(st.view.askpass.secret.is_empty() && st.view.askpass.user.is_empty());
     assert!(st.askpass.answered_hosts.is_empty(), "a signing key is not a host");
     assert!(!st.askpass.showing());
 }
@@ -76,12 +76,12 @@ fn a_retry_comes_only_from_the_wrapper() {
     let mut st = state();
     start_job(&mut st, "Commit");
     gpg(&mut st, 1, false);
-    st.askpass.secret = "wrong".into();
+    st.view.askpass.secret = "wrong".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     // The same prompt text again, but the wrapper doesn't call it a retry.
     gpg(&mut st, 2, false);
     assert!(!st.askpass.front().unwrap().retry);
-    st.askpass.secret = "x".into();
+    st.view.askpass.secret = "x".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     gpg(&mut st, 3, true);
     assert!(st.askpass.front().unwrap().retry);
@@ -136,7 +136,7 @@ fn a_failed_signing_job_flags_no_host() {
     st.askpass.failed_hosts.insert("github.com".into());
     start_job(&mut st, "Commit");
     gpg(&mut st, 1, false);
-    st.askpass.secret = "wrong".into();
+    st.view.askpass.secret = "wrong".into();
     send(&mut st, Msg::Credentials(CredentialMsg::AnswerCredentials));
     finish(&mut st, false);
     assert_eq!(st.askpass.failed_hosts.len(), 1);

@@ -57,6 +57,20 @@ pub struct BlameLanding {
     pub center: bool,
 }
 
+/// The blame view's fields the view edits, drawn from a copy (`BlameView::fields`) and set back
+/// by `EditMsg::Blame` on the blame with the same `path` and `at`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BlameFields {
+    pub path: String,
+    pub at: Option<Oid>,
+    pub find: BlameFind,
+    pub goto: String,
+    pub top_line: usize,
+    pub cursor: Option<usize>,
+    pub scroll_to: Option<BlameLanding>,
+    pub focus_find: bool,
+}
+
 #[derive(Debug)]
 pub struct BlameView {
     /// Repo-relative path, as opened.
@@ -130,6 +144,28 @@ impl BlameView {
     /// The loaded blame's line count (0 while loading).
     pub fn line_count(&self) -> usize {
         self.data.as_ref().map_or(0, |d| d.blame.lines.len())
+    }
+
+    /// A copy of the fields the view edits, with the path and commit that name this blame.
+    pub fn fields(&self) -> BlameFields {
+        BlameFields {
+            path: self.path.clone(),
+            at: self.at,
+            find: self.find.clone(),
+            goto: self.goto.clone(),
+            top_line: self.top_line,
+            cursor: self.cursor,
+            scroll_to: self.scroll_to,
+            focus_find: self.focus_find,
+        }
+    }
+
+    /// Takes the view's edits: the find query (its matches stay update's), the Line text, the
+    /// top and cursor lines, and the scroll and focus requests it took.
+    pub fn apply(&mut self, f: BlameFields) {
+        self.find.query = f.find.query;
+        (self.goto, self.top_line, self.cursor) = (f.goto, f.top_line, f.cursor);
+        (self.scroll_to, self.focus_find) = (f.scroll_to, f.focus_find);
     }
 
     /// Goes to line `line`: makes it the cursor and centres it.

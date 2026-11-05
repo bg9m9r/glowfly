@@ -33,7 +33,8 @@ fn with_diff() -> AppState {
     let mut st = state();
     st.session.diff.view = Some((DiffTarget::Unstaged("f.rs".into()), tabbed_diff().into()));
     // Bring the saved copy in line with the settings, so only the edits below count.
-    run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     st
 }
 
@@ -48,10 +49,12 @@ fn editor_settings_save_once() {
     st.settings.tab_size = 8;
     st.settings.diff_line_numbers = false;
     st.settings.diff_word_highlights = false;
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    let fx = run(&mut st, edit);
     let [Effect::Save(SaveEffect::Settings(s))] = fx.as_slice() else { panic!("expected one save, got {fx:?}") };
     assert_eq!((s.diff_font_size, s.tab_size, s.diff_line_numbers, s.diff_word_highlights), (16.0, 8, false, false));
-    assert!(run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited)).is_empty(), "nothing changed since the save");
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    assert!(run(&mut st, edit).is_empty(), "nothing changed since the save");
 }
 
 #[test]
@@ -60,7 +63,8 @@ fn turning_word_highlights_off_keeps_the_ranges() {
     let before = st.session.diff.view.as_ref().unwrap().1.intraline.clone();
     assert!(!before.line(0, 1).is_empty(), "the -/+ pair is marked");
     st.settings.diff_word_highlights = false;
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    let fx = run(&mut st, edit);
     assert!(only_saves(&fx), "{fx:?}");
     assert_eq!(st.session.diff.view.as_ref().unwrap().1.intraline, before);
 }
@@ -69,7 +73,8 @@ fn turning_word_highlights_off_keeps_the_ranges() {
 fn changing_tab_size_does_not_reload() {
     let mut st = with_diff();
     st.settings.tab_size = 2;
-    let fx = run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    let fx = run(&mut st, edit);
     assert!(only_saves(&fx), "{fx:?}");
     assert_eq!(st.session.diff.view.as_ref().unwrap().1, tabbed_diff().into(), "raw tabs kept; only the painting changes");
 }
@@ -88,7 +93,8 @@ fn closing_prefs_keeps_the_diff_top_row() {
     st.view.tab.diff_top_row = 7;
     run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::DiffViewer)));
     st.settings.diff_font_size = 16.0;
-    run(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited));
+    let edit = crate::testing::settings_edit(&st, |_| {});
+    run(&mut st, edit);
     run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     assert_eq!(st.view.diff_scroll_to_row, Some(7), "the same row stays at the top at the new row height");
 

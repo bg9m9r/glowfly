@@ -106,9 +106,16 @@ pub enum TerminalMsg {
     /// A middle click (Linux): paste the PRIMARY selection into the active tab's shell (the
     /// clipboard when the display has none).
     PastePrimary,
-    /// A mouse selection ended (a drag's release, a double or triple click): it becomes the
-    /// PRIMARY selection (Linux), and with Copy on select is copied too. It stays selected.
+    /// A mouse selection ended (a drag's release): it becomes the PRIMARY selection (Linux), and
+    /// with Copy on select is copied too. It stays selected.
     Selected,
+    /// A double click (the word at `at`) or a triple click (`line`: its whole line) in session
+    /// `id`: selected, then offered as `Selected` offers a drag's.
+    SelectAt {
+        id: u64,
+        at: glowfly_core::terminal::TermPoint,
+        line: bool,
+    },
     /// A drag of the panel's edge ended at this height, in points.
     PanelHeight(f32),
     /// Show the inline rename field for tab `id` (a double-click, or More > Rename terminal).
@@ -186,6 +193,7 @@ impl TerminalMsg {
             | Self::Paste
             | Self::PastePrimary
             | Self::Selected
+            | Self::SelectAt { .. }
             | Self::PanelHeight(..)
             | Self::StartRename(..)
             | Self::Rename { .. }

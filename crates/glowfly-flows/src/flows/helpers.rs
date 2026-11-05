@@ -213,11 +213,14 @@ fn confirmation_runs_the_wrapped_message() {
 #[test]
 fn settings_are_saved_only_when_changed() {
     let mut st = state();
-    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(update(&mut st, edit, Instant::now()).is_empty());
     st.settings.toolbar_labels = !st.settings.toolbar_labels;
-    let fx = update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now());
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    let fx = update(&mut st, edit, Instant::now());
     assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Settings(_))]));
-    assert!(update(&mut st, Msg::Prefs(PrefsMsg::SettingsEdited), Instant::now()).is_empty(), "saved once");
+    let edit = glowfly_model::testing::settings_edit(&st, |_| {});
+    assert!(update(&mut st, edit, Instant::now()).is_empty(), "saved once");
 }
 
 #[test]

@@ -13,7 +13,7 @@ use crate::widgets::tab_glyph::{self, TabGlyph};
 use eframe::egui::{self, Align, CornerRadius, CursorIcon, Id, Layout, PopupCloseBehavior, Sense, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{ShellChoice, TerminalPrefs};
-use glowfly_model::msg::Msg;
+use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::terminal::TermSession;
 use glowfly_model::state::terminal::names::tab_names;
@@ -27,7 +27,7 @@ const CARET: egui::Vec2 = vec2(14.0, 20.0);
 const TAIL_W: f32 = 4.0 + tab_glyph::HIT + CARET.x;
 
 /// Draws the strip, the + and the caret in `ui`, a left-to-right row centred on `cy`.
-pub(super) fn strip(ui: &mut Ui, st: &mut AppState, cy: f32, msgs: &mut Vec<Msg>) {
+pub(super) fn strip(ui: &mut Ui, st: &AppState, cy: f32, msgs: &mut Vec<Msg>) {
     let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
     let t = st.settings.lang();
     let tabs: Vec<&TermSession> = st.terminal.sessions_for(&workdir).collect();
@@ -35,13 +35,15 @@ pub(super) fn strip(ui: &mut Ui, st: &mut AppState, cy: f32, msgs: &mut Vec<Msg>
     let widths: Vec<f32> = tabs.iter().zip(&names).map(|(s, n)| pill::width(ui, s, n)).collect();
     let ids: Vec<u64> = tabs.iter().map(|s| s.id).collect();
     let active = st.terminal.active_id(&workdir);
+    // The rename field is drawn from a copy, sent back as an edit when it changed.
+    let mut rename = st.terminal.renaming.clone();
     let w = (ui.available_width() - TAIL_W).max(0.0);
     let area = egui::ScrollArea::horizontal().id_salt("terminal-tabs").max_width(w).auto_shrink([true, false]);
     area.show(ui, |ui| {
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
             ui.spacing_mut().item_spacing.x = PILL_GAP;
             for (i, id) in ids.iter().enumerate() {
-                match st.terminal.renaming.as_mut() {
+                match rename.as_mut() {
                     Some(draft) if draft.id == *id => pill::rename_field(ui, draft, widths[i], msgs),
                     _ => {
                         let Some(s) = st.terminal.sessions.iter().find(|s| s.id == *id) else { continue };
@@ -51,6 +53,11 @@ pub(super) fn strip(ui: &mut Ui, st: &mut AppState, cy: f32, msgs: &mut Vec<Msg>
             }
         });
     });
+    if rename != st.terminal.renaming
+        && let Some(r) = rename
+    {
+        msgs.push(Msg::Edit(EditMsg::TerminalRename(r)));
+    }
     ui.add_space(4.0);
     let (slot, _) = ui.allocate_exact_size(vec2(tab_glyph::HIT, tab_glyph::HIT), Sense::hover());
     let name = t.tr("toolbar.terminal.new_tab");

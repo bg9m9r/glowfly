@@ -84,7 +84,7 @@ fn an_f5_is_answered_by_one_check_however_often_it_is_asked_for() {
     c.finish(g, report(req.clone(), conflicts(&["a.txt"])));
     c.invalidate();
     let g = c.start().unwrap();
-    // Asked for again on every frame while it runs (Preferences open): queued.
+    // Asked for again while it runs (a setting edited in Preferences): queued.
     assert_eq!(c.start(), None);
     let f = c.finish(g, report(req.clone(), Ok(Prediction::Clean)));
     assert!(f.queued);
