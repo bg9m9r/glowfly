@@ -27,6 +27,7 @@ source file, update its line here.
 - `error/read_failed.rs`: `ReadFailed`, why a graph, diff or repository read failed (a load, the status, a commit's detail, a file diff, a signature check, line counts, blame, the unmerged count, the dashboard scan, an operation preview, the sparse status, a stash's files): libgit2's or the system's words kept, Glowfly's own causes as variants (`NotARepository`, `NotOwned`, a load's `OpenFailed` wrapping its cause, a read worker's `Panicked` among them); `Display` is the English form, and the model words it (`typed::read`).
 - `quoted.rs`: decoding git's C-quoted paths (`"caf\303\251.txt"`), for blame's porcelain and sparse checkout lists.
 - `paths.rs`: one folder, many spellings: a Windows short 8.3 name (`C:\Users\RUNNER~1`) and its long form, a link or junction and its target, macOS's `/var` and `/private/var`, `Repo` and `repo` on a volume that ignores case.
+- `pinned_dates.rs`: where a fixture folder's pinned git dates (`testkit/clock.rs`) reach gitcli and `undo::glowfly_signature`; in a release build, stand-ins that change nothing.
 - `paths/encode.rs`: paths saved in Glowfly's own files (recent.txt, tabs.txt, settings keys), without losing any (a Unix name needn't be UTF-8, a Windows one may hold a lone UTF-16 surrogate) and one per line.
 - `paths/file_url.rs`: the local path a `file:` URL names.
 - `win_registry.rs`: reading single values from the Windows registry: a DWORD or a string, None when the key or value is missing (or has another type).

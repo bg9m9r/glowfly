@@ -239,3 +239,9 @@ mod test_bin;
 mod tests;
 #[cfg(test)]
 mod undo_file_actions_tests;
+
+/// The signature of Glowfly's own commits (kept work, journal records) for the repository at
+/// `path`: now, except inside a fixture folder whose dates are pinned ([`crate::testkit::clock`]).
+pub(crate) fn glowfly_signature(path: &std::path::Path) -> std::result::Result<git2::Signature<'static>, git2::Error> {
+    crate::pinned_dates::signature(path, "Glowfly", "glowfly@localhost")
+}

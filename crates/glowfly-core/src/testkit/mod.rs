@@ -14,6 +14,7 @@
 
 pub mod bin;
 pub mod cjk_dates;
+pub mod clock;
 mod commit;
 mod fast;
 mod guard;

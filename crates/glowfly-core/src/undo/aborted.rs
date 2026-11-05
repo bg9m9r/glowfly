@@ -27,7 +27,7 @@ use super::{Action, Changes, HeadAt, MoveOp, aborted_paths, aborted_state};
 use crate::error::{Error, Result};
 use crate::gitcli::args;
 use crate::repo::CLI_PATH_BYTES;
-use git2::{Index, IndexEntry, IndexTime, ObjectType, Oid, Repository, RepositoryState, Signature, Tree, TreeWalkMode, TreeWalkResult};
+use git2::{Index, IndexEntry, IndexTime, ObjectType, Oid, Repository, RepositoryState, Tree, TreeWalkMode, TreeWalkResult};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::path::Path;
 
@@ -270,7 +270,7 @@ pub(super) fn abort_saving(workdir: &Path, prune: Option<&[Oid]>) -> Result<Abor
     let tree = repo.find_tree(top.write()?)?;
     let mut seen = HashSet::new();
     let parents: Vec<git2::Commit> = heads.into_iter().filter(|o| seen.insert(*o)).filter_map(|o| repo.find_commit(o).ok()).collect();
-    let sig = Signature::now("Glowfly", "glowfly@localhost")?;
+    let sig = super::glowfly_signature(repo.path())?;
     let message = format!("Glowfly: work kept from aborting a {}\n\nUndo in Glowfly puts it back.\n", op.noun());
     let kept = repo.commit(None, &sig, &sig, &message, &tree, &parents.iter().collect::<Vec<_>>())?;
     if let Some(keep) = prune {
