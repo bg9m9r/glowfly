@@ -129,6 +129,11 @@ impl Runner {
         super::sandbox::lock(&self.tally.in_flight).clone()
     }
 
+    /// The names of the effects whose worker panicked, in order.
+    pub fn panicked(&self) -> Vec<&'static str> {
+        super::sandbox::lock(&self.tally.panicked).clone()
+    }
+
     /// The names of the effects the sandbox dropped, in order.
     pub fn dropped(&self) -> Vec<&'static str> {
         self.sandbox.as_ref().map(|s| super::sandbox::lock(&s.dropped).clone()).unwrap_or_default()

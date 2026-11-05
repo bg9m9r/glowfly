@@ -25,6 +25,8 @@ pub(super) struct Sandbox {
 pub(super) struct Tally {
     pub(super) started: AtomicU64,
     pub(super) in_flight: Mutex<Vec<&'static str>>,
+    /// The names of effects whose worker unwound from a panic, in order.
+    pub(super) panicked: Mutex<Vec<&'static str>>,
 }
 
 /// One effect in flight; dropping it (also while a panicking effect unwinds) ends it.
@@ -47,6 +49,9 @@ impl Tally {
 
 impl Drop for Busy {
     fn drop(&mut self) {
+        if std::thread::panicking() {
+            lock(&self.tally.panicked).push(self.name);
+        }
         let mut names = lock(&self.tally.in_flight);
         if let Some(k) = names.iter().position(|n| *n == self.name) {
             names.remove(k);
@@ -244,6 +249,22 @@ mod tests {
         assert!(rx.try_recv().is_err(), "nothing failed");
         assert!(runner.dropped().is_empty() && runner.started() == 0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn busy_dropped_while_panicking_is_recorded() {
+        let tally = Arc::new(Tally::default());
+        let t = Arc::clone(&tally);
+        let joined = std::thread::spawn(move || {
+            let _b = t.begin("boom");
+            panic!("an effect panicked");
+        })
+        .join();
+        assert!(joined.is_err());
+        assert_eq!(lock(&tally.panicked).as_slice(), ["boom"]);
+        assert!(lock(&tally.in_flight).is_empty());
+        drop(tally.begin("fine"));
+        assert_eq!(lock(&tally.panicked).as_slice(), ["boom"]);
     }
 
     #[test]
