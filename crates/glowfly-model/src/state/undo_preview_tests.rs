@@ -65,7 +65,7 @@ fn a_pop_names_its_stash() {
 
 #[test]
 fn every_action_has_a_preview() {
-    let saved = Saved { blob: oid(5), executable: false };
+    let saved = Saved::file(oid(5), false);
     let ids = ConflictIds { ancestor: None, ours: Some(oid(1)), theirs: Some(oid(2)) };
     let branch = Some("main".to_owned());
     let all = [

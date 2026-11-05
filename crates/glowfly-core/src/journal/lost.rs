@@ -5,8 +5,9 @@
 //! the `refs/stash` reflog, so they are dropped from the result; a dropped stash (a commit with
 //! the shape `git stash push` makes) is named as one. The command lines that keep a dropped
 //! stash run through gitcli, so hooks and config apply. Beside them, the discarded changes that
-//! Glowfly kept (`undo::kept`): files as they were before a discard or delete, and dropped
-//! stashes, which their records keep out of fsck's list.
+//! Glowfly kept (`undo::kept`): files and symbolic links as they were before a discard, a delete
+//! or a replace (a restore from a commit, a conflict view save), and dropped stashes, which
+//! their records keep out of fsck's list.
 
 use crate::commit_text;
 use crate::error::{Error, Result};
@@ -33,8 +34,8 @@ pub enum LostKind {
         branch: Option<String>,
         untracked: bool,
     },
-    /// A file as it was before Glowfly discarded or deleted it (`what`): `path`'s bytes in
-    /// `blob`. Its `oid` is the record's (`undo::kept`).
+    /// A file as it was before Glowfly discarded, deleted or replaced it (a restore from a
+    /// commit, a conflict view save; `what` says which): `path`'s bytes in `blob`. Its `oid` is the record's (`undo::kept`).
     Discarded {
         path: String,
         blob: Oid,

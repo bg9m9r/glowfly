@@ -12,9 +12,13 @@
 //! Windows refuses a rename while another program (a virus scanner, an indexer, a sync client)
 //! briefly holds the file, so that is retried. Temporary files a crash left behind are removed
 //! by the next write of the same file. [`LatestOnly`] keeps saves that run on separate threads
-//! from landing out of order.
+//! from landing out of order. Symbolic links Undo and the journal put back are made the same way
+//! (`link.rs`): beside the path, then renamed over it.
 
+mod link;
 mod replace;
+
+pub use link::{create_link, write_link};
 
 use replace::{clean_stale_temps, replace, set_mode, sync_dir};
 use std::io::Write;

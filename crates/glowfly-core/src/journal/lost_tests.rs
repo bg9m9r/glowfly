@@ -4,6 +4,7 @@ use super::lost::*;
 use crate::gitcli::{args, run};
 use crate::testutil::*;
 use crate::undo::UndoKind;
+use crate::undo::kept::KeptWhat;
 use git2::{Oid, Repository};
 use std::path::{Path, PathBuf};
 
@@ -124,4 +125,36 @@ fn commands() {
     assert_eq!(apply_stash(o), args(&["stash", "apply", &id]));
     assert_eq!(store_stash(o, "On main: keep"), args(&["stash", "store", "-m", "On main: keep", &id]));
     assert_eq!(UndoKind::classify(&apply_stash(o)), Some(UndoKind::StashApply { pop: false, rev: Some(id) }));
+}
+
+#[test]
+fn a_restore_over_changes_lists_the_replaced_copy() {
+    let dir = repo("journal-lost-restore");
+    let one = commit(&dir, "one");
+    commit(&dir, "two");
+    write(&dir, "a.txt", "mine");
+    crate::undo::restore_saving(&dir, one, "a.txt", true).unwrap();
+    let found = find(&dir).unwrap();
+    let mine = Oid::hash_object(git2::ObjectType::Blob, b"mine").unwrap();
+    let [k] = &found.discarded[..] else { panic!("{found:#?}") };
+    assert_eq!(k.kind, LostKind::Discarded { path: "a.txt".into(), blob: mine, what: KeptWhat::Restore });
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_saved_resolution_lists_the_replaced_copy() {
+    let dir = repo("journal-lost-resolve");
+    commit(&dir, "base\n");
+    git(&dir, &["checkout", "-q", "-b", "other"]);
+    commit(&dir, "theirs\n");
+    git(&dir, &["checkout", "-q", "main"]);
+    commit(&dir, "ours\n");
+    let (ok, _) = run(&dir, &args(&["merge", "other"]));
+    assert!(!ok, "the merge conflicts");
+    let ids = crate::repo::conflict_ids(&Repository::open(&dir).unwrap(), "a.txt").expect("conflicted");
+    crate::undo::resolve_saving(&dir, "a.txt", &ids, || crate::repo::write_resolution(&dir, "a.txt", "resolved\n", &ids)).unwrap();
+    let found = find(&dir).unwrap();
+    let [k] = &found.discarded[..] else { panic!("{found:#?}") };
+    assert!(matches!(&k.kind, LostKind::Discarded { path, what: KeptWhat::Conflict, .. } if path == "a.txt"), "{k:#?}");
+    let _ = std::fs::remove_dir_all(&dir);
 }

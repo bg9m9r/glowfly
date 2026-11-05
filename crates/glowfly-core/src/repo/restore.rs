@@ -90,6 +90,14 @@ pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Re
     Ok(from)
 }
 
+/// Whether a restore of `path` over what the working tree holds would lose contents nothing
+/// else holds (the test [`restore_file`] refuses by without `overwrite`).
+pub(crate) fn restore_would_lose(workdir: &Path, path: &str) -> Result<bool> {
+    let repo = Repository::open(workdir)?;
+    let root = repo.workdir().ok_or_else(|| Error::Unsupported("a bare repository has no working tree".into()))?.to_path_buf();
+    Ok(unrecoverable(&repo, &root, path)?.is_some())
+}
+
 /// Why overwriting the working-tree file at `path` would lose contents nothing else holds, or
 /// `None` when nothing is at the path or the file matches the index (so discarding brings it back).
 /// Looks at the disk itself: ignored files and skip-worktree or assume-unchanged entries are

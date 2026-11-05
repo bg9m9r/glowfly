@@ -34,7 +34,7 @@ fn delete_confirmed(path: &str) -> Msg {
 
 /// An undo entry for a delete of `path`, as the runner reports one.
 fn undo_entry(path: &str) -> Box<Action> {
-    let before = Saved { blob: git2::Oid::zero(), executable: false };
+    let before = Saved::file(git2::Oid::zero(), false);
     Box::new(Action::DeleteFile { path: path.into(), before, via: DeleteVia::Trash, staged: None })
 }
 

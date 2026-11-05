@@ -228,10 +228,26 @@ fn undo_puts_the_executable_bit_back_unless_git_ignores_it() {
     for file_mode in [true, false] {
         let dir = base(&format!("sv-exec-{file_mode}"));
         git(&dir, &["config", "core.fileMode", if file_mode { "true" } else { "false" }]);
-        let saved = Saved { blob: git2::Repository::open(&dir).unwrap().blob(b"#!/bin/sh\n").unwrap(), executable: true };
+        let saved = Saved::file(git2::Repository::open(&dir).unwrap().blob(b"#!/bin/sh\n").unwrap(), true);
         write_saved(&dir, "f.txt", Some(saved)).unwrap();
         assert_eq!(read(&dir, "f.txt").unwrap(), b"#!/bin/sh\n");
         assert_eq!(mode(&dir) != 0, file_mode, "core.fileMode={file_mode}");
         let _ = std::fs::remove_dir_all(&dir);
     }
+}
+
+#[test]
+fn a_link_is_saved_as_its_target() {
+    let dir = base("sv-link");
+    if !file_link("f.txt", &dir.join("l")) {
+        return eprintln!("skipped: symbolic links can't be made here");
+    }
+    let hash = git2::Oid::hash_object(git2::ObjectType::Blob, b"f.txt").unwrap();
+    let odb = || git2::Repository::open(&dir).unwrap().odb().unwrap().exists(hash);
+    let now = super::saved::current(&dir, "l").unwrap();
+    assert_eq!(now, Some(Saved { blob: hash, executable: false, link: true }));
+    assert!(!odb(), "current writes nothing");
+    assert_eq!(super::saved::save(&dir, "l").unwrap(), now);
+    assert!(odb(), "save keeps the target as a blob");
+    let _ = std::fs::remove_dir_all(&dir);
 }
