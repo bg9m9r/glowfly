@@ -4,6 +4,7 @@
 //! the key is never set), so a shadowed branch can be merged by its full ref with git's title.
 
 use crate::branch_ref::{BranchRef, MergeNames};
+use crate::names::fold;
 use git2::{Config, Repository};
 use std::collections::HashSet;
 
@@ -17,9 +18,9 @@ const LOOKUP: [&str; 4] = ["refs/", "refs/tags/", "refs/heads/", "refs/remotes/"
 /// The `MergeNames` for merges into HEAD now (`head_branch` checked out, None when detached),
 /// with every one of `branches` checked for a shadowing ref.
 pub(crate) fn merge_names(repo: &Repository, head_branch: Option<&str>, branches: &[BranchRef]) -> MergeNames {
-    // Every ref name, read once: a lookup per candidate would stat files thousands of times.
-    let refs: HashSet<String> =
-        repo.references().map(|mut r| r.names().filter_map(|n| n.ok().map(str::to_owned)).collect()).unwrap_or_default();
+    // Every ref name, read once (a lookup per candidate would stat files thousands of times) and
+    // folded: on Windows and macOS git's lookup of refs/tags/x opens a loose refs/tags/X.
+    let refs: HashSet<String> = repo.references().map(|mut r| r.names().filter_map(|n| n.ok().map(fold)).collect()).unwrap_or_default();
     let root_file = |name: &str| repo.path().join(name).is_file() || repo.commondir().join(name).is_file();
     let shadowed = branches.iter().filter(|b| shadowed(b, &refs, root_file)).map(BranchRef::full).collect();
     MergeNames { into: merge_into(repo, head_branch), shadowed }
@@ -27,7 +28,9 @@ pub(crate) fn merge_names(repo: &Repository, head_branch: Option<&str>, branches
 
 /// Whether git, given `b`'s short name, picks something other than `b`: an object id spelled out
 /// in full, an all-caps file in the git dir (`root_file`), or a ref in `refs` that comes before
-/// `b`'s own in git's lookup order.
+/// `b`'s own in git's lookup order. `refs` holds folded names (`names::fold`), so one spelled with
+/// other case or normalization counts too: loose ref files match that way on Windows and macOS,
+/// and treating a branch as shadowed where they don't only costs it git's shortlog header.
 fn shadowed(b: &BranchRef, refs: &HashSet<String>, root_file: impl Fn(&str) -> bool) -> bool {
     let short = b.shown();
     let full = b.full();
@@ -35,7 +38,7 @@ fn shadowed(b: &BranchRef, refs: &HashSet<String>, root_file: impl Fn(&str) -> b
     let object_id = matches!(short.len(), 40 | 64) && short.bytes().all(|c| c.is_ascii_hexdigit());
     object_id
         || (all_caps && root_file(short))
-        || LOOKUP.iter().map(|p| format!("{p}{short}")).take_while(|c| *c != full).any(|c| refs.contains(&c))
+        || LOOKUP.iter().map(|p| format!("{p}{short}")).take_while(|c| *c != full).any(|c| refs.contains(&fold(&c)))
 }
 
 /// The branch git's merge title ends with (" into <it>") for merges into HEAD now: the checked-out
