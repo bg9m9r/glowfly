@@ -4,11 +4,10 @@
 //! rebase ended another way (recording the part that finished); and pushing a stack's layers
 //! (`Effect::Stack`), which moves no local branch, so it needs no note and no undo record.
 
-use super::err;
 use super::execute::{Cx, Execute};
-use glowfly_core::error::Result;
+use glowfly_core::error::WriteFailed;
 use glowfly_core::journal::Op;
-use glowfly_core::rebase::{Outcome, Resume};
+use glowfly_core::rebase::{Outcome, RebaseError, Resume};
 use glowfly_core::stack::{self, RestackRun};
 use glowfly_core::undo::{self, RestackBefore};
 use glowfly_model::effect::{RestackJob, StackEffect, UndoResult};
@@ -18,7 +17,7 @@ use std::path::{Path, PathBuf};
 pub(super) fn run(e: StackEffect) -> Msg {
     match e {
         StackEffect::Push { cwd, job } => {
-            let result = stack::push(&cwd, &job.targets).map_err(err);
+            let result = stack::push(&cwd, &job.targets).map_err(WriteFailed::from);
             Msg::Stack(StackMsg::Pushed { result, job: Box::new(job) })
         }
     }
@@ -51,14 +50,14 @@ pub(super) fn end(cwd: PathBuf, job: RestackJob) -> Msg {
         (Ok(_), Some(b)) => UndoResult::Recorded(undo::restacked(&cwd, b, &job.detail)),
         _ => UndoResult::Recorded(None),
     };
-    Msg::Rebase(RebaseMsg::RestackEnded { result: result.map_err(err), undo: Some(undo), job: Box::new(job) })
+    Msg::Rebase(RebaseMsg::RestackEnded { result, undo: Some(undo), job: Box::new(job) })
 }
 
 /// The result message: the job carries the steps still left (all of them, with the stash, when
 /// nothing could run), the tips before its first run and, after a stop, the step it stopped in
 /// (the one before the steps left, or the same one again when Continue or Skip stopped in it
 /// once more).
-fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Result<RestackRun>) -> Msg {
+fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Result<RestackRun, RebaseError>) -> Msg {
     let undo = recorded(cwd, before.as_ref(), &job.detail, &result);
     let stopped = match &result {
         Ok(r) if matches!(r.outcome, Outcome::Stopped { .. }) => {
@@ -71,14 +70,14 @@ fn ran(cwd: &Path, before: Option<RestackBefore>, job: RestackJob, result: Resul
     };
     let plan = result.as_ref().map_or_else(|_| job.plan.clone(), |r| r.left.clone());
     let job = RestackJob { plan, before, detail: job.detail, stopped, stash_op: job.stash_op };
-    Msg::Rebase(RebaseMsg::RestackRan { result: result.map_err(err), undo, job: Box::new(job) })
+    Msg::Rebase(RebaseMsg::RestackRan { result, undo, job: Box::new(job) })
 }
 
 /// What a restack run means for the undo history: a finished one is one action moving every
 /// branch back (`None`, clearing the history, when the tips before are unknown); a stopped
 /// one, or one that failed without moving a branch, keeps the history; one that failed after
 /// moving some (`None`) clears it.
-fn recorded(cwd: &Path, before: Option<&RestackBefore>, detail: &str, result: &Result<RestackRun>) -> Option<UndoResult> {
+fn recorded(cwd: &Path, before: Option<&RestackBefore>, detail: &str, result: &Result<RestackRun, RebaseError>) -> Option<UndoResult> {
     match result.as_ref().map(|r| &r.outcome) {
         Ok(Outcome::Finished { .. }) => before.map(|b| UndoResult::Recorded(undo::restacked(cwd, b, detail))),
         Ok(Outcome::Stopped { .. }) => Some(UndoResult::Recorded(None)),

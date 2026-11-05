@@ -1,16 +1,18 @@
 //! The words for the typed errors that result messages carry instead of English text (#367):
 //! one function per area's error type, the only place its variants become text in the user's
-//! language (hosting services, credentials, signing keys, Preferences writes, updates, and the
-//! graph's, the diff's and the repository's reads, the dashboard's short reasons too). Each gives the fragment that follows a headline's colon
-//! ("Couldn't save the sign-in for github.com: <this>"); git's own words, when an error has
-//! them, are kept as they are. Pure.
+//! language (hosting services, credentials, signing keys, Preferences writes, updates, the
+//! graph's, the diff's and the repository's reads, the dashboard's short reasons, rebase,
+//! history edit and restack refusals, and working-tree, index and stack push writes). Each
+//! gives the fragment that follows a headline's colon ("Couldn't save the sign-in for
+//! github.com: <this>"); git's own words, when an error has them, are kept as they are. Pure.
 
 use glowfly_core::app_update::UpdateError;
-use glowfly_core::error::ReadFailed;
+use glowfly_core::error::{ReadFailed, WriteFailed};
 use glowfly_core::forge::ServiceError;
 use glowfly_core::git_credential::CredentialError;
 use glowfly_core::i18n::Lang;
 use glowfly_core::identity::ConfigWriteFailed;
+use glowfly_core::rebase::{Busy, LeftOut, RebaseError};
 use glowfly_core::signing::KeyError;
 
 /// Why saving or dropping an HTTPS sign-in with git's credential helper failed
@@ -90,6 +92,108 @@ pub fn unreadable(t: Lang, e: &ReadFailed) -> String {
         ReadFailed::NotARepository { .. } => t.tr("dashboard.unreadable.not_a_repository").to_owned(),
         ReadFailed::NotOwned { .. } => t.tr("dashboard.unreadable.not_owned").to_owned(),
         e => read(t, e),
+    }
+}
+
+/// Why a rebase, a graph history edit, a remaining-steps edit or a restack was refused or
+/// failed (`RebaseMsg`'s results); git's and the system's words, short ids, branch names, paths
+/// and config names kept as they are.
+pub fn rebase(t: Lang, e: &RebaseError) -> String {
+    use RebaseError as E;
+    let words = match e {
+        E::Said { said } | E::Other { said } => return said.clone(),
+        E::Panicked { effect, panic } => return t.trf("read_errors.panicked", &[("effect", effect), ("panic", panic)]),
+        E::InProgress { op } => return t.tr(busy_key(*op)).to_owned(),
+        E::CommitNotOnBranch { commit } => return t.trf("rebase_errors.commit_not_on_branch", &[("commit", commit)]),
+        E::NothingToRebase { branch, onto } => return t.trf("rebase_errors.nothing_to_rebase", &[("branch", branch), ("onto", onto)]),
+        E::BranchNotFound { name } => return t.trf("rebase_errors.branch_not_found", &[("name", name)]),
+        E::CommitNotFound { commit } => return t.trf("rebase_errors.commit_not_found", &[("commit", commit)]),
+        E::Held { alias, target, elsewhere } => {
+            let args: [(&str, &dyn std::fmt::Display); 2] = [("alias", alias), ("target", target)];
+            return if *elsewhere { t.trf("rebase_errors.held.elsewhere", &args) } else { t.trf("rebase_errors.held.not_branch", &args) };
+        }
+        E::NotMoved { branches } => return not_moved(t, branches),
+        E::Stale => t.tr("rebase_errors.stale"),
+        E::Changed => t.tr("rebase_errors.changed"),
+        E::Detached => t.tr("rebase_errors.detached"),
+        E::FirstCombines => t.tr("rebase_errors.first_combines"),
+        E::EmptyReword => t.tr("rebase_errors.empty_reword"),
+        E::NotOnBranch => t.tr("rebase_errors.not_on_branch"),
+        E::SomeNotOnBranch => t.tr("rebase_errors.some_not_on_branch"),
+        E::MergeSelected => t.tr("rebase_errors.merge_selected"),
+        E::SomeMergeSelected => t.tr("rebase_errors.some_merge_selected"),
+        E::SideLine => t.tr("rebase_errors.side_line"),
+        E::SomeSideLine => t.tr("rebase_errors.some_side_line"),
+        E::BranchTip => t.tr("rebase_errors.branch_tip"),
+        E::SomeBranchTips => t.tr("rebase_errors.some_branch_tips"),
+        E::SplitByBranch => t.tr("rebase_errors.split_by_branch"),
+        E::CombineAfterMerge => t.tr("rebase_errors.combine_after_merge"),
+        E::LostToReset => t.tr("rebase_errors.lost_to_reset"),
+        E::RootSquash => t.tr("rebase_errors.root_squash"),
+        E::ParentMerge => t.tr("rebase_errors.parent_merge"),
+        E::NotConsecutive => t.tr("rebase_errors.not_consecutive"),
+        E::TooFewToSquash => t.tr("rebase_errors.too_few_to_squash"),
+        E::DropsEverything => t.tr("rebase_errors.drops_everything"),
+        E::NotRebasing => t.tr("rebase_errors.not_rebasing"),
+        E::EmptyCombined => t.tr("rebase_errors.empty_combined"),
+        E::EmptyExec => t.tr("rebase_errors.empty_exec"),
+        E::ExecOneLine => t.tr("rebase_errors.exec_one_line"),
+        E::CombineAfterStep => t.tr("rebase_errors.combine_after_step"),
+        E::NotInteractive => t.tr("rebase_errors.not_interactive"),
+        E::UnsupportedSteps => t.tr("rebase_errors.unsupported_steps"),
+        E::UpdateRefInGroup => t.tr("rebase_errors.update_ref_in_group"),
+        E::RefsChanged => t.tr("rebase_errors.refs_changed"),
+        E::TodoMoved => t.tr("rebase_errors.todo_moved"),
+        E::NotUtf8Branch => t.tr("rebase_errors.not_utf8"),
+        E::StackChanged => t.tr("rebase_errors.stack_changed"),
+        E::StillRebasing => t.tr("rebase_errors.still_rebasing"),
+        E::NoCommitsYet => t.tr("rebase_errors.no_commits_yet"),
+        E::EditTodoFailed => t.tr("rebase_errors.edit_todo_failed"),
+    };
+    words.to_owned()
+}
+
+/// The sentence refusing an interactive rebase while `op` is in progress (the commit menu's
+/// own words for it).
+fn busy_key(op: Busy) -> &'static str {
+    match op {
+        Busy::Merge => "commits.blocked.in_progress.merge",
+        Busy::Rebase => "commits.blocked.in_progress.rebase",
+        Busy::CherryPick => "commits.blocked.in_progress.cherry_pick",
+        Busy::Revert => "commits.blocked.in_progress.revert",
+        Busy::PatchApplication => "commits.blocked.in_progress.am",
+        Busy::Bisect => "commits.blocked.in_progress.bisect",
+    }
+}
+
+/// Why git won't move `branches` with the rebase: each named, with where git says it is
+/// checked out (the path as git wrote it).
+fn not_moved(t: Lang, branches: &[LeftOut]) -> String {
+    let named: Vec<String> = branches
+        .iter()
+        .map(|b| match &b.checked_out_at {
+            Some(path) => t.trf("rebase_errors.checked_out_at", &[("branch", &b.name), ("path", path)]),
+            None => b.name.clone(),
+        })
+        .collect();
+    let elsewhere = branches.iter().any(|b| b.checked_out_at.is_some());
+    let branches = named.join(", ");
+    if elsewhere {
+        t.trf("rebase_errors.not_moved.elsewhere", &[("branches", &branches)])
+    } else {
+        t.trf("rebase_errors.not_moved", &[("branches", &branches)])
+    }
+}
+
+/// Why a write to the working tree or index, a revert, a restore from a commit, a working-tree
+/// file operation or a stack push failed (`StageMsg::LocalOpDone`, `Reverted`,
+/// `FilesMsg::FileRestored`, `WorkFileMsg::WorkFileDone`, `StackMsg::Pushed`); git's, libgit2's
+/// and the system's words kept as they are.
+pub fn write(t: Lang, e: &WriteFailed) -> String {
+    match e {
+        WriteFailed::Said { said } | WriteFailed::Other { said } => said.clone(),
+        WriteFailed::MissingContent { path, remote } => t.trf("read_errors.missing_content", &[("path", path), ("remote", remote)]),
+        WriteFailed::Panicked { effect, panic } => t.trf("read_errors.panicked", &[("effect", effect), ("panic", panic)]),
     }
 }
 

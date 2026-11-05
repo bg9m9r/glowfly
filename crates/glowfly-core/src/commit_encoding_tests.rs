@@ -206,7 +206,7 @@ fn a_rebase_reword_is_written_in_the_encoding_and_read_back() {
 
     // Refused before anything runs.
     let bad = reword_request(&dir, c2, 1, RebaseAction::Reword, "c3 ✓");
-    assert!(matches!(rebase::start(&dir, &bad, &SequenceEditor::Copy), Err(Error::Unsupported(t)) if t.contains("\"✓\"")));
+    assert!(matches!(rebase::start(&dir, &bad, &SequenceEditor::Copy), Err(rebase::RebaseError::Other { said }) if said.contains("\"✓\"")));
     assert_eq!(git2::Repository::open(&dir).unwrap().state(), git2::RepositoryState::Clean);
 
     // c2 stops for an edit; c3's reword waits in its message file.

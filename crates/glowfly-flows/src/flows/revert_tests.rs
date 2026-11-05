@@ -196,7 +196,7 @@ fn revert_end_to_end() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn reverted(path: &str, what: RevertWhat, result: Result<Reverted, String>) -> Msg {
+fn reverted(path: &str, what: RevertWhat, result: Result<Reverted, glowfly_core::error::WriteFailed>) -> Msg {
     Msg::Stage(StageMsg::Reverted { path: path.into(), what, result, undo: None })
 }
 
@@ -237,7 +237,7 @@ fn reverted_results() {
         (RevertWhat::File, "Could not revert a.txt: x"),
     ];
     for (what, text) in fails {
-        let fx = run(&mut st, reverted("a.txt", what, Err("x".into())));
+        let fx = run(&mut st, reverted("a.txt", what, Err(glowfly_model::testing::write_said("x"))));
         assert!(matches!(&fx[..], [Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })]), "{fx:?}");
         finish(&mut st, fx);
         assert!(st.log.last().is_some_and(|l| !l.ok && l.text == text), "{:?}", st.log.last().map(|l| &l.text));
@@ -249,7 +249,7 @@ fn reverted_results() {
 #[test]
 fn scoped_failure_for_inactive_tab_is_logged() {
     let (mut st, dir) = with_diff("revert-scoped", DiffTarget::Unstaged("a.txt".into()), one_hunk());
-    let msg = reverted("a.txt", RevertWhat::Hunk, Err("x".into()));
+    let msg = reverted("a.txt", RevertWhat::Hunk, Err(glowfly_model::testing::write_said("x")));
     let fx = run(&mut st, Msg::Scoped { workdir: "C:/elsewhere".into(), msg: Box::new(msg) });
     assert!(fx.is_empty());
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.contains("x") && l.text.contains("a.txt")));

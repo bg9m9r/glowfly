@@ -1,11 +1,14 @@
 //! Typed errors for everything in `glowfly-core`, so callers can react to the kind of failure
 //! (for example, prompt to sign in on `Auth`) rather than inspecting messages. A hosting
 //! service's refusal in plain words is in `advice`; why a graph or diff read failed is
-//! `ReadFailed` (`read_failed`).
+//! `ReadFailed` (`read_failed`), and why a write to the working tree or index, a revert, a
+//! restore, a file operation or a stack push failed is `WriteFailed` (`write_failed`).
 
 pub mod advice;
 pub mod read_failed;
+pub mod write_failed;
 pub use read_failed::ReadFailed;
+pub use write_failed::WriteFailed;
 
 /// Errors returned by repository access and hosting-service calls.
 #[derive(Debug, thiserror::Error)]

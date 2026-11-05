@@ -5,7 +5,7 @@
 use super::read_tests::{commit, tip};
 use super::restack_tests::{above_low, amended, head_name, parent};
 use super::*;
-use crate::rebase::{Outcome, Resume};
+use crate::rebase::{Outcome, RebaseError, Resume};
 use crate::stash_ops::{self, PutBack};
 use crate::testkit::git_out;
 use crate::testutil::*;
@@ -115,6 +115,9 @@ fn an_abort_goes_back_to_the_original_branch_with_the_changes() {
     let run = restack(&dir, &above_low(&dir, true)).unwrap();
     assert!(matches!(run.outcome, Outcome::Stopped { .. }), "{:?}", run.outcome);
     let oid = run.left.stash.unwrap();
+    let still = end_stopped(&dir, &run.left, Some("top")).unwrap_err();
+    assert_eq!(still, RebaseError::StillRebasing, "the step's rebase still runs");
+    assert_eq!(still.to_string(), STILL_REBASING);
     git(&dir, &["rebase", "--abort"]);
     assert_eq!(head_name(&dir), "top", "git's abort leaves HEAD on the step's top");
 

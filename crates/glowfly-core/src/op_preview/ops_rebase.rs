@@ -98,7 +98,7 @@ pub(in super::super) fn rebase(cx: &Cx, onto: &str, oid: Oid) -> Result<OpPrevie
 /// (`prepare_edit`, so the same refusals), replayed from its upstream. As in `git rebase -i`,
 /// a commit that becomes empty stops it.
 pub(in super::super) fn drop(cx: &Cx, oids: &[Oid]) -> Result<OpPreview> {
-    let plan = prepare_edit(cx.workdir, &QuickEdit::Drop(oids.to_vec()))?;
+    let plan = prepare_edit(cx.workdir, &QuickEdit::Drop(oids.to_vec())).map_err(|e| Error::Unsupported(e.to_string()))?;
     let repo = cx.repo;
     let onto = match plan.request.upstream {
         Upstream::Commit(p) => Some(p),

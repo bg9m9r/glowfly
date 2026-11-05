@@ -9,9 +9,8 @@
 
 use super::plan::RestackPlan;
 use super::restack::{RestackRun, git, head_branch, join};
-use crate::error::{Error, Result};
 use crate::gitcli;
-use crate::rebase::{Outcome, stash_tip};
+use crate::rebase::{Outcome, RebaseError, stash_tip};
 use crate::stash_ops::{AutoStashFor, PutBack, pop_put_back, prepare_put_back};
 use git2::{Oid, Repository, RepositoryState};
 use std::path::Path;
@@ -77,14 +76,14 @@ pub(super) fn come_back(
     (stayed_on, Some((oid, outcome)))
 }
 
-/// Ends a restack that stopped, once its rebase is over (`STILL_REBASING` otherwise): `left` is
+/// Ends a restack that stopped, once its rebase is over (`StillRebasing` otherwise): `left` is
 /// what the stop left (the steps not run and the stash), `stopped_top` the top of the step it
 /// stopped in. When HEAD is still on that top (where git's abort, and its own finish, leave it),
 /// the branch checked out before is checked out again; the stash goes back there.
-pub fn end_stopped(workdir: &Path, left: &RestackPlan, stopped_top: Option<&str>) -> Result<RestackRun> {
+pub fn end_stopped(workdir: &Path, left: &RestackPlan, stopped_top: Option<&str>) -> Result<RestackRun, RebaseError> {
     let repo = Repository::open(workdir)?;
     if repo.state() != RepositoryState::Clean {
-        return Err(Error::Unsupported(STILL_REBASING.into()));
+        return Err(RebaseError::StillRebasing);
     }
     let head = head_branch(workdir);
     let checkout = stopped_top.is_some() && head.as_deref() == stopped_top;

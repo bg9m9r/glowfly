@@ -4,7 +4,7 @@
 
 use crate::effect::{RestackJob, UndoResult};
 use crate::state::rebase_steps::NewStep;
-use glowfly_core::rebase::{Outcome, QuickEdit, QuickPlan, RebaseAction, RebaseBase, RebasePlan, Remaining, Resume};
+use glowfly_core::rebase::{Outcome, QuickEdit, QuickPlan, RebaseAction, RebaseBase, RebaseError, RebasePlan, Remaining, Resume};
 use glowfly_core::stack::{RestackRun, RestackScope};
 use std::path::PathBuf;
 
@@ -55,22 +55,22 @@ pub enum RebaseMsg {
     },
     RebasePlanLoaded {
         generation: u64,
-        result: Result<RebasePlan, String>,
+        result: Result<RebasePlan, RebaseError>,
     },
     /// Open the panel on the remaining steps of the interactive rebase in progress.
     OpenRemaining,
     RemainingLoaded {
         generation: u64,
-        result: Result<Remaining, String>,
+        result: Result<Remaining, RebaseError>,
     },
     /// The edit-todo job's result, for whichever tab it ran in (like `JobDone`).
     RemainingEdited {
-        result: Result<(), String>,
+        result: Result<(), RebaseError>,
     },
     /// The rebase job's result, for whichever tab it ran in (like `JobDone`), with what it
     /// means for the undo history.
     RebaseFinished {
-        result: Result<Outcome, String>,
+        result: Result<Outcome, RebaseError>,
         undo: Option<UndoResult>,
     },
     /// A history edit chosen in the graph's menus: prepare its rebase.
@@ -78,7 +78,7 @@ pub enum RebaseMsg {
     /// The prepared edit, for the tab at `workdir`.
     EditPrepared {
         workdir: PathBuf,
-        result: Result<QuickPlan, String>,
+        result: Result<QuickPlan, RebaseError>,
     },
     /// The Reword or Squash dialog's primary button; the form is read from `st.modal`.
     SubmitReword,
@@ -101,14 +101,14 @@ pub enum RebaseMsg {
     /// A restack job's result (its first run, or the banner's Continue or Skip of a stopped
     /// one), for whichever tab it ran in (like `RebaseFinished`).
     RestackRan {
-        result: Result<RestackRun, String>,
+        result: Result<RestackRun, RebaseError>,
         undo: Option<UndoResult>,
         job: Box<RestackJob>,
     },
     /// The result of ending a stopped restack whose rebase ended another way
     /// (`RebaseEffect::EndRestack`), for whichever tab it ran in.
     RestackEnded {
-        result: Result<RestackRun, String>,
+        result: Result<RestackRun, RebaseError>,
         undo: Option<UndoResult>,
         job: Box<RestackJob>,
     },

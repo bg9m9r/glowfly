@@ -11,9 +11,8 @@
 use super::STALE_PLAN;
 use super::plan::{RestackPlan, RestackStep};
 use super::restack_end::{come_back, stash_first};
-use crate::error::{Error, Result};
 use crate::gitcli;
-use crate::rebase::{self, Outcome, Resume, outcome, stash_tip};
+use crate::rebase::{self, Outcome, RebaseError, Resume, outcome, stash_tip};
 use crate::stash_ops::PutBack;
 use git2::{BranchType, Oid, Repository};
 use std::path::Path;
@@ -31,10 +30,10 @@ pub struct RestackRun {
 }
 
 /// Runs `plan`. `Err` means nothing ran: the stack no longer matches the plan.
-pub fn restack(workdir: &Path, plan: &RestackPlan) -> Result<RestackRun> {
+pub fn restack(workdir: &Path, plan: &RestackPlan) -> Result<RestackRun, RebaseError> {
     let repo = Repository::open(workdir)?;
     if !plan.steps.iter().all(|s| valid(&repo, s)) {
-        return Err(Error::Unsupported(STALE_PLAN.into()));
+        return Err(RebaseError::StackChanged);
     }
     let mut output = String::new();
     let mut plan = plan.clone();
@@ -49,7 +48,7 @@ pub fn restack(workdir: &Path, plan: &RestackPlan) -> Result<RestackRun> {
 
 /// Continues or skips the step that stopped, then runs the steps `left` (putting `left.stash`
 /// back after the last one).
-pub fn resume(workdir: &Path, how: Resume, left: &RestackPlan) -> Result<RestackRun> {
+pub fn resume(workdir: &Path, how: Resume, left: &RestackPlan) -> Result<RestackRun, RebaseError> {
     match rebase::resume(workdir, how)? {
         Outcome::Finished { output, stash_kept } => run_steps(workdir, left, output, stash_kept),
         outcome => Ok(RestackRun { outcome, left: left.clone(), stayed_on: None, put_back: None }),
@@ -66,7 +65,7 @@ fn valid(repo: &Repository, step: &RestackStep) -> bool {
 
 /// Runs the steps of `plan` after `output` (what ran before). A stop leaves the rest; the end,
 /// or a failure, checks `return_to` out and puts the stash back there (`come_back`).
-fn run_steps(workdir: &Path, plan: &RestackPlan, mut output: String, mut kept: bool) -> Result<RestackRun> {
+fn run_steps(workdir: &Path, plan: &RestackPlan, mut output: String, mut kept: bool) -> Result<RestackRun, RebaseError> {
     let rest = |from: usize| RestackPlan { steps: plan.steps[from..].to_vec(), ..plan.clone() };
     let ended = |mut output: String, left: RestackPlan, failed: bool, kept: bool| {
         let (stayed_on, put_back) = come_back(workdir, &left, true, &mut output);

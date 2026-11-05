@@ -3,6 +3,7 @@
 
 use crate::effect::StackPushJob;
 use crate::msg::Inactive;
+use glowfly_core::error::WriteFailed;
 use glowfly_core::stack::StackPush;
 
 pub enum StackMsg {
@@ -12,7 +13,7 @@ pub enum StackMsg {
     /// each layer in turn.
     CreatePrs { branch: String },
     /// The push job ended (runner/stack.rs); unscoped like RunGit.
-    Pushed { result: Result<StackPush, String>, job: Box<StackPushJob> },
+    Pushed { result: Result<StackPush, WriteFailed>, job: Box<StackPushJob> },
     /// The stack step's Skip in the create dialog.
     SkipPr,
     /// The stack step's Cancel in the create dialog.

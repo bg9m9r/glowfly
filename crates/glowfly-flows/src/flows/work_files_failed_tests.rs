@@ -71,7 +71,7 @@ fn a_revert_that_failed_after_changing_the_file_records_its_undo() {
     let msg = |undo: Option<Action>| StageMsg::Reverted {
         path: "f.txt".into(),
         what: RevertWhat::Hunk,
-        result: Err("the filter failed".into()),
+        result: Err(glowfly_model::testing::write_said("the filter failed")),
         undo,
     };
     run(&mut st, Msg::Stage(msg(Some(undo.clone()))));
@@ -82,8 +82,8 @@ fn a_revert_that_failed_after_changing_the_file_records_its_undo() {
     );
 
     // A parked tab keeps it too; without an undo it is only logged.
-    assert!(matches!(msg(Some(undo.clone())).on_inactive(), Some(Inactive::LogAndUndo { undo: a, .. }) if a == undo));
-    assert!(matches!(msg(None).on_inactive(), Some(Inactive::Log(_))));
+    assert!(matches!(msg(Some(undo.clone())).on_inactive(), Some(Inactive::WriteFailed { undo: Some(a), .. }) if a == undo));
+    assert!(matches!(msg(None).on_inactive(), Some(Inactive::WriteFailed { undo: None, .. })));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

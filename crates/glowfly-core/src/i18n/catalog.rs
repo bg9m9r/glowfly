@@ -36,7 +36,7 @@ catalogs! {
     "graph" "hints" "history" "job" "job_retry" "journal" "layout" "lfs"
     "lock" "logs" "losses" "mainline" "markdown" "menu" "op" "op_preview"
     "op_strip" "palette" "panel" "patch" "pick" "pr" "pr_checkout" "prefs"
-    "publish" "quit" "range_diff" "read_errors" "rebase" "refs" "release_notes" "remote_branch"
+    "publish" "quit" "range_diff" "read_errors" "rebase" "rebase_errors" "refs" "release_notes" "remote_branch"
     "repo_colour" "repo_group" "repo_sync" "repos" "safe_dir" "search" "service_errors" "settings_file"
     "sidebar" "sign_in" "signature" "signing_errors" "stack" "stash" "status" "submodules"
     "sync" "tabs" "tag" "terminal" "title_bar" "toolbar" "tools" "tour"

@@ -75,41 +75,8 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
         StageMsg::RevertLines => super::revert::lines(st, fx),
         StageMsg::RevertFile(target) => super::revert::file(st, target, fx),
         StageMsg::Reverted { path, what, result, undo } => super::revert::done(st, path, what, result, undo, now, fx),
-        StageMsg::LocalOpFailed { error, undo } => {
-            st.session.undo.record(undo);
-            stage(st, StageMsg::LocalOpDone(Err(error)), now, fx);
-        }
-        StageMsg::LocalOpDone(result) => {
-            let failed = result.is_err();
-            let recorded = matches!(result, Ok(Some(_)));
-            match result {
-                Err(e) => st.log(false, e),
-                Ok(Some(action)) => st.session.undo.record(action),
-                Ok(None) => {}
-            }
-            // A save that failed can be tried again; one that worked moves the view on once the
-            // status shows the file resolved.
-            let mut saved = None;
-            if let Some(c) = st.session.conflict.view.as_mut() {
-                c.saving = false;
-                c.step_on_resolve &= !failed;
-                // What Save with markers wrote is now what the file holds.
-                if let Some((note, picks, cleans)) = c.pending_save.take().filter(|_| !failed) {
-                    c.baseline = (picks, cleans);
-                    saved = Some(note);
-                }
-            }
-            // Save with markers leaves the view open: say it worked, with Undo when it changed
-            // the file.
-            if let Some(note) = saved {
-                let path = st.session.conflict.view.as_ref().map(|c| c.path.clone()).unwrap_or_default();
-                let undo = super::conflict::undo_button(st, &path, false).filter(|_| recorded);
-                super::conflict::toast_with(st, note, undo, now);
-            }
-            super::watch::settled(st, now);
-            super::wip_list::op_done(st, !failed, fx);
-            super::repo::refresh_status(st, fx);
-        }
+        StageMsg::LocalOpFailed { error, undo } => super::local_done::failed(st, error, undo, now, fx),
+        StageMsg::LocalOpDone(result) => super::local_done::done(st, result, now, fx),
     }
 }
 

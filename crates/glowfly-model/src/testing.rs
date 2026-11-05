@@ -93,6 +93,11 @@ pub fn said(text: &str) -> glowfly_core::error::ReadFailed {
     glowfly_core::error::ReadFailed::Said { said: text.into() }
 }
 
+/// A failed write in git's or the system's own words, as the runner sends it.
+pub fn write_said(text: &str) -> glowfly_core::error::WriteFailed {
+    glowfly_core::error::WriteFailed::Said { said: text.into() }
+}
+
 /// Runs the views' `Msg::Edit`s taken out of `msgs` (dropping their effects), as the shell does
 /// first each frame: for view tests, which draw without dispatching.
 pub fn apply_edits(st: &mut AppState, msgs: &mut Vec<crate::msg::Msg>) {

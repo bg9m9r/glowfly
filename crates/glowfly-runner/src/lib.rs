@@ -116,7 +116,7 @@ mod updates;
 pub mod watcher;
 mod worktrees;
 
-use execute::{Cx, err, execute_with};
+use execute::{Cx, execute_with};
 pub use logs::{FileDetail, LogSetup};
 use seams::Seams;
 

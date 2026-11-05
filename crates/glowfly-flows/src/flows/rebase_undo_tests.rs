@@ -15,7 +15,7 @@ fn up(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update(st, msg, Instant::now())
 }
 
-fn finished(st: &mut AppState, result: Result<Outcome, String>, undo: Option<UndoResult>) {
+fn finished(st: &mut AppState, result: Result<Outcome, glowfly_core::rebase::RebaseError>, undo: Option<UndoResult>) {
     up(st, Msg::Rebase(RebaseMsg::RebaseFinished { result, undo }));
 }
 
@@ -67,7 +67,7 @@ fn graph_edits_name_themselves_for_undo() {
     let (mut st, dir, c) = repo("rebase-undo-detail");
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::Edit(QuickEdit::SquashIntoParent(c[2]))));
     let [Effect::Rebase(RebaseEffect::PrepareEdit { workdir, edit })] = &fx[..] else { panic!("{fx:?}") };
-    let result = glowfly_core::rebase::prepare_edit(workdir, edit).map_err(|e| e.to_string());
+    let result = glowfly_core::rebase::prepare_edit(workdir, edit);
     up(&mut st, Msg::Rebase(RebaseMsg::EditPrepared { workdir: workdir.clone(), result }));
     let fx = up(&mut st, Msg::Rebase(RebaseMsg::SubmitReword));
     let [Effect::Rebase(RebaseEffect::Start { detail, .. })] = &fx[..] else { panic!("{fx:?}") };
@@ -75,7 +75,7 @@ fn graph_edits_name_themselves_for_undo() {
 
     st.job = None;
     let edit = QuickEdit::Reword(c[1]);
-    let result = glowfly_core::rebase::prepare_edit(&dir, &edit).map_err(|e| e.to_string());
+    let result = glowfly_core::rebase::prepare_edit(&dir, &edit);
     up(&mut st, Msg::Rebase(RebaseMsg::EditPrepared { workdir: dir.clone(), result }));
     let Some(glowfly_model::state::Modal::RewordCommit(form)) = st.modal.as_mut() else { panic!("the Reword dialog") };
     form.draft = "c2, reworded".into();

@@ -60,7 +60,7 @@ fn staged_rename_result_toast_and_diff() {
     run(&mut st, Msg::WorkFile(WorkFileMsg::RenameFile { from: "a.txt".into(), to: "b.txt".into(), stage: true }));
     assert!(rename_form(&st).busy);
     let err = "Unable to create 'x/.git/index.lock': File exists.";
-    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err(err.into()) }));
+    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: op(), result: Err(glowfly_model::testing::write_said(err)) }));
     let form = rename_form(&st);
     assert!(!form.busy);
     assert_eq!(form.error, Some(("b.txt".into(), err.into())));

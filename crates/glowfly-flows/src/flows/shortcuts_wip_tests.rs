@@ -228,7 +228,7 @@ fn a_failed_stage_stays_on_the_file() {
     let (mut st, dir) = three_files("wip-keys-failed");
     show(&mut st, un("b.txt"));
     st.cues.stage_move_on = Some(MoveOn { from: un("b.txt"), to: Some(un("c.txt")) });
-    let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Err("no".into()))), Instant::now());
+    let fx = update(&mut st, Msg::Stage(StageMsg::LocalOpDone(Err(glowfly_model::testing::write_said("no")))), Instant::now());
     assert!(loads(&fx).is_empty(), "{fx:?}");
     assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
     assert!(st.cues.stage_move_on.is_none());

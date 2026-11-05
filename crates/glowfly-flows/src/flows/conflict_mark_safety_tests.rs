@@ -50,9 +50,10 @@ fn a_change_that_failed_partway_keeps_its_undo() {
     let dir = binary_conflict("cms-partway");
     let mut st = opened(&dir);
     let undo = Action::CreateTag { name: "stand-in".into(), oid: git2::Oid::zero() };
-    let error = "b.txt failed. Undo puts back the files it changed before it stopped.".to_owned();
-    drive(&mut st, Msg::Stage(StageMsg::LocalOpFailed { error: error.clone(), undo: undo.clone() }));
+    let error = glowfly_model::testing::write_said("b.txt failed");
+    drive(&mut st, Msg::Stage(StageMsg::LocalOpFailed { error, undo: undo.clone() }));
     assert_eq!(st.session.undo.undo.last(), Some(&undo));
-    assert!(st.log.iter().any(|l| !l.ok && l.text == error));
+    let said = "b.txt failed. Undo puts back the files it changed before it stopped.";
+    assert!(st.log.iter().any(|l| !l.ok && l.text == said));
     let _ = std::fs::remove_dir_all(&dir);
 }

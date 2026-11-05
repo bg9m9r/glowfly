@@ -3,7 +3,9 @@
 //! without changing the repository; the same for `git rebase --edit-todo` on a running rebase.
 
 use git2::{Oid, Repository, RepositoryState};
-use glowfly_core::rebase::{self, EditTodoRequest, Outcome, RebaseAction, RebaseBase, Resume, SequenceEditor, StartRequest, TodoStep};
+use glowfly_core::rebase::{
+    self, EditTodoRequest, Outcome, RebaseAction, RebaseBase, RebaseError, Resume, SequenceEditor, StartRequest, TodoStep,
+};
 use std::path::{Path, PathBuf};
 
 use glowfly_core::testkit::git_out as git;
@@ -130,8 +132,9 @@ fn the_helper_refuses_a_foreign_commit() {
     let items = tip.steps;
     let req = StartRequest { head: tip.head, upstream: tip.upstream, items, autostash: false };
     let e = rebase::start(&dir, &req, &SequenceEditor::Shell(script)).unwrap_err();
-    assert_eq!(e.to_string(), rebase::CHANGED);
-    assert!(prepared_dir.join("todo.error").exists(), "the helper wrote why it refused");
+    assert_eq!(e, RebaseError::Changed, "the helper's refusal comes back typed");
+    let written = std::fs::read_to_string(prepared_dir.join("todo.error")).expect("the helper wrote why it refused");
+    assert_eq!(rebase::read_refusal(&written), RebaseError::Changed);
     let repo = Repository::open(&dir).unwrap();
     assert_eq!(repo.state(), RepositoryState::Clean);
     assert_eq!(head(&dir), before);
@@ -199,8 +202,9 @@ pick {} x
         rebase::shell_quote(&prepared.to_string_lossy()),
     );
     let e = rebase::edit_todo(&dir, &request(&r, r.steps.clone()), &SequenceEditor::Shell(script)).unwrap_err();
-    assert_eq!(e.to_string(), rebase::CHANGED);
-    assert!(prepared.with_file_name("todo-edit.error").exists(), "the helper wrote why it refused");
+    assert_eq!(e, RebaseError::Changed, "the helper's refusal comes back typed");
+    let written = std::fs::read_to_string(prepared.with_file_name("todo-edit.error")).expect("the helper wrote why it refused");
+    assert_eq!(rebase::read_refusal(&written), RebaseError::Changed);
     assert_eq!(todo_text(&dir), before, "git's todo is unchanged");
     assert_eq!(rebase::remaining(&dir).unwrap().steps, r.steps);
     assert_eq!(Repository::open(&dir).unwrap().state(), RepositoryState::RebaseInteractive);

@@ -1,9 +1,10 @@
 //! Messages for staging, committing and running git jobs (update/ops.rs, update/commit.rs,
 //! update/undo.rs, update/stash.rs).
 
-use super::Inactive;
+use super::{FailedWrite, Inactive};
 use crate::effect::{UndoOpts, UndoResult};
 use git2::Oid;
+use glowfly_core::error::WriteFailed;
 use glowfly_core::repo::{DiffTarget, HunkOp, RevertPart, Reverted};
 use glowfly_core::undo::Discarded;
 
@@ -52,11 +53,11 @@ pub enum StageMsg {
     RevertFile(DiffTarget),
     /// A LocalOp finished; a discard or a saved conflict resolution that can be undone carries
     /// its undo action.
-    LocalOpDone(Result<Option<glowfly_core::undo::Action>, String>),
+    LocalOpDone(Result<Option<glowfly_core::undo::Action>, WriteFailed>),
     /// A conflict change (Mark resolved, Mark conflicted) that failed partway: its error, and
     /// the undo action for the files it changed before it stopped.
     LocalOpFailed {
-        error: String,
+        error: WriteFailed,
         undo: glowfly_core::undo::Action,
     },
     /// A revert finished; `path` is the working-tree file it changed. A revert that changed it
@@ -64,7 +65,7 @@ pub enum StageMsg {
     Reverted {
         path: String,
         what: RevertWhat,
-        result: Result<Reverted, String>,
+        result: Result<Reverted, WriteFailed>,
         undo: Option<glowfly_core::undo::Action>,
     },
 }
@@ -122,10 +123,10 @@ impl StageMsg {
                 undo: None,
                 ..
             } => None,
-            Self::LocalOpDone(Err(e)) => Some(Inactive::Log(e)),
+            Self::LocalOpDone(Err(error)) => Some(Inactive::WriteFailed { at: FailedWrite::LocalOp, error, undo: None }),
             // A discard in a tab switched away from: its undo belongs to that tab.
             Self::LocalOpDone(Ok(Some(action))) => Some(Inactive::Undo(action)),
-            Self::LocalOpFailed { error, undo } => Some(Inactive::LogAndUndo { text: error, undo }),
+            Self::LocalOpFailed { error, undo } => Some(Inactive::WriteFailed { at: FailedWrite::LocalOpPartial, error, undo: Some(undo) }),
             // A revert in a tab switched away from: its undo belongs to that tab too.
             Self::Reverted {
                 result: Ok(Reverted::Applied | Reverted::Removed | Reverted::RemovedNew | Reverted::Merged),
@@ -139,12 +140,9 @@ impl StageMsg {
                     None => Inactive::Log(text),
                 })
             }
-            Self::Reverted { path, what, result: Err(e), undo: None } => {
-                Some(Inactive::Log(crate::update::revert::fail_text(&path, what, &e)))
-            }
-            // It changed the file before failing: its undo belongs to that tab.
-            Self::Reverted { path, what, result: Err(e), undo: Some(undo) } => {
-                Some(Inactive::LogAndUndo { text: crate::update::revert::fail_text(&path, what, &e), undo })
+            // One that changed the file before failing: its undo belongs to that tab.
+            Self::Reverted { path, what, result: Err(error), undo } => {
+                Some(Inactive::WriteFailed { at: FailedWrite::Revert { path, what }, error, undo })
             }
         }
     }

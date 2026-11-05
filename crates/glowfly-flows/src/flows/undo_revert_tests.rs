@@ -166,7 +166,7 @@ fn a_revert_for_a_parked_tab_goes_to_its_history() {
 #[test]
 fn parked_results_keep_their_undo() {
     let undo = Action::Discard { path: "f.txt".into(), what: Discarded::RevertedHunk, before: None, after: None };
-    let reverted = |result: Result<Reverted, String>, undo: Option<Action>| {
+    let reverted = |result: Result<Reverted, glowfly_core::error::WriteFailed>, undo: Option<Action>| {
         StageMsg::Reverted { path: "f.txt".into(), what: RevertWhat::Hunk, result, undo }.on_inactive()
     };
     for r in [Reverted::Applied, Reverted::Removed, Reverted::Merged] {
@@ -178,5 +178,7 @@ fn parked_results_keep_their_undo() {
         matches!(reverted(Ok(Reverted::Conflicts), Some(undo.clone())), Some(Inactive::LogAndUndo { text, undo: a }) if text == conflicts && a == undo)
     );
     assert!(matches!(reverted(Ok(Reverted::Conflicts), None), Some(Inactive::Log(text)) if text == conflicts));
-    assert!(matches!(reverted(Err("boom".into()), None), Some(Inactive::Log(text)) if text == "Could not revert the hunk in f.txt: boom"));
+    let failed = reverted(Err(glowfly_model::testing::write_said("boom")), None);
+    let at = glowfly_model::msg::FailedWrite::Revert { path: "f.txt".into(), what: RevertWhat::Hunk };
+    assert!(matches!(failed, Some(Inactive::WriteFailed { at: a, undo: None, .. }) if a == at));
 }

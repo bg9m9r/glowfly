@@ -1,7 +1,8 @@
 //! Results for a tab that is no longer active: what each area keeps (`Msg::on_inactive`).
 
-use crate::msg::{Inactive, Msg};
+use crate::msg::{FailedWrite, Inactive, Msg};
 use crate::state::AppState;
+use crate::state::error_words::typed;
 use crate::state::tabs::glance::{CountsRead, Glance};
 use std::path::Path;
 use std::time::Instant;
@@ -38,6 +39,7 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
             }
             super::work_files::inactive_result(st, workdir, op, result, now);
         }
+        Some(Inactive::WriteFailed { at, error, undo }) => write_failed(st, workdir, at, &error, undo),
         Some(Inactive::IndexBuilt { build, result }) => super::history_index::parked_built(st, workdir, build, result),
         Some(Inactive::ConflictFilesUnread(e)) => {
             let t = st.settings.lang();
@@ -45,5 +47,28 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
         }
         Some(Inactive::Counts(read)) => keep_counts(st, workdir, read),
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
+    }
+}
+
+/// A write for the parked tab at `workdir` failed: its log line, in the user's language, and
+/// its undo when it changed files anyway.
+fn write_failed(
+    st: &mut AppState,
+    workdir: &Path,
+    at: FailedWrite,
+    error: &glowfly_core::error::WriteFailed,
+    undo: Option<glowfly_core::undo::Action>,
+) {
+    let t = st.settings.lang();
+    let words = typed::write(t, error);
+    let text = match at {
+        FailedWrite::LocalOp => words,
+        FailedWrite::LocalOpPartial => super::local_done::partial_text(t, error),
+        FailedWrite::Revert { path, what } => super::revert::fail_text(&path, what, &words),
+        FailedWrite::Restore { path } => crate::msg::restore_failed(&path, &words, undo.is_some(), None),
+    };
+    st.log_in(Some(workdir), false, text);
+    if let Some(a) = undo {
+        record_parked(st, workdir, a);
     }
 }

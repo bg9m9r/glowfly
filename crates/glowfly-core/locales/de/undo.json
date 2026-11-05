@@ -1,4 +1,5 @@
 {
+  "undo.partial_conflict_change": "{why}. Rückgängig holt die Dateien zurück, die vor dem Abbruch geändert wurden.",
   "undo.preview.abort_again": "Bricht ihn erneut ab und bewahrt seine Arbeit auf",
   "undo.preview.abort_back": "Setzt den Vorgang mit seinen Auflösungen und Konflikten fort",
   "undo.preview.apply_again": "Wendet ihn erneut an",

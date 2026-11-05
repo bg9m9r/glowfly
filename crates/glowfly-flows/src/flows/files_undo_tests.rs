@@ -169,13 +169,18 @@ fn failed_restore_that_removed_the_file_can_be_undone() {
 fn failed_restore_with_undo_for_inactive_tab_logs_and_keeps_the_undo() {
     let oid = Oid::zero();
     let undo = Action::Restore { path: "a.txt".into(), oid, before: None, after: None };
-    let msg = FilesMsg::FileRestored { path: "a.txt".into(), oid, result: Err("boom".into()), undo: Some(undo.clone()) };
+    let msg = FilesMsg::FileRestored {
+        path: "a.txt".into(),
+        oid,
+        result: Err(glowfly_model::testing::write_said("boom")),
+        undo: Some(undo.clone()),
+    };
+    // Worded in that tab's log by update (update/inactive.rs), with the undo entry.
     match msg.on_inactive() {
-        Some(Inactive::LogAndUndo { text, undo: a }) => {
-            // The message can't see the keymap, so the key is left out.
-            assert_eq!(text, "Could not restore a.txt: boom. Undo puts back what it held before.");
+        Some(Inactive::WriteFailed { at: glowfly_model::msg::FailedWrite::Restore { path }, error, undo: Some(a) }) => {
+            assert_eq!((path.as_str(), error), ("a.txt", glowfly_model::testing::write_said("boom")));
             assert_eq!(a, undo);
         }
-        _ => panic!("expected a log line and an undo entry"),
+        _ => panic!("expected a failed write and an undo entry"),
     }
 }

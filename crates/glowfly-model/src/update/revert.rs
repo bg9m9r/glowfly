@@ -13,6 +13,8 @@ use crate::effect::Effect;
 use crate::effect::FilesEffect;
 use crate::msg::RevertWhat;
 use crate::state::AppState;
+use crate::state::error_words::typed;
+use glowfly_core::error::WriteFailed;
 use glowfly_core::repo::{DiffTarget, RevertPart, RevertRequest, Reverted};
 use glowfly_core::undo::Action;
 use std::time::Instant;
@@ -103,7 +105,7 @@ pub(super) fn done(
     st: &mut AppState,
     path: String,
     what: RevertWhat,
-    result: Result<Reverted, String>,
+    result: Result<Reverted, WriteFailed>,
     undo: Option<Action>,
     now: Instant,
     fx: &mut Vec<Effect>,
@@ -121,11 +123,12 @@ pub(super) fn done(
         Ok(r) => st.toast(true, done_text(&path, what, r), now),
         // It changed the file before failing: say that Undo puts it back.
         Err(e) if undoable => {
+            let t = st.settings.lang();
             let hint = st.keymap.paren(crate::keymap::BindingId::Undo);
-            let note = st.settings.lang().trf("diff.revert.failed_undo", &[("hint", &hint)]);
-            st.log(false, format!("{}. {note}", fail_text(&path, what, &e).trim_end_matches('.')));
+            let note = t.trf("diff.revert.failed_undo", &[("hint", &hint)]);
+            st.log(false, format!("{}. {note}", fail_text(&path, what, &typed::write(t, &e)).trim_end_matches('.')));
         }
-        Err(e) => st.log(false, fail_text(&path, what, &e)),
+        Err(e) => st.log(false, fail_text(&path, what, &typed::write(st.settings.lang(), &e))),
     }
     super::watch::settled(st, now);
     super::repo::refresh_status(st, fx);

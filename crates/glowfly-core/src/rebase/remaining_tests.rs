@@ -4,7 +4,6 @@
 use super::plan_tests::{commit, linear};
 use super::run_tests::{at, log, message, request, request_steps, start_copy, state};
 use super::*;
-use crate::error::Error;
 use crate::gitcli::{args, run, run_with_input};
 use crate::testutil::*;
 use git2::RepositoryState;
@@ -20,10 +19,9 @@ pub(super) fn rebase_i(dir: &Path, upstream: &str, todo: &str) -> bool {
     ok
 }
 
-fn refused(r: crate::error::Result<Remaining>) -> String {
+fn refused(r: Result<Remaining, RebaseError>) -> RebaseError {
     match r {
-        Err(Error::Unsupported(t)) => t,
-        Err(e) => panic!("expected a refusal, got {e:?}"),
+        Err(e) => e,
         Ok(r) => panic!("expected a refusal, got {r:?}"),
     }
 }
@@ -52,7 +50,7 @@ fn todo_text(dir: &Path) -> String {
 fn refused_without_an_interactive_rebase() {
     let dir = scratch_repo("rebase-remaining-none");
     commit(&dir, "f.txt", "base\n", "base");
-    assert_eq!(refused(remaining(&dir)), NOT_INTERACTIVE);
+    assert_eq!(refused(remaining(&dir)), RebaseError::NotInteractive);
     git(&dir, &["checkout", "-q", "-b", "other"]);
     commit(&dir, "f.txt", "other\n", "other");
     git(&dir, &["checkout", "-q", "main"]);
@@ -63,7 +61,7 @@ fn refused_without_an_interactive_rebase() {
     // rebase leaves the marker out, which is what this checks.
     let _ = std::fs::remove_file(dir.join(".git").join("rebase-merge").join("interactive"));
     assert_eq!(state(&dir), RepositoryState::RebaseMerge);
-    assert_eq!(refused(remaining(&dir)), NOT_INTERACTIVE);
+    assert_eq!(refused(remaining(&dir)), RebaseError::NotInteractive);
     let req = EditTodoRequest { steps: Vec::new(), locked_text: String::new(), todo: String::new(), first_may_combine: true };
     let e = edit_todo(&dir, &req, &SequenceEditor::Copy).unwrap_err();
     assert_eq!(e.to_string(), NOT_INTERACTIVE);
@@ -175,7 +173,7 @@ fn commands_the_list_cannot_show_are_refused() {
         [format!("edit {c2} c2\nlabel here\npick {c3} c3\npick {c4} c4\n"), format!("edit {c2} c2\npick {c3} c3\nfixup -C {c4} c4\n")]
     {
         assert!(rebase_i(&dir, &c1.to_string(), &todo), "{todo}");
-        assert_eq!(refused(remaining(&dir)), UNSUPPORTED_STEPS, "{todo}");
+        assert_eq!(refused(remaining(&dir)), RebaseError::UnsupportedSteps, "{todo}");
         git(&dir, &["rebase", "--abort"]);
     }
     let _ = std::fs::remove_dir_all(&dir);

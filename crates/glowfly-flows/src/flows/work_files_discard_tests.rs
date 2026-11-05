@@ -182,7 +182,13 @@ fn discard_failure_logs_and_closes_diff() {
     assert!(fx.iter().any(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Status { .. }))), "{fx:?}");
 
     st.session.diff.view = Some((DiffTarget::Unstaged("other.txt".into()), empty_diff().into()));
-    run(&mut st, Msg::WorkFile(WorkFileMsg::WorkFileDone { op: discard("u.txt", DeleteMode::Trash), result: Err("boom".into()) }));
+    run(
+        &mut st,
+        Msg::WorkFile(WorkFileMsg::WorkFileDone {
+            op: discard("u.txt", DeleteMode::Trash),
+            result: Err(glowfly_model::testing::write_said("boom")),
+        }),
+    );
     assert_eq!(last_log(&st), "Could not discard u.txt: boom");
     assert!(st.log.last().is_some_and(|l| !l.ok));
     assert!(st.session.diff.view.is_some(), "another file's diff stays open");

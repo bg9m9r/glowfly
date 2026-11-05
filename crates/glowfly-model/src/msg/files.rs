@@ -1,14 +1,18 @@
 //! Messages of the file menus: restoring a file from a commit, opening and showing working-tree
 //! files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
 
-use super::Inactive;
+use super::{FailedWrite, Inactive};
 use crate::effect::{FileOp, WorkFileOk};
 use git2::Oid;
+use glowfly_core::error::WriteFailed;
 use glowfly_core::repo::RestoredFrom;
 use glowfly_core::undo::Action;
 
 /// Restoring a file as it was in a commit, and opening or showing a working-tree file
 /// (update/files.rs).
+// `FileRestored` (its undo entry and typed error) is the large variant; it is sent once per
+// restore, so boxing it would only add an allocation.
+#[allow(clippy::large_enum_variant)]
 pub enum FilesMsg {
     /// Write `path` as of commit `oid` into the working tree (its parent's version when `deleted`,
     /// i.e. the commit deleted it). `confirmed: false` opens the confirmation first.
@@ -28,7 +32,7 @@ pub enum FilesMsg {
     /// A RestoreFile finished. `undo` is its undo entry (`None`: nothing changed, or the working
     /// copy before or after couldn't be saved); a failed restore has one when it changed the
     /// file anyway.
-    FileRestored { path: String, oid: Oid, result: Result<RestoredFrom, String>, undo: Option<Action> },
+    FileRestored { path: String, oid: Oid, result: Result<RestoredFrom, WriteFailed>, undo: Option<Action> },
     /// A RestoreFile without `overwrite` found contents at `path` that only the working tree
     /// holds (`reason` says why), so it wrote nothing.
     RestoreWouldOverwrite { path: String, oid: Oid, reason: String },
@@ -45,9 +49,8 @@ impl FilesMsg {
             | Self::ShowWorkingFile(..)
             | Self::FileRestored { result: Ok(_), undo: None, .. } => None,
             Self::FileRestored { result: Ok(_), undo: Some(a), .. } => Some(Inactive::Undo(a)),
-            Self::FileRestored { path, result: Err(e), undo: None, .. } => Some(Inactive::Log(restore_failed(&path, &e, false, None))),
-            Self::FileRestored { path, result: Err(e), undo: Some(a), .. } => {
-                Some(Inactive::LogAndUndo { text: restore_failed(&path, &e, true, None), undo: a })
+            Self::FileRestored { path, result: Err(error), undo, .. } => {
+                Some(Inactive::WriteFailed { at: FailedWrite::Restore { path }, error, undo })
             }
             Self::RestoreWouldOverwrite { path, reason, .. } => Some(Inactive::Log(format!("Did not restore {path}: {reason}."))),
             Self::OpenNeedsConfirm { path, kind, .. } => Some(Inactive::Log(not_opened(&path, kind))),
@@ -89,7 +92,7 @@ pub enum WorkFileMsg {
     /// exactly as the confirmation described it.
     DeleteConfirmed(FileOp),
     /// A WorkFile effect finished.
-    WorkFileDone { op: FileOp, result: Result<WorkFileOk, String> },
+    WorkFileDone { op: FileOp, result: Result<WorkFileOk, WriteFailed> },
     /// A delete or discard failed after the file went (the trash reported an error, or the index
     /// couldn't be changed): `undo` still puts it back.
     WorkFileFailed { op: FileOp, error: String, undo: Box<glowfly_core::undo::Action> },

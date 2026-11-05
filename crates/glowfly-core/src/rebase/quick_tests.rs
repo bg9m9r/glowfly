@@ -3,7 +3,6 @@
 use super::plan_tests::{commit, head, linear};
 use super::run_tests::{log, message, start_copy};
 use super::*;
-use crate::error::Error;
 use crate::testutil::*;
 use git2::Repository;
 use std::path::Path;
@@ -12,10 +11,9 @@ fn prepared(dir: &Path, edit: QuickEdit) -> QuickPlan {
     prepare_edit(dir, &edit).unwrap_or_else(|e| panic!("{edit:?} was refused: {e}"))
 }
 
-fn refused(dir: &Path, edit: QuickEdit) -> String {
+fn refused(dir: &Path, edit: QuickEdit) -> RebaseError {
     match prepare_edit(dir, &edit) {
-        Err(Error::Unsupported(text)) => text,
-        Err(e) => panic!("expected a refusal, got {e:?}"),
+        Err(e) => e,
         Ok(p) => panic!("expected a refusal, got {p:?}"),
     }
 }
@@ -66,8 +64,8 @@ fn squash_many_and_not_consecutive() {
     let c2 = commit(&dir, "2.txt", "2\n", "c2");
     let c3 = commit(&dir, "3.txt", "3\n", "c3");
     let c4 = commit(&dir, "4.txt", "4\n", "c4");
-    assert_eq!(refused(&dir, QuickEdit::Squash(vec![c2, c4])), NOT_CONSECUTIVE);
-    assert_eq!(refused(&dir, QuickEdit::Squash(vec![c2])), TOO_FEW_TO_SQUASH);
+    assert_eq!(refused(&dir, QuickEdit::Squash(vec![c2, c4])), RebaseError::NotConsecutive);
+    assert_eq!(refused(&dir, QuickEdit::Squash(vec![c2])), RebaseError::TooFewToSquash);
     let p = prepared(&dir, QuickEdit::Squash(vec![c4, c2, c3]));
     assert_eq!(rows(&p), [(c2, RebaseAction::Reword), (c3, RebaseAction::Fixup), (c4, RebaseAction::Fixup)]);
     assert_eq!(p.request.items[0].commit().unwrap().new_message.as_deref(), Some("c2\n\nc3\n\nc4"));
@@ -82,28 +80,28 @@ fn squash_many_and_not_consecutive() {
 #[test]
 fn refusals() {
     let (dir, [c1, c2, ..]) = linear("rebase-quick-refusals");
-    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(c1)), ROOT_SQUASH);
-    assert_eq!(refused(&dir, QuickEdit::Drop(head_chain(&dir))), DROPS_EVERYTHING);
+    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(c1)), RebaseError::RootSquash);
+    assert_eq!(refused(&dir, QuickEdit::Drop(head_chain(&dir))), RebaseError::DropsEverything);
 
     // A commit only on a side branch.
     git(&dir, &["checkout", "-q", "-b", "side", "HEAD~1"]);
     let side = commit(&dir, "s.txt", "s\n", "side");
     git(&dir, &["checkout", "-q", "main"]);
-    assert_eq!(refused(&dir, QuickEdit::Reword(side)), NOT_ON_BRANCH);
-    assert_eq!(refused(&dir, QuickEdit::Drop(vec![side, c2])), SOME_NOT_ON_BRANCH);
+    assert_eq!(refused(&dir, QuickEdit::Reword(side)), RebaseError::NotOnBranch);
+    assert_eq!(refused(&dir, QuickEdit::Drop(vec![side, c2])), RebaseError::SomeNotOnBranch);
 
     // A merge on the branch after c2: the side commit came in through it; the merge itself.
     git(&dir, &["merge", "-q", "--no-ff", "-m", "merge side", "side"]);
     let merge = head(&dir);
-    assert_eq!(refused(&dir, QuickEdit::Reword(side)), SIDE_LINE);
-    assert_eq!(refused(&dir, QuickEdit::Drop(vec![side, c2])), SOME_SIDE_LINE);
-    assert_eq!(refused(&dir, QuickEdit::Reword(merge)), MERGE_SELECTED);
-    assert_eq!(refused(&dir, QuickEdit::Drop(vec![merge, c2])), SOME_MERGE_SELECTED);
+    assert_eq!(refused(&dir, QuickEdit::Reword(side)), RebaseError::SideLine);
+    assert_eq!(refused(&dir, QuickEdit::Drop(vec![side, c2])), RebaseError::SomeSideLine);
+    assert_eq!(refused(&dir, QuickEdit::Reword(merge)), RebaseError::MergeSelected);
+    assert_eq!(refused(&dir, QuickEdit::Drop(vec![merge, c2])), RebaseError::SomeMergeSelected);
     commit(&dir, "after.txt", "after\n", "after");
-    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(head(&dir))), PARENT_MERGE);
+    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(head(&dir))), RebaseError::ParentMerge);
 
     git(&dir, &["checkout", "-q", "--detach"]);
-    assert_eq!(refused(&dir, QuickEdit::Reword(c2)), DETACHED);
+    assert_eq!(refused(&dir, QuickEdit::Reword(c2)), RebaseError::Detached);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -140,12 +138,12 @@ fn edits_across_a_merge() {
     use super::merges_tests::merged;
     let (dir, f) = merged("rebase-quick-across-merge");
     // c2 starts the side line, so it and c3 can't be squashed from the graph.
-    assert_eq!(refused(&dir, QuickEdit::Squash(vec![f.c3, f.c2])), SPLIT_BY_BRANCH);
-    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(f.c3)), SPLIT_BY_BRANCH);
-    assert_eq!(refused(&dir, QuickEdit::Drop(vec![f.s1, f.c2])), SOME_SIDE_LINE);
-    assert_eq!(refused(&dir, QuickEdit::Reword(f.s2)), SIDE_LINE);
-    assert_eq!(refused(&dir, QuickEdit::Reword(f.m)), MERGE_SELECTED);
-    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(f.c4)), PARENT_MERGE);
+    assert_eq!(refused(&dir, QuickEdit::Squash(vec![f.c3, f.c2])), RebaseError::SplitByBranch);
+    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(f.c3)), RebaseError::SplitByBranch);
+    assert_eq!(refused(&dir, QuickEdit::Drop(vec![f.s1, f.c2])), RebaseError::SomeSideLine);
+    assert_eq!(refused(&dir, QuickEdit::Reword(f.s2)), RebaseError::SideLine);
+    assert_eq!(refused(&dir, QuickEdit::Reword(f.m)), RebaseError::MergeSelected);
+    assert_eq!(refused(&dir, QuickEdit::SquashIntoParent(f.c4)), RebaseError::ParentMerge);
 
     // A drop before the merge keeps the merge.
     let p = prepared(&dir, QuickEdit::Drop(vec![f.c3]));

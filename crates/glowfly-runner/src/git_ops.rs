@@ -2,6 +2,7 @@
 //! Mark resolved, and running a list of git commands (through the trust gate too). Undo and redo
 //! are in `undo_run.rs`.
 
+use glowfly_core::error::WriteFailed;
 use glowfly_core::gitcli;
 use glowfly_core::repo;
 use glowfly_core::undo::{self, Action, ConflictChange, ConflictsFailed, Discarded};
@@ -62,11 +63,8 @@ pub(super) fn local_done(workdir: &Path, op: LocalOp) -> Msg {
     let result = if conflict { conflict_change(workdir, op) } else { local_op(workdir, op).map_err(ConflictsFailed::from) };
     Msg::Stage(match result {
         Ok(undo) => StageMsg::LocalOpDone(Ok(undo)),
-        Err(ConflictsFailed { error, undo: None }) => StageMsg::LocalOpDone(Err(error.to_string())),
-        Err(ConflictsFailed { error, undo: Some(undo) }) => {
-            let error = format!("{error}. Undo puts back the files it changed before it stopped.");
-            StageMsg::LocalOpFailed { error, undo: *undo }
-        }
+        Err(ConflictsFailed { error, undo: None }) => StageMsg::LocalOpDone(Err(WriteFailed::from(error))),
+        Err(ConflictsFailed { error, undo: Some(undo) }) => StageMsg::LocalOpFailed { error: WriteFailed::from(error), undo: *undo },
     })
 }
 
