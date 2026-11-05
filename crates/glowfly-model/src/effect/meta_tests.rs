@@ -34,6 +34,7 @@ fn git(cwd: &Path, cmds: &[&[&str]], stoppable: bool) -> Effect {
         expect: None,
         stoppable,
         on_fail_check: None,
+        auto_stash: None,
     })
 }
 

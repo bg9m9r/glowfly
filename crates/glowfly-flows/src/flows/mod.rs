@@ -31,6 +31,7 @@ mod askpass_tests;
 mod auto_stash_flow_tests;
 mod auto_stash_guard_tests;
 mod auto_stash_index_tests;
+mod auto_stash_made_tests;
 mod auto_stash_saved_tests;
 mod auto_stash_tests;
 mod blame_head_tests;

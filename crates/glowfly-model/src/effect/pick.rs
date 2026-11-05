@@ -23,6 +23,9 @@ pub struct PickJob {
     pub oids: Vec<Oid>,
     /// git has `--skip` (2.23 or newer).
     pub can_skip: bool,
+    /// The auto-stash its first command makes: once that command succeeds the runner writes
+    /// its saved record and sends `AutoStashMsg::Made` (runner/auto_stash_made.rs).
+    pub auto_stash: Option<crate::state::auto_stash::AutoStashJob>,
 }
 
 impl EffectMeta for PickJob {

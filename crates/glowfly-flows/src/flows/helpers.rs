@@ -67,7 +67,8 @@ fn finish_watching(st: &mut AppState, fx: Vec<Effect>, watch: &mut dyn FnMut(&Ms
             if skipped(&effect) {
                 kept.push(effect);
             } else {
-                queue.extend(glowfly_runner::testing::execute(effect));
+                // Popped last-first: what the effect sent on the way comes before its result.
+                queue.extend(glowfly_runner::testing::execute_all(effect).into_iter().rev());
             }
         }
         let Some(m) = queue.pop() else { return kept };
@@ -387,6 +388,7 @@ fn job_output_hides_credentials_in_urls() {
         expect: None,
         stoppable: false,
         on_fail_check: None,
+        auto_stash: None,
     });
     let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = glowfly_runner::testing::execute(effect) else { panic!("expected JobDone") };
     assert!(ok, "{output}");

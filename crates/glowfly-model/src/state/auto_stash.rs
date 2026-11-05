@@ -11,7 +11,7 @@ use git2::{Oid, RepositoryState};
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths::same_spelling;
 use glowfly_core::repo::Snapshot;
-use glowfly_core::stash_ops::{AutoStashFor, SavedAutoStash, split_message};
+use glowfly_core::stash_ops::{self, AutoStashFor, SavedAutoStash};
 use std::path::{Path, PathBuf};
 
 /// The prompt: the operation, how many files changed, the Always stash box and the message that
@@ -46,6 +46,8 @@ pub struct Making {
     pub label: String,
     pub workdir: Option<PathBuf>,
     pub job: AutoStashJob,
+    /// The stash the runner reported making (`AutoStashMsg::Made`), already in the saved records.
+    pub made: Option<Oid>,
 }
 
 /// The operation a guarded job ran without stashing, and the message that starts it again:
@@ -81,8 +83,9 @@ pub struct PendingStash {
     pub phase: Phase,
     /// The "they come back when you continue or abort" toast was shown.
     pub told: bool,
-    /// It is written to the repository's saved records (`stash_ops::write_saved`), so a
-    /// restart still offers it.
+    /// It is in the repository's saved records, so a restart still offers it: written when the
+    /// runner reports the stash (`AutoStashMsg::Made`), or by `keep` for an entry it never
+    /// reported (a restack's).
     pub saved: bool,
 }
 
@@ -137,7 +140,7 @@ pub fn blocks(snap: &Snapshot) -> bool {
 
 /// The stash `job` made, among the entries that weren't there when it was built.
 pub fn found(snap: &Snapshot, job: &AutoStashJob) -> Option<Oid> {
-    snap.stashes.iter().find(|s| split_message(&s.message).1 == job.message && !job.before.contains(&s.oid)).map(|s| s.oid)
+    stash_ops::made_in(&snap.stashes, &job.message, &job.before)
 }
 
 /// Whether the stash can go back: nothing in progress and nothing conflicted.

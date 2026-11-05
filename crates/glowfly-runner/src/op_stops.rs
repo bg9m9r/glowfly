@@ -3,7 +3,7 @@
 //! the operation stops in progress, the job reports it (`UndoResult::Stopped`) so the undo history
 //! can outlive an abort that puts the repository back exactly there.
 
-use super::git_ops::run_git;
+use super::git_ops::{run_git, run_git_each};
 use glowfly_core::undo::{self, MoveOp, OpStart, UndoKind};
 use glowfly_model::effect::UndoResult;
 use std::path::{Path, PathBuf};
@@ -15,21 +15,24 @@ pub(super) fn can_stop(cmds: &[Vec<String>], record: Option<&UndoKind>) -> bool 
     *op != MoveOp::Rewrite && cmds.last().and_then(|c| UndoKind::classify(c)).as_ref() == Some(kind)
 }
 
-/// `run_git`, noting where the operation starts just before the last command runs.
+/// `run_git`, noting where the operation starts just before the last command runs, and calling
+/// `starting(i)` before command `i`.
 pub(super) fn run_noting_start(
     cwd: &Path,
     cmds: &[Vec<String>],
     write_file: Option<(PathBuf, Vec<u8>)>,
     prompts: bool,
+    starting: &mut dyn FnMut(usize),
 ) -> (bool, String, Option<OpStart>) {
     let Some((last, first)) = cmds.split_last() else {
         let (ok, output) = run_git(cwd, cmds, write_file, prompts);
         return (ok, output, None);
     };
-    let (ok, mut output) = run_git(cwd, first, write_file, prompts);
+    let (ok, mut output) = run_git_each(cwd, first, write_file, prompts, starting);
     if !ok {
         return (false, output, None);
     }
+    starting(first.len());
     let start = undo::op_start(cwd);
     let (ok, more) = run_git(cwd, std::slice::from_ref(last), None, prompts);
     if !output.is_empty() && !more.is_empty() {

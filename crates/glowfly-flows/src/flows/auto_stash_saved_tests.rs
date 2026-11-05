@@ -1,7 +1,7 @@
-//! Auto-stashes waiting to go back survive a restart: the record written while an operation
-//! holds the stash, the offer when the repository is opened again (Put back, Leave in stash
-//! list, Cancel), a stash dropped meanwhile, an operation still in progress, and the common case
-//! that writes nothing.
+//! Auto-stashes waiting to go back survive a restart: the record kept while an operation holds
+//! the stash, the offer when the repository is opened again (Put back, Leave in stash list,
+//! Cancel), a stash dropped meanwhile, an operation still in progress, and the common case that
+//! ends with no record.
 
 use super::auto_stash_flow_tests::{mine_is_back, stopped_merge};
 use super::auto_stash_tests::up;
@@ -17,7 +17,7 @@ use std::time::Instant;
 
 const MESSAGE: &str = "Auto-stash before merging feature into main";
 
-fn file(dir: &Path) -> PathBuf {
+pub(super) fn file(dir: &Path) -> PathBuf {
     glowfly_core::stash_ops::saved_path(dir).unwrap()
 }
 
@@ -25,7 +25,7 @@ fn stash_count(dir: &Path) -> usize {
     glowfly_core::stash_ops::list(dir).unwrap().len()
 }
 
-fn open(dir: &Path) -> AppState {
+pub(super) fn open(dir: &Path) -> AppState {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.to_path_buf())));
     st
@@ -42,7 +42,7 @@ fn saved_then_closed(name: &str) -> PathBuf {
     dir
 }
 
-fn offered(st: &AppState) -> Option<&str> {
+pub(super) fn offered(st: &AppState) -> Option<&str> {
     match &st.modal {
         Some(Modal::ConfirmChoice { title, body, .. }) if title == saved_title(Lang::En) => Some(body),
         _ => None,
@@ -138,7 +138,7 @@ fn finish_naming(st: &mut AppState, fx: Vec<Effect>) -> Vec<&'static str> {
         for effect in fx {
             names.push(effect.name());
             if !skipped(&effect) {
-                queue.extend(glowfly_runner::testing::execute(effect));
+                queue.extend(glowfly_runner::testing::execute_all(effect).into_iter().rev());
             }
         }
         let Some(m) = queue.pop() else { return names };
@@ -146,17 +146,35 @@ fn finish_naming(st: &mut AppState, fx: Vec<Effect>) -> Vec<&'static str> {
     }
 }
 
+/// Stash, checkout and put back in one session: the record is written and then removed, so the
+/// next open offers nothing.
 #[test]
-fn the_common_case_writes_nothing() {
-    let (mut st, dir, _) = feature_repo("ass-common", &[("feature work", "feature\n")], None);
-    std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
+fn the_common_case_leaves_no_record() {
+    let (mut st, dir, _) = feature_repo(
+        "ass-common",
+        &[(
+            "feature work",
+            "feature
+",
+        )],
+        None,
+    );
+    std::fs::write(
+        dir.join("a.txt"),
+        "one
+mine
+",
+    )
+    .unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     assert!(up(&mut st, Msg::git("Checkout", &["checkout", "feature", "--"])).is_empty());
     let fx = up(&mut st, Msg::AutoStash(glowfly_model::msg::AutoStashMsg::Stash));
     let names = finish_naming(&mut st, fx);
     mine_is_back(&st, &dir);
     let save = Effect::Stash(StashEffect::SaveAutoStashes { cwd: dir.clone(), saved: Vec::new() }).name();
-    assert!(!names.contains(&save), "{names:?}");
+    assert!(names.contains(&save), "written, then removed: {names:?}");
     assert!(!file(&dir).exists());
+    drop(st);
+    assert!(open(&dir).modal.is_none(), "nothing is offered at the next open");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -89,11 +89,23 @@ pub fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Star
     // A job with a network command can be cancelled while that command runs (update/job_stop.rs).
     let stoppable = spec.write_file.is_none() && crate::state::job_stop::Step::any_network(&spec.cmds);
     let (cmds, write_file, expect, pick, on_fail_check) = (spec.cmds, spec.write_file, spec.expect, spec.pick, spec.on_fail_check);
+    let made_note = auto_stash.clone();
     let effect = move |cwd| match pick {
         Some(PickPlan { picking, oids, can_skip }) => {
-            Effect::Pick(PickJob { cwd, cmds, record, journal, prompts, picking, oids, can_skip })
+            Effect::Pick(PickJob { cwd, cmds, record, journal, prompts, picking, oids, can_skip, auto_stash: made_note })
         }
-        None => Effect::Job(JobEffect::RunGit { cwd, cmds, write_file, record, journal, prompts, expect, stoppable, on_fail_check }),
+        None => Effect::Job(JobEffect::RunGit {
+            cwd,
+            cmds,
+            write_file,
+            record,
+            journal,
+            prompts,
+            expect,
+            stoppable,
+            on_fail_check,
+            auto_stash: made_note,
+        }),
     };
     let started = launch(st, job, spec.cwd, effect, fx);
     if started != Started::No {
@@ -105,7 +117,7 @@ pub fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Star
         super::auto_stash::started_plain(st, &label, plain);
         // Also for a job held for the trust prompt; dropping it clears this.
         if let Some(job) = auto_stash {
-            st.auto_stash.making = Some(Making { label: label.clone(), workdir: st.workdir(), job });
+            st.auto_stash.making = Some(Making { label: label.clone(), workdir: st.workdir(), job, made: None });
         }
     }
     if started == Started::Now {

@@ -50,7 +50,7 @@ fn size(r: HistorySizeRequest) -> Msg {
 /// Runs the download without prompts, stopped when `stop` is asked.
 fn fetch(r: ContentRequest, stop: Option<&Stop>) -> Msg {
     let stop = stop.cloned().unwrap_or_default();
-    let ran = super::job_steps::run(&r.workdir, &r.cmds, false, &stop, &|_| {}, false);
+    let ran = super::job_steps::run(&r.workdir, &r.cmds, false, &stop, &|_| {}, false, &mut |_| {});
     let (ok, output, stopped) = (ran.ok, ran.output, ran.stopped);
     let result = match (ok, stopped) {
         (_, true) => Err(ContentFailure::Stopped),

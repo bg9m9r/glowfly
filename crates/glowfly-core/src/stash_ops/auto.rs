@@ -11,6 +11,7 @@
 
 use super::{list, split_message};
 use crate::gitcli::{self, args};
+use crate::repo::StashInfo;
 use crate::undo::{commits_label, move_targets};
 use git2::{Oid, RepositoryState};
 use serde::{Deserialize, Serialize};
@@ -197,6 +198,12 @@ fn short(rev: &str) -> String {
 /// "autostash".
 pub fn is_auto_stash(list_text: &str) -> bool {
     split_message(list_text).1.starts_with(AUTO_STASH_PREFIX) || list_text == GIT_AUTOSTASH
+}
+
+/// The stash a job made with `message`: the newest entry with that message that wasn't among
+/// `before`, the stash commits there were when the job was built.
+pub fn made_in(stashes: &[StashInfo], message: &str, before: &[Oid]) -> Option<Oid> {
+    stashes.iter().find(|s| split_message(&s.message).1 == message && !before.contains(&s.oid)).map(|s| s.oid)
 }
 
 /// How putting an auto-stash back went.

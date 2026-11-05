@@ -72,11 +72,14 @@ pub enum AutoStashMsg {
     PutBackSaved { workdir: PathBuf, oid: Oid },
     /// The saved stash offer's Leave in stash list: forget the record, keep the stash.
     LeaveSaved { workdir: PathBuf, oid: Oid },
+    /// The running job's auto-stash exists: the stash `oid` of `workdir`, its record already
+    /// written (runner/auto_stash_made.rs). Unscoped like PutBack.
+    Made { workdir: PathBuf, oid: Oid },
 }
 
 impl AutoStashMsg {
-    /// Nothing for an inactive tab: the answers and Show are intents, and PutBack and SavedRead
-    /// come back unscoped like RunGit's JobDone.
+    /// Nothing for an inactive tab: the answers and Show are intents, and PutBack, SavedRead and
+    /// Made come back unscoped like RunGit's JobDone.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
             Self::Stash
@@ -86,7 +89,8 @@ impl AutoStashMsg {
             | Self::Retry(_)
             | Self::SavedRead { .. }
             | Self::PutBackSaved { .. }
-            | Self::LeaveSaved { .. } => None,
+            | Self::LeaveSaved { .. }
+            | Self::Made { .. } => None,
         }
     }
 }

@@ -201,7 +201,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Auto-stash
 
-- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pull_request/checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`.
+- Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pull_request/checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`, `glowfly-runner/src/auto_stash_made.rs`.
 - One guard for checkout, pull, merge, plain rebase, cherry-pick, revert and hard reset, and for Git Flow start, a pull request's checkout and a remote branch checkout that fast-forwards its tracking branch first (`start_guarded_as` with their own `AutoStashFor`).
 - Each entry point passes its single command and a retry message to `gate`.
 - Only staged changes and changed tracked files count (`Snapshot::has_tracked_changes`): untracked files and an unstaged submodule row don't.
@@ -211,7 +211,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - If git then says changes were in the way, the failure toast's Stash and <op> sends `AutoStashMsg::Retry`, which reruns it with the stash approved.
 - `finish_job` turns the mark into a pending entry armed for the next load generation.
 - `seen` runs after each snapshot of that tab, finds the stash, and once the operation is over (merge committed or aborted, rebase continued) and no job runs, puts it back as the quiet job `StashEffect::PutBack` (`git stash pop --index`, then a plain pop with a notice when the staged state no longer fits).
-- An entry that has to wait is written to the worktree's saved records (`StashEffect::SaveAutoStashes`); opening the repository after a restart reads them (`ReadAutoStashes`) and, once it is ready, offers each listed stash (`Modal::ConfirmChoice`: Put back, Leave in stash list, Cancel asks again next open).
+- The runner writes an auto-stash's record to the worktree's saved records as soon as the stash exists (`runner/auto_stash_made.rs`, `AutoStashMsg::Made`); every end of its put-back rewrites them without it (`StashEffect::SaveAutoStashes`); opening the repository after a restart or crash reads them (`ReadAutoStashes`) and, once it is ready, offers each listed stash (`Modal::ConfirmChoice`: Put back, Leave in stash list, Cancel asks again next open).
 - A plain single-command job started outside the guard (`start_job`, `started_plain`) records its retry too, so its "would be overwritten" toast still offers Stash and <op>.
 - The put-back's result becomes a toast with Show stash when it conflicted or failed, and the stash then stays in the list (marked auto in STASHES).
 - Interactive rebases and graph edits keep their own `--autostash` and skip their stash question with Always stash on.

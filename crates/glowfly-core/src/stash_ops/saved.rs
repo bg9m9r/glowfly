@@ -1,6 +1,8 @@
 //! The auto-stashes waiting to go back, kept across restarts in
 //! `<worktree git dir>/glowfly/auto-stashes.json` (beside the journal notes, so each linked
 //! worktree has its own: the stash list is shared, but the put-back targets one working tree).
+//! A record is written as soon as its stash is made (`add_saved`) and removed when its put-back
+//! ends, so a crash or restart in between still finds it.
 //!
 //! The file is `{"v":1,"stashes":[...]}`, each entry the operation, the stash's message and its
 //! commit. Entries are read one by one: an unknown operation or a bad commit id skips that
@@ -75,4 +77,15 @@ pub fn write_saved(workdir: &Path, saved: &[SavedAutoStash]) -> std::io::Result<
     }
     let text = serde_json::to_vec_pretty(&FileOut { v: VERSION, stashes: saved }).map_err(std::io::Error::other)?;
     persist::atomic_write(&file, &text)
+}
+
+/// Adds `stash` to the records kept for `workdir`, unless one already names its commit. The
+/// file is rewritten from what reads, so garbled entries are dropped.
+pub fn add_saved(workdir: &Path, stash: SavedAutoStash) -> std::io::Result<()> {
+    let mut saved = read_saved(workdir);
+    if saved.iter().any(|s| s.oid == stash.oid) {
+        return Ok(());
+    }
+    saved.push(stash);
+    write_saved(workdir, &saved)
 }

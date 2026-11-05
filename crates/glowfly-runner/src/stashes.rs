@@ -21,9 +21,7 @@ pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>, trashe
             let saved = stash_ops::read_saved(&cwd);
             (!saved.is_empty()).then(|| Msg::AutoStash(AutoStashMsg::SavedRead { workdir: cwd, saved }))
         }
-        StashEffect::SaveAutoStashes { cwd, saved } => stash_ops::write_saved(&cwd, &saved)
-            .err()
-            .map(|e| Msg::Logged { ok: false, text: format!("Could not save the stashes waiting to go back: {e}") }),
+        StashEffect::SaveAutoStashes { cwd, saved } => stash_ops::write_saved(&cwd, &saved).err().map(save_failed),
         StashEffect::ReadPaths { cwd, ask } => {
             let paths = stash_ops::changed_paths(&cwd, ask.oid).map_err(ReadFailed::from);
             Some(Msg::Stash(StashMsg::PathsRead { ask, paths }))
@@ -33,6 +31,11 @@ pub(super) fn run(e: StashEffect, gate: Option<&super::trust_gate::Gate>, trashe
             Some(Msg::Job(JobMsg::JobDone { ok, output, undo: Some(UndoResult::Recorded(action)) }))
         }
     }
+}
+
+/// The log line when the saved records of the stashes waiting to go back couldn't be written.
+pub(super) fn save_failed(e: std::io::Error) -> Msg {
+    Msg::Logged { ok: false, text: format!("Could not save the stashes waiting to go back: {e}") }
 }
 
 /// Keeps the work of the operation in progress in `cwd`, then aborts it (`undo::abort_keeping`,

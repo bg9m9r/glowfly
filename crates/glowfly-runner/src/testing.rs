@@ -1,13 +1,14 @@
-//! The runner's entry points for tests: running one effect to completion (`execute`, and
-//! `execute_checked` with a trust re-check first), the sandboxed runner of the whole-app tests
-//! (`sandboxed`, `sandbox.rs`), the diff decoration a loaded diff gets, and the working-file
-//! helpers. Everything here runs with the stand-ins of `SEAMS`: a folder in the temp dir as the
-//! trash (`test_bin`), `cp` as the sequence editor, long path-search chunks and a folder in the
-//! temp dir for saves of Glowfly's own files (`own_files`), so a test never touches the real
-//! Recycle Bin or Trash, never runs the test binary as git's editor and never writes over the
-//! developer's settings, recent repositories or tabs. `execute` refuses the effects that reach
-//! outside the test (those the whole-app sandbox drops: the user's global git config, the
-//! credential store, Glowfly's own folders, the network, the desktop), bar a few that only read.
+//! The runner's entry points for tests: running one effect to completion (`execute`,
+//! `execute_all` keeping the messages it sends on the way, and `execute_checked` with a trust
+//! re-check first), the sandboxed runner of the whole-app tests (`sandboxed`, `sandbox.rs`), the
+//! diff decoration a loaded diff gets, and the working-file helpers. Everything here runs with
+//! the stand-ins of `SEAMS`: a folder in the temp dir as the trash (`test_bin`), `cp` as the
+//! sequence editor, long path-search chunks and a folder in the temp dir for saves of Glowfly's
+//! own files (`own_files`), so a test never touches the real Recycle Bin or Trash, never runs the
+//! test binary as git's editor and never writes over the developer's settings, recent
+//! repositories or tabs. `execute` refuses the effects that reach outside the test (those the
+//! whole-app sandbox drops: the user's global git config, the credential store, Glowfly's own
+//! folders, the network, the desktop), bar a few that only read.
 
 use super::execute::{Cx, Execute, execute_with};
 use super::seams::{Seams, SeamsKind};
@@ -38,6 +39,19 @@ pub fn execute(effect: Effect) -> Option<Msg> {
     refuse_outside(&effect);
     let graph_cache = repo::GraphCache::default();
     execute_with(effect, &cx(&graph_cache))
+}
+
+/// `execute`, keeping what the effect sends while it runs (`Cx::send`, such as an auto-stash's
+/// `AutoStashMsg::Made`): those messages in order, then its result.
+pub fn execute_all(effect: Effect) -> Vec<Msg> {
+    refuse_outside(&effect);
+    let graph_cache = repo::GraphCache::default();
+    let sent = std::cell::RefCell::new(Vec::new());
+    let send = |m: Msg| sent.borrow_mut().push(m);
+    let result = execute_with(effect, &Cx { send: &send, ..cx(&graph_cache) });
+    let mut all = sent.into_inner();
+    all.extend(result);
+    all
 }
 
 /// `execute` with the trust re-check `c` first.

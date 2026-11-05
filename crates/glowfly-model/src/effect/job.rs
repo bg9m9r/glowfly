@@ -6,6 +6,7 @@ use super::EffectMeta;
 use super::SandboxRule;
 use super::UndoOpts;
 use super::partial::StopKey;
+use crate::state::auto_stash::AutoStashJob;
 use glowfly_core::undo::{Action, UndoKind};
 use std::path::{Path, PathBuf};
 
@@ -31,6 +32,9 @@ pub enum JobEffect {
         /// Run after a failure: when this check passes the job ends with
         /// `JobMsg::FailCheckPassed` instead of `JobDone` (a patch that is already applied).
         on_fail_check: Option<Vec<String>>,
+        /// The auto-stash its first command makes: once that command succeeds the runner writes
+        /// its saved record and sends `AutoStashMsg::Made` (runner/auto_stash_made.rs).
+        auto_stash: Option<AutoStashJob>,
     },
     /// Undoes (or redoes) `action` after checking the repository still matches it.
     UndoRedo { cwd: PathBuf, action: Action, redo: bool, opts: UndoOpts },

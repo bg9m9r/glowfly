@@ -101,13 +101,26 @@ pub(super) fn run_git(
     write_file: Option<(std::path::PathBuf, Vec<u8>)>,
     prompts: bool,
 ) -> (bool, String) {
+    run_git_each(cwd, cmds, write_file, prompts, &mut |_| {})
+}
+
+/// `run_git`, calling `starting(i)` before command `i` runs (so `starting(1)` means the first
+/// one succeeded).
+pub(super) fn run_git_each(
+    cwd: &Path,
+    cmds: &[Vec<String>],
+    write_file: Option<(std::path::PathBuf, Vec<u8>)>,
+    prompts: bool,
+    starting: &mut dyn FnMut(usize),
+) -> (bool, String) {
     if let Some((path, contents)) = write_file
         && let Err(e) = glowfly_core::persist::atomic_write(&path, &contents)
     {
         return (false, format!("Could not write {}: {e}", path.display()));
     }
     let mut output = String::new();
-    for c in cmds {
+    for (at, c) in cmds.iter().enumerate() {
+        starting(at);
         output.push_str(&format!("$ git {}\n", glowfly_core::text::redact_credentials(&c.join(" "))));
         let (success, text) = gitcli::run_with_input(cwd, c, "", job_env(prompts));
         if !text.is_empty() {
@@ -141,11 +154,11 @@ pub(super) fn run_git_gated(
     prompts: bool,
     gate: &super::trust_gate::Gate,
 ) -> Gated {
-    run_git_gated_noting(cwd, cmds, write_file, prompts, gate, false).0
+    run_git_gated_noting(cwd, cmds, write_file, prompts, gate, false, &mut |_| {}).0
 }
 
 /// `run_git_gated`, noting where an operation starts (`undo::op_start`) just before the last
-/// command when `note` is set (`op_stops.rs`).
+/// command when `note` is set (`op_stops.rs`), and calling `starting(i)` before command `i`.
 pub(super) fn run_git_gated_noting(
     cwd: &Path,
     cmds: &[Vec<String>],
@@ -153,6 +166,7 @@ pub(super) fn run_git_gated_noting(
     prompts: bool,
     gate: &super::trust_gate::Gate,
     note: bool,
+    starting: &mut dyn FnMut(usize),
 ) -> (Gated, Option<undo::OpStart>) {
     if let Some((path, contents)) = write_file
         && let Err(e) = glowfly_core::persist::atomic_write(&path, &contents)
@@ -163,7 +177,7 @@ pub(super) fn run_git_gated_noting(
         let env: Vec<(&str, &str)> = job_env(prompts).iter().chain(extra).copied().collect();
         gitcli::run_with_input(cwd, c, input, &env)
     };
-    run_git_gated_with(cwd, cmds, gate, note, &mut git)
+    run_git_gated_with(cwd, cmds, gate, note, &mut git, starting)
 }
 
 /// `run_git_gated_noting` with each command (a pull's fetch and merge too) run by `git`: a
@@ -174,9 +188,11 @@ pub(super) fn run_git_gated_with(
     gate: &super::trust_gate::Gate,
     note: bool,
     git: &mut glowfly_core::trust::pull::Git<'_>,
+    starting: &mut dyn FnMut(usize),
 ) -> (Gated, Option<undo::OpStart>) {
     let mut start = None;
     let gated = gated_steps(cmds, gate, git, &mut |at| {
+        starting(at);
         if note && at + 1 == cmds.len() {
             start = undo::op_start(cwd);
         }
@@ -241,5 +257,21 @@ mod tests {
         assert_eq!(super::job_env(false), glowfly_core::gitcli::BACKGROUND);
         assert!(super::job_env(false).contains(&("GCM_INTERACTIVE", "never")));
         assert!(super::job_env(true).is_empty(), "a job that may prompt keeps the askpass helper");
+    }
+
+    #[test]
+    fn starting_comes_before_each_command_and_none_after_a_failure() {
+        use glowfly_core::gitcli::args;
+        let dir = glowfly_model::testing::scratch_repo("git-ops-starting");
+        let mut seen = Vec::new();
+        let (ok, _) = super::run_git_each(&dir, &[args(&["status"]), args(&["status"])], None, false, &mut |i| seen.push(i));
+        assert!(ok);
+        assert_eq!(seen, [0, 1]);
+        seen.clear();
+        let failing = [args(&["checkout", "nosuch"]), args(&["status"])];
+        let (ok, _) = super::run_git_each(&dir, &failing, None, false, &mut |i| seen.push(i));
+        assert!(!ok);
+        assert_eq!(seen, [0], "the command after the failure never starts");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
