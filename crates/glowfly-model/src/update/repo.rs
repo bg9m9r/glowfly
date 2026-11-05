@@ -1,12 +1,11 @@
 //! Opening and refreshing the repository, selection and diffs.
 
 pub(super) use super::refresh::{load, refresh, refresh_status};
-use crate::effect::{CommitEffect, Effect, LoadKind, OsEffect, SaveEffect, UiEffect};
+use crate::effect::{CommitEffect, Effect, OsEffect};
 use crate::msg::{FolderPurpose, RepoMsg};
-use crate::state::{AppState, CommitDraft, Selection};
+use crate::state::{AppState, Selection};
 use git2::Oid;
-use glowfly_core::diff_rows::row_of_file_line;
-use glowfly_core::repo::{DiffTarget, Snapshot};
+use glowfly_core::repo::DiffTarget;
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec<Effect>) {
@@ -32,37 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             super::recent::check_folders(st, fx);
             super::profile_rules::want_identity(st, fx);
         }
-        RepoMsg::RepoLoaded { generation, kind, result } => {
-            if generation != st.load_gen {
-                return; // superseded by a newer load
-            }
-            st.loading = false;
-            let read = result.is_ok();
-            match result {
-                Ok(snap) => {
-                    st.refresh.more_retries = 0;
-                    loaded(st, *snap, kind, now, fx)
-                }
-                Err(e) => {
-                    // The snapshot is unchanged, so a load for more is still wanted.
-                    if st.loading_more() {
-                        super::load_more::failed(st, e, now);
-                    } else {
-                        super::parked_free::load_failed(st, e);
-                    }
-                    if kind == LoadKind::Open {
-                        let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
-                        super::tabs::open_failed(st, fx);
-                        if let Some(path) = path {
-                            super::recent::open_failed(st, path, fx);
-                        }
-                    }
-                    super::push_pr::load_failed(st, fx);
-                }
-            }
-            super::conflict_count::status_read(st, read);
-            super::refresh::load_finished(st, fx);
-        }
+        RepoMsg::RepoLoaded { generation, kind, result } => super::repo_loaded::finished(st, generation, kind, result, now, fx),
         RepoMsg::SelectWip => select_wip(st, fx),
         RepoMsg::ShowInProgress => super::op_progress::show(st, fx),
         RepoMsg::SelectCommit(oid) => select_commit(st, oid, false, fx),
@@ -86,83 +55,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         }
         RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
         RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw } => {
-            if generation != st.session.diff.generation {
-                return; // superseded: another file was opened, the diff closed, or a newer reload sent
-            }
-            st.cues.diff_opening = None;
-            // Any accepted result ends a pending step. A refresh while it loads asks for the step's
-            // destination again (`diff::renew_step`) rather than reloading the old file, so a
-            // superseding reload can't block it.
-            let landing = st.cues.diff_landing.take();
-            let line = st.cues.diff_open_line.take().filter(|(t, ..)| !reload && *t == target);
-            match result {
-                Ok(mut d) => {
-                    let landing = landing.filter(|(t, _)| !reload && *t == target).map(|(_, l)| l);
-                    // A stepped-to file with nothing to land on is passed over, never shown.
-                    if let Some(l) = landing
-                        && super::diff::skip_past(st, &target, &d, l, fx)
-                    {
-                        return;
-                    }
-                    // The line and text selections survive only a reload bringing back the same text (not just a new highlight).
-                    let open = st.session.diff.view.as_ref().filter(|(t, _)| *t == target);
-                    let same = reload && open.is_some_and(|(_, old)| old.binary == d.binary && old.hunks == d.hunks);
-                    let same_file = open.is_some();
-                    if !same {
-                        st.clear_diff_selection();
-                    } else if let Some(sel) = st.view.diff_text.as_mut() {
-                        sel.key.1 = generation; // keyed to the load it shows
-                    }
-                    // Folds opened in another file don't apply to this one.
-                    if !same_file {
-                        st.session.tab_view.diff_expanded.clear();
-                    }
-                    // A different file opens at the top (or its first change block, or the hunk kept
-                    // through a view mode switch, or the change a step lands on); a reload after a
-                    // hunk operation keeps its place, but its change rows may have moved.
-                    if !reload {
-                        let hunk = st.cues.diff_open_hunk.take();
-                        let row = match landing {
-                            Some(l) => super::diff::landing_row(&d, &st.settings, l, &st.session.tab_view.diff_expanded),
-                            None => {
-                                let (s, ex) = (&st.settings, &st.session.tab_view.diff_expanded);
-                                // A file opened from a code comment lands on its line.
-                                line.and_then(|(_, side, n)| row_of_file_line(&d, s.diff_mode, s.diff_layout, ex, side, n))
-                                    .unwrap_or_else(|| super::diff::opening_row(&d, s, hunk, ex))
-                            }
-                        };
-                        st.view.diff_scroll_to_row = Some(row);
-                        st.view.tab.diff_top_row = row;
-                        st.cues.diff_cursor = landing.map(|_| row);
-                    } else {
-                        st.cues.diff_cursor = None;
-                    }
-                    if reload {
-                        super::highlight::keep_finished(st.session.diff.view.as_ref(), &target, &mut d);
-                    }
-                    // A step landed: its file list shows the file once.
-                    if landing.is_some() {
-                        st.cues.file_reveal = Some((target.clone(), generation));
-                    }
-                    super::lfs::diff_loaded(st, &target, lfs);
-                    st.session.diff.view = Some((target, std::sync::Arc::new(d)));
-                    st.session.diff.raw = raw;
-                    st.session.diff.shown_gen = generation;
-                    super::highlight::schedule(st, fx);
-                    super::diff_gaps::diff_shown(st, fx);
-                    super::diff_preview::diff_shown(st, fx);
-                }
-                // A reload that finds no changes left closes the diff, or follows a new file unstaged.
-                Err(_) if reload => super::wip_list::emptied(st, target, fx),
-                Err(e) => {
-                    st.cues.diff_lines.clear();
-                    st.cues.diff_open_hunk = None;
-                    st.log(false, e);
-                    // The diff still on screen was marked stale by this request: re-read it. Not
-                    // `reload_diff`, which would ask again for a file history entry that failed.
-                    reload_shown_diff(st, fx);
-                }
-            }
+            super::diff_loaded::loaded(st, target, reload, generation, result, lfs, raw, fx)
         }
         RepoMsg::CloseDiff => close_diff(st),
         RepoMsg::WantStats(oids) => super::line_counts::want_totals(st, oids, fx),
@@ -207,7 +100,7 @@ fn open_missing_history_diff(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
 }
 
 /// Re-reads the diff on screen, whatever the file history has selected.
-fn reload_shown_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
+pub(super) fn reload_shown_diff(st: &mut AppState, fx: &mut Vec<Effect>) {
     request_diff(st, fx, true);
 }
 
@@ -264,111 +157,6 @@ pub(super) fn close_diff(st: &mut AppState) {
     st.cues.diff_opening = None;
     st.session.diff_preview = None;
     st.session.diff.next();
-}
-
-fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
-    let state_before = st.snap.as_ref().filter(|_| kind == LoadKind::Refresh).map(|s| s.state);
-    st.known.learn_snapshot(&snap);
-    if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
-        super::deep_link_open::ready(st, now, fx);
-        return;
-    }
-    st.cues.ref_rows.reset();
-    st.cues.highlight = None;
-    match kind {
-        LoadKind::Open => {
-            // Any spelling of this folder (a short 8.3 name, a link, another case where the volume ignores it) gives way to libgit2's.
-            let recent = std::mem::take(&mut st.recent);
-            st.recent = recent.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
-            st.recent.insert(0, snap.workdir.clone());
-            st.recent.truncate(12);
-            fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
-            let missing = std::mem::take(&mut st.missing_repos);
-            st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
-            let label = st.tabs.get(st.active_tab).and_then(|t| t.label.as_deref());
-            fx.push(Effect::Ui(UiEffect::SetTitle(format!("{} - Glowfly", label.unwrap_or(&snap.name)))));
-            st.session.selection = if snap.is_dirty() { Selection::Wip } else { Selection::None };
-            st.session.wip_lit = false;
-            st.session.detail = None;
-            close_diff(st);
-            super::conflict::close(st);
-            super::history::close(st);
-            super::blame::close(st);
-            super::pull_request::close(st);
-            super::issue::close(st);
-            super::rebase::close(st);
-            super::journal::close(st);
-            st.session.gitflow_panel = false;
-            st.session.gitflow_resume = None;
-            st.session.draft = CommitDraft::default();
-            st.session.undo = Default::default();
-            st.view.scroll_to_row = Some(0);
-            super::tabs::forget_repo_reads(st);
-        }
-        LoadKind::Refresh | LoadKind::More => {
-            // (A load for more that loaded everything comes back as a refresh: runner/load.rs.)
-            super::history::head_moved(st, &snap, fx);
-            super::blame::head_moved(st, &snap, fx);
-            if let Selection::Commit(oid) = st.session.selection {
-                // A pull request's commit (a fork's head, say) may be on no branch of the graph.
-                let in_pr = st.session.pull_request.view.as_ref().is_some_and(|v| v.has_commit(oid));
-                let still_there = snap.row_of.contains_key(&oid) || snap.stashes.iter().any(|s| s.oid == oid) || in_pr;
-                if !still_there {
-                    st.session.selection = Selection::None;
-                    st.session.detail = None;
-                }
-            }
-            if matches!(st.session.selection, Selection::Commits(_)) {
-                super::selection::refreshed(st, &snap, fx);
-            }
-            super::compare_wip::refreshed(st, &snap, fx);
-            super::rebase::refreshed(st, &snap);
-            super::stack::refreshed(st, &snap, fx);
-            super::shallow::refreshed(st, &snap, fx);
-        }
-    }
-    super::forge::detect(st, &snap);
-    let reload = super::graph_filter::loaded(st, &snap, kind, fx);
-    super::notify::loaded(st, &snap, kind, now, fx);
-    // After the filter, which adopts the repository's keys: the pins are found under its own.
-    super::branch_colour::apply(&st.settings, st.cues.trunk_near, &mut snap);
-    super::large_graph::show(st, snap, fx);
-    super::line_counts::status_changed(st, fx);
-    super::pick::state_changed(st, state_before);
-    // Before the auto-stash: remembered Git Flow steps dropped by this load release its stash.
-    super::gitflow::snapshot_changed(st);
-    super::auto_stash::loaded(st, kind, now, fx);
-    super::search::snapshot_changed(st, fx);
-    super::trust::loaded(st, kind, fx);
-    super::custom_commands::loaded(st, fx);
-    super::submodule_batch::opened(st, kind, now, fx);
-    super::conflict_check::want(st, fx);
-    super::worktree_counts::loaded(st, now, fx);
-    super::commit::prefill(st);
-    super::watch::sync(st, fx);
-    super::terminal::sync(st, fx);
-    if kind == LoadKind::Open {
-        fx.push(super::tabs::opened(st));
-        super::conflict_files::want(st, fx);
-        super::profile_rules::want_identity(st, fx);
-    } else {
-        super::conflict::status_changed(st, now, fx);
-    }
-    super::pull_request::heads::resolve_pr_heads(st);
-    if kind == LoadKind::Refresh {
-        super::pull_request::refreshed(st, fx);
-        super::journal::refreshed(st, fx);
-    }
-    reload_diff(st, fx);
-    super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);
-    super::push_pr::loaded(st, fx);
-    super::onboarding::loaded(st, kind, fx);
-    let slow = st.snap.as_ref().and_then(|s| s.slow_status.clone());
-    super::status_tip::check(st, slow.as_ref(), now, fx);
-    super::deep_link_open::ready(st, now, fx);
-    if reload {
-        super::refresh::reload_after(st, fx);
-    }
 }
 
 /// Selects the WIP row as chosen (`wip_lit`), asking for the issue the checked-out branch names.
