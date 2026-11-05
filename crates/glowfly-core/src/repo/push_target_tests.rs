@@ -203,6 +203,18 @@ fn remote_push_refspecs_decide_before_push_default() {
 }
 
 #[test]
+fn a_bare_head_push_spec_keeps_the_branch_name() {
+    let (work, origin, fork) = fixture("pt-bare-head", "nothing");
+    for spec in ["HEAD", "@", "+HEAD"] {
+        set_config(&work, &[("remote.origin.push", spec)]);
+        let (remote, d) = dest(&work, "main");
+        assert_eq!((remote.as_str(), d.dest_ref.as_str(), d.rule), ("origin", "refs/heads/main", PushRule::Refspec), "{spec}");
+        assert_eq!(d.tracking_ref.as_deref(), Some("refs/remotes/origin/main"), "{spec}");
+    }
+    cleanup(&[&work, &origin, &fork]);
+}
+
+#[test]
 fn a_mirror_remote_pushes_the_same_ref() {
     let (work, origin, fork) = fixture("pt-mirror", "nothing");
     set_config(&work, &[("remote.pushDefault", "fork"), ("remote.fork.mirror", "true")]);
