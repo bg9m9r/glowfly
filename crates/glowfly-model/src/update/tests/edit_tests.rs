@@ -1,7 +1,8 @@
 //! Headless tests for the views' edits (`Msg::Edit`, update/edit.rs): `edits_first`'s order,
-//! each edit set back on the state it was drawn from (and dropped once that state has gone),
-//! a key handled in the same frame seeing the edit, toasts expiring on `Msg::Tick`, and the
-//! credential dialog's fields, which stay in `ViewState` and are wiped by `PromptFields::clear`.
+//! each edit set back on the state it was drawn from (and dropped once that state has gone, or
+//! for another tab or File view version), a key handled in the same frame seeing the edit,
+//! toasts expiring on `Msg::Tick`, and the credential dialog's fields, which stay in
+//! `ViewState` and are wiped by `PromptFields::clear`.
 
 use super::tests::state;
 use super::update;
@@ -14,8 +15,11 @@ use crate::state::blame::BlameView;
 use crate::state::commit::CommitFields;
 use crate::state::history::FileHistoryView;
 use crate::state::op_fixture::{rows, snapshot};
+use crate::state::tabs::Tab;
 use crate::state::terminal::{Selection, SessionStatus, TabRename, TermSession};
+use git2::Oid;
 use glowfly_core::identity::Identity;
+use glowfly_core::repo::HistoryEntry;
 use glowfly_core::settings::ToastTime;
 use glowfly_core::terminal::{TermPoint, TermScreen};
 use std::path::PathBuf;
@@ -42,10 +46,12 @@ fn session(id: u64) -> TermSession {
 
 #[test]
 fn edits_go_first_keeping_their_order() {
-    let summary = |s: &str| EditMsg::Commit(CommitFields { summary: s.into(), ..Default::default() });
+    let tab = state().active_tab_id().expect("a tab");
+    let summary = |s: &str| EditMsg::Commit { tab, fields: CommitFields { summary: s.into(), ..Default::default() } };
     let mut msgs = vec![Msg::ClearLog, Msg::Edit(summary("first")), Msg::Tick(Instant::now()), Msg::Edit(summary("second"))];
     assert!(edits_first(&mut msgs), "there were edits");
-    let typed: Vec<_> = msgs.iter().map(|m| if let Msg::Edit(EditMsg::Commit(f)) = m { f.summary.as_str() } else { "" }).collect();
+    let typed: Vec<_> =
+        msgs.iter().map(|m| if let Msg::Edit(EditMsg::Commit { fields, .. }) = m { fields.summary.as_str() } else { "" }).collect();
     assert_eq!(typed, ["first", "second", "", ""]);
     assert!(matches!(msgs[2..], [Msg::ClearLog, Msg::Tick(_)]), "the rest in their order");
 
@@ -60,14 +66,27 @@ fn a_commit_key_in_the_same_frame_sees_the_typed_summary() {
     let mut snap = snapshot("edit-commit");
     snap.staged = rows(&[("a.txt", 'M')]);
     st.snap = Some(snap);
-    let mut f = st.session.draft.fields();
-    f.summary = "Typed this frame".into();
+    let mut fields = st.session.draft.fields();
+    fields.summary = "Typed this frame".into();
+    let tab = st.active_tab_id().expect("a tab");
     // The key's message was pushed first; edits_first runs the edit ahead of it.
-    let mut msgs = vec![Msg::Commit(CommitMsg::Commit), Msg::Edit(EditMsg::Commit(f))];
+    let mut msgs = vec![Msg::Commit(CommitMsg::Commit), Msg::Edit(EditMsg::Commit { tab, fields })];
     edits_first(&mut msgs);
     let fx: Vec<Effect> = msgs.into_iter().flat_map(|m| update(&mut st, m, Instant::now())).collect();
     assert_eq!(st.session.draft.summary, "Typed this frame");
     assert!(!fx.is_empty() && st.toasts.is_empty(), "it commits rather than asking for a summary");
+}
+
+#[test]
+fn a_commit_edit_applies_only_to_the_tab_it_was_drawn_in() {
+    let mut st = state();
+    let tab = st.active_tab_id().expect("a tab");
+    let typed = |s: &str| CommitFields { summary: s.into(), ..Default::default() };
+    edit(&mut st, EditMsg::Commit { tab, fields: typed("mine") });
+    assert_eq!(st.session.draft.summary, "mine");
+    let other = Tab::empty().id;
+    assert!(edit(&mut st, EditMsg::Commit { tab: other, fields: typed("theirs") }).is_empty());
+    assert_eq!(st.session.draft.summary, "mine", "another tab's draft edit is dropped");
 }
 
 #[test]
@@ -139,19 +158,50 @@ fn a_blame_edit_keeps_the_matches_and_needs_the_same_blame() {
     assert_eq!(st.session.blame.view.as_ref().unwrap().goto, "12", "another file's blame is dropped");
 }
 
-#[test]
-fn a_file_view_edit_keeps_the_matches() {
-    let mut st = state();
+/// A file history of `a.txt` with its versions `oids`, the first one selected.
+fn file_history(oids: &[Oid]) -> FileHistoryView {
     let mut v = FileHistoryView::loading("a.txt".into(), None);
+    v.entries = oids
+        .iter()
+        .map(|&oid| HistoryEntry {
+            oid,
+            summary: String::new(),
+            author: String::new(),
+            email: String::new(),
+            time: 0,
+            path: "a.txt".into(),
+            old_path: None,
+            status: 'M',
+            files: Vec::new(),
+        })
+        .collect();
+    v.selected = Some(0);
+    v
+}
+
+#[test]
+fn a_file_view_edit_keeps_the_matches_and_needs_the_same_version() {
+    let mut st = state();
+    let (first, second) = (Oid::from_bytes(&[1; 20]).unwrap(), Oid::from_bytes(&[2; 20]).unwrap());
+    let mut v = file_history(&[first, second]);
     (v.nav.find.hits, v.nav.find.current) = (vec![1, 3], Some(1));
     st.session.history.view = Some(v);
     let mut nav = st.session.history.view.as_ref().unwrap().nav.clone();
     (nav.find.query, nav.goto, nav.top, nav.cursor) = ("beta".into(), "7".into(), 5, Some(6));
     (nav.find.hits, nav.find.current) = (Vec::new(), None);
-    edit(&mut st, EditMsg::FileNav(Box::new(nav)));
+    let path = String::from("a.txt");
+    edit(&mut st, EditMsg::FileNav { oid: first, path: path.clone(), nav: Box::new(nav.clone()) });
     let n = &st.session.history.view.as_ref().unwrap().nav;
     assert_eq!((n.find.query.as_str(), n.goto.as_str(), n.top, n.cursor), ("beta", "7", 5, Some(6)));
     assert_eq!((n.find.hits.as_slice(), n.find.current), ([1, 3].as_slice(), Some(1)));
+
+    nav.goto = "99".into();
+    edit(&mut st, EditMsg::FileNav { oid: second, path: path.clone(), nav: Box::new(nav.clone()) });
+    edit(&mut st, EditMsg::FileNav { oid: first, path: "b.txt".into(), nav: Box::new(nav.clone()) });
+    assert_eq!(st.session.history.view.as_ref().unwrap().nav.goto, "7", "another version's or file's edit is dropped");
+    st.session.history.view.as_mut().unwrap().selected = Some(1);
+    edit(&mut st, EditMsg::FileNav { oid: first, path, nav: Box::new(nav) });
+    assert_eq!(st.session.history.view.as_ref().unwrap().nav.goto, "7", "an edit for the version no longer shown is dropped");
 }
 
 #[test]

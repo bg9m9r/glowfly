@@ -95,7 +95,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut V
         _ => body(ui, st, &mut nav, cache, data.clone()),
     }
     if nav != view.nav {
-        msgs.push(Msg::Edit(EditMsg::FileNav(Box::new(nav))));
+        msgs.push(Msg::Edit(EditMsg::FileNav { oid, path: path.to_owned(), nav: Box::new(nav) }));
     }
 }
 

@@ -205,8 +205,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache
             msgs.push(Msg::Commit(if continues { CommitMsg::CommitAndContinue } else { CommitMsg::Commit }));
         }
     }
-    if f != st.session.draft.fields() {
-        msgs.push(Msg::Edit(EditMsg::Commit(f)));
+    if let Some(tab) = st.active_tab_id().filter(|_| f != st.session.draft.fields()) {
+        msgs.push(Msg::Edit(EditMsg::Commit { tab, fields: f }));
     }
 }
 

@@ -1,12 +1,18 @@
 //! `AppState`'s queries: whether hunk indexes are current and line operations blocked, the
-//! working folder, load options. The activity log's `log` and `log_quiet` are in `logs.rs`.
+//! active tab's id, the working folder, load options. The activity log's `log` and `log_quiet` are in `logs.rs`.
 
+use super::tabs::TabId;
 use super::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{BranchVisibility, DiffMode};
 use std::path::{Path, PathBuf};
 
 impl AppState {
+    /// The active tab's id, if there is a tab.
+    pub fn active_tab_id(&self) -> Option<TabId> {
+        self.tabs.get(self.active_tab).map(|t| t.id)
+    }
+
     /// The generation of the diff on screen when its hunk indexes are current, i.e. no reload
     /// or newer diff is on its way (`DiffSlot::hunk_ops_gen`). Hunk operations must carry it.
     /// Every change to the whitespace filter reopens the diff (a new `DiffSlot::generation`), so
