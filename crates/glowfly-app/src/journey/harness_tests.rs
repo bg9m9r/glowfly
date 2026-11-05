@@ -121,6 +121,7 @@ fn two_repositories_open_as_tabs() {
 ",
         )],
     );
+    git(&lib, &["checkout", "-b", "dev"]);
     let mut j = Journey::start_many(fx, app.clone(), vec![lib.clone()], vec![app.clone(), lib.clone()]);
     j.see_contains("app", Region::Tabs);
     j.see_contains("lib", Region::Tabs);
@@ -128,5 +129,7 @@ fn two_repositories_open_as_tabs() {
     j.click_containing("lib", Region::Tabs, Pick::First);
     assert_eq!(j.state().tabs[j.state().active_tab].name, "lib");
     assert_eq!(super::fixture::head_branch(&app).as_deref(), Some("main"));
-    j.see("main, checked out", Region::Sidebar);
+    assert_eq!(super::fixture::head_branch(&lib).as_deref(), Some("dev"));
+    j.see("dev, checked out", Region::Sidebar);
+    assert_eq!(j.count("main, checked out", Region::Sidebar), 0, "app's sidebar is gone");
 }
