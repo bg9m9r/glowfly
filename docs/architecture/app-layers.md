@@ -380,3 +380,9 @@ source file, update its line here. Features that span every layer are in
 - `journey/fixture.rs`: checking the screen and the repository on disk.
 - `journey/graph_keys.rs`: the graph gets its keys back from Esc on a button or WIP list Tab reached (and that Esc does nothing else), from Tab, and from its pane key.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
+- `journey/explore/mod.rs`: exploration tests, seeded random sessions on the journey harness; lists the pieces below.
+- `journey/explore/rng.rs`: the seeded generator (splitmix64) with bounded and weighted picks.
+- `journey/explore/action.rs`: the action vocabulary, its one-line case text and `parse`; `action_tests.rs` tests it.
+- `journey/explore/scene.rs`: the fixture repositories built from a seed (app with conflicting branches, lib).
+- `journey/explore/shadow.rs`: the markers of live edits and the commit summaries a session expects to find again.
+- `journey/explore/reach.rs`: whether markers and summaries are still reachable in a repository (no lost work); `reach_tests.rs` tests it.

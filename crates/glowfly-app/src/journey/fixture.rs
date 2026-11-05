@@ -25,7 +25,6 @@ impl Fixture {
 
     /// Dates every git command (and Glowfly's own commits) under the folder from the fixture
     /// `DATE` on, a minute apart, so commit ids are the same on every run.
-    #[expect(dead_code, reason = "the exploration tests call it")]
     pub(super) fn pin_dates(&self) {
         glowfly_core::testkit::clock::pin(&self.root, 1_768_039_200);
     }
@@ -88,17 +87,23 @@ pub(super) fn shown(path: &Path) -> String {
     glowfly_core::native_path::shown(path)
 }
 
+const GIT_ENV: [(&str, &str); 6] = [
+    ("GIT_AUTHOR_NAME", "Journey Author"),
+    ("GIT_AUTHOR_EMAIL", "author@example.com"),
+    ("GIT_AUTHOR_DATE", DATE),
+    ("GIT_COMMITTER_NAME", "Journey Author"),
+    ("GIT_COMMITTER_EMAIL", "author@example.com"),
+    ("GIT_COMMITTER_DATE", DATE),
+];
+
 /// Runs git in `dir` with a fixed author and committer, and asserts it succeeded.
 pub(super) fn git(dir: &Path, args: &[&str]) {
-    let env = [
-        ("GIT_AUTHOR_NAME", "Journey Author"),
-        ("GIT_AUTHOR_EMAIL", "author@example.com"),
-        ("GIT_AUTHOR_DATE", DATE),
-        ("GIT_COMMITTER_NAME", "Journey Author"),
-        ("GIT_COMMITTER_EMAIL", "author@example.com"),
-        ("GIT_COMMITTER_DATE", DATE),
-    ];
-    glowfly_core::testkit::git_env(dir, args, &env);
+    glowfly_core::testkit::git_env(dir, args, &GIT_ENV);
+}
+
+/// [`git`] for a command that may fail (a conflicting merge): whether it succeeded.
+pub(super) fn git_try(dir: &Path, args: &[&str]) -> bool {
+    glowfly_core::testkit::try_git_env(dir, args, &GIT_ENV).0
 }
 
 /// The repository settings every journey repository gets, so the user's global config (signing,
@@ -136,8 +141,11 @@ pub(super) fn commit_files(dir: &Path, files: &[(&str, &str)], message: &str) {
     git(dir, &["commit", "-q", "-m", message]);
 }
 
+/// Writes `text` to `name` in `dir`, making the folders it is in.
 pub(super) fn write(dir: &Path, name: &str, text: &str) {
-    std::fs::write(dir.join(name), text).unwrap();
+    let path = dir.join(name);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, text).unwrap();
 }
 
 fn open(dir: &Path) -> Repository {
