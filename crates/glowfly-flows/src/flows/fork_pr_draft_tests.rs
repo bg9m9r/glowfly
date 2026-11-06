@@ -233,6 +233,22 @@ fn a_refused_push_keeps_the_fork_dialog_for_cancel() {
 }
 
 #[test]
+fn a_ready_fork_with_a_refused_push_goes_back_to_the_draft() {
+    let (mut st, work, bare) = with_host("fork-draft-ready-busy");
+    typed(&mut st);
+    found(&mut st, None);
+    run(&mut st, RemoteMsg::CreateFork);
+    // Another job (an auto-fetch, say) started while the fork request was out.
+    st.job = Some(running(work.clone(), None));
+    let fx = created(&mut st, Ok(CreatedFork { fork: fork("ada"), ready: true }));
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Job(_))), "{fx:?}");
+    assert!(logged(&st, "Another operation is still running."));
+    assert!(!logged(&st, "no longer exists"));
+    assert!(restored(&st, "origin"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+    cleanup(&work, &bare);
+}
+
+#[test]
 fn a_failed_push_in_another_tab_never_reopens() {
     let (mut st, work, bare) = with_host("fork-draft-other-tab");
     let form = Some(typed_draft());
