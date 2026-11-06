@@ -30,8 +30,8 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
         ForgeMsg::CreatePrDialog { source, target } => super::push_pr::open_dialog(st, source, target, None, fx),
         ForgeMsg::CreatePrFrom { remote, source } => super::push_pr::open_dialog(st, source, None, Some(remote), fx),
         ForgeMsg::PickPrRepo { side, remote } => super::pull_request::repo_pick::pick(st, side, &remote),
-        ForgeMsg::PushAndStartPr { branch, target } => super::push_pr::start(st, &branch, target, None, fx),
-        ForgeMsg::PushToForPr { branch, remote, target } => super::push_pr::start(st, &branch, target, Some(remote), fx),
+        ForgeMsg::PushAndStartPr { branch, target } => super::push_pr::start(st, &branch, target, None, None, fx),
+        ForgeMsg::PushToForPr { branch, remote, target } => super::push_pr::start(st, &branch, target, Some(remote), None, fx),
         ForgeMsg::PushToMyFork { branch, target } => super::fork_pr::open(st, branch, target, fx),
         ForgeMsg::CreatePr { pr, from, into } => super::push_pr::create(st, pr, &from, &into, fx),
         ForgeMsg::Connect { account, user, token } => {

@@ -314,7 +314,7 @@ pub fn finish_job(
             let text = st.settings.lang().tr("commit.continue_skipped.log");
             st.log(true, text);
         }
-        super::push_pr::job_finished(st, then_pr, ok, false);
+        super::push_pr::job_finished(st, then_pr, ok, false, fx);
         return; // that tab refreshes when it is selected again
     }
     super::notify::fetched(st, &job.label, job.quiet, ok);
@@ -325,7 +325,7 @@ pub fn finish_job(
     if !job.quiet {
         super::forge::refresh(st, true, false, now, fx);
     }
-    super::push_pr::job_finished(st, then_pr, ok, true);
+    super::push_pr::job_finished(st, then_pr, ok, true, fx);
     // Push after committing, from the snapshot before the commit: the upstream is unchanged.
     if ok && job.then_push {
         push(st, false, fx);

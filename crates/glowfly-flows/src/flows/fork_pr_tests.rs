@@ -15,11 +15,11 @@ use glowfly_model::state::forks::{ForkCreate, ForkThenPr};
 use glowfly_model::state::push_pr::PrStart;
 use std::time::Instant;
 
-fn origin() -> Target {
+pub(super) fn origin() -> Target {
     parse_remote("https://github.com/o/r.git", &[]).unwrap()
 }
 
-fn fork(owner: &str) -> Fork {
+pub(super) fn fork(owner: &str) -> Fork {
     Fork {
         owner: owner.into(),
         full_name: format!("{owner}/r"),
@@ -30,11 +30,11 @@ fn fork(owner: &str) -> Fork {
     }
 }
 
-fn run(st: &mut AppState, m: RemoteMsg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, m: RemoteMsg) -> Vec<Effect> {
     update(st, Msg::Remote(m), Instant::now())
 }
 
-fn creator(st: &AppState) -> &ForkCreate {
+pub(super) fn creator(st: &AppState) -> &ForkCreate {
     match st.modal.as_ref() {
         Some(Modal::CreateFork(f)) => f,
         _ => panic!("the Fork dialog is not open"),
@@ -50,7 +50,7 @@ fn open(st: &mut AppState, mine: Option<Fork>) -> Vec<Effect> {
     fx
 }
 
-fn git_job(fx: &[Effect]) -> Vec<Vec<String>> {
+pub(super) fn git_job(fx: &[Effect]) -> Vec<Vec<String>> {
     match fx {
         [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. })] => cmds.clone(),
         other => panic!("unexpected effects {other:?}"),
@@ -62,7 +62,7 @@ fn then_pr(st: &AppState) -> Option<PrStart> {
 }
 
 fn pushed_to_ada() -> PrStart {
-    PrStart { source: "topic".into(), target: Some("main".into()), remote: Some("ada".into()) }
+    PrStart { source: "topic".into(), target: Some("main".into()), remote: Some("ada".into()), form: None }
 }
 
 const PUSH: [&str; 5] = ["push", "-u", "--", "ada", "refs/heads/topic:refs/heads/topic"];
@@ -73,7 +73,7 @@ fn push_to_your_fork_opens_the_fork_dialog_for_the_base() {
     let fx = update(&mut st, Msg::Forge(ForgeMsg::PushToMyFork { branch: "topic".into(), target: None }), Instant::now());
     assert!(matches!(&fx[..], [Effect::Remote(RemoteEffect::FindMyFork(r))] if r.target == origin()), "{fx:?}");
     let f = creator(&st);
-    assert_eq!((f.remote.as_str(), f.then_pr.clone()), ("origin", Some(ForkThenPr { branch: "topic".into(), target: None })));
+    assert_eq!((f.remote.as_str(), f.then_pr.clone()), ("origin", Some(ForkThenPr { branch: "topic".into(), target: None, form: None })));
     cleanup(&work, &bare);
 }
 

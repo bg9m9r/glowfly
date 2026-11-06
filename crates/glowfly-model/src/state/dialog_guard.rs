@@ -39,6 +39,14 @@ impl DialogGuard {
         }
     }
 
+    /// A dialog reopened with what the user had typed before (the create dialog after Push to
+    /// your fork…): `fresh` is its `Modal::draft` as it would have opened, so the restored text
+    /// counts as edited. `track` keeps this record (same variant).
+    pub fn reopened(&mut self, modal: &Modal, fresh: Option<String>) {
+        self.opened = Some((std::mem::discriminant(modal), fresh));
+        self.asking = false;
+    }
+
     /// The open dialog closed: its record and question go, a form kept underneath stays.
     pub fn closed(&mut self) {
         self.opened = None;
@@ -132,6 +140,21 @@ mod tests {
         assert!(matches!(&modal, Some(Modal::RenameTab(f)) if f.text == "edited"));
         assert!(guard.under().is_none());
         assert!(edited_form(&guard, modal.as_ref()));
+    }
+
+    #[test]
+    fn a_reopened_dialog_counts_as_edited() {
+        let mut m = rename_form();
+        if let Modal::RenameTab(f) = &mut m {
+            f.text = "restored".into();
+        }
+        let mut guard = DialogGuard::default();
+        guard.reopened(&m, Some("fresh".into()));
+        guard.track(Some(&m));
+        assert!(guard.edited(&m), "track keeps the reopened record");
+        guard.reopened(&m, m.draft());
+        guard.track(Some(&m));
+        assert!(!guard.edited(&m));
     }
 
     #[test]

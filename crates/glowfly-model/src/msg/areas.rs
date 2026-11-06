@@ -143,7 +143,7 @@ macro_rules! msg_areas {
             /// Holding and closing toasts, and clicks on desktop notifications (update/notify.rs).
             Notify(crate::msg::NotifyMsg) "notify" => notify::handle(now, fx);
             /// A click on a dialog's backdrop or Esc, and the discard question (update/dialog.rs).
-            Dialog(crate::msg::DialogMsg) "dialog" => dialog::handle();
+            Dialog(crate::msg::DialogMsg) "dialog" => dialog::handle(fx);
             /// Quitting and the About dialog (update/app.rs).
             App(crate::msg::AppMsg) "app" => app::handle(fx);
             /// Glowfly's own updates and the release notes (update/updates.rs).

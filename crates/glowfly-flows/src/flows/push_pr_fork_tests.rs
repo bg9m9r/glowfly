@@ -230,7 +230,7 @@ fn push_to_the_from_remote_then_the_dialog_opens_from_it() {
     let (mut st, work, bare, ada) = with_fork("pr-fork-push");
     let fx = update(&mut st, msg(ForgeMsg::PushToForPr { branch: "topic".into(), remote: "ada".into(), target: None }), Instant::now());
     assert_eq!(run_git(&fx), [&vec![args(&["push", "-u", "--", "ada", "refs/heads/topic:refs/heads/topic"])]]);
-    let then = PrStart { source: "topic".into(), target: None, remote: Some("ada".into()) };
+    let then = PrStart { source: "topic".into(), target: None, remote: Some("ada".into()), form: None };
     assert_eq!(st.job.as_ref().and_then(|j| j.then_pr.clone()), Some(then));
     st.job = None;
     drive(&mut st, msg(ForgeMsg::PushToForPr { branch: "topic".into(), remote: "ada".into(), target: None }));

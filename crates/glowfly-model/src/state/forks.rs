@@ -71,6 +71,8 @@ pub struct ForkThenPr {
     pub branch: String,
     /// The target to preselect in the create dialog.
     pub target: Option<String>,
+    /// The create dialog's draft, when it was open (None: cancel only closes).
+    pub form: Option<super::push_pr::PrDraft>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

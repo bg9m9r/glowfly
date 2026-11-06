@@ -89,7 +89,10 @@ fn push_and_start_pushes_missing_branch_with_upstream() {
     let fx = update(&mut st, push("topic", None), Instant::now());
     assert_eq!(run_git(&fx), [&vec![args(&["push", "-u", "--", "origin", "refs/heads/topic:refs/heads/topic"])]]);
     assert_eq!(fx.len(), 1);
-    assert_eq!(st.job.as_ref().and_then(|j| j.then_pr.clone()), Some(PrStart { source: "topic".into(), target: None, remote: None }));
+    assert_eq!(
+        st.job.as_ref().and_then(|j| j.then_pr.clone()),
+        Some(PrStart { source: "topic".into(), target: None, remote: None, form: None })
+    );
     cleanup(&work, &bare);
 }
 
@@ -186,7 +189,7 @@ fn push_in_another_tab_only_logs() {
         clear_commit: false,
         then_push: false,
         then_continue: false,
-        then_pr: Some(PrStart { source: "topic".into(), target: None, remote: None }),
+        then_pr: Some(PrStart { source: "topic".into(), target: None, remote: None, form: None }),
         then_link: false,
         then_open: None,
         keeps_undo: true,
@@ -202,7 +205,7 @@ fn push_in_another_tab_only_logs() {
 #[test]
 fn other_modal_is_not_replaced() {
     let (mut st, work, bare) = with_host("pr-push-other-modal");
-    st.session.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None, remote: None });
+    st.session.forge.as_mut().unwrap().open_after_load = Some(PrStart { source: "topic".into(), target: None, remote: None, form: None });
     st.modal = Some(Modal::RenameBranch(glowfly_model::state::branch_sync::RenameForm {
         name: "feature2".into(),
         ..glowfly_model::state::branch_sync::RenameForm::new("feature".into())

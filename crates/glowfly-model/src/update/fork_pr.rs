@@ -1,13 +1,15 @@
 //! Push to your fork…: the create dialog's way to a pull request from the user's own fork. It
 //! opens the Fork dialog (update/remote_forks.rs) for the base repository with `then_pr` set;
 //! adding the fork then also pushes the branch to it in the same job, and the create dialog
-//! opens from the fork once the push has landed (update/push_pr.rs).
+//! opens from the fork once the push has landed (update/push_pr.rs). What was typed in the
+//! create dialog rides along (`ForkThenPr::form`, then `PrStart::form`) and is put back when it
+//! reopens; cancelling the Fork dialog or a failed step goes back to it from its original From.
 
 use super::ops::{JobSpec, start_job};
 use crate::effect::Effect;
 use crate::state::forks::{ForkStep, ForkThenPr, add_job, added_as};
 use crate::state::pull_request::repos;
-use crate::state::push_pr::PrStart;
+use crate::state::push_pr::{PrDraft, PrStart};
 use crate::state::remotes::{find, gone_text};
 use crate::state::{AppState, Modal};
 use glowfly_core::branch_ops::push_cmd;
@@ -23,9 +25,20 @@ pub(super) fn open(st: &mut AppState, branch: String, target: Option<String>, fx
         return;
     }
     let base = repos::base_remote(fs).to_owned();
+    let form = match &st.modal {
+        Some(Modal::CreatePr { title, description, draft, items, repos, .. }) => Some(PrDraft {
+            branch: branch.clone(),
+            from: repos.remote_from(fs).to_owned(),
+            title: title.clone(),
+            description: description.clone(),
+            items: items.clone(),
+            draft: *draft,
+        }),
+        _ => None,
+    };
     super::remote_forks::open_create(st, &base, fx);
     if let Some(Modal::CreateFork(f)) = st.modal.as_mut() {
-        f.then_pr = Some(ForkThenPr { branch, target });
+        f.then_pr = Some(ForkThenPr { branch, target, form });
     }
 }
 
@@ -36,18 +49,18 @@ pub(super) fn add_and_push_job(snap: &Snapshot, name: &str, url: &str, fetch: bo
     let mut cmds = add_cmds(name, url, None, fetch);
     // A new remote is never the base repository, so the branch's upstream moves to the fork.
     cmds.push(push_cmd(&b.name, name, &b.name, true));
-    let then_pr = PrStart { source: b.name.clone(), target: then.target.clone(), remote: Some(name.to_owned()) };
+    let then_pr = PrStart { source: b.name.clone(), target: then.target.clone(), remote: Some(name.to_owned()), form: then.form.clone() };
     Some(JobSpec { then_pr: Some(then_pr), ..JobSpec::new(format!("Add remote {name} and push {}", b.name), cmds) })
 }
 
 /// Pushes the branch to the fork that is already remote `remote`.
 pub(super) fn push_existing(st: &mut AppState, then: ForkThenPr, remote: String, fx: &mut Vec<Effect>) {
-    super::push_pr::start(st, &then.branch, then.target, Some(remote), fx);
+    super::push_pr::start(st, &then.branch, then.target, Some(remote), then.form, fx);
 }
 
 /// The Fork dialog's primary on a fork the user already has, in then-push mode: push to it
 /// when it already is a remote, else add it and push in one job. The dialog closes once that
-/// starts.
+/// starts; a refusal leaves it open, so its Cancel goes back to the create dialog.
 pub(super) fn add_mine(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>) {
     enum Next {
         Push(String),
@@ -73,8 +86,13 @@ pub(super) fn add_mine(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>
     match next {
         Next::Refuse(why) => st.log(false, why),
         Next::Push(remote) => {
-            st.modal = None;
+            // Closes once the push started; when nothing needed pushing the create dialog has
+            // replaced it already, and a refusal leaves it open, so Cancel goes back.
+            let before = fx.len();
             push_existing(st, then, remote, fx);
+            if fx.len() > before && matches!(st.modal, Some(Modal::CreateFork(_))) {
+                st.modal = None;
+            }
         }
         Next::Run(spec) => {
             let before = fx.len();
@@ -84,4 +102,44 @@ pub(super) fn add_mine(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>
             }
         }
     }
+}
+
+/// The Fork dialog's then-push record, taken as the dialog closes (update/dialog.rs).
+pub(super) fn taken_on_close(st: &mut AppState) -> Option<ForkThenPr> {
+    match st.modal.as_mut() {
+        Some(Modal::CreateFork(f)) => f.then_pr.take(),
+        _ => None,
+    }
+}
+
+/// Goes back to the create dialog the Fork dialog was opened from, if it was.
+pub(super) fn reopen(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>) {
+    if let Some(form) = then.form {
+        back_to(st, then.target, form, fx);
+    }
+}
+
+/// Reopens the create dialog for `form`'s branch from its original From remote, with what was
+/// typed. Never replaces an open dialog, and does nothing once the branch is gone.
+pub(super) fn back_to(st: &mut AppState, target: Option<String>, form: PrDraft, fx: &mut Vec<Effect>) {
+    let exists = st.snap.as_ref().is_some_and(|s| s.locals.iter().any(|b| b.name == form.branch));
+    if st.modal.is_some() || !exists {
+        return;
+    }
+    super::push_pr::open_dialog(st, form.branch.clone(), target, Some(form.from.clone()), fx);
+    restore(st, form);
+}
+
+/// Puts what was typed back into the create dialog that just opened (From, Into and the
+/// targets stay as it computed them), and records it as edited relative to how it opened.
+pub(super) fn restore(st: &mut AppState, form: PrDraft) {
+    let Some(m @ Modal::CreatePr { .. }) = st.modal.as_mut() else { return };
+    let fresh = m.draft();
+    if let Modal::CreatePr { title, description, draft, items, .. } = m {
+        *title = form.title;
+        *description = form.description;
+        *items = form.items;
+        *draft = form.draft;
+    }
+    st.dialog.reopened(m, fresh);
 }

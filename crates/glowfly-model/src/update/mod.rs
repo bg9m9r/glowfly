@@ -347,7 +347,7 @@ crate::msg::msg_areas! { area_router! {
         Msg::ToastAction(id) => notify::toast_action(st, id, notify::ToastButton::Action, now, fx),
         Msg::ToastAlt(id) => notify::toast_action(st, id, notify::ToastButton::Alt, now, fx),
         Msg::ToastDetails(id) => notify::toast_action(st, id, notify::ToastButton::Details, now, fx),
-        Msg::CloseModal => dialog::close(st),
+        Msg::CloseModal => dialog::close(st, fx),
         Msg::Copy(text) => fx.push(Effect::Ui(UiEffect::CopyText(text))),
         Msg::OpenUrl(url) => fx.push(Effect::Os(OsEffect::OpenUrl(url))),
         Msg::OpenLink { text, url } => open_link::open(st, &text, url, fx),
