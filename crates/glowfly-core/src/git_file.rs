@@ -7,7 +7,7 @@
 
 use crate::config_includes::{self, read_file_bounded};
 use crate::net_path::may_follow;
-use git2::{ConfigLevel, Oid, Repository};
+use git2::{ConfigLevel, DiffOptions, Oid, Repository};
 use std::path::{Path, PathBuf};
 
 /// The most bytes read of a `.git` file, `commondir`, HEAD, ref or worktree record.
@@ -214,6 +214,16 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
         }
     }
     out
+}
+
+/// `o` for a diff that reaches `repo`'s work tree, with every submodule left out when one of its
+/// gitlinks names a place that may not be followed (`offsite_gitlinks`): libgit2's diff opens
+/// each submodule folder's repository to compare it, as its status does.
+pub(crate) fn skip_offsite_submodules<'o>(repo: &Repository, o: &'o mut DiffOptions) -> &'o mut DiffOptions {
+    if !offsite_gitlinks(repo).is_empty() {
+        o.ignore_submodules(true);
+    }
+    o
 }
 
 #[cfg(test)]

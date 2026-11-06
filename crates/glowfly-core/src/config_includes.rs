@@ -209,6 +209,8 @@ fn read_small(file: &Path) -> Option<Vec<u8>> {
 /// size it reports. On Unix it is opened without waiting (a FIFO put in its place since it was
 /// looked at can't block the read), and the opened file itself is checked.
 pub(crate) fn read_file_bounded(file: &Path, limit: u64) -> Option<Vec<u8>> {
+    #[cfg(test)]
+    crate::testutil::never_net_place(file);
     let mut open = std::fs::OpenOptions::new();
     open.read(true);
     #[cfg(unix)]

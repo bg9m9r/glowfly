@@ -4,12 +4,7 @@
 
 use super::tests::{later, moved, repo, start};
 use super::*;
-use crate::testutil::{link_to, net_place, write};
-
-/// `p` as a `.git` file names it: forward slashes, as git writes them.
-fn named(p: &Path) -> String {
-    p.display().to_string().replace('\\', "/")
-}
+use crate::testutil::{git_spelling, link_to, net_place, write};
 
 /// A new file in `inner`, found by a later sweep.
 fn a_new_file_is_found(s: &mut Sweep, ig: &mut Ignores, inner: &Path) {
@@ -24,7 +19,7 @@ fn a_nested_git_file_naming_a_network_place_is_walked_as_a_plain_folder() {
     let dir = repo("sweep-net-gitfile", 0);
     let inner = dir.join("inner");
     std::fs::create_dir_all(&inner).unwrap();
-    write(&inner, ".git", &format!("gitdir: {}\n", named(&net_place().join("x/.git"))));
+    write(&inner, ".git", &format!("gitdir: {}\n", git_spelling(&net_place().join("x/.git"))));
     write(&inner, "a.txt", "a\n");
     let (mut s, mut ig) = start(&dir);
     assert!(!s.seen.as_ref().unwrap().nested.contains_key(Path::new("inner")));
@@ -42,7 +37,7 @@ fn a_nested_commondir_naming_a_network_place_is_not_followed() {
     std::fs::create_dir_all(admin.join("objects")).unwrap();
     std::fs::create_dir_all(&inner).unwrap();
     write(&admin, "HEAD", "ref: refs/heads/main\n");
-    write(&admin, "commondir", &format!("{}\n", named(&net_place().join("repo/.git"))));
+    write(&admin, "commondir", &format!("{}\n", git_spelling(&net_place().join("repo/.git"))));
     write(&inner, ".git", "gitdir: ../admin\n");
     write(&inner, "a.txt", "a\n");
     let (mut s, mut ig) = start(&dir);
@@ -60,7 +55,7 @@ fn a_tracked_nested_repository_rewritten_to_a_network_place_is_dropped() {
     let (mut s, mut ig) = start(&dir);
     assert!(s.seen.as_ref().unwrap().nested.contains_key(Path::new("inner")));
     std::fs::remove_dir_all(inner.join(".git")).unwrap();
-    write(&inner, ".git", &format!("gitdir: {}\n", named(&net_place().join("x/.git"))));
+    write(&inner, ".git", &format!("gitdir: {}\n", git_spelling(&net_place().join("x/.git"))));
     let found = s.sweep(&mut ig, later()).unwrap();
     assert_eq!(found.iter().filter(|p| **p == inner.join(".git").join("HEAD")).count(), 1, "{found:?}");
     assert!(!s.seen.as_ref().unwrap().nested.contains_key(Path::new("inner")), "no longer tracked");

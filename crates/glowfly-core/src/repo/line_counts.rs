@@ -110,7 +110,7 @@ pub fn wip_line_counts(workdir: &Path) -> Result<WipLineCounts> {
     let mut o = opts();
     o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true);
     // No rename detection: the status doesn't detect work-tree renames either.
-    let unstaged = repo.diff_index_to_workdir(None, Some(&mut o))?;
+    let unstaged = repo.diff_index_to_workdir(None, Some(crate::git_file::skip_offsite_submodules(&repo, &mut o)))?;
     Ok(WipLineCounts {
         staged: counts_of(&index, &staged, false, MAX_COUNTED_FILES)?,
         unstaged: counts_of(&repo, &unstaged, true, MAX_COUNTED_FILES)?,
