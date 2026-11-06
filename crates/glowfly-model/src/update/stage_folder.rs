@@ -1,6 +1,7 @@
 //! Staging and unstaging a folder from a folder row of the WIP lists' tree: the folder as one
 //! pathspec for `git add` (taken literally), and its staged files by exact path for unstage;
-//! and the files a Shift move selected in those lists, staged or unstaged together.
+//! and the selected files of those lists (picked with Shift or Ctrl/Cmd), staged or unstaged
+//! together.
 
 use crate::effect::{Effect, LocalOp};
 use crate::state::AppState;

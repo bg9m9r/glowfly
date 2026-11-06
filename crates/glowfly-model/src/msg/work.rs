@@ -16,7 +16,7 @@ pub enum StageMsg {
     UnstageFile(String),
     StageAll,
     UnstageAll,
-    /// Stage these files of Unstaged Files (the ones a Shift move selected) as a whole, in one
+    /// Stage these files of Unstaged Files (the picked ones) as a whole, in one
     /// operation. Conflicted ones are left for the conflict view.
     StagePaths(Vec<String>),
     /// Unstage these staged files as a whole, in one operation.

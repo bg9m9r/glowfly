@@ -63,7 +63,7 @@ pub(super) fn stage_sent(st: &mut AppState, staged: bool, paths: &[String]) {
     let Some(from) = cursor(st).filter(acting).cloned() else { return };
     let to = neighbour(st, staged, from.path(), paths);
     st.cues.stage_move_on = Some(MoveOn { from, to });
-    st.cues.wip_span = None;
+    st.cues.wip_picks = None;
 }
 
 /// A working-tree operation finished (`ok`): when it staged or unstaged the file the keys still

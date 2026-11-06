@@ -223,7 +223,7 @@ pub const BINDINGS: &[Binding] = &[
     fixed(
         I::WipDiscardFile,
         G::Staging,
-        "Discard the unstaged file's changes (asks first)",
+        "Discard the unstaged file's or the selected files' changes (asks first)",
         &[C::plain(K::Delete), C::cmd(K::Backspace)],
         W::WipLists,
     ),

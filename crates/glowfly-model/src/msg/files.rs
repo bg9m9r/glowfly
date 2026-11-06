@@ -2,7 +2,7 @@
 //! files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
 
 use super::{FailedWrite, Inactive};
-use crate::effect::{FileOp, WorkFileOk};
+use crate::effect::{DeleteMode, DiscardEach, FileOp, WorkFileOk};
 use git2::Oid;
 use glowfly_core::error::WriteFailed;
 use glowfly_core::repo::RestoredFrom;
@@ -101,6 +101,14 @@ pub enum WorkFileMsg {
     TrashRefused { op: FileOp, refusal: glowfly_core::repo::TrashRefusal, too_large: bool },
     /// `op` promised Undo, but its file is over 64 MB so no copy could be kept; nothing changed.
     NoCopyKept { op: FileOp, reason: String },
+    /// Ask to discard these Unstaged Files rows (the picked ones) with one confirmation
+    /// (update/work_files_discard.rs).
+    DiscardPaths(Vec<String>),
+    /// Run the multi-file discard the confirmation agreed to, the way it described it.
+    DiscardPathsConfirmed { files: Vec<DiscardEach>, mode: DeleteMode },
+    /// A DiscardPaths effect finished: `done` files were discarded, then it stopped at `failed`
+    /// (if any). `undo` puts back every file discarded (one entry, `undo::batch`).
+    PathsDiscarded { done: usize, failed: Option<(String, WriteFailed)>, undo: Option<Action> },
 }
 
 impl WorkFileMsg {
@@ -115,7 +123,14 @@ impl WorkFileMsg {
             | Self::RenameFile { .. }
             | Self::SetRenameStages(..)
             | Self::DeleteFile { .. }
-            | Self::DeleteConfirmed(..) => None,
+            | Self::DeleteConfirmed(..)
+            | Self::DiscardPaths(..)
+            | Self::DiscardPathsConfirmed { .. } => None,
+            Self::PathsDiscarded { failed: None, undo: Some(a), .. } => Some(Inactive::Undo(a)),
+            Self::PathsDiscarded { failed: Some((path, error)), done, undo } => {
+                Some(Inactive::WriteFailed { at: FailedWrite::DiscardPaths { path, done }, error, undo })
+            }
+            Self::PathsDiscarded { .. } => None,
             Self::WorkFileDone { op, result } => Some(Inactive::WorkFile { op, result }),
             Self::WorkFileFailed { op, error, undo } => {
                 Some(Inactive::LogAndUndo { text: crate::update::work_files::failure(&op, &error), undo: *undo })

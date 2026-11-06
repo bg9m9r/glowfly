@@ -1,12 +1,12 @@
 //! Working-tree file work (`Effect::Files`, runner/files.rs): restoring a file from a commit,
-//! creating, renaming, deleting and discarding a working-tree file, the index and working-tree
+//! creating, renaming, deleting and discarding a working-tree file (or several at once), the index and working-tree
 //! edits of staging and conflicts (`LocalOp`), reverting part of a diff, and listing the tracked
 //! files for the palette's file finder. Scoped to the repository's tab.
 
 use super::EffectMeta;
 use super::LocalOp;
 use super::SandboxRule;
-use crate::file_op::FileOp;
+use crate::file_op::{DeleteMode, DiscardEach, FileOp};
 use git2::Oid;
 use std::path::{Path, PathBuf};
 
@@ -25,6 +25,9 @@ pub enum FilesEffect {
     /// Reverts part of a commit or comparison diff (a hunk, some of its lines, or the whole
     /// file) in the working tree only (glowfly_core::repo::revert).
     Revert { workdir: PathBuf, req: glowfly_core::repo::RevertRequest },
+    /// Discards several Unstaged Files rows in order, stopping at the first that fails: tracked
+    /// ones go back to their index version, untracked ones are deleted the way `mode` says.
+    DiscardPaths { workdir: PathBuf, files: Vec<DiscardEach>, mode: DeleteMode },
 }
 
 impl EffectMeta for FilesEffect {
@@ -35,6 +38,7 @@ impl EffectMeta for FilesEffect {
             FilesEffect::LoadTracked { .. } => "tracked-paths",
             FilesEffect::LocalOp { .. } => "local-op",
             FilesEffect::Revert { .. } => "revert",
+            FilesEffect::DiscardPaths { .. } => "discard-paths",
         }
     }
 
@@ -44,7 +48,8 @@ impl EffectMeta for FilesEffect {
             | FilesEffect::Work { workdir, .. }
             | FilesEffect::LoadTracked { workdir, .. }
             | FilesEffect::LocalOp { workdir, .. }
-            | FilesEffect::Revert { workdir, .. } => Some(workdir),
+            | FilesEffect::Revert { workdir, .. }
+            | FilesEffect::DiscardPaths { workdir, .. } => Some(workdir),
         }
     }
 
@@ -59,7 +64,8 @@ impl EffectMeta for FilesEffect {
             FilesEffect::Restore { workdir, .. }
             | FilesEffect::Work { workdir, .. }
             | FilesEffect::LocalOp { workdir, .. }
-            | FilesEffect::Revert { workdir, .. } => Some(workdir),
+            | FilesEffect::Revert { workdir, .. }
+            | FilesEffect::DiscardPaths { workdir, .. } => Some(workdir),
             FilesEffect::LoadTracked { .. } => None,
         }
     }

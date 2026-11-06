@@ -66,6 +66,8 @@ fn write_failed(
         FailedWrite::LocalOpPartial => super::local_done::partial_text(t, error),
         FailedWrite::Revert { path, what } => super::revert::fail_text(&path, what, &words),
         FailedWrite::Restore { path } => crate::msg::restore_failed(&path, &words, undo.is_some(), None),
+        // The key hint would name the active tab's Undo, which isn't this one's.
+        FailedWrite::DiscardPaths { path, done } => super::work_files_discard::stopped_text(t, done, &path, &words, ""),
     };
     st.log_in(Some(workdir), false, text);
     if let Some(a) = undo {

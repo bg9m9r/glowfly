@@ -102,6 +102,22 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         Action::DeleteFile { path, .. } => {
             vec![file('D', path), pick(t.tr("undo.preview.undelete").into(), t.tr("undo.preview.delete_file_again").into())]
         }
+        Action::Batch { parts, .. } => {
+            let mut rows: Vec<TipRow> = parts
+                .iter()
+                .take(PREVIEW_ROWS)
+                .filter_map(|p| match p {
+                    Action::Discard { path, .. } => Some(file('M', path)),
+                    Action::DeleteFile { path, .. } => Some(file('D', path)),
+                    _ => None,
+                })
+                .collect();
+            if parts.len() > PREVIEW_ROWS {
+                rows.push(TipRow::Line(t.trn("toolbar.tip.more", parts.len() - PREVIEW_ROWS, &[])));
+            }
+            rows.push(pick(t.tr("undo.preview.restore_discarded").into(), t.tr("undo.preview.discard_files_again").into()));
+            rows
+        }
         Action::UnstageGone { path, .. } => {
             vec![file('A', path), pick(t.tr("undo.preview.restage").into(), t.tr("undo.preview.unstage_again").into())]
         }

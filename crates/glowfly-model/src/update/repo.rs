@@ -57,7 +57,13 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
                 }
             }
         }
-        RepoMsg::OpenDiff(target) => open_file_diff(st, target, fx),
+        RepoMsg::OpenDiff(target) => {
+            // A plain click ends the picks; the keys and pick clicks open through
+            // `open_file_diff` and set them afterwards.
+            st.cues.wip_picks = None;
+            open_file_diff(st, target, fx)
+        }
+        RepoMsg::PickWipFile { staged, path, how } => super::wip_picks::pick(st, staged, path, how, fx),
         RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw } => {
             let t = st.settings.lang();
             let result = result.map_err(|e| typed::read(t, &e));

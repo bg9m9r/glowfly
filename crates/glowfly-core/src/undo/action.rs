@@ -206,6 +206,12 @@ pub enum Action {
         left: Changes,
         during: Option<HeadAt>,
     },
+    /// Several files' content actions recorded as one entry (`batch.rs`): each part is a
+    /// whole-file `Discard` or a `DeleteFile` (an untracked file discarded), done as `op`.
+    Batch {
+        op: super::BatchOp,
+        parts: Vec<Action>,
+    },
 }
 
 /// Where HEAD was while an operation was in progress: commit `oid` on `branch` (`None`:
@@ -290,6 +296,7 @@ impl Action {
             Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),
             Action::Restacked { detail, .. } => detail.clone(),
             Action::AbortKept { op, .. } => format!("abort of {}", op.noun()),
+            Action::Batch { op: super::BatchOp::Discard, parts } => format!("discard in {} files", parts.len()),
         }
     }
 
@@ -297,7 +304,10 @@ impl Action {
     /// dropped stash, an aborted operation's work): it stays undoable past a job that can't be
     /// undone, since its undo checks the files (or stash list) it writes to before it acts.
     pub fn is_content(&self) -> bool {
-        matches!(self, Action::Discard { .. } | Action::DeleteFile { .. } | Action::StashDrop { .. } | Action::AbortKept { .. })
+        matches!(
+            self,
+            Action::Discard { .. } | Action::DeleteFile { .. } | Action::StashDrop { .. } | Action::AbortKept { .. } | Action::Batch { .. }
+        )
     }
 
     /// Whether a refusal for local changes can offer to stash them and undo anyway: for undoing

@@ -1,7 +1,8 @@
 //! Creating, renaming, deleting and discarding (untracked) working-tree files: the New file and
 //! Rename dialogs (checked against the snapshot before anything runs), running the delete or
-//! discard a confirmation agreed to (the confirmations themselves are in `work_files_delete`), and
-//! the results (a toast, the dialog's inline error, or a log line).
+//! discard a confirmation agreed to (the confirmations themselves are in `work_files_delete`,
+//! several files' discard in `work_files_discard`), and the results (a toast, the dialog's
+//! inline error, or a log line).
 
 use super::work_files_delete::{UndoNote, ask_delete, ask_discard, deleted_text, no_copy_kept, trash_refused};
 use crate::effect::FilesEffect;
@@ -82,6 +83,9 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
             super::watch::settled(st, now);
             super::repo::refresh_status(st, fx);
         }
+        WorkFileMsg::DiscardPaths(paths) => super::work_files_discard::ask(st, paths, now, fx),
+        WorkFileMsg::DiscardPathsConfirmed { files, mode } => super::work_files_discard::confirmed(st, files, mode, now, fx),
+        WorkFileMsg::PathsDiscarded { done, failed, undo } => super::work_files_discard::done(st, done, failed, undo, now, fx),
         WorkFileMsg::SetRenameStages(_) => {}
     }
 }

@@ -7,7 +7,7 @@
 //! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
 //! tags, also a branch the journal's Restore moved with `update-ref`), `moved` (merge, pull,
 //! cherry-pick, revert, rebase), `stash`, `reset`, `saved` and `deleted` (Delete and Unstage and
-//! delete).
+//! delete); `batch` plans several files' discards recorded as one entry.
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
 //! (`rebased.rs`): they finish in steps, possibly outside Glowfly. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as
@@ -35,6 +35,7 @@ mod aborted_restore;
 mod aborted_run;
 mod aborted_state;
 mod action;
+mod batch;
 mod deleted;
 mod in_the_way;
 pub mod kept;
@@ -62,6 +63,7 @@ pub use aborted::ABORT_REF_PREFIX;
 pub use aborted_restore::restore_abort;
 pub use aborted_run::{AbortRun, NOTHING_ABORTED, abort_keeping};
 pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadAt, HeadPos, Staged};
+pub use batch::{BatchOp, batch};
 pub use deleted::{
     DeleteFailed, DeleteVia, DeletedSaving, MAX_KEPT_BYTES, PutBackHow, Trashers, delete_again, delete_saving, delete_staged_saving,
     discard_untracked_saving, keeps_copy, put_back,
@@ -163,6 +165,8 @@ pub enum Plan {
     /// Put a conflict change's files back as they were before it, or after it for a redo
     /// (`put_conflicts`).
     PutConflicts,
+    /// Carry out each part's plan in order, stopping at the first failure (`Action::Batch`).
+    Each(Vec<(Action, Plan)>),
 }
 
 /// Choices the user made for one undo.
@@ -189,6 +193,8 @@ mod aborted_state_tests;
 mod aborted_steps_tests;
 #[cfg(test)]
 mod aborted_tests;
+#[cfg(test)]
+mod batch_tests;
 #[cfg(test)]
 mod deleted_tests;
 #[cfg(test)]

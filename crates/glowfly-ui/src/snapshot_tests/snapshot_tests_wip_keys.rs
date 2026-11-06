@@ -1,6 +1,6 @@
 //! The Unstaged and Staged Files lists' keyboard focus: a click on a row focuses its list, the
-//! focused list rings its current row (or, with none, the whole list), the files a Shift move
-//! selected are drawn selected, each of the list's keys becomes its message (taken before any
+//! focused list rings its current row (or, with none, the whole list), the picked files are
+//! drawn selected (a run, or with gaps), each of the list's keys becomes its message (taken before any
 //! binding, not while a dialog covers the list or a field has the keyboard), arrows in the first
 //! frame after the list took the focus keep it there, and a focused list doesn't count as typing.
 //! Shares the fixture repositories with `snapshot_tests` and `snapshot_tests_line_counts`.
@@ -19,7 +19,7 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_model::keymap::{BindingId, Chord, KeyAction, KeyName};
 use glowfly_model::msg::{DiffMsg, Msg};
 use glowfly_model::state::list_keys::{ListKey, ListMove};
-use glowfly_model::state::wip_lists::WipSpan;
+use glowfly_model::state::wip_lists::WipPicks;
 use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 
@@ -92,18 +92,41 @@ fn wip_list_focused_list() {
 
 #[test]
 fn wip_list_selected_files() {
-    // A Shift move from app.txt down to login.txt: both rows are drawn selected, the Staged
+    // app.txt to login.txt picked with a Shift move: both rows are drawn selected, the Staged
     // list's app.txt isn't.
     let (mut st, dir) = with_open(ThemeChoice::Dark, "wip-keys-span");
     let target = DiffTarget::Unstaged("login.txt".into());
     let diff = repo::load_diff(&dir, &target).unwrap();
     st.session.diff.view = Some((target, diff.into()));
-    st.cues.wip_span = Some(WipSpan { staged: false, anchor: "app.txt".into(), head: "login.txt".into() });
+    st.cues.wip_picks = Some(picks("app.txt", &["app.txt", "login.txt"]));
     let mut h = harness(st, true);
     h.run();
     h.ctx.memory_mut(|m| m.request_focus(list_id(false)));
     h.run_ok();
     h.check_snapshot("wip_list_selected_files_dark");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Unstaged Files picks from `anchor`.
+pub(crate) fn picks(anchor: &str, paths: &[&str]) -> WipPicks {
+    WipPicks { staged: false, anchor: anchor.into(), paths: paths.iter().map(|p| (*p).to_owned()).collect() }
+}
+
+#[test]
+fn wip_list_picked_gaps() {
+    // README.md and login.txt picked with Ctrl/Cmd, app.txt between them left out: the picked
+    // rows are filled, the gap isn't.
+    let (mut st, dir) = with_open(ThemeChoice::Dark, "wip-keys-gaps");
+    let target = DiffTarget::Unstaged("login.txt".into());
+    let diff = repo::load_diff(&dir, &target).unwrap();
+    st.session.diff.view = Some((target, diff.into()));
+    st.cues.wip_picks = Some(picks("login.txt", &["README.md", "login.txt"]));
+    let mut h = harness(st, true);
+    h.run();
+    h.ctx.memory_mut(|m| m.request_focus(list_id(false)));
+    h.run_ok();
+    h.check_snapshot("wip_list_picked_gaps_dark");
     drop(h);
     remove_fixture(&dir);
 }

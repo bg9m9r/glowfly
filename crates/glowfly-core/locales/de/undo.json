@@ -16,6 +16,7 @@
   "undo.preview.delete_tag": "Löscht Tag {tag}",
   "undo.preview.discard_again": "Verwirft es erneut",
   "undo.preview.discard_all_again": "Verwirft alle Änderungen erneut",
+  "undo.preview.discard_files_again": "Verwirft sie erneut",
   "undo.preview.drop_again": "Löscht ihn erneut",
   "undo.preview.goes_back": "{branch} geht zurück auf {sha}",
   "undo.preview.moves_again": "Setzt {branch} wieder auf {sha}",

@@ -1,4 +1,5 @@
-//! Working-tree file operations (`FilesEffect::Work`) and what they report back.
+//! Working-tree file operations (`FilesEffect::Work`, and the rows of a multi-file discard) and
+//! what they report back.
 
 use glowfly_core::repo::{Deleted, Hunk};
 use glowfly_core::settings::Settings;
@@ -44,6 +45,15 @@ impl DeleteMode {
     pub fn promises_copy(self) -> bool {
         matches!(self, DeleteMode::Permanent | DeleteMode::PermanentNoTrash)
     }
+}
+
+/// One Unstaged Files row of a multi-file discard (`FilesEffect::DiscardPaths`): a tracked file
+/// goes back to its index version, an `untracked` one is deleted the way the discard's
+/// `DeleteMode` says.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiscardEach {
+    pub path: String,
+    pub untracked: bool,
 }
 
 /// A working-tree file operation (`FilesEffect::Work`). Paths are repo-relative.

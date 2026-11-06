@@ -16,6 +16,7 @@
   "undo.preview.delete_tag": "Deletes tag {tag}",
   "undo.preview.discard_again": "Discards it again",
   "undo.preview.discard_all_again": "Discards all changes again",
+  "undo.preview.discard_files_again": "Discards them again",
   "undo.preview.drop_again": "Drops it again",
   "undo.preview.goes_back": "{branch} goes back to {sha}",
   "undo.preview.moves_again": "Moves {branch} to {sha} again",

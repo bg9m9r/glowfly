@@ -254,6 +254,11 @@ fn files_history_save_and_session_effects_keep_their_metadata() {
         ),
         (Effect::Files(FilesEffect::Revert { workdir: w.clone(), req }), ("revert", scoped, scoped, true), SandboxRule::Run),
         (
+            Effect::Files(FilesEffect::DiscardPaths { workdir: w.clone(), files: Vec::new(), mode: crate::effect::DeleteMode::Trash }),
+            ("discard-paths", scoped, scoped, true),
+            SandboxRule::Run,
+        ),
+        (
             Effect::History(HistoryEffect::FileHistory {
                 workdir: w.clone(),
                 path: "a.txt".into(),

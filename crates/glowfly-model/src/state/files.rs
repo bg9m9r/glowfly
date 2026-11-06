@@ -1,7 +1,8 @@
 //! The New file and Rename file dialogs' form: the typed path, the last error and whether a
 //! request is running; what status says about a path being deleted, the trash's name, the
 //! file manager's show-in-folder label, the offer of the home Trash (`TrashOffer`), and the
-//! message that asks to discard an Unstaged Files row (its menu item and Delete key send it).
+//! message that asks to discard an Unstaged Files row or the picked rows (their menu items and
+//! the Delete key send it).
 
 use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use glowfly_core::i18n::Lang;
@@ -21,6 +22,18 @@ pub fn discard_msg(t: Lang, f: &FileEntry) -> Msg {
             Msg::Stage(StageMsg::DiscardFile(f.path.clone())),
         )
     }
+}
+
+/// Discard changes for several Unstaged Files rows (the picked files): one confirmation for
+/// all of them (`WorkFileMsg::DiscardPaths`), or the single-file flow when one is left.
+pub fn discard_paths_msg(paths: Vec<String>) -> Msg {
+    Msg::WorkFile(WorkFileMsg::DiscardPaths(paths))
+}
+
+/// Why the picked files can't be discarded: `path` is a name Glowfly can't act on safely
+/// (`reason`, the hazard's own words).
+pub fn discard_unsafe(t: Lang, path: &str, reason: &str) -> String {
+    t.trf("details.wip.discard_files.unsafe", &[("path", &path), ("reason", &reason)])
 }
 
 /// Why Open and Show in folder are off for a file the working tree doesn't have.

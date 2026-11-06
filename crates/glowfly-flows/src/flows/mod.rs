@@ -314,6 +314,7 @@ mod whitespace_tests;
 mod whole_file_tests;
 mod wip_keys_tests;
 mod wip_lit_tests;
+mod wip_picks_tests;
 mod work_files_discard_tests;
 mod work_files_failed_tests;
 mod work_files_large_tests;

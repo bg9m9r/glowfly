@@ -16,6 +16,7 @@
   "undo.preview.delete_tag": "Borra la etiqueta {tag}",
   "undo.preview.discard_again": "Lo vuelve a descartar",
   "undo.preview.discard_all_again": "Vuelve a descartar todos los cambios",
+  "undo.preview.discard_files_again": "Los vuelve a descartar",
   "undo.preview.drop_again": "Lo vuelve a descartar",
   "undo.preview.goes_back": "{branch} vuelve a {sha}",
   "undo.preview.moves_again": "Vuelve a mover {branch} a {sha}",

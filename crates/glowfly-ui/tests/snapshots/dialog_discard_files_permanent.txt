@@ -1,0 +1,6 @@
+Dialog
+  Label "Discard changes in 3 files"
+  Button "Close this dialog"
+  Label "Discard the changes in 3 files? Undo (Ctrl+Z) brings them back. 1 of them isn't tracked by Git and is deleted; Glowfly keeps a copy so Undo (Ctrl+Z) can bring it back while this tab is open. A file over 64 MB is too large to keep a copy of, so the discard stops there."
+  Button "Cancel" [focused]
+  Button "Discard 3 files"

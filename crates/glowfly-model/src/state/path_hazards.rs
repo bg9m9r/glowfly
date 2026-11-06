@@ -43,6 +43,7 @@ pub fn target(msg: &Msg) -> Option<(&str, bool)> {
         Msg::History(HistoryMsg::OpenFileHistory { path, .. }) => (path, false),
         Msg::Blame(BlameMsg::Open { path, .. }) => (path, false),
         Msg::Repo(RepoMsg::OpenDiff(t)) => (t.path(), false),
+        Msg::Repo(RepoMsg::PickWipFile { path, .. }) => (path, false),
         Msg::Tools(ToolsMsg::OpenFile { path, .. }) => (path, false),
         // Stashing a file puts its HEAD version back on disk.
         Msg::Stash(StashMsg::PushDialog { path: Some(p), .. }) => (p, true),

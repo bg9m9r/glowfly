@@ -59,6 +59,7 @@ fn during_operation(a: &Action) -> bool {
             | Action::Restore { .. }
             | Action::DeleteFile { .. }
             | Action::UnstageGone { .. }
+            | Action::Batch { .. }
     )
 }
 
