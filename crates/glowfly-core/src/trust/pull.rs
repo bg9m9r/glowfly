@@ -118,7 +118,7 @@ impl Pull {
         let branch = repo.head().ok().filter(|h| h.is_branch()).and_then(|h| h.shorthand().map(str::to_owned));
         let keys = branch.map(|b| format!("branch.{b}.rebase")).into_iter().chain(["pull.rebase".to_owned()]);
         for key in keys {
-            if let Ok(v) = config.get_string(&key) {
+            if let Some(v) = crate::config_entry::bool_or_word(config, &key) {
                 return Ok((rebase_kind(&v, &key)?, false));
             }
         }
@@ -238,12 +238,9 @@ impl Pull {
         match config.multivar(&key, None) {
             Ok(mut values) => {
                 while let Some(v) = values.next() {
-                    // A bare key has no value (git2's `value` would panic): unreadable.
-                    let Some(v) = v.ok().filter(|v| v.has_value()) else { return true };
-                    match v.value() {
-                        Some(v) => configured.push(v.to_owned()),
-                        None => return true,
-                    }
+                    // A bare key or a value that isn't UTF-8: unreadable.
+                    let Some(v) = v.ok().and_then(crate::config_entry::utf8) else { return true };
+                    configured.push(v.to_owned());
                 }
             }
             Err(e) if e.code() == git2::ErrorCode::NotFound => {}
@@ -303,9 +300,9 @@ fn invalid(key: &str, value: &str) -> String {
     format!("fatal: invalid value for '{key}': '{value}'")
 }
 
-/// `pull.ff` as the merge option it means; `Err` for a value git refuses.
+/// `pull.ff` (a bare key is true) as the merge option it means; `Err` for a value git refuses.
 fn configured_ff(config: &git2::Config) -> Result<Option<String>, String> {
-    let Ok(v) = config.get_string("pull.ff") else { return Ok(None) };
+    let Some(v) = crate::config_entry::bool_or_word(config, "pull.ff") else { return Ok(None) };
     let ff = match (v.eq_ignore_ascii_case("only"), boolean(&v)) {
         (true, _) => "--ff-only",
         (_, Some(false)) => "--no-ff",

@@ -6,7 +6,8 @@
 //! in the library crates; `fn_length` keeps clippy's function-length cap on and its marked
 //! functions only shrinking; `access_names` ratchets controls the view snapshots show without a
 //! screen-reader name; `architecture_docs` checks that `docs/architecture/` names every source
-//! file. All of them read the sources through glowfly-ui's string-aware
+//! file; `config_values` keeps git config entry values read through glowfly-core's
+//! `config_entry`. All of them read the sources through glowfly-ui's string-aware
 //! `view_checks/support/lexer.rs`.
 
 #[path = "../../../glowfly-ui/tests/view_checks/support/lexer.rs"]
@@ -16,6 +17,7 @@ mod views;
 
 mod access_names;
 mod architecture_docs;
+mod config_values;
 mod dead_pub;
 mod dependencies;
 mod fn_length;

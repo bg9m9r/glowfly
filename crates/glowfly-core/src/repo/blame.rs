@@ -215,13 +215,15 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>, opts: &BlameOptio
 /// (`--no-ignore-revs-file`) and the files that do exist are given again. Empty when every
 /// listed file exists (or none is listed), so git reads its config as usual. Relative values
 /// are resolved against the working folder and `~` against the home folder, as git does.
+/// A bare `blame.ignoreRevsFile` is left out; git itself refuses it, so the blame then fails
+/// with git's message.
 pub(super) fn ignore_revs_args(repo: &Repository, workdir: &Path) -> Vec<String> {
     let mut values = Vec::new();
     if let Ok(cfg) = repo.config()
         && let Ok(mut entries) = cfg.multivar("blame.ignorerevsfile", None)
     {
         while let Some(Ok(e)) = entries.next() {
-            if let Some(v) = e.value().filter(|v| !v.is_empty()) {
+            if let Some(v) = crate::config_entry::utf8(e).filter(|v| !v.is_empty()) {
                 values.push(v.to_owned());
             }
         }

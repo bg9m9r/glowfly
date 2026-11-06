@@ -273,3 +273,12 @@ pub(crate) fn rewrite_reflog(dir: &Path, reference: &str, from: &[u8], to: &[u8]
     }
     std::fs::write(&file, out).unwrap();
 }
+
+/// Appends to `dir`'s `.git/config` a `[<section>]` holding `key` with no value (no `=`), which
+/// git reads as true. `section` may name a subsection, e.g. `remote "origin"`. libgit2's
+/// `set_str` can't write such a key.
+pub(crate) fn add_bare_key(dir: &Path, section: &str, key: &str) {
+    use std::io::Write;
+    let mut f = std::fs::OpenOptions::new().append(true).open(dir.join(".git").join("config")).unwrap();
+    f.write_all(format!("[{section}]\n\t{key}\n").as_bytes()).unwrap();
+}

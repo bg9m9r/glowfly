@@ -20,6 +20,7 @@ pub mod commit_encoding;
 pub mod commit_index;
 pub mod commit_query;
 pub mod commit_text;
+pub mod config_entry;
 pub mod config_includes;
 pub mod conflict_check;
 pub mod conflict_edit;

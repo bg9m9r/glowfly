@@ -98,17 +98,17 @@ pub(super) enum FfMode {
     Only,
 }
 
-/// `merge.ff` (false: never, "only": only), then the last of `--ff`, `--no-ff` and `--ff-only`
-/// in the branch's `mergeOptions`.
+/// `merge.ff` (false: never, "only": only; a bare key is true), then the last of `--ff`,
+/// `--no-ff` and `--ff-only` in the branch's `mergeOptions`.
 pub(super) fn ff_mode(repo: &Repository, branch: Option<&str>) -> FfMode {
     let Ok(cfg) = repo.config().and_then(|mut c| c.snapshot()) else { return FfMode::Allow };
-    let mut mode = match cfg.get_string("merge.ff") {
-        Ok(v) if v.trim().eq_ignore_ascii_case("only") => FfMode::Only,
-        Ok(v) => match git2::Config::parse_bool(v.trim()) {
+    let mut mode = match crate::config_entry::bool_or_word(&cfg, "merge.ff") {
+        Some(v) if v.trim().eq_ignore_ascii_case("only") => FfMode::Only,
+        Some(v) => match git2::Config::parse_bool(v.trim()) {
             Ok(false) => FfMode::Never,
             _ => FfMode::Allow,
         },
-        Err(_) => FfMode::Allow,
+        None => FfMode::Allow,
     };
     if let Some(b) = branch
         && let Ok(opts) = cfg.get_string(&format!("branch.{b}.mergeoptions"))

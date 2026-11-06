@@ -306,6 +306,16 @@ fn a_pinned_pull_with_invalid_config_ends_as_git_pull_does() {
 }
 
 #[test]
+fn a_pinned_pull_with_bare_config_keys_ends_as_git_pull_does() {
+    // git reads a bare key (no `=`) as true: pull.rebase rebases, pull.ff allows a fast-forward.
+    same_as_git("pull-same-bare-rebase", &["pull"], &|d| {
+        add_bare_key(d, "pull", "rebase");
+        local_commit(d);
+    });
+    same_as_git("pull-same-bare-ff", &["pull"], &|d| add_bare_key(d, "pull", "ff"));
+}
+
+#[test]
 fn a_pinned_pull_of_a_named_branch_ends_as_git_pull_does() {
     same_as_git("pull-same-named", &["pull", "--rebase", "origin", "main"], &local_commit);
 }
