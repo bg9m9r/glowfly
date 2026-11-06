@@ -68,12 +68,9 @@ pub(crate) fn net_place() -> PathBuf {
     if cfg!(windows) { PathBuf::from(r"\\glowfly-test.invalid\share") } else { PathBuf::from("/net/glowfly-test.invalid") }
 }
 
-/// Fails the test when `path` is on `net_place()`, in any spelling: test builds of the helpers
-/// that touch a path (`paths::resolve`, `FolderId::of`, `read_file_bounded`) call it, so code
-/// that reaches the place fails its test instead of only failing to resolve the host.
-pub(crate) fn never_net_place(path: &Path) {
-    let text = path.to_string_lossy().to_ascii_lowercase();
-    assert!(!text.contains("glowfly-test.invalid"), "touched the test network place: {}", path.display());
+/// Whether `path` is on `net_place()`, in any spelling. Pure.
+pub(crate) fn on_net_place(path: &Path) -> bool {
+    path.to_string_lossy().to_ascii_lowercase().contains("glowfly-test.invalid")
 }
 
 /// `p` as git writes it in a `.git` file or a worktree record: forward slashes.

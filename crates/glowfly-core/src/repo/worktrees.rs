@@ -76,9 +76,15 @@ pub fn worktrees_at(workdir: &Path) -> Result<Vec<WorktreeInfo>> {
 /// The worktrees of `repo`'s repository, main first and then linked ones by path. Never fails:
 /// an error gives an empty list, and an entry that can't be opened is left out.
 pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
+    list_with(repo, &crate::paths::same_folder)
+}
+
+/// `list`, telling whether a worktree is the current one with `same` (`paths::same_folder`,
+/// which touches both folders).
+pub(super) fn list_with(repo: &Repository, same: &dyn Fn(&Path, &Path) -> bool) -> Vec<WorktreeInfo> {
     let Ok(common) = Repository::open(repo.commondir()) else { return Vec::new() };
     let here = repo.workdir().map(normalize);
-    let is_current = |path: &Path| here.as_deref().is_some_and(|h| crate::paths::same_folder(path, h));
+    let is_current = |path: &Path| here.as_deref().is_some_and(|h| same(path, h));
     let mut out = Vec::new();
     if let Some(workdir) = common.workdir() {
         let path = normalize(workdir);
@@ -120,7 +126,7 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             let git_dir = common.commondir().join("worktrees").join(name);
             let (branch, head) = read_head(&git_dir, &common);
             let held = held_branch(&git_dir);
-            // By spelling alone for one on another network place: `same_folder` would open it.
+            // By spelling alone for one on another network place: `same` would open it.
             let current = if near { is_current(&path) } else { here.as_deref().is_some_and(|h| crate::paths::same_spelling(&path, h)) };
             let folder = if near { crate::paths::FolderId::of(&path) } else { None };
             Some(WorktreeInfo {
