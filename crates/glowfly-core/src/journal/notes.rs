@@ -100,6 +100,7 @@ impl Op {
                 MoveOp::Pull => Op::Pull,
                 MoveOp::CherryPick => Op::CherryPick { commits: detail.clone() },
                 MoveOp::Revert => Op::Revert { commits: detail.clone() },
+                MoveOp::Am => return None,
             },
             UndoKind::Reset(mode) => {
                 let to = cmd.get(2).map(|r| cut(r)).unwrap_or_default();

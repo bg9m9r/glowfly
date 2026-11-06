@@ -19,23 +19,23 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 /// The banner message of the action of the current state whose label starts with `prefix`.
-fn banner(st: &AppState, prefix: &str) -> Msg {
+pub(super) fn banner(st: &AppState, prefix: &str) -> Msg {
     let state = st.snap.as_ref().unwrap().state;
     let (label, args) = *state_actions(state).unwrap().iter().find(|(l, _)| l.starts_with(prefix)).unwrap();
     banner_msg(st, label, args)
 }
 
 /// Presses that banner button (which opens its confirmation).
-fn ask(st: &mut AppState, prefix: &str) {
+pub(super) fn ask(st: &mut AppState, prefix: &str) {
     let m = banner(st, prefix);
     drive(st, m);
 }
 
-fn repo_state(st: &AppState) -> RepositoryState {
+pub(super) fn repo_state(st: &AppState) -> RepositoryState {
     st.snap.as_ref().unwrap().state
 }
 
-fn read(dir: &Path, file: &str) -> String {
+pub(super) fn read(dir: &Path, file: &str) -> String {
     std::fs::read_to_string(dir.join(file)).unwrap().replace("\r\n", "\n")
 }
 
@@ -47,33 +47,33 @@ fn top_stash(dir: &Path) -> Option<String> {
 }
 
 /// The git folder's `name` file, if any.
-fn git_file(dir: &Path, name: &str) -> Option<String> {
+pub(super) fn git_file(dir: &Path, name: &str) -> Option<String> {
     std::fs::read_to_string(dir.join(".git").join(name)).ok()
 }
 
 /// Writes `text` to `file`, stages it and refreshes.
-fn resolve(st: &mut AppState, dir: &Path, file: &str, text: &str) {
+pub(super) fn resolve(st: &mut AppState, dir: &Path, file: &str, text: &str) {
     std::fs::write(dir.join(file), text).unwrap();
     git(dir, &["add", file]);
     drive(st, Msg::Repo(RepoMsg::Refresh));
 }
 
-fn opened(dir: &Path) -> AppState {
+pub(super) fn opened(dir: &Path) -> AppState {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.to_path_buf())));
     st
 }
 
 /// The undo history's top, and Edit > Undo's label for it.
-fn undo_top(st: &AppState) -> (Option<&Action>, String) {
+pub(super) fn undo_top(st: &AppState) -> (Option<&Action>, String) {
     (st.session.undo.undo.last(), st.session.undo.undo_entry(Lang::En, true).0)
 }
 
-fn conflicted(st: &AppState) -> Vec<&str> {
+pub(super) fn conflicted(st: &AppState) -> Vec<&str> {
     st.snap.as_ref().unwrap().unstaged.iter().filter(|f| f.status == '!').map(|f| f.path.as_str()).collect()
 }
 
-fn staged_paths(st: &AppState) -> Vec<&str> {
+pub(super) fn staged_paths(st: &AppState) -> Vec<&str> {
     st.snap.as_ref().unwrap().staged.iter().map(|f| f.path.as_str()).collect()
 }
 

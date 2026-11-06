@@ -25,10 +25,11 @@ pub enum StashEffect {
     /// Reads the files stash `ask.oid` changes (`stash_ops::changed_paths`) for the question
     /// before applying it; reports `StashMsg::PathsRead`, scoped to the tab that asked.
     ReadPaths { cwd: PathBuf, ask: StashAsk },
-    /// Aborts the merge, single cherry-pick or single revert in progress in `cwd`, keeping its
-    /// work first (`undo::abort_keeping`) and recording the abort for Undo; nothing is aborted
-    /// when it can't all be kept. Old kept aborts' refs are dropped, except those of the commits
-    /// in `keep` (named by undo entries). Unscoped like RunGit: it ends the active job.
+    /// Aborts the merge, cherry-pick or revert (single or a run of them), rebase or patch series
+    /// in progress in `cwd`, keeping its work first (`undo::abort_keeping`) and recording the
+    /// abort for Undo; nothing is aborted when it can't all be kept. Old kept aborts' refs are
+    /// dropped, except those of the commits in `keep` (named by undo entries). Unscoped like
+    /// RunGit: it ends the active job.
     AbortKeeping { cwd: PathBuf, keep: Vec<Oid> },
 }
 

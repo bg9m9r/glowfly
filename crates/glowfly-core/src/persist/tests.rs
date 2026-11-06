@@ -363,3 +363,18 @@ fn a_streamed_write_replaces_atomically() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn rename_new_moves_a_folder_and_refuses_an_existing_target() {
+    let dir = scratch("rename-new");
+    atomic_write(&dir.join("from").join("a.txt"), b"a").unwrap();
+    atomic_write(&dir.join("taken").join("b.txt"), b"b").unwrap();
+    let refused = rename_new(&dir.join("from"), &dir.join("taken")).unwrap_err();
+    assert_eq!(refused.kind(), std::io::ErrorKind::AlreadyExists);
+    assert_eq!(std::fs::read(dir.join("from").join("a.txt")).unwrap(), b"a", "nothing moved");
+    assert_eq!(leftovers(&dir.join("taken")), ["b.txt"]);
+    rename_new(&dir.join("from"), &dir.join("to")).unwrap();
+    assert_eq!(std::fs::read(dir.join("to").join("a.txt")).unwrap(), b"a");
+    assert_eq!(leftovers(&dir), ["taken", "to"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

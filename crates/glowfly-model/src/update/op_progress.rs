@@ -1,10 +1,10 @@
 //! The operation in progress: the strip's click (the WIP row and the details panel) and the
-//! banner's confirmed Abort, which keeps the work of a merge, single cherry-pick or single
-//! revert first (resolutions, conflicts and the operation itself), so Undo brings it back.
+//! banner's confirmed Abort, which keeps the work of a merge, cherry-pick, revert, rebase or
+//! patch series first (resolutions, conflicts and the operation itself), so Undo brings it back.
 
 use crate::effect::{Effect, StashEffect};
 use crate::msg::JobMsg;
-use crate::state::op_confirm::can_keep;
+use crate::state::op_confirm::{can_keep, restacking};
 use crate::state::{AppState, Selection};
 use glowfly_core::undo::Action;
 use std::time::Instant;
@@ -25,13 +25,13 @@ pub(super) fn show(st: &mut AppState, fx: &mut Vec<Effect>) {
 
 /// Runs the confirmed abort `args` (named `label`). With `keep`, its work is kept first and the
 /// abort recorded for Undo (`StashEffect::AbortKeeping`), unless nothing is left to keep since
-/// the dialog asked.
+/// the dialog asked (or a restack stopped there since, whose own end owns the abort).
 pub(super) fn abort(st: &mut AppState, label: String, args: Vec<String>, keep: bool, now: Instant, fx: &mut Vec<Effect>) {
     if !keep {
         super::ops::job(st, JobMsg::Git { label, cmds: vec![args] }, now, fx);
         return;
     }
-    if !st.snap.as_ref().is_some_and(can_keep) {
+    if !st.snap.as_ref().is_some_and(|s| can_keep(s) && !restacking(st, s)) {
         let t = st.settings.lang();
         st.toast(false, t.tr("op.abort.changed.toast"), now);
         return;

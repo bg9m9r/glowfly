@@ -322,6 +322,7 @@ fn a_kept_abort_s_redo_goes_through_the_gate() {
         head: evil,
         branch: Some("main".into()),
         left: glowfly_core::undo::Changes(Vec::new()),
+        during: None,
     };
     let git_ = crate::undo_run::UndoGit { gate: Some(&gate), trashers: crate::testing::SEAMS.trashers };
     let ran = crate::undo_run::undo_run(&work, action, true, Default::default(), git_);

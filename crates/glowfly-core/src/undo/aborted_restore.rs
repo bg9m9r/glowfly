@@ -4,10 +4,16 @@
 //! the abort left it and every one of those paths is still as the abort left it: the same index
 //! entry as HEAD, and the same bytes on disk as right after the abort (`left`, read byte for
 //! byte, so an edit a clean filter hides from status counts). Other files may have changed
-//! since, and stay as they are. Redoing aborts again, keeping the work anew. `put_back` is also
-//! how a failed abort is rolled back.
+//! since, and stay as they are. A run of steps (a rebase, patch series or run of picks) also gets
+//! its state folder, HEAD, branch and labels back (`aborted_state.rs`), only while its state
+//! folder is still gone and no label was made again. Redoing aborts again, keeping the work anew,
+//! while the same operation is in progress with HEAD where it was. `put_back` is also how a failed
+//! abort is rolled back. Tests are in `aborted_tests.rs`, `aborted_safety_tests.rs`,
+//! `aborted_state_tests.rs` and `aborted_steps_tests.rs`.
 
-use super::aborted::{ABORT_REF_PREFIX, Entry, GITLINK, KEPT_FLAGS, OnDisk, STATE_FILES, entry, on_disk, op_of, tree_entries};
+use super::aborted::{ABORT_REF_PREFIX, Entry, GITLINK, KEPT_FLAGS, STATE_FILES, entry, op_of, tree_entries};
+use super::aborted_paths::{OnDisk, on_disk};
+use super::aborted_state::{self, KeptSteps};
 use super::planning::{at, busy_name, dirty, stale};
 use super::record::head;
 use super::stash::hash;
@@ -28,6 +34,8 @@ struct Kept {
     conflicts: BTreeMap<String, [Option<Entry>; 3]>,
     work: BTreeMap<String, Entry>,
     state: Vec<(String, Oid)>,
+    /// A run of steps' state folder and refs.
+    steps: Option<KeptSteps>,
 }
 
 fn damaged() -> Error {
@@ -68,6 +76,7 @@ fn read_kept(repo: &Repository, commit: &Commit) -> Result<Kept> {
         conflicts,
         work: sub("work")?,
         state: state.collect(),
+        steps: aborted_state::read_kept(repo, &tree)?,
     })
 }
 
@@ -91,7 +100,7 @@ pub(super) fn left(workdir: &Path, saved: Oid) -> Result<Changes> {
 
 /// Undoes (or, with `redo`, does again) the kept abort `action`.
 pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> {
-    let Action::AbortKept { op, saved, head: at_head, branch, left } = action else { unreachable!("a kept abort") };
+    let Action::AbortKept { op, saved, head: at_head, branch, left, during } = action else { unreachable!("a kept abort") };
     let repo = Repository::open(workdir)?;
     let (pos, head_oid) = head(&repo);
     let what = action.describe();
@@ -99,7 +108,9 @@ pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> 
         if op_of(repo.state()) != Some(*op) {
             return Ok(stale(format!("The {} is no longer in progress", op.noun())));
         }
-        return Ok(if at(&pos, head_oid, branch, *at_head) { Plan::AbortAgain } else { stale(format!("HEAD has moved since the {what}")) });
+        // HEAD as it was while the operation was in progress, before the abort moved it.
+        let (b, o) = during.as_ref().map_or((branch, *at_head), |d| (&d.branch, d.oid));
+        return Ok(if at(&pos, head_oid, b, o) { Plan::AbortAgain } else { stale(format!("HEAD has moved since the {what}")) });
     }
     if let Some(busy) = busy_name(repo.state()) {
         return Ok(Plan::Refuse(Refusal::Busy(format!("Finish or abort the {busy} in progress first."))));
@@ -110,6 +121,11 @@ pub(super) fn plan(workdir: &Path, action: &Action, redo: bool) -> Result<Plan> 
     }
     let Ok(commit) = repo.find_commit(*saved) else { return Ok(stale(format!("The work kept by the {what} is gone"))) };
     let kept = read_kept(&repo, &commit)?;
+    if let Some(s) = &kept.steps
+        && let Some(why) = aborted_state::check(&repo, s, &what)
+    {
+        return Ok(stale(format!("{why}{kept_in}")));
+    }
     let in_head = tree_entries(&repo.find_commit(*at_head)?.tree()?)?;
     let index = repo.index()?;
     let after: BTreeMap<&str, Option<Oid>> = left.0.iter().map(|(p, h)| (p.as_str(), *h)).collect();
@@ -142,10 +158,27 @@ fn remove(workdir: &Path, path: &str) -> Result<()> {
     }
 }
 
+/// Gives the stage-0 entries at `paths` whose files match them the files' stat data, which the
+/// kept entries lack: git's own resets (a later abort's `reset --merge`) take an entry without it
+/// for a changed file and refuse. Only a cache, so a failure is left for git to refresh.
+fn refresh<'a>(repo: &Repository, paths: impl Iterator<Item = &'a String>) {
+    let mut opts = git2::StatusOptions::new();
+    opts.update_index(true).include_untracked(false).include_ignored(false).exclude_submodules(true).disable_pathspec_match(true);
+    let mut any = false;
+    for p in paths {
+        opts.pathspec(p);
+        any = true;
+    }
+    if any {
+        let _ = repo.statuses(Some(&mut opts));
+    }
+}
+
 /// Puts the work kept in `saved` (HEAD at `at_head`) back: the index entries, then what was on
-/// disk (removals first, so a file can become a folder and back), then the operation's own
-/// files; then drops the kept ref. Doesn't check the repository first: `plan` does for Undo, and
-/// a failed abort is rolled back with it. A failure partway says how far it got; the ref stays.
+/// disk (removals first, so a file can become a folder and back), then a run of steps' HEAD,
+/// branch, labels and state folder, then the operation's own files; then drops the kept ref.
+/// Doesn't check the repository first: `plan` does for Undo, and a failed abort is rolled back
+/// with it. A failure partway says how far it got; the ref stays.
 pub(super) fn put_back(workdir: &Path, saved: Oid, at_head: Oid) -> Result<()> {
     let name = format!("{ABORT_REF_PREFIX}{saved}");
     let mut done = "nothing was changed";
@@ -184,7 +217,12 @@ pub(super) fn put_back(workdir: &Path, saved: Oid, at_head: Oid) -> Result<()> {
         for (p, (blob, mode)) in kept.work.iter().filter(|(p, _)| !kept.absent.contains(*p)) {
             saved::write(workdir, p, Some(Saved { blob: *blob, executable: *mode == 0o100755 }))?;
         }
+        refresh(&repo, kept.index.keys());
         done = "the index and the files were put back, but the operation isn't in progress yet";
+        if let Some(s) = &kept.steps {
+            aborted_state::put(&repo, s)?;
+            done = "the index, the files and HEAD were put back, but the operation isn't in progress yet";
+        }
         for (file, blob) in &kept.state {
             crate::persist::atomic_write(&repo.path().join(file), repo.find_blob(*blob)?.content())?;
         }
