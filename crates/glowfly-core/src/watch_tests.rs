@@ -131,9 +131,20 @@ fn common_dir_follows_the_commondir_file() {
     git(&dir, &["worktree", "add", "-q", "-b", "linked", &linked.display().to_string()]);
     let repo = git2::Repository::open(&linked).unwrap();
     let common = crate::paths::resolve(&dir.join(".git"));
-    assert_eq!(common_dir(repo.path()), Some(common.clone()));
-    assert_eq!(common_dir(&common), None, "the main git dir is its own");
+    assert_eq!(common_dir(repo.path(), repo.path()), Some(common.clone()));
+    assert_eq!(common_dir(&common, &common), None, "the main git dir is its own");
     let _ = std::fs::remove_dir_all(&linked);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_commondir_naming_a_network_place_gives_none() {
+    let dir = scratch_repo("watch-commondir-net");
+    let admin = dir.join(".git/worktrees/wt");
+    std::fs::create_dir_all(&admin).unwrap();
+    std::fs::write(admin.join("commondir"), format!("{}\n", crate::testutil::net_place().join("repo/.git").display())).unwrap();
+    assert_eq!(common_dir(&admin, &admin), None);
+    assert!(matches!(crate::git_file::common_dir_of(&admin, &admin), crate::git_file::Named::Refused(_)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

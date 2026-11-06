@@ -100,3 +100,17 @@ fn refs_key_follows_the_worktree_config() {
     let _ = std::fs::remove_dir_all(&linked);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_offsite_submodule_and_worktree_record_stamp_a_marker() {
+    let dir = super::offsite_tests::offsite_repo("refs-key-offsite");
+    let k0 = refs_key(&dir).unwrap();
+    assert_eq!(refs_key(&dir).unwrap(), k0, "stable while nothing changes");
+    let local = dir.with_file_name(format!("{}-wt", dir.file_name().unwrap().to_string_lossy()));
+    write(&dir.join(".git/worktrees/wt"), "gitdir", &format!("{}\n", local.join(".git").display().to_string().replace('\\', "/")));
+    let k1 = refs_key(&dir).unwrap();
+    assert_ne!(k1, k0, "the record rewritten to a local folder");
+    write(&dir.join("sub"), ".git", "gitdir: ../.git/modules/sub\n");
+    assert_ne!(refs_key(&dir).unwrap(), k1, "the submodule's git file rewritten to a local one");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -6,7 +6,7 @@ use super::FileEntry;
 use crate::commit_text;
 use crate::error::Result;
 use git2::{Oid, Repository, Sort, Submodule, SubmoduleIgnore, SubmoduleStatus};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 #[path = "submodule_memo.rs"]
@@ -88,6 +88,14 @@ impl SubmoduleInfo {
 /// classified from its ids alone. `whole`: the unstaged rows of a whole status read just made,
 /// which already tell most submodules' dirtiness (`Whole`); `memo` keeps left-behind walks.
 pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<&SubmoduleMemo>) -> Vec<SubmoduleInfo> {
+    // A gitlink whose files name another network place is never opened (listed as not checked
+    // out); one whose folder is a link there empties the list, as libgit2's own listing would
+    // look through the link.
+    let offsite = crate::git_file::offsite_gitlinks(repo);
+    if offsite.iter().any(|o| o.link) {
+        return Vec::new();
+    }
+    let offsite: HashSet<String> = offsite.into_iter().map(|o| o.path).collect();
     let Ok(subs) = repo.submodules() else { return Vec::new() };
     // A snapshot: only a snapshot hands out values as bytes.
     let gitmodules = repo.workdir().and_then(|w| git2::Config::open(&w.join(".gitmodules")).and_then(|mut c| c.snapshot()).ok());
@@ -105,7 +113,7 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
             let path = sm.path().to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/");
             let name = sm.name().map(str::to_owned).unwrap_or_else(|| path.clone());
             // Without the working tree's own changes: no scan of the submodule's files.
-            let cheap = repo.submodule_status(&name, SubmoduleIgnore::Dirty).ok();
+            let cheap = if offsite.contains(&path) { None } else { repo.submodule_status(&name, SubmoduleIgnore::Dirty).ok() };
             Some(Found { sm, path, name, recorded, cheap })
         })
         .collect();
@@ -113,20 +121,24 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
     let mut out: Vec<SubmoduleInfo> = found
         .into_iter()
         .map(|Found { sm, path, name, recorded, cheap }| {
-            let checked_out = sm.workdir_id();
-            // One component at a time, so the folder uses the platform's separators.
-            let folder_exists =
-                workdir.as_ref().is_some_and(|w| path.split('/').fold(w.clone(), |p, c| p.join(c)).symlink_metadata().is_ok());
-            let known = Known {
-                recorded,
-                checked_out,
-                folder_exists,
-                ignore: ignore_of(sm, &name, config.as_ref()),
-                read_ignore: sm.ignore_rule(),
+            let far = offsite.contains(&path);
+            let checked_out = if far { None } else { sm.workdir_id() };
+            let (state, left_behind) = if far {
+                (SubmoduleState::Uninitialized, Vec::new())
+            } else {
+                // One component at a time, so the folder uses the platform's separators.
+                let folder_exists =
+                    workdir.as_ref().is_some_and(|w| path.split('/').fold(w.clone(), |p, c| p.join(c)).symlink_metadata().is_ok());
+                let known = Known {
+                    recorded,
+                    checked_out,
+                    folder_exists,
+                    ignore: ignore_of(sm, &name, config.as_ref()),
+                    read_ignore: sm.ignore_rule(),
+                };
+                let flags = flags(repo, &name, &path, cheap, &known, whole.as_ref(), memo);
+                (classify(flags, recorded, checked_out, folder_exists), left_behind(sm, recorded, checked_out, memo))
             };
-            let flags = flags(repo, &name, &path, cheap, &known, whole.as_ref(), memo);
-            let state = classify(flags, recorded, checked_out, folder_exists);
-            let left_behind = left_behind(sm, recorded, checked_out, memo);
             let url = sm.url().map(str::to_owned);
             let configured = config.as_ref().and_then(|c| c.get_string(&format!("submodule.{name}.url")).ok());
             let clone_url = url.as_ref().map(|u| configured.unwrap_or_else(|| crate::submodule_ops::resolve_url(u, &base)));

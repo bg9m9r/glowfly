@@ -61,6 +61,43 @@ pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
     made.then_some(link)
 }
 
+/// A network place for tests of what a repository's files may name: a share on Windows, an
+/// automounted host elsewhere. Its host is under `.invalid` (RFC 6761), which never resolves, so
+/// even a bug can't reach a real machine; the code under test must never touch it.
+pub(crate) fn net_place() -> PathBuf {
+    if cfg!(windows) { PathBuf::from(r"\\glowfly-test.invalid\share") } else { PathBuf::from("/net/glowfly-test.invalid") }
+}
+
+/// Whether `path` is on `net_place()`, in any spelling. Pure.
+pub(crate) fn on_net_place(path: &Path) -> bool {
+    path.to_string_lossy().to_ascii_lowercase().contains("glowfly-test.invalid")
+}
+
+/// `p` as git writes it in a `.git` file or a worktree record: forward slashes.
+pub(crate) fn git_spelling(p: &Path) -> String {
+    p.display().to_string().replace('\\', "/")
+}
+
+/// Makes `link` a symbolic link to `target` (a folder link on Windows when `dir`); false where
+/// the system doesn't allow it, with a note. The target is never touched.
+pub(crate) fn link_to(target: &Path, link: &Path, dir: bool) -> bool {
+    #[cfg(unix)]
+    let made = {
+        let _ = dir;
+        std::os::unix::fs::symlink(target, link).is_ok()
+    };
+    #[cfg(windows)]
+    let made = if dir {
+        std::os::windows::fs::symlink_dir(target, link).is_ok()
+    } else {
+        std::os::windows::fs::symlink_file(target, link).is_ok()
+    };
+    if !made {
+        eprintln!("skipped: symbolic links can't be made here");
+    }
+    made
+}
+
 /// A loopback address (`127.0.0.1:<port>`) where nothing listens, and the socket that keeps it
 /// so: bound, without SO_REUSEADDR, but never listening. While the socket lives no other
 /// listener (another test's included) can take the port, unlike a listener bound and dropped,

@@ -212,7 +212,8 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
 
 /// Adds the submodules of `repo` (at `prefix` in the top repository) that run programs. Like
 /// git's status, this takes every gitlink in the index whose folder holds a repository, listed
-/// in .gitmodules or not.
+/// in .gitmodules or not, except one whose files name another network place than the work
+/// tree's (`git_file::other_repo`), which is never opened, as one libgit2 can't open.
 fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<SubmoduleScan>) {
     let (Some(workdir), Ok(index)) = (repo.workdir(), repo.index()) else { return };
     if depth >= MAX_SUBMODULE_DEPTH {
@@ -226,8 +227,14 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         }
         last = Some(e.path.clone());
         let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
+        // One part at a time, so the folder uses the platform's separators.
+        let folder = rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+        // Never opened when its files name another network place (git_file).
+        if !matches!(crate::git_file::other_repo(&folder, workdir), crate::git_file::Found::Repo(_)) {
+            continue;
+        }
         // Doesn't search upward, so a folder that isn't checked out finds nothing.
-        let Ok(sub) = Repository::open(workdir.join(rel)) else { continue };
+        let Ok(sub) = Repository::open(&folder) else { continue };
         let path = if prefix.is_empty() { rel.to_owned() } else { format!("{prefix}/{rel}") };
         let own = scan_own(&sub, Reading::Whole);
         if !own.is_empty() {

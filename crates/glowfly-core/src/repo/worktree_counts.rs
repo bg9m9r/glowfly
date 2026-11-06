@@ -60,10 +60,12 @@ pub(crate) fn index_entries(index: &Path) -> Option<u32> {
 /// Counts the uncommitted changes of every listed worktree other than the current one and the
 /// missing ones, while they are small and the budget lasts; the rest are left Pending. Read by
 /// libgit2 alone, so no hook, fsmonitor or filter runs: safe while the repository isn't trusted.
-/// One that can't be opened or read counts as clean.
-pub(super) fn count_in_load(list: &mut [WorktreeInfo], limits: &LoadLimits) {
+/// One that can't be opened or read counts as clean. One whose folder, or a file libgit2 would
+/// follow in opening it (its `.git` file's `gitdir:`, `commondir`, config), is on another network
+/// place than `home` (the common dir) is never opened and stays NotCounted.
+pub(super) fn count_in_load(list: &mut [WorktreeInfo], home: &Path, limits: &LoadLimits) {
     let started = Instant::now();
-    for wt in list.iter_mut().filter(|w| !w.current && !w.missing) {
+    for wt in list.iter_mut().filter(|w| !w.current && !w.missing && openable(&w.path, home)) {
         let repo = Repository::open(&wt.path).ok();
         let entries = repo.as_ref().and_then(|r| index_entries(&r.path().join("index"))).unwrap_or(0);
         if entries > limits.max_entries || started.elapsed() >= limits.budget {
@@ -75,6 +77,12 @@ pub(super) fn count_in_load(list: &mut [WorktreeInfo], limits: &LoadLimits) {
         wt.changes = lists.map(|(unstaged, staged)| ChangeCounts::of(&staged, &unstaged)).unwrap_or_default();
         wt.read = ChangesRead::Counted;
     }
+}
+
+/// Whether libgit2 may open the worktree at `path`: neither it nor what its files name is on
+/// another network place than `home` (`git_file::other_repo`).
+fn openable(path: &Path, home: &Path) -> bool {
+    crate::net_path::may_follow(path, home) && matches!(crate::git_file::other_repo(path, home), crate::git_file::Found::Repo(_))
 }
 
 /// The result of counting one worktree in the background.
@@ -112,10 +120,12 @@ fn plan(entries: u32, git_ok: bool, wants_git: bool) -> Plan {
 /// saved `decision` trusts it and its print covers what the worktree runs now, or when there is
 /// none and nothing in it would run a program, as opening it in a tab would allow
 /// (`trust::allows`); otherwise libgit2 does, up to `NO_GIT_COUNT_INDEX` entries. One that
-/// can't be opened counts as clean.
+/// can't be opened counts as clean, as does one whose files name another network place than
+/// its own folder's (never opened).
 pub fn count_worktree(path: &Path, decision: Option<&SavedTrust>, timeout: Duration) -> WorktreeCount {
     let done = |read, changes, slow| WorktreeCount { path: path.to_path_buf(), read, changes, slow };
-    let Ok(repo) = Repository::open(path) else { return done(ChangesRead::Counted, ChangeCounts::default(), None) };
+    let repo = if openable(path, path) { Repository::open(path).ok() } else { None };
+    let Some(repo) = repo else { return done(ChangesRead::Counted, ChangeCounts::default(), None) };
     let entries = index_entries(&repo.path().join("index")).unwrap_or(0);
     let git_ok = match decision {
         Some(d) if d.trust == RepoTrust::NotTrusted => false,

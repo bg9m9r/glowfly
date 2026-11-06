@@ -122,6 +122,16 @@ fn other_worktree_heads(repo: &Repository) -> Vec<Oid> {
     let mut out = Vec::new();
     for name in names.iter().flatten() {
         let Ok(wt) = repo.find_worktree(name) else { continue };
+        // A folder on another network place is never opened: its HEAD is in its admin dir.
+        if !crate::net_path::may_follow(wt.path(), repo.commondir()) {
+            let admin = repo.commondir().join("worktrees").join(name);
+            if !crate::paths::same_spelling(&admin, repo.path())
+                && let Some(head) = crate::git_file::worktree_head(repo, name)
+            {
+                out.push(head);
+            }
+            continue;
+        }
         let Ok(other) = Repository::open_from_worktree(&wt) else { continue };
         if crate::paths::same_spelling(other.path(), repo.path()) {
             continue;

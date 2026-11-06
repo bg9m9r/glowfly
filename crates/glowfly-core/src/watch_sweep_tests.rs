@@ -7,7 +7,7 @@ use crate::testutil::{git, scratch_repo, write};
 use std::time::Duration;
 
 /// Well after every file the test wrote: no listing is racy.
-fn later() -> SystemTime {
+pub(super) fn later() -> SystemTime {
     SystemTime::now() + Duration::from_secs(60)
 }
 
@@ -17,14 +17,14 @@ fn later() -> SystemTime {
 /// sees them, but these tests' `later()` makes every time old: a change they expect a sweep to
 /// find through a stamp moves that stamp itself, the same on every OS and file system. The
 /// times are years in the past (never racy, never an OS-given time) and each call's is new.
-fn moved(p: &Path) {
+pub(super) fn moved(p: &Path) {
     use std::sync::atomic::{AtomicU64, Ordering};
     static NEXT: AtomicU64 = AtomicU64::new(1_000_000_000);
     let t = SystemTime::UNIX_EPOCH + Duration::from_secs(NEXT.fetch_add(1, Ordering::Relaxed));
     filetime::set_file_mtime(p, filetime::FileTime::from_system_time(t)).unwrap();
 }
 
-fn start(dir: &Path) -> (Sweep, Ignores) {
+pub(super) fn start(dir: &Path) -> (Sweep, Ignores) {
     let mut s = Sweep::new(dir, &dir.join(".git"), None);
     let mut ig = Ignores::open(dir);
     assert_eq!(s.sweep(&mut ig, later()), None, "the first sweep records and reads everything");
@@ -32,7 +32,7 @@ fn start(dir: &Path) -> (Sweep, Ignores) {
 }
 
 /// A repository with a.txt and `n` folders d00… each holding x.txt, all committed.
-fn repo(name: &str, n: usize) -> PathBuf {
+pub(super) fn repo(name: &str, n: usize) -> PathBuf {
     let dir = scratch_repo(name);
     write(&dir, "a.txt", "a\n");
     for i in 0..n {
@@ -337,10 +337,10 @@ fn a_nested_head_naming_a_file_outside_its_refs_is_not_read() {
     }
     assert!(nested::ref_name_ok(b"refs/heads/feature/x"));
     write(&inner, ".git/HEAD", "ref: ../../big.txt\n");
-    let before = nested::refs_of(&inner);
+    let before = nested::refs_of(&inner, &dir);
     assert!(before.is_some());
     write(&dir, "big.txt", "two, longer\n");
-    assert_eq!(nested::refs_of(&inner), before, "the file it names isn't read");
+    assert_eq!(nested::refs_of(&inner, &dir), before, "the file it names isn't read");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -348,19 +348,19 @@ fn a_nested_head_naming_a_file_outside_its_refs_is_not_read() {
 fn an_oversized_or_irregular_nested_head_is_no_repository() {
     let dir = repo("sweep-nested-head", 0);
     let inner = bare_nested(&dir, "inner");
-    assert!(nested::refs_of(&inner).is_some());
+    assert!(nested::refs_of(&inner, &dir).is_some());
     write(&inner, ".git/HEAD", &format!("ref: refs/heads/{}\n", "x".repeat(8192)));
-    assert_eq!(nested::refs_of(&inner), None, "too large");
+    assert_eq!(nested::refs_of(&inner, &dir), None, "too large");
     std::fs::remove_file(inner.join(".git/HEAD")).unwrap();
     std::fs::create_dir(inner.join(".git/HEAD")).unwrap();
-    assert_eq!(nested::refs_of(&inner), None, "a folder");
+    assert_eq!(nested::refs_of(&inner, &dir), None, "a folder");
     #[cfg(unix)]
     {
         std::fs::remove_dir(inner.join(".git/HEAD")).unwrap();
         let fifo = std::ffi::CString::new(inner.join(".git/HEAD").into_os_string().into_encoded_bytes()).unwrap();
         // SAFETY: `fifo` is a NUL-terminated path that outlives the call.
         assert_eq!(unsafe { libc::mkfifo(fifo.as_ptr(), 0o600) }, 0);
-        assert_eq!(nested::refs_of(&inner), None, "a FIFO, opened without waiting");
+        assert_eq!(nested::refs_of(&inner, &dir), None, "a FIFO, opened without waiting");
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -375,11 +375,11 @@ fn a_nested_branch_switch_and_pack_refs_change_its_fingerprint() {
     write(&inner, "a.txt", "a\n");
     git(&inner, &["add", "."]);
     git(&inner, &["commit", "-q", "-m", "a"]);
-    let first = nested::refs_of(&inner);
+    let first = nested::refs_of(&inner, &dir);
     git(&inner, &["checkout", "-q", "-b", "side"]);
-    let switched = nested::refs_of(&inner);
+    let switched = nested::refs_of(&inner, &dir);
     assert_ne!(switched, first, "a branch switch");
     crate::testkit::git_cli(&inner, &["pack-refs", "--all"]);
-    assert_ne!(nested::refs_of(&inner), switched, "the loose ref packed");
+    assert_ne!(nested::refs_of(&inner, &dir), switched, "the loose ref packed");
     let _ = std::fs::remove_dir_all(&dir);
 }

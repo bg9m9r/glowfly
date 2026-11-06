@@ -29,12 +29,14 @@ pub struct WorktreeInfo {
     pub current: bool,
     /// Some(reason) when locked ("" without a reason).
     pub locked: Option<String>,
-    /// Its folder (or the gitdir link) is gone: `Worktree::validate()` fails.
+    /// Its folder (or the gitdir link) is gone: `Worktree::validate()` fails. Never for a folder
+    /// on another network place than the repository, which is never looked at.
     pub missing: bool,
     /// `git worktree prune` would drop it: `Worktree::is_prunable(None)` (missing and not locked).
     pub prunable: bool,
     /// The folder's identity on disk when listed (`paths::FolderId`): what tells whether a tab
-    /// shows this worktree under another spelling. None when it is missing.
+    /// shows this worktree under another spelling. None when it is missing or on another
+    /// network place.
     pub folder: Option<crate::paths::FolderId>,
     /// Its uncommitted changes, counted by full loads (or the background count after one) for
     /// worktrees other than the current one. Zero unless `read` is Counted, and for one that
@@ -74,9 +76,15 @@ pub fn worktrees_at(workdir: &Path) -> Result<Vec<WorktreeInfo>> {
 /// The worktrees of `repo`'s repository, main first and then linked ones by path. Never fails:
 /// an error gives an empty list, and an entry that can't be opened is left out.
 pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
+    list_with(repo, &crate::paths::same_folder)
+}
+
+/// `list`, telling whether a worktree is the current one with `same` (`paths::same_folder`,
+/// which touches both folders).
+pub(super) fn list_with(repo: &Repository, same: &dyn Fn(&Path, &Path) -> bool) -> Vec<WorktreeInfo> {
     let Ok(common) = Repository::open(repo.commondir()) else { return Vec::new() };
     let here = repo.workdir().map(normalize);
-    let is_current = |path: &Path| here.as_deref().is_some_and(|h| crate::paths::same_folder(path, h));
+    let is_current = |path: &Path| here.as_deref().is_some_and(|h| same(path, h));
     let mut out = Vec::new();
     if let Some(workdir) = common.workdir() {
         let path = normalize(workdir);
@@ -105,18 +113,22 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
         .flatten()
         .filter_map(|name| {
             let wt = common.find_worktree(name).ok()?;
+            // A folder on another network place than the repository is never looked at: it is
+            // listed from its admin dir alone, neither missing nor prunable, and never counted.
+            let near = crate::net_path::may_follow(wt.path(), common.commondir());
             let path = normalize(wt.path());
             let locked = match wt.is_locked() {
                 Ok(WorktreeLockStatus::Locked(r)) => Some(r.unwrap_or_default().trim_end().to_owned()),
                 _ => None,
             };
-            let missing = wt.validate().is_err();
-            let prunable = wt.is_prunable(None).unwrap_or(false);
+            let missing = near && wt.validate().is_err();
+            let prunable = near && wt.is_prunable(None).unwrap_or(false);
             let git_dir = common.commondir().join("worktrees").join(name);
             let (branch, head) = read_head(&git_dir, &common);
             let held = held_branch(&git_dir);
-            let current = is_current(&path);
-            let folder = crate::paths::FolderId::of(&path);
+            // By spelling alone for one on another network place: `same` would open it.
+            let current = if near { is_current(&path) } else { here.as_deref().is_some_and(|h| crate::paths::same_spelling(&path, h)) };
+            let folder = if near { crate::paths::FolderId::of(&path) } else { None };
             Some(WorktreeInfo {
                 name: Some(name.to_owned()),
                 path,
@@ -155,9 +167,11 @@ fn normalize(path: &Path) -> PathBuf {
 
 /// The branch (short name for refs/heads/, the whole ref otherwise) and commit that the HEAD
 /// file in `git_dir` names. Reading the file means a worktree whose folder is gone still shows
-/// its branch.
+/// its branch. Read bounded and only where `net_path` allows (`git_file::read_small_in`): a
+/// HEAD that is a link to another machine is never followed.
 fn read_head(git_dir: &Path, common: &Repository) -> (Option<String>, Option<Oid>) {
-    let Ok(text) = std::fs::read_to_string(git_dir.join("HEAD")) else { return (None, None) };
+    let Some(bytes) = crate::git_file::read_small_in(&git_dir.join("HEAD"), git_dir) else { return (None, None) };
+    let Ok(text) = std::str::from_utf8(&bytes) else { return (None, None) };
     let text = text.trim();
     if let Some(target) = text.strip_prefix("ref:") {
         let full = target.trim();

@@ -24,15 +24,15 @@ fn a_load_counts_only_small_worktrees_within_its_budget() {
     let listed = || super::super::worktrees::list(&repo);
 
     let mut small = listed();
-    count_in_load(&mut small, &LoadLimits { max_entries: 1, ..LoadLimits::DEFAULT });
+    count_in_load(&mut small, repo.commondir(), &LoadLimits { max_entries: 1, ..LoadLimits::DEFAULT });
     assert_eq!((small[1].read, small[1].changes), (ChangesRead::Pending, ChangeCounts::default()), "its index is too large");
 
     let mut late = listed();
-    count_in_load(&mut late, &LoadLimits { budget: Duration::ZERO, ..LoadLimits::DEFAULT });
+    count_in_load(&mut late, repo.commondir(), &LoadLimits { budget: Duration::ZERO, ..LoadLimits::DEFAULT });
     assert_eq!(late[1].read, ChangesRead::Pending, "the budget is spent");
 
     let mut all = listed();
-    count_in_load(&mut all, &LoadLimits::DEFAULT);
+    count_in_load(&mut all, repo.commondir(), &LoadLimits::DEFAULT);
     assert_eq!((all[1].read, all[1].changes), (ChangesRead::Counted, DIRTY));
     for list in [&small, &late, &all] {
         assert!(list[0].current);
@@ -130,5 +130,24 @@ fn a_trusted_worktree_that_gained_a_hook_since_is_counted_without_git() {
     let count = count_worktree(&wt, Some(&now), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(marker.exists(), "git read it");
+    cleanup(&[&wt, &dir]);
+}
+
+#[test]
+fn a_worktree_whose_git_file_names_a_network_place_is_never_opened() {
+    let dir = two_files("wtcount-offsite");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let repo = Repository::open(&dir).unwrap();
+    let real = std::fs::read_to_string(wt.join(".git")).unwrap();
+    // Its folder and record are local; only the folder's own `.git` file names the place.
+    write(&wt, ".git", &format!("gitdir: {}\n", git_spelling(&net_place().join("wt/.git"))));
+    let mut list = super::super::worktrees::list(&repo);
+    count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
+    assert_eq!((list[1].read, list[1].changes), (ChangesRead::NotCounted, ChangeCounts::default()), "{:?}", list[1]);
+    let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, ChangeCounts::default()), "as one that can't be opened");
+    write(&wt, ".git", &real);
+    drop(repo);
     cleanup(&[&wt, &dir]);
 }

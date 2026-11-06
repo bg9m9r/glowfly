@@ -11,6 +11,12 @@ pub fn remote_kind(path: &Path) -> Option<&'static str> {
     platform::remote_kind(path)
 }
 
+/// Whether the drive letter `letter` is a mapped network drive (Windows; false elsewhere). Only
+/// the drive's own root is asked about, so it is safe for a path a repository's files name.
+pub(crate) fn mapped_drive(letter: char) -> bool {
+    platform::mapped_drive(letter)
+}
+
 /// Linux: the file system kind for a `statfs` `f_type` magic number, when it is remote or
 /// virtual.
 pub fn linux_remote_kind(magic: u32) -> Option<&'static str> {
@@ -49,7 +55,8 @@ pub const DRIVE_REMOTE: u32 = 4;
 /// `\\wsl.localhost`) are named as such; any other share or network drive is SMB.
 pub fn windows_remote_kind(path: &str, drive_type: Option<u32>) -> Option<&'static str> {
     let lower = path.replace('/', "\\").to_ascii_lowercase();
-    let lower = lower.strip_prefix(r"\\?\unc\").map(|r| format!(r"\\{r}")).unwrap_or(lower);
+    let unc = [r"\\?\unc\", r"\\.\unc\", r"\??\unc\"].iter().find_map(|p| lower.strip_prefix(p).map(|r| format!(r"\\{r}")));
+    let lower = unc.unwrap_or(lower);
     if lower.starts_with(r"\\wsl$\") || lower.starts_with(r"\\wsl.localhost\") {
         return Some("WSL");
     }
@@ -75,6 +82,10 @@ mod platform {
         // The magic numbers are 32-bit; `f_type`'s width and sign vary by architecture.
         super::linux_remote_kind(magic as u32)
     }
+
+    pub fn mapped_drive(_: char) -> bool {
+        false
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -96,6 +107,10 @@ mod platform {
         // SAFETY: f_fstypename is a NUL-terminated name within its array.
         let name = unsafe { CStr::from_ptr(fs.f_fstypename.as_ptr()) }.to_string_lossy();
         super::macos_remote_kind(local, &name)
+    }
+
+    pub fn mapped_drive(_: char) -> bool {
+        false
     }
 }
 
@@ -131,12 +146,27 @@ mod platform {
         });
         super::windows_remote_kind(&path.to_string_lossy(), drive_type)
     }
+
+    /// Whether `GetDriveTypeW` calls drive `letter` remote. Only a drive letter's root is ever
+    /// passed, never a share's root: a share root's query reaches its server.
+    pub fn mapped_drive(letter: char) -> bool {
+        if !letter.is_ascii_alphabetic() {
+            return false;
+        }
+        let wide: Vec<u16> = format!("{letter}:\\").encode_utf16().chain(std::iter::once(0)).collect();
+        // SAFETY: `wide` is NUL-terminated and outlives the call.
+        unsafe { windows::Win32::Storage::FileSystem::GetDriveTypeW(PCWSTR(wide.as_ptr())) == super::DRIVE_REMOTE }
+    }
 }
 
 #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 mod platform {
     pub fn remote_kind(_: &std::path::Path) -> Option<&'static str> {
         None
+    }
+
+    pub fn mapped_drive(_: char) -> bool {
+        false
     }
 }
 
@@ -175,6 +205,9 @@ mod tests {
         assert_eq!(windows_remote_kind(r"\\WSL.localhost\Ubuntu\home\me\app", None), Some("WSL"));
         assert_eq!(windows_remote_kind(r"\\?\UNC\wsl.localhost\Ubuntu\x", None), Some("WSL"));
         assert_eq!(windows_remote_kind(r"\\?\C:\work", Some(3)), None);
+        assert_eq!(windows_remote_kind(r"\\.\UNC\nas\team\app", None), Some("SMB"));
+        assert_eq!(windows_remote_kind(r"\??\UNC\nas\team\app", None), Some("SMB"));
+        assert_eq!(windows_remote_kind(r"\\.\UNC\wsl$\Ubuntu\x", None), Some("WSL"));
     }
 
     #[test]
