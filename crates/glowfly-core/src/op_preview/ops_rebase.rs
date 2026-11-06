@@ -237,13 +237,13 @@ fn patch_id(repo: &Repository, oid: Oid) -> Result<Option<Oid>> {
 /// Whether `rebase.rebaseMerges` makes a plain rebase recreate merges.
 fn rebase_merges(repo: &Repository) -> bool {
     let Ok(cfg) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
-    match cfg.get_string("rebase.rebasemerges") {
-        Ok(v) => {
+    match crate::config_entry::bool_or_word(&cfg, "rebase.rebasemerges") {
+        Some(v) => {
             let v = v.trim();
             v.eq_ignore_ascii_case("rebase-cousins")
                 || v.eq_ignore_ascii_case("no-rebase-cousins")
                 || git2::Config::parse_bool(v).unwrap_or(false)
         }
-        Err(_) => false,
+        None => false,
     }
 }

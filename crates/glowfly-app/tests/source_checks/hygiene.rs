@@ -96,7 +96,7 @@ const HARNESS_MAKERS: &[&str] = &["crates/glowfly-ui/src/snapshot_check/mod.rs",
 /// test code.
 pub(crate) struct Source {
     pub(crate) path: String,
-    text: String,
+    pub(crate) text: String,
     pub(crate) test: bool,
 }
 

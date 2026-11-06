@@ -175,13 +175,11 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             // each byte that isn't kept apart (`keys::text_of`).
             let name = keys::text_of(e.name_bytes());
             let name = name.as_ref();
-            let value = if e.has_value() {
-                keys::text_of(e.value_bytes())
-            } else if keys::network_key(name).is_some() {
+            let value = match crate::config_entry::raw(e) {
+                Some(bytes) => keys::text_of(bytes),
                 // A bare key (true): only a connection setting counts then, as with any value.
-                Cow::Borrowed("")
-            } else {
-                return;
+                None if keys::network_key(name).is_some() => Cow::Borrowed(""),
+                None => return,
             };
             let value = value.as_ref();
             if let Some(key) = command_key(name, value) {

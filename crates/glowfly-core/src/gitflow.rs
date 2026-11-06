@@ -122,10 +122,8 @@ impl GitFlowConfig {
 pub fn read_config(repo: &git2::Repository) -> GitFlowConfig {
     let read = || -> Result<GitFlowConfig, git2::Error> {
         let cfg = repo.config()?.snapshot()?;
-        // `value()` panics on a key without a value, so check first.
         let get = |key: &str| {
-            let e = cfg.get_entry(key).ok()?;
-            Some(if e.has_value() { String::from_utf8_lossy(e.value_bytes()).into_owned() } else { String::new() })
+            cfg.get_entry(key).ok().map(|e| crate::config_entry::lossy(&e).map(std::borrow::Cow::into_owned).unwrap_or_default())
         };
         Ok(GitFlowConfig {
             production: get(KEY_PRODUCTION),

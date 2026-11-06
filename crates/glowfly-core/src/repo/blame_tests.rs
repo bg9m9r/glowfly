@@ -114,6 +114,32 @@ fn a_missing_ignore_revs_file_does_not_break_blame() {
 }
 
 #[test]
+fn blame_runs_beside_a_bare_push_url_and_fails_cleanly_on_a_bare_ignore_revs_file() {
+    let dir = scratch_repo("blame-bare-keys");
+    commit(
+        &dir,
+        "a.txt",
+        "alpha
+beta
+",
+        "add",
+    );
+    // git parses remote.* only in remote commands, so blame still runs.
+    add_bare_key(&dir, "remote \"origin\"", "pushurl");
+    assert_eq!(blame_file(&dir, "a.txt", None, &BlameOptions::default()).unwrap().lines, ["alpha", "beta"]);
+
+    add_bare_key(&dir, "blame", "ignoreRevsFile");
+    assert!(ignore_revs_args(&Repository::open(&dir).unwrap(), &dir).is_empty());
+    // git refuses the bare key whatever the command line says; a git that doesn't know it runs.
+    if let Err(e) = blame_file(&dir, "a.txt", None, &BlameOptions::default()) {
+        assert!(e.to_string().to_ascii_lowercase().contains("ignorerevsfile"), "{e}");
+    }
+    git(&dir, &["config", "--add", "blame.ignoreRevsFile", "does-not-exist"]);
+    assert_eq!(ignore_revs_args(&Repository::open(&dir).unwrap(), &dir), ["--no-ignore-revs-file"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn blame_of_binary_folder_submodule_missing() {
     let dir = scratch_repo("blame-refusals");
     std::fs::create_dir_all(dir.join("dir")).unwrap();

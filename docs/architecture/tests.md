@@ -29,6 +29,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `source_checks/fn_length.rs`: clippy's `too_many_lines` stays on (`[workspace.lints.clippy]`) at 120 code lines or fewer (`clippy.toml`) and every crate inherits the workspace lints; each mark is an `expect` with a reason on a `fn` (no `allow`, no inner `#![..]` mark, no `clippy::pedantic` allow) and is listed, as `<path>: <fn>`, in `LONG_FUNCTIONS`, which only shrinks.
 - `source_checks/dead_pub.rs`: the `pub fn`, `const`, `static`, `type`, `struct` and `enum` items of glowfly-model, glowfly-runner and glowfly-ui are named in the non-test code of some other file (a type may instead be named by a `pub` line of its own file); `DEAD_PUB` holds the exceptions and only shrinks.
 - `source_checks/architecture_docs.rs`: every non-test source file is named in `docs/architecture/` (a backticked path ending with its path, the `runner/` and `ui/` shorthands, or a `mod.rs`'s folder); `UNDOCUMENTED` lists the exceptions and only shrinks.
+- `source_checks/config_values.rs`: config entry values are read only through glowfly-core's `config_entry` (no `.value_bytes()`/`.has_value()`, and no `.value()` in a file that reads config entries); `ALLOWED` (push_config.rs until #599 lands) only shrinks.
 
 ## View checks (`crates/glowfly-ui/tests/view_checks/`, one binary)
 

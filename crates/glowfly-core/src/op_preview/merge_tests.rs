@@ -1,10 +1,10 @@
 //! Merge previews: a clean merge and one with conflicts (merge-tree, git 2.38 or newer),
-//! fast-forwards and up-to-date branches from the graph, merge.ff and the branch's
+//! fast-forwards and up-to-date branches from the graph, merge.ff (set or bare) and the branch's
 //! mergeOptions, a ref that moved, and a same-named tag that is never taken for the branch.
 
 use super::tests::{commit, diverged, is_kept, message, oid, run};
 use super::*;
-use crate::testutil::{git, scratch_repo, set_config};
+use crate::testutil::{add_bare_key, git, scratch_repo, set_config};
 
 /// Whether this git has merge-tree --write-tree; says so and skips otherwise.
 fn new_git(dir: &Path, test: &str) -> bool {
@@ -133,5 +133,24 @@ fn a_same_named_tag_is_not_the_branch() {
     let p = run(&dir, merge_op(&dir, "feature")).unwrap();
     assert_eq!(p.outcome, Outcome::Done, "the branch, not the tag at base (which is up to date)");
     assert_eq!(p.after[0], AfterRow::NewMerge { theirs: "feature".into() });
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_bare_merge_ff_fast_forwards() {
+    let dir = scratch_repo("opp-merge-bare-ff");
+    commit(
+        &dir, "a.txt", "a
+", "base",
+    );
+    git(&dir, &["branch", "old"]);
+    commit(
+        &dir, "b.txt", "b
+", "c1",
+    );
+    git(&dir, &["checkout", "-q", "old"]);
+    // git reads a bare merge.ff as true: fast-forward when it can.
+    add_bare_key(&dir, "merge", "ff");
+    assert_eq!(run(&dir, merge_op(&dir, "main")).unwrap().outcome, Outcome::FastForward);
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -89,3 +89,23 @@ fn remote_info_reads_skip_fetch_all() {
     assert_eq!(skip("origin"), Some(false), "false when unset");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_bare_push_url_reads_as_none() {
+    let (work, bare) = with_origin("remotes-bare-pushurl");
+    add_bare_key(&work, "remote \"origin\"", "pushurl");
+    assert!(refs_key(&work).is_ok());
+    let origin = |s: &Snapshot| s.remote_info.iter().find(|r| r.name == "origin").cloned().unwrap();
+    let o = origin(&snap(&work));
+    assert_eq!(o.urls, vec![bare.display().to_string()]);
+    assert!(o.push_urls.is_empty(), "{:?}", o.push_urls);
+    assert_eq!(o.push_url(), None);
+    assert_eq!(o.separate_push_url(), None);
+
+    // Real push URLs after the bare one are kept, in config order.
+    git(&work, &["config", "--add", "remote.origin.pushurl", "https://h/a.git"]);
+    git(&work, &["config", "--add", "remote.origin.pushurl", "https://h/b.git"]);
+    assert_eq!(origin(&snap(&work)).push_urls, vec!["https://h/a.git".to_owned(), "https://h/b.git".to_owned()]);
+    let _ = std::fs::remove_dir_all(&work);
+    let _ = std::fs::remove_dir_all(&bare);
+}

@@ -1,6 +1,6 @@
 //! Rebase previews: a clean replay, a stop at the second of three commits, up to date and
 //! fast-forward, a branch with the target merged in replayed rather than up to date, patch-equivalent commits left out, merges left out (and refused with
-//! rebase.rebaseMerges), an unrelated history replayed from its root, a same-named tag that is
+//! rebase.rebaseMerges, set or bare), an unrelated history replayed from its root, a same-named tag that is
 //! never taken for the branch, and a rebase onto a commit.
 
 use super::tests::{commit, diverged, is_kept, is_rewritten, message, oid, row_oid, run, run_with};
@@ -110,6 +110,10 @@ fn merges_are_left_out_and_their_side_rewritten() {
     rest.sort();
     assert_eq!(moved, rest);
     set_config(&dir, &[("rebase.rebaseMerges", "true")]);
+    assert_eq!(message(run(&dir, onto(&dir, "main")).unwrap_err()), REBASE_MERGES);
+    // A bare key (no `=`) is true too, as git reads it.
+    git(&dir, &["config", "--unset-all", "rebase.rebaseMerges"]);
+    crate::testutil::add_bare_key(&dir, "rebase", "rebaseMerges");
     assert_eq!(message(run(&dir, onto(&dir, "main")).unwrap_err()), REBASE_MERGES);
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -18,7 +18,7 @@ fn levels_allowing_all() -> Vec<git2::ConfigLevel> {
     let mut entries = config.entries(Some("safe.directory")).unwrap();
     while let Some(e) = entries.next() {
         let e = e.unwrap();
-        if e.value() == Some("*") {
+        if glowfly_core::config_entry::utf8(e) == Some("*") {
             out.push(e.level());
         }
     }
@@ -31,7 +31,7 @@ fn listed() -> Vec<String> {
     let mut out = Vec::new();
     let mut entries = config.entries(Some("safe.directory")).unwrap();
     while let Some(e) = entries.next() {
-        out.extend(e.unwrap().value().map(str::to_owned));
+        out.extend(glowfly_core::config_entry::utf8(e.unwrap()).map(str::to_owned));
     }
     out
 }
@@ -82,7 +82,7 @@ fn only_folders_git_opens_reach_libgit2() {
     let repo = git2::Repository::open(&dir).unwrap();
     let config = repo.config().unwrap().snapshot().unwrap();
     let name = config.get_entry("user.name").unwrap();
-    assert_eq!((name.value(), name.level()), (Some("Ada"), git2::ConfigLevel::Global), "read through the list");
+    assert_eq!((glowfly_core::config_entry::utf8(&name), name.level()), (Some("Ada"), git2::ConfigLevel::Global), "read through the list");
     assert!(glowfly_core::trust::scan(&repo).config.is_empty(), "the user's own settings aren't the repository's");
 
     // A name that would end its line never reaches the list.
