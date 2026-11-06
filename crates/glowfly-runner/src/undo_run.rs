@@ -159,6 +159,19 @@ fn carry_out(
             Ok(output) => done(output, action.clone(), action),
             Err(e) => failed(format!("Could not put back the files of the {}: {e}", action.describe())),
         },
+        // A batch: each part as it would run alone. On a failure the entry stays, and a retry
+        // skips the parts already done.
+        Ok(Plan::Each(steps)) => {
+            let mut outputs = Vec::new();
+            for (part, plan) in steps {
+                let (ok, output, _) = carry_out(cwd, part, redo, opts, Ok(plan), git, held);
+                outputs.push(output);
+                if !ok {
+                    return failed(outputs.join("\n"));
+                }
+            }
+            done(outputs.join("\n"), action.clone(), action)
+        }
         Ok(Plan::AbortAgain) => {
             let (ok, output, again, h) = super::stashes::abort_keeping(cwd, None, git);
             *held = h;

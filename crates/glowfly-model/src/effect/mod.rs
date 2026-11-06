@@ -1,7 +1,7 @@
 //! Side effects requested by `update`. The runner executes them off the UI thread and reports
 //! back with `Msg`s; the few that need the window (`UiEffect`) are handled by the UI shell.
 
-pub use crate::file_op::{DeleteMode, FileOp, SeenLines, WorkFileOk};
+pub use crate::file_op::{DeleteMode, DiscardEach, FileOp, SeenLines, WorkFileOk};
 
 mod account;
 pub mod areas;

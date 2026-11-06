@@ -1,0 +1,6 @@
+Dialog
+  Label "Discard changes in 3 files"
+  Button "Close this dialog"
+  Label "Discard the changes in 3 files? Undo (Ctrl+Z) brings them back. 1 of them isn't tracked by Git and goes to the Recycle Bin."
+  Button "Cancel" [focused]
+  Button "Discard 3 files"

@@ -17,7 +17,7 @@ use glowfly_model::state::file_tree::under;
 /// (`conflict_files::show`), so Unstaged Files leaves them out. It scrolls to the file a step
 /// landed on. The list takes the keyboard focus as one Tab stop, or by a click on a row; while
 /// it has it, its keys (`wip_keys.rs`) act on its files and its current row (or, with none, the
-/// list) is ringed. The files a Shift move selected are drawn selected. In Tree mode its files
+/// list) is ringed. The picked files are drawn selected. In Tree mode its files
 /// are grouped under folder rows, which a click collapses.
 pub(crate) fn file_list(
     ui: &mut egui::Ui,

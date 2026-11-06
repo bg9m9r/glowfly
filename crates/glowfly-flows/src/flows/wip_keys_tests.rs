@@ -12,7 +12,7 @@ use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::keymap::KeyAction;
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
 use glowfly_model::state::list_keys::{ListKey, ListMove};
-use glowfly_model::state::wip_lists::span_paths;
+use glowfly_model::state::wip_lists::picked_paths;
 use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -98,15 +98,15 @@ fn shift_moves_select_files_and_space_stages_them_together() {
     press(&mut st, false, ListKey::Move(DOWN));
     press(&mut st, false, ListKey::Extend(DOWN));
     press(&mut st, false, ListKey::Extend(DOWN));
-    assert_eq!(span_paths(&st, false), ["b.txt", "c.txt", "d.txt"]);
+    assert_eq!(picked_paths(&st, false), ["b.txt", "c.txt", "d.txt"]);
     press(&mut st, false, ListKey::Extend(UP));
-    assert_eq!(span_paths(&st, false), ["b.txt", "c.txt"], "back towards the start");
+    assert_eq!(picked_paths(&st, false), ["b.txt", "c.txt"], "back towards the start");
     press(&mut st, false, ListKey::Extend(DOWN));
     assert_eq!(shown(&st), Some(&un("d.txt")), "the moving end is open");
 
     let fx = key(&mut st, false, ListKey::Toggle);
     assert_eq!(local_op(&fx), Some(&LocalOp::StagePaths(vec!["b.txt".into(), "c.txt".into(), "d.txt".into()])), "{fx:?}");
-    assert!(st.cues.wip_span.is_none());
+    assert!(st.cues.wip_picks.is_none());
     for e in fx {
         if let Some(m) = glowfly_runner::testing::execute(e) {
             drive(&mut st, m);
@@ -119,7 +119,7 @@ fn shift_moves_select_files_and_space_stages_them_together() {
     // And unstaged together from the Staged list, moving on to the file before them.
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(sd("c.txt"))));
     press(&mut st, true, ListKey::Extend(DOWN));
-    assert_eq!(span_paths(&st, true), ["c.txt", "d.txt"]);
+    assert_eq!(picked_paths(&st, true), ["c.txt", "d.txt"]);
     press(&mut st, true, ListKey::Toggle);
     assert_eq!(staged_paths(&st), ["b.txt"]);
     assert_eq!(shown(&st), Some(&sd("b.txt")));
@@ -130,13 +130,13 @@ fn shift_moves_select_files_and_space_stages_them_together() {
 fn a_plain_move_or_a_click_ends_the_selection() {
     let (mut st, dir) = five_files("wip-keys-span-end");
     press(&mut st, false, ListKey::Extend(DOWN));
-    assert_eq!(span_paths(&st, false), ["a.txt", "b.txt"]);
+    assert_eq!(picked_paths(&st, false), ["a.txt", "b.txt"]);
     press(&mut st, false, ListKey::Move(DOWN));
-    assert!(span_paths(&st, false).is_empty());
+    assert!(picked_paths(&st, false).is_empty());
     press(&mut st, false, ListKey::Extend(UP));
-    assert_eq!(span_paths(&st, false), ["b.txt", "c.txt"]);
+    assert_eq!(picked_paths(&st, false), ["b.txt", "c.txt"]);
     drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("e.txt"))));
-    assert!(span_paths(&st, false).is_empty(), "a click elsewhere");
+    assert!(picked_paths(&st, false).is_empty(), "a click elsewhere");
     // Space then acts on the open file alone.
     let fx = key(&mut st, false, ListKey::Toggle);
     assert_eq!(local_op(&fx), Some(&LocalOp::StageFile("e.txt".into())));

@@ -1,5 +1,6 @@
 //! The Undo and Redo previews: a commit, a checkout that made a branch, a pull over made-up
-//! commits in the graph, a pop, the Redo wording, and a preview for every kind of action.
+//! commits in the graph, a pop, several discarded files, the Redo wording, and a preview for
+//! every kind of action.
 
 use super::*;
 use crate::state::op_fixture;
@@ -102,4 +103,24 @@ fn every_action_has_a_preview() {
             }
         }
     }
+}
+
+#[test]
+fn batch_preview_lists_its_files_and_the_restore_line() {
+    let saved = Saved { blob: oid(5), executable: false };
+    let discard = |p: &str| Action::Discard { path: p.into(), what: Discarded::File, before: Some(saved), after: None };
+    let untracked = Action::DeleteFile { path: "new.txt".into(), before: saved, via: DeleteVia::Trash, staged: None };
+    let a = Action::Batch { op: glowfly_core::undo::BatchOp::Discard, parts: vec![discard("a.txt"), untracked] };
+    let p = preview(Lang::En, &a, None, false);
+    assert_eq!(p.rows[0], TipRow::File { status: 'M', path: "a.txt".into() });
+    assert_eq!(p.rows[1], TipRow::File { status: 'D', path: "new.txt".into() });
+    assert_eq!(lines(&p), ["Brings back what was discarded"]);
+    assert_eq!(lines(&preview(Lang::En, &a, None, true)), ["Discards them again"]);
+
+    let many: Vec<Action> = (0..PREVIEW_ROWS + 2).map(|i| discard(&format!("f{i}.txt"))).collect();
+    let a = Action::Batch { op: glowfly_core::undo::BatchOp::Discard, parts: many };
+    let p = preview(Lang::En, &a, None, false);
+    let files = p.rows.iter().filter(|r| matches!(r, TipRow::File { .. })).count();
+    assert_eq!(files, PREVIEW_ROWS);
+    assert_eq!(lines(&p), ["and 2 more", "Brings back what was discarded"]);
 }

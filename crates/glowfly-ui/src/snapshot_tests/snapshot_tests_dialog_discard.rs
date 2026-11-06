@@ -1,6 +1,7 @@
 //! The "Discard your changes?" question over an edited form, and what a form's Esc and backdrop
-//! click send (update/dialog.rs decides). Shares the fixture repository and renderer with
-//! `snapshot_tests`.
+//! click send (update/dialog.rs decides), and the confirmation for discarding several picked
+//! files (to the trash, or deleted with Undo promised). Shares the fixture repository and
+//! renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
@@ -83,6 +84,38 @@ fn form_esc_and_backdrop_are_reported_not_closed() {
     h.run();
     click(&mut h, pos2(20.0, 800.0), PointerButton::Primary);
     assert!(dismissed(&h, Dismiss::Backdrop));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The confirmation for discarding README.md, app.txt (tracked) and notes/todo.md (untracked)
+/// together, with deleting to the trash `trash` or not, as update opens it.
+fn discard_files(name: &str, trash: bool) -> (glowfly_model::state::AppState, std::path::PathBuf) {
+    let (mut st, dir) = super::snapshot_tests_line_counts::with_wip(ThemeChoice::Dark, name);
+    st.settings.delete_to_trash = trash;
+    let paths = ["README.md", "app.txt", "notes/todo.md"].map(String::from).to_vec();
+    glowfly_model::update::update(&mut st, glowfly_model::state::files::discard_paths_msg(paths), std::time::Instant::now());
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title == "Discard changes in 3 files"));
+    (st, dir)
+}
+
+#[test]
+fn dialog_discard_files() {
+    let (st, dir) = discard_files("dialog-discard-files", true);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Discard 3 files").is_some());
+    h.check_snapshot("dialog_discard_files_dark");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn dialog_discard_files_permanent() {
+    let (st, dir) = discard_files("dialog-discard-files-perm", false);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("dialog_discard_files_permanent");
     drop(h);
     remove_fixture(&dir);
 }

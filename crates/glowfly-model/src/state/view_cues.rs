@@ -30,9 +30,9 @@ pub struct ViewCues {
     /// files), and the file to open when its operation reports success (`update/wip_list.rs`).
     /// Changed only by `update`.
     pub stage_move_on: Option<crate::state::wip_lists::MoveOn>,
-    /// The files a Shift move selected in the Unstaged or Staged Files list. Changed only by
-    /// `update`.
-    pub wip_span: Option<crate::state::wip_lists::WipSpan>,
+    /// The files picked with Shift or Ctrl/Cmd in the Unstaged or Staged Files list. Changed
+    /// only by `update`.
+    pub wip_picks: Option<crate::state::wip_lists::WipPicks>,
     /// The file each of those lists (Unstaged, then Staged) last opened, where going to the
     /// list from the other one lands. Changed only by `update`.
     pub wip_place: [Option<String>; 2],
@@ -112,7 +112,7 @@ impl Default for ViewCues {
             file_reveal: None,
             diff_opening: None,
             stage_move_on: None,
-            wip_span: None,
+            wip_picks: None,
             wip_place: [None, None],
             diff_open_line: None,
             diff_cursor: None,

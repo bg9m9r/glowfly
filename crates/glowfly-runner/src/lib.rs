@@ -37,6 +37,7 @@ mod dashboard;
 mod deep_link;
 mod diff;
 mod diff_gaps;
+mod discard_paths;
 mod execute;
 mod expect;
 pub(crate) mod files;

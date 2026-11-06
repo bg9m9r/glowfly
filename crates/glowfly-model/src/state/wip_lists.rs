@@ -1,21 +1,38 @@
 //! The Unstaged and Staged Files lists as their keys see them: their files in on-screen order
 //! (the tree's, skipping collapsed folders, in Tree mode), the file the keys act on, and the
-//! files a Shift move selected (`WipSpan`). Read by `update/wip_list.rs` and the lists' view.
+//! files picked with Shift or Ctrl/Cmd, gaps allowed (`WipPicks`, read as `Picked`; `range`
+//! for a Shift run, `prune` after a status read). Read by `update/wip_list.rs`,
+//! `update/wip_picks.rs` and the lists' view.
 
 use super::file_folds::FileListId;
 use super::list_keys::{Place, place_in};
 use crate::state::AppState;
 use glowfly_core::repo::{DiffTarget, FileEntry, Snapshot};
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
-/// The files a Shift move selected in one list: every visible file from `anchor` to `head`.
-/// It holds only while `head` is still the file the keys act on, so a click or a plain move
-/// elsewhere ends it. View state, changed only by `update`.
+/// The files picked in one list with Shift or Ctrl/Cmd (keys or clicks), gaps allowed;
+/// `anchor` is where the next Shift range starts. It holds only while the file the keys act on
+/// is one of them, so a plain click or move elsewhere ends it. View state, changed only by
+/// `update`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WipSpan {
+pub struct WipPicks {
     pub staged: bool,
     pub anchor: String,
-    pub head: String,
+    pub paths: BTreeSet<String>,
+}
+
+/// How a click picks files: Shift (`Range`, from the anchor) or Ctrl/Cmd (`Toggle`, one file).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PickHow {
+    Range,
+    Toggle,
+}
+
+/// The picked files of one list: in on-screen order and as a set.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Picked {
+    pub paths: Vec<String>,
+    pub set: HashSet<String>,
 }
 
 /// The open file staged or unstaged as a whole (`from`) and the file to open once that worked
@@ -68,27 +85,49 @@ pub fn place(files: &[&FileEntry], order: &[(usize, bool)], path: Option<&str>) 
     place_in(order, path.and_then(|p| files.iter().position(|f| f.path == p)))
 }
 
-/// The span of that list while it holds (its head is the file the keys act on).
-pub fn span(st: &AppState, staged: bool) -> Option<&WipSpan> {
-    let s = st.cues.wip_span.as_ref().filter(|s| s.staged == staged)?;
-    cursor(st).and_then(|t| path_in(staged, t)).filter(|p| *p == s.head).map(|_| s)
+/// The picks of that list while they hold (the file the keys act on is one of them).
+pub fn picks(st: &AppState, staged: bool) -> Option<&WipPicks> {
+    let p = st.cues.wip_picks.as_ref().filter(|p| p.staged == staged)?;
+    cursor(st).and_then(|t| path_in(staged, t)).filter(|c| p.paths.contains(*c)).map(|_| p)
 }
 
-/// The files the span of that list selects, in on-screen order: the visible ones from its
-/// anchor to its head. Empty without a span, or when its anchor has left the list.
-pub fn span_paths(st: &AppState, staged: bool) -> Vec<String> {
-    let (Some(s), Some(snap)) = (span(st, staged), st.snap.as_ref()) else { return Vec::new() };
+/// The files picked in that list, in on-screen order: only the visible ones, so a file that
+/// left the list or sits in a collapsed folder doesn't count. Empty without picks.
+pub fn picked_paths(st: &AppState, staged: bool) -> Vec<String> {
+    let (Some(p), Some(snap)) = (picks(st, staged), st.snap.as_ref()) else { return Vec::new() };
     let files = files(snap, staged);
     let order = order(st, &files, staged);
-    let (Place::At(a), Place::At(h)) = (place(&files, &order, Some(&s.anchor)), place(&files, &order, Some(&s.head))) else {
-        return Vec::new();
-    };
-    let visible = visible(&order);
-    visible[a.min(h)..=a.max(h)].iter().map(|&i| files[i].path.clone()).collect()
+    visible(&order).into_iter().map(|i| &files[i].path).filter(|f| p.paths.contains(*f)).cloned().collect()
 }
 
-/// The span's files as a set, for the rows to draw selected; None unless it selects several.
-pub fn span_set(st: &AppState, staged: bool) -> Option<HashSet<String>> {
-    let paths = span_paths(st, staged);
-    (paths.len() > 1).then(|| paths.into_iter().collect())
+/// The picked files of that list, for the rows to draw selected and the actions to take; None
+/// unless there are several.
+pub fn picked(st: &AppState, staged: bool) -> Option<Picked> {
+    let paths = picked_paths(st, staged);
+    (paths.len() > 1).then(|| Picked { set: paths.iter().cloned().collect(), paths })
+}
+
+/// The visible files of that list from `from` to `to`, both included (either may come first);
+/// just `to` when `from` isn't visible.
+pub fn range(st: &AppState, staged: bool, from: &str, to: &str) -> Vec<String> {
+    let Some(snap) = st.snap.as_ref() else { return vec![to.to_owned()] };
+    let files = files(snap, staged);
+    let order = order(st, &files, staged);
+    let (Place::At(a), Place::At(b)) = (place(&files, &order, Some(from)), place(&files, &order, Some(to))) else {
+        return vec![to.to_owned()];
+    };
+    let visible = visible(&order);
+    visible[a.min(b)..=a.max(b)].iter().map(|&i| files[i].path.clone()).collect()
+}
+
+/// Forgets the picks no longer in their list (after a status read), so a file that comes back
+/// doesn't rejoin; no picks are left when none is.
+pub fn prune(st: &mut AppState) {
+    let Some(snap) = st.snap.as_ref() else { return };
+    let Some(p) = st.cues.wip_picks.as_mut() else { return };
+    let listed: HashSet<&str> = files(snap, p.staged).into_iter().map(|f| f.path.as_str()).collect();
+    p.paths.retain(|f| listed.contains(f.as_str()));
+    if p.paths.is_empty() {
+        st.cues.wip_picks = None;
+    }
 }

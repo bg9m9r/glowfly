@@ -26,6 +26,13 @@ pub enum RepoMsg {
     SelectCommit(Oid),
     JumpTo(Oid),
     OpenDiff(DiffTarget),
+    /// A Shift+click (`Range`) or Ctrl/Cmd+click (`Toggle`) on a row of Unstaged (`staged:
+    /// false`) or Staged Files (update/wip_picks.rs).
+    PickWipFile {
+        staged: bool,
+        path: String,
+        how: crate::state::wip_lists::PickHow,
+    },
     CloseDiff,
     /// The graph shows these commits and needs their line counts.
     WantStats(Vec<Oid>),
@@ -89,6 +96,7 @@ impl RepoMsg {
             | Self::SelectCommit(..)
             | Self::JumpTo(..)
             | Self::OpenDiff(..)
+            | Self::PickWipFile { .. }
             | Self::CloseDiff
             | Self::WantStats(..)
             | Self::InitRepo

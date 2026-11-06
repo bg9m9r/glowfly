@@ -54,7 +54,8 @@ pub fn undo_moves_work_tree(action: &Action, redo: bool) -> bool {
         | Action::DeleteFile { .. }
         | Action::UnstageGone { .. }
         | Action::Resolve { .. }
-        | Action::Conflicts { .. } => false,
+        | Action::Conflicts { .. }
+        | Action::Batch { .. } => false,
     }
 }
 

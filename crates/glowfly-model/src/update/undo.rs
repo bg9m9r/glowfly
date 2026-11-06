@@ -261,7 +261,9 @@ pub(super) fn recorded_since(st: &mut AppState, mark: Option<(TabId, u64)>) {
         return;
     }
     match st.session.undo.undo.last() {
-        Some(Action::Discard { .. } | Action::DiscardAll { .. } | Action::Reset { .. } | Action::DeleteBranch { .. }) => {
+        Some(
+            Action::Discard { .. } | Action::Batch { .. } | Action::DiscardAll { .. } | Action::Reset { .. } | Action::DeleteBranch { .. },
+        ) => {
             hints::offer(st, HintId::Undo);
         }
         Some(Action::Commit { amend, .. }) => {

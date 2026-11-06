@@ -218,6 +218,11 @@ pub enum FailedWrite {
     Restore {
         path: String,
     },
+    /// A multi-file discard that discarded `done` files, then stopped at `path`.
+    DiscardPaths {
+        path: String,
+        done: usize,
+    },
 }
 
 impl Msg {

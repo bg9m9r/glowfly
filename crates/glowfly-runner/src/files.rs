@@ -1,7 +1,7 @@
 //! The `Execute` impl of `FilesEffect`: restoring a file from a commit with an undo entry,
 //! creating, renaming, deleting and discarding (untracked) a working-tree file, listing the
 //! tracked files, an index or working-tree edit (`git_ops.rs`), reverting part of a diff
-//! (`revert.rs`), and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
+//! (`revert.rs`), discarding several files at once (`discard_paths.rs`), and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
 
 use super::execute::{Cx, Execute};
 use git2::Oid;
@@ -25,6 +25,7 @@ impl Execute for FilesEffect {
             FilesEffect::LoadTracked { workdir, generation } => tracked_paths(&workdir, generation),
             FilesEffect::LocalOp { workdir, op } => super::git_ops::local_done(&workdir, op),
             FilesEffect::Revert { workdir, req } => super::revert::run(&workdir, req),
+            FilesEffect::DiscardPaths { workdir, files, mode } => super::discard_paths::run(&workdir, files, mode, cx.seams.trashers),
         })
     }
 }

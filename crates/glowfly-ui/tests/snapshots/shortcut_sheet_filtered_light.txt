@@ -34,7 +34,7 @@ Dialog
   Label "Open the list's current file"
   Label "in the Unstaged and Staged Files lists"
   Label "Enter"
-  Label "Discard the unstaged file's changes (asks first)"
+  Label "Discard the unstaged file's or the selected files' changes (asks first)"
   Label "in the Unstaged and Staged Files lists"
   Label "Del or Ctrl+Backspace"
   Label "Go to the Unstaged or Staged Files list"

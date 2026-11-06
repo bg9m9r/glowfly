@@ -98,6 +98,8 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::Conflicts { .. } => return marked_plan::plan(workdir, action, redo),
         // Undoing needs nothing in progress, redoing the operation it aborted.
         Action::AbortKept { .. } => return aborted_restore::plan(workdir, action, redo),
+        // Each part is planned as it would be alone.
+        Action::Batch { parts, .. } => return super::batch::plan(workdir, parts, redo),
         _ => {}
     }
     let repo = Repository::open(workdir)?;
@@ -211,6 +213,8 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::Discard { .. } | Action::Restore { .. } | Action::StashDrop { .. } | Action::Resolve { .. } | Action::Conflicts { .. } => {
             unreachable!("planned above")
         }
-        Action::DeleteFile { .. } | Action::AbortKept { .. } | Action::UnstageGone { .. } => unreachable!("planned above"),
+        Action::DeleteFile { .. } | Action::AbortKept { .. } | Action::UnstageGone { .. } | Action::Batch { .. } => {
+            unreachable!("planned above")
+        }
     })
 }

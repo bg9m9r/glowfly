@@ -3,7 +3,8 @@
 //! sit in its numbered steps (`op_steps.rs`); else Unstaged, then Staged Files, under the card of
 //! an operation without steps (`details_banner.rs`). A conflicted row's Mark resolved always sits
 //! at its end, a row's Stage or Unstage while the row is hovered or current; the S and U keys
-//! and the row's menu reach them too.
+//! and the row's menu reach them too. Shift+click and Ctrl/Cmd+click pick several files of a
+//! list (gaps allowed); a picked row's button and menu (`details_wip_picks.rs`) act on them all.
 //! The Unstaged and Staged Files headers are in `details_wip_header.rs`, the lists themselves in
 //! `details_wip_list.rs`; those two lists' keyboard focus and arrows are in `wip_keys.rs`.
 
@@ -14,6 +15,8 @@ const NARROW_ROW: f32 = 300.0;
 pub(super) mod header;
 #[path = "details_wip_list.rs"]
 mod list;
+#[path = "details_wip_picks.rs"]
+mod picks;
 pub(super) use list::file_list;
 
 use super::UiCache;
@@ -42,21 +45,20 @@ use glowfly_model::state::file_folds::FileFolds;
 use glowfly_model::state::lfs::{TrackContext, track_items};
 use glowfly_model::state::op_steps::op_kind;
 use glowfly_model::state::tool_compare::ToolAvail;
-use glowfly_model::state::wip_lists;
+use glowfly_model::state::wip_lists::{self, PickHow, Picked};
 use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::tools::ToolsMsg;
-use std::collections::HashSet;
 
 pub(super) fn wip_panel(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) {
     super::wip_keys::requested(ui.ctx(), view);
     let Some(snap) = &st.snap else { return };
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.cues.diff_opening.as_ref().filter(|t| t.is_working_tree());
-    let spans = [false, true].map(|staged| wip_lists::span_set(st, staged));
+    let picks = [false, true].map(|staged| wip_lists::picked(st, staged));
     let open = OpenFile {
         diff: opening.or(st.session.diff.view.as_ref().map(|(t, _)| t)),
         conflict: st.session.conflict.view.as_ref().map(|c| c.path.as_str()),
-        spans: [spans[0].as_ref(), spans[1].as_ref()],
+        picks: [picks[0].as_ref(), picks[1].as_ref()],
     };
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
@@ -134,8 +136,8 @@ pub(super) struct RowContext<'a> {
 pub(super) struct OpenFile<'a> {
     pub diff: Option<&'a DiffTarget>,
     pub conflict: Option<&'a str>,
-    /// The files a Shift move selected in Unstaged, then Staged Files, when several.
-    pub spans: [Option<&'a HashSet<String>>; 2],
+    /// The files picked with Shift or Ctrl/Cmd in Unstaged, then Staged Files, when several.
+    pub picks: [Option<&'a Picked>; 2],
 }
 
 /// The Discard all confirmation, naming Undo's current key.
@@ -144,6 +146,12 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
         Some(k) => t.trf("details.wip.discard_all.body_key", &[("stash", &DISCARD_STASH_MESSAGE), ("key", &k)]),
         None => t.trf("details.wip.discard_all.body", &[("stash", &DISCARD_STASH_MESSAGE)]),
     }
+}
+
+/// Why the picked `paths` can't be discarded: the first one Glowfly can't act on safely.
+fn unsafe_reason(t: Lang, snap: &Snapshot, paths: &[String]) -> Option<String> {
+    let rows = snap.unstaged.iter().filter(|f| paths.contains(&f.path));
+    rows.into_iter().find_map(|f| f.hazard.as_ref().map(|h| glowfly_model::state::files::discard_unsafe(t, &f.path, &h.reason(t))))
 }
 
 /// The file a step landed on, for its list to scroll to (`ViewCues::file_reveal`).
@@ -166,10 +174,16 @@ pub(super) fn wip_file_row(
     let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
     // A conflicted file opens in the conflict view; marking it resolved checks for markers first.
     let conflicted = !staged && f.status == '!';
-    let toggle = || match (staged, conflicted) {
-        (true, _) => Msg::Stage(StageMsg::UnstageFile(f.path.clone())),
-        (false, true) => Msg::Conflict(ConflictMsg::MarkResolved(vec![f.path.clone()])),
-        (false, false) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
+    // One of the files picked with Shift or Ctrl/Cmd (never a conflicted one, which has its own
+    // list): its button, menu and keys act on every pick.
+    let picked = !conflicted && open.picks[usize::from(staged)].is_some_and(|p| p.set.contains(&f.path));
+    let many = open.picks[usize::from(staged)].filter(|_| picked);
+    let toggle = || match (staged, conflicted, many) {
+        (true, _, Some(p)) => Msg::Stage(StageMsg::UnstagePaths(p.paths.clone())),
+        (false, false, Some(p)) => Msg::Stage(StageMsg::StagePaths(p.paths.clone())),
+        (true, _, _) => Msg::Stage(StageMsg::UnstageFile(f.path.clone())),
+        (false, true, _) => Msg::Conflict(ConflictMsg::MarkResolved(vec![f.path.clone()])),
+        (false, false, _) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
     };
     let t = ctx.lang;
     // Conflicted rows never show counts; bars of both lists share one scale.
@@ -186,8 +200,6 @@ pub(super) fn wip_file_row(
         Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
         _ => false,
     };
-    // One of the files a Shift move selected (never a conflicted one, which has its own list).
-    let picked = !conflicted && open.spans[usize::from(staged)].is_some_and(|s| s.contains(&f.path));
     let selected = current || picked;
     // The row's action sits at its end: always on a conflicted row (Mark resolved), else while the
     // row is hovered or current, in place of its line counts. The S and U keys, the conflict
@@ -202,7 +214,13 @@ pub(super) fn wip_file_row(
     let end = |ui: &mut egui::Ui| {
         let button = if narrow { buttons::icon_only(Icon::Check, action) } else { buttons::quiet(action).size(ControlSize::Small) };
         if show_action {
-            if ui.add(button.enabled(usable)).clicked() {
+            let b = ui.add(button.enabled(usable));
+            let b = match many {
+                Some(p) if staged => b.on_hover_text(t.trn("details.wip.picks.unstage.tip", p.paths.len(), &[])),
+                Some(p) => b.on_hover_text(t.trn("details.wip.picks.stage.tip", p.paths.len(), &[])),
+                None => b,
+            };
+            if b.clicked() {
                 msgs.push(toggle());
             }
         } else if let Some((n, w)) = count.zip(lines) {
@@ -234,8 +252,15 @@ pub(super) fn wip_file_row(
     }
     .response;
     if r.clicked() {
+        // Shift picks a range from the anchor, Ctrl (Cmd on macOS) adds or removes one file.
+        let m = ui.input(|i| i.modifiers);
+        let pick = |how| Msg::Repo(RepoMsg::PickWipFile { staged, path: f.path.clone(), how });
         msgs.push(if conflicted {
             Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))
+        } else if m.shift {
+            pick(PickHow::Range)
+        } else if m.command {
+            pick(PickHow::Toggle)
         } else {
             Msg::Repo(RepoMsg::OpenDiff(target()))
         });
@@ -248,6 +273,9 @@ pub(super) fn wip_file_row(
             super::wip_keys::focused_list(ui.ctx()) == Some(staged)
         };
     r.row_menu_for(keyboard, |ui| {
+        if let Some(p) = many {
+            return picks::menu(ui, t, msgs, staged, &p.paths, unsafe_reason(t, snap, &p.paths).as_deref());
+        }
         if conflicted {
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));
         }

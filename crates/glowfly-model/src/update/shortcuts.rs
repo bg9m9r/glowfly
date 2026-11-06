@@ -1,7 +1,7 @@
 //! The staging, revert, commit-message and sheet keys. `ui/shortcuts/global.rs` matches the
 //! keys; this file decides whether each applies now and sends the message the buttons already
-//! use: S/U stage or unstage the open working-tree file (its selected lines, when a selection is
-//! visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
+//! use: S/U stage or unstage the open working-tree file (with the other picked files of its
+//! list, or its selected lines when a selection is visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
 //! Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit message, and
 //! Ctrl+/ opens or closes the shortcut sheet (the default keys). The keys of a focused Unstaged
 //! or Staged Files list go to `wip_keys.rs`, the moves of the other file lists to
@@ -63,8 +63,9 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
     }
 }
 
-/// What S (`stage`) or U does on the open diff (or the working-tree file still opening): the
-/// selected lines when the selection is visible on it, else the whole file. Nothing on a diff of the other side, a commit or comparison
+/// What S (`stage`) or U does on the open diff (or the working-tree file still opening): every
+/// picked file of its list when it is one of them, else the selected lines when the selection
+/// is visible on it, else the whole file. Nothing on a diff of the other side, a commit or comparison
 /// diff, a conflicted file, or under the conflict view or the file history.
 fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
     if st.session.conflict.view.is_some() || st.session.history.view.is_some() {
@@ -76,6 +77,15 @@ fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
     let conflicted = st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == target.path() && f.status == '!'));
     if conflicted {
         return None;
+    }
+    // The picked files of the open file's list, when it is one of them and the key fits the
+    // list: they win over a line selection (a pick click clears that anyway).
+    if let DiffTarget::Unstaged(_) | DiffTarget::Staged(_) = target {
+        let staged = matches!(target, DiffTarget::Staged(_));
+        let picked = crate::state::wip_lists::picked_paths(st, staged);
+        if picked.len() > 1 && staged != stage {
+            return Some(Msg::Stage(if stage { StageMsg::StagePaths(picked) } else { StageMsg::UnstagePaths(picked) }));
+        }
     }
     let sel = &st.cues.diff_lines;
     let lines = !sel.is_empty() && sel.target.as_ref() == Some(target) && st.line_ops_blocked().is_none();
