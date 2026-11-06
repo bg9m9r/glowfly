@@ -120,7 +120,8 @@ pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
             let git_dir = common.commondir().join("worktrees").join(name);
             let (branch, head) = read_head(&git_dir, &common);
             let held = held_branch(&git_dir);
-            let current = is_current(&path);
+            // By spelling alone for one on another network place: `same_folder` would open it.
+            let current = if near { is_current(&path) } else { here.as_deref().is_some_and(|h| crate::paths::same_spelling(&path, h)) };
             let folder = if near { crate::paths::FolderId::of(&path) } else { None };
             Some(WorktreeInfo {
                 name: Some(name.to_owned()),

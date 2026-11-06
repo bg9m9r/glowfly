@@ -68,6 +68,19 @@ pub(crate) fn net_place() -> PathBuf {
     if cfg!(windows) { PathBuf::from(r"\\glowfly-test.invalid\share") } else { PathBuf::from("/net/glowfly-test.invalid") }
 }
 
+/// Fails the test when `path` is on `net_place()`, in any spelling: test builds of the helpers
+/// that touch a path (`paths::resolve`, `FolderId::of`, `read_file_bounded`) call it, so code
+/// that reaches the place fails its test instead of only failing to resolve the host.
+pub(crate) fn never_net_place(path: &Path) {
+    let text = path.to_string_lossy().to_ascii_lowercase();
+    assert!(!text.contains("glowfly-test.invalid"), "touched the test network place: {}", path.display());
+}
+
+/// `p` as git writes it in a `.git` file or a worktree record: forward slashes.
+pub(crate) fn git_spelling(p: &Path) -> String {
+    p.display().to_string().replace('\\', "/")
+}
+
 /// Makes `link` a symbolic link to `target` (a folder link on Windows when `dir`); false where
 /// the system doesn't allow it, with a note. The target is never touched.
 pub(crate) fn link_to(target: &Path, link: &Path, dir: bool) -> bool {
