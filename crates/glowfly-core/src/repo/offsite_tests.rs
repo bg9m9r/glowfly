@@ -76,10 +76,18 @@ fn the_repository_still_loads_when_its_contents_name_network_places() {
 #[test]
 fn a_worktree_record_naming_a_network_place_is_never_compared_to_the_current_folder() {
     let dir = offsite_repo("offsite-wt-current");
-    // `paths::same_folder` would open the record's folder (`testutil::never_net_place` fails).
-    let list = worktrees_at(&dir).unwrap();
+    let repo = git2::Repository::open(&dir).unwrap();
+    // `paths::same_folder` opens both folders.
+    let asked = std::cell::RefCell::new(Vec::new());
+    let same = |a: &Path, b: &Path| {
+        asked.borrow_mut().extend([a.to_path_buf(), b.to_path_buf()]);
+        crate::paths::same_folder(a, b)
+    };
+    let list = worktrees::list_with(&repo, &same);
     let wt = list.iter().find(|w| w.name.as_deref() == Some("wt")).expect("wt is listed");
     assert!(!wt.current && list[0].current, "{list:?}");
+    assert!(!asked.borrow().is_empty() && !asked.borrow().iter().any(|p| on_net_place(p)), "{:?}", asked.borrow());
+    drop(repo);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

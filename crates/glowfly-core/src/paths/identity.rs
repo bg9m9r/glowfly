@@ -16,8 +16,6 @@ impl FolderId {
     /// The identity of what `path` names (links followed). None when it doesn't exist, can't be
     /// read, or lives on a volume that gives no file ids (some network shares report 0).
     pub fn of(path: &Path) -> Option<FolderId> {
-        #[cfg(test)]
-        crate::testutil::never_net_place(path);
         let id = imp::of(path)?;
         (id.file != 0).then_some(id)
     }
