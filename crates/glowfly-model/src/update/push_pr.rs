@@ -5,7 +5,7 @@
 use super::ops::{JobSpec, start_job};
 use crate::effect::{Effect, ForgeCall};
 use crate::state::pull_request::repos::{self, PrRepoPick};
-use crate::state::push_pr::{self, HostBranch, PrStart};
+use crate::state::push_pr::{self, HostBranch, PrDraft, PrStart};
 use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::branch_ops;
@@ -64,7 +64,15 @@ fn push_target(st: &AppState, b: &BranchInfo) -> Result<String, String> {
 
 /// Pushes local `branch` to `remote` (None: its push remote), then opens the create dialog (at
 /// once when the remote already has everything). A diverged branch is refused, never forced.
-pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, remote: Option<String>, fx: &mut Vec<Effect>) {
+/// `form` is what was typed in the create dialog before Push to your fork…, put back when it opens.
+pub(super) fn start(
+    st: &mut AppState,
+    branch: &str,
+    target: Option<String>,
+    remote: Option<String>,
+    form: Option<PrDraft>,
+    fx: &mut Vec<Effect>,
+) {
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     if fs.host.is_none() {
         return;
@@ -91,12 +99,15 @@ pub(super) fn start(st: &mut AppState, branch: &str, target: Option<String>, rem
                 matches!(&st.modal, Some(Modal::CreatePr { source: s, repos, .. }) if *s == source && repos.remote_from(fs) == remote);
             if !open {
                 open_dialog(st, b.name, target, Some(remote), fx);
+                if let Some(form) = form {
+                    super::fork_pr::restore(st, form);
+                }
             }
         }
         HostBranch::Missing | HostBranch::Ahead(_) => {
             let Some((to, dest, set_upstream)) = push_pr::pr_push(&b, snap, fs, &remote) else { return };
             let cmd = branch_ops::push_cmd(&b.name, &to, &dest, set_upstream);
-            let then = PrStart { source: dest, target, remote: (to != fs.remote).then_some(to) };
+            let then = PrStart { source: dest, target, remote: (to != fs.remote).then_some(to), form };
             start_job(st, JobSpec { then_pr: Some(then), ..JobSpec::new("Push".into(), vec![cmd]) }, fx);
         }
     }
@@ -138,9 +149,17 @@ pub(super) fn create(st: &mut AppState, mut pr: NewPullRequest, from: &str, into
 }
 
 /// A job with a create dialog to open (`then_pr`) ended. A push that worked in the active tab
-/// (`here`) opens it once the refreshed snapshot lands; in another tab it is only logged.
-pub(super) fn job_finished(st: &mut AppState, then_pr: Option<PrStart>, ok: bool, here: bool) {
-    let Some(p) = then_pr.filter(|_| ok) else { return };
+/// (`here`) opens it once the refreshed snapshot lands; in another tab it is only logged. A
+/// failed one from Push to your fork… goes back to the create dialog with what was typed.
+pub(super) fn job_finished(st: &mut AppState, then_pr: Option<PrStart>, ok: bool, here: bool, fx: &mut Vec<Effect>) {
+    let Some(p) = then_pr else { return };
+    if !ok {
+        // A failed or cancelled push from Push to your fork… reopens from the original From.
+        if here && let Some(form) = p.form {
+            super::fork_pr::back_to(st, p.target, form, fx);
+        }
+        return;
+    }
     if !here {
         st.log(true, format!("Pushed {}. Its tab is no longer active, so the create dialog wasn't opened.", p.source));
     } else if let Some(fs) = st.session.forge.as_mut() {
@@ -165,7 +184,13 @@ fn open_after_load(st: &mut AppState, fx: &mut Vec<Effect>) {
     match &st.modal {
         Some(Modal::CreatePr { source, repos, .. }) if *source == p.source && repos.remote_from(fs) == from => {}
         Some(_) => st.log(true, format!("Pushed {}. Use Create {noun}… to continue.", p.source)),
-        None => open_dialog(st, p.source, p.target, p.remote, fx),
+        None => {
+            let PrStart { source, target, remote, form } = p;
+            open_dialog(st, source, target, remote, fx);
+            if let Some(form) = form {
+                super::fork_pr::restore(st, form);
+            }
+        }
     }
 }
 

@@ -100,6 +100,7 @@ mod forge_filter_edit_tests;
 mod forge_filters_account_tests;
 mod forge_filters_tests;
 mod forge_tests;
+mod fork_pr_draft_tests;
 mod fork_pr_source_tests;
 mod fork_pr_tests;
 mod git_env_tests;

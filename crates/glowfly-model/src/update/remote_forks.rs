@@ -262,25 +262,35 @@ pub(super) fn fork_created(
     let active = st.snap.as_ref().filter(|s| same_spelling(&s.workdir, &workdir));
     let src = active.and_then(|s| s.remote_info.iter().find(|r| forge::parse_remote(r.fetch_url(), connections).as_ref() == Some(target)));
     let (src_name, src_url) = src.map(|r| (r.name.clone(), r.fetch_url().to_owned())).unwrap_or_default();
+    let here = active.is_some();
+    // Each early end below goes back to the create dialog Push to your fork… came from.
     if active.is_some_and(|s| check_remote_name(&name, &names(s), None).is_err()) {
         let how = if src_name.is_empty() { "Add remote…".to_owned() } else { add_fork_label(&src_name) };
-        return st.log(false, format!("Created the fork {}, but the remote name {name} is taken now. Add it with {how}.", fork.full_name));
+        st.log(false, format!("Created the fork {}, but the remote name {name} is taken now. Add it with {how}.", fork.full_name));
+        if let Some(t) = then_pr {
+            super::fork_pr::reopen(st, t, fx);
+        }
+        return;
     }
     let url = fork.url_like(&src_url).to_owned();
     if let Err(p) = check_url(&url) {
-        return st.log(false, p.message(false));
+        st.log(false, p.message(false));
+        if here && let Some(t) = then_pr {
+            super::fork_pr::reopen(st, t, fx);
+        }
+        return;
     }
     // With the fork ready and its repository still active, the branch is pushed in the same job.
     let push = then_pr.as_ref().filter(|_| created.ready).and_then(|t| Some((t, active?)));
     let push_job = push.and_then(|(t, snap)| super::fork_pr::add_and_push_job(snap, &name, &url, true, t));
-    let (pushes, here) = (push_job.is_some(), active.is_some());
+    let pushes = push_job.is_some();
     // It runs in the forked repository even if another tab is active now, as that repository's
     // trust decision allows (update/trust.rs).
     let plain = || JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready));
     let spec = JobSpec { cwd: Some(workdir), ..push_job.unwrap_or_else(plain) };
     start_job(st, spec, fx);
     let noun = st.session.forge.as_ref().map_or("pull request", |f| f.pr_noun());
-    match then_pr {
+    match &then_pr {
         Some(t) if !created.ready => {
             st.log(true, format!("{service} is still preparing the fork; push {} to {name} in a minute, then create the {noun}.", t.branch))
         }
@@ -290,6 +300,13 @@ pub(super) fn fork_created(
         }
         None if !created.ready => st.log(true, format!("{service} is still preparing the fork; fetch {name} in a minute.")),
         _ => {}
+    }
+    // Nothing was pushed (not ready yet, or the branch is gone): back to the create dialog.
+    if here
+        && !pushes
+        && let Some(t) = then_pr
+    {
+        super::fork_pr::reopen(st, t, fx);
     }
 }
 

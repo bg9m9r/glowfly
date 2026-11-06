@@ -55,6 +55,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Each service's head on a fork is in `glowfly-core/src/forge/pr_heads.rs`.
 - A listed pull request's source is matched by repository and branch, never by name alone: `ForgeState::pr_from` and `source_remote` match the list's head repository (`forge/head_repo.rs`) to the PR repositories' remotes, for the menus, the panel's tips and checking the source out (`update/pull_request/checkout.rs`). Tests in `flows/fork_pr_source_tests.rs`.
 - Push to your fork… goes through the Fork dialog with `ForkCreate::then_pr`, whose add job also pushes the branch (`update/fork_pr.rs`).
+- The create dialog's draft (`state/push_pr.rs::PrDraft`) rides along in `ForkThenPr::form` and `PrStart::form` and is put back when the dialog reopens after the push (`update/fork_pr.rs::restore`, counted as edited through `DialogGuard::reopened`); a cancelled Fork dialog or a failed step reopens it from the original From. Tests in `flows/fork_pr_draft_tests.rs`.
 
 ## Pull request source tip
 

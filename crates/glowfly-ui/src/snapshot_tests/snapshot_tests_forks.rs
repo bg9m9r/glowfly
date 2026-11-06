@@ -206,7 +206,7 @@ fn fork_dialog_then_push() {
     let (mut st, dir) = with_github(ThemeChoice::Dark, "fork-dialog-then-push");
     let step = ForkStep::Mine { user: "ada".into(), fork: fork("ada", false) };
     let mut f = create(&st, step, "ada");
-    f.then_pr = Some(ForkThenPr { branch: "search".into(), target: None });
+    f.then_pr = Some(ForkThenPr { branch: "search".into(), target: None, form: None });
     st.modal = Some(Modal::CreateFork(Box::new(f)));
     let mut h = harness(st, true);
     h.run();

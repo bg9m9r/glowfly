@@ -20,6 +20,24 @@ pub struct PrStart {
     pub target: Option<String>,
     /// The remote the source was pushed to; None means the code host's.
     pub remote: Option<String>,
+    /// What was typed in the create dialog before Push to your fork…; None for every other push.
+    pub form: Option<PrDraft>,
+}
+
+/// What the user had in the create dialog when Push to your fork… closed it: put back when the
+/// dialog reopens after the push, a cancel or a failure (update/fork_pr.rs).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PrDraft {
+    /// The local branch the dialog was for (reopened through `open_dialog`).
+    pub branch: String,
+    /// The dialog's From remote, where a cancelled or failed detour reopens it.
+    pub from: String,
+    pub title: String,
+    pub description: String,
+    /// The linked issues field.
+    pub items: String,
+    /// Create as draft.
+    pub draft: bool,
 }
 
 /// Where a local branch stands on the code host's remote.

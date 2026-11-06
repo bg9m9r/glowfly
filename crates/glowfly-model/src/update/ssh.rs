@@ -74,7 +74,7 @@ pub(super) fn handle(st: &mut AppState, m: SshMsg, now: Instant, fx: &mut Vec<Ef
             match result {
                 Ok(pair) => {
                     if matches!(st.modal, Some(Modal::SshKeygen)) {
-                        super::dialog::close(st);
+                        super::dialog::close(st, fx);
                     }
                     let page = st.prefs.as_ref().map(|p| p.page);
                     if let Some(p) = st.prefs.as_mut() {
