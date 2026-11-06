@@ -11,7 +11,8 @@
 //! allowed). Then a drive letter `GetDriveTypeW` calls remote (only ever asked of a `X:\` root,
 //! never of a share's, whose query reaches its server). On macOS and Linux: the automounter roots
 //! `/net/<host>` and `/Network/Servers/<host>` (with their `/System/Volumes/Data/` forms), where a
-//! lookup mounts the host; `//server/share` is a local name there.
+//! lookup mounts the host, matched in any case (macOS's root volume ignores case by default);
+//! `//server/share` is a local name there.
 
 use std::path::{Component, Path, PathBuf};
 
@@ -22,7 +23,7 @@ pub(crate) enum NetRoot {
     Share { server: String, share: String },
     /// A drive letter mapped to a share, uppercase.
     MappedDrive(char),
-    /// An automounted host (`/net/<host>`, `/Network/Servers/<host>`).
+    /// An automounted host (`/net/<host>`, `/Network/Servers/<host>`), lowercased.
     Automount(String),
     /// A device-namespace path whose target can't be told: never allowed.
     Device,
@@ -117,14 +118,18 @@ fn unix_root(text: &str) -> Option<NetRoot> {
             p => parts.push(p),
         }
     }
+    // macOS's root volume ignores case by default, so `/NET/host` reaches the automounter too.
+    let is = |part: &str, name: &str| part.eq_ignore_ascii_case(name);
     let rest = match parts.as_slice() {
-        ["System", "Volumes", "Data", rest @ ..] => rest,
+        [s, v, d, rest @ ..] if is(s, "System") && is(v, "Volumes") && is(d, "Data") => rest,
         all => all,
     };
-    match rest {
-        ["net", host, ..] | ["Network", "Servers", host, ..] => Some(NetRoot::Automount((*host).to_owned())),
-        _ => None,
-    }
+    let host = match rest {
+        [n, host, ..] if is(n, "net") => host,
+        [n, s, host, ..] if is(n, "Network") && is(s, "Servers") => host,
+        _ => return None,
+    };
+    Some(NetRoot::Automount(host.to_ascii_lowercase()))
 }
 
 /// Whether `named`, a path a repository's files name, may be touched from `home`, the place

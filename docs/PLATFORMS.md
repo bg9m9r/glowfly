@@ -145,7 +145,8 @@ trust scan all run for untrusted repositories too.
    `GetDriveTypeW` is only ever asked about a drive letter's root, never a share's, whose query
    reaches its server (`volume::remote_kind` does that for the folder the user opened only). On
    macOS and Linux: `/net/<host>`, `/Network/Servers/<host>` and their `/System/Volumes/Data/`
-   forms, where a lookup mounts the host; `//server/share` is a local name there. Then each part
+   forms, where a lookup mounts the host, in any case (macOS's root volume ignores case by
+   default, so `/NET/host` reaches it too); `//server/share` is a local name there. Then each part
    past what the path shares with `home` is looked at without following it, and a link's target
    goes through the same checks (at most 32 links, past which it is refused). Win32 drops `..`
    lexically before any I/O (never above a share's root), so on Windows `..` is applied first; on

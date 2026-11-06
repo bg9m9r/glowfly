@@ -56,13 +56,14 @@ pub(super) fn owner<'a, 'r>(nested: &'a mut BTreeMap<PathBuf, Nested>, rel: &'r 
 
 /// Compares every tracked repository's HEAD and refs, naming `<folder>/.git/HEAD` in `found`
 /// for each that moved, and has their ignore rules and index read again before they are next
-/// asked (a `.gitignore` or the index may have changed since). One whose `.git` now names a
-/// place that may not be followed is named once and no longer tracked.
+/// asked (a `.gitignore` or the index may have changed since). One whose files now name a place
+/// that may not be followed (its `.git`, or what its open repository would read: a link in its
+/// git dir, a config include, `core.excludesFile`) is named once and no longer tracked.
 pub(super) fn compare(workdir: &Path, nested: &mut BTreeMap<PathBuf, Nested>, found: &mut Vec<PathBuf>) {
     let mut gone = Vec::new();
     for (rel, n) in nested.iter_mut() {
         let abs = workdir.join(rel);
-        if let Found::Refused(p) = git_file::dirs_of(&abs, workdir) {
+        if let Found::Refused(p) = git_file::other_repo(&abs, workdir) {
             tracing::debug!(folder = %abs.display(), named = %p.display(), "nested repository now names a network place: no longer tracked");
             found.push(abs.join(".git").join("HEAD"));
             gone.push(rel.clone());
