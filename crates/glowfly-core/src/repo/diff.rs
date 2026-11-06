@@ -109,7 +109,7 @@ fn workdir_plain<'r>(repo: &'r Repository, oid: Oid, reversed: bool, opts: Optio
     let mut fresh = DiffOptions::new();
     let o = opts.unwrap_or(&mut fresh);
     o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true).reverse(reversed);
-    Ok(repo.diff_tree_to_workdir_with_index(Some(&tree), Some(o))?)
+    Ok(repo.diff_tree_to_workdir_with_index(Some(&tree), Some(crate::git_file::skip_offsite_submodules(repo, o)))?)
 }
 
 /// One entry per delta (`delta_entry`).
@@ -305,7 +305,7 @@ pub(super) fn plain_target_diff<'r>(
         DiffTarget::Between(from, to, _) => trees_plain(repo, *from, *to, Some(&mut o))?,
         DiffTarget::ToWorkdir(oid, _) => workdir_plain(repo, *oid, false, Some(&mut o))?,
         DiffTarget::FromWorkdir(oid, _) => workdir_plain(repo, *oid, true, Some(&mut o))?,
-        DiffTarget::Unstaged(_) => repo.diff_index_to_workdir(None, Some(&mut o))?,
+        DiffTarget::Unstaged(_) => repo.diff_index_to_workdir(None, Some(crate::git_file::skip_offsite_submodules(repo, &mut o)))?,
         DiffTarget::Staged(_) => repo.diff_tree_to_index(head_tree(repo).as_ref(), None, Some(&mut o))?,
     })
 }

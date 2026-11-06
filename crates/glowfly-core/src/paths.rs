@@ -30,6 +30,8 @@ pub use identity::FolderId;
 /// to the parts that don't exist. A relative path, or one nothing of which resolves, is returned
 /// as it is: a relative path is never resolved against the process's working folder.
 pub fn resolve(path: &Path) -> PathBuf {
+    #[cfg(test)]
+    crate::testutil::never_net_place(path);
     if !path.is_absolute() {
         return path.to_path_buf();
     }

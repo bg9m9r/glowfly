@@ -173,9 +173,14 @@ trust scan all run for untrusted repositories too.
    `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,
    left out of the trust scan, stamped as offsite in `refs_key`, and libgit2's status leaves out
    every submodule row (an empty Submodules list when a gitlink folder is itself a link there,
-   since libgit2's listing stats it through the link); a linked worktree is listed with its branch
-   and HEAD from its admin dir, never missing or prunable, with no folder id and never counted;
-   the watcher doesn't watch a common dir on another network root.
+   since libgit2's listing stats it through the link), as do its diffs to the working tree
+   (`git_file::skip_offsite_submodules`: comparing with the working tree, the unstaged diff,
+   the line counts) and the changed-file count before a worktree is removed; a linked worktree
+   is listed with its branch and HEAD from its admin dir, never missing, prunable or current
+   (compared by spelling alone), with no folder id and never counted, and one whose own `.git`
+   file (or what it leads to) names such a place is never opened to be counted; the watcher
+   doesn't watch a common dir on another network root. In tests, `testutil::never_net_place`
+   fails any `paths::resolve`, `FolderId::of` or bounded read of the test network place.
 
 ### Names Glowfly creates or accepts
 

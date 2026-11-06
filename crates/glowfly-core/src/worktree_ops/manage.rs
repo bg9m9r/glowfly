@@ -114,11 +114,13 @@ pub fn classify(still_registered: bool, folder_exists: bool, output: &str) -> Re
 }
 
 /// The number of changed, staged or untracked (not ignored) files in the worktree at `worktree`,
-/// which is what makes git refuse to remove it without force.
+/// which is what makes git refuse to remove it without force. Submodules are left out when one
+/// of them names another network place (`git_file::offsite_gitlinks`): the read would open it.
 pub fn dirty_count(worktree: &Path) -> Result<usize> {
     let repo = Repository::open(worktree)?;
+    let offsite = !crate::git_file::offsite_gitlinks(&repo).is_empty();
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true).recurse_untracked_dirs(false).include_ignored(false).exclude_submodules(false);
+    opts.include_untracked(true).recurse_untracked_dirs(false).include_ignored(false).exclude_submodules(offsite);
     let statuses = repo.statuses(Some(&mut opts))?;
     Ok(statuses.iter().filter(|e| !e.status().is_empty() && !e.status().intersects(Status::IGNORED)).count())
 }
