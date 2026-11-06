@@ -60,7 +60,8 @@ pub(super) fn push_existing(st: &mut AppState, then: ForkThenPr, remote: String,
 
 /// The Fork dialog's primary on a fork the user already has, in then-push mode: push to it
 /// when it already is a remote, else add it and push in one job. The dialog closes once that
-/// starts; a refusal leaves it open, so its Cancel goes back to the create dialog.
+/// starts or waits for the trust prompt (the held job then carries the draft back if it is
+/// dropped); a refusal leaves it open, so its Cancel goes back to the create dialog.
 pub(super) fn add_mine(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>) {
     enum Next {
         Push(String),
@@ -93,6 +94,7 @@ pub(super) fn add_mine(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>
             if fx.len() > before && matches!(st.modal, Some(Modal::CreateFork(_))) {
                 st.modal = None;
             }
+            held_over(st);
         }
         Next::Run(spec) => {
             let before = fx.len();
@@ -100,7 +102,25 @@ pub(super) fn add_mine(st: &mut AppState, then: ForkThenPr, fx: &mut Vec<Effect>
             if fx.len() > before {
                 st.modal = None;
             }
+            held_over(st);
         }
+    }
+}
+
+/// The push waits for the trust prompt, which opened in the Fork dialog's place: the dialog
+/// isn't kept under it, as the held job brings the create dialog back if it is dropped.
+fn held_over(st: &mut AppState) {
+    let held = matches!(&st.modal, Some(Modal::Trust(p)) if p.held.is_some()) && st.trust.held.is_some();
+    if held && matches!(st.dialog.under(), Some(Modal::CreateFork(_))) {
+        st.dialog.drop_under();
+    }
+}
+
+/// A held push from Push to your fork… was dropped (the trust prompt's Cancel, Don't trust, or
+/// it couldn't run once trusted): back to the create dialog with what was typed.
+pub(super) fn dropped(st: &mut AppState, back: Option<PrStart>, fx: &mut Vec<Effect>) {
+    if let Some(PrStart { target, form: Some(form), .. }) = back {
+        back_to(st, target, form, fx);
     }
 }
 

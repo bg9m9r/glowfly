@@ -10,6 +10,7 @@
 use super::jobs::Started;
 use crate::effect::{Effect, LoadKind, Sealed, WaitingKind};
 use crate::msg::TrustMsg;
+use crate::state::push_pr::PrStart;
 use crate::state::tabs::is_repo_at;
 use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, Waiting, WaitingFor, prompt_for, record, record_trusted, standing};
 use crate::state::{AppState, Modal, RunningJob};
@@ -91,7 +92,10 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
                 st.log(true, format!("{} is trusted.", h.name));
                 release(st, h, real, named, unchecked.clone(), fx);
             }
-            Some(h) => forget(st, h, trusted),
+            Some(h) => {
+                let back = forget(st, h, trusted);
+                super::fork_pr::dropped(st, back, fx);
+            }
             None => {}
         }
         return;
@@ -109,7 +113,8 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     } else {
         st.log(true, format!("{name} isn't trusted. Glowfly won't fetch or contact its hosting service for it on its own."));
         if let Some(h) = held {
-            forget(st, h, false);
+            let back = forget(st, h, false);
+            super::fork_pr::dropped(st, back, fx);
         }
     }
 }
@@ -122,7 +127,8 @@ fn release(st: &mut AppState, h: HeldJob, real: &Path, named: bool, unchecked: O
     let active = st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &h.real));
     let here = named && same_spelling(&h.real, real) && (h.elsewhere || active);
     if !here || super::jobs::busy(st, false) {
-        return forget(st, h, true);
+        let back = forget(st, h, true);
+        return super::fork_pr::dropped(st, back, fx);
     }
     tracing::debug!("running {} now that {} is trusted", h.job.label, h.name);
     st.job_stop = super::job_stop::for_effect(&h.effect);
@@ -183,9 +189,9 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut promp
             st.log(false, format!("{} wasn't run: decide whether to trust {name} first.", job.label));
             return Started::No;
         }
-        // Its prompt was closed some other way.
+        // Its prompt was closed some other way; a new prompt opens, so nothing goes back.
         if let Some(old) = st.trust.held.take() {
-            forget(st, old, false);
+            let _ = forget(st, old, false);
         }
     }
     prompt.held = Some(job.label.clone());
@@ -217,18 +223,21 @@ pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<St
     st.trust.waiting = Some(Waiting { real, what, label });
 }
 
-/// The trust prompt was closed without a decision: the held job, if any, is dropped.
-pub fn dismissed(st: &mut AppState) {
+/// The trust prompt was closed without a decision: the held job, if any, is dropped. Returns
+/// what `forget` hands back, for update/dialog.rs to reopen once the prompt is gone.
+pub fn dismissed(st: &mut AppState) -> Option<PrStart> {
     st.trust.waiting = None;
-    if let Some(h) = st.trust.held.take() {
-        forget(st, h, false);
-    }
+    let h = st.trust.held.take()?;
+    forget(st, h, false)
 }
 
 /// Drops the held job `h`: clears what its caller set up to follow it, in its own tab whether
 /// or not that is still the active one, and says it didn't run, and why (`trusted`: the
-/// repository is trusted now, but the job couldn't run as asked).
-fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
+/// repository is trusted now, but the job couldn't run as asked). Returns its create dialog
+/// to go back to (a push from Push to your fork… with what was typed, held in the active
+/// repository) for the caller to reopen once no dialog is open (`fork_pr::dropped`).
+#[must_use]
+fn forget(st: &mut AppState, h: HeldJob, trusted: bool) -> Option<PrStart> {
     let label = h.job.label.as_str();
     st.gitflow_finish.take_if(|j| j.label == label);
     st.tag_job.take_if(|j| j.label == label);
@@ -256,6 +265,8 @@ fn forget(st: &mut AppState, h: HeldJob, trusted: bool) {
         format!("{label} wasn't run. Glowfly runs git commands in {} only after you trust it.", h.name)
     };
     st.log(true, text);
+    let active = st.snap.as_ref().is_some_and(|s| is_repo_at(s, &h.real));
+    h.job.then_pr.filter(|p| active && !h.elsewhere && p.form.is_some())
 }
 
 /// A job that made the repository at `path` succeeded and Glowfly is about to open it: a clone,

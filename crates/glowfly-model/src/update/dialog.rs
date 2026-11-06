@@ -47,10 +47,9 @@ fn dismiss(st: &mut AppState, how: Dismiss, fx: &mut Vec<Effect>) {
 
 /// Closes whichever dialog is open (`Msg::CloseModal`, the question's Discard).
 pub(super) fn close(st: &mut AppState, fx: &mut Vec<Effect>) {
-    // Closing the trust prompt without a decision drops the job waiting for it.
-    if matches!(st.modal, Some(Modal::Trust(_))) {
-        trust::dismissed(st);
-    }
+    // Closing the trust prompt without a decision drops the job waiting for it (and a push
+    // from Push to your fork… goes back to the create dialog).
+    let dropped = if matches!(st.modal, Some(Modal::Trust(_))) { trust::dismissed(st) } else { None };
     if matches!(st.modal, Some(Modal::DeepLink(_))) {
         deep_link::modal_closed(st);
     }
@@ -62,4 +61,5 @@ pub(super) fn close(st: &mut AppState, fx: &mut Vec<Effect>) {
     if let Some(then) = back {
         super::fork_pr::reopen(st, then, fx);
     }
+    super::fork_pr::dropped(st, dropped, fx);
 }
