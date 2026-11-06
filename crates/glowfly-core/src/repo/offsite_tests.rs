@@ -115,3 +115,18 @@ fn diffs_to_the_working_tree_leave_submodules_out_when_one_names_a_network_place
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
+
+#[test]
+fn a_worktree_head_that_links_to_a_network_place_is_not_read() {
+    let dir = offsite_repo("offsite-wt-head-link");
+    let head = dir.join(".git/worktrees/wt/HEAD");
+    std::fs::remove_file(&head).unwrap();
+    if link_to(&net_place().join("HEAD"), &head, false) {
+        let repo = git2::Repository::open(&dir).unwrap();
+        let list = worktrees::list(&repo);
+        let wt = list.iter().find(|w| w.name.as_deref() == Some("wt")).expect("wt is still listed");
+        assert_eq!((&wt.branch, wt.head), (&None, None), "{wt:?}");
+        drop(repo);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

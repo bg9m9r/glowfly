@@ -167,9 +167,11 @@ fn normalize(path: &Path) -> PathBuf {
 
 /// The branch (short name for refs/heads/, the whole ref otherwise) and commit that the HEAD
 /// file in `git_dir` names. Reading the file means a worktree whose folder is gone still shows
-/// its branch.
+/// its branch. Read bounded and only where `net_path` allows (`git_file::read_small_in`): a
+/// HEAD that is a link to another machine is never followed.
 fn read_head(git_dir: &Path, common: &Repository) -> (Option<String>, Option<Oid>) {
-    let Ok(text) = std::fs::read_to_string(git_dir.join("HEAD")) else { return (None, None) };
+    let Some(bytes) = crate::git_file::read_small_in(&git_dir.join("HEAD"), git_dir) else { return (None, None) };
+    let Ok(text) = std::str::from_utf8(&bytes) else { return (None, None) };
     let text = text.trim();
     if let Some(target) = text.strip_prefix("ref:") {
         let full = target.trim();

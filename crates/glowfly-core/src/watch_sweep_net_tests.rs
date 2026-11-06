@@ -65,6 +65,23 @@ fn a_tracked_nested_repository_rewritten_to_a_network_place_is_dropped() {
 }
 
 #[test]
+fn a_tracked_nested_repository_whose_config_comes_to_name_a_network_place_is_dropped() {
+    let dir = repo("sweep-net-config-later", 0);
+    let inner = dir.join("inner");
+    git2::Repository::init(&inner).unwrap();
+    let (mut s, mut ig) = start(&dir);
+    assert!(s.seen.as_ref().unwrap().nested.contains_key(Path::new("inner")));
+    let config = inner.join(".git/config");
+    let text = std::fs::read_to_string(&config).unwrap();
+    let excludes = git_spelling(&net_place().join("excludes"));
+    std::fs::write(&config, format!("{text}[core]\n\texcludesFile = {excludes}\n")).unwrap();
+    let found = s.sweep(&mut ig, later()).unwrap();
+    assert_eq!(found.iter().filter(|p| **p == inner.join(".git").join("HEAD")).count(), 1, "{found:?}");
+    assert!(!s.seen.as_ref().unwrap().nested.contains_key(Path::new("inner")), "its ignore rules are no longer asked");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_nested_head_link_to_a_network_place_is_not_read() {
     let dir = repo("sweep-net-head-link", 0);
     let inner = dir.join("inner");
