@@ -87,6 +87,17 @@ fn unix_spellings() {
     {
         assert_eq!(spelled_root_for(text, false), host, "{text}");
     }
+    // macOS's root volume ignores case by default: every spelling reaches the automounter.
+    for text in [
+        "/NET/host/x",
+        "/Net/HOST",
+        "/network/servers/host/x",
+        "/NETWORK/SERVERS/Host",
+        "/system/volumes/data/NET/host",
+        "/SYSTEM/Volumes/DATA/Network/Servers/host",
+    ] {
+        assert_eq!(spelled_root_for(text, false), host, "{text}");
+    }
     for text in ["/home/me", "//server/share/x", r"\\server\share\x", "/net", "/netx/y", "net/host", "/Network/Servers"] {
         assert_eq!(spelled_root_for(text, false), None, "{text}");
     }
