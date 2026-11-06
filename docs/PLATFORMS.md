@@ -179,8 +179,7 @@ trust scan all run for untrusted repositories too.
    is listed with its branch and HEAD from its admin dir, never missing, prunable or current
    (compared by spelling alone), with no folder id and never counted, and one whose own `.git`
    file (or what it leads to) names such a place is never opened to be counted; the watcher
-   doesn't watch a common dir on another network root. In tests, `testutil::never_net_place`
-   fails any `paths::resolve`, `FolderId::of` or bounded read of the test network place.
+   doesn't watch a common dir on another network root.
 
 ### Names Glowfly creates or accepts
 
