@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.4.0-rc.1...v0.5.0-rc.1) (2026-11-06)
+
+
+### Features
+
+* **push:** name and check the target a plain git push really goes to ([a06b5dd](https://github.com/bg9m9r/glowfly/commit/a06b5ddc06f60ebc896ee113eb7467baa714b240)), closes [#599](https://github.com/bg9m9r/glowfly/issues/599)
+* save the auto-stash record as soon as the stash is made ([8c617e1](https://github.com/bg9m9r/glowfly/commit/8c617e1d36c779e4aeaf71998d73bda1283e9faa)), closes [#597](https://github.com/bg9m9r/glowfly/issues/597)
+* **updates:** refuse a SHA256SUMS signature made for another release ([565b6ce](https://github.com/bg9m9r/glowfly/commit/565b6ce6511980f84cafe24a8d6ed7c4b5c5cc34)), closes [#594](https://github.com/bg9m9r/glowfly/issues/594)
+
+
+### Bug fixes
+
+* merge and rebase onto the branch picked, not a same-named tag ([2017463](https://github.com/bg9m9r/glowfly/commit/201746381109a05d12f6bcd76fbc9e0ec20cde4b)), closes [#592](https://github.com/bg9m9r/glowfly/issues/592)
+* read config values through one helper so bare keys don't panic ([1b4eb32](https://github.com/bg9m9r/glowfly/commit/1b4eb325788fc60eb61c379e6ab21ac7b7531c7a)), closes [#796](https://github.com/bg9m9r/glowfly/issues/796)
+* read stash messages that aren't UTF-8 instead of failing the repository load ([89202fb](https://github.com/bg9m9r/glowfly/commit/89202fb4b22fa6e6c66b4d8beda32eacc87cce6e)), closes [#591](https://github.com/bg9m9r/glowfly/issues/591)
+* review findings for Merge and rebase onto the branch the user picked, not a tag with the same name ([71c03de](https://github.com/bg9m9r/glowfly/commit/71c03de90491ffc9fe3530773a5d70c5fd9781fd)), closes [#592](https://github.com/bg9m9r/glowfly/issues/592)
+* review findings for Merge and rebase onto the branch the user picked, not a tag with the same name ([a169e1c](https://github.com/bg9m9r/glowfly/commit/a169e1c163d47f44cdbb8c5ad3a9b247ebee5b88)), closes [#592](https://github.com/bg9m9r/glowfly/issues/592)
+* review findings for Push names and checks the target git will really push to ([b27615c](https://github.com/bg9m9r/glowfly/commit/b27615c954cc12223848cc50ffc842179a86356b)), closes [#599](https://github.com/bg9m9r/glowfly/issues/599)
+
 ## [0.4.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.3.0-rc.1...v0.4.0-rc.1) (2026-11-05)
 
 
