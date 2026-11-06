@@ -1,6 +1,6 @@
 //! Headless tests for the create dialog's draft across Push to your fork…: what was typed rides
 //! through the Fork dialog and the push, and comes back when the dialog reopens after the push,
-//! a cancel or a failure. The service is answered by hand.
+//! a cancel, a failure or a push the trust prompt dropped. The service is answered by hand.
 
 use super::fork_pr_tests::{creator, fork, git_job, origin, run};
 use super::push_pr_fork_tests::with_fork;
@@ -9,11 +9,13 @@ use super::tests::{drive, git};
 use super::update;
 use glowfly_core::forge::{CreatedFork, Fork, ForkLookup};
 use glowfly_core::gitcli::args;
+use glowfly_core::settings::RepoTrust;
 use glowfly_model::effect::{Effect, ForgeError};
-use glowfly_model::msg::{DialogMsg, Dismiss, ForgeMsg, JobMsg, Msg, RepoMsg};
+use glowfly_model::msg::{DialogMsg, Dismiss, ForgeMsg, JobMsg, Msg, RepoMsg, TrustMsg};
 use glowfly_model::remote::RemoteMsg;
 use glowfly_model::state::forks::{ForkStep, ForkThenPr};
 use glowfly_model::state::push_pr::{PrDraft, PrStart};
+use glowfly_model::state::trust::record;
 use glowfly_model::state::{AppState, Modal, RunningJob};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -257,4 +259,108 @@ fn a_failed_push_in_another_tab_never_reopens() {
     update(&mut st, Msg::Job(JobMsg::JobDone { ok: false, output: String::new(), undo: None }), Instant::now());
     assert!(st.modal.is_none());
     cleanup(&work, &bare);
+}
+
+/// Marks the active repository not trusted, so the jobs it starts wait for the trust prompt.
+fn distrust(st: &mut AppState) {
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    record(&mut st.settings, &real, RepoTrust::NotTrusted);
+    assert!(st.held());
+}
+
+/// Whether the trust prompt is open holding the job `label`.
+fn holds(st: &AppState, label: &str) -> bool {
+    matches!(&st.modal, Some(Modal::Trust(p)) if p.held.as_deref() == Some(label))
+        && st.trust.held.as_ref().is_some_and(|h| h.job.label == label)
+}
+
+/// The trust prompt's answers that drop the held job: closing it, and Don't trust.
+fn drop_held(st: &mut AppState, close: bool) {
+    if close {
+        update(st, Msg::CloseModal, Instant::now());
+    } else {
+        let real = st.snap.as_ref().unwrap().real_workdir.clone();
+        update(st, Msg::Trust(TrustMsg::Decide { real, trusted: false }), Instant::now());
+    }
+}
+
+#[test]
+fn a_push_to_a_fork_remote_dropped_by_the_trust_prompt_goes_back_to_the_draft() {
+    for close in [true, false] {
+        let (mut st, work, bare, ada) = with_fork(&format!("fork-draft-held-push-{close}"));
+        typed(&mut st);
+        found(&mut st, Some(fork("ada")));
+        distrust(&mut st);
+        let fx = run(&mut st, RemoteMsg::AddMyFork);
+        assert!(!fx.iter().any(|e| matches!(e, Effect::Job(_))), "{fx:?}");
+        assert!(holds(&st, "Push"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+        assert!(st.dialog.under().is_none(), "the Fork dialog isn't kept under the prompt");
+        drop_held(&mut st, close);
+        assert!(restored(&st, "origin"), "close {close}: {:?}", st.modal.as_ref().map(|m| m.draft()));
+        cleanup(&work, &bare);
+        remove(&[&ada]);
+    }
+}
+
+#[test]
+fn adding_and_pushing_to_a_fork_dropped_by_the_trust_prompt_goes_back_to_the_draft() {
+    for close in [true, false] {
+        let (mut st, work, bare) = with_host(&format!("fork-draft-held-add-{close}"));
+        typed(&mut st);
+        found(&mut st, Some(fork("ada")));
+        distrust(&mut st);
+        run(&mut st, RemoteMsg::AddMyFork);
+        assert!(holds(&st, "Add remote ada and push topic"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+        drop_held(&mut st, close);
+        assert!(restored(&st, "origin"), "close {close}: {:?}", st.modal.as_ref().map(|m| m.draft()));
+        cleanup(&work, &bare);
+    }
+}
+
+#[test]
+fn a_new_fork_push_dropped_by_the_trust_prompt_goes_back_to_the_draft() {
+    for close in [true, false] {
+        let (mut st, work, bare) = with_host(&format!("fork-draft-held-created-{close}"));
+        typed(&mut st);
+        found(&mut st, None);
+        run(&mut st, RemoteMsg::CreateFork);
+        distrust(&mut st);
+        created(&mut st, Ok(CreatedFork { fork: fork("ada"), ready: true }));
+        assert!(holds(&st, "Add remote ada and push topic"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+        drop_held(&mut st, close);
+        assert!(restored(&st, "origin"), "close {close}: {:?}", st.modal.as_ref().map(|m| m.draft()));
+        cleanup(&work, &bare);
+    }
+}
+
+#[test]
+fn a_fork_not_ready_yet_keeps_the_draft_under_the_trust_prompt() {
+    let (mut st, work, bare) = with_host("fork-draft-held-not-ready");
+    typed(&mut st);
+    found(&mut st, None);
+    run(&mut st, RemoteMsg::CreateFork);
+    distrust(&mut st);
+    created(&mut st, Ok(CreatedFork { fork: fork("ada"), ready: false }));
+    assert!(holds(&st, "Add remote ada"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+    assert!(matches!(st.dialog.under(), Some(Modal::CreatePr { .. })));
+    update(&mut st, Msg::CloseModal, Instant::now());
+    assert!(restored(&st, "origin"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+    cleanup(&work, &bare);
+}
+
+#[test]
+fn a_held_push_to_the_fork_runs_on_trust_and_brings_the_draft_back() {
+    let (mut st, work, bare, ada) = with_fork("fork-draft-held-trusted");
+    typed(&mut st);
+    found(&mut st, Some(fork("ada")));
+    distrust(&mut st);
+    run(&mut st, RemoteMsg::AddMyFork);
+    assert!(holds(&st, "Push"));
+    let real = st.snap.as_ref().unwrap().real_workdir.clone();
+    drive(&mut st, Msg::Trust(TrustMsg::Decide { real, trusted: true }));
+    let (ok, out) = glowfly_core::gitcli::run(&ada, &args(&["rev-parse", "--verify", "refs/heads/topic"]));
+    assert!(ok, "topic was pushed to the fork: {out}");
+    assert!(restored(&st, "ada"), "{:?}", st.modal.as_ref().map(|m| m.draft()));
+    cleanup(&work, &bare);
+    remove(&[&ada]);
 }

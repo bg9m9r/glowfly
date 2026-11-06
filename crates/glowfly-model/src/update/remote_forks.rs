@@ -284,11 +284,20 @@ pub(super) fn fork_created(
     let push = then_pr.as_ref().filter(|_| created.ready).and_then(|t| Some((t, active?)));
     let push_job = push.and_then(|(t, snap)| super::fork_pr::add_and_push_job(snap, &name, &url, true, t));
     let builds_push = push_job.is_some();
+    // Nothing will be pushed (not ready yet, or the branch is gone): back to the create dialog
+    // first, so a trust prompt for adding the remote opens over it and it comes back after.
+    if here
+        && !builds_push
+        && let Some(t) = &then_pr
+    {
+        super::fork_pr::reopen(st, t.clone(), fx);
+    }
     // It runs in the forked repository even if another tab is active now, as that repository's
     // trust decision allows (update/trust.rs).
     let plain = || JobSpec::new(format!("Add remote {name}"), add_cmds(&name, &url, None, created.ready));
     let spec = JobSpec { cwd: Some(workdir), ..push_job.unwrap_or_else(plain) };
     // Refused (busy, or the trust decision) is already logged, and then nothing is pushed either.
+    // A push held for the trust prompt carries the draft, and brings it back if it is dropped.
     let ran = start_job(st, spec, fx) != Started::No;
     let pushes = builds_push && ran;
     let noun = st.session.forge.as_ref().map_or("pull request", |f| f.pr_noun());
@@ -304,9 +313,10 @@ pub(super) fn fork_created(
         None if !created.ready => st.log(true, format!("{service} is still preparing the fork; fetch {name} in a minute.")),
         _ => {}
     }
-    // Nothing was pushed (not ready yet, the branch is gone, or refused): back to the create dialog.
+    // The push was refused: back to the create dialog.
     if here
-        && !pushes
+        && builds_push
+        && !ran
         && let Some(t) = then_pr
     {
         super::fork_pr::reopen(st, t, fx);
