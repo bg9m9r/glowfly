@@ -36,6 +36,9 @@ pub enum MoveOp {
     /// An interactive rebase or a history edit (reword, squash, drop); recorded around the
     /// rebase run (`rebased.rs`), never from a command line.
     Rewrite,
+    /// A patch series applied with `git am`; only named by a kept abort, never recorded as a
+    /// move.
+    Am,
 }
 
 impl MoveOp {
@@ -47,6 +50,7 @@ impl MoveOp {
             MoveOp::Revert => "revert",
             MoveOp::Rebase => "rebase",
             MoveOp::Rewrite => "history edit",
+            MoveOp::Am => "patch series",
         }
     }
 }

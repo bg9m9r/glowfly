@@ -60,7 +60,7 @@ fn a_path_under_a_file_reads_as_absent() {
     let dir = scratch_repo("abort-safe-notdir");
     write(&dir, "lib", "a file\n");
     assert_eq!(super::stash::hash(&dir, "lib/a.rs").unwrap(), None);
-    assert!(matches!(super::aborted::on_disk(&dir, "lib/a.rs").unwrap(), super::aborted::OnDisk::Nothing));
+    assert!(matches!(super::aborted_paths::on_disk(&dir, "lib/a.rs").unwrap(), super::aborted_paths::OnDisk::Nothing));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -1,7 +1,8 @@
 //! Every file Glowfly writes goes through here: its own files (settings, recent repositories,
 //! open tabs, logs), files written for the user (saved patches), and working-tree files it puts
 //! back itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Glowfly
-//! owns the removal of (a submodule's stored module) without following links. Logs grow by
+//! owns the removal of (a submodule's stored module) without following links, and
+//! [`rename_new`] moves a file or folder to a name nothing has yet. Logs grow by
 //! [`append`] (or a handle from [`open_append`]) instead of being replaced.
 //!
 //! A file is written to a temporary sibling, flushed to disk, then renamed over the target, so a
@@ -16,7 +17,7 @@
 
 mod replace;
 
-use replace::{clean_stale_temps, replace, set_mode, sync_dir};
+use replace::{clean_stale_temps, rename_retrying, replace, set_mode, sync_dir};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -230,6 +231,19 @@ pub(crate) fn wanted_mode(old: Option<u32>, created: u32, executable: Option<boo
 #[cfg_attr(not(unix), allow(dead_code))]
 pub(crate) fn needs_chmod(have: u32, want: u32) -> bool {
     have & 0o7777 != want & 0o7777
+}
+
+/// Renames the file or folder `from` to `to`, which must not exist yet (else `AlreadyExists`,
+/// with nothing moved), retrying briefly while Windows holds either; then flushes `to`'s folder.
+pub fn rename_new(from: &Path, to: &Path) -> std::io::Result<()> {
+    if to.symlink_metadata().is_ok() {
+        return Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, format!("{} already exists", to.display())));
+    }
+    rename_retrying(from, to)?;
+    if let Some(parent) = to.parent() {
+        sync_dir(parent);
+    }
+    Ok(())
 }
 
 /// Moves `path` aside to the first free `<name>.bak`, `<name>.bak-2`, `<name>.bak-3`, … and

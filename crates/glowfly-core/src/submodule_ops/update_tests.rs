@@ -99,7 +99,7 @@ fn undos_that_move_the_work_tree() {
     for a in &still {
         assert!(!undo_moves_work_tree(a, false) && !undo_moves_work_tree(a, true), "{a:?}");
     }
-    let kept = Action::AbortKept { op: MoveOp::Merge, saved: o, head: o, branch: None, left: Changes(Vec::new()) };
+    let kept = Action::AbortKept { op: MoveOp::Merge, saved: o, head: o, branch: None, left: Changes(Vec::new()), during: None };
     assert!(!undo_moves_work_tree(&kept, false), "undoing the abort puts the merge back in progress");
     assert!(undo_moves_work_tree(&kept, true), "redoing it aborts again");
 }

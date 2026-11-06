@@ -49,9 +49,10 @@ pub fn in_progress(workdir: &Path) -> bool {
     Repository::open(workdir).is_ok_and(|r| r.state() != RepositoryState::Clean)
 }
 
-/// Whether `cmds` is a plain abort of a merge, cherry-pick, revert or rebase: one command.
+/// Whether `cmds` is a plain abort of a merge, cherry-pick, revert, rebase or patch series: one
+/// command.
 pub fn is_abort(cmds: &[Vec<String>]) -> bool {
-    ["merge", "cherry-pick", "revert", "rebase"].iter().any(|op| cmds == [args(&[op, "--abort"])])
+    ["merge", "cherry-pick", "revert", "rebase", "am"].iter().any(|op| cmds == [args(&[op, "--abort"])])
 }
 
 #[cfg(test)]
@@ -111,10 +112,10 @@ mod tests {
 
     #[test]
     fn plain_aborts_are_recognised() {
-        for op in ["merge", "cherry-pick", "revert", "rebase"] {
+        for op in ["merge", "cherry-pick", "revert", "rebase", "am"] {
             assert!(is_abort(&[args(&[op, "--abort"])]), "{op}");
         }
-        assert!(!is_abort(&[args(&["am", "--abort"])]));
+        assert!(!is_abort(&[args(&["am", "--continue"])]));
         assert!(!is_abort(&[args(&["merge", "--continue"])]));
         assert!(!is_abort(&[args(&["merge", "--abort"]), args(&["status"])]));
     }

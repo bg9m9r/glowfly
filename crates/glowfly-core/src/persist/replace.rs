@@ -72,6 +72,20 @@ pub(super) fn replace(from: &Path, to: &Path, old: Option<&Metadata>) -> io::Res
     }
 }
 
+/// Renames `from` to `to`, retrying while another program briefly holds either (Windows).
+pub(super) fn rename_retrying(from: &Path, to: &Path) -> io::Result<()> {
+    let mut attempt = 0;
+    loop {
+        match std::fs::rename(from, to) {
+            Err(e) if retryable(&e) && attempt < ATTEMPTS => {
+                attempt += 1;
+                pause(attempt);
+            }
+            r => return r,
+        }
+    }
+}
+
 /// Removes the file or link at `path` itself. On Windows a read-only file's attribute is
 /// cleared first, and a file another program briefly holds is retried.
 pub(super) fn remove(path: &Path) -> io::Result<()> {

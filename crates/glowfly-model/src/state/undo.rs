@@ -242,6 +242,7 @@ mod tests {
             head: git2::Oid::zero(),
             branch: None,
             left: glowfly_core::undo::Changes(Vec::new()),
+            during: None,
         };
         for a in [discard(), checkout(), abort.clone(), drop.clone(), checkout()] {
             h.record(a);
@@ -327,6 +328,7 @@ mod tests {
             head: git2::Oid::zero(),
             branch: None,
             left: glowfly_core::undo::Changes(Vec::new()),
+            during: None,
         };
         h.record(kept.clone());
         assert_eq!(h.undo, vec![checkout(), discard(), kept]);

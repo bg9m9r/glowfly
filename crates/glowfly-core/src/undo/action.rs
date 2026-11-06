@@ -192,16 +192,28 @@ pub enum Action {
         moves: Vec<BranchMove>,
         partial: bool,
     },
-    /// An abort of a merge, single cherry-pick or single revert (`op`) that kept its work in
-    /// the commit `saved` (`aborted.rs`), with HEAD at `head` on `branch` (`None`: detached),
-    /// leaving `left` on disk at the operation's paths.
+    /// An abort of a merge, cherry-pick, revert, rebase or patch series (`op`) that kept its
+    /// work in the commit `saved` (`aborted.rs`), with HEAD where the abort left it at `head` on
+    /// `branch` (`None`: detached), leaving `left` on disk at the operation's paths. `during`:
+    /// HEAD while the operation was in progress, when its abort moved HEAD (a rebase, patch
+    /// series or run of picks); `None` when the abort left HEAD where it was (a merge, single
+    /// pick or revert).
     AbortKept {
         op: MoveOp,
         saved: Oid,
         head: Oid,
         branch: Option<String>,
         left: Changes,
+        during: Option<HeadAt>,
     },
+}
+
+/// Where HEAD was while an operation was in progress: commit `oid` on `branch` (`None`:
+/// detached).
+#[derive(Clone, Debug, PartialEq)]
+pub struct HeadAt {
+    pub branch: Option<String>,
+    pub oid: Oid,
 }
 
 /// A local branch an operation moved from `from` to `to`.
@@ -233,7 +245,7 @@ fn moved(op: MoveOp, detail: Option<&str>) -> String {
         (MoveOp::Rebase, Some(d)) => format!("rebase onto {}", ref_label(d)),
         // The detail is the whole phrase ("interactive rebase of main", "reword of 1a2b3c4").
         (MoveOp::Rewrite, Some(d)) => d.to_owned(),
-        (MoveOp::CherryPick | MoveOp::Revert, Some(d)) => format!("{} of {d}", op.noun()),
+        (MoveOp::CherryPick | MoveOp::Revert | MoveOp::Am, Some(d)) => format!("{} of {d}", op.noun()),
     }
 }
 
