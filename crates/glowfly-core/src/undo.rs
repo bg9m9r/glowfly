@@ -16,19 +16,22 @@
 //! `marked` handles Mark resolved, Mark conflicted and taking a whole side, putting each file's
 //! index entries and bytes back exactly (`marked_put`).
 //! A restack, which moves several branches at once, is recorded around its run too and undone
-//! branch by branch (`restacked.rs`). An abort of a merge, cherry-pick or revert keeps its work
-//! (resolutions, conflicts and the operation's state) as git objects first and is undone by
-//! putting all of it back (`aborted.rs`, `aborted_restore.rs`). Discarded and deleted files and
-//! dropped stashes are also kept as records under `refs/glowfly/discarded/` (`kept.rs`), which
-//! outlive the in-memory history and are listed in the journal's Lost tab.
+//! branch by branch (`restacked.rs`). An abort of a merge, cherry-pick, revert, rebase or patch
+//! series keeps its work (resolutions, conflicts and the operation's state, also its state folder,
+//! where HEAD was and the refs the abort moves) as git objects first and is undone by putting all
+//! of it back (`aborted.rs`, `aborted_state.rs`, `aborted_restore.rs`). Discarded and deleted
+//! files and dropped stashes are also kept as records under `refs/glowfly/discarded/`
+//! (`kept.rs`), which outlive the in-memory history and are listed in the journal's Lost tab.
 
 use crate::gitcli::args;
 use crate::repo::StagedNew;
 use git2::Oid;
 
 mod aborted;
+mod aborted_paths;
 mod aborted_restore;
 mod aborted_run;
+mod aborted_state;
 mod action;
 mod deleted;
 mod in_the_way;
@@ -55,7 +58,7 @@ mod unstaged;
 pub use aborted::ABORT_REF_PREFIX;
 pub use aborted_restore::restore_abort;
 pub use aborted_run::{AbortRun, NOTHING_ABORTED, abort_keeping};
-pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadPos, Staged};
+pub use action::{Action, BranchMove, Changes, Created, Discarded, HeadAt, HeadPos, Staged};
 pub use deleted::{
     DeleteFailed, DeleteVia, DeletedSaving, MAX_KEPT_BYTES, PutBackHow, Trashers, delete_again, delete_saving, delete_staged_saving,
     discard_untracked_saving, keeps_copy, put_back,
@@ -177,6 +180,10 @@ fn short(oid: Oid) -> String {
 
 #[cfg(test)]
 mod aborted_safety_tests;
+#[cfg(test)]
+mod aborted_state_tests;
+#[cfg(test)]
+mod aborted_steps_tests;
 #[cfg(test)]
 mod aborted_tests;
 #[cfg(test)]

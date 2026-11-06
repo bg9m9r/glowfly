@@ -1,8 +1,11 @@
 //! Asking before the in-progress banner's Abort, Skip and Reset bisect, which lose work: what
 //! each does, what is lost (the resolved files, edits in conflicted ones) and whether Undo
 //! brings it back. A merge, single cherry-pick or single revert with work to keep (resolved or
-//! staged files, conflicted ones) aborts keeping it first (`glowfly_core::undo::abort_keeping`):
-//! Undo puts the operation back in progress with that work, and edits to other files stay.
+//! staged files, conflicted ones), and a rebase, patch series or multi-commit cherry-pick or
+//! revert, abort keeping it first (`glowfly_core::undo::abort_keeping`): Undo puts the
+//! operation back in progress with that work. Edits to other files stay, except through a
+//! rebase's abort, which resets every file (they are kept, and Undo brings them back). Never
+//! during a restack stopped on a conflict: its own end owns that abort.
 
 use super::op_actions::{action_text, state_actions};
 use super::rebase_banner::action_msg;
@@ -11,6 +14,7 @@ use crate::msg::{JobMsg, Msg};
 use git2::RepositoryState;
 use glowfly_core::gitcli;
 use glowfly_core::i18n::Lang;
+use glowfly_core::paths::same_spelling;
 use glowfly_core::repo::Snapshot;
 
 /// A banner command that loses work.
@@ -35,11 +39,23 @@ impl Risky {
 }
 
 /// Whether an abort can keep the operation's work for Undo: a merge, single cherry-pick or
-/// single revert (a sequence's commits would not come back with it) with something to keep,
-/// staged or conflicted. Edits to other files don't matter: the abort leaves them in place.
+/// single revert with something to keep, staged or conflicted (edits to other files don't
+/// matter: the abort leaves them in place). A run of steps (a rebase, patch series, or
+/// multi-commit cherry-pick or revert) keeps what it did so far and its list of steps whatever
+/// is staged, except a rebase that stashed changes itself, whose abort puts them back.
 pub fn can_keep(snap: &Snapshot) -> bool {
     use RepositoryState::*;
-    matches!(snap.state, Merge | CherryPick | Revert) && (!snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status == '!'))
+    match snap.state {
+        Merge | CherryPick | Revert => !snap.staged.is_empty() || snap.unstaged.iter().any(|f| f.status == '!'),
+        CherryPickSequence | RevertSequence | ApplyMailbox => true,
+        Rebase | RebaseMerge | RebaseInteractive => !snap.rebase.as_ref().is_some_and(|p| p.autostash),
+        _ => false,
+    }
+}
+
+/// Whether a restack stopped on a conflict in `snap`'s repository: its own end owns the abort.
+pub(crate) fn restacking(st: &AppState, snap: &Snapshot) -> bool {
+    st.restacks.iter().any(|r| same_spelling(&r.workdir, &snap.workdir))
 }
 
 /// The changed tracked files outside the operation (neither staged nor conflicted), which a
@@ -57,8 +73,10 @@ pub fn banner_msg(st: &AppState, label: &'static str, args: &'static [&'static s
     let t = st.settings.lang();
     let resolved = st.session.conflict_files.resolved_rows(snap).len();
     let conflicted = snap.unstaged.iter().filter(|f| f.status == '!').count();
-    let keep = risky == Risky::Abort && can_keep(snap);
-    let others = if keep { others(snap) } else { 0 };
+    let keep = risky == Risky::Abort && can_keep(snap) && !restacking(st, snap);
+    // A rebase's abort resets every file, so other changes don't stay (Undo brings them back).
+    let rebase = matches!(snap.state, RepositoryState::Rebase | RepositoryState::RebaseMerge | RepositoryState::RebaseInteractive);
+    let others = if keep && !rebase { others(snap) } else { 0 };
     let (title, what) = words(t, risky, args);
     let then = match risky {
         Risky::Abort => Msg::Job(JobMsg::Abort { label: label.into(), args: gitcli::args(args), keep }),
@@ -132,7 +150,7 @@ mod tests {
     use crate::msg::RebaseMsg;
     use crate::state::op_actions::state_actions;
     use crate::state::op_fixture::{rows, snapshot};
-    use glowfly_core::rebase::Resume;
+    use glowfly_core::rebase::{RebaseProgress, Resume, Stop, StopKind};
     use glowfly_core::repo::{FileEntry, ResolvedFile};
     use glowfly_core::settings::Settings;
 
@@ -154,6 +172,11 @@ mod tests {
             Msg::ConfirmDanger { title, body, button, then, .. } => (title, body, button, *then),
             _ => panic!("expected a danger confirmation"),
         }
+    }
+
+    fn progress(autostash: bool) -> RebaseProgress {
+        let stop = Stop { kind: StopKind::Conflict, oid: None };
+        RebaseProgress { step: 1, total: 2, stop, summary: String::new(), autostash, interactive: false, command: None, amends: false }
     }
 
     fn resolved(paths: &[&str]) -> Vec<ResolvedFile> {
@@ -184,7 +207,12 @@ mod tests {
             let (t, body, b, _) = asked(banner_msg(&st, label, args));
             assert_eq!((t.as_str(), b.as_str()), (title, button), "{state:?} {label}");
             assert!(body.contains(what), "{body}");
-            assert!(!body.contains("\n\n"), "nothing lost, nothing more to say: {body}");
+            // A run of steps keeps what it did so far, and says so; else nothing lost, nothing
+            // more to say.
+            let steps = prefix == "Abort" && !matches!(state, RepositoryState::Merge | RepositoryState::CherryPick);
+            let kept = "\n\nThe changes so far are kept first, so Undo brings them back and picks up where you left off.";
+            assert_eq!(body.matches("\n\n").count(), usize::from(steps), "{body}");
+            assert_eq!(body.ends_with(kept), steps, "{body}");
         }
     }
 
@@ -196,9 +224,14 @@ mod tests {
         let (label, args) = action(RepositoryState::CherryPickSequence, "Abort");
         let (_, body, _, then) = asked(banner_msg(&st, label, args));
         let paras: Vec<&str> = body.split("\n\n").collect();
-        assert_eq!(paras[1], "The 2 files you resolved go back to how they were. Edits in the 1 conflicted file are lost too.");
-        assert_eq!(paras[2], "This can't be undone.");
-        assert!(matches!(then, Msg::Job(JobMsg::Abort { keep: false, .. })), "a sequence isn't kept");
+        assert_eq!(
+            paras[1..],
+            [
+                "The 2 files you resolved go back to how they were. Edits in the 1 conflicted file go too.",
+                "Glowfly keeps them first, so Undo brings them back and picks up where you left off."
+            ]
+        );
+        assert!(matches!(then, Msg::Job(JobMsg::Abort { keep: true, .. })), "a sequence is kept too");
 
         st.snap.as_mut().unwrap().state = RepositoryState::Merge;
         let (label, args) = action(RepositoryState::Merge, "Abort");
@@ -241,7 +274,7 @@ mod tests {
         let am = st("confirm-am", RepositoryState::ApplyMailbox);
         let (label, args) = action(RepositoryState::ApplyMailbox, "Abort");
         let (_, _, _, then) = asked(banner_msg(&am, label, args));
-        let Msg::Job(JobMsg::Abort { label, keep: false, .. }) = then else { panic!("an abort") };
+        let Msg::Job(JobMsg::Abort { label, keep: true, .. }) = then else { panic!("a kept abort") };
         assert_eq!(label, "Abort", "the patch headline goes by this label");
 
         let bisect = st("confirm-bisect", RepositoryState::Bisect);
@@ -258,17 +291,32 @@ mod tests {
             (RepositoryState::Merge, true),
             (RepositoryState::CherryPick, true),
             (RepositoryState::Revert, true),
-            (RepositoryState::CherryPickSequence, false),
-            (RepositoryState::RevertSequence, false),
-            (RepositoryState::Rebase, false),
-            (RepositoryState::RebaseInteractive, false),
-            (RepositoryState::RebaseMerge, false),
-            (RepositoryState::ApplyMailbox, false),
+            (RepositoryState::ApplyMailboxOrRebase, false),
             (RepositoryState::Bisect, false),
         ] {
             snap.state = state;
             assert_eq!(can_keep(&snap), want, "{state:?}");
         }
+        // A run of steps keeps what it did so far, staged or not.
+        snap.staged.clear();
+        for state in [
+            RepositoryState::CherryPickSequence,
+            RepositoryState::RevertSequence,
+            RepositoryState::Rebase,
+            RepositoryState::RebaseMerge,
+            RepositoryState::RebaseInteractive,
+            RepositoryState::ApplyMailbox,
+        ] {
+            snap.state = state;
+            assert!(can_keep(&snap), "{state:?}");
+        }
+        snap.state = RepositoryState::RebaseMerge;
+        snap.rebase = Some(progress(true));
+        assert!(!can_keep(&snap), "a rebase that stashed changes itself puts them back on abort");
+        snap.rebase = Some(progress(false));
+        assert!(can_keep(&snap));
+        snap.rebase = None;
+        snap.staged = rows(&[("a.txt", 'M')]);
         snap.state = RepositoryState::Merge;
         snap.unstaged = rows(&[("b.txt", '!')]);
         assert!(can_keep(&snap), "a conflicted file is kept too");
@@ -279,5 +327,38 @@ mod tests {
         assert!(can_keep(&snap), "only conflicts");
         snap.unstaged = rows(&[("new.txt", '?'), ("a.txt", 'M')]);
         assert!(!can_keep(&snap), "nothing staged or conflicted: nothing of the operation's to keep");
+    }
+
+    #[test]
+    fn rebase_abort_never_says_others_stay() {
+        let mut st = st("confirm-rebase-others", RepositoryState::RebaseMerge);
+        st.snap.as_mut().unwrap().unstaged = rows(&[("README.md", 'M'), ("a.txt", '!')]);
+        let (label, args) = action(RepositoryState::RebaseMerge, "Abort");
+        let (_, body, _, then) = asked(banner_msg(&st, label, args));
+        assert!(body.ends_with("Glowfly keeps them first, so Undo brings them back and picks up where you left off."), "{body}");
+        assert!(!body.contains("Your other changes stay"), "its hard reset drops them: {body}");
+        assert!(matches!(then, Msg::Job(JobMsg::Abort { keep: true, .. })));
+
+        // A run of picks or a patch series leaves them alone.
+        for state in [RepositoryState::CherryPickSequence, RepositoryState::ApplyMailbox] {
+            st.snap.as_mut().unwrap().state = state;
+            let (label, args) = action(state, "Abort");
+            let (_, body, _, _) = asked(banner_msg(&st, label, args));
+            assert!(body.ends_with("Your other changes stay as they are."), "{state:?}: {body}");
+        }
+    }
+
+    #[test]
+    fn no_keep_during_a_restack() {
+        let mut st = st("confirm-restack", RepositoryState::RebaseMerge);
+        st.snap.as_mut().unwrap().unstaged = rows(&[("a.txt", '!')]);
+        let workdir = st.snap.as_ref().unwrap().workdir.clone();
+        let plan = glowfly_core::stack::RestackPlan::default();
+        let job = crate::effect::RestackJob { plan, before: None, detail: String::new(), stopped: None, stash_op: None };
+        st.restacks.push(crate::state::stack::PendingRestack { workdir, job });
+        let (label, args) = action(RepositoryState::RebaseMerge, "Abort");
+        let (_, body, _, then) = asked(banner_msg(&st, label, args));
+        assert!(body.ends_with("This can't be undone."), "{body}");
+        assert!(matches!(then, Msg::Job(JobMsg::Abort { keep: false, .. })), "the restack's own end owns the abort");
     }
 }

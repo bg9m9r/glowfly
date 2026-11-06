@@ -1,12 +1,15 @@
-//! Running an abort that keeps its work (`aborted.rs`): keep, abort, and read what the abort
-//! left on disk (`left`, which Undo checks byte for byte). When an abort command fails partway
-//! (a file locked on Windows, say), everything kept is put straight back (`put_back`), so the
-//! operation is in progress again as it was; if that fails too, the output says what is where.
+//! Running an abort that keeps its work (`aborted.rs`): keep, abort, check that a run of steps'
+//! abort took HEAD back where it should, and read what the abort left on disk (`left`, which
+//! Undo checks byte for byte). When an abort command fails partway (a file locked on Windows,
+//! say), everything kept is put straight back (`put_back`), so the operation is in progress again
+//! as it was; if that fails too, the output says what is where.
 
 use super::Action;
 use super::aborted::abort_saving;
 use super::aborted_restore::{left, put_back};
-use git2::Oid;
+use super::planning::at;
+use super::record::head as head_now;
+use git2::{Oid, Repository};
 use std::path::Path;
 
 /// How the output of a kept abort that was refused, with nothing changed, starts; the reason
@@ -24,17 +27,18 @@ pub struct AbortRun {
     pub action: Option<Action>,
 }
 
-/// Aborts the merge, single cherry-pick or single revert in progress in `workdir`, keeping its
-/// work first; `run` runs the abort's commands in order, stopping at the first that fails. Refs
-/// of old kept aborts are dropped unless `prune` lists them (`None`: none are dropped). Nothing
-/// is aborted when the work can't all be kept.
+/// Aborts the merge, cherry-pick, revert, rebase or patch series in progress in `workdir`,
+/// keeping its work first; `run` runs the abort's commands in order, stopping at the first that
+/// fails. Refs of old kept aborts are dropped unless `prune` lists them (`None`: none are
+/// dropped). Nothing is aborted when the work can't all be kept. An abort that moves HEAD (a run
+/// of steps) must leave it where git's abort should, or Undo couldn't check what it left.
 pub fn abort_keeping(workdir: &Path, prune: Option<&[Oid]>, run: impl FnOnce(&[Vec<String>]) -> (bool, String)) -> AbortRun {
     let failed = |output: String| AbortRun { ok: false, output, action: None };
     let saving = match abort_saving(workdir, prune) {
         Ok(s) => s,
         Err(e) => return failed(format!("{NOTHING_ABORTED}{e}.")),
     };
-    let Action::AbortKept { op, saved, head, branch, .. } = saving.action else { unreachable!("a kept abort") };
+    let Action::AbortKept { op, saved, head, branch, during, .. } = saving.action else { unreachable!("a kept abort") };
     let (ok, output) = run(&saving.cmds);
     let kept = &saving.kept;
     if !ok {
@@ -43,11 +47,20 @@ pub fn abort_keeping(workdir: &Path, prune: Option<&[Oid]>, run: impl FnOnce(&[V
             Err(e) => format!("{output}\nThe abort failed partway, and putting its work back failed too: {e}."),
         });
     }
-    match left(workdir, saved) {
+    let moved_back = || -> crate::error::Result<()> {
+        let (pos, oid) = head_now(&Repository::open(workdir)?);
+        if at(&pos, oid, &branch, head) {
+            Ok(())
+        } else {
+            Err(crate::error::Error::Other("HEAD isn't where the abort should have left it".into()))
+        }
+    };
+    let checked = if during.is_some() { moved_back() } else { Ok(()) };
+    match checked.and_then(|()| left(workdir, saved)) {
         Ok(left) => AbortRun {
             ok: true,
             output: format!("{output}\nIts work is kept in {kept} until Undo puts it back.").trim().to_owned(),
-            action: Some(Action::AbortKept { op, saved, head, branch, left }),
+            action: Some(Action::AbortKept { op, saved, head, branch, left, during }),
         },
         // The abort happened, but Undo has nothing to check against: said as a failure, so the
         // ref that keeps the work is seen (it is pruned only once it is `KEEP_DAYS` old).

@@ -22,6 +22,7 @@ use std::time::Instant;
 pub(crate) use glowfly_model::testing::*;
 pub(crate) use helpers::*;
 
+mod abort_steps_undo_tests;
 mod app_tests;
 mod askpass_extend_tests;
 mod askpass_gpg_tests;
