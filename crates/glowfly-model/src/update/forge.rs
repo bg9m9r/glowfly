@@ -97,6 +97,8 @@ pub(super) fn detect(st: &mut AppState, snap: &Snapshot) {
     st.session.forge.iter_mut().for_each(|f| f.year_branches = st.settings.year_branches_for(&snap.real_workdir));
     // An edited remote, a new connection or another profile can change the tracker.
     super::issue::tracker_detected(st);
+    // And the code host: text kept for another service's pull requests goes.
+    super::pull_request::host_detected(st);
 }
 
 /// Calls the service, unless it is a self-hosted server only guessed from the remote URL: those

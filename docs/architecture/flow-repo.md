@@ -36,7 +36,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Removing a worktree closes the other tabs showing it first (`update/worktree_manage.rs`).
 - On Windows, removing or moving a worktree stops its file system monitor daemon first (`RemoveRequest::stop_monitor`, `MoveRequest::stop_monitor`, from `GitState::stops_monitor`), since it holds the folder open.
 - Each tab has a `TabId` for as long as it is open: what a request waiting for an answer names it by, since its index changes when tabs move or close.
-- Closing a tab that holds work only in memory (a commit draft, conflict choices, an edited dialog, a parked Create issue form, comments typed in the pull request or issue panel, or kept for an issue whose panel closed) or whose terminals run a program (asked about first, `update/terminal/busy.rs`) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
+- Closing a tab that holds work only in memory (a commit draft, conflict choices, an edited dialog, a parked Create issue form, comments typed in the pull request or issue panel, or kept for a pull request or issue whose panel closed) or whose terminals run a program (asked about first, `update/terminal/busy.rs`) asks first (`state/tab_losses.rs`), and the confirmation carries a `CloseRequest` by id (`update/tabs_close.rs`).
 - A tab's label (Rename tab, `update/tab_label.rs`) is saved with the open tabs in tabs.txt and kept on the recently closed list.
 
 ## Job follow-ups
@@ -70,6 +70,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - After a merge, `update/pull_request/cleanup.rs` runs one job: the remote branch's delete when asked, the fetch, then the local branch's delete when asked.
 - The local branch's rules and commands are in `state/pull_request/cleanup.rs`: kept on a fork, after a squash or rebase merge, when checked out in another worktree, or when checked out here with changes. It goes only once the fetched target contains it, after checking out the target if it is checked out here, and through `git branch -d`; a failed job puts the branch's upstream back (its `on_fail_check`). Only a branch tracking `<remote>/<source>` is offered.
 - `update/pull_request/calls.rs`: the pull request panel's calls to its hosting service: loading the page (detail and conversation; the checks are in checks.rs), posting a comment, submitting a review, replying to and resolving code comment threads (threads.rs), starting a code comment on diff lines (line_comment.rs) and merging, remembering the merge method for the repository, then cleaning up (cleanup.rs).
+- `update/pull_request/kept.rs`: settling the answer to a post sent from a pull request panel that has since closed: the kept text (in the active tab, or in the parked tab showing the repository) loses what was posted, or keeps it after a failure; `action_of` names the action a reply answers.
 - `update/pull_request/threads.rs`: the pull request panel's code comment threads: replying and resolving (sent through `calls::act`, one action at a time like the other calls), applying their answers in place, which threads are shown and open, and going from a thread to its line in Files changed.
 
 ## New code comments on diff lines
@@ -81,7 +82,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - `forge::line_comments_in_app` gates the service apart from `reviews_in_app`.
 - A single comment's thread gets a provisional `new:<comment id>` id until the page reloads, when `adopt_new_threads` hands its reply draft, open state and focus to the real thread.
 - An answer for a parked tab is applied to that tab's parked panel.
-- Closing the panel or opening another pull request while the draft is edited and not being posted asks first (`line_comment::asks_to_leave`): the same `discard_confirm`, whose Discard sends `DiscardAnd(Leave)` to drop the draft and go on.
+- Closing or replacing the panel keeps its unposted text per pull request (`state/pull_request/kept.rs`, `session.pr_drafts`); opening the pull request again restores it, and a post answered meanwhile settles the kept text (`update/pull_request/kept.rs`). Only Cancel and Esc ask before dropping an edited draft (`discard_confirm`).
 
 ## Code comments on the local version's lines
 

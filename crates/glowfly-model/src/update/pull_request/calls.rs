@@ -4,7 +4,7 @@
 //! for the repository, then cleaning up (cleanup.rs). The calls are unscoped effects whose replies name their repository,
 //! service and pull request: a reply for another tab is only logged, a stale page is dropped,
 //! and an action's result is logged even when the panel has closed, since it happened on the
-//! service.
+//! service (it also settles the text kept for the closed panel: kept.rs).
 
 use crate::effect::{Effect, ForgeError};
 use crate::pull_request::{CallJob, PrCall, PrEffect, PrReply, PrRequest};
@@ -227,22 +227,20 @@ pub(super) fn replied(
         _ => String::new(),
     };
     let (ok, text) = action_text(&label, &into, &reply);
+    let t = st.settings.lang();
+    if let Some((action, result)) = super::kept::action_of(&reply) {
+        let result = result.map_err(|e| hosting(t, target.provider, Ask::Change, e));
+        super::kept::settle(st, workdir, target, active, id, action, result);
+    }
     if !active {
         st.log_quiet(ok, text);
         return;
     }
     st.log(ok, text.clone());
-    let t = st.settings.lang();
     if open && let Some(v) = st.session.pull_request.view.as_mut() {
         v.busy = None;
         if let Some(e) = reply_error(&reply) {
-            let action = match &reply {
-                PrReply::Commented(_) => PrAction::Comment,
-                PrReply::Reviewed(..) => PrAction::Review,
-                PrReply::RepliedToThread { thread, .. } => PrAction::Reply(thread.clone()),
-                PrReply::Resolved { thread, .. } => PrAction::Resolve(thread.clone()),
-                _ => PrAction::Merge,
-            };
+            let action = super::kept::action_of(&reply).map_or(PrAction::Merge, |(a, _)| a);
             v.action_error = Some((action, hosting(t, target.provider, Ask::Change, e)));
         }
     }
