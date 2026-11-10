@@ -7,6 +7,7 @@
 use crate::theme::sizes::ControlSize;
 use crate::theme::{color, type_scale};
 use crate::widgets::chip::{Chip, ChipSize, Look};
+use crate::widgets::icon::SIZE_SM;
 use crate::widgets::truncate::{cut_path_in, truncate_label};
 use crate::widgets::{self, Icon, buttons};
 use eframe::egui::{self, Align, FontId, Layout, RichText, Sense, Ui, WidgetInfo, WidgetType, vec2};
@@ -93,7 +94,7 @@ fn details(ui: &mut Ui, t: Lang, r: &TrustRow, when: Option<&str>, checked: bool
         }
         if checked && r.missing {
             ui.add_space(4.0);
-            let (mark, _) = ui.allocate_exact_size(vec2(14.0, 14.0), Sense::hover());
+            let (mark, _) = ui.allocate_exact_size(vec2(SIZE_SM, SIZE_SM), Sense::hover());
             widgets::paint_icon_sized(ui.painter(), mark.center(), Icon::Warning, color::warn(), 13.0);
             ui.label(RichText::new(t.tr("prefs.trust.not_found")).font(font).color(color::warn()))
                 .on_hover_text(t.tr("prefs.trust.not_found.tip"));
