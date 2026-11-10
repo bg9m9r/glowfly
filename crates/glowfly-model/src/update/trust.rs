@@ -47,6 +47,8 @@ pub(super) fn ask(st: &mut AppState, real: &Path, terminal: bool) {
     }
     let mut prompt = prompt_for(&st.settings, snap);
     prompt.terminal = terminal;
+    // A new prompt names nothing yet: what waited for another one doesn't run on this one.
+    super::trust_waiting::drop_waiting(st);
     if !st.trust.asked.iter().any(|p| same_spelling(p, &prompt.real)) {
         st.trust.asked.push(prompt.real.clone());
     }
@@ -55,6 +57,8 @@ pub(super) fn ask(st: &mut AppState, real: &Path, terminal: bool) {
 }
 
 fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut Vec<Effect>) {
+    // Only what the open prompt names can run on its answer.
+    super::trust_waiting::prune(st);
     // Only the prompt that names the held job can release it; any other held job is stale.
     let held = st.trust.held.take();
     let named = matches!(&st.modal, Some(Modal::Trust(p)) if p.held.is_some());
@@ -84,7 +88,7 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     } else {
         record(&mut st.settings, real, RepoTrust::NotTrusted);
         // What waited for this prompt is dropped: a later Trust doesn't start it.
-        st.trust.waiting = None;
+        super::trust_waiting::drop_waiting(st);
     }
     // The user's own decision, made now: an inherited one no longer follows its source.
     st.settings.stamp_trust(real, Some(st.cues.now), None);
@@ -217,9 +221,13 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut promp
 /// Something the user asked for while git is held in the active repository (Open in external
 /// terminal, a conflict check, a merge preview): it waits for the trust prompt, which asks on
 /// the terminal's behalf or names `label`; trusting starts it (`released`) and Cancel drops it.
-/// No prompt can open over another dialog: then nothing waits.
+/// No prompt can open over another dialog, an open trust prompt included (it names what
+/// already waits for it, and its answer runs only that): then nothing waits.
 pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<String>) {
     let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
+    if st.modal.is_some() {
+        return;
+    }
     let terminal = matches!(what, WaitingFor::Terminal(_));
     ask(st, &real, terminal);
     let Some(Modal::Trust(p)) = &mut st.modal else { return };
@@ -233,7 +241,7 @@ pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<St
 /// The trust prompt was closed without a decision: the held job, if any, is dropped. Returns
 /// what `forget` hands back, for update/dialog.rs to reopen once the prompt is gone.
 pub fn dismissed(st: &mut AppState) -> Option<PrStart> {
-    st.trust.waiting = None;
+    super::trust_waiting::drop_waiting(st);
     let h = st.trust.held.take()?;
     forget(st, h, false)
 }

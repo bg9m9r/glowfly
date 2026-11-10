@@ -196,6 +196,52 @@ fn a_panicking_local_op_reports_to_its_repository() {
 }
 
 #[test]
+fn a_file_operation_that_panics_or_fails_its_check_answers_its_dialog() {
+    use glowfly_model::effect::{DeleteMode, FileOp};
+    let ops = [
+        FileOp::Rename { from: "a.txt".into(), to: "b.txt".into(), stage: true },
+        FileOp::Create("n.txt".into()),
+        FileOp::Delete { path: "a.txt".into(), mode: DeleteMode::Trash },
+    ];
+    for op in ops {
+        let effect = Effect::Files(FilesEffect::Work { workdir: "C:/r".into(), op: op.clone() });
+        // A panic.
+        let Msg::Scoped { workdir, msg } = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap() else {
+            panic!("scoped to its repository")
+        };
+        assert_eq!(workdir, PathBuf::from("C:/r"));
+        let Msg::WorkFile(WorkFileMsg::WorkFileDone { op: answered, result: Err(WriteFailed::Panicked { panic, .. }) }) = *msg else {
+            panic!("not a failed file operation")
+        };
+        assert!(answered == op && panic.contains("boom"), "{answered:?}: {panic}");
+        // A trust re-check that didn't pass (runner/trust.rs).
+        let Msg::Scoped { msg, .. } = Recovery::of(&effect, effect.name()).failed("not run".into()) else { panic!("scoped") };
+        let Msg::WorkFile(WorkFileMsg::WorkFileDone { op: answered, result: Err(WriteFailed::Other { said }) }) = *msg else {
+            panic!("not a failed file operation")
+        };
+        assert!(answered == op && said == "not run", "{answered:?}: {said}");
+        assert!(guarded(Recovery::of(&effect, effect.name()), || None).is_none(), "no panic, no message");
+    }
+}
+
+#[test]
+fn a_head_fetch_that_panics_or_fails_its_check_ends_the_panels_wait() {
+    use glowfly_model::pull_request::HeadJob;
+    let job = HeadJob { workdir: "C:/r".into(), id: 7, head: "abc123".into(), cmd: vec!["fetch".into()], prompts: false };
+    let effect = Effect::PullRequest(PrEffect::FetchHead(job));
+    let unwrap = |m: Msg| match m {
+        Msg::Scoped { msg, .. } => *msg,
+        m => m,
+    };
+    let panicked = unwrap(guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap());
+    let Msg::PullRequest(PullRequestMsg::HeadFetched { id: 7, head, result: Err(e) }) = panicked else { panic!("not a failed head fetch") };
+    assert!(head == "abc123" && e.contains("boom") && e.contains("fetch-pr-head"), "{head}: {e}");
+    let failed = unwrap(Recovery::of(&effect, effect.name()).failed("not run".into()));
+    let Msg::PullRequest(PullRequestMsg::HeadFetched { id: 7, head, result: Err(e) }) = failed else { panic!("not a failed head fetch") };
+    assert_eq!((head.as_str(), e.as_str()), ("abc123", "not run"));
+}
+
+#[test]
 fn a_panicking_rebase_or_steps_edit_ends_its_job_typed() {
     use glowfly_core::rebase::{EditTodoRequest, StartRequest, Upstream};
     let cwd = glowfly_core::paths::temp_dir().join("glowfly-guard-rebase");
