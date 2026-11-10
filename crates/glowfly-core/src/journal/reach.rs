@@ -50,27 +50,18 @@ fn hide_tips(repo: &Repository, walk: &mut Revwalk<'_>) {
     if let Some(h) = head_of(repo) {
         hide(h);
     }
-    // From a linked worktree, `worktrees()` lists only the linked ones: open the main one too.
+    // The admin dirs below list only the linked worktrees: the main one's HEAD is read here.
     if let Ok(main) = Repository::open(repo.commondir())
         && !main.is_bare()
         && let Some(h) = head_of(&main)
     {
         hide(h);
     }
-    if let Ok(names) = repo.worktrees() {
-        for name in names.iter().flatten() {
-            let Ok(wt) = repo.find_worktree(name) else { continue };
-            // A folder on another network place is never opened: its HEAD is in its admin dir.
-            if !crate::net_path::may_follow(wt.path(), repo.commondir()) {
-                if let Some(h) = crate::git_file::worktree_head(repo, name) {
-                    hide(h);
-                }
-                continue;
-            }
-            let Ok(r) = Repository::open_from_worktree(&wt) else { continue };
-            if let Some(h) = head_of(&r) {
-                hide(h);
-            }
+    // Read from each admin dir: opening a worktree's folder reads its `.git` file, which the
+    // repository's content controls.
+    for a in crate::git_file::worktree_admins(repo.commondir()) {
+        if let Some(h) = crate::git_file::worktree_head(repo, &a.name) {
+            hide(h);
         }
     }
     if let Ok(log) = repo.reflog("refs/stash") {

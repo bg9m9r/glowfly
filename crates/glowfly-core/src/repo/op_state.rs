@@ -59,16 +59,18 @@ pub struct HeldBranch {
 /// dir) is rebasing or bisecting, read as git does to refuse it elsewhere: a rebase's
 /// `rebase-merge/head-name` or `rebase-apply/head-name` (`refs/heads/<b>`, or `detached HEAD`),
 /// else, while a bisect runs (`BISECT_LOG`, the file libgit2's state reads too), the branch
-/// `BISECT_START` names (a commit there, from a bisect started detached, names none).
+/// `BISECT_START` names (a commit there, from a bisect started detached, names none). Each file
+/// is read bounded and never through a link to another machine (`git_file::read_small_in`).
 pub fn held_branch(git_dir: &Path) -> Option<HeldBranch> {
-    let read = |p: &str| std::fs::read_to_string(git_dir.join(p)).ok();
+    let read = |p: &str| crate::git_file::read_small_in(&git_dir.join(p), git_dir).and_then(|b| String::from_utf8(b).ok());
     for dir in ["rebase-merge", "rebase-apply"] {
         if let Some(text) = read(&format!("{dir}/head-name")) {
             let name = text.trim().strip_prefix("refs/heads/")?;
             return (!name.is_empty()).then(|| HeldBranch { name: name.to_owned(), by: BranchUse::Rebasing });
         }
     }
-    if !git_dir.join("BISECT_LOG").is_file() {
+    let log = git_dir.join("BISECT_LOG");
+    if !(crate::net_path::may_follow(&log, git_dir) && log.is_file()) {
         return None;
     }
     let start = read("BISECT_START")?;

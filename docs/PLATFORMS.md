@@ -125,9 +125,10 @@ second one next to it.
 
 A repository's own files name other places: a `.git` file's `gitdir:` (a nested repository, a
 submodule), a git dir's `commondir`, a linked worktree's record `<common>/worktrees/<id>/gitdir`,
-links in a git dir, and for a repository Glowfly opens on its own (a nested repository in the
-sweep, a submodule) the files its config includes, its `core.worktree`, `core.excludesFile` and
-`core.attributesFile`. Touching a network place one names (a stat, an open, `canonicalize`, a
+links in a git dir or a worktree admin dir, and for a repository Glowfly opens on its own (a
+nested repository in the sweep, a submodule) the files its config includes, its
+`core.worktree`, `core.excludesFile` and `core.attributesFile`, and the object stores its
+`objects/info/alternates` names. Touching a network place one names (a stat, an open, `canonicalize`, a
 libgit2 open) reaches another machine on the repository's say-so, and the sweep, the load and the
 trust scan all run for untrusted repositories too.
 
@@ -135,8 +136,17 @@ trust scan all run for untrusted repositories too.
    it,** with `home` the place already in use (the sweep's outer work tree; the opened
    repository's git dir for its own commondir in the watcher; its work tree for submodules; its
    common dir for linked worktrees). Read those files through `git_file` (`dirs_of`,
-   `other_repo`, `common_dir_of`, `worktree_folder`, `read_small_in`), never directly. A file
-   directly inside an allowed folder is checked with that folder as `home`: one stat.
+   `other_repo`, `common_dir_of`, `worktree_folder`, `worktree_admins`, `admin_locked`,
+   `read_small_in`), never directly; a worktree admin dir's own files (`HEAD`, `locked`, a
+   rebase's `head-name`) are read only where `may_follow` allows (`refs_key`,
+   `op_state::held_branch`, `rebase/update_refs.rs`). A file directly inside an allowed folder is
+   checked with that folder as `home`: one stat. A repository Glowfly opens on its own also has
+   its object store checked (`other_repo`): links directly in `objects/`, `objects/info` and
+   `objects/pack`, and `objects/info/alternates`, followed as libgit2 follows it to its depth of
+   5 (a line starting with `.` from the `objects` folder, an absolute one as it is). A relative
+   line not starting with `.` (a quoted one too) is refused, since libgit2 reads it from the
+   process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
+   and more than 32 stores in all.
 2. **The spelling is checked before anything is touched.** On Windows, with either separator:
    UNC (`\server\share`), `\?\UNC\`, `\.\UNC\` and `\??\UNC\`, `\wsl$` and
    `\wsl.localhost`, and any other device-namespace path (`\?\GLOBALROOT\…`, `\.\pipe\…`) that
@@ -160,12 +170,12 @@ trust scan all run for untrusted repositories too.
    `\wsl$\Ubuntu\…` is refused.
 5. **This holds before trust.** Once a repository is trusted, git itself (`git status` recursing
    into submodules) follows what git follows.
-6. **The opened repository's own `.git` file, `commondir` and config are followed by libgit2 at
-   open,** as git does; the user chose that folder. The guard covers what Glowfly follows on its
+6. **The opened repository's own `.git` file, `commondir`, config and alternates are followed by
+   libgit2 at open,** as git does; the user chose that folder. The guard covers what Glowfly follows on its
    own beyond it. These read only through libgit2's `commondir()` of the opened repository, which
    libgit2 already followed, so they reach nothing new: `lfs/sources.rs`, `link/find.rs` (it
    opens a folder the user or the link named), `history_size.rs`, `stop_cleanup.rs`,
-   `rebase/update_refs.rs` (admin dirs under the common dir), `lock_file.rs`, `repo_pool`,
+   `lock_file.rs`, `repo_pool`,
    `trust/stamp.rs` and `repo_identity.rs`; `repo_scan.rs` reads only the first bytes of a
    `.git` and never follows it. `trust/follow.rs` resolves config-named paths (`core.hooksPath`,
    hook links, program paths), like the opened repository's include files: a follow-up.
@@ -179,8 +189,16 @@ trust scan all run for untrusted repositories too.
    the line counts) and the changed-file count before a worktree is removed; a linked worktree
    is listed with its branch and HEAD from its admin dir, never missing, prunable or current
    (compared by spelling alone), with no folder id and never counted, and one whose own `.git`
-   file (or what it leads to) names such a place is never opened to be counted; the watcher
-   doesn't watch a common dir on another network root.
+   file (or what it leads to) names such a place is never opened to be counted. The same goes for
+   a linked worktree whose admin dir holds a link to such a place (`HEAD`, `commondir`,
+   `locked`) or whose `commondir` names one: it is listed from its admin dir alone (a `locked`
+   link counts as locked without a reason, a `HEAD` link as no branch or HEAD), and left out when
+   its `gitdir` record can't be read (a link there, or an admin dir or `worktrees/` folder that
+   is itself one). libgit2's own worktree list and lookup are never used to find them, since they
+   stat through those links; the journal and the operation previews read other worktrees' HEADs
+   from their admin dirs, never opening a worktree's folder. A submodule or nested repository
+   whose object store links to such a place, or whose alternates name one, is refused like one
+   whose `.git` file does. The watcher doesn't watch a common dir on another network root.
 
 ### Names Glowfly creates or accepts
 
@@ -923,9 +941,13 @@ Gaps that are accepted for now:
   content-only edit lost that way shows only within about 5 minutes (when its folder's turn in
   the rotation comes), or on F5.
 - **Paths a repository names are guarded only where Glowfly follows them on its own**
-  (`net_path`): the opened repository's own `.git` file, `commondir` and config includes are
-  followed by libgit2 at open, and config-named paths (`core.hooksPath`, program files) are
-  read by the trust scan unguarded. A file swapped between the check and the read isn't caught.
+  (`net_path`): the opened repository's own `.git` file, `commondir`, config includes and
+  `objects/info/alternates` are followed by libgit2 at open, and config-named paths
+  (`core.hooksPath`, program files) are read by the trust scan unguarded. In a store that is
+  allowed, a loose object file or pack file that is itself a link is followed when libgit2 reads
+  that object (only the store folders' direct entries are checked), and a work tree's
+  `.gitignore`, `.gitattributes` and `.gitmodules` that are links are read through by libgit2
+  (#699). A file swapped between the check and the read isn't caught.
   A local repository's linked worktree or submodule on a share is shown but not validated or
   counted (the submodule as not checked out). A refused nested repository that later stops
   naming a network place is tracked again only once its folder's `.git` comes or goes.

@@ -73,8 +73,10 @@ pub fn worktrees_at(workdir: &Path) -> Result<Vec<WorktreeInfo>> {
     Ok(list(&repo))
 }
 
-/// The worktrees of `repo`'s repository, main first and then linked ones by path. Never fails:
-/// an error gives an empty list, and an entry that can't be opened is left out.
+/// The worktrees of `repo`'s repository, main first and then linked ones by path, the linked
+/// ones found by `git_file::worktree_admins` (libgit2's own list stats through links in their
+/// admin dirs). Never fails: an error gives an empty list, and an entry that can't be opened is
+/// left out.
 pub(super) fn list(repo: &Repository) -> Vec<WorktreeInfo> {
     list_with(repo, &crate::paths::same_folder)
 }
@@ -107,42 +109,43 @@ pub(super) fn list_with(repo: &Repository, same: &dyn Fn(&Path, &Path) -> bool) 
             read: ChangesRead::NotCounted,
         });
     }
-    let Ok(names) = common.worktrees() else { return out };
-    let mut linked: Vec<WorktreeInfo> = names
-        .iter()
-        .flatten()
-        .filter_map(|name| {
-            let wt = common.find_worktree(name).ok()?;
-            // A folder on another network place than the repository is never looked at: it is
-            // listed from its admin dir alone, neither missing nor prunable, and never counted.
-            let near = crate::net_path::may_follow(wt.path(), common.commondir());
+    let mut linked: Vec<WorktreeInfo> = crate::git_file::worktree_admins(common.commondir())
+        .into_iter()
+        .filter_map(|a| {
+            let (branch, head) = read_head(&a.dir, &common);
+            let base = WorktreeInfo {
+                name: Some(a.name.clone()),
+                path: normalize(&a.folder),
+                branch,
+                head,
+                held: held_branch(&a.dir),
+                current: false,
+                locked: None,
+                missing: false,
+                prunable: false,
+                folder: None,
+                changes: ChangeCounts::default(),
+                read: ChangesRead::NotCounted,
+            };
+            if !a.near {
+                // Something it names leads to another network place: listed from its admin dir
+                // alone, never looked up by libgit2 (which stats through those links), neither
+                // missing nor prunable, current by spelling alone (`same` opens the folder),
+                // and never counted.
+                let current = here.as_deref().is_some_and(|h| crate::paths::same_spelling(&base.path, h));
+                return Some(WorktreeInfo { current, locked: crate::git_file::admin_locked(&a.dir), ..base });
+            }
+            let wt = common.find_worktree(&a.name).ok()?;
             let path = normalize(wt.path());
             let locked = match wt.is_locked() {
                 Ok(WorktreeLockStatus::Locked(r)) => Some(r.unwrap_or_default().trim_end().to_owned()),
                 _ => None,
             };
-            let missing = near && wt.validate().is_err();
-            let prunable = near && wt.is_prunable(None).unwrap_or(false);
-            let git_dir = common.commondir().join("worktrees").join(name);
-            let (branch, head) = read_head(&git_dir, &common);
-            let held = held_branch(&git_dir);
-            // By spelling alone for one on another network place: `same` would open it.
-            let current = if near { is_current(&path) } else { here.as_deref().is_some_and(|h| crate::paths::same_spelling(&path, h)) };
-            let folder = if near { crate::paths::FolderId::of(&path) } else { None };
-            Some(WorktreeInfo {
-                name: Some(name.to_owned()),
-                path,
-                branch,
-                head,
-                held,
-                current,
-                locked,
-                missing,
-                prunable,
-                folder,
-                changes: ChangeCounts::default(),
-                read: ChangesRead::NotCounted,
-            })
+            let missing = wt.validate().is_err();
+            let prunable = wt.is_prunable(None).unwrap_or(false);
+            let current = is_current(&path);
+            let folder = crate::paths::FolderId::of(&path);
+            Some(WorktreeInfo { path, current, locked, missing, prunable, folder, ..base })
         })
         .collect();
     linked.sort_by(|a, b| a.path.cmp(&b.path));

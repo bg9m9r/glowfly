@@ -1,6 +1,6 @@
 //! Following the git dirs a repository's files name, and refusing the ones on a network place:
-//! `.git` files, `commondir`, a nested repository's config and links, worktree records and
-//! gitlinks. Every network path is `testutil::net_place()`, which is never touched.
+//! `.git` files, `commondir`, a nested repository's config and links, worktree records, admin
+//! dirs and gitlinks. Every network path is `testutil::net_place()`, which is never touched.
 
 use super::*;
 use crate::testutil::{git, git_spelling, link_to, net_place, scratch_repo, write};
@@ -140,5 +140,69 @@ fn offsite_gitlinks_lists_only_refused_ones() {
         assert_eq!(all, [Offsite { path: "far".to_owned(), link: false }, Offsite { path: "linked".to_owned(), link: true }]);
     }
     drop(repo);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Writes an admin dir `<common>/worktrees/<name>` holding `files` (name, text).
+fn admin_dir(common: &Path, name: &str, files: &[(&str, &str)]) -> PathBuf {
+    let dir = common.join("worktrees").join(name);
+    std::fs::create_dir_all(&dir).unwrap();
+    for (f, text) in files {
+        write(&dir, f, text);
+    }
+    dir
+}
+
+#[test]
+fn worktree_admins_list_as_libgit2_does_without_following_links() {
+    let dir = scratch_repo("git-file-admins");
+    write(&dir, "a.txt", "a\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "a"]);
+    let wt = dir.with_file_name(format!("{}-wt", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&wt);
+    git(&dir, &["worktree", "add", "-q", "--detach", &wt.display().to_string()]);
+    let common = dir.join(".git");
+    let listed = |name: &str| worktree_admins(&common).into_iter().find(|a| a.name == name);
+    let real = listed(&wt.file_name().unwrap().to_string_lossy()).expect("the real worktree");
+    assert!(real.near && crate::paths::same_folder(&real.folder, &wt), "{real:?}");
+    let gitdir = format!("{}\n", git_spelling(&dir.join("elsewhere/.git")));
+    admin_dir(&common, "no-head", &[("commondir", "../..\n"), ("gitdir", &gitdir)]);
+    assert_eq!(listed("no-head"), None, "not an admin dir without HEAD");
+    let far = format!("{}\n", git_spelling(&net_place()));
+    admin_dir(&common, "far-common", &[("commondir", &far), ("gitdir", &gitdir), ("HEAD", "ref: refs/heads/main\n")]);
+    assert_eq!(listed("far-common").map(|a| a.near), Some(false), "a commondir naming a network place");
+    let head_link = admin_dir(&common, "head-link", &[("commondir", "../..\n"), ("gitdir", &gitdir)]);
+    if link_to(&net_place().join("HEAD"), &head_link.join("HEAD"), false) {
+        assert_eq!(listed("head-link").map(|a| a.near), Some(false), "a HEAD linked to a network place");
+        let gitdir_link = admin_dir(&common, "gitdir-link", &[("commondir", "../..\n"), ("HEAD", "ref: refs/heads/main\n")]);
+        assert!(link_to(&net_place().join("gitdir"), &gitdir_link.join("gitdir"), false));
+        assert_eq!(listed("gitdir-link"), None, "no gitdir record to read");
+        assert!(link_to(&net_place().join("wt"), &common.join("worktrees/dir-link"), true));
+        assert_eq!(listed("dir-link"), None, "an admin dir that is a link to a network place");
+        let root = common.join("worktrees");
+        std::fs::rename(&root, common.join("worktrees-kept")).unwrap();
+        assert!(link_to(&net_place().join("worktrees"), &root, true));
+        assert_eq!(worktree_admins(&common), [], "a worktrees folder that is a link to a network place");
+        let _ = std::fs::remove_dir(&root).or_else(|_| std::fs::remove_file(&root));
+        std::fs::rename(common.join("worktrees-kept"), &root).unwrap();
+        let link = root.join("dir-link");
+        let _ = std::fs::remove_dir(&link).or_else(|_| std::fs::remove_file(&link));
+    }
+    let _ = std::fs::remove_dir_all(&wt);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn admin_locked_reads_the_reason_and_never_follows_a_far_link() {
+    let dir = scratch_repo("git-file-admin-locked");
+    let admin = admin_dir(&dir.join(".git"), "wt", &[]);
+    assert_eq!(admin_locked(&admin), None, "not locked");
+    write(&admin, "locked", "because\n");
+    assert_eq!(admin_locked(&admin).as_deref(), Some("because"));
+    std::fs::remove_file(admin.join("locked")).unwrap();
+    if link_to(&net_place().join("locked"), &admin.join("locked"), false) {
+        assert_eq!(admin_locked(&admin).as_deref(), Some(""), "locked, its reason never read");
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

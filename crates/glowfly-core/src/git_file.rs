@@ -2,8 +2,15 @@
 //! linked worktree's `gitdir` record), read bounded (regular files only) and followed only where
 //! `net_path::may_follow` allows from `home`, the place already in use. Also whether another
 //! repository (a nested one, a submodule) can be opened by libgit2 without it reaching a refused
-//! place: the links in its git dir, the files its config includes, and its `core.worktree`,
-//! `core.excludesFile` and `core.attributesFile`.
+//! place: the links in its git dir, the files its config includes, its `core.worktree`,
+//! `core.excludesFile` and `core.attributesFile`, and its object store with the alternates it
+//! names (up to libgit2's depth of 5, `alternates.rs`). The linked worktrees under a common dir
+//! are listed here too (`admin.rs`), as libgit2's own list follows links in their admin dirs.
+
+mod admin;
+mod alternates;
+
+pub(crate) use admin::{admin_locked, worktree_admins};
 
 use crate::config_includes::{self, read_file_bounded};
 use crate::net_path::may_follow;
@@ -117,7 +124,8 @@ pub(crate) fn other_repo(folder: &Path, home: &Path) -> Found {
 }
 
 /// The first place libgit2 opening the repository of `d` would reach that may not be followed:
-/// a link directly in its git dir, common dir or their `info/`, a file its config includes, or
+/// a link directly in its git dir, common dir or their `info/`, a link in its object store or a
+/// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
 /// its `core.worktree`, `core.excludesFile` or `core.attributesFile`.
 fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     let mut dirs = vec![d.git_dir.clone()];
@@ -135,6 +143,8 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
             }
         }
     }
+    // Read when a status compares the submodule's HEAD tree.
+    alternates::reachable(&d.common, home)?;
     let roots = config_includes::repo_roots(&d.git_dir, Some(&d.common));
     config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home))?;
     // The includes are allowed, so libgit2 may follow them; an unreadable config fails the

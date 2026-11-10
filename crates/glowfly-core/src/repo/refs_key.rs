@@ -63,16 +63,29 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     // The root .gitattributes' LFS patterns aren't in it: every whole status read brings them.
     // The main worktree's HEAD and the branch it is rebasing or bisecting, seen from a linked
     // one (they are the current worktree's own otherwise, and hashed above too).
-    std::fs::read(common.join("HEAD")).ok().hash(&mut h);
+    git_file::read_small_in(&common.join("HEAD"), common).hash(&mut h);
     super::op_state::held_branch(common).hash(&mut h);
     // Linked worktrees: added, removed, locked, switched to another branch, or rebasing or
-    // bisecting one.
-    if let Ok(dir) = std::fs::read_dir(common.join("worktrees")) {
+    // bisecting one. Nothing is read through a link to another network place.
+    let near = |p: &Path, base: &Path| crate::net_path::may_follow(p, base);
+    let wt_root = common.join("worktrees");
+    if !near(&wt_root, common) {
+        OFFSITE.hash(&mut h);
+    } else if let Ok(dir) = std::fs::read_dir(&wt_root) {
         let mut names: Vec<_> = dir.flatten().map(|e| e.path()).collect();
         names.sort();
         for p in names {
             p.hash(&mut h);
-            std::fs::read(p.join("HEAD")).ok().hash(&mut h);
+            if !near(&p, &wt_root) {
+                OFFSITE.hash(&mut h);
+                continue;
+            }
+            let head = p.join("HEAD");
+            if near(&head, &p) {
+                git_file::read_small_in(&head, &p).hash(&mut h)
+            } else {
+                OFFSITE.hash(&mut h)
+            }
             // A worktree whose folder is gone shows as missing; one on another network place
             // is never looked at.
             match git_file::worktree_folder(&p, common) {
@@ -81,7 +94,12 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
                 Named::None => None::<bool>.hash(&mut h),
             }
             git_file::read_small_in(&p.join("gitdir"), &p).hash(&mut h);
-            p.join("locked").exists().hash(&mut h);
+            let locked = p.join("locked");
+            if near(&locked, &p) {
+                locked.exists().hash(&mut h)
+            } else {
+                OFFSITE.hash(&mut h)
+            }
             super::op_state::held_branch(&p).hash(&mut h);
         }
     }

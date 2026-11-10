@@ -134,16 +134,23 @@ pub(super) fn add(steps: Vec<TodoStep>, tips: &Tips) -> Vec<TodoStep> {
 /// only when it isn't bare), being rebased or bisected there, or moved by a rebase there.
 fn checked_out(repo: &Repository) -> HashSet<String> {
     // Each linked worktree's own git folder, read even when its working folder is gone, as git
-    // does.
+    // does; never through a link to another network place (`net_path`).
+    let near = crate::net_path::may_follow;
     let common = repo.commondir();
     let bare = Repository::open(common).is_ok_and(|r| r.is_bare());
     let mut dirs: Vec<(PathBuf, bool)> = vec![(common.to_path_buf(), !bare)];
-    if let Ok(entries) = std::fs::read_dir(common.join("worktrees")) {
-        dirs.extend(entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).map(|p| (p, true)));
+    let root = common.join("worktrees");
+    if near(&root, common)
+        && let Ok(entries) = std::fs::read_dir(&root)
+    {
+        dirs.extend(entries.flatten().map(|e| e.path()).filter(|p| near(p, &root) && p.is_dir()).map(|p| (p, true)));
     }
     let mut out = HashSet::new();
     for (dir, head) in dirs {
-        let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap_or_default();
+        let read = |name: &str| {
+            let file = dir.join(name);
+            if near(&file, &dir) { std::fs::read_to_string(file).unwrap_or_default() } else { String::new() }
+        };
         if head && let Some(r) = read("HEAD").trim().strip_prefix("ref:") {
             out.insert(r.trim().to_owned());
         }

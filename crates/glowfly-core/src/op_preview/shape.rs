@@ -115,30 +115,15 @@ pub(super) fn gone(
     Ok((out, Count { n, more: false }))
 }
 
-/// The HEAD commits of the repository's other worktrees (not this one's); unreadable ones are
-/// left out.
+/// The HEAD commits of the repository's other linked worktrees (not this one's), read from
+/// their admin dirs (`git_file::worktree_head`): opening a worktree's folder reads its `.git`
+/// file, which the repository's content controls. Unreadable ones are left out.
 fn other_worktree_heads(repo: &Repository) -> Vec<Oid> {
-    let Ok(names) = repo.worktrees() else { return Vec::new() };
-    let mut out = Vec::new();
-    for name in names.iter().flatten() {
-        let Ok(wt) = repo.find_worktree(name) else { continue };
-        // A folder on another network place is never opened: its HEAD is in its admin dir.
-        if !crate::net_path::may_follow(wt.path(), repo.commondir()) {
-            let admin = repo.commondir().join("worktrees").join(name);
-            if !crate::paths::same_spelling(&admin, repo.path())
-                && let Some(head) = crate::git_file::worktree_head(repo, name)
-            {
-                out.push(head);
-            }
-            continue;
-        }
-        let Ok(other) = Repository::open_from_worktree(&wt) else { continue };
-        if crate::paths::same_spelling(other.path(), repo.path()) {
-            continue;
-        }
-        if let Some(head) = other.head().ok().and_then(|h| h.target()) {
-            out.push(head);
-        }
-    }
-    out
+    // libgit2 names an open linked worktree by its git dir's last part.
+    let own = repo.is_worktree().then(|| repo.path().components().next_back()).flatten();
+    crate::git_file::worktree_admins(repo.commondir())
+        .into_iter()
+        .filter(|a| own.is_none_or(|c| c.as_os_str() != std::ffi::OsStr::new(&a.name)))
+        .filter_map(|a| crate::git_file::worktree_head(repo, &a.name))
+        .collect()
 }
