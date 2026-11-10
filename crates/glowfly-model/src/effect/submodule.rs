@@ -1,5 +1,6 @@
 //! Effects of the SUBMODULES section: reading a submodule (or all of them, before a batch update)
-//! again before an update or a removal is confirmed, checking the Add dialog's folder on disk, and removing a submodule.
+//! again before an update or a removal is confirmed, checking the Add dialog's folder on disk,
+//! removing a submodule, and reading a submodule's branch before Pull inside it.
 
 use super::EffectMeta;
 use super::SandboxRule;
@@ -25,6 +26,9 @@ pub enum SubmoduleEffect {
     /// Deinitializes the submodule, removes it with `git rm` and deletes its stored module. It
     /// ends the active job (`SubmoduleMsg::Removed`).
     Remove(RemoveRequest),
+    /// Reads the checked-out branch and its upstream of the submodule at `path` before Pull
+    /// inside it. Reported as `SubmoduleMsg::HeadRead`.
+    ReadHead { workdir: PathBuf, path: String },
 }
 
 impl EffectMeta for SubmoduleEffect {
@@ -35,6 +39,7 @@ impl EffectMeta for SubmoduleEffect {
             SubmoduleEffect::CheckRemove { .. } => "check-submodule-remove",
             SubmoduleEffect::CheckAll { .. } => "check-submodules",
             SubmoduleEffect::Remove(_) => "remove-submodule",
+            SubmoduleEffect::ReadHead { .. } => "read-submodule-head",
         }
     }
 
@@ -44,7 +49,8 @@ impl EffectMeta for SubmoduleEffect {
         match self {
             SubmoduleEffect::Check { workdir, .. }
             | SubmoduleEffect::CheckRemove { workdir, .. }
-            | SubmoduleEffect::CheckAll { workdir, .. } => Some(workdir),
+            | SubmoduleEffect::CheckAll { workdir, .. }
+            | SubmoduleEffect::ReadHead { workdir, .. } => Some(workdir),
             SubmoduleEffect::CheckAddPath { .. } | SubmoduleEffect::Remove(_) => None,
         }
     }
@@ -60,7 +66,8 @@ impl EffectMeta for SubmoduleEffect {
             SubmoduleEffect::Check { .. }
             | SubmoduleEffect::CheckAddPath { .. }
             | SubmoduleEffect::CheckRemove { .. }
-            | SubmoduleEffect::CheckAll { .. } => None,
+            | SubmoduleEffect::CheckAll { .. }
+            | SubmoduleEffect::ReadHead { .. } => None,
         }
     }
 

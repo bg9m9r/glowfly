@@ -89,6 +89,7 @@ fn results_for_other_tabs_are_dropped() {
         result: Err(said("from A")),
         lfs: None,
         raw: None,
+        gitlink: None,
     });
     update(&mut st, Msg::Scoped { workdir: a.clone(), msg: Box::new(diff) }, Instant::now());
     assert!(!st.log.iter().any(|l| l.text == "from A"), "tab A's diff result must not reach tab B");

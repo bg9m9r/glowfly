@@ -115,7 +115,8 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let rename = super::branch_sync::headline(st, ok, &output);
             let kept = super::undo::stash_headline(st, &undo);
             let remote_back = super::undo_offers::headline(st, &undo);
-            let headline = kept.or(remote_back).or(flow).or(tag).or(patch).or(stash).or(checkout).or(cleanup).or(rename);
+            let inside = super::submodule_inside::headline(st, ok);
+            let headline = kept.or(remote_back).or(flow).or(tag).or(patch).or(stash).or(checkout).or(cleanup).or(rename).or(inside);
             let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
             if let Some(reason) = refused {
@@ -285,6 +286,7 @@ pub fn finish_job(
     if here && let Some((p, open_closed)) = reopen {
         super::conflict::reopen_after_undo(st, p, open_closed, fx);
     }
+    super::submodule_inside::job_finished(st, &job.label, ok, fx);
     super::submodule_batch::job_finished(st, &job.label, job.workdir.as_deref(), ok, here, fx);
     if job.then_link {
         super::deep_link_open::fetched(st, ok, here, fx);

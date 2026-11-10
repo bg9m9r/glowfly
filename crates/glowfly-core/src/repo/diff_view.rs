@@ -25,6 +25,9 @@ pub struct ViewDiff {
     pub language: Option<String>,
     /// The two sides when either is a Git LFS pointer (`lfs_marks::diff_change`).
     pub lfs: Option<crate::lfs::pointer::LfsChange>,
+    /// When either side is a submodule's gitlink: which way it moved and the commits it passes
+    /// over (`gitlink_move::of_diff`).
+    pub gitlink: Option<Box<super::GitlinkMove>>,
     /// For an unstaged diff of one hunk: its lines' exact bytes and the working file's own
     /// bytes, hashed (`index::raw_id`), which the hunk's text (decoded, line ends trimmed) and git's
     /// converted content (`core.autocrlf`) can't tell apart.
@@ -71,10 +74,11 @@ pub(super) fn load(
         crate::partial::require(&repo, workdir, path, crate::partial::delta_blobs(target, &delta))?;
     }
     let lfs = with_old.then(|| super::lfs_marks::diff_change(&repo, target, &diff)).flatten();
+    let gitlink = with_old.then(|| super::gitlink_move::of_diff(&pooled, workdir, target, &diff)).flatten().map(Box::new);
     let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
-        return Ok(ViewDiff { diff: out, old: None, language: None, lfs, raw: None });
+        return Ok(ViewDiff { diff: out, old: None, language: None, lfs, gitlink, raw: None });
     };
     out.binary = patch.delta().flags().is_binary();
     for h in 0..patch.num_hunks() {
@@ -92,7 +96,7 @@ pub(super) fn load(
     // `patch` is still the first load's (the whole-file block's is scoped to it).
     let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
     let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
-    Ok(ViewDiff { diff: out, old, language, lfs, raw: super::index::shown_raw_id(workdir, target, path, &patch)? })
+    Ok(ViewDiff { diff: out, old, language, lfs, gitlink, raw: super::index::shown_raw_id(workdir, target, path, &patch)? })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the

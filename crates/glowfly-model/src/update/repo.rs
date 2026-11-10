@@ -65,10 +65,10 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             open_file_diff(st, target, fx)
         }
         RepoMsg::PickWipFile { staged, path, how } => super::wip_picks::pick(st, staged, path, how, fx),
-        RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw } => {
+        RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw, gitlink } => {
             let t = st.settings.lang();
             let result = result.map_err(|e| typed::read(t, &e));
-            super::diff_loaded::loaded(st, target, reload, generation, result, lfs, raw, fx)
+            super::diff_loaded::loaded(st, target, reload, generation, result, lfs, gitlink, raw, fx)
         }
         RepoMsg::CloseDiff => close_diff(st),
         RepoMsg::WantStats(oids) => super::line_counts::want_totals(st, oids, fx),

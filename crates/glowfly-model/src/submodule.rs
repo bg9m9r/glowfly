@@ -1,9 +1,9 @@
-//! Messages of the SUBMODULES section, its batch updates and the Add, Edit and Remove submodule
-//! dialogs (state/submodules.rs, state/submodules/{add,batch,edit,remove}.rs,
-//! update/submodules.rs, update/submodule_{add,batch,edit,remove}.rs, ui/submodules.rs,
-//! ui/submodule_dialogs.rs).
+//! Messages of the SUBMODULES section, its batch updates, the Add, Edit and Remove submodule
+//! dialogs, and the work done inside a submodule from its row (state/submodules.rs,
+//! state/submodules/{add,batch,edit,inside,remove}.rs, update/submodules.rs,
+//! update/submodule_{add,batch,edit,inside,remove}.rs, ui/submodules.rs, ui/submodule_dialogs.rs).
 
-use glowfly_core::repo::SubmoduleInfo;
+use glowfly_core::repo::{InsideHead, SubmoduleInfo};
 use glowfly_core::submodule_ops::{RemovalFacts, RemoveReport};
 use std::path::PathBuf;
 
@@ -67,12 +67,22 @@ pub enum SubmoduleMsg {
     EditDialog(String),
     /// The Edit dialog's Save: reads the form from `st.modal`.
     Edit,
+    /// Record this checkout: stage the submodule's checked-out commit as its gitlink.
+    Record(String),
+    /// Fetch inside the submodule at this path, as a job in its folder.
+    Fetch(String),
+    /// Pull inside the submodule at this path: its HEAD is read first (`HeadRead`).
+    Pull(String),
+    /// From the runner: the submodule's HEAD read for Pull; None when it isn't checked out.
+    HeadRead { path: String, result: Result<Option<InsideHead>, String> },
+    /// Discard changes inside the submodule at `path` (a stash there); unconfirmed asks first.
+    DiscardInside { path: String, confirmed: bool },
 }
 
 impl SubmoduleMsg {
     /// What this result still needs when its tab is no longer active (`Msg::Scoped`); `None`
-    /// drops it. Only `Checked`, `RemoveChecked` and `CheckedAll` come back scoped, and each only
-    /// leads to a question or a job for the tab that asked.
+    /// drops it. Only `Checked`, `RemoveChecked`, `CheckedAll` and `HeadRead` come back scoped,
+    /// and each only leads to a question or a job for the tab that asked.
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
             Self::Open(..)
@@ -90,7 +100,12 @@ impl SubmoduleMsg {
             | Self::CheckedAll { .. }
             | Self::SetUpdates(..)
             | Self::EditDialog(..)
-            | Self::Edit => None,
+            | Self::Edit
+            | Self::Record(..)
+            | Self::Fetch(..)
+            | Self::Pull(..)
+            | Self::HeadRead { .. }
+            | Self::DiscardInside { .. } => None,
         }
     }
 }

@@ -36,7 +36,18 @@ fn run(st: &mut AppState, msg: Msg) {
 /// The diff of `target` arriving for the request on its way (or a reload of the one shown).
 fn loaded(st: &mut AppState, target: &DiffTarget, reload: bool) {
     let generation = st.session.diff.generation;
-    run(st, Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload, generation, result: Ok(diff()), lfs: None, raw: None }));
+    run(
+        st,
+        Msg::Repo(RepoMsg::DiffLoaded {
+            target: target.clone(),
+            reload,
+            generation,
+            result: Ok(diff()),
+            lfs: None,
+            raw: None,
+            gitlink: None,
+        }),
+    );
 }
 
 /// Opens `target` from a file list and lets its diff arrive.

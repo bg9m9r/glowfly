@@ -41,6 +41,11 @@ pub fn cause(t: Lang, cause: &Cause) -> String {
         Cause::SignIn(AuthNeed::HostKey) => t.tr("git_errors.host_key").to_owned(),
         Cause::HostKeyChanged => t.tr("git_errors.host_key_changed").to_owned(),
         Cause::Remote(f) => remote(t, f),
+        Cause::SubmoduleChanges { paths } => match paths.as_slice() {
+            [] => t.tr("git_errors.submodule_changes.unlisted").to_owned(),
+            [p] => t.trf("git_errors.submodule_changes.named", &[("path", p)]),
+            many => t.trn("git_errors.submodule_changes", many.len(), &[]),
+        },
     }
 }
 

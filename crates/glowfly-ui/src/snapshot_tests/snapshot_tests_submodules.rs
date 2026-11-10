@@ -57,12 +57,12 @@ pub(crate) fn with_submodules(theme: ThemeChoice, name: &str) -> (AppState, Path
 }
 
 /// Right-clicks the row labelled `path`.
-fn open_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>, path: &str) {
+pub(crate) fn open_menu(h: &mut Harness<'_, (AppState, Vec<Msg>)>, path: &str) {
     let rect = h.get_by_label(path).bounding_box().expect("the row");
     click(h, pos2(((rect.x0 + rect.x1) / 2.0) as f32, ((rect.y0 + rect.y1) / 2.0) as f32), PointerButton::Secondary);
 }
 
-fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: &dyn Fn(&Msg) -> bool) -> bool {
+pub(crate) fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: &dyn Fn(&Msg) -> bool) -> bool {
     h.state().1.iter().any(want)
 }
 

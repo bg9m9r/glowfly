@@ -2,10 +2,13 @@
 //! git job. Updating one that is checked out at another commit reads it again first, then asks,
 //! naming any commits on no branch or tag that the update would leave behind. Adding one is in
 //! `submodule_add.rs`, editing one in `submodule_edit.rs`, removing one in `submodule_remove.rs`,
-//! and updating several at once (also after checkouts and pulls) in `submodule_batch.rs`.
+//! updating several at once (also after checkouts and pulls) in `submodule_batch.rs`, and
+//! recording its checkout or fetching, pulling and discarding inside it in `submodule_inside.rs`.
 
 use super::ops::{JobSpec, Started, start_job};
-use super::{submodule_add as add, submodule_batch as batch, submodule_edit as edit, submodule_remove as remove};
+use super::{
+    submodule_add as add, submodule_batch as batch, submodule_edit as edit, submodule_inside as inside, submodule_remove as remove,
+};
 use crate::effect::{Effect, SubmoduleEffect};
 use crate::msg::Msg;
 use crate::state::submodules::{confirm_update_body, confirm_update_button, job_label, open_blocked, update_args, update_blocked};
@@ -81,6 +84,11 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
         SubmoduleMsg::SetUpdates(choice) => batch::set_updates(st, choice, fx),
         SubmoduleMsg::EditDialog(path) => edit::dialog(st, path),
         SubmoduleMsg::Edit => edit::submit(st, fx),
+        SubmoduleMsg::Record(path) => inside::record(st, path, now, fx),
+        SubmoduleMsg::Fetch(path) => inside::fetch(st, path, fx),
+        SubmoduleMsg::Pull(path) => inside::pull(st, path, fx),
+        SubmoduleMsg::HeadRead { path, result } => inside::head_read(st, path, result, now, fx),
+        SubmoduleMsg::DiscardInside { path, confirmed } => inside::discard(st, path, confirmed, fx),
     }
 }
 

@@ -154,8 +154,15 @@ fn failed_detail_diff_and_status_reads_are_logged_worded() {
         st.log.clear();
         let target = DiffTarget::Unstaged("a.txt".into());
         let generation = st.session.diff.generation;
-        let diff =
-            |reload| RepoMsg::DiffLoaded { target: target.clone(), reload, generation, result: Err(not_a_repo()), lfs: None, raw: None };
+        let diff = |reload| RepoMsg::DiffLoaded {
+            target: target.clone(),
+            reload,
+            generation,
+            result: Err(not_a_repo()),
+            lfs: None,
+            raw: None,
+            gitlink: None,
+        };
         send(&mut st, Msg::Repo(diff(false)));
         assert_eq!(last_failure(&st), want, "{code}: diff");
         st.log.clear();

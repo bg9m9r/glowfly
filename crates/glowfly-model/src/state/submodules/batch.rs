@@ -21,6 +21,8 @@ pub struct SubmoduleSession {
     pub offered: Vec<PathBuf>,
     /// Resolved workdirs whose submodules outside the sparse checkout were named in the log.
     pub sparse_noted: Vec<PathBuf>,
+    /// The job started (or held for the trust prompt) inside a submodule, until it ends.
+    pub inside: Option<super::inside::InsideJob>,
 }
 
 /// What a batch does with a list of submodules.

@@ -1,6 +1,7 @@
 //! The SUBMODULES section of the left panel: one row per submodule with a painted status
 //! marker (with its own short tooltip), a status word and an explanatory tooltip; double-click opens it, and the row menu
-//! opens, initializes, updates or restores it, copies its URL, edits or removes it. The header's
+//! opens, initializes, updates or restores it, records its checkout, fetches or pulls inside it,
+//! copies its URL, edits it, discards the changes inside it or removes it. The header's
 //! menu adds one, initializes or updates them all, and chooses whether this repository updates
 //! them after checkouts and pulls; its + adds one too. The section always shows: without
 //! submodules, once expanded, a sentence on what they are for and Add submodule….
@@ -9,6 +10,7 @@ use super::common::{menu_danger, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use super::widgets::empty_state::{self, Action};
+use super::widgets::reason::{self, ItemState};
 use super::widgets::section_header::{self, Header, HeaderAdd};
 use crate::widgets::menu::{self, separator, submenu};
 use crate::widgets::row_menu::RowMenuExt;
@@ -19,6 +21,7 @@ use glowfly_core::settings::SubmoduleUpdates;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::section_actions::SectionAction;
 use glowfly_model::state::submodules::batch::{init_all_blocked, update_all_blocked};
+use glowfly_model::state::submodules::inside;
 use glowfly_model::state::submodules::remove::remove_blocked;
 use glowfly_model::state::submodules::{
     SectionCx, copy_url_blocked, copy_url_text, dot_tip, edit_blocked, open_blocked, row_word, tooltip, update_blocked, update_label,
@@ -80,7 +83,7 @@ pub(super) fn section(
         if r.double_clicked() && open_blocked(sm).is_none() {
             msgs.push(Msg::Submodule(SubmoduleMsg::Open(sm.path.clone())));
         }
-        r.row_menu(|ui| menu(ui, sm, snap, cx, msgs));
+        r.row_menu(|ui| menu(ui, t, sm, snap, cx, msgs));
     }
 }
 
@@ -108,16 +111,31 @@ fn header_menu(ui: &mut egui::Ui, snap: &Snapshot, cx: &SectionCx, add: &Section
     });
 }
 
-fn menu(ui: &mut egui::Ui, sm: &SubmoduleInfo, snap: &Snapshot, cx: &SectionCx, msgs: &mut Vec<Msg>) {
+fn menu(ui: &mut egui::Ui, t: Lang, sm: &SubmoduleInfo, snap: &Snapshot, cx: &SectionCx, msgs: &mut Vec<Msg>) {
     let path = sm.path.clone();
-    menu_item_if(msgs, ui, "Open in new tab", open_blocked(sm), Msg::Submodule(SubmoduleMsg::Open(path.clone())));
-    let update = Msg::Submodule(SubmoduleMsg::Update { path: path.clone(), confirmed: false });
+    let m = |s: SubmoduleMsg| Msg::Submodule(s);
+    menu_item_if(msgs, ui, "Open in new tab", open_blocked(sm), m(SubmoduleMsg::Open(path.clone())));
+    let update = m(SubmoduleMsg::Update { path: path.clone(), confirmed: false });
     menu_item_if(msgs, ui, update_label(sm), update_blocked(sm), update);
+    // Its tip says what is recorded, and what isn't.
+    let blocked = inside::record_blocked(t, sm, snap);
+    let record = reason::menu_button(ui, t.tr("sidebar.submodules.menu.record"), "", ItemState::blocked_by(blocked));
+    let record = if blocked.is_none() { record.on_hover_text(t.tr("sidebar.submodules.record.tip")) } else { record };
+    if record.clicked() {
+        msgs.push(m(SubmoduleMsg::Record(path.clone())));
+        ui.close_menu();
+    }
+    separator(ui);
+    menu_item_if(msgs, ui, t.tr("sidebar.submodules.menu.fetch"), inside::fetch_blocked(t, sm), m(SubmoduleMsg::Fetch(path.clone())));
+    menu_item_if(msgs, ui, t.tr("sidebar.submodules.menu.pull"), inside::pull_blocked(t, sm), m(SubmoduleMsg::Pull(path.clone())));
+    separator(ui);
     menu_item_if(msgs, ui, "Copy URL", copy_url_blocked(sm), Msg::Copy(copy_url_text(sm)));
     let edit = edit_blocked(sm, cx.edit_git.as_deref());
-    menu_item_if(msgs, ui, "Edit submodule…", edit.as_deref(), Msg::Submodule(SubmoduleMsg::EditDialog(path)));
+    menu_item_if(msgs, ui, "Edit submodule…", edit.as_deref(), m(SubmoduleMsg::EditDialog(path.clone())));
     separator(ui);
-    let remove = Msg::Submodule(SubmoduleMsg::RemoveDialog(sm.path.clone()));
+    let discard = m(SubmoduleMsg::DiscardInside { path, confirmed: false });
+    menu_danger(msgs, ui, t.tr("sidebar.submodules.menu.discard_inside"), inside::discard_blocked(t, sm), discard);
+    let remove = m(SubmoduleMsg::RemoveDialog(sm.path.clone()));
     menu_danger(msgs, ui, "Remove submodule…", remove_blocked(sm, snap), remove);
 }
 

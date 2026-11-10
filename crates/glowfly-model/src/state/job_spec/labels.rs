@@ -84,13 +84,17 @@ type Named = fn(Lang, &str) -> String;
 
 /// The labels made of a fixed start and a name (a remote, tag, pattern or path).
 fn named(t: Lang, label: &str) -> Option<String> {
-    let starts: [(&str, Named); 9] = [
+    let starts: [(&str, Named); 12] = [
         ("Add remote ", |t, n| t.trf("job.label.add_remote", &[("name", &n)])),
         ("Add submodule ", |t, n| t.trf("job.label.add_submodule", &[("path", &n)])),
         ("Annotate tag ", |t, n| t.trf("job.label.annotate_tag", &[("tag", &n)])),
         ("Checkout tag ", |t, n| t.trf("job.label.checkout_tag", &[("tag", &n)])),
+        ("Discard changes inside ", |t, n| t.trf("job.label.discard_inside", &[("path", &n)])),
         ("Edit submodule ", |t, n| t.trf("job.label.edit_submodule", &[("path", &n)])),
+        // Before "Fetch ", whose name has no space.
+        ("Fetch in submodule ", |t, n| t.trf("job.label.fetch_submodule", &[("path", &n)])),
         ("Fetch ", |t, n| t.trf("job.label.fetch_remote", &[("name", &n)])),
+        ("Pull in submodule ", |t, n| t.trf("job.label.pull_submodule", &[("path", &n)])),
         ("Remove remote ", |t, n| t.trf("job.label.remove_remote", &[("name", &n)])),
         ("Remove submodule ", |t, n| t.trf("job.label.remove_submodule", &[("path", &n)])),
         ("Track ", |t, n| t.trf("job.label.track", &[("pattern", &n)])),
@@ -125,5 +129,15 @@ mod tests {
         assert_eq!(shown(Lang::De, "Cherry-pick 3 commits"), "Cherry-pick 3 commits");
         assert_eq!(shown(Lang::De, "Delete feature and fetch origin"), "Delete feature and fetch origin");
         assert_eq!(shown(Lang::De, "Track a b in LFS"), "Track a b in LFS");
+    }
+
+    #[test]
+    fn jobs_inside_a_submodule_name_its_path() {
+        for label in ["Fetch in submodule libs/lib", "Pull in submodule libs/lib", "Discard changes inside libs/lib"] {
+            assert_eq!(shown(Lang::En, label), label);
+        }
+        assert_eq!(shown(Lang::Es, "Fetch in submodule libs/lib"), "Obtener en el submódulo libs/lib");
+        assert_eq!(shown(Lang::Es, "Pull in submodule libs/lib"), "Traer en el submódulo libs/lib");
+        assert_eq!(shown(Lang::Es, "Discard changes inside libs/lib"), "Descartar cambios dentro de libs/lib");
     }
 }

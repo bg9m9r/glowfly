@@ -43,7 +43,10 @@ fn loaded(st: &mut AppState, target: &DiffTarget, reload: bool) {
 /// `d`, the diff of `target`, arriving for the request on its way.
 fn loaded_as(st: &mut AppState, target: &DiffTarget, reload: bool, d: FileDiff) {
     let generation = st.session.diff.generation;
-    run(st, Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload, generation, result: Ok(d), lfs: None, raw: None }));
+    run(
+        st,
+        Msg::Repo(RepoMsg::DiffLoaded { target: target.clone(), reload, generation, result: Ok(d), lfs: None, raw: None, gitlink: None }),
+    );
 }
 
 /// A state in the hunk view with `target` open and `a` to `c` selected as text, as a drag

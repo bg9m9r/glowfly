@@ -124,6 +124,11 @@ pub(super) fn explain(
             alt = o.alt;
             o.main
         }
+        // The first one git names that is checked out in the job's repository.
+        Cause::SubmoduleChanges { paths } => {
+            let open = paths.into_iter().find(|p| snap.is_some_and(|s| s.submodules.iter().any(|m| m.path == *p && m.is_initialized())));
+            open.and_then(|p| fix(t.tr("git_errors.open_submodule.button"), Msg::Submodule(crate::submodule::SubmoduleMsg::Open(p))))
+        }
         Cause::Remote(f) => {
             // A remote that isn't there, or can't be read, often has a wrong URL.
             let wrong_url = matches!(f, RemoteFailure::NotFound | RemoteFailure::Unreadable);
