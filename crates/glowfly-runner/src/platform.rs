@@ -55,9 +55,9 @@ pub fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
-        // Explorer parses `/select,` itself and wants the path quoted inside the same argument.
         // Its exit code is 1 even when it worked, so it isn't checked.
-        std::process::Command::new("explorer").raw_arg(format!("/select,\"{}\"", path.display())).spawn()?;
+        let select = select_argument(&path).ok_or(std::io::ErrorKind::InvalidInput)?;
+        std::process::Command::new("explorer").raw_arg(select).spawn()?;
     }
     #[cfg(target_os = "macos")]
     {
@@ -70,9 +70,26 @@ pub fn reveal_in_file_manager(path: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Explorer's argument that selects `path`: it parses `/select,` itself and wants the path
+/// quoted inside the same argument. None for a path with a `"` or a control character: no
+/// Windows file has such a name, and it would not stay inside the quotes.
+#[cfg(any(windows, test))]
+fn select_argument(path: &Path) -> Option<String> {
+    let shown = path.display().to_string();
+    let plain = !shown.contains('"') && !shown.chars().any(char::is_control);
+    plain.then(|| format!("/select,\"{shown}\""))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn explorer_selects_only_a_path_that_stays_inside_its_quotes() {
+        assert_eq!(select_argument(Path::new(r"C:\repo\R&D 100%\a.txt")).as_deref(), Some(r#"/select,"C:\repo\R&D 100%\a.txt""#));
+        assert_eq!(select_argument(Path::new("C:\\repo\\a\" \"b.txt")), None);
+        assert_eq!(select_argument(Path::new("C:\\repo\\a\nb.txt")), None);
+    }
 
     #[test]
     fn restored_tabs_keep_folders_that_are_gone() {

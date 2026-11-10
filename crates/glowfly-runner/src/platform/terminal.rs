@@ -1,5 +1,7 @@
 //! Opening a terminal window in a folder. Windows and macOS each have one obvious terminal;
-//! Linux desktops vary, so a list of common ones is tried in turn.
+//! Linux desktops vary, so a list of common ones is tried in turn. The folder is an argument of
+//! its own or the process's working folder, or, for Windows PowerShell, in a variable its fixed
+//! command line reads; only cmd.exe gets it in its command line, between quotes (`cmd_takes`).
 
 use std::ffi::OsString;
 use std::path::Path;
@@ -16,29 +18,46 @@ pub(crate) struct Launch {
     /// Not for cmd.exe, which refuses a UNC folder (`\\server\share`, `\\wsl$\...`) and starts in
     /// C:\Windows instead; the command line changes to the folder there.
     pub in_dir: bool,
+    /// The folder, set in the process's `GLOWFLY_TERMINAL_DIR` for a command line that reads it
+    /// from there.
+    pub env_dir: Option<OsString>,
 }
 
 impl Launch {
     fn new(program: impl Into<OsString>, args: Vec<OsString>) -> Self {
-        Launch { program: program.into(), args, raw: None, in_dir: true }
+        Launch { program: program.into(), args, raw: None, in_dir: true, env_dir: None }
     }
 }
 
+/// PowerShell's whole command line: the same text for every folder. It changes to the folder
+/// named by its `GLOWFLY_TERMINAL_DIR` variable (`Launch::env_dir`; after the profile ran, so the window ends up there), taken as it is, and
+/// drops the variable. A UNC folder works: PowerShell needs no drive letter.
+const POWERSHELL_LINE: &str =
+    "-NoLogo -NoExit -Command \"Set-Location -LiteralPath $env:GLOWFLY_TERMINAL_DIR; Remove-Item Env:GLOWFLY_TERMINAL_DIR\"";
+
+/// Whether cmd.exe can be given `dir` between double quotes: there every character is part of
+/// the name except `%`, which cmd.exe expands as `%name%` even inside quotes, and a `"`, which
+/// would end them (no Windows file name holds one; a path that does is not written there).
+fn cmd_takes(dir: &str) -> bool {
+    !dir.contains(['%', '"']) && !dir.chars().any(char::is_control)
+}
+
 /// The Windows terminal for `dir`: cmd.exe, which `pushd`es into it (mapping a drive letter for
-/// a UNC folder, so a share or a WSL folder works too) and stays open. A folder with `%` in its
-/// name gets Windows PowerShell instead, since cmd.exe expands `%name%` even inside quotes.
+/// a UNC folder, so a share or a WSL folder works too) and stays open. A folder cmd.exe can't
+/// be given between quotes (`cmd_takes`: a `%` in its name) gets Windows PowerShell instead,
+/// whose command line never holds the folder: it reads it from a variable (`POWERSHELL_LINE`).
 pub(crate) fn windows_launches(dir: &Path) -> Vec<Launch> {
     let dir = glowfly_core::native_path::shown(dir);
-    let launch = if dir.contains('%') {
-        let quoted = dir.replace('\'', "''");
+    let launch = if cmd_takes(&dir) {
+        Launch { program: "cmd.exe".into(), args: Vec::new(), raw: Some(format!("/K pushd \"{dir}\"")), in_dir: false, env_dir: None }
+    } else {
         Launch {
             program: "powershell.exe".into(),
             args: Vec::new(),
-            raw: Some(format!("-NoLogo -NoExit -Command \"Set-Location -LiteralPath '{quoted}'\"")),
+            raw: Some(POWERSHELL_LINE.to_owned()),
             in_dir: false,
+            env_dir: Some(dir.into()),
         }
-    } else {
-        Launch { program: "cmd.exe".into(), args: Vec::new(), raw: Some(format!("/K pushd \"{dir}\"")), in_dir: false }
     };
     vec![launch]
 }
@@ -119,6 +138,9 @@ pub fn open_terminal(dir: &Path) -> std::io::Result<()> {
         cmd.args(&l.args);
         if l.in_dir {
             cmd.current_dir(dir);
+        }
+        if let Some(folder) = &l.env_dir {
+            cmd.env("GLOWFLY_TERMINAL_DIR", folder);
         }
         #[cfg(windows)]
         {
@@ -213,7 +235,77 @@ mod tests {
         // cmd.exe would expand %name%; PowerShell takes the folder literally.
         let l = windows_launches(Path::new(r"\\server\share\100% done's"));
         assert_eq!(l[0].program, OsString::from("powershell.exe"));
-        assert_eq!(l[0].raw.as_deref(), Some(r#"-NoLogo -NoExit -Command "Set-Location -LiteralPath '\\server\share\100% done''s'""#));
+        assert_eq!(l[0].raw.as_deref(), Some(POWERSHELL_LINE));
+        assert!(!l[0].in_dir && l[0].args.is_empty());
+    }
+
+    #[test]
+    fn powershell_reads_the_folder_from_a_variable_and_its_command_line_never_changes() {
+        // `%` sends the folder to PowerShell; each of these means something to it in a script.
+        let marks = ["'", "\u{2018}", "\u{2019}", "\u{201a}", "\u{201b}", "`", "$", ";", "&", "\"", "$(x)", "'; x; '"];
+        let sep = if cfg!(windows) { '\\' } else { '/' };
+        for root in [r"C:\work", r"\\server\share", r"\\wsl.localhost\Ubuntu\home\me"] {
+            for mark in marks {
+                let name = format!("100% a{mark}b{mark}");
+                let dir = format!("{root}{sep}{name}");
+                let l = windows_launches(Path::new(&dir));
+                assert_eq!(l.len(), 1);
+                assert_eq!(l[0].program, OsString::from("powershell.exe"), "{dir}");
+                assert_eq!(l[0].raw.as_deref(), Some(POWERSHELL_LINE), "the same text for {dir}");
+                assert!(l[0].args.is_empty() && !l[0].in_dir);
+                let given = l[0].env_dir.as_ref().expect("the folder, in the variable").to_string_lossy().into_owned();
+                assert!(given.ends_with(&name), "as it is: {given}");
+            }
+        }
+        // Nothing of a folder is in the text: no name, no quote character of either kind.
+        assert!(!POWERSHELL_LINE.contains(['\'', '%', '\u{2018}', '\u{2019}', '\u{201a}', '\u{201b}', '`']));
+        assert_eq!(POWERSHELL_LINE.matches('"').count(), 2, "only the quotes around the command");
+        assert!(POWERSHELL_LINE.contains("-LiteralPath $env:GLOWFLY_TERMINAL_DIR;"), "the variable it is given");
+    }
+
+    #[test]
+    fn cmd_gets_only_folders_it_takes_literally_between_quotes() {
+        // `%name%` is expanded inside quotes too, so `%` never reaches cmd.exe.
+        for dir in [r"C:\work\100%", r"C:\work\%PATH%", r"\\server\share\a%b"] {
+            assert!(!cmd_takes(dir));
+            assert_eq!(windows_launches(Path::new(dir))[0].program, OsString::from("powershell.exe"), "{dir}");
+        }
+        // A `"` would end the quotes. No Windows name holds one; a path that does isn't written.
+        assert!(!cmd_takes("C:\\work\\a\" & x & \"b"));
+        assert!(!cmd_takes("C:\\work\\a\nb"));
+        // Everything else is part of the name between the quotes, the other quote marks too.
+        for name in ["R&D", "a|b", "a^b", "(x)", "it's", "a\u{2019}b", "a;b", "$x", "`x`", "!x!", "a b"] {
+            let dir = format!(r"C:\work\{name}");
+            assert!(cmd_takes(&dir), "{dir}");
+            let l = windows_launches(Path::new(&dir));
+            assert_eq!(l[0].program, OsString::from("cmd.exe"));
+            let raw = l[0].raw.as_deref().unwrap();
+            assert!(raw.starts_with("/K pushd \"") && raw.ends_with(&format!("{name}\"")), "{raw}");
+            assert_eq!(raw.matches('"').count(), 2, "one pair of quotes: {raw}");
+            assert!(l[0].env_dir.is_none());
+        }
+    }
+
+    /// Runs Windows PowerShell with the command line of `windows_launches` (without the window
+    /// staying open) in a folder whose name would end a quoted string: it ends up in the folder.
+    #[cfg(windows)]
+    #[test]
+    fn powershell_ends_up_in_a_folder_named_with_quote_marks() {
+        use std::os::windows::process::CommandExt;
+        let base = glowfly_core::paths::temp_dir().join(format!("glowfly-terminal-{}", std::process::id()));
+        let dir = base.join("100% a\u{2019}; exit 7; \u{2018}b's $(exit 7) `x");
+        std::fs::create_dir_all(&dir).unwrap();
+        let l = windows_launches(&dir).remove(0);
+        assert_eq!(l.program, OsString::from("powershell.exe"));
+        let line = l.raw.unwrap().replace("-NoExit", "-NoProfile").replace("\"Set-", "\"$ErrorActionPreference = 'Stop'; Set-");
+        let line = line.replacen("GLOWFLY_TERMINAL_DIR\"", "GLOWFLY_TERMINAL_DIR; [Console]::Out.Write((Get-Location).ProviderPath)\"", 1);
+        let mut cmd = std::process::Command::new(&l.program);
+        cmd.raw_arg(&line).env("GLOWFLY_TERMINAL_DIR", l.env_dir.unwrap()).current_dir(&base);
+        let out = cmd.output().unwrap();
+        let _ = std::fs::remove_dir_all(&base);
+        assert!(out.status.success(), "{line}: {}", String::from_utf8_lossy(&out.stderr));
+        let at = String::from_utf8_lossy(&out.stdout).into_owned();
+        assert!(at.ends_with("b's $(exit 7) `x") && at.contains("100% a"), "it is in the folder: {at}");
     }
 
     #[cfg(windows)]
