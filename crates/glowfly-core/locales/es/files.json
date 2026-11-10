@@ -39,6 +39,7 @@
   "files.menu.stash_staged": "Guardar en stash los cambios preparados…",
   "files.menu.unsafe_name": "Glowfly no puede pasar esta ruta a Git con seguridad",
   "files.menu.unsafe_stash": "Glowfly no puede guardar esta ruta en un stash con seguridad",
+  "files.menu.unsafe_stash_named": "Glowfly no puede guardar {path} en un stash con seguridad",
   "files.menu.unstage_delete": "Quitar de preparados y eliminar…",
   "files.no_copy_kept.body": "{path} ocupa más de 64 MB, así que Glowfly no puede guardar una copia para Deshacer, y no se ha borrado nada. ¿Borrarlo definitivamente de todos modos? No se puede deshacer.",
   "files.not_in_workdir": "No está en tu árbol de trabajo (eliminado, renombrado o nunca extraído)",

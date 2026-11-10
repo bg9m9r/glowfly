@@ -1,7 +1,8 @@
 //! The Stash dialog (Selected files with a message, Only staged changes with nothing staged in
 //! the light theme, All changes while a job runs, All changes keeping the staged changes), the
-//! Staged Files header's menu and the WIP row's Stash this file… item. Made-up working-tree
-//! files are injected into the shared fixture's snapshot so the images are deterministic.
+//! Staged Files header's menu, the WIP row's Stash this file… item and the dialog opened from
+//! several picked files. Made-up working-tree files are injected into the shared fixture's
+//! snapshot so the images are deterministic.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_remotes::running;
@@ -57,7 +58,7 @@ fn right_click(h: &mut H, label: &str) {
 
 #[test]
 fn stash_push_dialog_files() {
-    let mut form = StashPushForm::new(StashScope::Files, Some("b.txt".into()));
+    let mut form = StashPushForm::new(StashScope::Files, vec!["b.txt".into()]);
     form.chosen.insert("src/lib.rs".into());
     form.message = "Login form, half done".into();
     let (st, dir) = dialog(ThemeChoice::Dark, "stash-push-files", &STAGED, form);
@@ -95,7 +96,7 @@ fn stash_push_dialog_files() {
 
 #[test]
 fn stash_push_dialog_unsafe_path() {
-    let (mut st, dir) = dialog(ThemeChoice::Dark, "stash-push-unsafe", &STAGED, StashPushForm::new(StashScope::Files, None));
+    let (mut st, dir) = dialog(ThemeChoice::Dark, "stash-push-unsafe", &STAGED, StashPushForm::new(StashScope::Files, Vec::new()));
     let twin = glowfly_core::repo::Hazard::Twins(vec!["Docs/notes.md".into()]);
     st.snap.as_mut().unwrap().unstaged[2].hazard = Some(twin);
     let mut h = harness(st, true);
@@ -117,7 +118,7 @@ fn stash_push_dialog_unsafe_path() {
 
 #[test]
 fn stash_push_dialog_staged_nothing_light() {
-    let (st, dir) = dialog(ThemeChoice::Light, "stash-push-staged-nothing", &[], StashPushForm::new(StashScope::Staged, None));
+    let (st, dir) = dialog(ThemeChoice::Light, "stash-push-staged-nothing", &[], StashPushForm::new(StashScope::Staged, Vec::new()));
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label(glowfly_core::i18n::Lang::En.tr("stash.blocked.nothing_staged")).is_some());
@@ -130,7 +131,7 @@ fn stash_push_dialog_staged_nothing_light() {
 
 #[test]
 fn stash_push_dialog_all_busy() {
-    let (mut st, dir) = dialog(ThemeChoice::Dark, "stash-push-all-busy", &STAGED, StashPushForm::new(StashScope::All, None));
+    let (mut st, dir) = dialog(ThemeChoice::Dark, "stash-push-all-busy", &STAGED, StashPushForm::new(StashScope::All, Vec::new()));
     running(&mut st);
     let mut h = harness(st, true);
     // A spinner keeps repainting, so step.
@@ -148,7 +149,7 @@ const KEEP: &str = "Keep staged changes";
 
 #[test]
 fn stash_push_dialog_keep_index() {
-    let mut form = StashPushForm::new(StashScope::All, None);
+    let mut form = StashPushForm::new(StashScope::All, Vec::new());
     form.message = "Halfway".into();
     form.keep_index = true;
     let (st, dir) = dialog(ThemeChoice::Dark, "stash-push-keep-index", &STAGED, form);
@@ -182,7 +183,7 @@ fn staged_header_menu() {
     h.check_snapshot("staged_header_menu");
     h.get_by_label("Stash staged changes…").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, path: None }))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, paths }) if paths.is_empty())));
     drop(h);
 
     // The header's own button keeps its clicks.
@@ -205,7 +206,7 @@ fn wip_row_stash_item() {
     assert!(!h.get_by_label("Stash this file…").is_disabled());
     h.get_by_label("Stash this file…").click();
     h.run();
-    let opens = |m: &Msg| matches!(m, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(p) }) if p == "b.txt");
+    let opens = |m: &Msg| matches!(m, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, paths: p }) if *p == ["b.txt"]);
     assert!(pushed(&h, &opens));
     drop(h);
 
@@ -216,6 +217,23 @@ fn wip_row_stash_item() {
     h.run();
     right_click(&mut h, "b.txt");
     assert!(h.get_by_label("Stash this file…").is_disabled());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn stash_push_from_picks() {
+    // b.txt and docs/notes.md picked, c.txt between them not: the selection menu's message.
+    let (mut st, dir) = with_files(ThemeChoice::Dark, "stash-push-picks", &UNSTAGED, &STAGED);
+    let paths = vec!["b.txt".to_owned(), "docs/notes.md".to_owned()];
+    let open = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, paths });
+    glowfly_model::update::update(&mut st, open, std::time::Instant::now());
+    let Some(Modal::StashPush(form)) = &st.modal else { panic!("the Stash dialog") };
+    assert_eq!(form.chosen.iter().map(String::as_str).collect::<Vec<_>>(), ["b.txt", "docs/notes.md"]);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("2 of 5 files").is_some());
+    h.check_snapshot("stash_push_from_picks_dark");
     drop(h);
     remove_fixture(&dir);
 }

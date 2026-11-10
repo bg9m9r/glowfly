@@ -39,6 +39,7 @@
   "files.menu.stash_staged": "Bereitgestellte Änderungen in Stash…",
   "files.menu.unsafe_name": "Glowfly kann diesen Pfad nicht sicher an Git übergeben",
   "files.menu.unsafe_stash": "Glowfly kann diesen Pfad nicht sicher in einen Stash legen",
+  "files.menu.unsafe_stash_named": "Glowfly kann {path} nicht sicher in einen Stash legen",
   "files.menu.unstage_delete": "Zurücknehmen und löschen…",
   "files.no_copy_kept.body": "{path} ist größer als 64 MB, daher kann Glowfly keine Kopie für Rückgängig behalten, und es wurde nichts gelöscht. Trotzdem endgültig löschen? Das lässt sich nicht rückgängig machen.",
   "files.not_in_workdir": "Nicht in deinem Arbeitsverzeichnis (gelöscht, umbenannt oder nie ausgecheckt)",

@@ -186,6 +186,8 @@
   "details.wip.picks.stage.item.other": "{count} Dateien bereitstellen",
   "details.wip.picks.stage.tip.one": "Die {count} ausgewählte Datei bereitstellen",
   "details.wip.picks.stage.tip.other": "Die {count} ausgewählten Dateien bereitstellen",
+  "details.wip.picks.stash.item.one": "{count} ausgewählte Datei in Stash…",
+  "details.wip.picks.stash.item.other": "{count} ausgewählte Dateien in Stash…",
   "details.wip.picks.unstage.item.one": "Bereitstellung von {count} Datei aufheben",
   "details.wip.picks.unstage.item.other": "Bereitstellung von {count} Dateien aufheben",
   "details.wip.picks.unstage.tip.one": "Bereitstellung der {count} ausgewählten Datei aufheben",

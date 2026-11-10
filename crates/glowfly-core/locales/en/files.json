@@ -39,6 +39,7 @@
   "files.menu.stash_staged": "Stash staged changes…",
   "files.menu.unsafe_name": "Glowfly can't name this path to Git safely",
   "files.menu.unsafe_stash": "Glowfly can't stash this path safely",
+  "files.menu.unsafe_stash_named": "Glowfly can't stash {path} safely",
   "files.menu.unstage_delete": "Unstage and delete…",
   "files.no_copy_kept.body": "{path} is over 64 MB, so Glowfly can't keep a copy for Undo, and nothing was deleted. Delete it permanently anyway? This can't be undone.",
   "files.not_in_workdir": "Not in your working tree (deleted, renamed or never checked out)",

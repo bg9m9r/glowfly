@@ -37,7 +37,7 @@ pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
             None => st.log(false, GONE),
         },
         StashMsg::Rename { oid, message } => rename(st, oid, &message, fx),
-        StashMsg::PushDialog { scope, path } => super::stash_push::open(st, scope, path),
+        StashMsg::PushDialog { scope, paths } => super::stash_push::open(st, scope, paths),
         StashMsg::Push { scope, message, paths, keep_index } => super::stash_push::push(st, scope, &message, paths, keep_index, fx),
         StashMsg::Ask(ask) => {
             if let Some(cwd) = st.workdir() {

@@ -20,15 +20,18 @@ use std::collections::HashSet;
 /// Where a long selection's paths are written for `--pathspec-from-file`.
 const PATHSPEC_FILE: &str = "GLOWFLY_STASH_PATHS";
 
-/// Opens the Stash dialog on `scope`, with only `path` ticked when given. Nothing opens on a
-/// clean tree.
-pub(super) fn open(st: &mut AppState, scope: StashScope, path: Option<String>) {
+/// Opens the Stash dialog on `scope`, with only `paths` ticked: those still changed that can be
+/// stashed (`stashable_paths`), so a pick with a hazard or no change left isn't. Nothing opens
+/// on a clean tree.
+pub(super) fn open(st: &mut AppState, scope: StashScope, paths: Vec<String>) {
     let Some(snap) = &st.snap else { return };
     if !snap.is_dirty() {
         st.log(false, st.settings.lang().tr("stash.blocked.nothing"));
         return;
     }
-    st.modal = Some(Modal::StashPush(StashPushForm::new(scope, path)));
+    let listed: HashSet<String> = stashable_paths(snap).collect();
+    let paths = paths.into_iter().filter(|p| listed.contains(p)).collect();
+    st.modal = Some(Modal::StashPush(StashPushForm::new(scope, paths)));
 }
 
 fn close_dialog(st: &mut AppState) {

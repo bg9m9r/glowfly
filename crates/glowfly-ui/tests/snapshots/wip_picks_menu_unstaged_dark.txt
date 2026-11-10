@@ -55,6 +55,7 @@ Button "README.md" [on]
 Button "Stage"
 Label "Modified"
 Button "Stage 3 files"
+Button "Stash 3 selected files…"
 Button "Discard changes in 3 files…"
 Button "Delete 3 files…"
 Button "app.txt" [on]

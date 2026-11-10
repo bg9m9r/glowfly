@@ -89,7 +89,7 @@ fn stash_needs_changes_and_no_job() {
     let (mut st, dir) = opened("sa-stash");
     let a = stash(&st, Lang::En, StashScope::All);
     assert!(a.blocked.is_none(), "{:?}", a.blocked);
-    assert!(matches!(a.msg(), Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, path: None })));
+    assert!(matches!(a.msg(), Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, paths }) if paths.is_empty()));
     run(&mut st, &a);
     assert!(matches!(&st.modal, Some(Modal::StashPush(f)) if f.scope == StashScope::All));
     st.modal = None;
