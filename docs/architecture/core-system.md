@@ -197,7 +197,7 @@ source file, update its line here.
 - `signature.rs`: `SHA256SUMS.minisig`, verified with `minisign-verify` against the pinned keys (`KEYS`; a feed folder also trusts the committed test key, in test and `installer-check` builds only), and its trusted comment checked against the offered tag (`Glowfly <tag>: SHA256SUMS`), before any checksum is trusted; fixtures in `minisign_fixtures/`, tests in `signature_tests.rs`.
 - `download.rs`: downloading a file into the Downloads folder once the signed `SHA256SUMS` lists it, streamed to a temporary file beside it and moved into place only after its SHA-256 matches, never replacing a file that appeared meanwhile (the next free name, else `NameTaken`), with progress and Cancel; `check_saved` reads a saved file again.
 - `download_tests.rs`: streamed downloads from a local feed (progress, Cancel and a mismatch removing the partial file, a name taken meanwhile never replaced).
-- `leftovers.rs`: temporary files of stopped or killed downloads in Downloads (Glowfly's own pattern, regular files, untouched for an hour), removed at start and before a download; tests in `leftovers_tests.rs`.
+- `leftovers.rs`: temporary files of stopped or killed downloads in Downloads (Glowfly's own pattern, regular files, untouched for an hour), removed before a download and at start after one was noted (a start never reads Downloads otherwise); tests in `leftovers_tests.rs`.
 - `feed.rs`: where releases are read from: the hosting service or a local folder named by `GLOWFLY_UPDATE_FEED` (a `TestKeyFolder`, trusting the test key, only in an `installer-check` build or glowfly-core's tests).
 - `check.rs`: the headless check behind `glowfly --check-update`.
 - `method.rs`: Install and restart: how a downloaded file is installed.

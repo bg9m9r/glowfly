@@ -87,7 +87,7 @@ pub use error::UpdateError;
 pub use feed::{FEED_ENV, FEED_RELEASE, Feed};
 pub use finish::run as finish_update;
 pub use host::current_platform;
-pub use leftovers::remove_stopped_downloads;
+pub use leftovers::{note_download_started, tidy_downloads};
 pub use method::{InstallMethod, install_method_for};
 pub use release::{Asset, Release, asset_name_ok, parse_release};
 pub use report::{InstallProblem, LastInstall, take as take_last_install};

@@ -4,7 +4,7 @@
 use super::super::download_tests::{feed_with, large};
 use super::super::feed_tests::{MSI, offer_for, scratch};
 use super::super::{InstallKind, download_saved};
-use super::{is_download_temp, remove_stopped_downloads};
+use super::{is_download_temp, note_download_started, remove_stopped_downloads, tidy_downloads};
 use std::path::Path;
 use std::time::{Duration, SystemTime};
 
@@ -101,4 +101,30 @@ fn update_file_names() {
         assert!(!is_download_temp(&temp(name)), "{name}");
     }
     assert!(!is_download_temp("glowfly-v0.1.0-x86_64-pc-windows-msvc.msi"), "a finished download");
+}
+
+#[test]
+fn a_start_reads_downloads_only_after_a_download_was_noted() {
+    let dir = scratch("leftover-start");
+    let (own, dl) = (dir.join("own"), dir.join("dl"));
+    std::fs::create_dir_all(&dl).unwrap();
+    let old = ".glowfly-v0.1.0-x86_64-pc-windows-msvc.msi.31.0.tmp";
+    std::fs::write(dl.join(old), "partial").unwrap();
+    let later = SystemTime::now() + HOURS_2;
+    // Nothing noted: Downloads isn't even asked for (on macOS its first read asks for access).
+    let never = || -> Option<std::path::PathBuf> { panic!("Downloads was asked for at a start with no download noted") };
+    assert_eq!(tidy_downloads(&own, never, later), 0);
+    assert_eq!(names(&dl), [old]);
+    // A download was noted: the start clears its leftovers, and keeps the note while one is fresh.
+    note_download_started(&own);
+    let fresh = ".glowfly-v0.1.0-x86_64-pc-windows-msvc.msi.32.0.tmp";
+    std::fs::write(dl.join(fresh), "partial").unwrap();
+    std::fs::OpenOptions::new().write(true).open(dl.join(old)).unwrap().set_modified(SystemTime::now() - HOURS_2).unwrap();
+    assert_eq!(tidy_downloads(&own, || Some(dl.clone()), SystemTime::now()), 1);
+    assert_eq!(names(&dl), [fresh]);
+    // Once nothing is left the note is gone, and the next start doesn't look again.
+    assert_eq!(tidy_downloads(&own, || Some(dl.clone()), later), 1);
+    assert!(names(&dl).is_empty());
+    assert_eq!(tidy_downloads(&own, never, later), 0);
+    let _ = std::fs::remove_dir_all(&dir);
 }

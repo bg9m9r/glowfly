@@ -20,8 +20,9 @@ pub enum UpdateEffect {
     /// Install and restart (or open the installer); reported as `UpdateMsg::RestartReady`.
     Restart(Box<RestartJob>),
     /// At the start: remove the staging folders and old programs (`.bak`) earlier updates left,
-    /// and read the update log; a failed or cancelled installer is reported as
-    /// `UpdateMsg::LastInstall`.
+    /// and the temporary files stopped downloads left (only after a download was noted, so a
+    /// start never reads Downloads by itself), and read the update log; a failed or cancelled
+    /// installer is reported as `UpdateMsg::LastInstall`.
     Tidy,
 }
 
