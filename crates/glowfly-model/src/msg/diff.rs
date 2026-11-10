@@ -212,6 +212,14 @@ pub enum ConflictMsg {
     MarkResolvedConfirmed(Vec<String>),
     /// Bring back the conflict of resolved files (the view has confirmed).
     MarkConflicted(Vec<String>),
+    /// A Shift (`Range`) or Ctrl/Cmd (`Toggle`) click on `path` in Conflicted Files
+    /// (`resolved: false`) or Resolved Files: picks it without opening it
+    /// (update/conflict_picks.rs).
+    Pick {
+        resolved: bool,
+        path: String,
+        how: crate::state::wip_lists::PickHow,
+    },
     /// The working files of `paths` read for markers (and the resolved files, for a summary).
     ConflictFilesRead {
         purpose: ConflictRead,
@@ -247,6 +255,7 @@ impl ConflictMsg {
             | Self::MarkResolved(..)
             | Self::MarkResolvedConfirmed(..)
             | Self::MarkConflicted(..)
+            | Self::Pick { .. }
             | Self::ConflictFilesRead { result: Ok(_), .. } => None,
             Self::ConflictFilesRead { result: Err(e), .. } => Some(crate::msg::Inactive::ConflictFilesUnread(e)),
         }

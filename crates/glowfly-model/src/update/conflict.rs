@@ -24,7 +24,12 @@ mod edit;
 
 pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) {
     match msg {
-        ConflictMsg::OpenConflict(path) => open(st, path, fx),
+        ConflictMsg::OpenConflict(path) => {
+            // A plain click ends the picks; a pick click doesn't open anything.
+            st.cues.conflict_picks = None;
+            open(st, path, fx)
+        }
+        ConflictMsg::Pick { resolved, path, how } => super::conflict_picks::pick(st, resolved, path, how),
         ConflictMsg::ConflictLoaded { path, generation, result, saved } => {
             if generation != st.session.conflict.generation || st.session.conflict.view.as_ref().is_none_or(|c| c.path != path) {
                 return; // superseded: closed, reopened or another file opened

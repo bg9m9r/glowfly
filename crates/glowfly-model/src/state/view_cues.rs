@@ -33,6 +33,10 @@ pub struct ViewCues {
     /// The files picked with Shift or Ctrl/Cmd in the Unstaged or Staged Files list. Changed
     /// only by `update`.
     pub wip_picks: Option<crate::state::wip_lists::WipPicks>,
+    /// The files picked with Shift or Ctrl/Cmd in Conflicted Files or Resolved Files (one list
+    /// at a time; picking in any of the four WIP lists ends the others'). Changed only by
+    /// `update`.
+    pub conflict_picks: Option<crate::state::conflict_picks::ConflictPicks>,
     /// The file each of those lists (Unstaged, then Staged) last opened, where going to the
     /// list from the other one lands. Changed only by `update`.
     pub wip_place: [Option<String>; 2],
@@ -113,6 +117,7 @@ impl Default for ViewCues {
             diff_opening: None,
             stage_move_on: None,
             wip_picks: None,
+            conflict_picks: None,
             wip_place: [None, None],
             diff_open_line: None,
             diff_cursor: None,

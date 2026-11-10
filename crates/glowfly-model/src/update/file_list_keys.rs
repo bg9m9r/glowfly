@@ -13,6 +13,8 @@ use glowfly_core::repo::DiffTarget;
 use std::time::Instant;
 
 pub(super) fn handle(st: &mut AppState, list: FileList, mv: ListMove, now: Instant, fx: &mut Vec<Effect>) {
+    // A move ends the Conflicted and Resolved Files picks, as a plain click does.
+    st.cues.conflict_picks = None;
     let Some(l) = listing(st, list) else { return };
     let visible: Vec<usize> = l.order.iter().filter(|(_, shown)| *shown).map(|(i, _)| *i).collect();
     let Some(to) = mv.target(visible.len(), place_in(&l.order, l.current)) else { return };

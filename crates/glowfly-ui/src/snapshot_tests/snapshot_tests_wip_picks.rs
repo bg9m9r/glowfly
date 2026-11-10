@@ -40,7 +40,7 @@ fn three_unstaged(name: &str) -> (AppState, PathBuf) {
 
 /// The first row named `name` in the list (Unstaged first): its middle, clear of the Stage or
 /// Unstage button at its end.
-fn row(h: &H, name: &str) -> Pos2 {
+pub(super) fn row(h: &H, name: &str) -> Pos2 {
     let b = h.get_all_by_role_and_label(Role::Button, name).find_map(|n| n.bounding_box()).expect("the row has bounds");
     pos2(((b.x0 + b.x1) / 2.0) as f32, ((b.y0 + b.y1) / 2.0) as f32)
 }
@@ -52,7 +52,7 @@ fn staged_row(h: &H, name: &str) -> Pos2 {
 }
 
 /// The messages a `button` click at `at` with `modifiers` held sends.
-fn click_with(h: &mut H, at: Pos2, button: PointerButton, modifiers: Modifiers) -> Vec<Msg> {
+pub(super) fn click_with(h: &mut H, at: Pos2, button: PointerButton, modifiers: Modifiers) -> Vec<Msg> {
     h.state_mut().1.clear();
     h.input_mut().modifiers = modifiers;
     for pressed in [true, false] {
@@ -66,11 +66,11 @@ fn click_with(h: &mut H, at: Pos2, button: PointerButton, modifiers: Modifiers) 
     std::mem::take(&mut h.state_mut().1)
 }
 
-fn right_click(h: &mut H, at: Pos2) {
+pub(super) fn right_click(h: &mut H, at: Pos2) {
     click_with(h, at, PointerButton::Secondary, Modifiers::NONE);
 }
 
-fn labels(h: &H) -> Vec<String> {
+pub(super) fn labels(h: &H) -> Vec<String> {
     h.get_all_by_role(Role::Button).filter_map(|n| n.label()).collect()
 }
 
