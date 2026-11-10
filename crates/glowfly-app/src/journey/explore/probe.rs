@@ -26,6 +26,13 @@ pub(super) struct Reading {
     pub staged: BTreeSet<String>,
 }
 
+/// The path `bytes` named as the app's file lists name it (`glowfly_core::repo::shown_path`):
+/// as it is when it is UTF-8, else with each byte that isn't as `\xHH`. So a name that isn't
+/// UTF-8 is read, and held against the screen, like any other.
+pub(super) fn name(bytes: &[u8]) -> String {
+    glowfly_core::repo::shown_path(bytes)
+}
+
 /// Reads `repo` (a work tree path).
 pub(super) fn read(repo: &Path) -> Reading {
     let r = Repository::open(repo).unwrap_or_else(|e| panic!("{} is not a repository: {e}", repo.display()));
@@ -58,7 +65,7 @@ pub(super) fn read(repo: &Path) -> Reading {
             all.into_iter()
                 .filter_map(|c| {
                     let e = c.our.or(c.their).or(c.ancestor)?;
-                    Some(String::from_utf8_lossy(&e.path).into_owned())
+                    Some(name(&e.path))
                 })
                 .collect()
         })
@@ -69,8 +76,8 @@ pub(super) fn read(repo: &Path) -> Reading {
     let mut staged = BTreeSet::new();
     if let Ok(statuses) = r.statuses(Some(&mut opts)) {
         for s in statuses.iter() {
-            let Some(path) = s.path() else { continue };
-            changed.insert(path.to_owned());
+            let path = name(s.path_bytes());
+            changed.insert(path.clone());
             if s.status().intersects(
                 git2::Status::INDEX_NEW
                     | git2::Status::INDEX_MODIFIED
@@ -78,7 +85,7 @@ pub(super) fn read(repo: &Path) -> Reading {
                     | git2::Status::INDEX_RENAMED
                     | git2::Status::INDEX_TYPECHANGE,
             ) {
-                staged.insert(path.to_owned());
+                staged.insert(path);
             }
         }
     }
