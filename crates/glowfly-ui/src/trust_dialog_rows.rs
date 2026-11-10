@@ -70,7 +70,7 @@ pub(super) fn setting(ui: &mut Ui, t: Lang, key: &str, value: &str, mark: Mark) 
     row(ui, t, job, mark);
 }
 
-/// A hook's row: its name in mono `text`.
+/// A hook's row, or a step's: its name (the step as written) in mono `text`.
 pub(super) fn hook(ui: &mut Ui, t: Lang, name: &str, mark: Mark) {
     let job = LayoutJob::simple_singleline(name.to_owned(), TextStyle::Monospace.resolve(ui.style()), color::text());
     row(ui, t, job, mark);

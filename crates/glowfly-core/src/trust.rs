@@ -3,7 +3,8 @@
 //! A repository from elsewhere can name programs in its `.git/config` (an ssh command, a
 //! credential helper, filters, an fsmonitor hook) or carry hooks, and git runs them as soon as it
 //! touches the repository. `scan` lists them with libgit2 only, so reading them runs nothing.
-//! It lists the settings that change how git connects (TLS checks, proxies, the cookie file) too (`keys.rs`).
+//! It lists the settings that change how git connects (TLS checks, proxies, the cookie file) too
+//! (`keys.rs`), and the steps a rebase or pick in progress would run on continuing (`steps.rs`).
 
 use git2::{Config, ConfigLevel, Repository};
 use std::borrow::Cow;
@@ -28,6 +29,7 @@ use home::home_expanded;
 mod stamp;
 pub use stamp::stamp;
 mod print;
+mod steps;
 pub use digest::of_bytes as content_digest;
 pub use follow::Follow;
 pub use print::{TrustPrint, allows};
@@ -69,6 +71,10 @@ pub struct TrustScan {
     /// Where hooks run from inside the working tree, so they change with the branch
     /// (`follow.rs`); never a reason to ask by itself, as a setting or hook comes with it.
     pub follows: Vec<Follow>,
+    /// The steps left in a rebase, cherry-pick or revert in progress that run a program when
+    /// it continues (`steps.rs`): `exec <command>` or `--strategy=<name>`, in file order.
+    /// Empty in a submodule: Glowfly continues only the top repository's.
+    pub steps: Vec<String>,
 }
 
 /// What `scan` found in one submodule.
@@ -82,7 +88,7 @@ pub struct SubmoduleScan {
 impl TrustScan {
     /// Nothing in the repository makes git run a program.
     pub fn is_empty(&self) -> bool {
-        self.config.is_empty() && self.hooks.is_empty() && self.submodules.is_empty()
+        self.config.is_empty() && self.hooks.is_empty() && self.submodules.is_empty() && self.steps.is_empty()
     }
 }
 
@@ -131,8 +137,8 @@ pub fn scan(repo: &Repository) -> TrustScan {
     out
 }
 
-/// What a refresh re-checks: `repo`'s own settings, hooks (with their contents) and commands
-/// file, without its submodules (a full load scans those; `repo::refs_key` stamps their config
+/// What a refresh re-checks: `repo`'s own settings, hooks (with their contents), commands
+/// file and the steps of a rebase or pick in progress, without its submodules (a full load scans those; `repo::refs_key` stamps their config
 /// and hooks). Cheap: the config files, a listing of the hooks folder and a read of each hook git
 /// would run, up to `digest::MAX_BYTES` each: only for noticing a change, never for a decision.
 pub fn scan_top(repo: &Repository) -> TrustScan {
@@ -149,6 +155,7 @@ pub fn scan_now(repo: &Repository) -> TrustScan {
 fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
     let mut out = scan_own(repo, reading);
     out.commands = repo.workdir().and_then(commands_digest);
+    out.steps = steps::find(repo);
     out
 }
 
