@@ -202,3 +202,102 @@ fn a_checked_out_submodules_own_gitmodules_counts_too() {
     let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-gitmodules-nested-lib-{}", std::process::id())));
     let _ = std::fs::remove_dir_all(&parent);
 }
+
+#[test]
+fn a_submodule_whose_repository_names_another_work_tree_counts_as_unread() {
+    let (parent, sub) = with_submodule("gitmodules-worktree");
+    let repo = git2::Repository::open(&parent).unwrap();
+    // `git submodule add` keeps the git dir under the parent's and names the folder back.
+    let config = std::fs::read_to_string(parent.join(".git/modules/libs/lib/config")).unwrap();
+    assert!(config.contains("worktree = "), "{config}");
+    assert!(!crate::git_file::submodules_unread(&repo));
+    assert_eq!(crate::repo::submodules_at(&parent).unwrap().len(), 1);
+
+    let other = parent.with_file_name(format!("glowfly-test-gitmodules-worktree-other-{}", std::process::id()));
+    std::fs::create_dir_all(&other).unwrap();
+    git(&sub, &["config", "core.worktree", &git_spelling(&other)]);
+    assert!(crate::git_file::submodules_unread(&repo));
+    assert_eq!(crate::repo::submodules_at(&parent).unwrap(), Vec::new());
+    let _ = std::fs::remove_dir_all(&other);
+    let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-gitmodules-worktree-lib-{}", std::process::id())));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+/// Adds a gitlink named `name` to `repo`'s index as it is, with no folder for it.
+fn add_gitlink(repo: &git2::Repository, name: &[u8]) {
+    let zero = git2::IndexTime::new(0, 0);
+    let entry = git2::IndexEntry {
+        ctime: zero,
+        mtime: zero,
+        dev: 0,
+        ino: 0,
+        mode: 0o160000,
+        uid: 0,
+        gid: 0,
+        file_size: 0,
+        id: repo.head().unwrap().target().unwrap(),
+        flags: 0,
+        flags_extended: 0,
+        path: name.to_vec(),
+    };
+    let mut index = repo.index().unwrap();
+    index.add(&entry).unwrap();
+    index.write().unwrap();
+}
+
+fn one_commit(name: &str) -> std::path::PathBuf {
+    let dir = scratch_repo(name);
+    write(&dir, "a.txt", "a\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "one"]);
+    dir
+}
+
+#[test]
+fn a_gitlink_whose_name_cant_be_looked_at_counts_as_unread() {
+    for (n, name) in [b"sub\xff".as_slice(), b"libs/sub\xfe\xff"].into_iter().enumerate() {
+        let dir = one_commit(&format!("gitmodules-name-{n}"));
+        let repo = git2::Repository::open(&dir).unwrap();
+        assert!(!crate::git_file::submodules_unread(&repo));
+        add_gitlink(&repo, name);
+        assert!(unread_anywhere(&repo), "{name:?}");
+        assert!(crate::git_file::offsite_gitlinks(&repo).iter().any(|o| o.link), "{name:?}");
+        assert!(crate::git_file::submodules_unread(&repo), "{name:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    // Names that read as `.git` on some file system; git's own name checks are off to add them.
+    for (n, name) in ["git~1", "GIT~1", "libs/git~1", ".git.", ".git ", ".git:x", ".g\u{200c}it"].into_iter().enumerate() {
+        let dir = one_commit(&format!("gitmodules-dotgit-{n}"));
+        let repo = git2::Repository::open(&dir).unwrap();
+        let head = repo.head().unwrap().target().unwrap().to_string();
+        let info = format!("160000,{head},{name}");
+        git(&dir, &["-c", "core.protectNTFS=false", "-c", "core.protectHFS=false", "update-index", "--add", "--cacheinfo", &info]);
+        // Whether libgit2 reads such an index at all depends on the system; either way its
+        // submodules count as unread.
+        assert!(unread_anywhere(&repo), "{name:?}");
+        assert!(crate::git_file::submodules_unread(&repo), "{name:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+/// Where such a name is an ordinary folder name, a repository checked out in it is one libgit2's
+/// status opens.
+#[cfg(unix)]
+#[test]
+fn a_checked_out_gitlink_in_a_folder_named_like_a_git_dir_counts_as_unread() {
+    for (n, name) in ["git~1", "GIT~1", ".git.", ".g\u{200c}it"].into_iter().enumerate() {
+        let dir = one_commit(&format!("gitmodules-folder-{n}"));
+        let inner = dir.join(name);
+        std::fs::create_dir_all(&inner).unwrap();
+        init_repo(&inner);
+        write(&inner, "n.txt", "one\n");
+        git(&inner, &["add", "."]);
+        git(&inner, &["commit", "-q", "-m", "inner"]);
+        let repo = git2::Repository::open(&dir).unwrap();
+        let head = git2::Repository::open(&inner).unwrap().head().unwrap().target().unwrap().to_string();
+        let info = format!("160000,{head},{name}");
+        git(&dir, &["-c", "core.protectNTFS=false", "-c", "core.protectHFS=false", "update-index", "--add", "--cacheinfo", &info]);
+        assert!(crate::git_file::submodules_unread(&repo), "{name:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
