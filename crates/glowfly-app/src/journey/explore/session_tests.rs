@@ -30,8 +30,6 @@ fn bad_cases_are_refused() {
     assert_eq!(parse_case("# a comment\n\nseed 3\n"), Ok((3, Vec::new())));
 }
 
-/// Seed 11's first 25 steps break no rule. (Seed 9 breaks rule 3 within 15 steps: a second
-/// kept-work record prunes the first, whose pinned fixture date is months before the real clock.)
 #[test]
 fn same_seed_same_session() {
     let checks = Checks { slow_every: 5 };

@@ -57,6 +57,14 @@ pub(crate) fn next_for(path: &Path) -> Option<i64> {
     Some(at)
 }
 
+/// Now, for code that compares it with Glowfly's own dates: when `path` is pinned, the date its
+/// next command would get (without taking it), so what the pinned clock dated isn't months old;
+/// else the real clock.
+pub(crate) fn now(path: &Path) -> i64 {
+    let pinned = roots().iter().find(|(root, _)| is_within(path, root)).map(|(_, tick)| *tick);
+    pinned.unwrap_or_else(crate::pinned_dates::real_now)
+}
+
 /// A signature dated by [`next_for`] when `path` is pinned, else now.
 pub(crate) fn signature(path: &Path, name: &str, email: &str) -> Result<Signature<'static>, Error> {
     match next_for(path) {

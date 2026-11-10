@@ -123,7 +123,7 @@ struct Note {
 }
 
 fn now() -> i64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
+    crate::pinned_dates::real_now()
 }
 
 /// When this app run kept its first record: no undo entry can name a record older than that.
@@ -207,7 +207,8 @@ pub(crate) fn forget(workdir: &Path, id: Oid) {
 /// Drops the records older than `KEEP_DAYS` that were made before `protect_since`. A failure
 /// only leaves them for later.
 fn prune_old(repo: &Repository, protect_since: i64) {
-    let cutoff = now() - KEEP_DAYS * 86_400;
+    // The clock that dated the records: pinned in a pinned test fixture, else the real one.
+    let cutoff = crate::pinned_dates::now(repo.path()) - KEEP_DAYS * 86_400;
     let Ok(refs) = repo.references_glob(&format!("{KEPT_REF_PREFIX}*")) else { return };
     for mut r in refs.flatten() {
         let Ok(c) = r.peel_to_commit() else { continue };
