@@ -66,7 +66,7 @@ mod load;
 mod load_more;
 mod markers;
 mod merge_msg;
-mod noclobber;
+pub(crate) mod noclobber;
 mod op_state;
 mod pr_compare;
 mod push_config;

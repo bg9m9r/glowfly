@@ -14,6 +14,7 @@
 //! - `signature.rs`: `SHA256SUMS.minisig`, checked against the pinned minisign keys.
 //! - `download.rs`: fetching a file to disk as it arrives, verifying it on the way, and checking
 //!   a saved one again (I/O).
+//! - `leftovers.rs`: removing temporary files of downloads that were stopped or killed.
 //! - `feed.rs`: where releases are read from: the hosting service, or a local folder named by
 //!   GLOWFLY_UPDATE_FEED.
 //! - `check.rs`: the headless check behind `glowfly --check-update`.
@@ -46,6 +47,7 @@ mod feed;
 mod finish;
 mod host;
 mod launch;
+mod leftovers;
 mod method;
 mod plan;
 mod release;
@@ -63,6 +65,8 @@ mod assets_tests;
 mod download_tests;
 #[cfg(test)]
 mod feed_tests;
+#[cfg(test)]
+mod release_tests;
 #[cfg(test)]
 mod signature_tests;
 #[cfg(test)]
@@ -83,6 +87,7 @@ pub use error::UpdateError;
 pub use feed::{FEED_ENV, FEED_RELEASE, Feed};
 pub use finish::run as finish_update;
 pub use host::current_platform;
+pub use leftovers::remove_stopped_downloads;
 pub use method::{InstallMethod, install_method_for};
 pub use release::{Asset, Release, asset_name_ok, parse_release};
 pub use report::{InstallProblem, LastInstall, take as take_last_install};

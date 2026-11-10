@@ -275,11 +275,16 @@ second one next to it.
    (`app_update::download`, `app_update/signature.rs`, `runner/updates.rs`). The
    file's name comes from the server, so it is checked first (`app_update::asset_name_ok`: 1 to
    128 characters of `A-Za-z0-9._-`, no leading dot) and can't leave the downloads folder; the
-   bytes are streamed into a temporary sibling (`persist::write_streamed`) and hashed on the way,
-   and renamed to the final name only once the size and checksum match. Cancel, a mismatch or a
-   failure removes the temporary file, so no half-written file has the final name. An
-   existing file with other content is never replaced (`free_name`: `name (1).msi`). Install and
-   restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
+   bytes are streamed into a temporary sibling (`persist::write_streamed_new`) and hashed on the
+   way, and moved to the final name only once the size and checksum match. Cancel, a mismatch or
+   a failure removes the temporary file, so no half-written file has the final name. An
+   existing file with other content is never replaced (`free_name`: `name (1).msi`), and the
+   final move itself refuses a name taken meanwhile (`persist::write_streamed_new` through
+   `rename_noclobber`): it takes the next free name, or refuses the download after 5
+   (`UpdateError::NameTaken`). Temporary files a stopped or killed download left
+   (`.glowfly-*.<pid>.<n>.tmp`, regular files older than an hour, so one still being written is
+   left alone) are removed at the next start and before the next download
+   (`app_update::remove_stopped_downloads`). Install and restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
    - The file is verified again (`read_verified`) before it is run, copied or unpacked.
    - Only a portable copy's program (the resolved `current_exe`) and the doc files already
      beside it are replaced, through `persist::move_aside` and `persist::write_file`, and a
@@ -837,6 +842,9 @@ Gaps that are accepted for now:
   settings can't be read there.
 - **Replacing a file doesn't keep its owner, ACLs, xattrs or hard links;** only permissions and
   the read-only attribute carry over.
+- **Without hard links (FAT, exFAT, some network shares on Unix) a downloaded update's final
+  move checks, then renames** (`rename_noclobber`'s fallback), so a file that appears in that
+  instant could be replaced.
 - **Undo can't take a file back out of the macOS Trash:** the Trash keeps no record of where a
   file came from that Glowfly can read, so Undo writes its own copy and the Trash keeps one too.
 - **Taking a file out of the Recycle Bin leaves the bin's own index to Windows:** the `$R` file

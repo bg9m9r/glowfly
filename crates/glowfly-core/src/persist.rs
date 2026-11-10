@@ -1,8 +1,9 @@
 //! Every file Glowfly writes goes through here: its own files (settings, recent repositories,
 //! open tabs, logs), files written for the user (saved patches), and working-tree files it puts
 //! back itself (undo and redo of a discard or restore). [`remove_tree`] deletes a folder Glowfly
-//! owns the removal of (a submodule's stored module) without following links, and
-//! [`rename_new`] moves a file or folder to a name nothing has yet. Logs grow by
+//! owns the removal of (a submodule's stored module) without following links,
+//! [`rename_new`] moves a file or folder to a name nothing has yet, and [`write_streamed_new`]
+//! writes a file that must not replace anything (an update download). Logs grow by
 //! [`append`] (or a handle from [`open_append`]) instead of being replaced.
 //!
 //! A file is written to a temporary sibling, flushed to disk, then renamed over the target, so a
@@ -19,14 +20,18 @@
 //! already there, and [`prune_backups`] keeps the newest [`KEPT_BACKUPS`] of them (`backups.rs`).
 
 mod backups;
+mod new_file;
 mod replace;
+mod temp_names;
 
 pub use backups::{KEPT_BACKUPS, backup_number, keep_copy, move_aside, prune_backups};
+pub use new_file::write_streamed_new;
 use replace::{clean_stale_temps, rename_retrying, replace, set_mode, sync_dir};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
+pub(crate) use temp_names::temp_target;
 
 /// How [`write_file`] treats what is already at the target.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -154,6 +154,14 @@ fn download_variants() -> Vec<(E, [&'static str; 3])> {
             ],
         ),
         (
+            E::NameTaken { name: "glowfly.msi".into(), dir: "/downloads".into() },
+            [
+                "Couldn't save glowfly.msi in /downloads: other files took its name and the next free ones while it downloaded. Nothing was replaced; download it again.",
+                "glowfly.msi konnte nicht in /downloads gespeichert werden: Während des Downloads haben andere Dateien seinen Namen und die nächsten freien belegt. Nichts wurde ersetzt; lade die Datei erneut herunter.",
+                "No se pudo guardar glowfly.msi en /downloads: otros archivos ocuparon su nombre y los siguientes libres durante la descarga. No se reemplazó nada; vuelve a descargarlo.",
+            ],
+        ),
+        (
             E::WrongSize { name: "glowfly.msi".into(), got: 99, want: 100 },
             [
                 "The download of glowfly.msi was 99 bytes instead of 100, so it was discarded.",

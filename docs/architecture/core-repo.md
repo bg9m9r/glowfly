@@ -74,7 +74,7 @@ source file, update its line here.
 - Revert of a hunk or lines of a commit-to-working-tree diff: never merged.
 - A hunk or lines shown with whitespace hidden are staged, discarded or reverted as shown, with the unchanged lines' exact bytes from the unfiltered diff: `shown_ws.rs`.
 - `repo/exact.rs`: exact index edits: one path, byte for byte.
-- `repo/noclobber.rs`: moving a file to a new name without ever replacing a file already there.
+- `repo/noclobber.rs`: moving a file to a new name without ever replacing a file already there; also the final move of `persist::write_streamed_new`.
 - `repo/removal.rs`: how a deleted working copy leaves the disk: moved to the system trash (the Recycle Bin on Windows, the Trash elsewhere) so it can be restored from there, or removed for good.
 - `repo/revert.rs`: reverting part of a commit or comparison diff (a hunk, some of its lines, or the whole file) in the working tree only.
 - `repo/trash.rs`: the system trash (the Recycle Bin on Windows, the Trash elsewhere), the home Trash for a Linux drive without a usable trash folder (`home.rs`, checked in `xdg.rs`), and why the trash refused a file.
