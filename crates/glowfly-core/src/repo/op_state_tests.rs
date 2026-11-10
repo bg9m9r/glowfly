@@ -130,12 +130,7 @@ fn held_branch_never_follows_a_far_link() {
     let git_dir = dir.join(".git");
     let rebase = git_dir.join("rebase-merge");
     std::fs::create_dir_all(&rebase).unwrap();
-    write(
-        &rebase,
-        "head-name",
-        "refs/heads/x
-",
-    );
+    write(&rebase, "head-name", "refs/heads/x\n");
     assert_eq!(held_branch(&git_dir), Some(HeldBranch { name: "x".to_owned(), by: BranchUse::Rebasing }));
     std::fs::remove_file(rebase.join("head-name")).unwrap();
     if link_to(&net_place().join("head-name"), &rebase.join("head-name"), false) {

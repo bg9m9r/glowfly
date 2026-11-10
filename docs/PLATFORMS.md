@@ -148,8 +148,8 @@ trust scan all run for untrusted repositories too.
    process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
    and more than 32 stores in all.
 2. **The spelling is checked before anything is touched.** On Windows, with either separator:
-   UNC (`\server\share`), `\?\UNC\`, `\.\UNC\` and `\??\UNC\`, `\wsl$` and
-   `\wsl.localhost`, and any other device-namespace path (`\?\GLOBALROOT\…`, `\.\pipe\…`) that
+   UNC (`\\server\share`), `\\?\UNC\`, `\\.\UNC\` and `\??\UNC\`, `\\wsl$` and
+   `\\wsl.localhost`, and any other device-namespace path (`\\?\GLOBALROOT\…`, `\\.\pipe\…`) that
    isn't a drive letter or `Volume{guid}`, which is always refused: its target can't be told.
    Then a drive letter `GetDriveTypeW("X:\")` calls `DRIVE_REMOTE` (`volume::mapped_drive`).
    `GetDriveTypeW` is only ever asked about a drive letter's root, never a share's, whose query
@@ -162,12 +162,12 @@ trust scan all run for untrusted repositories too.
    lexically before any I/O (never above a share's root), so on Windows `..` is applied first; on
    Unix `..` is physical, so the walk steps back out of the link-free part it knows.
 3. **The same network root as `home` is allowed:** the same server and share (any case, any
-   spelling: `\?\UNC\nas\team` is `\NAS\Team`), `\wsl$\<distro>` and
-   `\wsl.localhost\<distro>` as one, the same mapped drive letter, the same automounted host. So
-   a repository on `\nas\team` may name `\nas\team\…`.
-4. **WSL counts as network:** touching `\wsl$\<distro>` starts the distro's virtual machine. A
+   spelling: `\\?\UNC\nas\team` is `\\NAS\Team`), `\\wsl$\<distro>` and
+   `\\wsl.localhost\<distro>` as one, the same mapped drive letter, the same automounted host. So
+   a repository on `\\nas\team` may name `\\nas\team\…`.
+4. **WSL counts as network:** touching `\\wsl$\<distro>` starts the distro's virtual machine. A
    repository opened inside a distro may name its own distro; one on `C:` naming
-   `\wsl$\Ubuntu\…` is refused.
+   `\\wsl$\Ubuntu\…` is refused.
 5. **This holds before trust.** Once a repository is trusted, git itself (`git status` recursing
    into submodules) follows what git follows.
 6. **The opened repository's own `.git` file, `commondir`, config and alternates are followed by
