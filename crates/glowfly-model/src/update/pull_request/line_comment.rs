@@ -1,12 +1,11 @@
 //! A new code comment on lines of a pull request file's diff: starting the draft from a line's
 //! button or the selected lines, stretching and moving it, a suggestion, posting it alone or to
-//! the pending review (through `calls::act`, one action at a time), cancelling it, asking before
-//! the panel closes or gives way to another pull request while it is edited, and applying the
-//! answer to the open panel or to a parked tab's.
+//! the pending review (through `calls::act`, one action at a time), cancelling it, and applying
+//! the answer to the open panel, to a parked tab's or to the draft kept for a closed one.
 
 use super::calls::{act, action_text, load, service_request};
 use crate::effect::{Effect, ForgeError};
-use crate::pull_request::line_comment::{Leave, LineCommentMsg};
+use crate::pull_request::line_comment::LineCommentMsg;
 use crate::pull_request::{PrCall, PrReply};
 use crate::state::AppState;
 use crate::state::error_words::hosting;
@@ -28,13 +27,6 @@ pub(super) fn handle(st: &mut AppState, msg: LineCommentMsg, _now: Instant, fx: 
         LineCommentMsg::Post { review } => post(st, review, fx),
         LineCommentMsg::Cancel => cancel(st),
         LineCommentMsg::Discard => discard(st),
-        LineCommentMsg::DiscardAnd(leave) => {
-            discard(st);
-            match leave {
-                Leave::Close => super::close(st),
-                Leave::Open(id) => super::open(st, id, fx),
-            }
-        }
         LineCommentMsg::Focus => {
             if let Some(v) = st.session.pull_request.view.as_mut().filter(|v| v.line_draft.is_some()) {
                 v.tab = PrTab::Files;
@@ -163,7 +155,7 @@ fn cancel(st: &mut AppState) {
     let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let Some(d) = v.line_draft.as_ref().filter(|d| d.posting.is_none()) else { return };
     if edited(d) {
-        st.modal = Some(discard_confirm(d, LineCommentMsg::Discard));
+        st.modal = Some(discard_confirm(d));
     } else {
         v.line_draft = None;
     }
@@ -175,20 +167,6 @@ fn discard(st: &mut AppState) {
         && v.line_draft.as_ref().is_some_and(|d| d.posting.is_none())
     {
         v.line_draft = None;
-    }
-}
-
-/// Closing the panel or opening another pull request (`leave`) while the draft is edited and
-/// not being posted: asks first and returns true. A draft being posted needs no question; its
-/// answer is logged and toasted once the panel is gone.
-pub(super) fn asks_to_leave(st: &mut AppState, leave: Leave) -> bool {
-    let draft = st.session.pull_request.view.as_ref().and_then(|v| v.line_draft.as_ref());
-    match draft.filter(|d| d.posting.is_none() && edited(d)) {
-        Some(d) => {
-            st.modal = Some(discard_confirm(d, LineCommentMsg::DiscardAnd(leave)));
-            true
-        }
-        None => false,
     }
 }
 
@@ -246,7 +224,7 @@ fn apply(v: &mut PrView, review: bool, result: &Result<NewThread, ForgeError>) -
 /// A new comment's answer for pull request `id` of `target` in `workdir` (`active`: the
 /// active tab's repository and service). It goes to the open panel, else to the parked panel
 /// of the tab showing `workdir`, and only while that panel's draft is being posted. Without
-/// one it is logged and toasted.
+/// one it settles the draft kept for a closed panel, and is logged and toasted.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn replied(
     st: &mut AppState,
@@ -304,9 +282,13 @@ pub(super) fn replied(
             }
         }
         Some(_) => {}
-        None => match &result {
-            Ok(_) => st.toast(true, text, now),
-            Err(e) => st.toast(false, format!("Couldn't post the comment on {label}: {}", e.message), now),
-        },
+        None => {
+            let settled = result.as_ref().map(|_| ()).map_err(|e| e.message.clone());
+            super::kept::settle(st, workdir, target, active, id, PrAction::LineComment, settled);
+            match &result {
+                Ok(_) => st.toast(true, text, now),
+                Err(e) => st.toast(false, format!("Couldn't post the comment on {label}: {}", e.message), now),
+            }
+        }
     }
 }

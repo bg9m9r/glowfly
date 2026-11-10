@@ -40,12 +40,12 @@ fn new_thread(id: &str, first: u64, pending: bool) -> ReviewThread {
     }
 }
 
-fn single_ok() -> PrReply {
+pub(super) fn single_ok() -> PrReply {
     PrReply::LineCommented { review: false, result: Ok(NewThread { thread: new_thread("new:901", 901, false), pending_review: None }) }
 }
 
 /// Starts a draft on new line 2 with text and posts it (`review`: to the pending review).
-fn posted(st: &mut AppState, review: bool) {
+pub(super) fn posted(st: &mut AppState, review: bool) {
     start(st, LineSide::New, 2, false);
     set_text(st, "Rename this");
     lc(st, LineCommentMsg::Post { review });

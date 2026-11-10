@@ -6,6 +6,7 @@ use super::*;
 use crate::state::file_folds::{FileFolds, FileListId};
 use crate::state::lfs::LfsDiffNote;
 use crate::state::{ForgeState, Selection};
+use glowfly_core::forge::{Provider, Target};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 
 /// Every counter, in the order `counters` lists them.
@@ -153,8 +154,17 @@ fn forget_repo_clears_reads_and_folds() {
     s.reads.stats.insert(git2::Oid::zero(), (1, 2, 3));
     s.tab_view.file_folds.toggle(FileListId::Staged, "docs".into());
     s.draft.summary = "wip".into();
+    let mut v = crate::state::pull_request::tests::view(
+        crate::state::pull_request::tests::pr(None),
+        crate::state::pull_request::Tips { target: None, source: None },
+    );
+    v.forms.comment = "Looks good".into();
+    let host =
+        Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+    s.pr_drafts.keep(Some(&host), v);
     s.forget_repo();
     assert!(s.reads.stats.is_empty(), "the reads are forgotten");
     assert_eq!(s.tab_view.file_folds, FileFolds::default(), "and the folds");
+    assert!(s.pr_drafts.is_empty(), "and the pull request text kept for it");
     assert_eq!(s.draft.summary, "wip", "the rest is untouched");
 }

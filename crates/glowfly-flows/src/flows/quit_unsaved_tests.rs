@@ -3,7 +3,8 @@
 //! a Preferences page has unsaved edits, in one question with what runs; the question never
 //! closes the window by itself while it names such work; an edited dialog stays under the quit
 //! question, a tab close's confirmation and the trust prompt, and comes back when they close;
-//! closing a tab that holds an edited dialog or comments not posted asks first.
+//! closing a tab that holds an edited dialog or comments not posted (also those kept after
+//! their panel closed) asks first.
 
 use super::prefs_save_tests::{git_mut, identity};
 use super::quit_tests::pushing;
@@ -207,6 +208,31 @@ fn closing_a_tab_with_a_comment_not_posted_asks() {
     send(&mut st, TabsMsg::CloseTab(usize::MAX));
     assert!(question(&st).1.ends_with("- comments typed and not posted yet"));
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn closing_a_tab_with_kept_pull_request_text_asks() {
+    use glowfly_model::pull_request::PullRequestMsg;
+    let (mut st, work, bare, _) = super::pull_request::tests::setup("unsaved-pr-kept", &[]);
+    super::pull_request::tests::open(&mut st);
+    st.session.pull_request.view.as_mut().expect("the panel").forms.comment = "Looks good".into();
+    run(&mut st, Msg::PullRequest(PullRequestMsg::Close));
+    assert!(st.session.pull_request.view.is_none(), "only the kept text holds it");
+    send(&mut st, TabsMsg::CloseTab(usize::MAX));
+    assert!(question(&st).1.ends_with("- comments typed and not posted yet"));
+    run(&mut st, Msg::CloseModal);
+
+    // Blank text isn't kept, so nothing is asked.
+    super::pull_request::tests::open(&mut st);
+    st.session.pull_request.view.as_mut().expect("the panel").forms.comment = " 
+"
+    .into();
+    run(&mut st, Msg::PullRequest(PullRequestMsg::Close));
+    send(&mut st, TabsMsg::CloseTab(usize::MAX));
+    assert!(st.modal.is_none(), "nothing is asked");
+    for d in [work, bare] {
+        let _ = std::fs::remove_dir_all(d);
+    }
 }
 
 #[test]

@@ -1,18 +1,17 @@
 //! The pull request panel: opening it for a listed pull request, following refreshes of the refs
-//! and of the service's list, switching tabs, and closing it (asking first while a new code
-//! comment is unposted). Where its files and commits come
-//! from (and the head ref fetch) is in source.rs, the Commits tab's selection in commits.rs. Its
-//! diffs are the shared `st.session.diff.view`, opened through `RepoMsg::OpenDiff`; its page and
-//! actions on the service are in calls.rs, its Checks section in checks.rs, its code comment
-//! threads in threads.rs (placed on the local version's lines by line_map.rs when the files aren't
-//! of the service's head), and a new code comment on diff lines in line_comment.rs. Checking out
-//! a pull request's branch is in checkout.rs, the detail requests for the listed ones in
+//! and of the service's list, switching tabs, and closing it (its unposted text is kept for when it
+//! opens again; a post answered meanwhile settles that text in kept.rs). Where its files and
+//! commits come from (and the head ref fetch) is in source.rs, the Commits tab's selection in
+//! commits.rs. Its diffs are the shared `st.session.diff.view`, opened through `RepoMsg::OpenDiff`;
+//! its page and actions on the service are in calls.rs, its Checks section in checks.rs, its code
+//! comment threads in threads.rs (placed on the local version's lines by line_map.rs when the files
+//! aren't of the service's head), and a new code comment on diff lines in line_comment.rs. Checking
+//! out a pull request's branch is in checkout.rs, the detail requests for the listed ones in
 //! details.rs, matching their heads to loaded commits in heads.rs and the Create pull request
 //! dialog's From / Into picks in repo_pick.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;
-use crate::pull_request::line_comment::Leave;
 use crate::state::AppState;
 use crate::state::pull_request::line_map::LineMaps;
 use crate::state::pull_request::source::HeadFetch;
@@ -29,6 +28,7 @@ pub(super) mod cleanup;
 mod commits;
 pub(super) mod details;
 pub(super) mod heads;
+mod kept;
 mod line_comment;
 mod line_map;
 pub(super) mod repo_pick;
@@ -40,15 +40,11 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
         PullRequestMsg::Open(id) => {
             let listed = st.session.forge.as_ref().is_some_and(|f| f.prs.iter().any(|p| p.id == id));
             let shown = st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id);
-            if listed && !shown && !line_comment::asks_to_leave(st, Leave::Open(id)) {
+            if listed && !shown {
                 open(st, id, fx);
             }
         }
-        PullRequestMsg::Close => {
-            if !line_comment::asks_to_leave(st, Leave::Close) {
-                close(st);
-            }
-        }
+        PullRequestMsg::Close => close(st),
         PullRequestMsg::FilesLoaded { id, generation, result } => source::files_loaded(st, id, generation, result, fx),
         PullRequestMsg::Tab(t) => {
             if let Some(v) = st.session.pull_request.view.as_mut() {
@@ -81,38 +77,52 @@ pub(super) fn handle(st: &mut AppState, msg: PullRequestMsg, now: Instant, fx: &
 }
 
 /// Opens the panel for listed pull request `id` in place of a diff, a conflict, the file
-/// history, blame and the issue panel; nothing when it is already shown.
+/// history, blame, the issue panel and another pull request (whose text is kept), with the
+/// text kept for it; nothing when it is already shown.
 fn open(st: &mut AppState, id: u64, fx: &mut Vec<Effect>) {
     let (Some(snap), Some(fs)) = (&st.snap, &st.session.forge) else { return };
     let Some(pr) = fs.prs.iter().find(|p| p.id == id) else { return };
     if st.session.pull_request.view.as_ref().is_some_and(|v| v.pr.id == id) {
         return;
     }
-    let view = PrView::new(pr.clone(), fs, snap);
+    let (mut view, host) = (PrView::new(pr.clone(), fs, snap), fs.host.clone());
     super::repo::close_diff(st);
     super::conflict::close(st);
     super::history::close(st);
     super::blame::close(st);
     super::issue::close(st);
+    close(st);
+    if let Some(host) = host {
+        st.session.pr_drafts.restore(&host, &mut view);
+    }
     st.session.pull_request.view = Some(view);
     request(st, fx);
     load(st, fx);
     checks::load(st, fx);
 }
 
-/// Closes the panel, and the diff when it is one of its files; a list or page still in flight
-/// must not reopen it.
+/// Closes the panel, keeping its unposted text for when it opens again, and the diff when it
+/// is one of its files; a list or page still in flight must not reopen it.
 pub(super) fn close(st: &mut AppState) {
     let shown = shows_diff(st);
-    if st.session.pull_request.view.take().is_some() {
+    if let Some(v) = st.session.pull_request.view.take() {
         st.session.pull_request.generation += 1;
         st.session.pull_request.page_gen += 1;
         st.session.pull_request.checks_gen += 1;
         st.session.pull_request.lines_gen += 1;
+        let host = st.session.forge.as_ref().and_then(|f| f.host.clone());
+        st.session.pr_drafts.keep(host.as_ref(), v);
         if shown {
             super::repo::close_diff(st);
         }
     }
+}
+
+/// The code host was worked out again (after a refresh, a new connection or a profile
+/// switch): the text kept for another service's pull requests goes.
+pub(super) fn host_detected(st: &mut AppState) {
+    let host = st.session.forge.as_ref().and_then(|f| f.host.clone());
+    st.session.pr_drafts.retain_host(host.as_ref());
 }
 
 /// A diff is opening: the panel stays only when it is one of its files (shown in Files

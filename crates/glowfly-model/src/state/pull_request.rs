@@ -6,13 +6,15 @@
 //! `actions`, the code comment threads' in `threads` (placed on the local version's lines by
 //! `line_map` when the files aren't of the service's head), a new code comment on diff lines in
 //! `line_comment`, the Checks section's in `checks`, the cleanup after a merge in `cleanup`, the
-//! From / Into repositories in `repos` and the detail requests for the listed ones in `details`.
+//! From / Into repositories in `repos`, the detail requests for the listed ones in `details`
+//! and the text kept for closed panels in `kept`.
 
 pub mod actions;
 pub mod checks;
 pub mod cleanup;
 pub mod commits;
 pub(crate) mod details;
+pub mod kept;
 pub mod line_comment;
 pub mod line_map;
 pub mod repos;

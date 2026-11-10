@@ -37,6 +37,7 @@ pub(super) mod palette_theme_tests;
 pub(super) mod parked_free_tests;
 pub(super) mod pr_details_tests;
 pub(super) mod pr_heads_tests;
+pub(super) mod pr_kept_drafts_tests;
 pub(super) mod prefs_errors_tests;
 pub(super) mod prefs_signing_tests;
 pub(super) mod read_errors_tests;
