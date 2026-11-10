@@ -28,7 +28,7 @@ pub(super) fn run(workdir: &Path, files: Vec<DeleteEach>, mode: DeleteMode, tras
                 done += 1;
                 match s.undo {
                     Some(a) => parts.push(a),
-                    // A link, or a file over 64 MB that went without a kept copy.
+                    // A Windows folder link, or a file over 64 MB that went without a kept copy.
                     None => no_undo += 1,
                 }
             }

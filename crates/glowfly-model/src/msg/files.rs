@@ -115,7 +115,7 @@ pub enum WorkFileMsg {
     /// Run the multi-file delete the confirmation agreed to, the way it described it.
     DeletePathsConfirmed { files: Vec<DeleteEach>, mode: DeleteMode },
     /// A DeletePaths effect finished: `done` files went (`no_undo` of them with nothing Undo can
-    /// put back: links, or files over 64 MB), then it stopped at `failed` (if any). `undo` puts
+    /// put back: Windows folder links, or files over 64 MB), then it stopped at `failed` (if any). `undo` puts
     /// back every file that went (one entry, `undo::batch`).
     PathsDeleted { mode: DeleteMode, done: usize, no_undo: usize, failed: Option<(String, WriteFailed)>, undo: Option<Action> },
 }

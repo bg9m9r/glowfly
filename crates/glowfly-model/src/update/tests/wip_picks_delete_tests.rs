@@ -131,7 +131,7 @@ fn paths_deleted_records_one_undo_entry_and_toasts() {
     send(&mut st, Msg::WorkFile(msg));
     let toast = st.toasts.last().map(|t| t.text.as_str()).unwrap_or_default();
     assert!(toast.starts_with("Deleted 3 files. Undo"), "{toast}");
-    assert!(toast.ends_with("Undo can't put back 1 of them (links, or files over 64 MB that Git holds)."), "{toast}");
+    assert!(toast.ends_with("Undo can't put back 1 of them (folder links, or files over 64 MB that Git holds)."), "{toast}");
 }
 
 #[test]
