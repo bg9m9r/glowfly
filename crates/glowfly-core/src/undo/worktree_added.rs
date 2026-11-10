@@ -1,8 +1,10 @@
 //! A worktree created with a new branch (`worktree add -b`, or `--track -b` from a remote branch).
 //! Undo removes the worktree without force, and only while it holds nothing but what git checked
-//! out (no changed, untracked or ignored file, not locked, nothing in progress), so nothing is
-//! lost; the branch is deleted too while it is still at the commit it was made at and no other
-//! worktree has it. Redo makes the worktree again, with the branch when that is gone.
+//! out (no changed, untracked or ignored file, not locked, nothing in progress, and not detached
+//! at commits no branch, tag or remote-tracking branch holds), so nothing is lost; the branch is
+//! deleted too while it is still at the commit it was made at and no other worktree has it. Redo
+//! makes the worktree again, with the branch when that is gone. The folder is recorded as git
+//! lists it, which can be another spelling than the one typed (a link, a short name).
 
 use super::planning::{busy_name, gone, stale, unsafe_};
 use super::record::{local_branch, local_names, ref_exists};
@@ -12,7 +14,7 @@ use crate::gitcli::args;
 use crate::paths::same_folder;
 use crate::repo::{BranchUse, WorktreeInfo, worktrees_at};
 use crate::worktree_ops::{RemoveForce, WorktreeBase, add_cmd, check_folder, remove_cmd};
-use git2::{Repository, StatusOptions};
+use git2::{Oid, Repository, StatusOptions};
 use std::path::Path;
 
 /// The worktree made at `path` with new branch `branch`, when the branch didn't exist before
@@ -22,9 +24,24 @@ pub(super) fn after(workdir: &Path, repo: &Repository, path: &Path, branch: Stri
         return Ok(None);
     }
     let Some((oid, upstream)) = local_branch(repo, &branch) else { return Ok(None) };
-    let made = worktrees_at(workdir)?.iter().any(|w| !w.is_main() && same_folder(&w.path, path));
+    // Git lists the folder by its real path; the undo's tab check compares spellings with that.
+    let made = worktrees_at(workdir)?.into_iter().find(|w| !w.is_main() && same_folder(&w.path, path));
     let created = Created { name: branch, oid, upstream };
-    Ok(made.then(|| Action::AddWorktree { path: path.to_owned(), created }))
+    Ok(made.map(|w| Action::AddWorktree { path: w.path, created }))
+}
+
+/// Whether removing a worktree whose HEAD is detached at `head` keeps that commit: it is the
+/// commit the worktree was made at, or a branch, tag or remote-tracking branch reaches it.
+fn detached_kept(repo: &Repository, head: Oid, made_at: Oid) -> std::result::Result<bool, git2::Error> {
+    let mut walk = repo.revwalk()?;
+    walk.push(head)?;
+    // The commit it was made at may be gone (pruned after its branch moved); then only refs hide.
+    let _ = walk.hide(made_at);
+    // Globs skip refs that don't point at a commit (a tag of a tree, say).
+    for glob in ["refs/heads", "refs/tags", "refs/remotes"] {
+        walk.hide_glob(glob)?;
+    }
+    Ok(walk.next().is_none())
 }
 
 /// The folder's last component, for messages.
@@ -64,6 +81,11 @@ fn plan_undo(repo: &Repository, listed: &[WorktreeInfo], path: &Path, created: &
     if !there.statuses(Some(&mut opts))?.is_empty() {
         return Ok(unsafe_(format!(
             "Worktree {folder} has changes or files made since it was created; remove it from the WORKTREES section instead."
+        )));
+    }
+    if wt.branch.is_none() && !wt.head.is_some_and(|h| detached_kept(repo, h, created.oid).unwrap_or(false)) {
+        return Ok(unsafe_(format!(
+            "Worktree {folder} is on commits no branch holds; make a branch there, or remove it from the WORKTREES section instead."
         )));
     }
     let mut cmds = vec![remove_cmd(&wt.path, RemoveForce::None)];

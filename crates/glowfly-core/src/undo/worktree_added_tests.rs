@@ -128,6 +128,60 @@ fn refuses_when_the_worktree_has_new_files() {
 }
 
 #[test]
+fn refuses_while_detached_at_commits_no_branch_holds() {
+    let dir = scratch_repo("undo-add-wt-detached");
+    let c1 = commit(
+        &dir, "a.txt", "one
+", "c1",
+    );
+    let folder = wt_folder(&dir);
+    let action = add_wt(&dir, &folder);
+    git(&folder, &["checkout", "-q", "--detach"]);
+    assert!(matches!(plan(&dir, &action, false).unwrap(), Plan::Run(_)), "detached at the commit it was made at");
+    let lost = commit(
+        &folder,
+        "b.txt",
+        "two
+",
+        "only here",
+    );
+    let r = refused(plan(&dir, &action, false).unwrap());
+    assert!(matches!(&r, Refusal::Unsafe(m) if m.contains("no branch holds")), "{r:?}");
+    // Once a tag holds it, removing the worktree loses nothing.
+    git(&dir, &["tag", "kept", &lost.to_string()]);
+    assert!(matches!(plan(&dir, &action, false).unwrap(), Plan::Run(_)), "a tag holds it");
+    git(&dir, &["tag", "-d", "kept"]);
+    // An older commit a branch reaches is kept too.
+    git(&folder, &["checkout", "-q", "--detach", &c1.to_string()]);
+    assert!(matches!(plan(&dir, &action, false).unwrap(), Plan::Run(_)), "main holds it");
+    cleanup(&[&folder, &dir]);
+}
+
+#[test]
+fn a_folder_typed_through_a_link_is_recorded_as_git_lists_it() {
+    let dir = scratch_repo("undo-add-wt-link");
+    commit(
+        &dir, "a.txt", "one
+", "c1",
+    );
+    let parent = wt_folder(&dir);
+    std::fs::create_dir_all(&parent).unwrap();
+    let Some(alias) = alias_of(&parent) else {
+        eprintln!("skipped: links can't be made here");
+        return cleanup(&[&parent, &dir]);
+    };
+    let typed = alias.join("wt");
+    let action = add(&dir, &typed, "wt", &["worktree", "add", "-b", "wt", &typed.display().to_string(), "HEAD"]).expect("recorded");
+    let at = listed(&dir, &typed).expect("listed");
+    let Action::AddWorktree { path, .. } = &action else { panic!("{action:?}") };
+    assert_eq!(path, &at, "the tab check compares with the folder git lists");
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    assert!(!parent.join("wt").exists());
+    let _ = std::fs::remove_dir(&alias).or_else(|_| std::fs::remove_file(&alias));
+    cleanup(&[&parent, &dir]);
+}
+
+#[test]
 fn redo_makes_it_again() {
     let dir = scratch_repo("undo-add-wt-redo");
     let c1 = commit(&dir, "a.txt", "one\n", "c1");
