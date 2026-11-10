@@ -221,10 +221,10 @@ fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
         }
         let meta = match std::fs::symlink_metadata(&next) {
             Ok(meta) => meta,
-            // A name the OS won't look up can't be checked.
-            Err(e) if e.kind() == std::io::ErrorKind::InvalidInput => return false,
             // Nothing further exists to be reached.
-            Err(_) => return true,
+            Err(e) if matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory) => return true,
+            // Any other failure (a name the OS won't look up, no permission) can't be checked.
+            Err(_) => return false,
         };
         if !meta.file_type().is_symlink() {
             at = next;

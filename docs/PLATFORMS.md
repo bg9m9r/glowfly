@@ -146,7 +146,13 @@ trust scan all run for untrusted repositories too.
    5 (a line starting with `.` from the `objects` folder, an absolute one as it is). A relative
    line not starting with `.` (a quoted one too) is refused, since libgit2 reads it from the
    process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
-   and more than 32 stores in all.
+   and more than 32 stores in all. A `.git` file, `commondir` and worktree record are read as
+   libgit2 reads them: the whole file up to its first NUL, with trailing ASCII whitespace
+   trimmed (space, TAB, LF, VT, FF, CR, never a Unicode space) and, after `gitdir:`, leading
+   ASCII whitespace too. One whose value still holds a LF or CR (libgit2 takes every line as one
+   path), isn't UTF-8, or can't be read whole (over 4 KiB, not a regular file) is refused, and so
+   is a `commondir` or record that is relative without starting with `./` or `../`, which
+   libgit2 resolves against the process's own folder.
 2. **The spelling is checked before anything is touched.** On Windows, with either separator:
    UNC (`\\server\share`), `\\?\UNC\`, `\\.\UNC\` and `\??\UNC\`, `\\wsl$` and
    `\\wsl.localhost`, and any other device-namespace path (`\\?\GLOBALROOT\…`, `\\.\pipe\…`) that
@@ -158,7 +164,9 @@ trust scan all run for untrusted repositories too.
    forms, where a lookup mounts the host, in any case (macOS's root volume ignores case by
    default, so `/NET/host` reaches it too); `//server/share` is a local name there. Then each part
    past what the path shares with `home` is looked at without following it, and a link's target
-   goes through the same checks (at most 32 links, past which it is refused). Win32 drops `..`
+   goes through the same checks (at most 32 links, past which it is refused). Only a part that
+   doesn't exist (or a file in place of a folder) ends the walk as allowed; any other failed
+   lookup (a name the OS won't take, no permission) refuses. Win32 drops `..`
    lexically before any I/O (never above a share's root), so on Windows `..` is applied first; on
    Unix `..` is physical, so the walk steps back out of the link-free part it knows.
 3. **The same network root as `home` is allowed:** the same server and share (any case, any

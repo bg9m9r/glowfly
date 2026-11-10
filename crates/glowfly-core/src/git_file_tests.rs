@@ -57,6 +57,54 @@ fn a_commondir_is_read_up_to_its_first_nul() {
 }
 
 #[test]
+fn a_commondir_is_trimmed_and_resolved_as_libgit2_does() {
+    let dir = scratch_repo("git-file-commondir-trim");
+    let admin = dir.join(".git/worktrees/wt");
+    std::fs::create_dir_all(&admin).unwrap();
+    let common = Named::At(crate::paths::resolve(&dir.join(".git")));
+    // `git_str_rtrim`: TAB, space, VT, FF, CR and LF.
+    write(&admin, "commondir", "../..\t \x0b\x0c\r\n");
+    assert_eq!(common_dir_of(&admin, &dir), common);
+    // A second line is part of the path to libgit2.
+    write(&admin, "commondir", &format!("../..\n{}\n", git_spelling(&net_place())));
+    assert_eq!(common_dir_of(&admin, &dir), Named::Refused(admin.join("commondir")));
+    // libgit2 reads these from the process's own folder.
+    for named in ["sub\t\n", "", " ../..", r"..\.."] {
+        write(&admin, "commondir", named);
+        assert_eq!(common_dir_of(&admin, &dir), Named::Refused(admin.join("commondir")), "{named:?}");
+    }
+    if link_to(&net_place(), &admin.join("link"), true) {
+        write(&admin, "commondir", "./link\t \n");
+        assert!(matches!(common_dir_of(&admin, &dir), Named::Refused(_)), "the name without its trailing TAB is checked");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_git_file_is_read_whole_as_libgit2_reads_it() {
+    let dir = scratch_repo("git-file-whole");
+    let inner = dir.join("inner");
+    std::fs::create_dir_all(inner.join("sub")).unwrap();
+    let dot = inner.join(".git");
+    // libgit2 takes every line as one path: `d<LF>/../..` climbs to the network place.
+    write(&inner, ".git", &format!("gitdir: d\n/../../../../../../../..{}\n", git_spelling(&net_place().join("x"))));
+    assert_eq!(dirs_of(&inner, &dir), Found::Refused(dot.clone()));
+    assert_eq!(other_repo(&inner, &dir), Found::Refused(dot.clone()));
+    // Only ASCII whitespace is trimmed, after `gitdir:` and at the end.
+    write(&inner, ".git", "gitdir:\t \x0b./sub \x0c\r\n");
+    assert_eq!(dirs_of(&inner, &dir), Found::Repo(RepoDirs { git_dir: inner.join("./sub"), common: inner.join("./sub") }));
+    assert_eq!(value_in("gitdir: link\u{a0}\n".as_bytes()), Value::Text("gitdir: link\u{a0}".into()), "U+00A0 is kept");
+    if link_to(&net_place(), &inner.join("link\u{a0}"), true) {
+        write(&inner, ".git", "gitdir: link\u{a0}\n");
+        assert_eq!(dirs_of(&inner, &dir), Found::Refused(inner.join("link\u{a0}")));
+    }
+    // Too big to read whole: libgit2 would still read it.
+    write(&inner, ".git", &format!("gitdir: {}{}", git_spelling(&net_place()), " ".repeat(SMALL_FILE as usize)));
+    assert_eq!(dirs_of(&inner, &dir), Found::Refused(dot));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_submodule_style_git_file_is_followed() {
     let dir = scratch_repo("git-file-absorbed");
     let modules = dir.join(".git/modules/sub");
@@ -128,6 +176,32 @@ fn worktree_records_absolute_relative_and_network() {
     assert_eq!(worktree_folder(&admin, &common), Named::At(admin.join("../../../wt/.git")), "joined to the admin dir, not the cwd");
     write(&admin, "gitdir", &format!("{}\n", git_spelling(&net_place().join("wt/.git"))));
     assert!(matches!(worktree_folder(&admin, &common), Named::Refused(_)));
+    write(
+        &admin,
+        "gitdir",
+        "../../../wt/.git	 
+",
+    );
+    assert_eq!(worktree_folder(&admin, &common), Named::At(admin.join("../../../wt/.git")), "ASCII whitespace trimmed");
+    // libgit2 takes every line as one path, joined lexically: no folder `x<LF>` is needed.
+    let record = admin.join("gitdir");
+    write(
+        &admin,
+        "gitdir",
+        &format!(
+            "x
+/../../../..{}
+",
+            git_spelling(&net_place().join("wt/.git"))
+        ),
+    );
+    assert_eq!(worktree_folder(&admin, &common), Named::Refused(record.clone()));
+    // A relative record not starting with `./` or `../` is read from the process's own folder.
+    write(
+        &admin, "gitdir", "wt/.git
+",
+    );
+    assert_eq!(worktree_folder(&admin, &common), Named::Refused(record));
     std::fs::remove_file(admin.join("gitdir")).unwrap();
     assert_eq!(worktree_folder(&admin, &common), Named::None);
     let _ = std::fs::remove_dir_all(&dir);
