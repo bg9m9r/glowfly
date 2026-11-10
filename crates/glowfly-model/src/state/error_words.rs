@@ -129,8 +129,8 @@ mod tests {
             "{revoked}"
         );
         for t in [EN, Lang::De, Lang::Es] {
-            let cert = remote(t, &RemoteFailure::Certificate { host: None });
-            assert!(cert.contains("http.schannelUseSSLCAInfo"), "{cert}");
+            let sentence = remote(t, &RemoteFailure::Certificate { host: None });
+            assert!(sentence.contains("http.schannelUseSSLCAInfo"), "{sentence}");
             let unnamed = remote(t, &RemoteFailure::Revocation { host: None });
             let named = remote(t, &RemoteFailure::Revocation { host: Some("h.example".into()) });
             assert!(named.contains("h.example") && !unnamed.contains("h.example") && unnamed != named, "{unnamed} / {named}");
