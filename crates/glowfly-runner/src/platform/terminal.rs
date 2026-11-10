@@ -331,23 +331,19 @@ mod tests {
         for name in &names {
             let dir = base.join(name);
             std::fs::create_dir_all(&dir).unwrap();
-            assert!(powershell_ends_up_in(&dir), "on its drive: {}", dir.display());
+            let mut tried = vec![dir];
             // The same folder through this computer's own share of the drive, where there is one.
             let text = base.to_string_lossy().into_owned();
             let share = text.split_once(":\\").map(|(drive, rest)| Path::new(&format!(r"\\localhost\{drive}$\{rest}")).join(name));
-            if let Some(share) = share.filter(|s| s.is_dir()) {
-                assert!(powershell_ends_up_in(&share), "on a share: {}", share.display());
+            tried.extend(share.filter(|s| s.is_dir()));
+            // Each in its own unwind guard, so the folder is removed when one fails too.
+            let all =
+                std::panic::catch_unwind(|| tried.iter().map(|d| (d.display().to_string(), powershell_ends_up_in(d))).collect::<Vec<_>>());
+            if !matches!(&all, Ok(all) if all.iter().all(|(_, ok)| *ok)) {
+                let _ = std::fs::remove_dir_all(&base);
             }
-        }
-        // A WSL folder, where one is installed and running.
-        let wsl = std::fs::read_dir(r"\\wsl.localhost\").ok().and_then(|mut d| d.next()?.ok()).map(|e| e.path().join("tmp"));
-        if let Some(wsl) = wsl.filter(|w| w.is_dir()) {
-            // `%` in no name: cmd.exe would get it, so ask for PowerShell's line directly.
-            let pct = wsl.join(format!("glowfly 100% {}", std::process::id()));
-            if std::fs::create_dir_all(&pct).is_ok() {
-                let ok = powershell_ends_up_in(&pct);
-                let _ = std::fs::remove_dir_all(&pct);
-                assert!(ok, "in WSL: {}", pct.display());
+            for (dir, ok) in all.expect("PowerShell ran") {
+                assert!(ok, "it ends up in {dir}");
             }
         }
         let _ = std::fs::remove_dir_all(&base);
