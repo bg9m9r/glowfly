@@ -37,13 +37,13 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
         WorkFileMsg::DeleteFile { path, confirmed: true } => {
             if let Some(workdir) = st.workdir() {
                 let mode = DeleteMode::for_settings(&st.settings);
-                fx.push(Effect::Files(FilesEffect::Work { workdir, op: FileOp::Delete { path, mode } }));
+                let _ = super::file_trust::push(st, FilesEffect::Work { workdir, op: FileOp::Delete { path, mode } }, fx);
             }
         }
         WorkFileMsg::DeleteConfirmed(op) => match op {
             FileOp::Delete { .. } | FileOp::UnstageDelete { .. } | FileOp::UnstageGone(_) | FileOp::Discard { .. } => {
                 if let Some(workdir) = st.workdir() {
-                    fx.push(Effect::Files(FilesEffect::Work { workdir, op }));
+                    let _ = super::file_trust::push(st, FilesEffect::Work { workdir, op }, fx);
                 }
             }
             op => tracing::debug!("ignored a confirmed {op:?}, which isn't a delete"),
@@ -236,7 +236,7 @@ fn create(st: &mut AppState, text: String, fx: &mut Vec<Effect>) {
     if let Some(workdir) = st.workdir()
         && start(st, &op)
     {
-        fx.push(Effect::Files(FilesEffect::Work { workdir, op }));
+        let _ = super::file_trust::push(st, FilesEffect::Work { workdir, op }, fx);
     }
 }
 
@@ -275,6 +275,10 @@ fn rename(st: &mut AppState, from: String, to: String, stage: bool, fx: &mut Vec
     if let Some(workdir) = st.workdir()
         && start(st, &op)
     {
-        fx.push(Effect::Files(FilesEffect::Work { workdir, op }));
+        // A staged rename is `git mv`: while git is held here its dialog says so and stays open.
+        let held = super::file_trust::held_text(st, st.settings.lang().tr("trust.files.rename"));
+        if super::file_trust::push(st, FilesEffect::Work { workdir, op: op.clone() }, fx) != super::jobs::Started::Now {
+            fail(st, &op, &to, held);
+        }
     }
 }

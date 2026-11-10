@@ -46,9 +46,9 @@ pub enum Sealed {
     Waiting { kind: WaitingKind, label: Option<String> },
     /// The built-in terminal's shell `id`.
     Shell { id: u64 },
-    /// A read that lets git run in the repository (a status read by git, a signature check, a
-    /// diff through its filters): when the check fails it reads without git where it can, else
-    /// it fails as its sender expects.
+    /// A read, or file work update sent unsealed, that lets git run in the repository (a status
+    /// read by git, a signature check, a diff through its filters, a whole file staged): when
+    /// the check fails it reads without git where it can, else it fails as its sender expects.
     Read,
 }
 

@@ -84,14 +84,15 @@ pub(super) fn file(st: &mut AppState, target: DiffTarget, fx: &mut Vec<Effect>) 
     push(st, target, RevertPart::File, fx);
 }
 
-fn push(st: &AppState, target: DiffTarget, part: RevertPart, fx: &mut Vec<Effect>) {
+fn push(st: &mut AppState, target: DiffTarget, part: RevertPart, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     let dest = dest(st, &target);
     // Toggling the whitespace filter reloads the diff (and bumps the diff slot's `generation`), so
     // the indexes of a hunk or lines checked against `hunk_ops_gen` count the diff with this
     // setting.
     let ignore_whitespace = st.settings.diff_ignore_whitespace && !matches!(part, RevertPart::File);
-    fx.push(Effect::Files(FilesEffect::Revert { workdir, req: RevertRequest { target, part, dest, ignore_whitespace } }));
+    let req = RevertRequest { target, part, dest, ignore_whitespace };
+    let _ = super::file_trust::push(st, FilesEffect::Revert { workdir, req }, fx);
 }
 
 /// The file's current name when `target` is a File history entry under an older one.

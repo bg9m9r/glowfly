@@ -4,18 +4,22 @@
 //! runner must find just before it starts (effect/trust_check.rs, runner/trust.rs). Before
 //! update returns, each sealed effect is wrapped with its check (`wrap`, `Effect::Checked`), and
 //! so is every read that lets git run in a repository (`read_in`: a status read by git, a
-//! signature check, a diff or blame through git's filters, a patch of uncommitted changes).
+//! signature check, a diff or blame through git's filters, a patch of uncommitted changes, file
+//! work that starts git: update/file_trust.rs, a fetch update starts by itself).
 //! When the check finds the repository no longer covered (a hook edited while the prompt was open, a pull that brings
 //! other hooks into a hooks folder that follows the working tree), the work comes back here
 //! (`stale`): the active tab takes the scan just made, and the work waits for the trust prompt
 //! again, which names what changed.
 
 use crate::effect::CommitEffect;
+use crate::effect::EffectMeta;
 use crate::effect::LoadEffect;
 use crate::effect::NetworkEffect;
+use crate::effect::partial::PartialEffect;
 use crate::effect::{Accepted, Checked, Effect, LfsEffect, Seal, Sealed, SparseEffect, TrustCheck, WaitingKind};
 use crate::msg::Stale;
 use crate::patch::PatchEffect;
+use crate::pull_request::PrEffect;
 use crate::state::AppState;
 use crate::state::Modal;
 use crate::state::tabs::is_repo_at;
@@ -104,8 +108,9 @@ fn repo_of(e: &Effect) -> Option<&Path> {
     e.holds().or_else(|| read_in(e))
 }
 
-/// The repository a read lets git run in (its fsmonitor and filters, a signing program, a diff
-/// or merge tool, git LFS): the runner checks it first (`Sealed::Read`).
+/// The repository a read, or file work update didn't seal, lets git run in (its fsmonitor and
+/// filters, a signing program, a diff or merge tool, git LFS, a remote's programs): the runner
+/// checks it first (`Sealed::Read`).
 fn read_in(e: &Effect) -> Option<&Path> {
     let w = match e {
         Effect::Load(LoadEffect::Status { workdir, git_status: true, .. })
@@ -123,6 +128,12 @@ fn read_in(e: &Effect) -> Option<&Path> {
         Effect::CheckConflicts(j) => &j.workdir,
         // git diff of the working tree runs its filters (the Create patch dialog seals it, too).
         Effect::Patch(PatchEffect::Export { workdir, what: PatchSource::Changes(_), .. }) => workdir,
+        // Staging, discarding or restoring a whole file, a conflict edit, a staged rename.
+        Effect::Files(f) if f.runs_git() => f.scope()?,
+        // A download of missing contents, a pull request's head: update starts them only while
+        // git runs here unasked, and the repository may have changed since.
+        Effect::Partial(PartialEffect::FetchContent(r)) => &r.workdir,
+        Effect::PullRequest(PrEffect::FetchHead(j)) => &j.workdir,
         _ => return None,
     };
     Some(w.as_path())

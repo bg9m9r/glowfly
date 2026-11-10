@@ -83,7 +83,7 @@ fn confirmation(t: Lang, files: Vec<DeleteEach>, mode: DeleteMode, hint: &str) -
 pub(super) fn confirmed(st: &mut AppState, files: Vec<DeleteEach>, mode: DeleteMode, fx: &mut Vec<Effect>) {
     let Some(workdir) = st.workdir() else { return };
     st.cues.wip_picks = None;
-    fx.push(Effect::Files(FilesEffect::DeletePaths { workdir, files, mode }));
+    let _ = super::file_trust::push(st, FilesEffect::DeletePaths { workdir, files, mode }, fx);
 }
 
 /// The runner deleted `done` files (`no_undo` of them with nothing Undo can put back), then

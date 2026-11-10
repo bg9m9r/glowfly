@@ -67,10 +67,11 @@ pub(super) fn confirmed(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effe
     if paths.is_empty() || any_in_tool(st, &paths) {
         return;
     }
-    if let Some(c) = st.session.conflict.view.as_mut().filter(|c| paths.contains(&c.path)) {
+    let open = st.session.conflict.view.as_ref().is_some_and(|c| paths.contains(&c.path));
+    let now = super::ops::local(st, LocalOp::MarkResolved(paths), fx) == super::jobs::Started::Now;
+    if let Some(c) = st.session.conflict.view.as_mut().filter(|_| open && now) {
         c.step_on_resolve = true;
     }
-    super::ops::local(st, LocalOp::MarkResolved(paths), fx);
     st.cues.conflict_picks = None;
 }
 
@@ -83,7 +84,7 @@ pub(super) fn mark_conflicted(st: &mut AppState, paths: Vec<String>, fx: &mut Ve
     let paths: Vec<String> = paths.into_iter().filter(|p| restorable(st, p) && hazard_of(st, p).is_none()).collect();
     let paths: Vec<String> = paths.into_iter().filter(|p| !super::conflict::in_tool(st, p)).collect();
     if !paths.is_empty() {
-        super::ops::local(st, LocalOp::MarkConflicted(paths), fx);
+        let _ = super::ops::local(st, LocalOp::MarkConflicted(paths), fx);
         st.cues.conflict_picks = None;
     }
 }

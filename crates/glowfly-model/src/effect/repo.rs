@@ -62,6 +62,27 @@ pub enum LocalOp {
     MarkConflicted(Vec<String>),
 }
 
+impl LocalOp {
+    /// Whether the edit starts git in the repository, so its filters, its file-system monitor
+    /// and (bringing a conflict back) its hooks run: whole files staged, discarded or written
+    /// from the index go through git; the rest is libgit2 only. Decided for every variant, so a
+    /// new one says which it is (update/file_trust.rs asks first, the runner checks again).
+    pub fn runs_git(&self) -> bool {
+        match self {
+            LocalOp::StageFile(_)
+            | LocalOp::StagePaths(_)
+            | LocalOp::StageAll
+            | LocalOp::DiscardFile(_)
+            | LocalOp::ResolveConflict { .. }
+            | LocalOp::SavePartialResolution { .. }
+            | LocalOp::ResolveWithSide { .. }
+            | LocalOp::MarkResolved(_)
+            | LocalOp::MarkConflicted(_) => true,
+            LocalOp::UnstagePaths(_) | LocalOp::Hunk { .. } | LocalOp::Lines { .. } => false,
+        }
+    }
+}
+
 /// Why the conflicted files' working copies are read (`ConflictEffect::ReadFiles`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ConflictRead {

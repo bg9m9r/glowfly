@@ -37,7 +37,8 @@ pub(in crate::update) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut 
             }
             let Some(workdir) = st.workdir() else { return };
             if open_step(st, Mode::Pick(Pick::new(kind))) {
-                fx.push(Effect::Files(FilesEffect::LoadTracked { workdir, generation: st.palette_gen }));
+                let generation = st.palette_gen;
+                let _ = super::super::file_trust::push(st, FilesEffect::LoadTracked { workdir, generation }, fx);
             }
         }
         PickKind::Stash(action) => {

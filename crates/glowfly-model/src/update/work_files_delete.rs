@@ -108,7 +108,7 @@ pub(super) fn every_line_untracked(st: &AppState, path: &str, hunk: &Hunk, lines
 pub(super) fn discard_seen(st: &mut AppState, path: String, seen: Option<Box<SeenLines>>, fx: &mut Vec<Effect>) {
     let mode = DeleteMode::for_settings(&st.settings);
     if let Some(workdir) = st.workdir() {
-        fx.push(Effect::Files(FilesEffect::Work { workdir, op: FileOp::Discard { path, mode, seen } }));
+        let _ = super::file_trust::push(st, FilesEffect::Work { workdir, op: FileOp::Discard { path, mode, seen } }, fx);
     }
 }
 
