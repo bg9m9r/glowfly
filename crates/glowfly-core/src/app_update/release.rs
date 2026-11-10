@@ -1,6 +1,7 @@
 //! A release as the hosting service's API describes it, or a local feed's `release.json` in the
 //! same shape. The answer comes from outside, so links that aren't `https://` and file names that
-//! could leave the downloads folder are dropped here, before anything else sees them.
+//! could leave the downloads folder are dropped here, before anything else sees them. A release
+//! the JSON marks as a draft or a prerelease reads as no release at all.
 
 use crate::error::Result;
 use serde::Deserialize;
@@ -42,6 +43,16 @@ struct RawRelease {
     published_at: Option<String>,
     #[serde(default)]
     assets: Vec<RawAsset>,
+    /// Missing or `null` counts as false.
+    #[serde(default)]
+    draft: Option<bool>,
+    #[serde(default)]
+    prerelease: Option<bool>,
+}
+
+/// Whether `raw` is a published release: not marked as a draft or a prerelease.
+fn published(raw: &RawRelease) -> bool {
+    raw.draft != Some(true) && raw.prerelease != Some(true)
 }
 
 #[derive(Deserialize)]
@@ -61,29 +72,36 @@ pub fn asset_name_ok(name: &str) -> bool {
         && name.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
 }
 
-/// Reads a release from the API's JSON.
-pub fn parse_release(json: &[u8]) -> Result<Release> {
+/// Reads a release from the API's JSON; None for a release it marks as a draft or a prerelease.
+pub fn parse_release(json: &[u8]) -> Result<Option<Release>> {
     let mut raw: RawRelease = serde_json::from_slice(json)?;
+    if !published(&raw) {
+        return Ok(None);
+    }
     let https = |u: &str| crate::forge::https_host(u).is_some();
     let assets = std::mem::take(&mut raw.assets)
         .into_iter()
         .filter(|a| https(&a.browser_download_url) && asset_name_ok(&a.name))
         .map(|a| Asset { name: a.name, size: a.size, url: a.browser_download_url })
         .collect();
-    Ok(finish(raw, assets))
+    Ok(Some(finish(raw, assets)))
 }
 
-/// Reads a local feed's `release.json` (the API's shape). A listed file is kept when its name
-/// is safe and `file_size` finds it (checked in that order, so no path is built from an
-/// unchecked name); its size is the one on disk and its url empty.
-pub(super) fn parse_feed_release(json: &[u8], file_size: impl Fn(&str) -> Option<u64>) -> Result<Release> {
+/// Reads a local feed's `release.json` (the API's shape); None for a release it marks as a
+/// draft or a prerelease, whose files aren't looked at. A listed file is kept when its name is
+/// safe and `file_size` finds it (checked in that order, so no path is built from an unchecked
+/// name); its size is the one on disk and its url empty.
+pub(super) fn parse_feed_release(json: &[u8], file_size: impl Fn(&str) -> Option<u64>) -> Result<Option<Release>> {
     let mut raw: RawRelease = serde_json::from_slice(json)?;
+    if !published(&raw) {
+        return Ok(None);
+    }
     let assets = std::mem::take(&mut raw.assets)
         .into_iter()
         .filter(|a| asset_name_ok(&a.name))
         .filter_map(|a| file_size(&a.name).map(|size| Asset { name: a.name, size, url: String::new() }))
         .collect();
-    Ok(finish(raw, assets))
+    Ok(Some(finish(raw, assets)))
 }
 
 /// The release `raw` describes, with `assets`: an empty name falls back to the tag, and a web

@@ -232,6 +232,7 @@ pub fn update(t: Lang, e: &UpdateError) -> String {
         E::BadFileName { name } => t.trf("update_errors.bad_file_name", &[("name", name)]),
         E::ChecksumMismatch => t.tr("update_errors.checksum_mismatch").to_owned(),
         E::SaveFailed { path, said } => t.trf("update_errors.save_failed", &[("path", path), ("said", said)]),
+        E::NameTaken { name, dir } => t.trf("update_errors.name_taken", &[("name", name), ("dir", dir)]),
         E::WrongSize { name, got, want } => t.trf("update_errors.wrong_size", &[("name", name), ("got", got), ("want", want)]),
         E::Stopped => t.tr("update_errors.stopped").to_owned(),
         E::ChangedSinceChecked => t.tr("update_errors.changed").to_owned(),

@@ -15,6 +15,7 @@
   "update_errors.install_with": "Installiere es mit: sudo {tool} install {path}",
   "update_errors.internal": "In Glowfly ist ein interner Fehler aufgetreten ({effect}): {panic}",
   "update_errors.larger_than_expected": "{name} ist größer als erwartet",
+  "update_errors.name_taken": "{name} konnte nicht in {dir} gespeichert werden: Während des Downloads haben andere Dateien seinen Namen und die nächsten freien belegt. Nichts wurde ersetzt; lade die Datei erneut herunter.",
   "update_errors.no_checksum": "Diese Version veröffentlicht keine Prüfsumme für {name}, deshalb wurde die Datei nicht heruntergeladen.",
   "update_errors.no_download": "Diese Version hat keinen Download für dieses System.",
   "update_errors.no_downloads_folder": "Kein Ordner für den Download",

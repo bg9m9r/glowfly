@@ -1,8 +1,9 @@
 //! Glowfly's own updates: asking for the newest release, downloading and verifying its file
 //! (streamed to disk, with progress at most every `PROGRESS_EVERY` and a stop checked between
 //! chunks), checking a downloaded file again, Install and restart (runner/update_restart.rs), and
-//! at the start: removing the staging folders and old programs earlier updates left behind, and
-//! reading how the last installer run went.
+//! at the start: removing the staging folders and old programs earlier updates left behind and
+//! the temporary files stopped downloads left in Downloads, and reading how the last installer
+//! run went.
 
 use super::execute::{Cx, Execute};
 use super::update_restart;
@@ -56,6 +57,10 @@ fn tidy() -> Option<Msg> {
         cleared.unrecorded,
         cleared.failed
     );
+    if let Some(dir) = settings::downloads_dir() {
+        let n = app_update::remove_stopped_downloads(&dir, SystemTime::now());
+        tracing::debug!("removed {n} temporary files stopped downloads left");
+    }
     let last = settings::log_dir().and_then(|dir| app_update::take_last_install(&dir))?;
     Some(Msg::Updates(UpdateMsg::LastInstall(last)))
 }

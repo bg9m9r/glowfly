@@ -66,7 +66,8 @@ impl Feed {
         }
     }
 
-    /// The newest release; None when there is none yet (no `release.json` in a folder).
+    /// The newest release; None when there is none yet (no `release.json` in a folder), or it is
+    /// a draft or a prerelease.
     pub fn latest(&self) -> Result<Option<Release>, UpdateError> {
         match self {
             Feed::Hosted(repo) => crate::forge::latest_release(repo).map_err(|e| UpdateError::Service(ServiceError::from(e))),
@@ -82,9 +83,7 @@ impl Feed {
                     Err(Capped::TooLong(name)) => return Err(UpdateError::ReadTooLong { path: shown(&path), name }),
                 };
                 let size = |name: &str| std::fs::metadata(dir.join(name)).ok().filter(|m| m.is_file()).map(|m| m.len());
-                release::parse_feed_release(&bytes, size)
-                    .map(Some)
-                    .map_err(|e| UpdateError::ReadFailed { path: shown(&path), said: e.to_string() })
+                release::parse_feed_release(&bytes, size).map_err(|e| UpdateError::ReadFailed { path: shown(&path), said: e.to_string() })
             }
         }
     }
