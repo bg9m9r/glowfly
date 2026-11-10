@@ -137,4 +137,25 @@ impl Journey {
         self.type_into(name, text);
         true
     }
+
+    /// The toasts shown since the last action, as (succeeded, text).
+    pub fn toasts_since_action(&self) -> Vec<(bool, String)> {
+        self.toasts.iter().map(|s| (s.ok, s.text.clone())).collect()
+    }
+
+    /// The newest activity-log entry's number across the app log and the tab logs (0 for none):
+    /// entries logged after it have larger ones.
+    pub fn log_mark(&self) -> u64 {
+        self.log_entries().map(|e| e.id.number()).max().unwrap_or(0)
+    }
+
+    /// The text of the failed activity-log entries logged after `mark`.
+    pub fn errors_logged_since(&self, mark: u64) -> Vec<String> {
+        self.log_entries().filter(|e| !e.ok && e.id.number() > mark).map(|e| e.text.clone()).collect()
+    }
+
+    fn log_entries(&self) -> impl Iterator<Item = &glowfly_model::state::LogEntry> {
+        let st = self.state();
+        st.log.iter().chain(st.tabs.iter().flat_map(|t| t.log.iter()))
+    }
 }

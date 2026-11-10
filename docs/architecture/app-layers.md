@@ -372,7 +372,7 @@ source file, update its line here. Features that span every layer are in
 - `runner_snapshots/` (tests only): the view snapshot tests whose state comes through the runner (`snapshot_tests_whole.rs`, `snapshot_tests_wrap.rs`, and one test each in `snapshot_tests_conflict_files.rs` and `snapshot_tests_search.rs`), on glowfly-ui's fixtures and approved snapshots.
 - `journey/` (tests only): whole-app journeys: the real app (`GlowflyApp::for_test`) in an egui_kittest harness on fixture repositories.
 - `journey/find.rs`: driving it by clicking and typing on widgets found by accessible name: a region of the window, the open command palette among them, and a pick among equal names.
-- `journey/harness.rs`: waiting until the app is idle after each step; `harness/actions.rs` has the palette, Refresh, branch menus and the non-panicking screen queries (`labels`, `modal_open`, `shown`, `usable`).
+- `journey/harness.rs`: waiting until the app is idle after each step; `harness/actions.rs` has the palette, Refresh, branch menus and the non-panicking screen queries (`labels`, `modal_open`, `shown`, `usable`) and the toast and log reads the rules use (`toasts_since_action`, `log_mark`, `errors_logged_since`).
 - `journey/fixture.rs`: checking the screen and the repository on disk.
 - `journey/graph_keys.rs`: the graph gets its keys back from Esc on a button or WIP list Tab reached (and that Esc does nothing else), from Tab, and from its pane key.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
@@ -386,3 +386,4 @@ source file, update its line here. Features that span every layer are in
 - `journey/explore/probe.rs`: reads a repository (head, branches, stashes, state, conflicted, changed, staged) and tells whether an action took effect from two readings; `probe_tests.rs` tests it.
 - `journey/explore/perform.rs`: performs one action through the app's widgets (a missing or disabled one is `Skipped`, never a panic); `perform_tests.rs` tests it.
 - `journey/explore/perform_outside.rs`: the outside actions: files written, appended, created and deleted (retried once), and git on the command line.
+- `journey/explore/rules.rs`: the six always-true rules (no crash, sound, no lost work, screen agrees, undo returns, errors reported); `rules_tests.rs` tests each.

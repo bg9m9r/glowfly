@@ -81,7 +81,6 @@ impl GlowflyApp {
     }
 
     /// The names of the effects whose worker panicked, in order.
-    #[expect(dead_code, reason = "the exploration tests read it from task 8 on")]
     pub(crate) fn panicked_effects(&self) -> Vec<&'static str> {
         self.runner.panicked()
     }
