@@ -1,7 +1,7 @@
 //! The "Discard your changes?" question over an edited form, and what a form's Esc and backdrop
 //! click send (update/dialog.rs decides), and the confirmation for discarding several picked
-//! files (to the trash, or deleted with Undo promised). Shares the fixture repository and
-//! renderer with `snapshot_tests`.
+//! files (to the trash, or deleted with Undo promised), and the one for deleting several picked
+//! files. Shares the fixture repository and renderer with `snapshot_tests`.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_select::click;
@@ -116,6 +116,41 @@ fn dialog_discard_files_permanent() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("dialog_discard_files_permanent");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The confirmation for deleting the picked `paths` together, with deleting to the trash
+/// `trash` or not, as update opens it.
+fn delete_files(theme: ThemeChoice, name: &str, trash: bool, paths: &[&str]) -> (glowfly_model::state::AppState, std::path::PathBuf) {
+    let (mut st, dir) = super::snapshot_tests_line_counts::with_wip(theme, name);
+    st.settings.delete_to_trash = trash;
+    let paths = paths.iter().map(|p| (*p).to_owned()).collect();
+    glowfly_model::update::update(&mut st, glowfly_model::state::files::delete_paths_msg(paths), std::time::Instant::now());
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title.starts_with("Delete ")), "{:?}", st.modal.is_some());
+    (st, dir)
+}
+
+#[test]
+fn dialog_delete_files_trash() {
+    let (st, dir) = delete_files(ThemeChoice::Dark, "dialog-delete-files", true, &["README.md", "app.txt", "notes/todo.md"]);
+    let mut h = harness(st, true);
+    h.run();
+    let button = format!("Move 3 files to the {}", glowfly_model::state::files::TRASH);
+    assert!(h.query_by_label(&button).is_some());
+    h.check_snapshot("dialog_delete_files_trash_dark");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn dialog_delete_files_permanent() {
+    // search.txt is staged as new, so it leaves the staging area too.
+    let (st, dir) = delete_files(ThemeChoice::Light, "dialog-delete-files-perm", false, &["app.txt", "search.txt"]);
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(h.get_all_by_label("Delete 2 files").count(), 2, "the title and the button");
+    h.check_snapshot("dialog_delete_files_permanent_light");
     drop(h);
     remove_fixture(&dir);
 }

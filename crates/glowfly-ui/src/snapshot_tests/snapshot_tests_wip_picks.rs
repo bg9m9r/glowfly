@@ -1,7 +1,7 @@
 //! Several files picked in the Unstaged or Staged Files list: Shift+click and Ctrl/Cmd+click
 //! send their pick messages (a plain click opens the file), a picked row's Stage button and
-//! menu act on every pick and the menu names the count (its discard off while a pick has a
-//! hazard), and a row that isn't picked keeps its own menu. Shares the fixture repositories
+//! menu act on every pick and the menu names the count (its discard and delete off while a
+//! pick has a hazard), and a row that isn't picked keeps its own menu. Shares the fixture repositories
 //! with `snapshot_tests_wip_keys` and `snapshot_tests_line_counts`.
 
 use super::snapshot_tests::{harness, remove_fixture};
@@ -21,7 +21,11 @@ use std::path::PathBuf;
 /// The working tree with `open`'s diff open and `picks` picked. Unstaged Files: README.md,
 /// app.txt, login.txt, notes/todo.md; Staged Files: app.txt, search.txt.
 fn with_picks(name: &str, open: DiffTarget, picks: WipPicks) -> (AppState, PathBuf) {
-    let (mut st, dir) = with_wip(ThemeChoice::Dark, name);
+    with_picks_in(ThemeChoice::Dark, name, open, picks)
+}
+
+fn with_picks_in(theme: ThemeChoice, name: &str, open: DiffTarget, picks: WipPicks) -> (AppState, PathBuf) {
+    let (mut st, dir) = with_wip(theme, name);
     let diff = repo::load_diff(&dir, &open).unwrap();
     st.session.diff.view = Some((open, diff.into()));
     st.cues.wip_picks = Some(picks);
@@ -79,7 +83,8 @@ fn wip_picks_menu_unstaged() {
     let all = labels(&h);
     let stage = all.iter().position(|l| l == "Stage 3 files").expect("the selection menu");
     let discard = all.iter().position(|l| l == "Discard changes in 3 files…").expect("its discard");
-    assert!(stage < discard, "{all:?}");
+    let delete = all.iter().position(|l| l == "Delete 3 files…").expect("its delete");
+    assert!(stage < discard && discard < delete, "{all:?}");
     assert!(h.query_by_label("Copy path").is_none(), "not the single-file menu");
     h.check_snapshot("wip_picks_menu_unstaged_dark");
     h.get_by_label("Discard changes in 3 files…").click();
@@ -107,24 +112,34 @@ fn wip_picks_menu_staged() {
     h.run_ok();
     let want = ["app.txt", "search.txt"].map(String::from).to_vec();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Stage(StageMsg::UnstagePaths(p)) if *p == want)));
+    right_click(&mut h, at);
+    h.get_by_label("Delete 2 files…").click();
+    h.run_ok();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::DeletePaths(p)) if *p == want)));
     drop(h);
     remove_fixture(&dir);
 }
 
 #[test]
-fn wip_picks_menu_unsafe() {
-    let (mut st, dir) = three_unstaged("wip-picks-menu-unsafe");
+fn wip_picks_menu_blocked() {
+    let open = DiffTarget::Unstaged("app.txt".into());
+    let (mut st, dir) =
+        with_picks_in(ThemeChoice::Light, "wip-picks-menu-blocked", open, picks("app.txt", &["README.md", "app.txt", "notes/todo.md"]));
     let readme = st.snap.as_mut().unwrap().unstaged.iter_mut().find(|f| f.path == "README.md").unwrap();
     readme.hazard = Some(Hazard::Twins(vec!["readme.md".into()]));
     let mut h = harness(st, true);
     h.run();
     let at = row(&h, "app.txt");
     right_click(&mut h, at);
-    let item = h.get_by_label("Discard changes in 3 files…");
-    assert!(item.is_disabled(), "a pick with a hazard turns the discard off");
+    for item in ["Discard changes in 3 files…", "Delete 3 files…"] {
+        assert!(h.get_by_label(item).is_disabled(), "a pick with a hazard turns {item} off");
+    }
+    h.check_snapshot("wip_picks_menu_blocked_light");
     h.get_by_label("Discard changes in 3 files…").click();
+    h.get_by_label("Delete 3 files…").click();
     h.run_ok();
-    assert!(!h.state().1.iter().any(|m| matches!(m, Msg::WorkFile(WorkFileMsg::DiscardPaths(_)))));
+    let acted = |m: &Msg| matches!(m, Msg::WorkFile(WorkFileMsg::DiscardPaths(_) | WorkFileMsg::DeletePaths(_)));
+    assert!(!h.state().1.iter().any(acted));
     drop(h);
     remove_fixture(&dir);
 }

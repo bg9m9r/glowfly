@@ -124,3 +124,19 @@ fn batch_preview_lists_its_files_and_the_restore_line() {
     assert_eq!(files, PREVIEW_ROWS);
     assert_eq!(lines(&p), ["and 2 more", "Brings back what was discarded"]);
 }
+
+#[test]
+fn a_delete_batch_lists_its_files_and_says_it_puts_them_back() {
+    let saved = Saved { blob: oid(6), executable: false };
+    let gone = |p: &str| Action::DeleteFile { path: p.into(), before: saved, via: DeleteVia::Trash, staged: None };
+    let a = Action::Batch { op: glowfly_core::undo::BatchOp::Delete, parts: vec![gone("a.txt"), gone("c.txt")] };
+    let p = preview(Lang::En, &a, None, false);
+    assert_eq!(p.rows[0], TipRow::File { status: 'D', path: "a.txt".into() });
+    assert_eq!(p.rows[1], TipRow::File { status: 'D', path: "c.txt".into() });
+    assert_eq!(lines(&p), ["Puts the files back"]);
+    assert_eq!(lines(&preview(Lang::En, &a, None, true)), ["Deletes them again"]);
+
+    let many: Vec<Action> = (0..PREVIEW_ROWS + 3).map(|i| gone(&format!("f{i}.txt"))).collect();
+    let a = Action::Batch { op: glowfly_core::undo::BatchOp::Delete, parts: many };
+    assert_eq!(lines(&preview(Lang::En, &a, None, false)), ["and 3 more", "Puts the files back"]);
+}

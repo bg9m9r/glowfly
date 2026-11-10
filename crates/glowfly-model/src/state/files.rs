@@ -2,7 +2,7 @@
 //! request is running; what status says about a path being deleted, the trash's name, the
 //! file manager's show-in-folder label, the offer of the home Trash (`TrashOffer`), and the
 //! message that asks to discard an Unstaged Files row or the picked rows (their menu items and
-//! the Delete key send it).
+//! the Delete key send it), or to delete the picked rows.
 
 use crate::msg::{Msg, StageMsg, WorkFileMsg};
 use glowfly_core::i18n::Lang;
@@ -34,6 +34,23 @@ pub fn discard_paths_msg(paths: Vec<String>) -> Msg {
 /// (`reason`, the hazard's own words).
 pub fn discard_unsafe(t: Lang, path: &str, reason: &str) -> String {
     t.trf("details.wip.discard_files.unsafe", &[("path", &path), ("reason", &reason)])
+}
+
+/// Delete the picked files of Unstaged or Staged Files: one confirmation for all of them
+/// (`WorkFileMsg::DeletePaths`), or the single-file flow when one is left.
+pub fn delete_paths_msg(paths: Vec<String>) -> Msg {
+    Msg::WorkFile(WorkFileMsg::DeletePaths(paths))
+}
+
+/// Why the picked files can't be deleted: `path` is a name Glowfly can't act on safely
+/// (`reason`, the hazard's own words).
+pub fn delete_unsafe(t: Lang, path: &str, reason: &str) -> String {
+    t.trf("details.wip.delete_files.unsafe", &[("path", &path), ("reason", &reason)])
+}
+
+/// Why the picked files can't be deleted: `path` is already gone from the working tree.
+pub fn delete_gone(t: Lang, path: &str) -> String {
+    t.trf("details.wip.delete_files.gone", &[("path", &path)])
 }
 
 /// Why Open and Show in folder are off for a file the working tree doesn't have.

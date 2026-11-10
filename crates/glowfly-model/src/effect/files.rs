@@ -6,7 +6,7 @@
 use super::EffectMeta;
 use super::LocalOp;
 use super::SandboxRule;
-use crate::file_op::{DeleteMode, DiscardEach, FileOp};
+use crate::file_op::{DeleteEach, DeleteMode, DiscardEach, FileOp};
 use git2::Oid;
 use std::path::{Path, PathBuf};
 
@@ -28,6 +28,9 @@ pub enum FilesEffect {
     /// Discards several Unstaged Files rows in order, stopping at the first that fails: tracked
     /// ones go back to their index version, untracked ones are deleted the way `mode` says.
     DiscardPaths { workdir: PathBuf, files: Vec<DiscardEach>, mode: DeleteMode },
+    /// Deletes several picked files' working copies in order the way `mode` says (staged-new
+    /// ones leave the index too), stopping at the first that fails.
+    DeletePaths { workdir: PathBuf, files: Vec<DeleteEach>, mode: DeleteMode },
 }
 
 impl EffectMeta for FilesEffect {
@@ -39,6 +42,7 @@ impl EffectMeta for FilesEffect {
             FilesEffect::LocalOp { .. } => "local-op",
             FilesEffect::Revert { .. } => "revert",
             FilesEffect::DiscardPaths { .. } => "discard-paths",
+            FilesEffect::DeletePaths { .. } => "delete-paths",
         }
     }
 
@@ -49,7 +53,8 @@ impl EffectMeta for FilesEffect {
             | FilesEffect::LoadTracked { workdir, .. }
             | FilesEffect::LocalOp { workdir, .. }
             | FilesEffect::Revert { workdir, .. }
-            | FilesEffect::DiscardPaths { workdir, .. } => Some(workdir),
+            | FilesEffect::DiscardPaths { workdir, .. }
+            | FilesEffect::DeletePaths { workdir, .. } => Some(workdir),
         }
     }
 
@@ -65,7 +70,8 @@ impl EffectMeta for FilesEffect {
             | FilesEffect::Work { workdir, .. }
             | FilesEffect::LocalOp { workdir, .. }
             | FilesEffect::Revert { workdir, .. }
-            | FilesEffect::DiscardPaths { workdir, .. } => Some(workdir),
+            | FilesEffect::DiscardPaths { workdir, .. }
+            | FilesEffect::DeletePaths { workdir, .. } => Some(workdir),
             FilesEffect::LoadTracked { .. } => None,
         }
     }

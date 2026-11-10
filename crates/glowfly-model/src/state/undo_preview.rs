@@ -7,7 +7,7 @@ use super::tip::{PREVIEW_ROWS, TipPreview, TipRow, commit_rows, short_sha};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
-use glowfly_core::undo::{Action, ConflictChange, Discarded, HeadPos};
+use glowfly_core::undo::{Action, BatchOp, ConflictChange, Discarded, HeadPos};
 
 #[cfg(test)]
 #[path = "undo_preview_tests.rs"]
@@ -102,20 +102,13 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         Action::DeleteFile { path, .. } => {
             vec![file('D', path), pick(t.tr("undo.preview.undelete").into(), t.tr("undo.preview.delete_file_again").into())]
         }
-        Action::Batch { parts, .. } => {
-            let mut rows: Vec<TipRow> = parts
-                .iter()
-                .take(PREVIEW_ROWS)
-                .filter_map(|p| match p {
-                    Action::Discard { path, .. } => Some(file('M', path)),
-                    Action::DeleteFile { path, .. } => Some(file('D', path)),
-                    _ => None,
-                })
-                .collect();
-            if parts.len() > PREVIEW_ROWS {
-                rows.push(TipRow::Line(t.trn("toolbar.tip.more", parts.len() - PREVIEW_ROWS, &[])));
-            }
-            rows.push(pick(t.tr("undo.preview.restore_discarded").into(), t.tr("undo.preview.discard_files_again").into()));
+        Action::Batch { op, parts } => {
+            let mut rows = batch_files(t, parts);
+            let (back, again) = match op {
+                BatchOp::Discard => (t.tr("undo.preview.restore_discarded"), t.tr("undo.preview.discard_files_again")),
+                BatchOp::Delete => (t.tr("undo.preview.undelete_files"), t.tr("undo.preview.delete_files_again")),
+            };
+            rows.push(pick(back.into(), again.into()));
             rows
         }
         Action::UnstageGone { path, .. } => {
@@ -173,6 +166,24 @@ fn commits(snap: Option<&Snapshot>, oids: &[Oid]) -> Vec<TipRow> {
         Some(s) => commit_rows(s, oids),
         None => oids.iter().map(|o| TipRow::Line(short_sha(*o))).collect(),
     }
+}
+
+/// A batch's files (a discard's 'M', a deleted file's 'D'), the first `PREVIEW_ROWS` of them,
+/// then how many more.
+fn batch_files(t: Lang, parts: &[Action]) -> Vec<TipRow> {
+    let mut rows: Vec<TipRow> = parts
+        .iter()
+        .take(PREVIEW_ROWS)
+        .filter_map(|p| match p {
+            Action::Discard { path, .. } => Some(file('M', path)),
+            Action::DeleteFile { path, .. } => Some(file('D', path)),
+            _ => None,
+        })
+        .collect();
+    if parts.len() > PREVIEW_ROWS {
+        rows.push(TipRow::Line(t.trn("toolbar.tip.more", parts.len() - PREVIEW_ROWS, &[])));
+    }
+    rows
 }
 
 fn file(status: char, path: &str) -> TipRow {

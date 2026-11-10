@@ -185,6 +185,7 @@ mod wip_list;
 mod wip_picks;
 pub(crate) mod work_files;
 mod work_files_delete;
+mod work_files_delete_many;
 mod work_files_discard;
 mod worktree_counts;
 mod worktree_manage;

@@ -223,6 +223,11 @@ pub enum FailedWrite {
         path: String,
         done: usize,
     },
+    /// A multi-file delete that deleted `done` files, then stopped at `path`.
+    DeletePaths {
+        path: String,
+        done: usize,
+    },
 }
 
 impl Msg {

@@ -26,6 +26,7 @@ impl Execute for FilesEffect {
             FilesEffect::LocalOp { workdir, op } => super::git_ops::local_done(&workdir, op),
             FilesEffect::Revert { workdir, req } => super::revert::run(&workdir, req),
             FilesEffect::DiscardPaths { workdir, files, mode } => super::discard_paths::run(&workdir, files, mode, cx.seams.trashers),
+            FilesEffect::DeletePaths { workdir, files, mode } => super::delete_paths::run(&workdir, files, mode, cx.seams.trashers),
         })
     }
 }

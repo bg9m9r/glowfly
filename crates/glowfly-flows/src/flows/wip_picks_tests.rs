@@ -19,7 +19,7 @@ use std::time::Instant;
 /// a.txt and b.txt committed and edited, c.txt untracked (its text names the repository, so
 /// the stand-in bin can tell it apart); a.txt open, then c.txt picked with Ctrl/Cmd (b.txt left
 /// out).
-fn picked_a_and_c(name: &str) -> (AppState, PathBuf) {
+pub(super) fn picked_a_and_c(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     std::fs::write(dir.join("b.txt"), "b\n").unwrap();
     git(&dir, &["add", "b.txt"]);
@@ -34,11 +34,11 @@ fn picked_a_and_c(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn c_text(dir: &Path) -> String {
+pub(super) fn c_text(dir: &Path) -> String {
     format!("untracked {}\n", dir.display())
 }
 
-fn pick(staged: bool, path: &str) -> Msg {
+pub(super) fn pick(staged: bool, path: &str) -> Msg {
     Msg::Repo(RepoMsg::PickWipFile { staged, path: path.into(), how: PickHow::Toggle })
 }
 
@@ -47,17 +47,17 @@ fn wip_key(staged: bool, key: ListKey) -> Msg {
 }
 
 /// `f`'s text with line ends as LF: git's checkout may write CRLF (`core.autocrlf`).
-fn read(dir: &Path, f: &str) -> Option<String> {
+pub(super) fn read(dir: &Path, f: &str) -> Option<String> {
     std::fs::read_to_string(dir.join(f)).ok().map(|t| t.replace("\r\n", "\n"))
 }
 
 /// How many files in the stand-in bin hold `contents`.
-fn in_bin(contents: &str) -> usize {
+pub(super) fn in_bin(contents: &str) -> usize {
     let Ok(dir) = std::fs::read_dir(glowfly_runner::testing::test_bin()) else { return 0 };
     dir.flatten().filter(|e| std::fs::read_to_string(e.path()).is_ok_and(|t| t == contents)).count()
 }
 
-fn listed(st: &AppState, staged: bool) -> Vec<&str> {
+pub(super) fn listed(st: &AppState, staged: bool) -> Vec<&str> {
     let snap = st.snap.as_ref().unwrap();
     let list = if staged { &snap.staged } else { &snap.unstaged };
     list.iter().map(|f| f.path.as_str()).collect()

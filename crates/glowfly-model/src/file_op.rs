@@ -1,5 +1,5 @@
-//! Working-tree file operations (`FilesEffect::Work`, and the rows of a multi-file discard) and
-//! what they report back.
+//! Working-tree file operations (`FilesEffect::Work`, and the rows of a multi-file discard or
+//! delete) and what they report back.
 
 use glowfly_core::repo::{Deleted, Hunk};
 use glowfly_core::settings::Settings;
@@ -54,6 +54,19 @@ impl DeleteMode {
 pub struct DiscardEach {
     pub path: String,
     pub untracked: bool,
+}
+
+/// One picked file of a multi-file delete (`FilesEffect::DeletePaths`): its working copy goes
+/// the way the delete's `DeleteMode` says. `unstage`: it is staged as new or as a staged
+/// rename's new path, so it leaves the index too (`state::files::unstages_on_delete`).
+/// `promise`: the confirmation's Undo covers it (it has changes only the working tree holds),
+/// so a file too large to keep a copy of is refused rather than deleted for good; a staged-only
+/// tracked file's content is in git anyway.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeleteEach {
+    pub path: String,
+    pub unstage: bool,
+    pub promise: bool,
 }
 
 /// A working-tree file operation (`FilesEffect::Work`). Paths are repo-relative.

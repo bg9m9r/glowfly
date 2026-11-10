@@ -15,7 +15,7 @@ use super::seams::{Seams, SeamsKind};
 use super::{Runner, Waker};
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
-use glowfly_model::effect::{Checked, DeleteMode, DiscardEach, Effect, FileOp, SandboxRule, SaveEffect, TrustCheck};
+use glowfly_model::effect::{Checked, DeleteEach, DeleteMode, DiscardEach, Effect, FileOp, SandboxRule, SaveEffect, TrustCheck};
 use glowfly_model::msg::Msg;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
@@ -191,6 +191,15 @@ pub fn discard_paths_refused_for_test(workdir: &Path, files: Vec<DiscardEach>, m
         Err(repo::TrashRefusal::new(repo::TrashProblem::NoTrash, "no bin"))
     }
     super::discard_paths::run(workdir, files, mode, undo::Trashers { system: refuse, home: refuse, ..SEAMS.trashers })
+}
+
+/// `FilesEffect::DeletePaths`'s work with a trash that refuses every file, as for
+/// `refused_for_test`.
+pub fn delete_paths_refused_for_test(workdir: &Path, files: Vec<DeleteEach>, mode: DeleteMode) -> Msg {
+    fn refuse(_: &Path) -> Result<(), repo::TrashRefusal> {
+        Err(repo::TrashRefusal::new(repo::TrashProblem::NoTrash, "no bin"))
+    }
+    super::delete_paths::run(workdir, files, mode, undo::Trashers { system: refuse, home: refuse, ..SEAMS.trashers })
 }
 
 #[cfg(test)]

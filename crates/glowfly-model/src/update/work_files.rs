@@ -86,6 +86,11 @@ pub(super) fn handle(st: &mut AppState, msg: WorkFileMsg, now: Instant, fx: &mut
         WorkFileMsg::DiscardPaths(paths) => super::work_files_discard::ask(st, paths, now, fx),
         WorkFileMsg::DiscardPathsConfirmed { files, mode } => super::work_files_discard::confirmed(st, files, mode, now, fx),
         WorkFileMsg::PathsDiscarded { done, failed, undo } => super::work_files_discard::done(st, done, failed, undo, now, fx),
+        WorkFileMsg::DeletePaths(paths) => super::work_files_delete_many::ask(st, paths, now, fx),
+        WorkFileMsg::DeletePathsConfirmed { files, mode } => super::work_files_delete_many::confirmed(st, files, mode, fx),
+        WorkFileMsg::PathsDeleted { mode, done, no_undo, failed, undo } => {
+            super::work_files_delete_many::done(st, mode, (done, no_undo), failed, undo, now, fx)
+        }
         WorkFileMsg::SetRenameStages(_) => {}
     }
 }
