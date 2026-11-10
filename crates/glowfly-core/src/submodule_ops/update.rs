@@ -56,7 +56,11 @@ pub fn undo_moves_work_tree(action: &Action, redo: bool) -> bool {
         | Action::UnstageGone { .. }
         | Action::Resolve { .. }
         | Action::Conflicts { .. }
-        | Action::Batch { .. } => false,
+        | Action::Batch { .. }
+        | Action::RenameBranch { .. }
+        | Action::RenameRemote { .. }
+        | Action::RemoveRemote { .. }
+        | Action::AddWorktree { .. } => false,
     }
 }
 

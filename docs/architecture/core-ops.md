@@ -94,8 +94,13 @@ source file, update its line here.
 ## Undo and redo (`undo.rs`, `undo/`)
 
 - Undo and redo of Glowfly's own operations.
-- `kinds.rs` recognises their command lines; `action.rs` holds the recorded actions and their labels; `record.rs` the state before and after; `planning.rs` plans the reversal.
+- `kinds.rs` recognises their command lines (`branch -m`, `remote rename` and `remote remove` too); `action.rs` holds the recorded actions; `record.rs` the state before and after; `planning.rs` plans the reversal.
+- `action_words.rs`: how a recorded action is named in tooltips and job labels, and which history rules it follows (`kept_when_failed`, `is_content`, the stash offers).
 - `refs.rs`: branches and tags, created or deleted.
+- `renamed.rs`: branch and remote renames, undone by renaming back (git moves the config, reflog or remote refs back with them); a remote edit that also changed the URLs gets its earlier URLs put back too. Tests in `renamed_tests.rs`.
+- `remote_config.rs`: a remote's config section and the branch links it had, read from the repository's config file and written back with `git config --add`.
+- `remote_removed.rs`: a removed remote put back with its whole section and branch links, then a fetch offered (the app's toast); redo removes it again. Tests in `remote_removed_tests.rs`.
+- `worktree_added.rs`: a worktree made with a new branch, removed only while it holds nothing new (no changed, untracked or ignored file, not locked), its branch deleted while unchanged; redo makes both again. Tests in `worktree_added_tests.rs`.
 - `moved.rs`: merges, pulls, cherry-picks, reverts and rebases.
 - `stash.rs`: stashes, pops, applies and drops; tests in `stash_tests.rs` and `stash_bytes_tests.rs`.
 - `reset.rs`: resets.

@@ -28,6 +28,28 @@ fn add_cmd_forms() {
 }
 
 #[test]
+fn new_branch_matches_add_cmd() {
+    let dir = abs("work/app-worktrees/side");
+    let branch = WorktreeBase::Branch("side".into());
+    let commit = WorktreeBase::Commit(oid());
+    let remote = WorktreeBase::Remote { remote: "origin".into(), branch: "feature".into() };
+    let cases: [(&WorktreeBase, Option<&str>, Option<&str>); 6] = [
+        (&branch, None, None),
+        (&branch, Some("topic"), Some("topic")),
+        (&commit, None, None),
+        (&commit, Some("topic"), Some("topic")),
+        (&remote, None, Some("feature")),
+        (&remote, Some("mine"), Some("mine")),
+    ];
+    for (base, typed, made) in cases {
+        assert_eq!(new_branch(base, typed).as_deref(), made, "{base:?} {typed:?}");
+        let cmd = add_cmd(&dir, base, typed);
+        let b = cmd.iter().position(|a| a == "-b").map(|i| cmd[i + 1].as_str());
+        assert_eq!(b, made, "add_cmd creates the same branch: {cmd:?}");
+    }
+}
+
+#[test]
 fn remote_base_creates_a_tracking_branch() {
     use crate::testutil::{git, with_origin};
     let (work, bare) = with_origin("wt-add-remote");

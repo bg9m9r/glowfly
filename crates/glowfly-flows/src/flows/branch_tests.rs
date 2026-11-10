@@ -117,7 +117,7 @@ fn rename_dialog_and_checks() {
 }
 
 #[test]
-fn rename_end_to_end_moves_tracking_and_invalidates_undo() {
+fn rename_end_to_end_moves_tracking_and_is_recorded() {
     let (mut st, work, bare) = with_origin("br-rename-e2e");
     st.session.undo.record(dummy());
     drive(&mut st, rename("feature", "feature-2"));
@@ -125,8 +125,11 @@ fn rename_end_to_end_moves_tracking_and_invalidates_undo() {
     assert!(!snap.locals.iter().any(|b| b.name == "feature"));
     let b = snap.locals.iter().find(|b| b.name == "feature-2").expect("renamed");
     assert_eq!(b.tracking, Some(Tracking { remote: "origin".into(), merge: "feature".into() }));
-    assert!(st.session.undo.undo.is_empty());
-    assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
+    // Recorded on top of the older entry, which stays: the rename is undone first.
+    assert_eq!(st.session.undo.undo.len(), 2, "{:?}", st.session.undo.undo);
+    let renamed = glowfly_core::undo::Action::RenameBranch { old: "feature".into(), new: "feature-2".into(), remote: None };
+    assert_eq!(st.session.undo.undo.last(), Some(&renamed));
+    assert_eq!(st.session.undo.blocked, None);
     cleanup(&[&work, &bare]);
 }
 

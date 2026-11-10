@@ -53,6 +53,7 @@ pub(super) mod system_a11y_tests;
 pub(super) mod tab_glance_tests;
 pub(super) mod terminal_schemes_tests;
 pub(super) mod themes_tests;
+pub(super) mod undo_rename_tests;
 pub(super) mod updates_errors_tests;
 pub(super) mod wip_picks_actions_tests;
 pub(super) mod wip_picks_delete_tests;

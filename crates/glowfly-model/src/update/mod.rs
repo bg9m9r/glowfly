@@ -179,6 +179,7 @@ pub mod trust;
 mod trust_inherit;
 mod trust_seal;
 pub mod undo;
+mod undo_offers;
 mod updates;
 mod updates_download;
 mod updates_restart;

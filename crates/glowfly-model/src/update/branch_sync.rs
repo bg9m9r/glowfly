@@ -4,8 +4,9 @@
 //! headline says what was done and what is left (`headline`). Try again is offered only when the
 //! rename itself failed (update/job_retry.rs), so neither push runs twice. Delete remote branch:
 //! its dialog names the local branches that track the branch and offers to unset their
-//! upstreams, which happens after the delete, so they stay when it fails. Neither is recorded
-//! for undo, as the plain rename and remote delete aren't.
+//! upstreams, which happens after the delete, so they stay when it fails. The rename is recorded
+//! for undo (only the local half: undo never renames the remote branch back), and stays undoable
+//! when a later push fails; the remote delete isn't recorded.
 
 use super::jobs::{JobSpec, Started, start_job};
 use crate::effect::Effect;
@@ -14,6 +15,7 @@ use crate::state::{AppState, Modal, remote_branch};
 use glowfly_core::branch_ops;
 use glowfly_core::gitflow::failed_step;
 use glowfly_core::repo::BranchInfo;
+use glowfly_core::undo::UndoKind;
 
 /// The job label of a rename that moves the branch on its remote too.
 const RENAME_LABEL: &str = "Rename local and remote branch";
@@ -38,8 +40,9 @@ pub(super) fn rename_with_remote(st: &mut AppState, b: &BranchInfo, new: &str, f
         st.modal = None;
     }
     let cmds = branch_ops::rename_with_remote_cmds(&b.name, new, &plan.remote, &plan.old, plan.tip);
+    let record = Some(UndoKind::RenameBranch { old: b.name.clone(), new: new.to_owned(), remote: Some(plan.remote.clone()) });
     // Also for a job held for the trust prompt; a later job of another label ignores it.
-    if start_job(st, JobSpec::new(RENAME_LABEL.into(), cmds), fx) != Started::No {
+    if start_job(st, JobSpec { record, ..JobSpec::new(RENAME_LABEL.into(), cmds) }, fx) != Started::No {
         st.rename_job = Some(RenameJob { label: RENAME_LABEL.into(), old: b.name.clone(), new: new.to_owned(), plan });
     }
 }

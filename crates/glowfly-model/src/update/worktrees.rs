@@ -13,7 +13,8 @@ use crate::state::trust::InheritKind;
 use crate::state::worktrees::{WorktreeForm, find, open_blocked, recheck, request};
 use crate::state::{AppState, Modal};
 use crate::worktree::{NewWorktree, WorktreeMsg};
-use glowfly_core::worktree_ops::add_cmd;
+use glowfly_core::undo::UndoKind;
+use glowfly_core::worktree_ops::{add_cmd, new_branch};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -120,8 +121,11 @@ fn folder_checked(st: &mut AppState, req: NewWorktree, result: Result<(), String
         return;
     }
     let cmd = add_cmd(&req.folder, &req.base, req.branch.as_deref());
+    // A worktree made with a new branch is recorded for undo, in this tab's history.
+    let made = new_branch(&req.base, req.branch.as_deref());
     let spec = JobSpec {
         then_open: req.open.then(|| (req.folder.clone(), crate::state::trust::Created::Worktree)),
+        record: made.map(|branch| UndoKind::AddWorktree { path: req.folder.clone(), branch }),
         ..JobSpec::new("Create worktree".into(), vec![cmd])
     };
     if ops::start_job(st, spec, fx) == ops::Started::Now {
