@@ -310,8 +310,8 @@ fn path_commands_of(paths: &BTreeSet<String>, in_head: &BTreeMap<String, Entry>,
 /// Drops the refs of kept aborts older than `KEEP_DAYS`, except those of the commits in `keep`.
 /// A failure only leaves them for later.
 fn prune_old(repo: &Repository, keep: &[Oid]) {
-    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64);
-    let cutoff = now - KEEP_DAYS * 86_400;
+    // The clock that dated the records: pinned in a pinned test fixture, else the real one.
+    let cutoff = crate::pinned_dates::now(repo.path()) - KEEP_DAYS * 86_400;
     let Ok(refs) = repo.references_glob(&format!("{ABORT_REF_PREFIX}*")) else { return };
     for mut r in refs.flatten() {
         let Ok(c) = r.peel_to_commit() else { continue };
