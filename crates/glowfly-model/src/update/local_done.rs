@@ -43,7 +43,10 @@ pub(super) fn partial_text(t: glowfly_core::i18n::Lang, error: &WriteFailed) -> 
 /// toast offers Undo).
 fn settle(st: &mut AppState, failed: bool, recorded: bool, now: Instant, fx: &mut Vec<Effect>) {
     let mut saved = None;
-    if let Some(c) = st.session.conflict.view.as_mut() {
+    // A conflict change that still waits for the trust prompt hasn't run: this is the result
+    // of another operation, and the view stays marked for the change.
+    let waits = super::trust_waiting::conflict_change_waits(st);
+    if let Some(c) = st.session.conflict.view.as_mut().filter(|_| !waits) {
         c.saving = false;
         c.step_on_resolve &= !failed;
         // What Save with markers wrote is now what the file holds.

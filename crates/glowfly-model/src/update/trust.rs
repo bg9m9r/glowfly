@@ -12,7 +12,7 @@ use crate::effect::{Effect, LoadKind, Sealed, WaitingKind};
 use crate::msg::TrustMsg;
 use crate::state::push_pr::PrStart;
 use crate::state::tabs::is_repo_at;
-use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, Waiting, WaitingFor, prompt_for, record, record_trusted, standing};
+use crate::state::trust::{Created, HeldJob, Standing, TrustPrompt, WaitingFor, prompt_for, record, record_trusted, standing};
 use crate::state::{AppState, Modal, RunningJob};
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::RepoTrust;
@@ -221,21 +221,10 @@ pub(super) fn hold(st: &mut AppState, job: RunningJob, effect: Effect, mut promp
 /// Something the user asked for while git is held in the active repository (Open in external
 /// terminal, a conflict check, a merge preview): it waits for the trust prompt, which asks on
 /// the terminal's behalf or names `label`; trusting starts it (`released`) and Cancel drops it.
-/// No prompt can open over another dialog, an open trust prompt included (it names what
-/// already waits for it, and its answer runs only that): then nothing waits.
+/// No prompt opens over another dialog, and a prompt that already names something takes
+/// nothing more: then nothing waits (update/trust_waiting.rs).
 pub(super) fn hold_waiting(st: &mut AppState, what: WaitingFor, label: Option<String>) {
-    let Some(real) = st.snap.as_ref().map(|s| s.real_workdir.clone()) else { return };
-    if st.modal.is_some() {
-        return;
-    }
-    let terminal = matches!(what, WaitingFor::Terminal(_));
-    ask(st, &real, terminal);
-    let Some(Modal::Trust(p)) = &mut st.modal else { return };
-    if label.is_some() {
-        p.held.clone_from(&label);
-    }
-    tracing::debug!("holding {} until {} is trusted", p.held.as_deref().unwrap_or("the external terminal"), real.display());
-    st.trust.waiting = Some(Waiting { real, what, label });
+    let _ = super::trust_waiting::hold(st, what, label);
 }
 
 /// The trust prompt was closed without a decision: the held job, if any, is dropped. Returns
@@ -338,9 +327,7 @@ pub(super) fn released(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     super::terminal::release_held(st, fx);
-    if let Some(w) = st.trust.waiting.take()
-        && st.snap.as_ref().is_some_and(|s| same_spelling(&s.real_workdir, &w.real))
-    {
+    if let Some(w) = super::trust_waiting::take_for_active(st) {
         let cwd = w.real.clone();
         match w.what {
             WaitingFor::Terminal(effect) => {
