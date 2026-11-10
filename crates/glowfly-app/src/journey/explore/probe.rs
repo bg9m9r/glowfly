@@ -116,7 +116,14 @@ pub(super) fn took_effect(action: &Action, before: &Reading, after: &Reading) ->
                     && (head_moved || before.conflicted != after.conflicted))
         }
         Abort => after.state == RepositoryState::Clean,
-        Undo | Redo => head_moved || before.branches != after.branches,
+        Undo | Redo => {
+            head_moved
+                || before.branches != after.branches
+                || before.stashes != after.stashes
+                || before.staged != after.staged
+                || before.changed != after.changed
+                || before.conflicted != after.conflicted
+        }
     })
 }
 
