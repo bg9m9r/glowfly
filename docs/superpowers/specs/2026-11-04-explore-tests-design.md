@@ -152,11 +152,12 @@ tab actions have something to switch to.
    and the refs it touched match their values from before that action, and the working tree
    content in the shadow is unchanged. The step that finishes a merge or rebase that stopped on
    conflicts (Continue, or committing the merge) records the whole operation, so its Undo
-   returns to before the merge or rebase began, not to the operation in progress. "Undoable"
-   means the action added exactly one entry to the app's undo history: one Undo reverses one
-   entry, so after a step that added two (a checkout that stashed the changes and put them back
-   records the put-back as well) the rule isn't checked, and nor is it after an operation during
-   which other undoable actions were recorded.
+   returns to before the merge or rebase began, not to the operation in progress. One Undo
+   reverses one entry of the app's undo history, so after a checkout (or other operation) that
+   stashed the changes and put them back, which records the put-back as an entry of its own, the
+   rule isn't checked: Undo then reverses only the put-back. Any other step that records more than
+   one entry is still held to it. Nor is it checked after an operation during which other
+   undoable actions were recorded.
 6. **Errors are reported, never silent.** Each action's probe says whether it took effect. If
    it did not, the app must have shown an error toast or written an error log line (the harness
    keeps both). If it did, no error toast may claim it failed. A clearly worded refusal is
@@ -212,7 +213,7 @@ Layer 1 must leave room for this:
   Fixed seeds keep it deterministic: a failure means the code changed.
 - **Longer runs:** an `#[ignore]` test that reads the seed count, step count and starting seed
   from environment variables, for local soak runs (`cargo test -p glowfly explore_soak --
-  --ignored`, with the variables documented in CLAUDE.md's Commands section).
+  --ignored`, with the variables documented in CONTRIBUTING.md and `explore/cases/README.md`).
 - **Scheduled run in GitHub Actions:** a nightly job running the soak test with fresh seeds,
   which opens an issue (in Inbox) with the shrunk case when a rule breaks. Adding a workflow is
   a CI change, so this part waits for the owner's approval of the workflow file; layer 1 is
@@ -220,7 +221,7 @@ Layer 1 must leave room for this:
 
 ## Constraints
 
-- Follows CLAUDE.md and `docs/PLATFORMS.md`: runs on Windows, Linux and macOS CI; paths through
+- Follows CONTRIBUTING.md and `docs/PLATFORMS.md`: runs on Windows, Linux and macOS CI; paths through
   the platform helpers, temp folders from `glowfly_core::paths::temp_dir()`; no Windows-only
   paths or case-insensitivity assumptions.
 - No I/O in views. Product code changes only for two reasons: a real bug a rule found (its fix

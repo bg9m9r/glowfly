@@ -264,7 +264,9 @@ impl Journey {
             find::centre(&node).expect("a widget on screen has bounds")
         };
         // The pointer rests on the widget for two frames before the press, as a moving mouse
-        // would: with one, a row's first right-click after a toolbar click opened no menu.
+        // would: with one, a row's first right-click after a toolbar click opened no menu. Likely
+        // because egui hit-tests against the previous frame's rects, and the row had only just
+        // appeared there (a stash row right after the toolbar's Stash). Keep both frames.
         self.step();
         self.step();
         for pressed in [true, false] {

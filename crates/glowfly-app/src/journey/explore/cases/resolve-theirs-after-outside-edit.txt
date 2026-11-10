@@ -1,0 +1,7 @@
+# Resolving a conflicted file the user rewrote outside the app (taking theirs) lost the rewrite:
+# it was kept only by the in-memory undo history. Fixed by #821, which keeps the overwritten
+# copy as a kept record. Found by an exploration session (seed 2, rule no-lost-work).
+seed 2
+rebase "topic"
+outside write "shared.txt" +1
+resolve-theirs "shared.txt"

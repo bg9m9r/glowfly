@@ -50,6 +50,18 @@ fn screen_disagrees_after_unrefreshed_outside_checkout() {
 }
 
 #[test]
+fn screen_disagrees_about_a_branch_deleted_outside() {
+    let (scene, mut j) = start("deleted");
+    assert_eq!(screen_agrees(&j, &probe::read(&scene.app)), Ok(()));
+    assert!(git_try(&scene.app, &["branch", "-q", "-D", "side"]));
+    let r = probe::read(&scene.app);
+    let err = screen_agrees(&j, &r).unwrap_err();
+    assert!(err.contains("listed but gone [\"side\"]"), "{err}");
+    j.refresh();
+    assert_eq!(screen_agrees(&j, &r), Ok(()));
+}
+
+#[test]
 fn undo_mismatch_fires() {
     let scene = scene::build("undo", 1);
     let a = probe::read(&scene.app);

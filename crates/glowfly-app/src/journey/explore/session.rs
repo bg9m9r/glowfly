@@ -150,20 +150,23 @@ pub(super) fn run(tag: &str, seed: u64, plan: Plan, checks: Checks) -> Outcome {
     };
     let mut state = String::new();
     if let Some(at) = walk.stalled {
-        state.push_str(&format!(
-            "the walk ended early, before step {at}: a dialog that neither its buttons nor Escape closed
-"
-        ));
+        state.push_str(&format!("the walk ended early, before step {at}: a dialog that neither its buttons nor Escape closed\n"));
     }
     if !walk.escapes.is_empty() {
-        state.push_str(&format!(
-            "Escape closed a dialog with no usable button before steps {:?}
-",
-            walk.escapes
-        ));
+        state.push_str(&format!("Escape closed a dialog with no usable button before steps {:?}\n", walk.escapes));
     }
     state.push_str(&state_of(walk.dir(&walk.active)));
     Outcome { seed, steps: walk.steps, broke, state }
+}
+
+/// An auto-stash's put-back: the pop that brings the changes back after the operation.
+fn is_put_back(a: &glowfly_core::undo::Action) -> bool {
+    matches!(a, glowfly_core::undo::Action::StashApply { pop: true, message, .. } if glowfly_core::stash_ops::is_auto_stash(message))
+}
+
+/// The actions of a session, in order.
+pub(super) fn actions(o: &Outcome) -> Vec<Action> {
+    o.steps.iter().map(|s| s.action.clone()).collect()
 }
 
 fn panic_text(payload: &(dyn std::any::Any + Send)) -> String {
@@ -219,7 +222,7 @@ impl Walk<'_> {
             let action = match &replay {
                 Some(list) => list[at].clone(),
                 None => {
-                    let options = applicable(&j, s, &self.active, &before, &mut self.rng, &mut self.shadow);
+                    let options = applicable(&j, s, &self.active, &before, &mut self.rng);
                     match self.rng.weighted(&options) {
                         Some(action) => action.clone(),
                         None => continue,
@@ -244,7 +247,7 @@ impl Walk<'_> {
             j.settle();
             let r = probe::read(self.dir(&active_tab(j)));
             // With a dialog open, `applicable` lists only its buttons and draws nothing.
-            if !j.modal_open() || !applicable(j, self.scene, &self.active, &r, &mut self.rng, &mut self.shadow).is_empty() {
+            if !j.modal_open() || !applicable(j, self.scene, &self.active, &r, &mut self.rng).is_empty() {
                 return true;
             }
         }
@@ -304,10 +307,12 @@ impl Walk<'_> {
         }
         if performed {
             let in_app = !matches!(action, Action::Outside(_)) && self.active == tab;
-            // One Undo reverses one entry. A step that recorded two (a checkout that stashed and
-            // put the changes back records the put-back too) isn't undone by one Undo.
+            // One Undo reverses one entry. A checkout or other operation that stashed the changes
+            // and put them back records the put-back too, and one Undo reverses only that. Any
+            // other step that recorded more is still held to rule 5.
             let entries = if in_app { j.state().session.undo.recorded.saturating_sub(recorded) } else { 0 };
-            let undoable = in_app && entries == 1;
+            let put_back = entries == 2 && j.state().session.undo.undo.last().is_some_and(is_put_back);
+            let undoable = in_app && entries > 0 && !put_back;
             // The operation's own steps are part of it; anything else recorded during it is not.
             let what = subject.as_ref().map_or(&action, |s| &s.action);
             let own = matches!(what, Action::ResolveOurs(_) | Action::ResolveTheirs(_) | Action::Discard(_));
@@ -342,8 +347,7 @@ pub(super) fn report(o: &Outcome, shrunk: &[Action]) -> String {
         return format!("seed {}: no rule broke in {} steps\n{}", o.seed, o.steps.len(), o.state);
     };
     format!(
-        "exploration broke rule {} at step {} (seed {}):\n{}\n\nthe session, shrunk from {} to {} actions; save it as \
-         src/journey/explore/cases/<name>.txt:\n{}\nrepository state at the end of the session:\n{}\n",
+        "exploration broke rule {} at step {} (seed {}):\n{}\n\nthe session, shrunk from {} to {} actions; save it as src/journey/explore/cases/<name>.txt:\n{}\nrepository state at the end of the session:\n{}\n",
         b.rule.name(),
         b.step,
         o.seed,
