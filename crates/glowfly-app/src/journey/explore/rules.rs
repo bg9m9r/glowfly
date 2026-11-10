@@ -79,18 +79,20 @@ pub(super) fn screen_agrees(j: &Journey, r: &Reading) -> Result<(), String> {
             wrong.push(format!("the toolbar doesn't say {caption:?}"));
         }
     }
-    for name in r.branches.keys() {
-        let head = format!("{name}, checked out");
-        if !sidebar.iter().any(|l| l == name || *l == head) {
-            wrong.push(format!("the sidebar doesn't list branch {name:?}"));
+    // The sidebar draws only the rows in view, so with many branches some are off screen: then
+    // only the checked-out branch (checked above) is held to be there.
+    if r.branches.len() <= 8 {
+        for name in r.branches.keys() {
+            let head = format!("{name}, checked out");
+            if !sidebar.iter().any(|l| l == name || *l == head) {
+                wrong.push(format!("the sidebar doesn't list branch {name:?}"));
+            }
         }
     }
     let st = j.state();
-    if r.state == git2::RepositoryState::Merge || !r.conflicted.is_empty() {
-        let wip = st.session.selection == Selection::Wip;
-        if wip && !j.shown("View conflicts", false, Region::Details) {
-            wrong.push("the working copy has conflicts but Details has no \"View conflicts\"".to_owned());
-        }
+    // Details draws "View conflicts" only while a file is still conflicted.
+    if !r.conflicted.is_empty() && st.session.selection == Selection::Wip && !j.shown("View conflicts", false, Region::Details) {
+        wrong.push("the working copy has conflicts but Details has no \"View conflicts\"".to_owned());
     }
     if let Some(snap) = &st.snap {
         let staged: BTreeSet<String> = snap.staged.iter().map(|f| f.path.clone()).collect();
