@@ -114,7 +114,8 @@ fn a_status_read_that_fails_its_check_reads_without_git() {
 fn checking_decided_folders_reports_which_are_there() {
     let present = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-trust-present-{}", std::process::id()));
     std::fs::create_dir_all(&present).unwrap();
-    let gone = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-trust-gone-{}", std::process::id()));
+    // Not `repo("gone")`'s folder: that test makes and removes it while this one runs.
+    let gone = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-trust-absent-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&gone);
     let Msg::Trust(TrustMsg::FoldersChecked(checks)) = run(TrustEffect::CheckFolders(vec![present.clone(), gone.clone()])) else {
         panic!("expected FoldersChecked")
