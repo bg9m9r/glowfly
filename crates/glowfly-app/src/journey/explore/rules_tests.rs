@@ -129,3 +129,17 @@ fn screen_disagrees_about_files_changed_outside() {
     j.refresh();
     assert_eq!(screen_agrees(&j, &r), Ok(()));
 }
+
+#[test]
+fn the_conflict_view_stands_in_for_details() {
+    use super::super::super::find::{Pick, Region};
+    let (scene, mut j) = start("conflict-view");
+    assert!(!git_try(&scene.app, &["merge", "topic"]), "topic conflicts with the head");
+    j.refresh();
+    j.select_wip();
+    j.click("View conflicts", Region::Details, Pick::First);
+    let r = probe::read(&scene.app);
+    assert!(!r.conflicted.is_empty());
+    assert!(!j.shown("View conflicts", false, Region::Details), "the conflict view hides Details");
+    assert_eq!(screen_agrees(&j, &r), Ok(()));
+}
