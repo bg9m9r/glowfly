@@ -118,4 +118,23 @@ impl Journey {
     pub fn usable(&self, label: &str, exact: bool, region: Region) -> bool {
         find::find(&self.h, label, exact, region, Pick::First).is_some_and(|n| !n.is_disabled())
     }
+
+    /// Clicks the enabled widget like `click_matching`, or returns false when it isn't shown or is
+    /// disabled; never panics.
+    pub fn try_click(&mut self, label: &str, exact: bool, region: Region, pick: Pick<'_>) -> bool {
+        if find::find(&self.h, label, exact, region, pick).is_none_or(|n| n.is_disabled()) {
+            return false;
+        }
+        self.click_matching(label, exact, region, pick);
+        true
+    }
+
+    /// Types `text` into the text field named `name`, or returns false when there is none.
+    pub fn try_type(&mut self, name: &str, text: &str) -> bool {
+        if find::field(&self.h, name).is_none() {
+            return false;
+        }
+        self.type_into(name, text);
+        true
+    }
 }
