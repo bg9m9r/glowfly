@@ -15,6 +15,9 @@ pub(super) struct Reading {
     pub head_parents: Vec<Oid>,
     pub branch: Option<String>,
     pub branches: BTreeMap<String, Oid>,
+    /// The local branches whose tip the head already has (itself or an ancestor): merging one, or
+    /// rebasing onto it, has nothing to do.
+    pub contained: BTreeSet<String>,
     pub stashes: usize,
     pub state: RepositoryState,
     pub conflicted: BTreeSet<String>,
@@ -42,6 +45,11 @@ pub(super) fn read(repo: &Path) -> Reading {
             branches.insert(name.to_owned(), id);
         }
     }
+    let contained = branches
+        .iter()
+        .filter(|(_, tip)| head.is_some_and(|h| h == **tip || r.graph_descendant_of(h, **tip).unwrap_or(false)))
+        .map(|(name, _)| name.clone())
+        .collect();
     let stashes = r.reflog("refs/stash").map(|l| l.len()).unwrap_or(0);
     let conflicted: BTreeSet<String> = r
         .index()
@@ -74,7 +82,7 @@ pub(super) fn read(repo: &Path) -> Reading {
             }
         }
     }
-    Reading { head, head_summary, head_parents, branch, branches, stashes, state: r.state(), conflicted, changed, staged }
+    Reading { head, head_summary, head_parents, branch, branches, contained, stashes, state: r.state(), conflicted, changed, staged }
 }
 
 fn mid_merge_or_rebase(r: &Reading) -> bool {
@@ -84,6 +92,8 @@ fn mid_merge_or_rebase(r: &Reading) -> bool {
 
 /// Whether `action` took effect, from the readings around it. None for actions with nothing to
 /// probe (SelectWip, Refresh, SwitchTab, Confirm "Cancel", and what the explorer did itself).
+///
+/// A merge of, or a rebase onto, a branch the head already has has nothing to probe either.
 ///
 /// Continue can only be told from the readings as: the repository is clean, or it is still in a
 /// rebase and the head moved or the conflicted set changed (the next step's conflict is shown).
@@ -99,6 +109,8 @@ pub(super) fn took_effect(action: &Action, before: &Reading, after: &Reading) ->
         CreateBranch(n) => after.branches.contains_key(n),
         Checkout(n) => after.branch.as_deref() == Some(n.as_str()),
         DeleteBranch(n) => !after.branches.contains_key(n),
+        // Git says "Already up to date" and nothing changes, which is right.
+        Merge(b) | Rebase(b) if before.contained.contains(b) => return None,
         Merge(_) | Rebase(_) => head_moved || (!mid_merge_or_rebase(before) && mid_merge_or_rebase(after)),
         Stash => after.stashes == before.stashes + 1,
         Unstash => {
@@ -118,6 +130,8 @@ pub(super) fn took_effect(action: &Action, before: &Reading, after: &Reading) ->
         Abort => after.state == RepositoryState::Clean,
         Undo | Redo => {
             head_moved
+                || before.branch != after.branch
+                || before.state != after.state
                 || before.branches != after.branches
                 || before.stashes != after.stashes
                 || before.staged != after.staged
