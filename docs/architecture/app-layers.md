@@ -398,3 +398,5 @@ source file, update its line here. Features that span every layer are in
 - `journey/explore/perform.rs`: performs one action through the app's widgets (a missing or disabled one is `Skipped`, never a panic); `perform_tests.rs` tests it.
 - `journey/explore/perform_outside.rs`: the outside actions: files written, appended, created and deleted (retried once), and git on the command line.
 - `journey/explore/rules.rs`: the six always-true rules (no crash, sound, no lost work, screen agrees, undo returns, errors reported); `rules_tests.rs` tests each.
+- `journey/explore/session.rs`: one session, random or replayed: the scene and app, each step performed and checked by the rules, a panic caught as no-crash; the case text (`case_text`, `parse_case`) and the failure report; `session_tests.rs` tests it.
+- `journey/explore/shrink.rs`: shrinks a failing action list (chunks removed, then shorter text and fewer lines) within a deadline; `shrink_tests.rs` tests it.

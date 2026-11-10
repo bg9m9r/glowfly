@@ -1,5 +1,5 @@
-//! Exploration tests: seeded random sessions on the whole-app journey harness. This is the pure
-//! core they share; the driver, the checks and the tests that run sessions come later.
+//! Exploration tests: seeded random sessions on the whole-app journey harness. These are the
+//! pieces and the session driver; the tests that run sessions on every build come later.
 //!
 //! - `rng`: the seeded generator (splitmix64).
 //! - `action`: the action vocabulary and its one-line case text.
@@ -10,6 +10,9 @@
 //! - `probe`: whether a step's action took effect, from readings of the repository around it.
 //! - `rules`: the six invariants every step must keep.
 //! - `perform`: doing one action, through the app's widgets or on disk (`perform_outside`).
+//! - `session`: a whole session (random or replayed) with the rules after each step, its case
+//!   text and report.
+//! - `shrink`: shrinking a failing session to the shortest action list that still fails.
 
 mod action;
 mod choose;
@@ -20,4 +23,6 @@ mod reach;
 mod rng;
 mod rules;
 mod scene;
+mod session;
 mod shadow;
+mod shrink;

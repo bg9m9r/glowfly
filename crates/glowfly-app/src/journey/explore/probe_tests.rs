@@ -179,3 +179,34 @@ fn unstage_all_has_nothing_to_probe_when_nothing_was_staged() {
     let r = read(&dir);
     assert_eq!(took_effect(&Action::UnstageAll, &r, &r), None);
 }
+
+#[test]
+fn merging_a_branch_the_head_has_has_nothing_to_probe() {
+    let (_fx, dir) = repo("contained");
+    git(&dir, &["branch", "same"]);
+    git(&dir, &["branch", "behind"]);
+    commit_files(&dir, &[("a.txt", "ahead\n")], "ahead");
+    git(&dir, &["branch", "-f", "behind", "HEAD~1"]);
+    git(&dir, &["checkout", "-q", "-b", "later"]);
+    commit_files(&dir, &[("a.txt", "later\n")], "later");
+    git(&dir, &["checkout", "-q", "main"]);
+    let r = read(&dir);
+    assert_eq!(r.contained.iter().map(String::as_str).collect::<Vec<_>>(), ["behind", "main", "same"]);
+    for b in ["same", "behind"] {
+        assert_eq!(took_effect(&Action::Merge(b.into()), &r, &r), None, "{b}");
+        assert_eq!(took_effect(&Action::Rebase(b.into()), &r, &r), None, "{b}");
+    }
+    assert_eq!(took_effect(&Action::Merge("later".into()), &r, &r), Some(false));
+}
+
+#[test]
+fn undoing_a_checkout_between_branches_at_one_commit_is_an_effect() {
+    let (_fx, dir) = repo("undo-checkout");
+    git(&dir, &["branch", "twin"]);
+    let before = read(&dir);
+    git(&dir, &["checkout", "-q", "twin"]);
+    let after = read(&dir);
+    assert_eq!(before.head, after.head);
+    assert_eq!(took_effect(&Action::Undo, &before, &after), Some(true));
+    assert_eq!(took_effect(&Action::Redo, &after, &after), Some(false));
+}

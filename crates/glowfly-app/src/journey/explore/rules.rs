@@ -90,8 +90,10 @@ pub(super) fn screen_agrees(j: &Journey, r: &Reading) -> Result<(), String> {
         }
     }
     let st = j.state();
-    // Details draws "View conflicts" only while a file is still conflicted.
-    if !r.conflicted.is_empty() && st.session.selection == Selection::Wip && !j.shown("View conflicts", false, Region::Details) {
+    // Details draws "View conflicts" only while a file is still conflicted, and the conflict view,
+    // once open, takes the Details panel's place.
+    let details_shown = st.session.selection == Selection::Wip && st.session.conflict.view.is_none();
+    if !r.conflicted.is_empty() && details_shown && !j.shown("View conflicts", false, Region::Details) {
         wrong.push("the working copy has conflicts but Details has no \"View conflicts\"".to_owned());
     }
     if let Some(snap) = &st.snap {
