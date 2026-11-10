@@ -69,6 +69,8 @@ pub fn remote(t: Lang, f: &RemoteFailure) -> String {
         RemoteFailure::Unreadable => t.tr("git_errors.remote.unreadable").to_owned(),
         RemoteFailure::Certificate { host: Some(host) } => t.trf("git_errors.remote.certificate_host", &[("host", host)]),
         RemoteFailure::Certificate { host: None } => t.tr("git_errors.remote.certificate").to_owned(),
+        RemoteFailure::Revocation { host: Some(host) } => t.trf("git_errors.remote.revocation_host", &[("host", host)]),
+        RemoteFailure::Revocation { host: None } => t.tr("git_errors.remote.revocation").to_owned(),
     }
 }
 
@@ -121,6 +123,18 @@ mod tests {
         assert!(remote(EN, &RemoteFailure::NotFound).starts_with("The remote repository wasn't found."));
         assert!(remote(EN, &RemoteFailure::NoAccess).starts_with("Your account can't access the remote repository."));
         assert!(remote(EN, &RemoteFailure::Unreadable).starts_with("Couldn't read from the remote repository."));
+        let revoked = remote(EN, &RemoteFailure::Revocation { host: Some("git.corp.example".into()) });
+        assert!(
+            revoked.starts_with("Windows couldn't finish checking whether the certificate of git.corp.example was revoked"),
+            "{revoked}"
+        );
+        for t in [EN, Lang::De, Lang::Es] {
+            let cert = remote(t, &RemoteFailure::Certificate { host: None });
+            assert!(cert.contains("http.schannelUseSSLCAInfo"), "{cert}");
+            let unnamed = remote(t, &RemoteFailure::Revocation { host: None });
+            let named = remote(t, &RemoteFailure::Revocation { host: Some("h.example".into()) });
+            assert!(named.contains("h.example") && !unnamed.contains("h.example") && unnamed != named, "{unnamed} / {named}");
+        }
     }
 
     #[test]

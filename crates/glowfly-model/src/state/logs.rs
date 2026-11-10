@@ -22,7 +22,7 @@ use std::time::Instant;
 pub const LOG_LIMIT: usize = 500;
 
 /// The most fixes kept for failed runs; the oldest go first.
-const FIX_LIMIT: usize = 20;
+pub(crate) const FIX_LIMIT: usize = 20;
 
 /// When an entry from an earlier session was written (Unix seconds).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -136,6 +136,9 @@ pub struct LogsState {
     /// A second fix beside a run's fix (Try again beside Delete lock file), from the panel or
     /// the toast's second button (a `LogsMsg::AltFix` proxy). Running either drops both.
     pub alt_fixes: Vec<(EntryId, ToastAction)>,
+    /// The TLS settings read for failed certificate or revocation runs, newest last, at most
+    /// `FIX_LIMIT` (state/tls_help.rs).
+    pub tls: Vec<(EntryId, super::tls_help::TlsNote)>,
     /// When the active job started running (stamped at the end of `update`,
     /// update/logs_runs.rs).
     pub job_started: Option<Instant>,

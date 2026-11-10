@@ -278,6 +278,7 @@ mod tag_remote_tests;
 mod tag_tests;
 mod terminal;
 mod themes_tests;
+mod tls_fix_tests;
 mod toast_hold_tests;
 mod tool_compare_tests;
 mod tool_git_tests;

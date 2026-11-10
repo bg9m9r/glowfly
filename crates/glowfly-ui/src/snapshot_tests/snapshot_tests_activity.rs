@@ -1,5 +1,6 @@
 //! The activity tab: runs with their result marks, summaries, durations and times, a routine
-//! group of auto-fetches, a failed run opened with its cause, fix, Copy and output, and notes.
+//! group of auto-fetches, a failed run opened with its cause, fix, Copy and output, a certificate
+//! failure's TLS settings, and notes.
 
 use super::snapshot_tests::{NOW, harness_sized, settings};
 use crate::snapshot_check::CheckSnapshot;
@@ -85,6 +86,34 @@ fn activity_routine_open() {
     h.get_by_label("Auto-fetch, done, Ran 5 times").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::Fold(id)) if *id == first)), "the group folds by its first run");
+}
+
+/// A failed Fetch whose certificate git couldn't verify, opened with the settings git used.
+#[test]
+fn activity_certificate_settings() {
+    use glowfly_core::tls_config::{Origin, Scope, Setting, TlsFailure, TlsSettings};
+    use glowfly_model::state::tls_help::{TlsNote, keep};
+    let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
+    st.view.show_log = true;
+    let output = "$ git fetch
+fatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: unable to get local issuer certificate";
+    let cause = glowfly_model::state::error_words::explained(st.settings.lang(), output).expect("a certificate failure");
+    let fetch = run(false, "Fetch", &cause, Some(420), 1, output);
+    let id = fetch.id;
+    st.log = vec![fetch];
+    st.logs.open.insert(id);
+    let at = |value: &str, scope: Scope, path: &str| {
+        Some(Setting { value: value.into(), origin: Origin::File { scope: Some(scope), path: path.into() }, url: None })
+    };
+    let settings = TlsSettings {
+        backend: at("schannel", Scope::System, "/etc/gitconfig"),
+        ca_info: at("/home/ada/certs/corp.pem", Scope::Global, "/home/ada/.gitconfig"),
+        ..TlsSettings::default()
+    };
+    keep(&mut st.logs, id, TlsNote { failure: TlsFailure::Certificate, settings: Ok(settings) });
+    let mut h = tall(st, true);
+    h.check_snapshot("activity_certificate_settings");
+    h.get_by_label("Settings Git used for this connection");
 }
 
 #[test]

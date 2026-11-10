@@ -108,6 +108,7 @@ mod terminal_out;
 #[doc(hidden)]
 pub mod testing;
 mod themes;
+mod tls;
 mod tools;
 mod trust;
 mod trust_gate;

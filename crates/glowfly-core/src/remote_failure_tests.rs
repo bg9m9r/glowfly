@@ -1,4 +1,4 @@
-use super::{RemoteFailure, read};
+use super::{RemoteFailure, read, transport_url};
 
 const TAIL: &str =
     "fatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.";
@@ -68,9 +68,41 @@ fn certificates_are_not_unreachable_hosts() {
     let corp =
         "fatal: unable to access 'https://git.corp.example:8443/app.git/': SSL certificate problem: unable to get local issuer certificate";
     assert_eq!(read(corp), Some(RemoteFailure::Certificate { host: Some("git.corp.example".into()) }));
-    assert_eq!(read("x509: certificate signed by unknown authority"), Some(RemoteFailure::Certificate { host: None }));
+    // Only on a transport line: a bare Go error could be any helper's.
+    assert_eq!(read("x509: certificate signed by unknown authority"), None);
+    let lfs = "batch request: Post \"https://h.example/r.git/info/lfs/objects/batch\": x509: certificate signed by unknown authority";
+    assert_eq!(read(lfs), Some(RemoteFailure::Certificate { host: None }));
     assert_eq!(
         read("fatal: unable to access 'https://h/': Couldn't connect to server"),
         Some(RemoteFailure::Unreachable { host: Some("h".into()) })
     );
+}
+
+#[test]
+fn revocation_comes_before_certificate() {
+    let both = "fatal: unable to access 'https://h.example/r.git/': schannel: CRYPT_E_REVOCATION_OFFLINE (0x80092013) and SEC_E_UNTRUSTED_ROOT (0x80090325)";
+    assert_eq!(read(both), Some(RemoteFailure::Certificate { host: Some("h.example".into()) }), "an untrusted root stays a certificate");
+    let offline = "fatal: unable to access 'https://h.example/r.git/': schannel: next InitializeSecurityContext failed: CRYPT_E_REVOCATION_OFFLINE (0x80092013)";
+    assert_eq!(read(offline), Some(RemoteFailure::Revocation { host: Some("h.example".into()) }));
+}
+
+#[test]
+fn transport_url_has_no_credentials() {
+    let at = |url: &str| format!("fatal: unable to access '{url}': SSL certificate problem: unable to get local issuer certificate");
+    assert_eq!(transport_url(&at("https://ada:tok@h.example:8443/r.git/")).as_deref(), Some("https://h.example:8443/r.git/"));
+    assert_eq!(transport_url(&at("https://***@h.example/r.git/")).as_deref(), Some("https://h.example/r.git/"));
+    assert_eq!(
+        transport_url(&at("https://h.example/a@b/r.git/")).as_deref(),
+        Some("https://h.example/a@b/r.git/"),
+        "an @ in the path stays"
+    );
+    let lfs = "batch request: Post \"https://bob@h.example/r.git/info/lfs/objects/batch\": x509: certificate signed by unknown authority";
+    assert_eq!(transport_url(lfs).as_deref(), Some("https://h.example/r.git/info/lfs/objects/batch"));
+    let ssh = format!(
+        "ssh: connect to host github.com port 22: Connection timed out
+{TAIL}"
+    );
+    assert_eq!(transport_url(&ssh), None);
+    // A hook's line isn't git's transport.
+    assert_eq!(transport_url("remote: fatal: unable to access 'https://h.example/r.git/': x"), None);
 }

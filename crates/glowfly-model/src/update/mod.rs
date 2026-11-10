@@ -170,6 +170,7 @@ mod tag_delete;
 mod tags;
 mod terminal;
 mod themes;
+mod tls_fix;
 mod toast_log;
 mod tool_compare;
 mod tool_git;

@@ -1,0 +1,39 @@
+window 1400x1000
+TabList
+  Tab "New tab" [selected]
+Button "Close tab New tab"
+Button "New tab"
+Button "Repository: Open…"
+Button "Hide panel"
+Button "More"
+Button "Open folder"
+Button "Clear"
+Button "Activity" [on]
+Button "Errors" [off]
+Button "Performance" [off]
+Button "Fetch, failed, Git couldn't verify the security certificate of git.corp.example. If your network uses its own certificate authority, as many company proxies do, add that authority to your system's certificate store (on Windows, also set Git's http.sslBackend to schannel), or set http.sslCAInfo to a file that holds it (with schannel, also set http.schannelUseSSLCAInfo to true)."
+Label "Git couldn't verify the security certificate of git.corp.example. If your network uses its own certificate authority, as many company proxies do, add that authority to your system's certificate store (on Windows, also set Git's http.sslBackend to schannel), or set http.sslCAInfo to a file that holds it (with schannel, also set http.schannelUseSSLCAInfo to true)."
+Label "Settings Git used for this connection"
+Label "http.sslBackend = schannel (system settings, /etc/gitconfig)"
+Label "http.sslCAInfo = /home/ada/certs/corp.pem (global settings, /home/ada/.gitconfig)"
+Label "http.schannelUseSSLCAInfo isn't set"
+Label "Git ignores http.sslCAInfo here: with http.sslBackend set to schannel it uses the Windows certificate store, unless http.schannelUseSSLCAInfo is true."
+Button "Copy"
+Label "$ git fetch\nfatal: unable to access 'https://git.corp.example/team/app.git/': SSL certificate problem: unable to get local issuer certificate"
+Image
+Label "Glowfly"
+Label "See your history clearly."
+Button "Open repository…"
+Label "A folder on this computer that already holds a Git repository."
+Button "Clone repository…"
+Label "Copy a repository from a hosting service or a URL into a new folder."
+Button "New repository…"
+Label "Make an empty repository in a new or existing folder."
+Button "Find repositories in folders…"
+Label "Look through the folders you keep projects in for repositories."
+painted:
+  "Repository"
+  "Open…"
+  "1 minute ago"
+  "420 ms"
+  "Fetch"

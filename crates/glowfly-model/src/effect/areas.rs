@@ -24,6 +24,8 @@ macro_rules! effect_areas {
             Pick($crate::effect::PickJob),
             /// Checking and deleting a lock file a failed job named (lock.rs); the delete waits on the repository's queue.
             Lock($crate::effect::LockEffect),
+            /// Reading the TLS settings for a certificate failure and setting http.schannelCheckRevoke (tls.rs); unscoped.
+            Tls($crate::effect::TlsEffect),
             /// Interactive rebase: the panel's list, graph edits, running and resuming.
             Rebase($crate::effect::RebaseEffect),
             /// Pushing a stack's layers (stack.rs).

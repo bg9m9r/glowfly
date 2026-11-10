@@ -78,6 +78,7 @@ pub(super) fn job_ended(
         (None, None) => last_message(&shown),
     };
     let conflicts = explained.as_ref().and_then(|e| e.conflicts.clone());
+    let tls = explained.as_ref().and_then(|e| e.tls);
     let (headline, fix, alt) = match (headline, explained) {
         (Some(h), _) => (h, (!ok).then(|| super::job_retry::after_headline(t, again.as_ref(), output)).flatten(), None),
         (None, Some(e)) => (e.text, e.fix, e.alt),
@@ -89,6 +90,10 @@ pub(super) fn job_ended(
     let id = st.log_run_in(repo, ok, text, run(summary), true);
     if !ok {
         st.logs.open.insert(id);
+    }
+    // A certificate or revocation failure's Details show the TLS settings git used.
+    if let Some(f) = tls {
+        super::tls_fix::read_after(job, id, output, f, fx);
     }
     // A conflicts toast before this one keeps the count it has.
     st.logs.recount = None;

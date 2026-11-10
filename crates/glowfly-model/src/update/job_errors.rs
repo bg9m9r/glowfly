@@ -1,8 +1,8 @@
 //! A failed job's toast: git's cause in plain words and the fix that answers it
 //! (glowfly_core::git_errors), or "<label> failed: <last line>". Every fix only opens a dialog
-//! (Force push with lease asks first) or a Preferences page, or runs what the failed job meant
-//! to run (Try again on a lock file or an HTTPS sign-in, update/job_retry.rs); none discards
-//! work.
+//! (Force push with lease and Relax check ask first, update/tls_fix.rs) or a Preferences page,
+//! or runs what the failed job meant to run (Try again on a lock file or an HTTPS sign-in,
+//! update/job_retry.rs); none discards work.
 
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, StashMsg};
 use crate::remote::RemoteMsg;
@@ -18,6 +18,7 @@ use glowfly_core::paths::same_spelling;
 use glowfly_core::remote_failure::RemoteFailure;
 use glowfly_core::repo::{RemoteInfo, Snapshot};
 use glowfly_core::stash_ops::StashScope;
+use glowfly_core::tls_config::TlsFailure;
 
 /// A failure toast's text and the button that fixes its cause, if Glowfly has one, with a
 /// second fix beside it (Force push with lease beside Pull).
@@ -29,6 +30,8 @@ pub(super) struct Explained {
     /// they left open, which give `text`'s count until the status read after the job does
     /// (update/conflict_count.rs).
     pub conflicts: Option<(Vec<String>, Vec<Vec<String>>)>,
+    /// A certificate or revocation failure, whose Details show the TLS settings git used.
+    pub tls: Option<TlsFailure>,
 }
 
 /// Explains `job`'s failure from its `output`, when git's cause is one Glowfly recognises.
@@ -57,9 +60,14 @@ pub(super) fn explain(
     let try_again = || again.map(|r| super::job_retry::button(t, r));
     let pull = || fix(t.tr("git_errors.pull.button"), Msg::git("Pull", &["pull", "--ff"]));
     let set_upstream = || head.clone().and_then(|b| fix(t.tr("branch.menu.set_upstream"), Msg::Branch(BranchMsg::SetUpstreamDialog(b))));
-    let text = crate::state::error_words::cause(t, &cause);
+    let mut text = crate::state::error_words::cause(t, &cause);
     let conflicts = match &cause {
         Cause::Conflicts { files, unsure } => Some((files.clone(), unsure.clone())),
+        _ => None,
+    };
+    let tls = match &cause {
+        Cause::Remote(RemoteFailure::Certificate { .. }) => Some(TlsFailure::Certificate),
+        Cause::Remote(RemoteFailure::Revocation { .. }) => Some(TlsFailure::Revocation),
         _ => None,
     };
     let mut alt = None;
@@ -108,6 +116,14 @@ pub(super) fn explain(
             }
         }
         Cause::SignIn(AuthNeed::HostKey) => super::clone_https::offer(st, t, again, output),
+        Cause::Remote(RemoteFailure::Revocation { .. }) => {
+            let o = super::tls_fix::offers(st, job, again);
+            if let Some(n) = o.needs_git {
+                text = format!("{text} {n}");
+            }
+            alt = o.alt;
+            o.main
+        }
         Cause::Remote(f) => {
             // A remote that isn't there, or can't be read, often has a wrong URL.
             let wrong_url = matches!(f, RemoteFailure::NotFound | RemoteFailure::Unreadable);
@@ -115,7 +131,7 @@ pub(super) fn explain(
             edit.and_then(|name| fix(t.tr("git_errors.edit_remote.button"), Msg::Remote(RemoteMsg::EditDialog(name))))
         }
     };
-    Some(Explained { text, fix, alt, conflicts })
+    Some(Explained { text, fix, alt, conflicts, tls })
 }
 
 /// The configured remote a failed fetch, pull or push was talking to, judged from its
