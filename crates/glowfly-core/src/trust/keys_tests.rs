@@ -1,5 +1,5 @@
-//! Which settings `command_key` lists: git-lfs's programs, and TLS and proxy settings whatever
-//! their value.
+//! Which settings `command_key` lists: git-lfs's programs, and TLS, proxy and cookie-file
+//! settings whatever their value.
 
 use super::super::{ConfigCommand, scan_at};
 use super::*;
@@ -44,6 +44,12 @@ fn tls_and_proxy_settings_are_listed_whatever_their_value() {
         ("http.https://example.com/.proxy", "socks5://p", "http.https://example.com/.proxy"),
         ("http.https://a.b.example/x.y/.sslcainfo", "ca.pem", "http.https://a.b.example/x.y/.sslCAInfo"),
         ("remote.origin.proxy", "proxy.example", "remote.origin.proxy"),
+        // The file git reads cookies from and, with saveCookies, writes them to.
+        ("http.cookiefile", "~/cookies.txt", "http.cookieFile"),
+        ("http.savecookies", "true", "http.saveCookies"),
+        ("http.savecookies", "false", "http.saveCookies"),
+        ("http.https://example.com/.cookiefile", "jar", "http.https://example.com/.cookieFile"),
+        ("http.https://example.com/.savecookies", "true", "http.https://example.com/.saveCookies"),
     ];
     for (name, value, shown) in cases {
         assert_eq!(listed(name, value).as_deref(), Some(shown), "{name} = {value}");
@@ -64,7 +70,8 @@ fn a_repositorys_own_tls_proxy_and_lfs_settings_are_scanned() {
     let config = dir.join(".git/config");
     let mut text = std::fs::read_to_string(&config).unwrap();
     text.push_str(
-        "[http]\n\tsslVerify\n\tproxy = proxy.example\n[http \"https://example.com/\"]\n\tsslVerify = false\n\
+        "[http]\n\tsslVerify\n\tproxy = proxy.example\n\tcookieFile = ../jar\n\tsaveCookies\n\
+         [http \"https://example.com/\"]\n\tsslVerify = false\n\
          [remote \"origin\"]\n\tproxy = socks5://p\n\
          [lfs \"customtransfer.agent\"]\n\tpath = ./bin/agent\n\tconcurrent = true\n[lfs]\n\tstandalonetransferagent = agent\n\
          [lfs \"extension.foo\"]\n\tclean = foo %f\n\tpriority = 0\n",
@@ -78,6 +85,8 @@ fn a_repositorys_own_tls_proxy_and_lfs_settings_are_scanned() {
             // A bare key means true; it still counts.
             ("http.sslVerify", ""),
             ("http.proxy", "proxy.example"),
+            ("http.cookieFile", "../jar"),
+            ("http.saveCookies", ""),
             ("http.https://example.com/.sslVerify", "false"),
             ("remote.origin.proxy", "socks5://p"),
             ("lfs.customtransfer.agent.path", "./bin/agent"),

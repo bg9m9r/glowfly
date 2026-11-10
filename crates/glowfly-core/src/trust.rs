@@ -3,7 +3,7 @@
 //! A repository from elsewhere can name programs in its `.git/config` (an ssh command, a
 //! credential helper, filters, an fsmonitor hook) or carry hooks, and git runs them as soon as it
 //! touches the repository. `scan` lists them with libgit2 only, so reading them runs nothing.
-//! It lists the settings that change how git connects (TLS checks, proxies) too (`keys.rs`).
+//! It lists the settings that change how git connects (TLS checks, proxies, the cookie file) too (`keys.rs`).
 
 use git2::{Config, ConfigLevel, Repository};
 use std::borrow::Cow;

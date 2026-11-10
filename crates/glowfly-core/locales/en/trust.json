@@ -23,7 +23,7 @@
   "trust.incoming.title": "Trust the incoming hooks and scripts?",
   "trust.known.lfs": "Git LFS",
   "trust.known.lfs.tip": "Git LFS's standard setup: it runs the git-lfs installed on this computer, not a file from the repository.",
-  "trust.network.note": "These can turn off certificate checks or send Git's traffic, sign-ins included, through another server.",
+  "trust.network.note": "These can turn off certificate checks, send Git's traffic, sign-ins included, through another server, or name a file Git reads cookies from and writes them to.",
   "trust.network.title": "Settings that change how Git connects",
   "trust.revoked": "Revoked trust in {name}. Glowfly asks again before Git runs its settings or hooks.",
   "trust.revoked_with.one": "Revoked trust in {name} and the repository passed on from it. Glowfly asks again before Git runs their settings or hooks.",

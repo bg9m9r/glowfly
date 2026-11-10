@@ -23,7 +23,7 @@
   "trust.incoming.title": "Den eingehenden Hooks und Skripten vertrauen?",
   "trust.known.lfs": "Git LFS",
   "trust.known.lfs.tip": "Die Standardeinrichtung von Git LFS: Sie führt das auf diesem Computer installierte git-lfs aus, keine Datei aus dem Repository.",
-  "trust.network.note": "Sie können Zertifikatsprüfungen abschalten oder den Verkehr von Git samt Anmeldedaten über einen anderen Server leiten.",
+  "trust.network.note": "Sie können Zertifikatsprüfungen abschalten, den Verkehr von Git samt Anmeldedaten über einen anderen Server leiten oder eine Datei benennen, aus der Git Cookies liest und in die es sie schreibt.",
   "trust.network.title": "Einstellungen, die ändern, wie Git sich verbindet",
   "trust.revoked": "Vertrauen in {name} widerrufen. Glowfly fragt erneut, bevor Git seine Einstellungen oder Hooks ausführt.",
   "trust.revoked_with.one": "Vertrauen in {name} und das davon übernommene Repository widerrufen. Glowfly fragt erneut, bevor Git deren Einstellungen oder Hooks ausführt.",
