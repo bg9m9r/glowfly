@@ -1,6 +1,6 @@
 //! Pinned dates reach the commits git makes inside a pinned folder, and only there.
 
-use super::{pin, unpin};
+use super::{next_for, now, pin, unpin};
 use crate::gitcli::{args, output};
 use crate::testkit::{git, set_identity};
 use git2::Repository;
@@ -68,4 +68,15 @@ fn two_roots_count_separately() {
     assert_eq!(times(&b).1, 5_000_060);
     unpin(&a);
     unpin(&b);
+}
+
+#[test]
+fn now_is_the_pinned_clock_inside_a_pinned_root() {
+    let dir = folder("now");
+    pin(&dir, 2_000_000);
+    assert_eq!(now(&dir.join(".git")), 2_000_000, "the next date, not taken");
+    assert_eq!(next_for(&dir), Some(2_000_000));
+    assert_eq!(now(&dir), 2_000_060);
+    unpin(&dir);
+    assert!(now(&dir) > 1_700_000_000, "the real clock once unpinned");
 }

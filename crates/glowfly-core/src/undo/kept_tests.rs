@@ -184,3 +184,19 @@ fn an_old_format_record_still_reads_and_restore_round_trips() {
     assert_eq!(serde_json::from_str::<KeptWhat>(r#""restore""#).unwrap(), KeptWhat::Restore);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn records_made_under_pinned_dates_are_not_pruned_by_the_real_clock() {
+    let dir = base("kept-pinned");
+    // Months before the real clock, as the exploration fixtures pin it.
+    crate::testkit::clock::pin(&dir, 1_768_039_200);
+    write(&dir, "f.txt", "first\n");
+    discard(&dir);
+    write(&dir, "f.txt", "second\n");
+    discard(&dir);
+    let kept = kept::all_for_test(&dir);
+    crate::testkit::clock::unpin(&dir);
+    assert_eq!(kept.len(), 2, "both records stay: {kept:?}");
+    assert!(kept.iter().all(|k| k.at < 1_768_039_200 + 86_400), "dated by the pinned clock: {kept:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
