@@ -56,12 +56,15 @@ fn row_menus_open_below_their_row() {
     assert!(h.query_by_label("Apply").is_none());
     drop(h);
 
+    // The submodule menu is tall and its row sits low in the panel: a taller window leaves it room
+    // below (the last test covers a menu that doesn't fit).
     let (st, _) = with_submodules(ThemeChoice::Dark, "row-menu-submodule");
-    let mut h = harness(st, true);
+    let mut h = harness_sized(st, true, egui::vec2(1400.0, 1100.0));
     h.run();
     let row = row_rect(&h, "libs/ui");
     right_click(&mut h, row);
-    assert!(top_of(&h, "Copy URL") >= row.bottom(), "the menu starts below the row");
+    let (top, bottom) = (top_of(&h, "Open in new tab"), bottom_of(&h, "Remove submodule…"));
+    assert!(top >= row.bottom(), "the menu starts below the row: row {row:?}, menu {top}..{bottom}");
     drop(h);
     remove_fixture(&dir);
 }
