@@ -22,8 +22,10 @@ use glowfly_model::msg::RebaseMsg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::StageMsg;
 use glowfly_model::msg::UpdateMsg;
+use glowfly_model::msg::WorkFileMsg;
 use glowfly_model::msg::{ContentFailure, PartialMsg};
 use glowfly_model::patch::{PatchEffect, PatchMsg};
+use glowfly_model::pull_request::{PrEffect, PullRequestMsg};
 use glowfly_model::remote::{RemoteEffect, RemoteMsg};
 use glowfly_model::ssh::SshFailure;
 use glowfly_model::tools::ToolEffect;
@@ -75,6 +77,10 @@ enum Kind {
     /// Editing a running rebase's remaining steps: the panel waits for it.
     EditTodo,
     LocalOp,
+    /// A file operation whose dialog waits for its result.
+    WorkFile(glowfly_model::effect::FileOp),
+    /// A pull request's head fetch (id, head): its panel shows it running until it ends.
+    HeadFetch(u64, String),
     /// A repository load or status read: the UI waits for it before starting another.
     Load(u64, LoadKind),
     Status(u64),
@@ -158,6 +164,8 @@ impl Recovery {
             Effect::Rebase(RebaseEffect::Start { .. } | RebaseEffect::Resume { .. }) => Kind::Rebase,
             Effect::Rebase(RebaseEffect::EditTodo { .. }) => Kind::EditTodo,
             Effect::Files(FilesEffect::LocalOp { .. }) => Kind::LocalOp,
+            Effect::Files(FilesEffect::Work { op, .. }) => Kind::WorkFile(op.clone()),
+            Effect::PullRequest(PrEffect::FetchHead(j)) => Kind::HeadFetch(j.id, j.head.clone()),
             Effect::Load(LoadEffect::Repo { generation, kind, .. }) => Kind::Load(*generation, *kind),
             Effect::Load(LoadEffect::Status { generation, .. }) | Effect::Load(LoadEffect::IndexStatus { generation, .. }) => {
                 Kind::Status(*generation)
@@ -202,6 +210,8 @@ impl Recovery {
             Kind::Rebase => Msg::Rebase(RebaseMsg::RebaseFinished { result: Err(rebase), undo: None }),
             Kind::EditTodo => Msg::Rebase(RebaseMsg::RemainingEdited { result: Err(rebase) }),
             Kind::LocalOp => Msg::Stage(StageMsg::LocalOpDone(Err(write))),
+            Kind::WorkFile(op) => Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: Err(write) }),
+            Kind::HeadFetch(id, head) => Msg::PullRequest(PullRequestMsg::HeadFetched { id, head, result: Err(text) }),
             Kind::Load(generation, kind) => Msg::Repo(RepoMsg::RepoLoaded { generation, kind, result: Err(read) }),
             Kind::Status(generation) => {
                 let result = Err(read);

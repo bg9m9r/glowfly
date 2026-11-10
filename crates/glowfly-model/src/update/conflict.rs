@@ -103,9 +103,9 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             }
             let (Some(contents), Some(f)) = (c.output(), c.file.as_ref()) else { return };
             let op = LocalOp::ResolveConflict { path: c.path.clone(), contents, expected: f.ids.clone() };
-            c.saving = true;
-            c.step_on_resolve = true;
-            super::ops::local(st, op, fx);
+            if let Some(c) = sent(st, op, fx) {
+                c.step_on_resolve = true;
+            }
         }
         ConflictMsg::SaveConflictKeepMarkers => {
             let path = st.session.conflict.view.as_ref().map(|c| c.path.clone()).unwrap_or_default();
@@ -121,9 +121,10 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             let op = LocalOp::SavePartialResolution { path: c.path.clone(), contents, expected: f.ids.clone() };
             let n = c.unresolved();
             let note = format!("Saved {} with {n} conflict{} left (still conflicted)", c.path, if n == 1 { "" } else { "s" });
-            c.pending_save = Some((note, c.picks.clone(), c.cleans.clone()));
-            c.saving = true;
-            super::ops::local(st, op, fx);
+            let pending = Some((note, c.picks.clone(), c.cleans.clone()));
+            if let Some(c) = sent(st, op, fx) {
+                c.pending_save = pending;
+            }
         }
         ConflictMsg::ResolveWithSide { path, side } => {
             if in_tool(st, &path) {
@@ -132,15 +133,26 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             let Some(c) = st.session.conflict.view.as_mut().filter(|c| c.path == path && !c.saving) else { return };
             let Some(f) = &c.file else { return };
             let op = LocalOp::ResolveWithSide { path, side, expected: f.ids.clone() };
-            c.saving = true;
-            c.step_on_resolve = true;
-            super::ops::local(st, op, fx);
+            if let Some(c) = sent(st, op, fx) {
+                c.step_on_resolve = true;
+            }
         }
         ConflictMsg::MarkResolved(paths) => super::conflict_files::mark_resolved(st, paths, fx),
         ConflictMsg::MarkResolvedConfirmed(paths) => super::conflict_files::confirmed(st, paths, fx),
         ConflictMsg::MarkConflicted(paths) => super::conflict_files::mark_conflicted(st, paths, fx),
         ConflictMsg::ConflictFilesRead { purpose, paths, result } => super::conflict_files::read_done(st, purpose, paths, result, fx),
     }
+}
+
+/// Sends the open conflict's change `op` (ops::local) and, once it is on its way, marks the
+/// view as saving and returns it for what else its sender notes. One held for the trust prompt
+/// marks nothing: it runs when the repository is trusted, and its result settles the view like
+/// any other.
+fn sent<'a>(st: &'a mut AppState, op: LocalOp, fx: &mut Vec<Effect>) -> Option<&'a mut ConflictView> {
+    let now = super::ops::local(st, op, fx) == super::ops::Started::Now;
+    let c = st.session.conflict.view.as_mut().filter(|_| now)?;
+    c.saving = true;
+    Some(c)
 }
 
 /// Opens the conflict view on `path`, closing the views it replaces.

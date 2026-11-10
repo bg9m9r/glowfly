@@ -70,7 +70,7 @@ pub(super) fn confirmed(st: &mut AppState, files: Vec<DiscardEach>, mode: Delete
     }
     let Some(workdir) = st.workdir() else { return };
     st.cues.wip_picks = None;
-    fx.push(Effect::Files(FilesEffect::DiscardPaths { workdir, files, mode }));
+    let _ = super::file_trust::push(st, FilesEffect::DiscardPaths { workdir, files, mode }, fx);
 }
 
 /// The runner discarded `done` files, then stopped at `failed` (if any): records the one undo

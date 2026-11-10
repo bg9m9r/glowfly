@@ -21,6 +21,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `hygiene/english_text.rs`: glowfly-ui and glowfly-runner add no English text for the user: string literals outside logs, panics, ids and process arguments, other than paths and flags, are counted per file.
 - `hygiene/english_allow.rs`: those counts (`ENGLISH_TEXT`), which only go down.
 - `hygiene/string_errors.rs`: result messages carry typed errors: glowfly-model's `msg/` has no `Result<_, String>`.
+- `hygiene/file_effects.rs`: working-tree file work goes through its trust gate: in glowfly-model's `update/` only `file_trust.rs` makes an `Effect::Files`.
 - `hygiene/flat_effects.rs`: new effects go in effect areas: `Effect` has no flat variants, only the rows of glowfly-model's `effect/areas.rs`.
 - `hygiene/test_switches.rs`: the non-test code of every crate has no `cfg(test)` behaviour switch (`cfg!(test)`, `cfg(not(test))`, `#[cfg(test)]` on a statement or field); only the shell (`TEST_SWITCH_FILES`) may keep one, and glowfly-core's older ones are counted in `CORE_SWITCHES`, which only shrinks.
 - `crates/glowfly-app/tests/source_checks/i18n_keys.rs`: every translation key the code of any crate looks up exists in English, and every English key is used.

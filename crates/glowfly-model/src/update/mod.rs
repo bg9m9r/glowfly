@@ -41,6 +41,7 @@ mod diff_loaded;
 pub mod diff_preview;
 mod edit;
 mod file_list_keys;
+mod file_trust;
 mod files;
 mod fold_keys;
 mod forge;

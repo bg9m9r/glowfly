@@ -32,7 +32,7 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         FilesMsg::RestoreFile { oid, path, confirmed: true, overwrite, .. } => {
             // `deleted` only shapes the wording; core decides which version to write.
             if let Some(workdir) = st.workdir() {
-                fx.push(Effect::Files(FilesEffect::Restore { workdir, oid, path, overwrite }));
+                let _ = super::file_trust::push(st, FilesEffect::Restore { workdir, oid, path, overwrite }, fx);
             }
         }
         FilesMsg::RestoreWouldOverwrite { path, oid, reason } => {

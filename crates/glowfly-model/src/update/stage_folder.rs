@@ -3,6 +3,7 @@
 //! the selected files of those lists (picked with Shift or Ctrl/Cmd), staged or unstaged
 //! together; and Unstage all.
 
+use super::jobs::Started;
 use crate::effect::{Effect, LocalOp};
 use crate::state::AppState;
 use crate::state::file_tree::under;
@@ -20,7 +21,7 @@ pub(super) fn stage(st: &mut AppState, folder: String, now: Instant, fx: &mut Ve
         return;
     }
     if !inside.is_empty() {
-        super::ops::local(st, LocalOp::StageFile(folder), fx);
+        let _ = super::ops::local(st, LocalOp::StageFile(folder), fx);
     }
 }
 
@@ -32,7 +33,7 @@ pub(super) fn unstage(st: &mut AppState, folder: String, now: Instant, fx: &mut 
     let paths: Vec<String> = inside.iter().filter(|f| !not_utf8(f)).map(|f| f.path.clone()).collect();
     let left = inside.len() - paths.len();
     if !paths.is_empty() {
-        super::ops::local(st, LocalOp::UnstagePaths(paths), fx);
+        let _ = super::ops::local(st, LocalOp::UnstagePaths(paths), fx);
     }
     left_staged(st, left, now);
 }
@@ -44,7 +45,7 @@ pub(super) fn unstage_all(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>)
     let paths: Vec<String> = snap.staged.iter().filter(|f| !not_utf8(f)).map(|f| f.path.clone()).collect();
     let left = snap.staged.len() - paths.len();
     if !paths.is_empty() {
-        super::ops::local(st, LocalOp::UnstagePaths(paths), fx);
+        let _ = super::ops::local(st, LocalOp::UnstagePaths(paths), fx);
     }
     left_staged(st, left, now);
 }
@@ -74,8 +75,7 @@ fn named(paths: &[String], f: &FileEntry) -> bool {
 pub(super) fn stage_paths(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effect>) {
     let Some(snap) = st.snap.as_ref() else { return };
     let paths: Vec<String> = snap.unstaged.iter().filter(|f| f.status != '!' && named(&paths, f)).map(|f| f.path.clone()).collect();
-    if !paths.is_empty() {
-        super::ops::local(st, LocalOp::StagePaths(paths.clone()), fx);
+    if !paths.is_empty() && super::ops::local(st, LocalOp::StagePaths(paths.clone()), fx) == Started::Now {
         super::wip_list::stage_sent(st, false, &paths);
     }
 }
@@ -87,7 +87,7 @@ pub(super) fn unstage_paths(st: &mut AppState, picked: Vec<String>, now: Instant
     let paths: Vec<String> = snap.staged.iter().filter(|f| named(&picked, f)).map(|f| f.path.clone()).collect();
     let left = snap.staged.iter().filter(|f| not_utf8(f) && picked.contains(&f.path)).count();
     if !paths.is_empty() {
-        super::ops::local(st, LocalOp::UnstagePaths(paths.clone()), fx);
+        let _ = super::ops::local(st, LocalOp::UnstagePaths(paths.clone()), fx);
         super::wip_list::stage_sent(st, true, &paths);
     }
     left_staged(st, left, now);

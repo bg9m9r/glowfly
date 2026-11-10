@@ -116,6 +116,17 @@ pub struct SeenLines {
 }
 
 impl FileOp {
+    /// Whether the operation starts git in the repository: a staged rename is `git mv`; the
+    /// rest only touches files and, through libgit2, the index. Decided for every variant.
+    pub fn runs_git(&self) -> bool {
+        match self {
+            FileOp::Rename { stage, .. } => *stage,
+            FileOp::Create(_) | FileOp::Delete { .. } | FileOp::UnstageDelete { .. } | FileOp::UnstageGone(_) | FileOp::Discard { .. } => {
+                false
+            }
+        }
+    }
+
     /// The path of a Delete, UnstageDelete or Discard.
     /// The log line for a refused delete that arrives for a tab that is no longer active.
     pub fn not_deleted(&self, reason: &str) -> String {

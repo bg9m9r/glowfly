@@ -24,14 +24,15 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             // Marking a file resolved while the merge tool has it open stages the markers.
             if !super::conflict::in_tool(st, &p) {
                 let paths = vec![p.clone()];
-                local(st, LocalOp::StageFile(p), fx);
-                super::wip_list::stage_sent(st, false, &paths);
+                if local(st, LocalOp::StageFile(p), fx) == Started::Now {
+                    super::wip_list::stage_sent(st, false, &paths);
+                }
             }
         }
         StageMsg::UnstageFile(p) => {
             let paths = vec![p];
             super::wip_list::stage_sent(st, true, &paths);
-            local(st, LocalOp::UnstagePaths(paths), fx);
+            let _ = local(st, LocalOp::UnstagePaths(paths), fx);
         }
         StageMsg::StagePaths(paths) => super::stage_folder::stage_paths(st, paths, fx),
         StageMsg::UnstagePaths(paths) => super::stage_folder::unstage_paths(st, paths, now, fx),
@@ -42,7 +43,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
                 st.toast(false, "Resolve the conflicted files in the conflict view before staging everything.", now);
                 return;
             }
-            local(st, LocalOp::StageAll, fx);
+            let _ = local(st, LocalOp::StageAll, fx);
         }
         StageMsg::UnstageAll => super::stage_folder::unstage_all(st, now, fx),
         StageMsg::StageFolder(p) => super::stage_folder::stage(st, p, now, fx),
@@ -50,7 +51,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
         StageMsg::DiscardFile(path) => {
             // `git restore` writes the file, so filters and attributes apply.
             if super::git_env::allows(st, glowfly_core::git_version::Feature::Restore, now) {
-                local(st, LocalOp::DiscardFile(path), fx);
+                let _ = local(st, LocalOp::DiscardFile(path), fx);
             }
         }
         StageMsg::Hunk { op, path, index, generation } => {
@@ -66,7 +67,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             st.session.diff.generation += 1;
             // Toggling the whitespace filter reloads the diff, so `generation` matched this one.
             let ignore_whitespace = st.settings.diff_ignore_whitespace;
-            local(st, LocalOp::Hunk { op, path, index, expected, ignore_whitespace }, fx);
+            let _ = local(st, LocalOp::Hunk { op, path, index, expected, ignore_whitespace }, fx);
         }
         StageMsg::ApplyLines(op) => apply_lines(st, op, fx),
         StageMsg::RevertHunk { index, generation } => super::revert::hunk(st, index, generation, fx),
@@ -166,13 +167,15 @@ fn apply_lines(st: &mut AppState, op: HunkOp, fx: &mut Vec<Effect>) {
         let seen = Some(Box::new(SeenLines { expected, lines, raw, ignore_whitespace }));
         return super::work_files_delete::discard_seen(st, path, seen, fx);
     }
-    local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines, ignore_whitespace }, fx);
+    let _ = local(st, LocalOp::Lines { op, path, hunk: sel.hunk, expected, lines, ignore_whitespace }, fx);
 }
 
-pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) {
-    if let Some(workdir) = st.workdir() {
-        fx.push(Effect::Files(FilesEffect::LocalOp { workdir, op }));
-    }
+/// Sends the local op `op` for the active repository through the trust gate
+/// (update/file_trust.rs): one that starts git waits for the trust prompt while git is held
+/// there (`Started::Held`), so only `Started::Now` means it is on its way.
+pub(super) fn local(st: &mut AppState, op: LocalOp, fx: &mut Vec<Effect>) -> Started {
+    let Some(workdir) = st.workdir() else { return Started::No };
+    super::file_trust::push(st, FilesEffect::LocalOp { workdir, op }, fx)
 }
 
 /// The remote to push a new branch to: origin if present, else the first remote.

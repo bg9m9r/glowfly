@@ -16,6 +16,8 @@
 //!   `Result<_, String>` (`hygiene/string_errors.rs`).
 //! - New effects go in effect areas: `Effect` has no flat variants, only the rows of
 //!   glowfly-model's `effect/areas.rs` (`hygiene/flat_effects.rs`).
+//! - Working-tree file work goes through its trust gate: in glowfly-model's `update/` only
+//!   `file_trust.rs` makes an `Effect::Files` (`hygiene/file_effects.rs`).
 //! - The shared fixture builders are not written again: each helper in `FIXTURE_HELPERS` is
 //!   defined only in the files listed for it, and no two tests pass `scratch_repo` or `long_repo`
 //!   the same folder name (tests run in parallel and would share the folder).
@@ -36,6 +38,8 @@ use crate::views;
 
 #[path = "hygiene/english_text.rs"]
 mod english_text;
+#[path = "hygiene/file_effects.rs"]
+mod file_effects;
 #[path = "hygiene/flat_effects.rs"]
 mod flat_effects;
 #[path = "hygiene/string_errors.rs"]

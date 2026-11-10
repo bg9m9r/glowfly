@@ -33,6 +33,24 @@ pub enum FilesEffect {
     DeletePaths { workdir: PathBuf, files: Vec<DeleteEach>, mode: DeleteMode },
 }
 
+impl FilesEffect {
+    /// Whether the work starts git in the repository, so the programs its settings name run
+    /// (filters, a file-system monitor): update asks first while the repository isn't trusted
+    /// (update/file_trust.rs) and the runner checks again before it starts
+    /// (update/trust_seal.rs). Decided for every variant, so a new one says which it is.
+    pub fn runs_git(&self) -> bool {
+        match self {
+            // A file with a filter or an encoding is compared and written by git.
+            FilesEffect::Restore { .. } => true,
+            FilesEffect::Work { op, .. } => op.runs_git(),
+            FilesEffect::LocalOp { op, .. } => op.runs_git(),
+            // A tracked file goes back to its index version through git.
+            FilesEffect::DiscardPaths { files, .. } => files.iter().any(|f| !f.untracked),
+            FilesEffect::LoadTracked { .. } | FilesEffect::Revert { .. } | FilesEffect::DeletePaths { .. } => false,
+        }
+    }
+}
+
 impl EffectMeta for FilesEffect {
     fn name(&self) -> &'static str {
         match self {

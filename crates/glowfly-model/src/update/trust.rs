@@ -83,6 +83,8 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
         st.trust.asked.retain(|p| !same_spelling(p, real));
     } else {
         record(&mut st.settings, real, RepoTrust::NotTrusted);
+        // What waited for this prompt is dropped: a later Trust doesn't start it.
+        st.trust.waiting = None;
     }
     // The user's own decision, made now: an inherited one no longer follows its source.
     st.settings.stamp_trust(real, Some(st.cues.now), None);
