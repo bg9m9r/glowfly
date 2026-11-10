@@ -7,7 +7,8 @@ use super::tip::{PREVIEW_ROWS, TipPreview, TipRow, commit_rows, short_sha};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
-use glowfly_core::undo::{Action, BatchOp, ConflictChange, Discarded, HeadPos};
+use glowfly_core::undo::{Action, BatchOp, ConflictChange, Created, Discarded, HeadPos, RemoteConfig};
+use std::path::Path;
 
 #[cfg(test)]
 #[path = "undo_preview_tests.rs"]
@@ -128,6 +129,10 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         Action::StashDrop { message, .. } => {
             vec![TipRow::Line(message.clone()), pick(t.tr("undo.preview.restore_stash").into(), t.tr("undo.preview.drop_again").into())]
         }
+        Action::RenameBranch { old, new, remote } => renamed_branch(t, old, new, remote.as_deref(), redo),
+        Action::RenameRemote { old, new, urls } => renamed_remote(t, old, new, urls.is_some(), redo),
+        Action::RemoveRemote { name, config } => removed_remote(t, name, config, redo),
+        Action::AddWorktree { path, created } => added_worktree(t, snap, path, created, redo),
     };
     TipPreview::new(heading, rows)
 }
@@ -145,6 +150,61 @@ fn deleted_tag(t: Lang, name: &str, remotes: &[String], redo: bool) -> Vec<TipRo
         rows.push(TipRow::Line(t.trf("undo.preview.tag_remotes_stay", &[("remotes", &list)])));
     }
     rows
+}
+
+/// A branch rename: undo renames it back here only, and says the remote keeps the new name.
+fn renamed_branch(t: Lang, old: &str, new: &str, remote: Option<&str>, redo: bool) -> Vec<TipRow> {
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("old", &old), ("new", &new)];
+    if redo {
+        return vec![TipRow::Line(t.trf("undo.preview.rename_branch_again", args))];
+    }
+    let mut rows = vec![TipRow::Line(t.trf("undo.preview.rename_branch_back", args))];
+    if let Some(r) = remote {
+        rows.push(TipRow::Line(t.trf("undo.preview.branch_remote_stays", &[("new", &new), ("remote", &r)])));
+    }
+    rows
+}
+
+/// A remote rename: renamed back (or again), with the URLs the same edit changed.
+fn renamed_remote(t: Lang, old: &str, new: &str, urls: bool, redo: bool) -> Vec<TipRow> {
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("old", &old), ("new", &new)];
+    let rename = if redo { t.trf("undo.preview.rename_remote_again", args) } else { t.trf("undo.preview.rename_remote_back", args) };
+    let mut rows = vec![TipRow::Line(rename)];
+    if urls {
+        let line = if redo { t.tr("undo.preview.remote_urls_again") } else { t.tr("undo.preview.remote_urls_back") };
+        rows.push(TipRow::Line(line.into()));
+    }
+    rows
+}
+
+/// A removed remote: undo adds it back with the branches that tracked it, and its
+/// remote-tracking branches need a fetch; redo removes it again.
+fn removed_remote(t: Lang, name: &str, config: &RemoteConfig, redo: bool) -> Vec<TipRow> {
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("remote", &name)];
+    if redo {
+        return vec![TipRow::Line(t.trf("undo.preview.remove_remote_again", args))];
+    }
+    let mut rows = vec![TipRow::Line(t.trf("undo.preview.restore_remote", args))];
+    let tracking: Vec<String> = config.branches.iter().filter(|l| l.key == "remote").map(|l| l.branch.clone()).collect();
+    if !tracking.is_empty() {
+        let list = super::tags::remote_list_in(t, &tracking);
+        rows.push(TipRow::Line(t.trf("undo.preview.remote_tracks_again", &[("branches", &list)])));
+    }
+    rows.push(TipRow::Line(t.tr("undo.preview.remote_fetch_after").into()));
+    rows
+}
+
+/// A worktree made with a new branch: undo removes it, and deletes the branch unless the
+/// snapshot shows it moved since; redo makes both again.
+fn added_worktree(t: Lang, snap: Option<&Snapshot>, path: &Path, created: &Created, redo: bool) -> Vec<TipRow> {
+    let folder = path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("folder", &folder), ("branch", &created.name)];
+    if redo {
+        return vec![TipRow::Line(t.trf("undo.preview.create_worktree_again", args))];
+    }
+    let moved = snap.is_some_and(|s| !s.locals.iter().any(|b| b.name == created.name && b.oid == Some(created.oid)));
+    let branch = if moved { t.trf("undo.preview.worktree_branch_stays", args) } else { t.trf("undo.preview.delete_branch", args) };
+    vec![TipRow::Line(t.trf("undo.preview.remove_worktree", args)), TipRow::Line(branch)]
 }
 
 /// "main goes back to 1a2b3c4" (undo, to `from`) or "main moves to 4d5e6f7" (redo, to `to`).

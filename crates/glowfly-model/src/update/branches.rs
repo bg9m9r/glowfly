@@ -112,7 +112,8 @@ fn rename(st: &mut AppState, old: &str, new: &str, remote: bool, fx: &mut Vec<Ef
     if matches!(st.modal, Some(Modal::RenameBranch(_))) {
         st.modal = None;
     }
-    start_job(st, JobSpec::new("Rename branch".into(), vec![branch_ops::rename_cmd(old, new)]), fx);
+    let record = Some(UndoKind::RenameBranch { old: old.into(), new: new.into(), remote: None });
+    start_job(st, JobSpec { record, ..JobSpec::new("Rename branch".into(), vec![branch_ops::rename_cmd(old, new)]) }, fx);
 }
 
 fn upstream_dialog(st: &mut AppState, name: &str) {

@@ -100,6 +100,26 @@ pub enum UndoKind {
     /// `update-ref -m <reason> refs/heads/<name> <new> <old>`: the journal's Restore of a branch
     /// that isn't checked out.
     SetBranch(String),
+    /// `branch -m [--] <old> <new>`. `remote`: the remote the same job renames it on afterwards
+    /// (never undone, only named in the label); None when classified from a command line.
+    RenameBranch {
+        old: String,
+        new: String,
+        remote: Option<String>,
+    },
+    /// `remote rename [--] <old> <new>`, or an Edit remote that renamed it (maybe with new URLs).
+    RenameRemote {
+        old: String,
+        new: String,
+    },
+    /// `remote remove|rm [--] <name>`.
+    RemoveRemote(String),
+    /// `worktree add -b <branch> <path> ...` (or `--track -b`), set by the Create worktree dialog,
+    /// whose folder is absolute; never classified from a command line.
+    AddWorktree {
+        path: std::path::PathBuf,
+        branch: String,
+    },
 }
 
 fn full_id(s: &str) -> bool {
@@ -126,6 +146,16 @@ impl UndoKind {
                 "--hard" => Some(UndoKind::Reset(ResetMode::Hard)),
                 _ => None,
             },
+            // `-m` only: `-M` writes over an existing branch, which can't come back.
+            ["branch", "-m", old, new] | ["branch", "-m", "--", old, new] if plain(old) && plain(new) => {
+                Some(UndoKind::RenameBranch { old: (*old).to_owned(), new: (*new).to_owned(), remote: None })
+            }
+            ["remote", "rename", old, new] | ["remote", "rename", "--", old, new] if plain(old) && plain(new) => {
+                Some(UndoKind::RenameRemote { old: (*old).to_owned(), new: (*new).to_owned() })
+            }
+            ["remote", "remove" | "rm", name] | ["remote", "remove" | "rm", "--", name] if plain(name) => {
+                Some(UndoKind::RemoveRemote((*name).to_owned()))
+            }
             // `--` before a name a repository supplied (branch_ops, journal::restore).
             ["branch", "-d" | "-D", name] | ["branch", "-d" | "-D", "--", name] if plain(name) => {
                 Some(UndoKind::DeleteBranch((*name).to_owned()))
@@ -158,9 +188,10 @@ impl UndoKind {
 impl UndoKind {
     /// Whether a failed or stopped job still records this kind: a job that deletes the local
     /// tag and then its copies on remotes keeps the local delete undoable when a later command
-    /// fails or the job is stopped. `after` finds the tag gone only if its own command ran.
+    /// fails or the job is stopped, as does a branch rename followed by its pushes, or a remote
+    /// rename followed by URL changes. `after` finds the change only if its own command ran.
     pub fn kept_when_failed(&self) -> bool {
-        matches!(self, UndoKind::DeleteTag { .. })
+        matches!(self, UndoKind::DeleteTag { .. } | UndoKind::RenameBranch { .. } | UndoKind::RenameRemote { .. })
     }
 }
 

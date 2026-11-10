@@ -104,6 +104,32 @@ fn a_tag_delete_names_the_remotes_undo_leaves_alone() {
 }
 
 #[test]
+fn renames_removed_remotes_and_new_worktrees_are_named() {
+    let o = Oid::zero();
+    let rename = |remote: Option<&str>| Action::RenameBranch { old: "a".into(), new: "b".into(), remote: remote.map(Into::into) };
+    assert_eq!(rename(None).describe(), "rename of branch a to b");
+    assert_eq!(rename(Some("origin")).describe(), "rename of branch a to b (here only, not on origin)");
+    let remote = Action::RenameRemote { old: "origin".into(), new: "upstream".into(), urls: None };
+    assert_eq!(remote.describe(), "rename of remote origin to upstream");
+    let config = RemoteConfig { entries: vec![("url".into(), "u".into())], branches: vec![], push_default: false };
+    let removed = Action::RemoveRemote { name: "origin".into(), config };
+    assert_eq!(removed.describe(), "removal of remote origin");
+    let path = crate::paths::temp_dir().join("app-wt").join("feature-wt");
+    let worktree = Action::AddWorktree { path, created: Created { name: "feature".into(), oid: o, upstream: None } };
+    assert_eq!(worktree.describe(), "creation of worktree feature-wt with branch feature");
+    // The renames stay recorded when their job's later pushes or URL changes failed.
+    assert!(rename(Some("origin")).kept_when_failed() && remote.kept_when_failed());
+    assert!(!removed.kept_when_failed() && !worktree.kept_when_failed());
+    assert!(UndoKind::RenameBranch { old: "a".into(), new: "b".into(), remote: None }.kept_when_failed());
+    assert!(UndoKind::RenameRemote { old: "a".into(), new: "b".into() }.kept_when_failed());
+    assert!(!UndoKind::RemoveRemote("a".into()).kept_when_failed());
+    assert!(!UndoKind::AddWorktree { path: crate::paths::temp_dir(), branch: "x".into() }.kept_when_failed());
+    for a in [rename(None), remote, removed, worktree] {
+        assert!(!a.is_content() && !a.offers_stash(false) && !a.restores_stash(), "{a:?}");
+    }
+}
+
+#[test]
 fn a_resolution_is_named_and_reports_what_it_wrote() {
     let o = Oid::zero();
     let ids = crate::repo::ConflictIds { ancestor: None, ours: Some(o), theirs: Some(o) };

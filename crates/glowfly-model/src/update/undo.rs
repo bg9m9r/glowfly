@@ -66,6 +66,11 @@ pub(super) fn run_with(st: &mut AppState, redo: bool, action: Action, opts: Undo
 }
 
 fn start(st: &mut AppState, redo: bool, action: Action, opts: UndoOpts, fx: &mut Vec<Effect>) {
+    // A worktree open in a tab can't be removed under it.
+    if let Some(why) = super::undo_offers::blocked(st, &action, redo) {
+        st.log(false, why);
+        return;
+    }
     let label = match &action {
         _ if opts.stash_first => format!("Stash changes and undo {}", action.describe()),
         Action::Checkout { created: Some(c), .. } if opts.delete_created && !redo => {
@@ -135,7 +140,8 @@ pub fn keeps_history(cmds: &[Vec<String>]) -> bool {
             ["push" | "tag" | "clone" | "init" | "config", ..] => true,
             ["branch", "--unset-upstream", ..] => true,
             // Renaming or removing a remote renames or deletes remote branches that recorded
-            // actions can name, so those fall through.
+            // actions can name, so those fall through: Glowfly records them (and `worktree add -b`)
+            // for undo, and an unrecorded run still clears the history.
             ["remote", "add" | "set-url", ..] => true,
             ["submodule", "update", ..] => true,
             // A plain add touches no ref of this repository; -b creates a branch.
@@ -168,6 +174,8 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         Some(UndoResult::Refused { redo, offer_stash: true, .. }) => Some(*redo),
         _ => None,
     };
+    // A removed remote put back offers to fetch it, for the active tab only.
+    let fetch = super::undo_offers::remote_back(&result).filter(|_| here);
     let (history, draft): (&mut UndoHistory, &mut CommitDraft) = if here {
         (&mut st.session.undo, &mut st.session.draft)
     } else {
@@ -244,6 +252,9 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
             let msg = Box::new(Msg::Job(JobMsg::UndoWith { redo, action: Box::new(top), opts }));
             st.set_last_toast_action(ToastAction { label: STASH_AND_UNDO.into(), msg, workdir: job.workdir.clone() });
         }
+    }
+    if let Some(name) = fetch {
+        super::undo_offers::offer_fetch(st, name, job.workdir.clone());
     }
 }
 

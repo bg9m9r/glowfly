@@ -1,12 +1,12 @@
 //! The Undo and Redo previews: a commit, a checkout that made a branch, a pull over made-up
-//! commits in the graph, a pop, several discarded files, a tag delete, the Redo wording, and a
-//! preview for every kind of action.
+//! commits in the graph, a pop, several discarded files, a tag delete, renames, a removed remote,
+//! a worktree made with a new branch, the Redo wording, and a preview for every kind of action.
 
 use super::*;
 use crate::state::op_fixture;
 use crate::state::toolbar_tips::tests::diverge;
 use glowfly_core::repo::ConflictIds;
-use glowfly_core::undo::{Changes, Created, DeleteVia, MoveOp, ResetMode, Saved};
+use glowfly_core::undo::{BranchLink, Changes, Created, DeleteVia, MoveOp, RemoteConfig, ResetMode, Saved, UrlChange};
 
 fn oid(n: u8) -> Oid {
     Oid::from_bytes(&[n; 20]).unwrap()
@@ -106,6 +106,13 @@ fn every_action_has_a_preview() {
             left: Changes(Vec::new()),
             during: None,
         },
+        Action::RenameBranch { old: "a".into(), new: "b".into(), remote: Some("origin".into()) },
+        Action::RenameRemote { old: "origin".into(), new: "up".into(), urls: None },
+        Action::RemoveRemote { name: "origin".into(), config: remote_config(&["main"]) },
+        Action::AddWorktree {
+            path: glowfly_core::paths::temp_dir().join("feature-wt"),
+            created: Created { name: "feature".into(), oid: oid(1), upstream: None },
+        },
     ];
     for a in &all {
         for redo in [false, true] {
@@ -152,4 +159,68 @@ fn a_delete_batch_lists_its_files_and_says_it_puts_them_back() {
     let many: Vec<Action> = (0..PREVIEW_ROWS + 3).map(|i| gone(&format!("f{i}.txt"))).collect();
     let a = Action::Batch { op: glowfly_core::undo::BatchOp::Delete, parts: many };
     assert_eq!(lines(&preview(Lang::En, &a, None, false)), ["and 3 more", "Puts the files back"]);
+}
+
+/// A removed remote's recorded config, with `tracking` branches that tracked it.
+fn remote_config(tracking: &[&str]) -> RemoteConfig {
+    let link = |b: &str, key: &str, value: &str| BranchLink { branch: b.into(), key: key.into(), value: value.into() };
+    let mut branches: Vec<BranchLink> = tracking.iter().map(|b| link(b, "remote", "origin")).collect();
+    branches.push(link("dev", "pushremote", "origin"));
+    RemoteConfig { entries: vec![("url".into(), "https://example.invalid/a.git".into())], branches, push_default: false }
+}
+
+#[test]
+fn a_branch_rename_with_remote_says_the_remote_stays() {
+    let a = |remote: Option<&str>| Action::RenameBranch { old: "feature".into(), new: "feature-2".into(), remote: remote.map(Into::into) };
+    assert_eq!(lines(&preview(Lang::En, &a(None), None, false)), ["Renames branch feature-2 back to feature"]);
+    assert_eq!(
+        lines(&preview(Lang::En, &a(Some("origin")), None, false)),
+        ["Renames branch feature-2 back to feature", "Stays feature-2 on origin: renaming it there isn't undone"]
+    );
+    assert_eq!(lines(&preview(Lang::En, &a(Some("origin")), None, true)), ["Renames branch feature to feature-2 again"]);
+}
+
+#[test]
+fn a_remote_rename_with_urls_says_they_come_back() {
+    let pair = |v: &str| vec![("url".to_owned(), v.to_owned())];
+    let urls = Some(UrlChange { before: pair("https://example.invalid/a.git"), after: pair("https://example.invalid/b.git") });
+    let a = Action::RenameRemote { old: "origin".into(), new: "upstream".into(), urls };
+    assert_eq!(lines(&preview(Lang::En, &a, None, false)), ["Renames remote upstream back to origin", "Puts its previous URLs back"]);
+    assert_eq!(lines(&preview(Lang::En, &a, None, true)), ["Renames remote origin to upstream again", "Sets its edited URLs again"]);
+    let plain = Action::RenameRemote { old: "origin".into(), new: "upstream".into(), urls: None };
+    assert_eq!(lines(&preview(Lang::En, &plain, None, false)), ["Renames remote upstream back to origin"]);
+}
+
+#[test]
+fn a_removed_remote_offers_the_fetch_line_and_its_branches() {
+    let a = Action::RemoveRemote { name: "origin".into(), config: remote_config(&["main", "dev"]) };
+    assert_eq!(
+        lines(&preview(Lang::En, &a, None, false)),
+        [
+            "Adds remote origin back with its URLs and settings",
+            "main and dev track it again",
+            "Fetch it afterwards to bring back its remote-tracking branches"
+        ]
+    );
+    assert_eq!(lines(&preview(Lang::En, &a, None, true)), ["Removes remote origin again"]);
+    let untracked = Action::RemoveRemote { name: "origin".into(), config: remote_config(&[]) };
+    assert_eq!(lines(&preview(Lang::En, &untracked, None, false)).len(), 2, "no branch line without tracking branches");
+}
+
+#[test]
+fn a_worktree_undo_keeps_a_moved_branch() {
+    let snap = op_fixture::snapshot("undo-preview-worktree");
+    let local = snap.locals.first().expect("a branch");
+    let (name, tip) = (local.name.clone(), local.oid.unwrap());
+    let path = glowfly_core::paths::temp_dir().join("app-wt");
+    let a = |oid| Action::AddWorktree { path: path.clone(), created: Created { name: name.clone(), oid, upstream: None } };
+    assert_eq!(
+        lines(&preview(Lang::En, &a(tip), Some(&snap), false)),
+        ["Removes worktree app-wt".to_owned(), format!("Deletes branch {name}")]
+    );
+    assert_eq!(
+        lines(&preview(Lang::En, &a(oid(9)), Some(&snap), false)),
+        ["Removes worktree app-wt".to_owned(), format!("Keeps branch {name}: it has commits made since")]
+    );
+    assert_eq!(lines(&preview(Lang::En, &a(tip), Some(&snap), true)), [format!("Creates worktree app-wt on branch {name} again")]);
 }

@@ -232,7 +232,8 @@ fn drop_redo_refused_when_dropped_elsewhere() {
 fn a_dropped_stash_survives_a_job_that_cant_be_undone() {
     let (mut st, dir, first) = two_stashes("undo-stash-drop-unrelated");
     drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
-    drive(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "main", "trunk"]));
+    // `-M` can write over a branch, so it is never recorded.
+    drive(&mut st, Msg::git("Rename branch", &["branch", "-M", "--", "main", "trunk"]));
     assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
     assert!(
         matches!(&st.session.undo.undo[..], [Action::StashDrop { stash, .. }] if *stash == first),

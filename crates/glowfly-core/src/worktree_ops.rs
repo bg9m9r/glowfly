@@ -44,8 +44,7 @@ fn short(oid: git2::Oid) -> String {
 pub fn add_cmd(folder: &Path, base: &WorktreeBase, new_branch: Option<&str>) -> Vec<String> {
     let folder = folder.display().to_string();
     let mut cmd = vec!["worktree".to_owned(), "add".to_owned()];
-    if let WorktreeBase::Remote { remote, branch } = base {
-        let name = new_branch.unwrap_or(branch).to_owned();
+    if let (WorktreeBase::Remote { remote, branch }, Some(name)) = (base, self::new_branch(base, new_branch)) {
         cmd.extend(["--track".to_owned(), "-b".to_owned(), name, folder, format!("refs/remotes/{remote}/{branch}")]);
         return cmd;
     }
@@ -61,6 +60,16 @@ pub fn add_cmd(folder: &Path, base: &WorktreeBase, new_branch: Option<&str>) -> 
         WorktreeBase::Remote { remote, branch } => format!("refs/remotes/{remote}/{branch}"),
     });
     cmd
+}
+
+/// The branch `add_cmd` creates for `base` and `new_branch`: `new_branch`, else a remote base's
+/// branch name; None when it checks out an existing branch or a commit without a new branch.
+pub fn new_branch(base: &WorktreeBase, new_branch: Option<&str>) -> Option<String> {
+    match (base, new_branch) {
+        (_, Some(name)) => Some(name.to_owned()),
+        (WorktreeBase::Remote { branch, .. }, None) => Some(branch.clone()),
+        (WorktreeBase::Branch(_) | WorktreeBase::Commit(_), None) => None,
+    }
 }
 
 /// A folder name made from a branch name: characters that can't be in a file name, control

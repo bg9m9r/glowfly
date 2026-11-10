@@ -1,7 +1,8 @@
 //! Recording an operation: the repository state before it runs, and the `Action` it turned out
 //! to be once it has.
 
-use super::{Action, Created, HeadPos, ResetMode, UndoKind, is_clean, reset, resumed, stash};
+use super::remote_config::{self, RemoteConfig};
+use super::{Action, Created, HeadPos, ResetMode, UndoKind, is_clean, remote_removed, renamed, reset, resumed, stash, worktree_added};
 use crate::commit_text;
 use crate::error::{Error, Result};
 use git2::{BranchType, Oid, Repository};
@@ -28,6 +29,8 @@ pub struct Before {
     dropped: Option<(Oid, Option<String>)>,
     /// For a tag delete: the ref's own target, the tag object for an annotated tag.
     tag: Option<Oid>,
+    /// For a remote rename or removal: the remote's config section and the settings naming it.
+    remote: Option<RemoteConfig>,
 }
 
 #[derive(Debug)]
@@ -64,14 +67,16 @@ pub(super) fn branch_name(pos: &Option<HeadPos>) -> Option<String> {
 }
 
 /// Local branch `name`'s tip and upstream (a remote-tracking branch such as "origin/x").
-fn local_branch(repo: &Repository, name: &str) -> Option<(Oid, Option<String>)> {
+pub(super) fn local_branch(repo: &Repository, name: &str) -> Option<(Oid, Option<String>)> {
     let b = repo.find_branch(name, BranchType::Local).ok()?;
     let oid = b.get().target()?;
     let upstream = b.upstream().ok().and_then(|u| u.name().ok().flatten().map(str::to_owned));
     Some((oid, upstream))
 }
 
-fn local_names(repo: &Repository) -> Result<HashSet<String>> {
+/// The local branch names, exactly as listed (a lookup by name may ignore case on some file
+/// systems).
+pub(super) fn local_names(repo: &Repository) -> Result<HashSet<String>> {
     let mut names = HashSet::new();
     for b in repo.branches(Some(BranchType::Local))? {
         if let Some(n) = b?.0.name()? {
@@ -109,6 +114,7 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
         paused: None,
         dropped: None,
         tag: None,
+        remote: None,
     };
     match kind {
         UndoKind::DeleteBranch(name) | UndoKind::SetBranch(name) => b.branch = local_branch(&repo, name),
@@ -135,6 +141,13 @@ pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
                 }
             }
         }
+        UndoKind::RenameBranch { old, new, .. } => {
+            let names = local_names(&repo)?;
+            b.existed = names.contains(new);
+            b.branch = if names.contains(old) { local_branch(&repo, old) } else { None };
+        }
+        UndoKind::RenameRemote { old: name, .. } | UndoKind::RemoveRemote(name) => b.remote = remote_config::read(&repo, name)?,
+        UndoKind::AddWorktree { branch, .. } => b.existed = local_names(&repo)?.contains(branch),
         UndoKind::Commit { amend: true } | UndoKind::Reset(_) | UndoKind::Move { .. } => {}
     }
     Ok(b)
@@ -237,6 +250,12 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
             }
             _ => None,
         },
+        UndoKind::RenameBranch { old, new, remote } => {
+            renamed::branch_after(&repo, old, new, remote, before.branch.is_some(), before.existed)?
+        }
+        UndoKind::RenameRemote { old, new } => renamed::remote_after(&repo, old, new, before.remote)?,
+        UndoKind::RemoveRemote(name) => remote_removed::after(&repo, name, before.remote)?,
+        UndoKind::AddWorktree { path, branch } => worktree_added::after(workdir, &repo, &path, branch, before.existed)?,
         UndoKind::StashApply { pop, .. } => match (before.apply, oid) {
             (Some(Apply { target: Some(stash), message, clean: Some(true) }), Some(head)) => {
                 let left = stash::changes(workdir)?;

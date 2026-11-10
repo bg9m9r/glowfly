@@ -1,6 +1,6 @@
 //! The REMOTE section: Add and Edit remote (the dialog's form checked again against the current
 //! snapshot), Fetch one remote, and Remove after a confirmation. Every change is a plain git
-//! job through `ops::start_job`. View on service and the fork dialogs are in `remote_forks`.
+//! job through `ops::start_job`; a rename and a removal are recorded for undo. View on service and the fork dialogs are in `remote_forks`.
 
 use super::ops::{self, JobSpec};
 use super::remote_forks;
@@ -11,6 +11,7 @@ use crate::state::remotes::{RemoteForm, find, gone_text, remove_body, request};
 use crate::state::{AppState, Modal};
 use glowfly_core::remote_ops::{fetch_cmd, remove_cmd};
 use glowfly_core::repo::RemoteInfo;
+use glowfly_core::undo::UndoKind;
 
 pub(super) fn handle(st: &mut AppState, msg: RemoteMsg, fx: &mut Vec<Effect>) {
     match msg {
@@ -41,7 +42,8 @@ pub(super) fn handle(st: &mut AppState, msg: RemoteMsg, fx: &mut Vec<Effect>) {
             if configured(st, &name).is_none() {
                 return;
             }
-            ops::start_job(st, JobSpec::new(format!("Remove remote {name}"), vec![remove_cmd(&name)]), fx);
+            let record = Some(UndoKind::RemoveRemote(name.clone()));
+            ops::start_job(st, JobSpec { record, ..JobSpec::new(format!("Remove remote {name}"), vec![remove_cmd(&name)]) }, fx);
         }
         RemoteMsg::View(name) => remote_forks::view(st, &name, fx),
         RemoteMsg::ForkDialog(name) => remote_forks::open_picker(st, &name, fx),
@@ -69,12 +71,17 @@ pub(super) fn configured(st: &mut AppState, name: &str) -> Option<RemoteInfo> {
 /// The dialog's Add remote / Save: checked again; on a problem the dialog stays open.
 fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
     let (Some(snap), Some(Modal::Remote(form))) = (st.snap.as_ref(), st.modal.as_ref()) else { return };
+    // A rename is recorded for undo (with the URLs the same Save changed); a URL-only edit isn't.
+    let record = match &form.original {
+        Some(o) if form.renaming() => Some(UndoKind::RenameRemote { old: o.name.clone(), new: form.name.trim().to_owned() }),
+        _ => None,
+    };
     match request(snap, form) {
         Err(e) => st.log(false, e),
         Ok(None) => st.modal = None,
         Ok(Some((label, cmds))) => {
             let before = fx.len();
-            ops::start_job(st, JobSpec::new(label, cmds), fx);
+            ops::start_job(st, JobSpec { record, ..JobSpec::new(label, cmds) }, fx);
             // Busy: start_job logged why and the dialog stays open.
             if fx.len() > before {
                 st.modal = None;

@@ -323,7 +323,9 @@ fn remote_jobs_and_undo() {
     assert_eq!(st.session.undo.undo.len(), 1, "adding a remote keeps the history");
     drive(&mut st, Msg::Remote(RemoteMsg::Remove("other".into())));
     assert_eq!(last_toast(&st), "Remove remote other succeeded");
-    assert!(st.session.undo.undo.is_empty(), "removing a remote invalidates it");
+    // Removing a remote is recorded on top: undone first, before the older entries.
+    assert_eq!(st.session.undo.undo.len(), 2, "removing a remote is recorded");
+    assert!(matches!(st.session.undo.undo.last(), Some(Action::RemoveRemote { name, .. }) if name == "other"));
     cleanup(&[&work, &bare]);
 }
 

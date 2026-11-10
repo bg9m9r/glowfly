@@ -1,12 +1,14 @@
 //! Planning an undo or redo: checking the repository still matches the recorded action and
 //! choosing the git commands (or file write) that reverse or re-apply it. Branches and tags are
 //! planned in `refs.rs`, merges and the like in `moved.rs`, stashes (also dropped ones) in
-//! `stash.rs`, saved conflict resolutions in `resolved.rs`.
+//! `stash.rs`, saved conflict resolutions in `resolved.rs`, branch and remote renames in
+//! `renamed.rs`, removed remotes in `remote_removed.rs` and worktrees made with a new branch in
+//! `worktree_added.rs`.
 
 use super::record::{head, ref_exists};
 use super::{
-    Action, HeadPos, Options, Plan, Refusal, aborted_restore, deleted, discard_command, marked_plan, moved, refs, reset, resolved,
-    restacked, saved, stash, unstaged,
+    Action, HeadPos, Options, Plan, Refusal, aborted_restore, deleted, discard_command, marked_plan, moved, refs, remote_removed, renamed,
+    reset, resolved, restacked, saved, stash, unstaged, worktree_added,
 };
 use crate::error::Result;
 use crate::gitcli::args;
@@ -100,6 +102,11 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::AbortKept { .. } => return aborted_restore::plan(workdir, action, redo),
         // Each part is planned as it would be alone.
         Action::Batch { parts, .. } => return super::batch::plan(workdir, parts, redo),
+        // Only config and remote refs change, so an operation in progress doesn't matter.
+        Action::RenameRemote { old, new, urls } => return renamed::plan_remote(&Repository::open(workdir)?, old, new, urls, redo),
+        Action::RemoveRemote { name, config } => return remote_removed::plan(&Repository::open(workdir)?, name, config, redo),
+        // The other worktree's own state is what counts.
+        Action::AddWorktree { path, created } => return worktree_added::plan(workdir, &Repository::open(workdir)?, path, created, redo),
         _ => {}
     }
     let repo = Repository::open(workdir)?;
@@ -180,6 +187,7 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::CreateTag { name, oid } => refs::tag(&repo, name, *oid, redo),
         Action::DeleteTag { name, oid, .. } => refs::deleted_tag(&repo, name, *oid, redo),
         Action::SetBranch { name, from, to } => refs::set_branch(&repo, &pos, name, *from, *to, redo),
+        Action::RenameBranch { old, new, .. } => renamed::plan_branch(workdir, &repo, old, new, redo)?,
         Action::Restacked { .. } => restacked::plan(workdir, &repo, action, redo)?,
         Action::Moved { branch, from, to, .. } => {
             let (expect, target) = if redo { (*from, *to) } else { (*to, *from) };
@@ -217,5 +225,6 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
         Action::DeleteFile { .. } | Action::AbortKept { .. } | Action::UnstageGone { .. } | Action::Batch { .. } => {
             unreachable!("planned above")
         }
+        Action::RenameRemote { .. } | Action::RemoveRemote { .. } | Action::AddWorktree { .. } => unreachable!("planned above"),
     })
 }

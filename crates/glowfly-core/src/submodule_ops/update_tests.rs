@@ -96,6 +96,16 @@ fn undos_that_move_the_work_tree() {
         Action::CreateTag { name: "t".into(), oid: o },
         Action::DeleteTag { name: "t".into(), oid: o, remotes: vec!["origin".into()] },
         Action::StashDrop { stash: o, message: "m".into() },
+        Action::RenameBranch { old: "a".into(), new: "b".into(), remote: None },
+        Action::RenameRemote { old: "a".into(), new: "b".into(), urls: None },
+        Action::RemoveRemote {
+            name: "a".into(),
+            config: crate::undo::RemoteConfig { entries: Vec::new(), branches: Vec::new(), push_default: false },
+        },
+        Action::AddWorktree {
+            path: crate::paths::temp_dir().join("wt"),
+            created: crate::undo::Created { name: "x".into(), oid: o, upstream: None },
+        },
     ];
     for a in &still {
         assert!(!undo_moves_work_tree(a, false) && !undo_moves_work_tree(a, true), "{a:?}");

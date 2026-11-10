@@ -3,9 +3,12 @@
 //! matches it and returns the git commands that reverse (or re-apply) it. Reads use libgit2; the
 //! planned commands are meant to run through `gitcli`, so hooks and user config apply.
 //!
-//! `kinds` recognises the command lines, `action` names what was recorded, `record` captures the
-//! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
-//! tags, created or deleted, also a branch the journal's Restore moved with `update-ref`),
+//! `kinds` recognises the command lines, `action` holds what was recorded (`action_words` names
+//! it), `record` captures the state around an operation, and `planning` decides how to reverse it,
+//! with `refs` (branches and tags, created or deleted, also a branch the journal's Restore moved
+//! with `update-ref`), `renamed` (branch and remote renames), `remote_removed` (a removed remote's
+//! config section, read and written back by `remote_config`), `worktree_added` (a worktree made
+//! with a new branch),
 //! `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset`, `saved` and `deleted`
 //! (Delete and Unstage and delete); `batch` plans several files' discards recorded as one entry.
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
@@ -35,6 +38,7 @@ mod aborted_restore;
 mod aborted_run;
 mod aborted_state;
 mod action;
+mod action_words;
 mod batch;
 mod deleted;
 mod in_the_way;
@@ -50,6 +54,9 @@ mod planning;
 mod rebased;
 mod record;
 mod refs;
+mod remote_config;
+mod remote_removed;
+mod renamed;
 mod reset;
 mod resolved;
 mod restacked;
@@ -59,6 +66,7 @@ mod saved;
 mod stash;
 mod stash_first;
 mod unstaged;
+mod worktree_added;
 pub use aborted::ABORT_REF_PREFIX;
 pub use aborted_restore::restore_abort;
 pub use aborted_run::{AbortRun, NOTHING_ABORTED, abort_keeping};
@@ -79,6 +87,7 @@ pub use rebased::{RebaseStart, rebase_start, rebased, unmoved};
 pub(crate) use record::head;
 use record::stash_top;
 pub use record::{Before, after, before, irreversible, redone};
+pub use remote_config::{BranchLink, RemoteConfig, UrlChange};
 pub use reset::{HARD_RESET_STASH_MESSAGE, hard_reset_commands};
 pub use resolved::resolve_saving;
 pub use restacked::{RestackBefore, restack_before, restack_unmoved, restacked};
@@ -216,6 +225,10 @@ mod rebased_tests;
 #[cfg(test)]
 mod refs_tests;
 #[cfg(test)]
+mod remote_removed_tests;
+#[cfg(test)]
+mod renamed_tests;
+#[cfg(test)]
 mod reset_tests;
 #[cfg(test)]
 mod resolved_tests;
@@ -239,3 +252,5 @@ mod test_bin;
 mod tests;
 #[cfg(test)]
 mod undo_file_actions_tests;
+#[cfg(test)]
+mod worktree_added_tests;

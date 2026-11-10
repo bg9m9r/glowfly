@@ -108,6 +108,11 @@ fn git_jobs_record_their_kind() {
     assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(k), .. })] if *k == merge), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "x", "y"]), Instant::now());
+    let renamed = UndoKind::RenameBranch { old: "x".into(), new: "y".into(), remote: None };
+    assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: Some(k), .. })] if *k == renamed), "{fx:?}");
+    st.job = None;
+    // `-M` can write over a branch, so it is never recorded.
+    let fx = update(&mut st, Msg::git("Rename branch", &["branch", "-M", "--", "x", "y"]), Instant::now());
     assert!(matches!(&fx[..], [Effect::Job(glowfly_model::effect::JobEffect::RunGit { record: None, .. })]), "{fx:?}");
     st.job = None;
     let fx = update(&mut st, Msg::git("Checkout", &["checkout", "x"]), Instant::now());
@@ -125,7 +130,7 @@ fn unrecorded_job_blocks_and_fetch_keeps_history() {
     done(&mut st, false);
     assert_eq!(st.session.undo.undo.len(), 1, "a failed job changes nothing");
 
-    update(&mut st, Msg::git("Rename branch", &["branch", "-m", "--", "main", "trunk"]), Instant::now());
+    update(&mut st, Msg::git("Rename branch", &["branch", "-M", "--", "main", "trunk"]), Instant::now());
     done(&mut st, true);
     assert!(st.session.undo.undo.is_empty() && st.session.undo.redo.is_empty());
     assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));
