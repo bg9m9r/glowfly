@@ -150,7 +150,13 @@ tab actions have something to switch to.
    that action ends with. (My call, from the builder check.)
 5. **Undo returns to before.** When the previous action was undoable and the next is Undo, HEAD
    and the refs it touched match their values from before that action, and the working tree
-   content in the shadow is unchanged.
+   content in the shadow is unchanged. The step that finishes a merge or rebase that stopped on
+   conflicts (Continue, or committing the merge) records the whole operation, so its Undo
+   returns to before the merge or rebase began, not to the operation in progress. "Undoable"
+   means the action added exactly one entry to the app's undo history: one Undo reverses one
+   entry, so after a step that added two (a checkout that stashed the changes and put them back
+   records the put-back as well) the rule isn't checked, and nor is it after an operation during
+   which other undoable actions were recorded.
 6. **Errors are reported, never silent.** Each action's probe says whether it took effect. If
    it did not, the app must have shown an error toast or written an error log line (the harness
    keeps both). If it did, no error toast may claim it failed. A clearly worded refusal is
@@ -195,8 +201,11 @@ Layer 1 must leave room for this:
 
 - **Check frequency:** rules 1, 4, 5 and 6 run after every step. Rules 2 and 3 (a `git fsck`
   process and a reachability scan) may run every N steps and at the end of a session in the PR
-  run, and after every step in soak runs and while shrinking, so a shrunk case still names the
-  step where the rule broke. (My call, from the builder check.)
+  run, and after every step in soak runs, so the report names the step where the rule broke.
+  While shrinking, each replay runs them once, at its end: a broken repository or lost work stays
+  so, and checking them after every step made each replay of a long session so slow that the
+  minute of shrinking ended with dozens of actions left. Replays run a few at a time, side by
+  side. (My call, from the builder check; the shrinking change measured while building.)
 - **PR CI and local `check.ps1`:** a test that runs a fixed list of seeds within a fixed step
   budget (as a starting point: 3 seeds x 150 steps; the builder measures and sets numbers that
   keep it near one minute on the Windows CI runner), plus the replay test for `explore/cases/`.

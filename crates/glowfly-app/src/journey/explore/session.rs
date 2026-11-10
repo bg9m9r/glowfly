@@ -22,6 +22,8 @@ use super::rules::{self, Broken, Rule};
 use super::scene::{self, Scene};
 use super::shadow::Shadow;
 use eframe::egui::Key;
+use git2::RepositoryState;
+use std::collections::BTreeMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::Path;
 
@@ -73,6 +75,12 @@ struct Walk<'a> {
     /// The tab and the reading from before the last performed step, when that step recorded an
     /// action in the app's undo history: what an Undo next must return to.
     undoable: Option<(String, Reading)>,
+    /// Per tab, the reading from before the step that left its repository in the middle of an
+    /// operation (a merge or rebase stopped on conflicts). Undo after the step that finishes the
+    /// operation undoes all of it, back to this. None once another undoable action (a stash, a
+    /// branch deleted) was recorded during the operation: one Undo doesn't undo that too, so
+    /// where it returns isn't known from the readings.
+    started: BTreeMap<String, Option<Reading>>,
     /// The action whose dialog is still open, to judge when its button finishes it.
     pending: Option<Judged>,
     /// The steps before which `unstick` pressed Escape.
@@ -127,6 +135,7 @@ pub(super) fn run(tag: &str, seed: u64, plan: Plan, checks: Checks) -> Outcome {
         current: None,
         active: "app".to_owned(),
         undoable: None,
+        started: BTreeMap::new(),
         pending: None,
         escapes: Vec::new(),
         stalled: None,
@@ -258,6 +267,13 @@ impl Walk<'_> {
         self.active = active_tab(j);
         self.steps.extend(self.current.take().map(|action| Step { action, faults: Vec::new() }));
         let broken = |rule: Rule, detail: String| Some(Broken { rule, step: n, detail });
+        let before_state = before.state;
+        let started = self.started.get(&tab).cloned().flatten();
+        if after.state == RepositoryState::Clean {
+            self.started.remove(&tab);
+        } else if before.state == RepositoryState::Clean {
+            self.started.insert(tab.clone(), Some(before.clone()));
+        }
 
         if let Err(detail) = rules::no_crash(j) {
             return broken(Rule::NoCrash, detail);
@@ -288,8 +304,22 @@ impl Walk<'_> {
         }
         if performed {
             let in_app = !matches!(action, Action::Outside(_)) && self.active == tab;
-            let undoable = in_app && j.state().session.undo.recorded > recorded;
-            self.undoable = subject.filter(|_| undoable).map(|s| (tab, s.before));
+            // One Undo reverses one entry. A step that recorded two (a checkout that stashed and
+            // put the changes back records the put-back too) isn't undone by one Undo.
+            let entries = if in_app { j.state().session.undo.recorded.saturating_sub(recorded) } else { 0 };
+            let undoable = in_app && entries == 1;
+            // The operation's own steps are part of it; anything else recorded during it is not.
+            let what = subject.as_ref().map_or(&action, |s| &s.action);
+            let own = matches!(what, Action::ResolveOurs(_) | Action::ResolveTheirs(_) | Action::Discard(_));
+            let during = before_state != RepositoryState::Clean && after.state != RepositoryState::Clean;
+            if in_app && entries > 0 && !own && during {
+                self.started.insert(tab.clone(), None);
+            }
+            // A step that finishes an operation (Continue, or the commit of a merge) records the
+            // whole operation, so Undo returns to before it began.
+            let finished = |s: &Judged| s.before.state != RepositoryState::Clean && after.state == RepositoryState::Clean;
+            self.undoable =
+                subject.filter(|_| undoable).and_then(|s| if finished(&s) { started.map(|r| (tab, r)) } else { Some((tab, s.before)) });
         }
         if n.is_multiple_of(self.checks.slow_every) { self.slow(n).err() } else { None }
     }

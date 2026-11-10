@@ -70,6 +70,14 @@ RUST_LOG=glowfly=debug cargo run -- <repo path>                   # log backgrou
 GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture   # read-only check against a real host
 ```
 
+Exploration tests drive the whole app headlessly through seeded random sessions and check six
+rules after every step (no crash, a sound repository, no lost work, the screen agrees, undo
+returns, errors are reported). A few fixed seeds run in `scripts/check.ps1`; for a long run with
+fresh seeds, use
+`GLOWFLY_EXPLORE_SEEDS=50 GLOWFLY_EXPLORE_STEPS=500 cargo test -p glowfly explore_soak -- --ignored --nocapture`
+(`GLOWFLY_EXPLORE_START` picks the first seed). A failure prints its shrunk case for
+`crates/glowfly-app/src/journey/explore/cases/` (see the README there).
+
 For performance work, `pwsh scripts/make-perf-repos.ps1` builds a set of large repositories
 (`-Download` adds git/git and the Linux kernel); [docs/PERF_REPOS.md](docs/PERF_REPOS.md) lists
 them, how to time Glowfly on them and where to record the timings.

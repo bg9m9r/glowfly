@@ -62,6 +62,19 @@ fn scripted_tour() {
 }
 
 #[test]
+fn a_commit_types_over_the_message_an_undo_put_back() {
+    let (scene, mut j) = start("retype");
+    let mut shadow = Shadow::new(1);
+    step(&mut j, &scene, &mut shadow, Action::Outside(Outside::Write { path: "a.txt".into(), lines: 1 }));
+    step(&mut j, &scene, &mut shadow, Action::SelectWip);
+    step(&mut j, &scene, &mut shadow, Action::StageAll);
+    step(&mut j, &scene, &mut shadow, Action::Commit("msg 1".into()));
+    step(&mut j, &scene, &mut shadow, Action::Undo);
+    step(&mut j, &scene, &mut shadow, Action::Commit("msg 2".into()));
+    assert_eq!(probe::read(&scene.app).head_summary.as_deref(), Some("msg 2"));
+}
+
+#[test]
 fn missing_widget_is_skipped() {
     let (scene, mut j) = start("missing");
     let mut shadow = Shadow::new(1);
@@ -144,4 +157,16 @@ fn resolving_the_second_of_two_conflicts() {
     step(&mut j, &scene, &mut shadow, Action::ResolveTheirs(second.clone()));
     let after = probe::read(&scene.app);
     assert!(after.conflicted.contains(&first) && !after.conflicted.contains(&second), "{:?}", after.conflicted);
+}
+
+#[test]
+fn a_stash_just_made_is_dropped_from_its_menu() {
+    // Right after the toolbar's Stash, the pointer has to rest on the row for a frame first.
+    let (scene, mut j) = start("drop-new");
+    let mut shadow = Shadow::new(1);
+    step(&mut j, &scene, &mut shadow, Action::Outside(Outside::Write { path: "a.txt".into(), lines: 1 }));
+    step(&mut j, &scene, &mut shadow, Action::Stash);
+    run(&mut j, &scene, &mut shadow, &Action::DropStash);
+    step(&mut j, &scene, &mut shadow, Action::Confirm("Delete".into()));
+    assert_eq!(probe::read(&scene.app).stashes, 0);
 }

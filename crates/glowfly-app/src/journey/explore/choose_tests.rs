@@ -33,6 +33,20 @@ fn clean_main_offers_basics() {
 }
 
 #[test]
+fn staged_changes_offer_a_commit() {
+    let (scene, mut j) = start("staged");
+    write(
+        &scene.app, "a.txt", "edited
+",
+    );
+    assert!(git_try(&scene.app, &["add", "a.txt"]));
+    j.refresh();
+    // The commit button reads plain "Commit" until a summary is typed.
+    let all = choices(&j, &scene, 5);
+    assert!(all.iter().any(|a| matches!(a, Action::Commit(_))), "{all:?}");
+}
+
+#[test]
 fn conflict_offers_resolution() {
     let (scene, mut j) = start("conflict");
     assert!(!git_try(&scene.app, &["merge", "topic"]), "the merge conflicts");
