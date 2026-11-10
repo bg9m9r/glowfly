@@ -115,6 +115,10 @@ pub struct Snapshot {
     /// Index paths that are one name to some file system (case or Unicode normalization), from
     /// full loads. Rows of the ones that share a file here carry `Hazard::Twins`.
     pub collisions: Vec<Collision>,
+    /// A `.gitmodules` (the work tree's, or a checked-out submodule's own) isn't a plain file
+    /// that can be read the way git reads it, so `submodules` is empty and submodule rows are
+    /// left out of the status; from full loads.
+    pub submodules_unread: bool,
     /// The index's submodules sorted by path; refreshed by full loads and by status reloads when
     /// the repository has any (`submodules_if_any`).
     pub submodules: Vec<SubmoduleInfo>,

@@ -70,5 +70,6 @@
   "files.warnings.more.one": "and {count} more",
   "files.warnings.more.other": "and {count} more",
   "files.warnings.shared": "One file on this disk stands for several tracked paths ({paths}). Discard, delete and restore are off for them.",
+  "files.warnings.submodules_unread": "Submodules aren't shown: a .gitmodules file here or in a submodule isn't a plain file Glowfly can read.",
   "files.warnings.title": "File names"
 }

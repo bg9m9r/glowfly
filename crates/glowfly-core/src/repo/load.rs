@@ -70,6 +70,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let folding = super::collide::folding(repo.path());
     let ignorecase = super::collide::ignorecase(&repo);
     let submodules = submodules::list(&repo, Some(&unstaged), Some(cache.submodules()));
+    let submodules_unread = crate::gitmodules::unread_anywhere(&repo);
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {
         super::worktree_counts::count_in_load(&mut worktrees, repo.commondir(), &super::worktree_counts::LoadLimits::DEFAULT);
@@ -130,6 +131,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         folding,
         ignorecase,
         collisions,
+        submodules_unread,
         submodules,
         worktrees,
         trust_scan,
