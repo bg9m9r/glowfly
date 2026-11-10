@@ -1,0 +1,12 @@
+# Unstage all left a staged file whose name isn't UTF-8 staged and said nothing: it sent the
+# name as shown (caf\xE9.txt), which names no file. It now unstages the rest and a toast says
+# which names stay staged. Found by an exploration session (seed 2, rule errors-reported). The
+# scene commits a name that isn't UTF-8 only on Linux, so elsewhere this replays without it.
+seed 2
+outside write "a.txt" +1
+resolve-ours "shared.txt"
+stage-all
+commit "msg 18"
+checkout "side"
+merge "main"
+unstage-all

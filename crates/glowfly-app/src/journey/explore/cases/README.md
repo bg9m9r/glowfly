@@ -19,6 +19,8 @@ The cases:
 
 - `resolve-theirs-after-outside-edit.txt`: taking theirs for a conflicted file the user had
   rewritten outside the app lost the rewrite (the regression test for #821).
+- `unstage-all-name-not-utf8.txt`: Unstage all left a staged file whose name isn't UTF-8 staged
+  without saying so (Linux only: elsewhere the scene can't make such a name).
 
 Long runs with fresh seeds, to find new cases:
 
