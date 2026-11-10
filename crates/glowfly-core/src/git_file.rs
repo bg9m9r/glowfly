@@ -62,13 +62,53 @@ fn up_to_nul(bytes: &[u8]) -> &[u8] {
     bytes.iter().position(|b| *b == 0).map_or(bytes, |n| &bytes[..n])
 }
 
-/// `bytes` up to the first NUL, as text.
-fn c_text(bytes: &[u8]) -> Option<String> {
-    String::from_utf8(up_to_nul(bytes).to_vec()).ok()
+/// libgit2's `git__isspace`: ASCII whitespace with VT, which `u8::is_ascii_whitespace` leaves out.
+fn git_space(b: u8) -> bool {
+    matches!(b, b' ' | b'\t' | b'\n' | b'\x0b' | b'\x0c' | b'\r')
 }
 
-fn text_of(file: &Path) -> Option<String> {
-    read_file_bounded(file, SMALL_FILE).as_deref().and_then(c_text)
+/// A file naming one path, as libgit2 reads it.
+#[derive(Debug, PartialEq)]
+enum Value {
+    Missing,
+    /// Possibly empty.
+    Text(String),
+    /// libgit2 would use a value this can't check the same way: one still holding a LF or CR
+    /// (libgit2 takes every line as one path), one that isn't UTF-8, or a file that can't be read
+    /// whole (not a regular file, or over `SMALL_FILE`). Never followed.
+    Unsure,
+}
+
+/// `file` read as libgit2 reads a `.git` file, `commondir` or worktree record
+/// (`git_futils_readbuffer`, then `git_str_rtrim`): up to the first NUL, with trailing ASCII
+/// whitespace (`git__isspace`, never Unicode spaces) trimmed and every line kept.
+fn value_of(file: &Path) -> Value {
+    let Some(bytes) = read_file_bounded(file, SMALL_FILE) else {
+        return if std::fs::symlink_metadata(file).is_ok() { Value::Unsure } else { Value::Missing };
+    };
+    value_in(&bytes)
+}
+
+fn value_in(bytes: &[u8]) -> Value {
+    let b = up_to_nul(bytes);
+    let b = &b[..b.iter().rposition(|c| !git_space(*c)).map_or(0, |n| n + 1)];
+    match std::str::from_utf8(b) {
+        Ok(t) if !t.contains(['\n', '\r']) => Value::Text(t.to_owned()),
+        _ => Value::Unsure,
+    }
+}
+
+/// A `commondir` or worktree record's value as libgit2 resolves it: absolute as it is, and
+/// joined to `base` only when it starts with `./` or `../` (`git_fs_path_is_relative`, `/`
+/// only). None for any other value, which libgit2 resolves against the process's own folder.
+fn joined_as_libgit2(base: &Path, named: &str) -> Option<PathBuf> {
+    if Path::new(named).is_absolute() {
+        Some(PathBuf::from(named))
+    } else if named.starts_with("./") || named.starts_with("../") {
+        Some(base.join(named))
+    } else {
+        None
+    }
 }
 
 /// `named` joined to `base` unless absolute.
@@ -77,18 +117,21 @@ fn joined(base: &Path, named: &str) -> PathBuf {
     if named.is_absolute() { named.to_path_buf() } else { base.join(named) }
 }
 
-/// The common dir `git_dir`'s `commondir` file names (relative to `git_dir` unless absolute),
-/// resolved only once it is allowed from `home`. None without one.
+/// The common dir `git_dir`'s `commondir` file names (absolute, or relative to `git_dir` when it
+/// starts with `./` or `../`), resolved only once it is allowed from `home`. None without one.
 pub(crate) fn common_dir_of(git_dir: &Path, home: &Path) -> Named {
     let file = git_dir.join("commondir");
     if !may_follow(&file, git_dir) {
         return Named::Refused(file);
     }
-    let Some(text) = text_of(&file) else { return Named::None };
-    if text.trim().is_empty() {
-        return Named::None;
-    }
-    let named = joined(git_dir, text.trim_end_matches(['\n', '\r']));
+    // libgit2's `lookup_commondir`: the whole trimmed file (an empty one is resolved against the
+    // process's own folder).
+    let text = match value_of(&file) {
+        Value::Missing => return Named::None,
+        Value::Text(t) => t,
+        Value::Unsure => return Named::Refused(file),
+    };
+    let Some(named) = joined_as_libgit2(git_dir, &text) else { return Named::Refused(file) };
     if !may_follow(&named, home) {
         return Named::Refused(named);
     }
@@ -108,9 +151,21 @@ pub(crate) fn dirs_of(folder: &Path, home: &Path) -> Found {
     let git_dir = if meta.is_dir() {
         dot
     } else {
-        let line = text_of(&dot).and_then(|t| t.lines().next().and_then(|l| l.strip_prefix("gitdir:")).map(|g| g.trim().to_owned()));
-        let Some(line) = line.filter(|l| !l.is_empty()) else { return Found::None };
-        let named = joined(folder, &line);
+        // libgit2's `read_gitfile`: the whole trimmed file after `gitdir:` and any ASCII
+        // whitespace, joined to the folder unless absolute.
+        let text = match value_of(&dot) {
+            Value::Missing => return Found::None,
+            Value::Text(t) => t,
+            Value::Unsure => return Found::Refused(dot),
+        };
+        let Some(named) = text.strip_prefix("gitdir:").map(|g| g.trim_start_matches(|c: char| c.is_ascii() && git_space(c as u8))) else {
+            return Found::None;
+        };
+        // Nothing after `gitdir:`: libgit2 counts the file as malformed.
+        if named.is_empty() {
+            return Found::None;
+        }
+        let named = joined(folder, named);
         if !may_follow(&named, home) {
             return Found::Refused(named);
         }
@@ -175,14 +230,22 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
 }
 
 /// The `.git` file of the linked worktree whose admin dir (`<common>/worktrees/<id>`) is
-/// `admin`, as its `gitdir` record names it: absolute, or relative to `admin` (`git worktree add
-/// --relative-paths`). Refused when it may not be followed from `home`.
+/// `admin`, as its `gitdir` record names it: absolute, or relative to `admin` when it starts with
+/// `./` or `../` (`git worktree add --relative-paths`). Refused when it may not be followed from
+/// `home`, or when libgit2 would read it differently (`Value::Unsure`, another relative one).
 pub(crate) fn worktree_folder(admin: &Path, home: &Path) -> Named {
-    let text = read_small_in(&admin.join("gitdir"), admin).as_deref().and_then(c_text);
-    let Some(line) = text.as_deref().and_then(|t| t.lines().next()).map(str::trim).filter(|l| !l.is_empty()) else {
+    let file = admin.join("gitdir");
+    if !may_follow(&file, admin) {
         return Named::None;
+    }
+    // libgit2's `git_worktree__read_link`: the whole trimmed record.
+    let text = match value_of(&file) {
+        Value::Missing => return Named::None,
+        Value::Text(t) if t.is_empty() => return Named::None,
+        Value::Text(t) => t,
+        Value::Unsure => return Named::Refused(file),
     };
-    let named = joined(admin, line);
+    let Some(named) = joined_as_libgit2(admin, &text) else { return Named::Refused(file) };
     if may_follow(&named, home) { Named::At(named) } else { Named::Refused(named) }
 }
 

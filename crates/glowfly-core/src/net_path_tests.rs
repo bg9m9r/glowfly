@@ -126,6 +126,15 @@ fn a_name_holding_a_nul_is_refused() {
 }
 
 #[test]
+fn a_name_the_os_fails_to_look_up_is_refused() {
+    let home = crate::paths::temp_dir();
+    // Too long for one name: only a missing part ends the walk as allowed.
+    assert!(!may_follow(&home.join("a".repeat(300)).join("x"), &home));
+    // A TAB is a valid name on Unix (missing here) and an invalid one on Windows.
+    assert_eq!(may_follow(&home.join("glowfly-missing	").join("x"), &home), !cfg!(windows));
+}
+
+#[test]
 fn links_to_a_network_place_are_refused() {
     let home = crate::paths::temp_dir().join(format!("glowfly-test-net-path-links-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&home);
