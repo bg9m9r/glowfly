@@ -66,8 +66,9 @@ struct Disk<'a> {
 impl Disk<'_> {
     /// Whether something nothing tracks is in the way of writing `path` (a gitlink with `link`).
     fn blocks(&mut self, path: &str, link: bool) -> bool {
-        // A name that isn't a plain path inside the work tree is never looked up: nothing is there.
-        let Ok(full) = crate::repo::work_path(self.workdir, path) else { return false };
+        // A name that isn't a plain path inside the work tree is never looked up, so what a
+        // write of it would replace can't be told: it counts as in the way.
+        let Ok(full) = crate::repo::work_path(self.workdir, path) else { return true };
         if let Ok(m) = full.symlink_metadata() {
             let blocked = if m.is_dir() { !link && self.holds_untracked(path) } else { !self.tracked.has(path) };
             if blocked {
@@ -181,4 +182,26 @@ pub(super) fn check(workdir: &Path, repo: &Repository, target: Oid, action: &Act
 pub(super) fn check_stash(workdir: &Path, repo: &Repository, stash: Oid, onto: Oid, action: &Action, redo: bool) -> Result<Option<Plan>> {
     let paths = stash_in_the_way(workdir, repo, stash, onto)?;
     Ok((!paths.is_empty()).then(|| refusal(&paths, action, redo)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::*;
+
+    #[test]
+    fn a_name_that_is_not_inside_the_work_tree_counts_as_in_the_way() {
+        let dir = scratch_repo("undo-in-the-way-names");
+        write(&dir, "a.txt", "a\n");
+        git(&dir, &["add", "."]);
+        git(&dir, &["commit", "-q", "-m", "one"]);
+        let repo = Repository::open(&dir).unwrap();
+        let mut wanted = vec!["new.txt", "../x", "/x/y", "sub/../../x"];
+        if cfg!(windows) {
+            wanted.extend([r"C:\x", "C:x", r"\h\s\a", "a:b"]);
+        }
+        let asked = wanted.iter().map(|p| ((*p).to_owned(), false)).collect();
+        assert_eq!(blocked(&dir, &repo, asked).unwrap(), wanted[1..]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
