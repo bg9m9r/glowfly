@@ -177,7 +177,7 @@ pub(crate) use resolve_undo::path_batches;
 pub use resolve_undo::{ConflictSummary, ResolvedFile, conflict_summary, mark_conflicted, mark_resolved, resolve_undo_ids, resolved_paths};
 pub use restore::{RestoredFrom, restore_file};
 pub use revert::{ALREADY_REVERTED, RevertPart, RevertRequest, Reverted, revert};
-pub(crate) use rpath::shown as shown_path;
+pub use rpath::shown as shown_path;
 pub use safe_names::is_safe_ref_name;
 pub use stacked::*;
 pub use status::{ChangeCounts, status_and_index, status_and_index_with, status_at};

@@ -120,6 +120,13 @@ fn less_common_actions_are_performed() {
     if j.modal_open() {
         run(&mut j, &scene, &mut shadow, &Action::Confirm("Abort merge".into()));
     }
+    // On Linux the scene holds a file whose name isn't UTF-8, so the merge's work can't be kept
+    // for Undo: nothing is aborted, and the app offers the plain abort instead.
+    j.settle();
+    if cfg!(target_os = "linux") {
+        assert!(j.modal_open(), "no plain abort was offered");
+        run(&mut j, &scene, &mut shadow, &Action::Confirm("Abort merge".into()));
+    }
     assert!(probe::read(&scene.app).conflicted.is_empty());
 }
 
