@@ -117,7 +117,7 @@ pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut Defau
     modules_stamps(&repo.commondir().join("modules"), 0, now, h);
     let Some(workdir) = repo.workdir() else { return };
     let mut paths = Vec::new();
-    if let Ok(cfg) = git2::Config::open(&workdir.join(".gitmodules"))
+    if let Some(cfg) = crate::gitmodules::open(workdir)
         && let Ok(entries) = cfg.entries(Some(r"^submodule\..*\.path$"))
     {
         // A bare `path` key names nothing.

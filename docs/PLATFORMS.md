@@ -209,6 +209,13 @@ trust scan all run for untrusted repositories too.
    from their admin dirs, never opening a worktree's folder. A submodule or nested repository
    whose object store links to such a place, or whose alternates name one, is refused like one
    whose `.git` file does. The watcher doesn't watch a common dir on another network root.
+8. **`.gitmodules` is read the way git reads it** (`gitmodules.rs`): a regular file of at most
+   1 MiB, never through a link, with `[include]` and `[includeIf]` sections not followed (git
+   ignores them there; libgit2 reads the file as an ordinary config file and follows them). A
+   file that isn't that, or that holds `[include` in any letter case anywhere, is never opened as
+   a config: the Submodules list is empty, `refs_key` stamps only the index's gitlinks, and
+   libgit2's status and diffs to the working tree leave out every submodule row
+   (`git_file::submodules_unread`, the same places as rule 7).
 
 ### Names Glowfly creates or accepts
 
@@ -965,7 +972,7 @@ Gaps that are accepted for now:
   (`core.hooksPath`, program files) are read by the trust scan unguarded. In a store that is
   allowed, a loose object file or pack file that is itself a link is followed when libgit2 reads
   that object (only the store folders' direct entries are checked), and a work tree's
-  `.gitignore`, `.gitattributes` and `.gitmodules` that are links are read through by libgit2
+  `.gitignore` and `.gitattributes` that are links are read through by libgit2
   (#699). A file swapped between the check and the read isn't caught.
   A local repository's linked worktree or submodule on a share is shown but not validated or
   counted (the submodule as not checked out). A refused nested repository that later stops

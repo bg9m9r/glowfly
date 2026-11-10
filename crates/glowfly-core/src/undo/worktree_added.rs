@@ -77,7 +77,9 @@ fn plan_undo(repo: &Repository, listed: &[WorktreeInfo], path: &Path, created: &
         return Ok(Plan::Refuse(Refusal::Busy(format!("Finish or abort the {op} in {folder} first."))));
     }
     let mut opts = StatusOptions::new();
-    opts.include_untracked(true).include_ignored(true).recurse_untracked_dirs(false).exclude_submodules(false);
+    // Submodules are left out only where libgit2 is kept from them (`git_file::submodules_unread`).
+    let unread = crate::git_file::submodules_unread(&there);
+    opts.include_untracked(true).include_ignored(true).recurse_untracked_dirs(false).exclude_submodules(unread);
     if !there.statuses(Some(&mut opts))?.is_empty() {
         return Ok(unsafe_(format!(
             "Worktree {folder} has changes or files made since it was created; remove it from the WORKTREES section instead."
