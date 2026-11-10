@@ -44,7 +44,7 @@ pub(super) fn lfs_submenu(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, items
 /// everything.
 pub(crate) fn staged_header_items(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, snap: &Snapshot) {
     let blocked = push_blocked(t, snap, StashScope::Staged, &[]);
-    let stash = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, path: None });
+    let stash = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Staged, paths: Vec::new() });
     menu_item_if(msgs, ui, t.tr("files.menu.stash_staged"), blocked, stash);
     let nothing = snap.staged.is_empty().then(|| t.tr("files.menu.nothing_staged"));
     let m = Msg::Patch(PatchMsg::ChangesDialog { scope: WipScope::Staged, path: None });
@@ -68,6 +68,23 @@ pub(crate) fn patch_file_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, f
 pub(crate) fn stash_file_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, snap: &Snapshot, f: &FileEntry) {
     let conflicted = snap.unstaged.iter().any(|f| f.status == '!').then(|| t.tr("files.menu.resolve_conflicted"));
     let unsafe_path = f.hazard.as_ref().map(|_| t.tr("files.menu.unsafe_stash"));
-    let m = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(f.path.clone()) });
+    let m = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, paths: vec![f.path.clone()] });
     menu_item_if(msgs, ui, t.tr("files.menu.stash_file"), conflicted.or(unsafe_path), m);
+}
+
+/// Why the picked `paths` can't be stashed: a conflicted file (git can't stash then), or the
+/// first pick Glowfly can't stash safely.
+pub(crate) fn stash_picks_blocked(t: Lang, snap: &Snapshot, paths: &[String]) -> Option<String> {
+    if snap.unstaged.iter().any(|f| f.status == '!') {
+        return Some(t.tr("files.menu.resolve_conflicted").to_owned());
+    }
+    let rows = snap.unstaged.iter().chain(&snap.staged).filter(|f| paths.contains(&f.path));
+    rows.into_iter().find(|f| f.hazard.is_some()).map(|f| t.trf("files.menu.unsafe_stash_named", &[("path", &f.path)]))
+}
+
+/// Opens the Stash dialog on Selected files with every picked path ticked; off with `blocked`
+/// (`stash_picks_blocked`).
+pub(crate) fn stash_picks_item(ui: &mut egui::Ui, t: Lang, msgs: &mut Vec<Msg>, paths: &[String], blocked: Option<&str>) {
+    let m = Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, paths: paths.to_vec() });
+    menu_item_if(msgs, ui, t.trn("details.wip.picks.stash.item", paths.len(), &[]), blocked, m);
 }

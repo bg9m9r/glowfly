@@ -130,7 +130,7 @@ pub fn new_tag(st: &AppState, t: Lang, annotated: bool) -> SectionAction {
 /// checks the rest (nothing staged, say).
 pub fn stash(st: &AppState, t: Lang, scope: StashScope) -> SectionAction {
     let name = if scope == StashScope::Staged { t.tr("sidebar.action.stash_staged") } else { t.tr("sidebar.action.stash") };
-    SectionAction::new(name, toolbar_tips::stash_blocked(st), move || Msg::Stash(StashMsg::PushDialog { scope, path: None }))
+    SectionAction::new(name, toolbar_tips::stash_blocked(st), move || Msg::Stash(StashMsg::PushDialog { scope, paths: Vec::new() }))
 }
 
 /// The Create worktree dialog from HEAD: its branch (asking for a new branch name) or, detached,

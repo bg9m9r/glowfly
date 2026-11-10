@@ -16,8 +16,8 @@ pub enum StashMsg {
     /// Give the stash with this commit this message: the dialog's text, from which `update`
     /// builds the full stash list entry (`stash_ops::edited_message`).
     Rename { oid: Oid, message: String },
-    /// Open the Stash dialog on this choice; with `path`, Selected files with that file ticked.
-    PushDialog { scope: StashScope, path: Option<String> },
+    /// Open the Stash dialog on this choice; with paths: Selected files with those ticked.
+    PushDialog { scope: StashScope, paths: Vec<String> },
     /// Stash with the dialog's choice and text; `paths` only for Files. `update` re-checks them
     /// against the snapshot. `keep_index`: --keep-index, ignored for Staged.
     Push { scope: StashScope, message: String, paths: Vec<String>, keep_index: bool },

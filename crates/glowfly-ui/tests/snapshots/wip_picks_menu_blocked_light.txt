@@ -59,6 +59,7 @@ Button "app.txt" [on]
 Button "Stage"
 Label "Modified"
 Button "Stage 3 files"
+Button "Stash 3 selected files…" [disabled]
 Button "Discard changes in 3 files…" [disabled]
 Button "Delete 3 files…" [disabled]
 Button "login.txt" [off]

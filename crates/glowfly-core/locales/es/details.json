@@ -186,6 +186,8 @@
   "details.wip.picks.stage.item.other": "Preparar {count} archivos",
   "details.wip.picks.stage.tip.one": "Preparar el {count} archivo seleccionado",
   "details.wip.picks.stage.tip.other": "Preparar los {count} archivos seleccionados",
+  "details.wip.picks.stash.item.one": "Guardar {count} archivo seleccionado en stash…",
+  "details.wip.picks.stash.item.other": "Guardar {count} archivos seleccionados en stash…",
   "details.wip.picks.unstage.item.one": "Quitar {count} archivo de preparados",
   "details.wip.picks.unstage.item.other": "Quitar {count} archivos de preparados",
   "details.wip.picks.unstage.tip.one": "Quitar de preparados el {count} archivo seleccionado",

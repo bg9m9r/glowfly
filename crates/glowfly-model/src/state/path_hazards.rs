@@ -46,7 +46,8 @@ pub fn target(msg: &Msg) -> Option<(&str, bool)> {
         Msg::Repo(RepoMsg::PickWipFile { path, .. }) => (path, false),
         Msg::Tools(ToolsMsg::OpenFile { path, .. }) => (path, false),
         // Stashing a file puts its HEAD version back on disk.
-        Msg::Stash(StashMsg::PushDialog { path: Some(p), .. }) => (p, true),
+        // Several picks rely on the menu's block and the dialog's stashable filter.
+        Msg::Stash(StashMsg::PushDialog { paths, .. }) if paths.len() == 1 => (paths[0].as_str(), true),
         Msg::Patch(PatchMsg::ChangesDialog { path: Some(p), .. }) => (p, false),
         Msg::Patch(PatchMsg::ExportFiles { paths, .. }) => (paths.first()?, false),
         _ => return None,

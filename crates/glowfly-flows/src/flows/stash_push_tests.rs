@@ -39,7 +39,7 @@ pub(super) fn wip_repo(name: &str) -> (AppState, PathBuf) {
 }
 
 pub(super) fn dialog(st: &mut AppState, scope: StashScope) {
-    run(st, Msg::Stash(StashMsg::PushDialog { scope, path: None }));
+    run(st, Msg::Stash(StashMsg::PushDialog { scope, paths: Vec::new() }));
     assert!(matches!(st.modal, Some(Modal::StashPush(_))), "the dialog opened");
 }
 
@@ -103,7 +103,7 @@ fn the_dialog_opens_from_each_entry_point() {
     dialog(&mut st, StashScope::All);
     let f = form(&st);
     assert!(f.scope == StashScope::All && f.chosen.is_empty() && f.focus_message && f.message.is_empty() && !f.keep_index);
-    run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some("b.txt".into()) }));
+    run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, paths: vec!["b.txt".into()] }));
     assert_eq!(form(&st).scope, StashScope::Files);
     assert_eq!(form(&st).chosen.iter().collect::<Vec<_>>(), ["b.txt"]);
     dialog(&mut st, StashScope::Staged);
@@ -113,7 +113,7 @@ fn the_dialog_opens_from_each_entry_point() {
     let (mut st, dir) = repo_with_topic("stash-push-open-clean");
     git(&dir, &["checkout", "--", "a.txt"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, path: None }));
+    run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, paths: Vec::new() }));
     assert!(st.modal.is_none());
     assert_eq!(last_log(&st), NOTHING);
     let _ = std::fs::remove_dir_all(&dir);
@@ -207,11 +207,11 @@ fn paths_glowfly_cannot_name_safely_are_never_stashed() {
 
     st.modal = None;
     for (path, h) in [("a.txt", twin), ("caf\\xE9.txt", odd)] {
-        let fx = run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, path: Some(path.into()) }));
+        let fx = run(&mut st, Msg::Stash(StashMsg::PushDialog { scope: StashScope::Files, paths: vec![path.into()] }));
         assert!(fx.is_empty() && st.modal.is_none(), "{path}: the dialog stays shut");
         assert_eq!(st.toasts.last().map(|t| t.text.clone()), Some(h.reason(glowfly_core::i18n::Lang::En)));
     }
-    let mut form = StashPushForm::new(StashScope::Files, None);
+    let mut form = StashPushForm::new(StashScope::Files, Vec::new());
     form.chosen.extend(["a.txt", "b.txt", "caf\\xE9.txt"].map(String::from));
     assert_eq!(form.paths(st.snap.as_ref().unwrap()), ["b.txt"]);
     let _ = std::fs::remove_dir_all(&dir);

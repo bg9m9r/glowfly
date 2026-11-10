@@ -71,9 +71,9 @@ pub struct StashPushForm {
 }
 
 impl StashPushForm {
-    /// The dialog on `scope`, with only `path` ticked (or nothing).
-    pub fn new(scope: StashScope, path: Option<String>) -> Self {
-        Self { scope, message: String::new(), keep_index: false, chosen: path.into_iter().collect(), focus_message: true }
+    /// The dialog on `scope`, with only `paths` ticked (or nothing).
+    pub fn new(scope: StashScope, paths: Vec<String>) -> Self {
+        Self { scope, message: String::new(), keep_index: false, chosen: paths.into_iter().collect(), focus_message: true }
     }
 
     /// Whether the stash keeps the staged changes: ticked, and a scope it applies to.

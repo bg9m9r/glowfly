@@ -48,7 +48,7 @@ pub(super) fn explain(
     let is_head = |b: &str| head.as_deref() == Some(b);
     let fix = |label: &str, msg: Msg| Some(ToastAction { label: label.to_owned(), msg: Box::new(msg), workdir: job.workdir.clone() });
     let stash_dialog =
-        || fix(t.tr("git_errors.stash_dialog.button"), Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, path: None }));
+        || fix(t.tr("git_errors.stash_dialog.button"), Msg::Stash(StashMsg::PushDialog { scope: StashScope::All, paths: Vec::new() }));
     let stash_and =
         |r: StashRetry| fix(crate::state::auto_stash::button(t, &r.op), Msg::AutoStash(crate::msg::AutoStashMsg::Retry(Box::new(r))));
     let view_conflicts =

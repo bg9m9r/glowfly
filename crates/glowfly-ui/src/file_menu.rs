@@ -18,7 +18,7 @@ mod extra;
 
 #[cfg(test)]
 pub(super) use extra::lfs_track_items;
-pub(super) use extra::{patch_file_item, staged_header_items, stash_file_item};
+pub(super) use extra::{patch_file_item, staged_header_items, stash_file_item, stash_picks_blocked, stash_picks_item};
 
 use super::common::{menu_danger, menu_item, menu_item_if, menu_item_setup, short};
 use super::widgets::reason::{self, ItemState};

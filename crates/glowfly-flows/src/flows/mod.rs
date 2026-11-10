@@ -247,6 +247,7 @@ mod stack_push_tests;
 mod stack_stash_tests;
 mod stack_tests;
 mod stash_confirm_tests;
+mod stash_picks_tests;
 mod stash_push_options_tests;
 mod stash_push_tests;
 mod stash_rename_tests;

@@ -186,6 +186,8 @@
   "details.wip.picks.stage.item.other": "Stage {count} files",
   "details.wip.picks.stage.tip.one": "Stage the {count} selected file",
   "details.wip.picks.stage.tip.other": "Stage the {count} selected files",
+  "details.wip.picks.stash.item.one": "Stash {count} selected file…",
+  "details.wip.picks.stash.item.other": "Stash {count} selected files…",
   "details.wip.picks.unstage.item.one": "Unstage {count} file",
   "details.wip.picks.unstage.item.other": "Unstage {count} files",
   "details.wip.picks.unstage.tip.one": "Unstage the {count} selected file",
