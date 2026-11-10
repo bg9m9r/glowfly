@@ -302,6 +302,29 @@ fn details_beside_fix() {
     }
 }
 
+/// Unresolved's View conflicts opens the first conflicted file git can be given: never a name
+/// that isn't UTF-8 (its row shows its bytes escaped, which names another file or none).
+#[test]
+fn unresolved_never_opens_a_name_that_is_not_utf8() {
+    use glowfly_core::repo::{FileEntry, Hazard};
+    let (mut st, dir) = busy("je-unresolved", "Fetch");
+    let bad = FileEntry { hazard: Some(Hazard::NotUtf8(b"caf\xe9.txt".to_vec())), ..FileEntry::new("caf\\xE9.txt", '!') };
+    let unresolved = "error: Merging is not possible because you have unmerged files.";
+    st.snap.as_mut().unwrap().unstaged = vec![bad.clone()];
+    done(&mut st, unresolved);
+    let t = last_toast(&st);
+    assert!(t.text.starts_with("Earlier conflicts aren't resolved yet."), "{}", t.text);
+    assert_ne!(labels(t).0, Some("View conflicts"), "no fix to offer");
+
+    st.snap.as_mut().unwrap().unstaged = vec![bad, FileEntry::new("d.txt", '!')];
+    up(&mut st, Msg::git("Fetch", &["fetch"]));
+    done(&mut st, unresolved);
+    let t = last_toast(&st);
+    assert_eq!(labels(t).0, Some("View conflicts"));
+    assert!(matches!(action_msg(&st, t), Msg::Conflict(ConflictMsg::OpenConflict(p)) if p == "d.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 const CHECKOUT_LOCAL: &str = "error: Your local changes to the following files would be overwritten by checkout:\n\tf.txt\nAborting";
 
 #[test]

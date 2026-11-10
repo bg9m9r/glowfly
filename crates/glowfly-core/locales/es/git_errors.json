@@ -1,5 +1,7 @@
 {
   "git_errors.clone_https.button": "Clonar por HTTPS como {user}",
+  "git_errors.conflicts.incomplete.one": "Se detuvo por conflictos en al menos {count} archivo (puede que la lista de Git esté incompleta). Resuélvelos y luego continúa o cancela.",
+  "git_errors.conflicts.incomplete.other": "Se detuvo por conflictos en al menos {count} archivos (puede que la lista de Git esté incompleta). Resuélvelos y luego continúa o cancela.",
   "git_errors.conflicts.one": "Se detuvo por conflictos en {count} archivo. Resuélvelo y luego continúa o cancela.",
   "git_errors.conflicts.other": "Se detuvo por conflictos en {count} archivos. Resuélvelos y luego continúa o cancela.",
   "git_errors.conflicts.unlisted": "Se detuvo por conflictos. Resuélvelos y luego continúa o cancela.",

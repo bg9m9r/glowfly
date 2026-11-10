@@ -42,7 +42,7 @@ pub(super) fn finished(
             super::push_pr::load_failed(st, fx);
         }
     }
-    super::conflict_count::status_read(st, read);
+    super::conflict_count::status_read(st, super::conflict_count::Coverage::whole(read));
     super::refresh::load_finished(st, fx);
 }
 

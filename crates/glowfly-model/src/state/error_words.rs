@@ -49,6 +49,11 @@ pub fn conflicts(t: Lang, n: usize) -> String {
     if n == 0 { t.tr("git_errors.conflicts.unlisted").to_owned() } else { t.trn("git_errors.conflicts", n, &[]) }
 }
 
+/// `conflicts`, when a status read may have left conflicted files out: git's count is a floor.
+pub fn conflicts_incomplete(t: Lang, n: usize) -> String {
+    if n == 0 { conflicts(t, 0) } else { t.trn("git_errors.conflicts.incomplete", n, &[]) }
+}
+
 /// `cause`'s sentence for a failed command's `output`, when Glowfly recognises why it failed.
 pub fn explained(t: Lang, output: &str) -> Option<String> {
     classify(output).map(|c| cause(t, &c))

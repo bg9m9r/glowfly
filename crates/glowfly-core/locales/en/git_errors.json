@@ -1,5 +1,7 @@
 {
   "git_errors.clone_https.button": "Clone over HTTPS as {user}",
+  "git_errors.conflicts.incomplete.one": "Stopped on conflicts in at least {count} file (git's list may be incomplete). Resolve them, then continue or abort.",
+  "git_errors.conflicts.incomplete.other": "Stopped on conflicts in at least {count} files (git's list may be incomplete). Resolve them, then continue or abort.",
   "git_errors.conflicts.one": "Stopped on conflicts in {count} file. Resolve it, then continue or abort.",
   "git_errors.conflicts.other": "Stopped on conflicts in {count} files. Resolve them, then continue or abort.",
   "git_errors.conflicts.unlisted": "Stopped on conflicts. Resolve them, then continue or abort.",
