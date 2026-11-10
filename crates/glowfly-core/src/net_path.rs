@@ -136,7 +136,8 @@ fn unix_root(text: &str) -> Option<NetRoot> {
 /// already in use: its spelling and every link on the way lead to a local place or one on
 /// `home`'s network root. The spelling is checked before anything is touched; then each part
 /// past what `named` shares with `home` is looked at without following it, and a link's target
-/// goes through the same checks (at most `MAX_LINKS`).
+/// goes through the same checks (at most `MAX_LINKS`). `named` must be absolute: a relative one
+/// would be read from the process's own folder.
 pub(crate) fn may_follow(named: &Path, home: &Path) -> bool {
     let home_root = root_of(home);
     if !may_follow_for(root_of(named).as_ref(), home_root.as_ref()) {
@@ -182,6 +183,7 @@ fn parts(p: &Path) -> Vec<Part> {
 }
 
 fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
+    debug_assert!(named.is_absolute(), "net_path::walk needs an absolute path: {}", named.display());
     let mut todo: Vec<Part> = parts(named);
     todo.reverse();
     let mut at = PathBuf::new();

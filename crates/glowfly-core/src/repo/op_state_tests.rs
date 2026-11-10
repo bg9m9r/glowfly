@@ -123,3 +123,23 @@ fn a_stopped_cherry_pick_or_revert_reads_its_message() {
     assert!(message.starts_with("Revert \"q1\"") && message.contains(&q1.to_string()), "{message:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn held_branch_never_follows_a_far_link() {
+    let dir = scratch_repo("op-state-far-head-name");
+    let git_dir = dir.join(".git");
+    let rebase = git_dir.join("rebase-merge");
+    std::fs::create_dir_all(&rebase).unwrap();
+    write(
+        &rebase,
+        "head-name",
+        "refs/heads/x
+",
+    );
+    assert_eq!(held_branch(&git_dir), Some(HeldBranch { name: "x".to_owned(), by: BranchUse::Rebasing }));
+    std::fs::remove_file(rebase.join("head-name")).unwrap();
+    if link_to(&net_place().join("head-name"), &rebase.join("head-name"), false) {
+        assert_eq!(held_branch(&git_dir), None, "a link to a network place is never read");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

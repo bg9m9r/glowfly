@@ -114,3 +114,17 @@ fn an_offsite_submodule_and_worktree_record_stamp_a_marker() {
     assert_ne!(refs_key(&dir).unwrap(), k1, "the submodule's git file rewritten to a local one");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn refs_key_never_reads_through_a_far_admin_link() {
+    let dir = super::offsite_tests::offsite_repo("refs-key-far-admin");
+    let admin = dir.join(".git/worktrees/wt");
+    std::fs::remove_file(admin.join("HEAD")).unwrap();
+    if link_to(&net_place().join("HEAD"), &admin.join("HEAD"), false) && link_to(&net_place().join("locked"), &admin.join("locked"), false)
+    {
+        let k0 = refs_key(&dir).unwrap();
+        assert_eq!(refs_key(&dir).unwrap(), k0, "stable while nothing changes");
+        assert!(super::load(&dir, &super::LoadOptions::default()).is_ok());
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
