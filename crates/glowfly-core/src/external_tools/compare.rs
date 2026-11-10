@@ -42,7 +42,7 @@ fn side_file(session: &Session, workdir: &Path, path: &str, side: &SideSource, l
     Ok(match side {
         SideSource::Blob { id, path: at, commit } => session.write(label, at, &repo::blob_bytes(workdir, *id, at, filters, *commit)?)?,
         SideSource::Empty => session.write("empty", path, &[])?,
-        SideSource::Working(p) => workdir.join(p),
+        SideSource::Working(p) => repo::work_path(workdir, p)?,
     })
 }
 
@@ -62,6 +62,7 @@ pub struct MergeFiles {
 /// Writes the stages of the conflict at `path` for a merge tool to a new session in `root`
 /// (through git's checkout filters with `filters`, else the stored bytes).
 pub fn merge_files(root: &Path, workdir: &Path, path: &str, filters: bool) -> Result<MergeFiles> {
+    let output = repo::work_path(workdir, path)?;
     let sides = repo::merge_sides(workdir, path)?;
     let session = Session::create(root)?;
     let written = (|| -> Result<[PathBuf; 3]> {
@@ -74,7 +75,7 @@ pub fn merge_files(root: &Path, workdir: &Path, path: &str, filters: bool) -> Re
         Ok([session.write("base", path, &base)?, session.write("ours", path, &ours)?, session.write("theirs", path, &theirs)?])
     })();
     match written {
-        Ok([base, ours, theirs]) => Ok(MergeFiles { base, ours, theirs, output: workdir.join(path), session }),
+        Ok([base, ours, theirs]) => Ok(MergeFiles { base, ours, theirs, output, session }),
         Err(e) => {
             let _ = session.remove();
             Err(e)

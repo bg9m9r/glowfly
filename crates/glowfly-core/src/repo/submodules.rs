@@ -131,9 +131,8 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
             let (state, left_behind) = if far {
                 (SubmoduleState::Uninitialized, Vec::new())
             } else {
-                // One component at a time, so the folder uses the platform's separators.
                 let folder_exists =
-                    workdir.as_ref().is_some_and(|w| path.split('/').fold(w.clone(), |p, c| p.join(c)).symlink_metadata().is_ok());
+                    workdir.as_ref().is_some_and(|w| super::work_path(w, &path).is_ok_and(|f| f.symlink_metadata().is_ok()));
                 let known = Known {
                     recorded,
                     checked_out,

@@ -26,8 +26,12 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
             if ToolSetup::of(st.settings.lang(), &st.settings.external_tools).editor.is_some() {
                 return show_page(st, now, fx);
             }
-            // Always absolute, so a file named like an option can't be read as one.
-            let file = w.join(&path);
+            // Always absolute, so a file named like an option can't be read as one. A name that
+            // isn't a plain path inside the work tree names no file there.
+            let Ok(file) = glowfly_core::repo::work_path(&w, &path) else {
+                let gone = st.settings.lang().trf("details.wip.delete_files.gone", &[("path", &path)]);
+                return fail(st, gone, now);
+            };
             match editor_file(&st.settings.external_tools, &w, &file, line.unwrap_or(1)) {
                 Ok(launch) => fx.push(Effect::Tool(ToolEffect::Launch { kind: ToolKind::Editor, launch, target: path, check: Some(file) })),
                 Err(text) => fail(st, text, now),

@@ -73,7 +73,7 @@ pub(super) fn scan_with_limit(workdir: &Path, path: &str, max: u64) -> Option<us
 /// text file (links are not followed) of at most `max` bytes; `None` otherwise, or when a NUL
 /// byte near its start makes it binary.
 pub(super) fn read_text(workdir: &Path, path: &str, max: u64) -> Option<Vec<u8>> {
-    let full = workdir.join(path);
+    let full = super::work_path(workdir, path).ok()?;
     let meta = std::fs::symlink_metadata(&full).ok()?;
     if !meta.file_type().is_file() || meta.len() > max {
         return None;

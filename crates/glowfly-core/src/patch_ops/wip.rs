@@ -110,7 +110,7 @@ pub(super) fn chunks(paths: &[String], budget: usize) -> Vec<&[String]> {
 /// row ending in "/". A patch can't create one, and `git diff --no-index` fails on it, so it
 /// is left out.
 fn is_directory(workdir: &Path, path: &str) -> bool {
-    path.ends_with('/') || std::fs::symlink_metadata(workdir.join(path)).is_ok_and(|m| m.is_dir())
+    path.ends_with('/') || crate::repo::work_path(workdir, path).is_ok_and(|p| std::fs::symlink_metadata(p).is_ok_and(|m| m.is_dir()))
 }
 
 /// The patch `req` asks for, and how many files it changes.

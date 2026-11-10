@@ -83,7 +83,8 @@ source file, update its line here.
 - `repo/trash/untrash.rs`: taking a deleted file back out of the system trash for Undo.
 - `repo/trash/win.rs`: the Recycle Bin on Windows: whether a volume has one, the drive's own settings for it, and what a refusal means.
 - `repo/trash/xdg.rs`: Linux and the BSDs: whether the trash folder on a file's drive can be used, checked the way the trash crate picks one before it is called.
-- `repo/workfile.rs`: creating, renaming and deleting one working-tree file, and checking a typed path.
+- `repo/workfile.rs`: creating, renaming and deleting one working-tree file, checking a typed path, and joining a name the repository gives to the work tree only when it is a plain relative path inside it (`work_path`).
+- `repo/work_path_tests.rs`: names that are absolute, drive-relative, UNC or hold `..` are never joined to the work tree, and a commit's file named so is listed as absent.
 - `repo/workfile_disk.rs`: what the working-tree file operations ask the disk about names and folders.
 - `repo/workfile_mv.rs`: renaming a tracked working-tree file so the index records the rename too.
 - `repo/workfile_rename.rs`: renaming one working-tree file (working tree only; `workfile_mv` also moves it in the index), and the checks both renames share.

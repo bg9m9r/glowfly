@@ -33,7 +33,13 @@ pub(super) fn open_diff(req: DiffToolRequest) -> Option<Msg> {
         Ok(f) => f,
         Err(e) => return failed(LaunchFailure::Files(reason(&e))),
     };
-    let path = req.workdir.join(req.target.path());
+    let path = match repo::work_path(&req.workdir, req.target.path()) {
+        Ok(p) => p,
+        Err(e) => {
+            let _ = files.session.remove();
+            return failed(LaunchFailure::Files(reason(&e)));
+        }
+    };
     let vars = DiffVars { local: &files.local, remote: &files.remote, path: &path, repo: &req.workdir };
     let started = vars.expand(&req.template).map_err(|e| Error::Other(e.to_string())).and_then(|args| {
         external_tools::spawn(&Launch { program: req.program.clone(), args, cwd: req.workdir.clone(), own_console: false })

@@ -127,7 +127,10 @@ fn git_mergetool(req: &GitMergeRequest) -> MergeEnd {
             req.path, req.tool.name
         )));
     }
-    let file = req.workdir.join(&req.path);
+    let file = match repo::work_path(&req.workdir, &req.path) {
+        Ok(f) => f,
+        Err(e) => return MergeEnd::Failed(LaunchFailure::Files(reason(&e))),
+    };
     let before = fingerprint(&file);
     let tool = format!("--tool={}", req.tool.name);
     let a = args(&["--literal-pathspecs", "mergetool", "--no-prompt", &tool, "--", &req.path]);
