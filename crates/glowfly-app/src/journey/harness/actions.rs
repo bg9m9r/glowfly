@@ -98,4 +98,24 @@ impl Journey {
         self.right_click(&row, Region::Sidebar, Pick::First);
         self.menu(item);
     }
+
+    /// Every name shown in `region`, in tree order.
+    pub fn labels(&self, region: Region) -> Vec<String> {
+        find::labels_in(&self.h, region)
+    }
+
+    /// Whether a dialog or confirm is open over the window (the one a Cancel button closes).
+    pub fn modal_open(&self) -> bool {
+        self.state().modal.is_some()
+    }
+
+    /// Whether a widget named `label` (or containing it, when not `exact`) is shown in `region`.
+    pub fn shown(&self, label: &str, exact: bool, region: Region) -> bool {
+        find::count(&self.h, label, exact, region) > 0
+    }
+
+    /// Whether such a widget is shown and enabled; never panics.
+    pub fn usable(&self, label: &str, exact: bool, region: Region) -> bool {
+        find::find(&self.h, label, exact, region, Pick::First).is_some_and(|n| !n.is_disabled())
+    }
 }
