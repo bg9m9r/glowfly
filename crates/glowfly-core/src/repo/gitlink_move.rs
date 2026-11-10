@@ -105,7 +105,9 @@ pub(super) fn of_diff(repo: &Repository, workdir: &Path, target: &DiffTarget, di
     let workdir_side = matches!(target, DiffTarget::Unstaged(_) | DiffTarget::ToWorkdir(..) | DiffTarget::FromWorkdir(..));
     if workdir_side && matches!(open_at(workdir, &shown), Opened::Repo(_)) {
         let inside = SubmoduleStatus::WD_INDEX_MODIFIED | SubmoduleStatus::WD_WD_MODIFIED | SubmoduleStatus::WD_UNTRACKED;
-        m.dirty = repo.submodule_status(&shown, SubmoduleIgnore::None).is_ok_and(|s| s.intersects(inside));
+        // Asked only where libgit2 may read .gitmodules (`git_file::submodules_unread`).
+        m.dirty = !crate::git_file::submodules_unread(repo)
+            && repo.submodule_status(&shown, SubmoduleIgnore::None).is_ok_and(|s| s.intersects(inside));
     }
     Some(m)
 }

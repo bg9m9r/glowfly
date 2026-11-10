@@ -51,6 +51,7 @@ pub mod git_progress;
 pub mod git_version;
 pub mod gitcli;
 pub mod gitflow;
+pub(crate) mod gitmodules;
 pub mod gpg_prompt;
 pub mod graph;
 pub mod hex_rows;

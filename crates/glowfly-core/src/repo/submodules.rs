@@ -96,9 +96,14 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
         return Vec::new();
     }
     let offsite: HashSet<String> = offsite.into_iter().map(|o| o.path).collect();
+    // libgit2's listing reads .gitmodules as an ordinary config file: one it would read
+    // differently from git (`gitmodules`) empties the list too.
+    if repo.workdir().is_some_and(|w| crate::gitmodules::kind(w) == crate::gitmodules::Gitmodules::Unread) {
+        return Vec::new();
+    }
     let Ok(subs) = repo.submodules() else { return Vec::new() };
     // A snapshot: only a snapshot hands out values as bytes.
-    let gitmodules = repo.workdir().and_then(|w| git2::Config::open(&w.join(".gitmodules")).and_then(|mut c| c.snapshot()).ok());
+    let gitmodules = repo.workdir().and_then(crate::gitmodules::open).and_then(|mut c| c.snapshot().ok());
     let config = repo.config().and_then(|mut c| c.snapshot()).ok();
     let base = url_base(repo, config.as_ref());
     let workdir = repo.workdir().map(Path::to_path_buf);
