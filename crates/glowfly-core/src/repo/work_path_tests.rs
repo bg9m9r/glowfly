@@ -9,7 +9,7 @@ use std::path::{Component, Path, PathBuf};
 
 /// Refused on every system.
 const NEVER: &[&str] =
-    &["/etc/passwd", "/", "//h/s/a", "//?/C:/x", "..", "../x", "a/../../x", "a/..", "a/./b", "./a", "", "a//b", ".git/config", "a/.git/x"];
+    &["/x/y", "/", "//h/s/a", "//?/C:/x", "..", "../x", "a/../../x", "a/..", "a/./b", "./a", "", "a//b", ".git/config", "a/.git/x"];
 
 /// Refused on Windows, where they name another place or another file; one plain name (or a
 /// plain path, for the one holding `/`) elsewhere.
@@ -63,11 +63,11 @@ fn only_plain_relative_names_are_joined_to_the_work_tree() {
     }
 }
 
-/// A plain join of the same names would leave the work tree, which is why they are refused.
+/// `Path::join` doesn't keep these names under its base, and `work_path` gives no path for them.
 #[test]
-fn a_plain_join_of_the_refused_names_leaves_the_work_tree() {
+fn names_a_plain_join_does_not_keep_under_the_work_tree_get_no_path() {
     let root = root();
-    let mut leaving: Vec<&str> = vec!["/etc/passwd", "//h/s/a", "../x", "a/../../x"];
+    let mut leaving: Vec<&str> = vec!["/x/y", "//h/s/a", "../x", "a/../../x"];
     if cfg!(windows) {
         leaving.extend([r"C:\x", "C:x", r"\\h\s\a", r"\\?\C:\x", r"\x"]);
     }
@@ -95,7 +95,7 @@ fn a_commit_file_named_outside_the_work_tree_is_absent_and_not_looked_up() {
     write(&dir, "kept.txt", "kept\n");
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "one"]);
-    // A file next to the repository, which the names below would reach if they were joined.
+    // A file next to the repository, outside the work tree.
     let outside = dir.with_file_name(format!("glowfly-test-work-path-marker-{}.txt", std::process::id()));
     std::fs::write(&outside, "outside\n").unwrap();
     let marker = outside.file_name().unwrap().to_string_lossy().into_owned();
