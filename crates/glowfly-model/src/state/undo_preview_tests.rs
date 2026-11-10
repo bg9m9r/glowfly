@@ -107,7 +107,7 @@ fn every_action_has_a_preview() {
 
 #[test]
 fn batch_preview_lists_its_files_and_the_restore_line() {
-    let saved = Saved { blob: oid(5), executable: false };
+    let saved = Saved::file(oid(5), false);
     let discard = |p: &str| Action::Discard { path: p.into(), what: Discarded::File, before: Some(saved), after: None };
     let untracked = Action::DeleteFile { path: "new.txt".into(), before: saved, via: DeleteVia::Trash, staged: None };
     let a = Action::Batch { op: glowfly_core::undo::BatchOp::Discard, parts: vec![discard("a.txt"), untracked] };
@@ -127,7 +127,7 @@ fn batch_preview_lists_its_files_and_the_restore_line() {
 
 #[test]
 fn a_delete_batch_lists_its_files_and_says_it_puts_them_back() {
-    let saved = Saved { blob: oid(6), executable: false };
+    let saved = Saved::file(oid(6), false);
     let gone = |p: &str| Action::DeleteFile { path: p.into(), before: saved, via: DeleteVia::Trash, staged: None };
     let a = Action::Batch { op: glowfly_core::undo::BatchOp::Delete, parts: vec![gone("a.txt"), gone("c.txt")] };
     let p = preview(Lang::En, &a, None, false);

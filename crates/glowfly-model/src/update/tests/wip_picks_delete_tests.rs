@@ -30,7 +30,7 @@ fn each(path: &str, unstage: bool, promise: bool) -> DeleteEach {
 }
 
 fn gone(path: &str) -> Action {
-    let before = Saved { blob: git2::Oid::from_bytes(&[3; 20]).unwrap(), executable: false };
+    let before = Saved::file(git2::Oid::from_bytes(&[3; 20]).unwrap(), false);
     Action::DeleteFile { path: path.into(), before, via: DeleteVia::Trash, staged: None }
 }
 
