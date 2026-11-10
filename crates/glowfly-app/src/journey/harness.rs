@@ -263,6 +263,9 @@ impl Journey {
             node.hover();
             find::centre(&node).expect("a widget on screen has bounds")
         };
+        // The pointer rests on the widget for two frames before the press, as a moving mouse
+        // would: with one, a row's first right-click after a toolbar click opened no menu.
+        self.step();
         self.step();
         for pressed in [true, false] {
             let button = egui::PointerButton::Secondary;

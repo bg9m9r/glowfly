@@ -353,3 +353,13 @@ fn a_panicking_restart_reports_a_failed_restart() {
     assert_eq!(e, glowfly_core::app_update::UpdateError::Internal { effect: "update-restart".into(), panic: "boom".into() });
     assert_eq!(e.to_string(), "Glowfly hit an internal error (update-restart): boom");
 }
+
+#[test]
+fn only_a_caught_panic_is_noted() {
+    let effect = Effect::Stash(glowfly_model::effect::StashEffect::ReadAutoStashes { cwd: "C:/r".into() });
+    let noted = std::cell::Cell::new(0);
+    let note = || noted.set(noted.get() + 1);
+    assert!(guarded_noting(Recovery::of(&effect, effect.name()), note, || panic!("boom")).is_some(), "a failure result");
+    assert!(guarded_noting(Recovery::of(&effect, effect.name()), note, || None).is_none());
+    assert_eq!(noted.get(), 1, "the panic alone is noted");
+}

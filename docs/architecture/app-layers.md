@@ -380,7 +380,7 @@ source file, update its line here. Features that span every layer are in
 - `journey/fixture.rs`: checking the screen and the repository on disk.
 - `journey/graph_keys.rs`: the graph gets its keys back from Esc on a button or WIP list Tab reached (and that Esc does nothing else), from Tab, and from its pane key.
 - `journey/` is in the crate because the package has no library target `tests/` could reach.
-- `journey/explore/mod.rs`: exploration tests, seeded random sessions on the journey harness; lists the pieces below.
+- `journey/explore/mod.rs`: exploration tests, seeded random sessions on the journey harness: `explore_pr` (fixed seeds on every build), `explore_cases` (replays `cases/`) and the ignored `explore_soak`; a failure is shrunk and written to the temporary folder; lists the pieces below.
 - `journey/explore/rng.rs`: the seeded generator (splitmix64) with bounded and weighted picks.
 - `journey/explore/action.rs`: the action vocabulary, its one-line case text and `parse`; `action_tests.rs` tests it.
 - `journey/explore/scene.rs`: the fixture repositories built from a seed (app with conflicting branches, lib).
@@ -393,3 +393,4 @@ source file, update its line here. Features that span every layer are in
 - `journey/explore/rules.rs`: the six always-true rules (no crash, sound, no lost work, screen agrees, undo returns, errors reported); `rules_tests.rs` tests each.
 - `journey/explore/session.rs`: one session, random or replayed: the scene and app, each step performed and checked by the rules, a panic caught as no-crash; the case text (`case_text`, `parse_case`) and the failure report; `session_tests.rs` tests it.
 - `journey/explore/shrink.rs`: shrinks a failing action list (chunks removed, then shorter text and fewer lines) within a deadline; `shrink_tests.rs` tests it.
+- `journey/explore/cases/`: saved failing sessions (`<name>.txt`), replayed by `explore_cases`; `README.md` says how to save one.

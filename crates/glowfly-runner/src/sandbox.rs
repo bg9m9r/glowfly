@@ -47,10 +47,18 @@ impl Tally {
     }
 }
 
+impl Busy {
+    /// The effect panicked: its worker unwound, or its guard caught the panic and sent the
+    /// failure back instead (`guard::guarded_noting`).
+    pub(super) fn panicked(&self) {
+        lock(&self.tally.panicked).push(self.name);
+    }
+}
+
 impl Drop for Busy {
     fn drop(&mut self) {
         if std::thread::panicking() {
-            lock(&self.tally.panicked).push(self.name);
+            self.panicked();
         }
         let mut names = lock(&self.tally.in_flight);
         if let Some(k) = names.iter().position(|n| *n == self.name) {

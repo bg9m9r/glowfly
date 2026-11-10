@@ -96,7 +96,7 @@ fn ui(j: &mut Journey, dir: &Path, active: &str, shadow: &mut Shadow, action: &A
         }
         CreateBranch(name) => {
             press(j, "Create a branch", Region::Toolbar)?;
-            if !j.try_type("Branch name", name) {
+            if !j.try_replace("Branch name", name) {
                 return Err(skipped("no Branch name field"));
             }
             dialog_button(j, "Create branch")
@@ -139,7 +139,8 @@ fn commit(j: &mut Journey, dir: &Path, active: &str, shadow: &mut Shadow, text: 
     if !j.shown("Commit summary", false, Region::Details) {
         press(j, "Uncommitted changes", Region::Central)?;
     }
-    if !j.try_type("Commit summary", text) {
+    // An undone commit puts its message back in the field: type over it.
+    if !j.try_replace("Commit summary", text) {
         return Err(skipped("no Commit summary field"));
     }
     let n = j.state().snap.as_ref().map_or(0, |s| s.staged.len());

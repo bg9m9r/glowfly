@@ -3,6 +3,7 @@
 
 use super::super::action::{Action, Outside};
 use super::{shrink, simpler};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 fn later() -> Instant {
@@ -30,8 +31,20 @@ fn is_subsequence(small: &[Action], big: &[Action]) -> bool {
 #[test]
 fn shrinks_to_the_culprit() {
     use Action::*;
-    let out = shrink(mixed(), |l| l.contains(&Undo) && l.contains(&Stash), later());
+    let out = shrink(mixed(), |l| l.contains(&Undo) && l.contains(&Stash), later(), 1);
     assert_eq!(out, [Undo, Stash]);
+}
+
+#[test]
+fn trying_lists_side_by_side_finds_the_same() {
+    use Action::*;
+    let wanted = [Commit("msg 1".into()), Undo, Checkout("topic".into()), Stash];
+    let breaks = |l: &[Action]| wanted.iter().all(|w| l.contains(w));
+    let one = shrink(mixed(), breaks, later(), 1);
+    assert_eq!(one.len(), 4, "{one:?}");
+    for width in [2, 3, 8] {
+        assert_eq!(shrink(mixed(), breaks, later(), width), one, "width {width}");
+    }
 }
 
 #[test]
@@ -39,7 +52,7 @@ fn keeps_order() {
     use Action::*;
     let input = mixed();
     let wanted = [Stash, StageAll, Undo];
-    let out = shrink(input.clone(), |l| wanted.iter().all(|w| l.contains(w)), later());
+    let out = shrink(input.clone(), |l| wanted.iter().all(|w| l.contains(w)), later(), 4);
     assert_eq!(out.len(), 3, "{out:?}");
     assert!(is_subsequence(&out, &input), "{out:?}");
 }
@@ -47,23 +60,24 @@ fn keeps_order() {
 #[test]
 fn respects_deadline() {
     let input = mixed();
-    let mut calls = 0;
+    let calls = AtomicUsize::new(0);
     let out = shrink(
         input.clone(),
         |_| {
-            calls += 1;
+            calls.fetch_add(1, Ordering::SeqCst);
             true
         },
         Instant::now() - Duration::from_millis(1),
+        4,
     );
     assert_eq!(out, input);
-    assert_eq!(calls, 0);
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
 }
 
 #[test]
 fn simplifies_text() {
     let breaks = |l: &[Action]| l.iter().any(|a| matches!(a, Action::Commit(_)));
-    let out = shrink(vec![Action::Commit("a very long message".into())], breaks, later());
+    let out = shrink(vec![Action::Commit("a very long message".into())], breaks, later(), 1);
     assert!(breaks(&out), "{out:?}");
     let [Action::Commit(text)] = out.as_slice() else { panic!("{out:?}") };
     assert!(text.len() < "a very long message".len(), "{text:?}");
