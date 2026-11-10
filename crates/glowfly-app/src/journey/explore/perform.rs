@@ -70,8 +70,16 @@ fn ui(j: &mut Journey, dir: &Path, active: &str, shadow: &mut Shadow, action: &A
     let current = || probe::read(dir).branch.ok_or_else(|| skipped("no branch is checked out"));
     match action {
         SelectWip => press(j, "Uncommitted changes", Region::Central),
-        Stage(p) => press_pick(j, "Stage", true, Region::Details, Pick::InRowOf(p)),
-        Unstage(p) => press_pick(j, "Unstage", true, Region::Details, Pick::InRowOf(p)),
+        // A row's button shows only while the row is current, so press the row first. A file in
+        // both lists is in the unstaged list first and the staged one last.
+        Stage(p) => {
+            press_pick(j, p, true, Region::Details, Pick::First)?;
+            press(j, "Stage", Region::Details)
+        }
+        Unstage(p) => {
+            press_pick(j, p, true, Region::Details, Pick::Last)?;
+            press(j, "Unstage", Region::Details)
+        }
         StageAll => press(j, "Stage all", Region::Details),
         UnstageAll => press(j, "Unstage all", Region::Details),
         StageHunk(p) => {
@@ -111,15 +119,16 @@ fn ui(j: &mut Journey, dir: &Path, active: &str, shadow: &mut Shadow, action: &A
             row_menu(j, p, Region::Details, "Discard changes…")?;
             dialog_button(j, "Discard")
         }
-        ResolveOurs(_) => resolve(j, "Take every conflict from ours"),
-        ResolveTheirs(_) => resolve(j, "Take every conflict from theirs"),
+        ResolveOurs(p) => resolve(j, p, "Take every conflict from ours"),
+        ResolveTheirs(p) => resolve(j, p, "Take every conflict from theirs"),
         // A rebase continues with "Continue"; a merge is finished by committing it.
         Continue => press(j, "Continue", Region::Details).or_else(|_| press(j, "Commit merge", Region::Details)),
         Abort => press_pick(j, "Abort ", false, Region::Details, Pick::First),
         Refresh => press(j, "Refresh the repository", Region::Toolbar),
         SwitchTab(name) => press(j, name, Region::Tabs),
         CloseTab(name) => press(j, &format!("Close tab {name}"), Region::Tabs),
-        Confirm(label) => dialog_button(j, label),
+        Confirm(label) if j.modal_open() => dialog_button(j, label),
+        Confirm(_) => Err(skipped("no dialog is open")),
         Outside(_) => unreachable!("outside actions are performed on disk"),
     }
 }
@@ -148,12 +157,13 @@ fn branch_item(j: &mut Journey, name: &str, item: &str) -> Result<(), Done> {
     row_menu(j, &row, Region::Sidebar, item)
 }
 
-/// Opens the conflict view, takes one side for the whole file and marks it resolved.
-fn resolve(j: &mut Journey, take: &str) -> Result<(), Done> {
-    if !j.shown("View conflicts", true, Region::Details) {
+/// Opens the conflict view of `path` from its row, takes one side for the whole file and marks
+/// it resolved.
+fn resolve(j: &mut Journey, path: &str, take: &str) -> Result<(), Done> {
+    if !j.shown(path, true, Region::Details) {
         press(j, "View uncommitted changes", Region::Details)?;
     }
-    press(j, "View conflicts", Region::Details)?;
+    press(j, path, Region::Details)?;
     press_pick(j, take, false, Region::Central, Pick::First)?;
     press(j, "Mark resolved", Region::Central)
 }

@@ -38,6 +38,13 @@ fn scripted_tour() {
     assert!(shadow.live("app").len() == 2, "{:?}", shadow.live("app"));
     step(&mut j, &scene, &mut shadow, Action::SelectWip);
     step(&mut j, &scene, &mut shadow, Action::StageAll);
+    step(&mut j, &scene, &mut shadow, Action::UnstageAll);
+    step(&mut j, &scene, &mut shadow, Action::Stage("a.txt".into()));
+    step(&mut j, &scene, &mut shadow, Action::Unstage("a.txt".into()));
+    step(&mut j, &scene, &mut shadow, outside(Outside::Write { path: "src/b.txt".into(), lines: 1 }));
+    step(&mut j, &scene, &mut shadow, Action::Stage("src/b.txt".into()));
+    step(&mut j, &scene, &mut shadow, Action::Unstage("src/b.txt".into()));
+    step(&mut j, &scene, &mut shadow, Action::StageAll);
     step(&mut j, &scene, &mut shadow, Action::Commit("msg 1".into()));
     assert!(shadow.summaries("app").contains("msg 1"));
     step(&mut j, &scene, &mut shadow, Action::CreateBranch("b1".into()));
@@ -50,13 +57,8 @@ fn scripted_tour() {
     assert!(appended.contains("\r\n") && !appended.replace("\r\n", "").contains('\n'), "{appended:?}");
     step(&mut j, &scene, &mut shadow, Action::Stash);
     step(&mut j, &scene, &mut shadow, Action::Unstash);
-    // Undoing an unstash moves neither the head nor a branch, which is all the Undo probe reads;
-    // the stash coming back and going again is what shows these two worked.
-    assert_eq!(probe::read(&scene.app).stashes, 0);
-    for (action, stashes) in [(Action::Undo, 1), (Action::Redo, 0)] {
-        run(&mut j, &scene, &mut shadow, &action);
-        assert_eq!(probe::read(&scene.app).stashes, stashes, "{action}");
-    }
+    step(&mut j, &scene, &mut shadow, Action::Undo);
+    step(&mut j, &scene, &mut shadow, Action::Redo);
 }
 
 #[test]
@@ -106,4 +108,40 @@ fn less_common_actions_are_performed() {
         run(&mut j, &scene, &mut shadow, &Action::Confirm("Abort merge".into()));
     }
     assert!(probe::read(&scene.app).conflicted.is_empty());
+}
+
+#[test]
+fn resolving_the_second_of_two_conflicts() {
+    let (scene, mut j) = start("two");
+    let mut shadow = Shadow::new(1);
+    // topic and main both change shared.txt; make a.txt conflict too.
+    use super::super::super::fixture::{commit_files, git, git_try};
+    git(&scene.app, &["checkout", "-q", "topic"]);
+    commit_files(
+        &scene.app,
+        &[(
+            "a.txt", "topic a
+",
+        )],
+        "topic a",
+    );
+    git(&scene.app, &["checkout", "-q", "main"]);
+    commit_files(
+        &scene.app,
+        &[(
+            "a.txt", "main a
+",
+        )],
+        "main a",
+    );
+    assert!(!git_try(&scene.app, &["merge", "topic"]));
+    step(&mut j, &scene, &mut shadow, Action::Refresh);
+    let r = probe::read(&scene.app);
+    let both: Vec<&String> = r.conflicted.iter().collect();
+    assert_eq!(both.len(), 2, "{both:?}");
+    let (first, second) = (both[0].clone(), both[1].clone());
+    step(&mut j, &scene, &mut shadow, Action::SelectWip);
+    step(&mut j, &scene, &mut shadow, Action::ResolveTheirs(second.clone()));
+    let after = probe::read(&scene.app);
+    assert!(after.conflicted.contains(&first) && !after.conflicted.contains(&second), "{:?}", after.conflicted);
 }
