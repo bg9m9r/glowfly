@@ -139,7 +139,7 @@ const ENGLISH: &[&str] = &[
     "Annotate…",
     "All remotes",
     "All remotes…",
-    "Delete locally…",
+    "Delete…",
     "Delete from remote",
     "Branch *",
     "Tag *",

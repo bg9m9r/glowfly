@@ -1,5 +1,6 @@
 //! Creating a branch or tag, and checking out a new branch: undo removes what was made (only
-//! while it is as it was made), redo makes it again at the same commit or tag object.
+//! while it is as it was made), redo makes it again at the same commit or tag object. Deleting a
+//! tag is the same in reverse.
 
 use super::tests::{cmds, commit, head_oid, record, refused, run_plan};
 use super::*;
@@ -200,5 +201,80 @@ fn a_branch_moved_with_update_ref_undoes_and_redoes() {
     assert!(matches!(refused(plan(&dir, &ghost, false).unwrap()), Refusal::Stale(m) if m.contains("gone")));
     git(&dir, &["branch", "-D", "x"]);
     assert!(refused(plan(&dir, &action, false).unwrap()).is_stale(), "the branch is gone");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn deleted_lightweight_tag_comes_back() {
+    let dir = scratch_repo("undo-delete-tag");
+    let c1 = commit(&dir, "a.txt", "one\n", "c1");
+    let c2 = commit(&dir, "a.txt", "two\n", "c2");
+    git(&dir, &["tag", "v1", &c1.to_string()]);
+
+    let action = record(&dir, &["tag", "-d", "--", "v1"]).expect("recorded");
+    assert_eq!(action, Action::DeleteTag { name: "v1".into(), oid: c1, remotes: vec![] });
+    assert_eq!(tag_target(&dir, "v1"), None);
+    let undo = plan(&dir, &action, false).unwrap();
+    assert_eq!(undo, cmds(&[&["update-ref", "refs/tags/v1", &c1.to_string(), ""]]));
+    run_plan(&dir, undo);
+    assert_eq!(tag_target(&dir, "v1"), Some(c1));
+    let redo = plan(&dir, &action, true).unwrap();
+    assert_eq!(redo, cmds(&[&["tag", "-d", "v1"]]));
+    run_plan(&dir, redo);
+    assert_eq!(tag_target(&dir, "v1"), None);
+
+    // A tag of that name made again (a fetch brought it back) blocks the undo.
+    git(&dir, &["tag", "v1", &c2.to_string()]);
+    let r = refused(plan(&dir, &action, false).unwrap());
+    assert!(r.is_stale() && matches!(&r, Refusal::Stale(m) if m.starts_with("Tag v1 exists again")), "{r:?}");
+    // Restored, then moved: the redo is refused.
+    git(&dir, &["tag", "-d", "v1"]);
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    git(&dir, &["tag", "-f", "v1", &c2.to_string()]);
+    assert!(refused(plan(&dir, &action, true).unwrap()).is_stale(), "the tag moved since it was restored");
+
+    // A tag that didn't exist before the delete records nothing.
+    let kind = UndoKind::DeleteTag { name: "nope".into(), remotes: vec![] };
+    let b = before(&dir, &kind).unwrap();
+    assert_eq!(after(&dir, kind, b).unwrap(), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn deleted_annotated_signed_tag_comes_back_exactly() {
+    let dir = scratch_repo("undo-delete-signed-tag");
+    let c1 = commit(&dir, "a.txt", "one\n", "c1");
+    let payload = format!(
+        "object {c1}\ntype commit\ntag v2\ntagger Ann Tagger <ann@example.com> 1700000000 +0100\n\nRelease two\n\n\
+         -----BEGIN PGP SIGNATURE-----\n\niQEzBAABCAAdFiEEfake\n=abcd\n-----END PGP SIGNATURE-----\n"
+    );
+    let repo = Repository::open(&dir).unwrap();
+    let tag_oid = repo.odb().unwrap().write(git2::ObjectType::Tag, payload.as_bytes()).unwrap();
+    repo.reference("refs/tags/v2", tag_oid, false, "test").unwrap();
+    let message = repo.find_tag(tag_oid).unwrap().message().map(str::to_owned);
+
+    let kind = UndoKind::DeleteTag { name: "v2".into(), remotes: vec!["origin".into()] };
+    let b = before(&dir, &kind).unwrap();
+    git(&dir, &["tag", "-d", "--", "v2"]);
+    let action = after(&dir, kind, b).unwrap().expect("recorded");
+    assert_eq!(action, Action::DeleteTag { name: "v2".into(), oid: tag_oid, remotes: vec!["origin".into()] });
+    assert_ne!(tag_oid, c1, "the ref's own target, not the commit");
+
+    run_plan(&dir, plan(&dir, &action, false).unwrap());
+    assert_eq!(tag_target(&dir, "v2"), Some(tag_oid), "the same tag object, so the same id");
+    let repo = Repository::open(&dir).unwrap();
+    assert_eq!(repo.odb().unwrap().read(tag_oid).unwrap().data(), payload.as_bytes(), "byte for byte, signature included");
+    let tag = repo.find_tag(tag_oid).unwrap();
+    assert_eq!(tag.message().map(str::to_owned), message);
+    assert!(tag.message().is_some_and(|m| m.starts_with("Release two")));
+    let tagger = tag.tagger().unwrap();
+    assert_eq!((tagger.name(), tagger.email(), tagger.when().seconds()), (Some("Ann Tagger"), Some("ann@example.com"), 1_700_000_000));
+
+    // An object that is gone (pruned after the delete) can't come back.
+    git(&dir, &["tag", "-d", "v2"]);
+    let missing = Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
+    let pruned = Action::DeleteTag { name: "v2".into(), oid: missing, remotes: vec![] };
+    let r = refused(plan(&dir, &pruned, false).unwrap());
+    assert!(matches!(&r, Refusal::Stale(m) if m.contains("gone")), "{r:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

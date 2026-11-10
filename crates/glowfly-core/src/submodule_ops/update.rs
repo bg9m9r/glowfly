@@ -47,6 +47,7 @@ pub fn undo_moves_work_tree(action: &Action, redo: bool) -> bool {
         | Action::DeleteBranch { .. }
         | Action::CreateBranch { .. }
         | Action::CreateTag { .. }
+        | Action::DeleteTag { .. }
         | Action::SetBranch { .. }
         | Action::StashDrop { .. }
         | Action::Discard { .. }

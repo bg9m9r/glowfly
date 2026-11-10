@@ -1,6 +1,6 @@
 //! The Undo and Redo previews: a commit, a checkout that made a branch, a pull over made-up
-//! commits in the graph, a pop, several discarded files, the Redo wording, and a preview for
-//! every kind of action.
+//! commits in the graph, a pop, several discarded files, a tag delete, the Redo wording, and a
+//! preview for every kind of action.
 
 use super::*;
 use crate::state::op_fixture;
@@ -65,6 +65,18 @@ fn a_pop_names_its_stash() {
 }
 
 #[test]
+fn a_tag_delete_says_the_remotes_keep_it_deleted() {
+    let a =
+        |remotes: &[&str]| Action::DeleteTag { name: "v1".into(), oid: oid(1), remotes: remotes.iter().map(|r| (*r).to_owned()).collect() };
+    assert_eq!(lines(&preview(Lang::En, &a(&[]), None, false)), ["Creates tag v1 again"]);
+    assert_eq!(
+        lines(&preview(Lang::En, &a(&["origin", "backup"]), None, false)),
+        ["Creates tag v1 again", "Stays deleted from origin and backup; push it to put it back there"]
+    );
+    assert_eq!(lines(&preview(Lang::En, &a(&["origin", "backup"]), None, true)), ["Deletes tag v1"], "redo deletes only here");
+}
+
+#[test]
 fn every_action_has_a_preview() {
     let saved = Saved::file(oid(5), false);
     let ids = ConflictIds { ancestor: None, ours: Some(oid(1)), theirs: Some(oid(2)) };
@@ -79,6 +91,7 @@ fn every_action_has_a_preview() {
         Action::Restore { path: "a.txt".into(), oid: oid(1), before: None, after: Some(saved) },
         Action::CreateBranch { name: "x".into(), oid: oid(1), upstream: None },
         Action::CreateTag { name: "v1".into(), oid: oid(1) },
+        Action::DeleteTag { name: "v1".into(), oid: oid(1), remotes: vec!["origin".into()] },
         Action::Moved { op: MoveOp::Merge, detail: Some("dev".into()), branch: None, from: oid(1), to: oid(2) },
         Action::StashPush { stash: oid(1), head: oid(2), message: "m".into(), replay: None },
         Action::StashApply { pop: false, stash: oid(1), head: oid(2), message: "m".into(), left: Changes(Vec::new()) },

@@ -13,8 +13,9 @@ Dialog
   Button "Create tag at HEAD…"
   Button "Create annotated tag at HEAD…"
   Button "Switch branch…"
-  Button "Rename branch main…"
-  Button "Search commits" [selected]
+  Button "Delete tag…"
+  Button "Rename branch main…" [selected]
+  Button "Search commits"
   Button "File history…"
   Button "Blame file…"
   Button "Apply patch…"

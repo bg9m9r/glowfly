@@ -273,6 +273,7 @@ mod tabs_session_tests;
 mod tabs_tests;
 mod tag_annotate_tests;
 mod tag_checkout_tests;
+mod tag_delete_tests;
 mod tag_remote_tests;
 mod tag_tests;
 mod terminal;

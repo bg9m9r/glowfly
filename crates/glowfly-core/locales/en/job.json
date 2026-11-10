@@ -20,6 +20,7 @@
   "job.label.create_worktree": "Create worktree",
   "job.label.delete_branch": "Delete branch",
   "job.label.delete_local_and_remote_branch": "Delete local and remote branch",
+  "job.label.delete_local_and_remote_tag": "Delete local and remote tag",
   "job.label.delete_remote_branch": "Delete remote branch",
   "job.label.delete_tag": "Delete tag",
   "job.label.discard_all": "Discard all changes",

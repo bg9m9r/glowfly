@@ -91,8 +91,8 @@ pub struct Pick {
     profiles: Vec<ProfileRow>,
     /// The issues behind the items of an issue sub-list (empty for other kinds).
     issues: Vec<IssuePickRow>,
-    /// The checkout entries behind the items of the Switch branch sub-list (empty for others).
-    checkouts: Vec<Entry>,
+    /// The ref entries behind the Switch branch or Delete tag sub-list (empty for others).
+    refs: Vec<Entry>,
     /// The ranking for the last query, kept until the query or the items change (boxed, so a
     /// sub-list keeps `Mode` small).
     ranked: Option<Box<Ranked>>,

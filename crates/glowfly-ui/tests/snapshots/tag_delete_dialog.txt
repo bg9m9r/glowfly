@@ -1,0 +1,10 @@
+Dialog
+  Label "Delete tag"
+  Button "Close this dialog"
+  Label "Delete local tag v0.1.0?"
+  Label "Also delete it from:"
+  CheckBox "origin" [off]
+  CheckBox "backup" [off]
+  Label "A remote without this tag is skipped. Undo brings back only the local tag, and anyone who already fetched it keeps their copy."
+  Button "Cancel" [focused]
+  Button "Delete"

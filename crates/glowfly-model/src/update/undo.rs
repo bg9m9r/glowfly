@@ -176,7 +176,8 @@ pub(super) fn finished(st: &mut AppState, job: &RunningJob, ok: bool, result: Op
         (&mut p.session.undo, &mut p.session.draft)
     };
     match result {
-        Some(UndoResult::Recorded(Some(a))) if ok => history.record(a),
+        // A tag delete stays undoable when a later remote delete of its job failed or was stopped.
+        Some(UndoResult::Recorded(Some(a))) if ok || a.kept_when_failed() => history.record(a),
         Some(UndoResult::Recorded(_)) => {}
         Some(UndoResult::Stopped(start)) => history.stopped_at(start),
         // A failed abort changes the history no more than another failed job.

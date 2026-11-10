@@ -1,6 +1,7 @@
 Dialog
   TextInput "Type a command, branch or tag name" = "tag" [focused]
-  Button "Create tag at HEAD…" [selected]
+  Button "Delete tag…" [selected]
+  Button "Create tag at HEAD…"
   Button "Checkout tag v0.1.0"
   Button "Create annotated tag at HEAD…"
   Button "Stage all files"

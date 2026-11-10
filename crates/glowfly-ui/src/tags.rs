@@ -1,8 +1,8 @@
 //! The TAGS section of the left panel: one row per tag (a click jumps to its commit) and the row
 //! menu, headed by the tag's name: checkout, annotate a lightweight tag, push to a remote or all
-//! of them, hide or solo it in the graph, copy its name or a link, delete locally, and delete
-//! from a remote or all of them (asked first). The header's + makes a tag on HEAD's commit,
-//! and its menu a lightweight or an annotated one.
+//! of them, hide or solo it in the graph, copy its name or a link, delete (here and, ticked in
+//! its dialog, on remotes), and delete from a remote or all of them (asked first). The header's
+//! + makes a tag on HEAD's commit, and its menu a lightweight or an annotated one.
 
 use super::common::{menu_danger, menu_header, menu_item, menu_item_if};
 use super::ref_visibility;
@@ -86,10 +86,8 @@ pub(crate) fn tag_menu(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot, 
     menu_item(msgs, ui, t.tr("refs.copy.name_item"), Msg::Copy(tag()));
     menu_item(msgs, ui, t.tr("refs.copy.link_item"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Tag(tag()))));
     separator(ui);
-    let delete = Msg::git("Delete tag", &["tag", "-d", "--", name]);
-    let body = t.trf("tag.delete.body", &[("tag", &name)]);
-    let confirm = Msg::confirm_danger(t.tr("tag.delete.title"), body, t.tr("common.delete.button"), delete);
-    menu_danger(msgs, ui, t.tr("tag.menu.delete_locally"), None, confirm);
+    // Here and, ticked in the dialog, on remotes; the dialog's button waits for a running job.
+    menu_danger(msgs, ui, t.tr("tag.menu.delete"), None, Msg::Tag(TagMsg::OpenDelete { tag: tag() }));
     if !remotes.is_empty() {
         delete_remote_menu(ui, t, name, &remotes, blocked, msgs);
     }

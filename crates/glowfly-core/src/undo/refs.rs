@@ -1,6 +1,7 @@
 //! Undoing branch and tag changes: deleting a branch is restoring it in reverse and creating one
-//! is deleting it in reverse, so both share `remove_branch` and `restore_branch`. A checkout that
-//! created a branch can delete it on undo and make it again on redo.
+//! is deleting it in reverse, so both share `remove_branch` and `restore_branch`; tags likewise
+//! share `put_tag` and `drop_tag`. A checkout that created a branch can delete it on undo and
+//! make it again on redo.
 
 use super::planning::{gone, stale, unsafe_};
 use super::record::ref_exists;
@@ -41,24 +42,39 @@ pub(super) fn restore_branch(repo: &Repository, name: &str, oid: Oid, upstream: 
     Plan::Run(cmds)
 }
 
+/// Makes tag `name` point at `oid` again (the tag object for an annotated tag, so message,
+/// tagger and signature come back with the same id), only while no tag of that name exists.
+fn put_tag(repo: &Repository, name: &str, oid: Oid) -> Plan {
+    let refname = format!("refs/tags/{name}");
+    if ref_exists(repo, &refname) {
+        return stale(format!("Tag {name} exists again"));
+    }
+    if repo.find_object(oid, None).is_err() {
+        return gone();
+    }
+    // An empty old value: only if the tag doesn't exist.
+    Plan::Run(vec![args(&["update-ref", &refname, &oid.to_string(), ""])])
+}
+
+/// Deletes tag `name` if it still points at `oid` (else stale, with `changed`).
+fn drop_tag(repo: &Repository, name: &str, oid: Oid, changed: &str) -> Plan {
+    match repo.find_reference(&format!("refs/tags/{name}")).ok().map(|r| r.target()) {
+        None => stale(format!("Tag {name} no longer exists")),
+        Some(t) if t != Some(oid) => stale(changed),
+        Some(_) => Plan::Run(vec![args(&["tag", "-d", name])]),
+    }
+}
+
 /// Undoes (or redoes) creating tag `name` at `oid` (the tag object for an annotated tag, so the
 /// same tag comes back).
 pub(super) fn tag(repo: &Repository, name: &str, oid: Oid, redo: bool) -> Plan {
-    let refname = format!("refs/tags/{name}");
-    let target = repo.find_reference(&refname).ok().map(|r| r.target());
-    if redo {
-        return match target {
-            Some(_) => stale(format!("A tag named {name} exists again")),
-            None if repo.find_object(oid, None).is_err() => gone(),
-            // An empty old value: only if the tag doesn't exist.
-            None => Plan::Run(vec![args(&["update-ref", &refname, &oid.to_string(), ""])]),
-        };
-    }
-    match target {
-        None => stale(format!("Tag {name} no longer exists")),
-        Some(t) if t != Some(oid) => stale(format!("Tag {name} has changed since it was created")),
-        Some(_) => Plan::Run(vec![args(&["tag", "-d", name])]),
-    }
+    if redo { put_tag(repo, name, oid) } else { drop_tag(repo, name, oid, &format!("Tag {name} has changed since it was created")) }
+}
+
+/// Undoes (or redoes) deleting tag `name`, which pointed at `oid`: creating it in reverse. Only
+/// the local tag; copies deleted from remotes stay deleted.
+pub(super) fn deleted_tag(repo: &Repository, name: &str, oid: Oid, redo: bool) -> Plan {
+    if redo { drop_tag(repo, name, oid, &format!("Tag {name} has changed since it was restored")) } else { put_tag(repo, name, oid) }
 }
 
 /// Undoes (or redoes) moving branch `name` from `from` to `to` with `update-ref`, whose old

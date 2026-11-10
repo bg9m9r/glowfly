@@ -23,6 +23,7 @@ mod setup;
 mod shallow;
 pub(crate) mod stack;
 mod stash;
+mod tags;
 mod worktrees;
 
 /// The label of the entry that shows the repository folder in the system file manager.
@@ -168,6 +169,10 @@ pub enum PaletteCommand {
     /// Enter the Switch branch sub-list; choosing a row runs its `Checkout`, `CheckoutRemote` or
     /// `CheckoutTag`.
     ChooseCheckout,
+    /// Enter the tag sub-list; choosing a tag runs `DeleteTag`.
+    ChooseTagToDelete,
+    /// `TagMsg::OpenDelete` for this tag.
+    DeleteTag(String),
     OpenRecent(PathBuf),
     /// Copy a glowfly:// link to the repository or a branch.
     CopyLink(crate::deep_link::LinkTarget),
@@ -307,6 +312,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     }
     crate::state::palette::selected::entries(st, snap, out);
     out.push(entry(C::ChooseCheckout, "Switch branch…", "checkout branch tag remote switch"));
+    tags::tag_entries(snap, out);
     if let Some(b) = snap.head_info() {
         out.push(entry(C::RenameBranch(b.name.clone()), format!("Rename branch {}…", b.name), "rename move branch"));
     }

@@ -20,4 +20,5 @@ mod repos_tests;
 pub(super) mod stash_tests;
 mod submodule_tests;
 mod switch_branch_tests;
+mod tag_delete_tests;
 mod worktree_tests;

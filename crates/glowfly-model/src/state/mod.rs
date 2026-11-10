@@ -148,6 +148,7 @@ pub mod submodules;
 pub mod tab_groups;
 pub mod tab_losses;
 pub mod tabs;
+pub mod tag_delete;
 pub mod tags;
 pub mod terminal;
 pub mod theme_names;

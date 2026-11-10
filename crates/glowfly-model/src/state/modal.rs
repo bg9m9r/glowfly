@@ -5,7 +5,7 @@ use super::pull_request::repos::PrRepoPick;
 use super::{
     auto_stash, branch_delete, branch_sync, clone, conflict_check, deep_link, files, forge_filter_form, forks, gitflow, init, issue_form,
     op_preview, patch, pick, publish, rebase_quick, release_notes, remotes, repo_group_picker, repo_groups, stashes, submodules, tabs,
-    tags, touched, trust, undo, worktree_manage, worktree_move, worktrees,
+    tag_delete, tags, touched, trust, undo, worktree_manage, worktree_move, worktrees,
 };
 use crate::msg::Msg;
 
@@ -23,6 +23,8 @@ pub enum Modal {
     },
     NewTag(tags::TagForm),
     AnnotateTag(tags::AnnotateForm),
+    /// Delete tag: the local tag and, ticked, its copies on remotes (`ui/tag_delete_dialog.rs`).
+    DeleteTag(tag_delete::DeleteTagForm),
     NewWorktree(worktrees::WorktreeForm),
     RemoveWorktree(worktree_manage::RemoveForm),
     /// Delete a local branch: what it would lose, then Delete or Delete anyway (`ui/branch_delete_dialog.rs`).

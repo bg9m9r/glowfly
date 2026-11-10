@@ -5,9 +5,9 @@
 //!
 //! `kinds` recognises the command lines, `action` names what was recorded, `record` captures the
 //! state around an operation, and `planning` decides how to reverse it, with `refs` (branches and
-//! tags, also a branch the journal's Restore moved with `update-ref`), `moved` (merge, pull,
-//! cherry-pick, revert, rebase), `stash`, `reset`, `saved` and `deleted` (Delete and Unstage and
-//! delete); `batch` plans several files' discards recorded as one entry.
+//! tags, created or deleted, also a branch the journal's Restore moved with `update-ref`),
+//! `moved` (merge, pull, cherry-pick, revert, rebase), `stash`, `reset`, `saved` and `deleted`
+//! (Delete and Unstage and delete); `batch` plans several files' discards recorded as one entry.
 //! Rebases, also interactive ones and graph edits, are recorded around their run instead
 //! (`rebased.rs`): they finish in steps, possibly outside Glowfly. A merge, cherry-pick or revert
 //! that stopped for conflicts and was finished later (Continue, Skip or a commit) is recorded as

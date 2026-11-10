@@ -22,7 +22,7 @@ use glowfly_model::msg::PaletteMsg;
 use glowfly_model::msg::{EditMsg, Msg};
 use glowfly_model::state::palette::commands::RepoListCommand;
 use glowfly_model::state::palette::nav::{Jump, PAGE_ROWS};
-use glowfly_model::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand, PickKind};
+use glowfly_model::state::palette::{self, InputKind, Items, Mode, Palette, PaletteCommand};
 use glowfly_model::state::{AppState, ViewState};
 
 const WIDTH: f32 = 560.0;
@@ -247,7 +247,7 @@ fn pick_list(ui: &mut Ui, p: &Palette, query: &str, scroll: &mut bool, msgs: &mu
                         // A file's folder part (through the last '/') is dimmed.
                         let dim = if kind.dims_folders() { label.rfind('/').map_or(0, |b| label[..=b].chars().count()) } else { 0 };
                         let detail = pk.detail(hit.index);
-                        let names = kind == PickKind::SwitchBranch;
+                        let names = kind.lists_refs();
                         let resp = row(ui, label, detail.as_deref(), None, (&hit.matched, dim), names, i == sel);
                         if resp.clicked()
                             && let Some(c) = pk.command(hit.index)

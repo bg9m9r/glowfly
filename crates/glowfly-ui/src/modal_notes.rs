@@ -80,6 +80,7 @@ pub(super) fn draw(ui: &mut egui::Ui, cx: Cx, shown: &Modal, env: &DialogEnv, vi
         Modal::NewBranch { .. }
         | Modal::NewTag(_)
         | Modal::AnnotateTag(_)
+        | Modal::DeleteTag(_)
         | Modal::NewWorktree(_)
         | Modal::RemoveWorktree(_)
         | Modal::DeleteRemoteBranch(_)

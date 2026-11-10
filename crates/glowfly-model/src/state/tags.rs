@@ -1,7 +1,8 @@
 //! The New tag dialog's form, and the name and remote checks its view and `update` share; the
 //! Annotate dialog's form and its check; the TAGS row menu's remote push and delete: the
-//! confirmation, job labels and headlines; the tag checkout's headline and one-time
-//! detached-HEAD warning. Pure.
+//! confirmation, job labels and headlines (also the pending job of the Delete tag dialog, whose
+//! headline is in `tag_delete.rs`); the tag checkout's headline and one-time detached-HEAD
+//! warning. Pure.
 
 use super::branches::default_remote;
 use crate::msg::Msg;
@@ -81,6 +82,8 @@ pub struct RemoteTagJob {
     pub tag: String,
     /// The remotes in the order their commands run.
     pub remotes: Vec<String>,
+    /// The job's first command deletes the local tag; its headline is `tag_delete::headline`.
+    pub local: bool,
 }
 
 /// "a", "a and b", or "a, b and c".
@@ -137,7 +140,7 @@ impl RemoteTagJob {
 }
 
 /// Why the last command failed, from its output (what follows the last "$ git " echo).
-fn failure_reason(output: &str) -> String {
+pub(crate) fn failure_reason(output: &str) -> String {
     let lines: Vec<&str> = output.lines().collect();
     let start = lines.iter().rposition(|l| l.starts_with("$ git ")).map_or(0, |i| i + 1);
     let section = &lines[start..];

@@ -1,5 +1,20 @@
 {
   "tag.delete.body": "Delete local tag {tag}?",
+  "tag.delete.button_remotes.one": "Delete here and on 1 remote",
+  "tag.delete.button_remotes.other": "Delete here and on {count} remotes",
+  "tag.delete.deleted_from": "Deleted from {remotes}.",
+  "tag.delete.done_here": "Deleted tag {tag} here.",
+  "tag.delete.done_remotes": "Deleted tag {tag} here and from {remotes}.",
+  "tag.delete.failed_local": "Could not delete tag {tag}: {why}. No remote was changed.",
+  "tag.delete.failed_remote": "Deleted tag {tag} here, but could not delete it from {remote}: {why}.",
+  "tag.delete.gone": "Tag {tag} no longer exists.",
+  "tag.delete.had_none": "{remotes} had no tag {tag}.",
+  "tag.delete.invalid": "Not a valid tag name.",
+  "tag.delete.moved": "Tag {tag} has moved to {sha}. Open Delete again.",
+  "tag.delete.no_remote": "There is no remote named {remote}.",
+  "tag.delete.not_tried": "Not tried: {remotes}.",
+  "tag.delete.remotes_label": "Also delete it from:",
+  "tag.delete.remotes_note": "A remote without this tag is skipped. Undo brings back only the local tag, and anyone who already fetched it keeps their copy.",
   "tag.delete.title": "Delete tag",
   "tag.delete_remote.body": "Delete tag {tag} from {remotes}? Your local tag stays, and anyone who already fetched it keeps their copy.",
   "tag.delete_remote.button_all": "Delete from all remotes",
@@ -10,6 +25,6 @@
   "tag.menu.all_remotes_ask": "All remotes…",
   "tag.menu.annotate": "Annotate…",
   "tag.menu.annotate.tip": "Replace this lightweight tag with an annotated tag on the same commit",
-  "tag.menu.delete_from_remote": "Delete from remote",
-  "tag.menu.delete_locally": "Delete locally…"
+  "tag.menu.delete": "Delete…",
+  "tag.menu.delete_from_remote": "Delete from remote"
 }
