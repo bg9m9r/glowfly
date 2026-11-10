@@ -4,7 +4,7 @@
 
 use super::tests::state;
 use super::update;
-use crate::effect::{Effect, SessionEffect};
+use crate::effect::{Effect, SaveEffect, SessionEffect};
 use crate::msg::{Msg, RecentMsg, SaveNotes, StateFile};
 use crate::state::AppState;
 use crate::state::repo_lists::RECENT_LIMIT;
@@ -36,6 +36,17 @@ fn read_late_recent_is_merged_and_capped() {
     saved(&mut st, StateFile::Recent, SaveNotes { read_late: Some(late.clone()), kept: None });
     assert_eq!(st.recent.len(), RECENT_LIMIT);
     assert_eq!(st.recent[11], late[0]);
+}
+
+#[test]
+fn read_late_recent_saves_the_merged_list() {
+    // The runner merges late entries into each save until one holds them: saving the merged list
+    // makes them the session's, so removing one (Remove missing) keeps it out of the file.
+    let mut st = state();
+    st.recent = paths(&["/w/a"]);
+    let fx = saved(&mut st, StateFile::Recent, SaveNotes { read_late: Some(paths(&["/w/x", "/w/y"])), kept: None });
+    let saves: Vec<_> = fx.iter().filter_map(|e| if let Effect::Save(SaveEffect::Recent(l)) = e { Some(l) } else { None }).collect();
+    assert_eq!(saves, [&paths(&["/w/a", "/w/x", "/w/y"])], "{fx:?}");
 }
 
 #[test]

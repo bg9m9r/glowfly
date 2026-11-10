@@ -150,6 +150,23 @@ fn clear_recent_after_a_blocked_save() {
 }
 
 #[test]
+fn a_late_entry_removed_after_the_merged_save_stays_removed() {
+    let dir = scratch("held-late-removed");
+    let file = dir.join("recent.txt");
+    let [a, x, y] = ["a", "x", "y"].map(|n| dir.join(n));
+    save_recent_to(&file, &[x.clone(), y.clone()]).unwrap();
+    assert!(load_recent_with(&file, &[], denied).is_empty());
+    assert_eq!(save_recent_to(&file, std::slice::from_ref(&a)).unwrap().read_late, Some(vec![x.clone(), y.clone()]));
+    // The model merges the late entries and saves the merged list, then removes `x`.
+    save_recent_to(&file, &[a.clone(), x.clone(), y.clone()]).unwrap();
+    save_recent_to(&file, &[a.clone(), y.clone()]).unwrap();
+    assert_eq!(listed(&file), [a.clone(), y.clone()]);
+    save_recent_to(&file, std::slice::from_ref(&y)).unwrap();
+    assert_eq!(listed(&file), [y]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn clear_recent_drops_carried_entries() {
     let dir = scratch("held-clear-carried");
     let file = dir.join("recent.txt");

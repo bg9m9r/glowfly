@@ -3,7 +3,7 @@
 //! failed) whose entries now join this session's, and a save refused because the file still
 //! can't be read.
 
-use crate::effect::Effect;
+use crate::effect::{Effect, SaveEffect};
 use crate::msg::{SaveNotes, StateFile};
 use crate::state::AppState;
 use crate::state::repo_lists::RECENT_LIMIT;
@@ -11,8 +11,9 @@ use glowfly_core::{native_path, paths};
 use std::time::Instant;
 
 /// A save of `file` went through and did more than write it: logs the copy it kept (without a
-/// toast), and merges a late-read recent list into the Recent list (then checks which of its
-/// folders are gone). Tabs read late come back at the next start; this session only logs them.
+/// toast), and merges a late-read recent list into the Recent list, saves the merged list (the
+/// runner merges late entries into every save until one holds them, so without this one a removed
+/// entry would come back) and checks which of its folders are gone. Tabs read late come back at the next start; this session only logs them.
 pub(super) fn saved(st: &mut AppState, file: StateFile, notes: SaveNotes, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     if let Some((backup, skipped)) = notes.kept {
@@ -33,6 +34,7 @@ pub(super) fn saved(st: &mut AppState, file: StateFile, notes: SaveNotes, fx: &m
                 }
             }
             st.recent.truncate(RECENT_LIMIT);
+            fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
             st.log(true, t.tr("repos.recent_file.read_late.log"));
             super::recent::check_folders(st, fx);
         }
