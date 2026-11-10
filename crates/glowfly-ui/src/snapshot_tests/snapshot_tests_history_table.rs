@@ -68,6 +68,8 @@ fn rows_at_1080p(density: Density, name: &str) -> (usize, usize) {
     let (st, _): &mut (AppState, _) = h.state_mut();
     let whole = st.view.graph_fit_rows;
     let (_, height) = st.view.tab.graph_scroll;
+    // Recorded with the scroll, for a reload's anchor (`state/graph_anchor.rs`).
+    assert_eq!(st.view.tab.graph_row_h, row_h(density));
     drop(h);
     remove_fixture(&dir);
     (whole, (height / row_h(density)).ceil() as usize)

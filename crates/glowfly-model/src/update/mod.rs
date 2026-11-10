@@ -52,6 +52,7 @@ mod git_job;
 pub mod gitflow;
 pub mod gitflow_finish;
 mod gitflow_resume;
+mod graph_anchor;
 mod graph_columns;
 mod graph_filter;
 mod highlight;

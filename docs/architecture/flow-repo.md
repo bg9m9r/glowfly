@@ -181,6 +181,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - `update/load_more.rs::extended` applies the page with `Snapshot::extend_history`: the commits and rows appended, the lanes and owners laid out on from the last row, colours resolved again; the selection, scroll and search cursor stay. A large history's old commit list is freed on a worker, and a worker relayout in flight is asked for again.
 - A refresh merged into the load for more (`RefreshState::status_after`) reads the status once the page lands.
 - Moved refs, or a new commit that is a child of a loaded one (`NeedsFullLoad`, clock skew), give a full load at the larger count, reported as `RepoLoaded` with `Refresh`.
+- A full load for a refresh (a Load more turned full included) keeps the top visible commit at its screen position by id (`update/graph_anchor.rs`, taken in `repo_loaded::loaded` before the snapshot is replaced, applied after the hooks that may scroll). It falls back to the next commit still shown below, and does nothing at the top of the graph, on opening, for a freed history, or after a scroll asked for during the load. Tests in `update/tests/graph_anchor_tests.rs` and `flows/graph_anchor_tests.rs`.
 - Every full load for a refresh passes `Snapshot::prior`: the walk takes commits already on screen by oid (`repo::load_reusing`) instead of reading them again. F5 and opening a repository read everything fresh.
 
 ## Other worktrees' changes

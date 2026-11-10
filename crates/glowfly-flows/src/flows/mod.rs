@@ -113,6 +113,7 @@ mod gitflow_finish_tests;
 mod gitflow_panel_tests;
 mod gitflow_resume_tests;
 mod gitflow_tests;
+mod graph_anchor_tests;
 mod graph_filter_tests;
 mod helpers;
 mod highlight_context_tests;

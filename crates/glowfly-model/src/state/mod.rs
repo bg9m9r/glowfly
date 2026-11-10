@@ -43,6 +43,7 @@ pub mod git_env;
 pub mod gitflow;
 pub mod gitflow_base;
 pub mod gitflow_resume;
+pub mod graph_anchor;
 pub mod graph_rows;
 pub mod hints;
 pub mod history;
