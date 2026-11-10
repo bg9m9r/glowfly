@@ -106,8 +106,9 @@ fn the_app_build_carries_no_test_support() {
 }
 
 /// The workspace crates' features that exist only for tests: the model's, runner's and views'
-/// `test-support`, and glowfly-core's fixture `testkit`.
-const TEST_FEATURES: &[&str] = &["test-support", "testkit"];
+/// `test-support`, and glowfly-core's fixture `testkit`, and `installer-check` (the Installers
+/// workflow's builds, which trust the committed test key).
+const TEST_FEATURES: &[&str] = &["test-support", "testkit", "installer-check"];
 
 #[test]
 fn the_tree_parser_reads_names_and_features() {

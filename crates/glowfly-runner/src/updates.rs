@@ -101,7 +101,7 @@ impl Throttle {
 /// how this copy was installed.
 fn check() -> Result<Option<CheckedRelease>, UpdateError> {
     let feed = app_update::Feed::from_env()?;
-    if matches!(feed, app_update::Feed::Folder(_)) {
+    if matches!(feed, app_update::Feed::Folder(_) | app_update::Feed::TestKeyFolder(_)) {
         tracing::info!("checking for updates in the {}", feed.describe());
     }
     let release = feed.latest()?;

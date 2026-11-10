@@ -3,7 +3,8 @@
 //! file runs before the one job that publishes it, the `release` environment's approval stays on
 //! the prepare job and the checksums job (which needs its minisign key), and SHA256SUMS is signed
 //! and its signature uploaded. With release immutability on, a published release's files can't
-//! change, so nothing may upload after publishing (docs/RELEASING.md).
+//! change, so nothing may upload after publishing (docs/RELEASING.md). And only the Installers
+//! workflow's builds trust the committed minisign test key (installer-check).
 
 use std::path::Path;
 
@@ -182,4 +183,22 @@ fn sha256sums_is_signed_with_the_release_key_and_uploaded() {
     assert!(pwsh.contains("if ($got -ne $sha256) { throw"));
     // And the publish job's check refuses a draft without it.
     assert!(workspace_file("scripts/release-publish.sh").contains(r#"if (!("SHA256SUMS.minisig" in digest))"#));
+}
+
+#[test]
+fn only_the_installers_builds_trust_the_test_key() {
+    let installers = workspace_file(".github/workflows/installers.yml");
+    let builds: Vec<&str> = installers.lines().filter(|l| l.contains("cargo build")).collect();
+    assert_eq!(builds.len(), 2, "the Windows and Linux builds: {builds:?}");
+    for line in builds {
+        assert!(line.contains("-p glowfly --features installer-check"), "the installer checks sign feeds with the test key: {line}");
+    }
+    // A release build trusts only the release keys.
+    assert!(!workspace_file(".github/workflows/release.yml").contains("installer-check"), "release.yml");
+    assert!(!workspace_file("packaging/flatpak/io.github.bg9m9r.glowfly.yml").contains("installer-check"), "the Flatpak manifest");
+    let check = workspace_file("scripts/update-feed-check.ps1");
+    assert!(check.contains("--features installer-check"), "update-feed-check.ps1 names the feature it needs");
+    for case in ["Start-Case 'unsigned'", "Start-Case 'bad-signature'"] {
+        assert!(check.contains(case), "update-feed-check.ps1 keeps {case}");
+    }
 }

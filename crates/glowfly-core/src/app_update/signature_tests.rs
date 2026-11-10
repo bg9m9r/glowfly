@@ -19,7 +19,8 @@ const BY_ANOTHER_KEY: &[u8] = include_bytes!("minisign_fixtures/SHA256SUMS.other
 /// thrown away).
 const ANOTHER_KEY: &str = "RWR/SI3TjcZ6R5dt2pHd7WY9da2KCrFEV2n8JpBIZga6h9lXCsulRt5L";
 /// TEST KEY ONLY: the committed secret key the tests and the installer checks sign local feeds
-/// with. Glowfly trusts it for a feed folder, never for the hosting service.
+/// with. Glowfly trusts it for a feed folder in test and installer-check builds, never for the
+/// hosting service or in a release build.
 const TEST_SECRET: &str = include_str!("minisign_fixtures/test-only.key");
 const TEST_PUBLIC: &str = include_str!("minisign_fixtures/test-only.pub");
 const MSI_BYTES: &[u8] = b"pretend msi bytes";
@@ -144,10 +145,47 @@ fn a_signature_from_a_different_key_is_refused() {
 }
 
 #[test]
-fn only_a_feed_folder_trusts_the_test_key() {
-    assert_eq!(Feed::Hosted(REPOSITORY.to_owned()).trusted_keys(), KEYS);
-    let folder = Feed::Folder(crate::paths::temp_dir().join("feed")).trusted_keys();
-    assert_eq!(folder, [KEYS, &[TEST_KEY]].concat());
+fn only_a_feed_folder_in_a_checking_build_trusts_the_test_key() {
+    assert_eq!(Feed::Hosted(REPOSITORY.to_owned()).trusted_keys(), KEYS, "never for the hosting service");
+    let dir = crate::paths::temp_dir().join("feed");
+    assert_eq!(Feed::folder(dir.clone(), true), Feed::TestKeyFolder(dir.clone()));
+    assert_eq!(Feed::folder(dir.clone(), true).trusted_keys(), [KEYS, &[TEST_KEY]].concat());
+    assert_eq!(Feed::folder(dir.clone(), false), Feed::Folder(dir.clone()));
+    assert_eq!(Feed::folder(dir, false).trusted_keys(), KEYS, "a build without installer-check trusts only the release keys");
+}
+
+#[test]
+fn a_build_without_installer_check_refuses_a_test_key_feed() {
+    let signed = sign(SUMS, "v0.1.1");
+    let dir = crate::paths::temp_dir().join("feed");
+    let release_build = Feed::folder(dir.clone(), false).trusted_keys();
+    assert_eq!(verify(SUMS, signed.as_bytes(), &release_build, "v0.1.1"), Err(UpdateError::BadSignature));
+    assert_eq!(verify(SUMS, signed.as_bytes(), &Feed::folder(dir, true).trusted_keys(), "v0.1.1"), Ok(()));
+    let other = verify(SUMS, BY_ANOTHER_KEY, &release_build, "v0.1.1");
+    assert_eq!(other, Err(UpdateError::BadSignature), "the release keys still refuse another key");
+    // The whole download: refused for the signature, the offer still listed, nothing saved.
+    let dir = scratch("release-build");
+    let sums = sum_line(MSI, MSI_BYTES);
+    let (feed, dl) = signed_feed(&dir, &sums, Some(sign(sums.as_bytes(), "v0.1.1")));
+    let Feed::TestKeyFolder(feed_dir) = feed else { panic!("a test-key feed") };
+    let feed = Feed::Folder(feed_dir);
+    let o = offer_for(&feed, InstallKind::Installer);
+    let err = download(&feed, &o, &dl).unwrap_err();
+    assert_eq!(err.to_string(), "This release's checksums aren't signed with Glowfly's key, so nothing was downloaded.");
+    assert!(is_empty(&dl));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The folder GLOWFLY_UPDATE_FEED names trusts the test key only in an installer-check build;
+/// glowfly-core's tests (built without it) make their `TestKeyFolder` feeds themselves.
+#[test]
+fn only_an_installer_check_build_trusts_the_test_key_for_the_named_folder() {
+    let dir = crate::paths::temp_dir().join("feed");
+    let named = Feed::from_value(Some(dir.as_os_str()), REPOSITORY).unwrap();
+    assert_eq!(named, Feed::folder(dir, cfg!(feature = "installer-check")));
+    if !cfg!(feature = "installer-check") {
+        assert_eq!(named.trusted_keys(), KEYS, "a default build trusts only the release keys");
+    }
 }
 
 /// A feed folder in `dir` with the MSI and `sums` signed as `signature` (None: no signature),
@@ -156,7 +194,7 @@ fn signed_feed(dir: &std::path::Path, sums: &str, signature: Option<String>) -> 
     let feed_dir = dir.join("feed");
     std::fs::create_dir_all(&feed_dir).unwrap();
     write_feed_signed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES)], Some(sums.to_owned()), signature);
-    (Feed::Folder(feed_dir), dir.join("dl"))
+    (Feed::TestKeyFolder(feed_dir), dir.join("dl"))
 }
 
 #[test]
@@ -320,7 +358,7 @@ fn a_replayed_older_sha256sums_downloads_nothing() {
     let feed_dir = dir.join("feed");
     std::fs::create_dir_all(&feed_dir).unwrap();
     write_feed_signed(&feed_dir, "v0.1.2", &[(msi, MSI_BYTES)], read("SHA256SUMS"), read(SIGNATURE_FILE));
-    let (feed, dl) = (Feed::Folder(feed_dir.clone()), dir.join("dl"));
+    let (feed, dl) = (Feed::TestKeyFolder(feed_dir.clone()), dir.join("dl"));
     assert_eq!(download(&feed, &offer_for(&feed, InstallKind::Installer), &dl), refused());
     assert!(is_empty(&dl));
     // Even a list naming v0.1.2's file with its digest, when it was signed for v0.1.1.

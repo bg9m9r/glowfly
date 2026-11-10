@@ -1,5 +1,7 @@
 //! Where releases are read from: the hosting service, or a local folder named by
-//! GLOWFLY_UPDATE_FEED for testing installers and updates without the network.
+//! GLOWFLY_UPDATE_FEED for testing installers and updates without the network. Only an
+//! installer-check build's folder, and glowfly-core's tests' feeds, trust the committed test key
+//! (`Feed::TestKeyFolder`).
 
 use super::{Asset, Release, UpdateError, release, signature};
 use crate::forge::ServiceError;
@@ -14,6 +16,11 @@ pub const FEED_ENV: &str = "GLOWFLY_UPDATE_FEED";
 pub const FEED_RELEASE: &str = "release.json";
 /// The most of `release.json` read.
 const MAX_FEED_JSON: u64 = 1024 * 1024;
+/// Whether the folder GLOWFLY_UPDATE_FEED names trusts the committed test key: only in builds
+/// with the `installer-check` feature (the Installers workflow's). A release build never does, so
+/// a folder feed must be signed with a release key there. glowfly-core's tests make their
+/// `TestKeyFolder` feeds themselves.
+const FOLDER_TRUSTS_TEST_KEY: bool = cfg!(feature = "installer-check");
 
 /// Where releases come from.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -22,6 +29,9 @@ pub enum Feed {
     Hosted(String),
     /// A folder holding `release.json` next to the files it lists.
     Folder(PathBuf),
+    /// A feed folder whose `SHA256SUMS` may also be signed with the committed test key: what
+    /// GLOWFLY_UPDATE_FEED names in an installer-check build, and glowfly-core's tests' feeds.
+    TestKeyFolder(PathBuf),
 }
 
 impl Feed {
@@ -32,9 +42,15 @@ impl Feed {
         let Some(value) = value.filter(|v| !v.is_empty()) else { return Ok(Feed::Hosted(repository.to_owned())) };
         let dir = PathBuf::from(value);
         if dir.is_absolute() {
-            return Ok(Feed::Folder(dir));
+            return Ok(Feed::folder(dir, FOLDER_TRUSTS_TEST_KEY));
         }
         Err(UpdateError::FeedNotAbsolute { value: crate::text::printable(&value.to_string_lossy()) })
+    }
+
+    /// The feed folder `dir`, which also trusts the committed test key when `test_key` (an
+    /// installer-check build, FOLDER_TRUSTS_TEST_KEY).
+    pub(super) fn folder(dir: PathBuf, test_key: bool) -> Feed {
+        if test_key { Feed::TestKeyFolder(dir) } else { Feed::Folder(dir) }
     }
 
     /// The feed the environment names, read on every call.
@@ -46,7 +62,7 @@ impl Feed {
     pub fn describe(&self) -> String {
         match self {
             Feed::Hosted(repo) => format!("hosted {repo}"),
-            Feed::Folder(dir) => format!("folder {}", shown(dir)),
+            Feed::Folder(dir) | Feed::TestKeyFolder(dir) => format!("folder {}", shown(dir)),
         }
     }
 
@@ -54,7 +70,7 @@ impl Feed {
     pub fn latest(&self) -> Result<Option<Release>, UpdateError> {
         match self {
             Feed::Hosted(repo) => crate::forge::latest_release(repo).map_err(|e| UpdateError::Service(ServiceError::from(e))),
-            Feed::Folder(dir) => {
+            Feed::Folder(dir) | Feed::TestKeyFolder(dir) => {
                 if !dir.is_dir() {
                     return Err(UpdateError::FeedFolderMissing { dir: shown(dir) });
                 }
@@ -74,11 +90,11 @@ impl Feed {
     }
 
     /// The minisign keys whose signature of `SHA256SUMS` this feed's downloads accept: the
-    /// project's pinned keys, and for a feed folder (a local test of installers and updates)
-    /// the test key too, whose secret half is committed.
+    /// project's pinned keys, plus the test key (secret half committed) for a `TestKeyFolder`
+    /// only: never for the hosting service, nor for a folder in a release build.
     pub(super) fn trusted_keys(&self) -> Vec<&'static str> {
         let mut keys = signature::KEYS.to_vec();
-        if let Feed::Folder(_) = self {
+        if let Feed::TestKeyFolder(_) = self {
             keys.push(signature::TEST_KEY);
         }
         keys
@@ -88,7 +104,7 @@ impl Feed {
     pub(super) fn fetch(&self, asset: &Asset, limit: u64) -> Result<Vec<u8>, UpdateError> {
         match self {
             Feed::Hosted(_) => crate::forge::fetch_public(&asset.url, limit).map_err(|e| UpdateError::Service(ServiceError::from(e))),
-            Feed::Folder(dir) => {
+            Feed::Folder(dir) | Feed::TestKeyFolder(dir) => {
                 if !release::asset_name_ok(&asset.name) {
                     return Err(UpdateError::BadFileName { name: crate::text::printable(&asset.name) });
                 }
@@ -102,7 +118,7 @@ impl Feed {
     pub(super) fn open(&self, asset: &Asset) -> Result<Box<dyn Read + Send>, UpdateError> {
         match self {
             Feed::Hosted(_) => crate::forge::open_public(&asset.url).map_err(|e| UpdateError::Service(ServiceError::from(e))),
-            Feed::Folder(dir) => {
+            Feed::Folder(dir) | Feed::TestKeyFolder(dir) => {
                 if !release::asset_name_ok(&asset.name) {
                     return Err(UpdateError::BadFileName { name: crate::text::printable(&asset.name) });
                 }

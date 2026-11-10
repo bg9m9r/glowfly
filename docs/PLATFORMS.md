@@ -813,7 +813,8 @@ for every OS on every machine.
 - **Snapshot images** are rendered on Windows; the Linux runner skips only the image comparison.
 - **Installers** are tested by the `Installers` workflow (`.github/workflows/installers.yml`) on
   every push and pull request: the MSI on Windows (`scripts/installer-check-windows.ps1`) and the
-  .deb on Linux (`scripts/installer-check-linux.sh`) are installed over an older package,
+  .deb on Linux (`scripts/installer-check-linux.sh`), built with the installer-check feature, are
+  installed over an older package,
   checked (files, shortcuts or desktop entries, registry, icons), started, update-checked with
   `scripts/update-feed-check.ps1` against local feeds, and uninstalled. The install scripts
   refuse to run outside GitHub Actions unless given `-AllowLocal` / `--allow-local`, and always

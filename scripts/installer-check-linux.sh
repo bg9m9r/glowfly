@@ -4,7 +4,8 @@
 # scripts/package-linux.sh built an older package (tag v0.0.1) and the current one from the same
 # program. The window is started from the desktop entry's Exec on its own X server (Xvfb, never
 # the caller's display) and is seen through the smoke probe (GLOWFLY_SMOKE_PROBE). The steps it
-# shares with the .rpm check are in installer-lib-linux.sh.
+# shares with the .rpm check are in installer-lib-linux.sh. The packages must come from a program
+# built with --features installer-check: the update-feed check signs its feeds with the test key.
 #
 # Usage: scripts/installer-check-linux.sh [--allow-local] <deb> <old deb> <tar.gz> <version>
 # Environment:

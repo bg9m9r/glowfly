@@ -1,9 +1,11 @@
 name: Installers
 
-# Builds the release packages the way the Release workflow does, then installs, upgrades,
-# starts, update-checks and uninstalls them on a clean runner: the MSI on Windows
-# (scripts/installer-check-windows.ps1), the .deb on Linux (scripts/installer-check-linux.sh) and
-# the .rpm in a Fedora container (scripts/installer-check-rpm.sh). The MSI and .deb checks run
+# Builds the release packages the way the Release workflow does, but with the installer-check
+# feature (so the program trusts the committed test key for a feed folder; a release build never
+# does), then installs, upgrades, starts, update-checks and uninstalls them on a clean runner:
+# the MSI on Windows (scripts/installer-check-windows.ps1), the .deb on Linux
+# (scripts/installer-check-linux.sh) and the .rpm in a Fedora container
+# (scripts/installer-check-rpm.sh). The MSI and .deb checks run
 # scripts/update-feed-check.ps1 with the installed program against local update feeds
 # (GLOWFLY_UPDATE_FEED), signed with minisign and the committed test key; the .rpm check and the
 # AppImage step ask --check-update with an empty feed. The "older" package is the same program
@@ -52,8 +54,10 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: installers-windows
+      # The installer-check feature trusts the committed test key for a feed folder, which
+      # update-feed-check.ps1 signs its feeds with; release.yml never turns it on.
       - name: Build (release)
-        run: cargo build --release --locked -p glowfly --target x86_64-pc-windows-msvc
+        run: cargo build --release --locked -p glowfly --features installer-check --target x86_64-pc-windows-msvc
       - name: Package an old and the current MSI
         shell: pwsh
         run: |
@@ -122,8 +126,10 @@ jobs:
         run: |
           ./scripts/linux-deps.sh
           sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0 jq shellcheck desktop-file-utils libarchive-tools
+      # The installer-check feature trusts the committed test key for a feed folder, which
+      # update-feed-check.ps1 signs its feeds with; release.yml never turns it on.
       - name: Build (release)
-        run: cargo build --release --locked -p glowfly --target x86_64-unknown-linux-gnu
+        run: cargo build --release --locked -p glowfly --features installer-check --target x86_64-unknown-linux-gnu
       - name: Install cargo-deb and cargo-generate-rpm
         run: |
           cargo install cargo-deb --locked --version 2.12.1

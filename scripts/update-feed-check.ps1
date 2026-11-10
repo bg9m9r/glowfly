@@ -1,8 +1,10 @@
 # Checks `glowfly --check-update` against local update feeds (GLOWFLY_UPDATE_FEED): a folder
 # holding release.json, the packages, SHA256SUMS and its signature, built here from the given
 # package files. SHA256SUMS is signed with minisign and the committed test key
-# (crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key), which Glowfly trusts for
-# a feed folder only; -Minisign names the minisign program (default: minisign on the PATH).
+# (crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key), which only a build with
+# the installer-check feature (`cargo build -p glowfly --features installer-check`) or
+# glowfly-core's tests trust, for a feed folder; a release build refuses these feeds. -Minisign
+# names the minisign program (default: minisign on the PATH).
 # Installs nothing and opens no window, so it runs on any build; the installer checks
 # (installer-check-windows.ps1, installer-check-linux.sh) run it with the installed program.
 #
@@ -31,7 +33,9 @@ $Out = [IO.Path]::GetFullPath($Out)
 $found = Get-Command -Name $Minisign -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $found) { throw "minisign isn't at $Minisign or on the PATH: install it (scripts/install-minisign.sh, -.ps1) or pass -Minisign" }
 $Minisign = $found.Source
-# TEST KEY ONLY: committed on purpose, trusted by Glowfly for a feed folder, never for releases.
+# TEST KEY ONLY: committed on purpose. Only a build with the installer-check feature
+# (`--features installer-check`) or glowfly-core's tests trust it, for a feed folder; a release
+# build refuses these feeds.
 $testKey = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key')).Path
 New-Item -ItemType Directory -Force $Out | Out-Null
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -203,6 +207,7 @@ $c = Start-Case 'newer'
 New-Feed -Dir $c.Feed -Tag $newTag
 $script:run = Invoke-Check $c.Feed $c.Dl $script:case
 $wantName = Get-FeedName $underTest $newTag
+Assert-That ($script:run.Err -notmatch "aren't signed with Glowfly's key") 'the program refused the test key: build it with --features installer-check'
 Assert-That ($script:run.Code -eq 0) 'expected exit 0 (downloaded)'
 Assert-That ($script:run.Out -match "(?m)^install $wantKind\r?$") "expected install $wantKind"
 Assert-That ($script:run.Out -match "(?m)^offer $([regex]::Escape($newTag.TrimStart('v'))) $([regex]::Escape($wantName))\r?$") "expected an offer of $wantName"

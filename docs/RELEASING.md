@@ -291,7 +291,11 @@ up under a newer tag is refused. The builds themselves are still not code-signed
 - **The test key**: `crates/glowfly-core/src/app_update/minisign_fixtures/test-only.key` is a
   secret key committed on purpose, labelled as a test key, for the tests and the installer
   checks' local feeds. The app trusts it only for a feed folder named by `GLOWFLY_UPDATE_FEED`,
-  never for releases from GitHub.
+  and only in builds with the `installer-check` cargo feature (the Installers workflow's) and in
+  glowfly-core's tests; a release build (`release.yml`, the Flatpak manifest, a plain
+  `cargo build`) trusts only the release keys, whatever the feed, and refuses a folder feed
+  signed with the test key. Never pass the feature to a release build;
+  `tests/source_checks/dependencies.rs` checks that the default build doesn't carry it.
 
 Check a release's `SHA256SUMS` by hand with minisign, in the folder you downloaded both files to:
 
@@ -394,7 +398,7 @@ release notes dialog keeps working without it.
 
 The `Installers` workflow (`.github/workflows/installers.yml`) runs on every pull
 request and push to main (except ones that only touch `docs/`, `TODO.md` or `ROADMAP.md`). It builds the release
-program, packages it twice with the scripts above (once as `v0.0.1`, once as the current
+program with `--features installer-check`, packages it twice with the scripts above (once as `v0.0.1`, once as the current
 version), and on a clean runner:
 
 - **Windows** (`scripts/installer-check-windows.ps1`): installs the v0.0.1 MSI silently
@@ -458,10 +462,11 @@ nothing saved), and a relative `GLOWFLY_UPDATE_FEED`
 (2). It signs the feeds with minisign and the test key, so minisign has to be on the PATH (or
 named by `-Minisign`; `scripts/install-minisign.ps1 -Dir <folder>` puts one in a folder). It
 installs nothing and opens no window, so it runs locally against a debug build, which counts as
-portable, with stand-in package files of any bytes:
+portable, with stand-in package files of any bytes. Build it with the `installer-check` feature:
+a build without it refuses the test-key-signed feeds, and the `newer` case says so.
 
 ```
-cargo build -p glowfly
+cargo build -p glowfly --features installer-check
 pwsh -NoProfile -File scripts/update-feed-check.ps1 -Glowfly target/debug/glowfly.exe -Version 0.1.0 `
   -Installer <dir>/glowfly-v0.1.0-x86_64-pc-windows-msvc.msi `
   -Archive <dir>/glowfly-v0.1.0-x86_64-pc-windows-msvc.zip -Expect archive -Out <work folder>

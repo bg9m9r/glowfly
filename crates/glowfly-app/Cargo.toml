@@ -14,6 +14,11 @@ workspace = true
 name = "glowfly"
 path = "src/main.rs"
 
+[features]
+# The build the Installers workflow checks: trusts the committed test key for a feed folder
+# (glowfly-core's installer-check). Never used for a release.
+installer-check = ["glowfly-core/installer-check"]
+
 [dependencies]
 glowfly-core.workspace = true
 glowfly-model.workspace = true
