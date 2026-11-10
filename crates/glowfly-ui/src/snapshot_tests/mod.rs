@@ -139,6 +139,7 @@ pub(super) mod snapshot_tests_prefs_save;
 pub(super) mod snapshot_tests_prefs_search;
 pub(super) mod snapshot_tests_prefs_signing;
 pub(super) mod snapshot_tests_prefs_terminal;
+pub(super) mod snapshot_tests_prefs_trust;
 pub(super) mod snapshot_tests_profile_rules;
 pub(super) mod snapshot_tests_profiles;
 pub(super) mod snapshot_tests_publish;

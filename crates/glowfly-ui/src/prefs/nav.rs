@@ -32,6 +32,7 @@ const PAGES: &[(PrefPage, Icon)] = &[
     (PrefPage::Terminal, Icon::Terminal),
     (PrefPage::Signing, Icon::Key),
     (PrefPage::Ssh, Icon::Lock),
+    (PrefPage::Trust, Icon::Shield),
 ];
 const REPO_PAGES: &[(PrefPage, Icon)] = &[
     (PrefPage::RepoIdentity, Icon::Identity),

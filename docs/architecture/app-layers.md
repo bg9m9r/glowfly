@@ -84,6 +84,7 @@ source file, update its line here. Features that span every layer are in
 - `sandbox.rs`: `Effect::sandbox`, what the whole-app tests' runner does with each effect (`SandboxRule`, from the area's `EffectMeta`).
 - `effect/credential.rs`: saving and dropping HTTPS sign-ins typed in the credential prompt (runner/credentials.rs).
 - `effect/repos.rs`: what repositories across folders ask the runner (runner/repos.rs): listing the project folders, and fetching or pulling one listed repository.
+- `effect/trust.rs`: what repository trust asks the runner (runner/trust.rs): reading the repositories made from a trusted one (`Inherit`), and checking which decided folders still exist for Preferences > Trusted repositories (`CheckFolders`).
 
 ## Per-area message and effect types
 
@@ -150,6 +151,7 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: the operation preview's dialog data, its title and headline, why Apply is off (busy, loading, nothing to do or stale) and the message Apply sends, the same as the direct menu item's.
 - `refresh/recount.rs`: when other worktrees' changes are counted again after a reload that kept the snapshot (at most once per `RECOUNT_EVERY`).
 - `load_more.rs`: a failed load for more history, the graph's row under the last commit (Load more, or the end row's sentence with Fetch full history and Load more) and how far a filtering search has looked.
+- `state/trust_list.rs`: Preferences > Trusted repositories: its state (the folders the last check found missing, the filter) and its rows, one per saved decision with its date, source, heir count and missing mark, the filter's matches and the missing folders.
 - `trust_rows.rs` (`trust::rows`): the trust prompt's rows: a setting value's program word (`value_parts`) and the working-tree places a row's Git LFS recognition is checked against (`row_follows`); `trust.rs`'s tests are in `trust_tests.rs`.
 - `AppState` holds no egui types; textures and fonts live in a `UiCache` owned by the UI layer.
 - `state/activity_rows.rs`: the activity panel's rows, worked out from a tab's log: session headers, one row per run or note, and consecutive successful auto-fetches (routine runs) folded into one group.
@@ -344,6 +346,7 @@ source file, update its line here. Features that span every layer are in
 - `update/tool_compare.rs`: the external diff and merge tools: opening a diff in the diff tool (an unscoped effect that reports only failures), and resolving a conflict in the merge tool as the single active job, ended through `ops::finish_job` when the program exits.
 - `update/tool_git.rs`: git config's diff and merge tools, used when Preferences > External tools sets no program: a click reads git config first (`read_then`), and its result runs the tool git names, opens Preferences when it names none, or says why it can't run.
 - `update/trello.rs`: the Board picker of This repository > Issue tracker, while Trello is the repository's tracker: each account's boards load once per Preferences session.
+- `update/trust_revoke.rs`: Preferences > Trusted repositories: the folder check the page starts, revoking or forgetting a decision with every decision passed on from it, and forgetting the missing folders' decisions; a revoked open repository stands Undecided at once and reloads without git's status read, without a prompt over Preferences. Tests in `update/tests/trust_revoke_tests.rs` and `flows/trust_revoke_tests.rs`.
 - `update/trust_inherit.rs`: passing trust on to the repositories Glowfly makes from a trusted one: a worktree it creates (whose config and hooks are its repository's) and submodules it checks out for the first time (like a clone Glowfly made).
 - `update/work_files.rs`: creating, renaming, deleting and discarding (untracked) working-tree files: the New file and Rename dialogs (checked against the snapshot before anything runs), running the delete or discard a confirmation agreed to (the confirmations themselves are in `work_files_delete`, several files' discard in `work_files_discard` and delete in `work_files_delete_many`), and the results (a toast, the dialog's inline error, or a log line).
 - `update/work_files_delete.rs`: deleting working-tree files and discarding untracked ones: the confirmations (worded by what status says about the path and by whether the file goes to the Recycle Bin / Trash), the discard that discarding every line of an untracked file's diff sends instead, the follow-up that offers a permanent delete when the trash can't take a file, and the toasts that say how the file went.

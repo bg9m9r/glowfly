@@ -28,6 +28,8 @@ pub enum PrefPage {
     Signing,
     /// SSH key pairs in ~/.ssh and generating one.
     Ssh,
+    /// Every saved repository trust decision: reviewing, revoking and forgetting them.
+    Trust,
     RepoIdentity,
     RepoHooks,
     RepoTracker,
@@ -61,6 +63,7 @@ impl PrefPage {
             PrefPage::Terminal => t.tr("prefs.nav.terminal"),
             PrefPage::Signing => t.tr("prefs.nav.signing"),
             PrefPage::Ssh => t.tr("prefs.nav.ssh"),
+            PrefPage::Trust => t.tr("prefs.nav.trust"),
             PrefPage::RepoIdentity => t.tr("prefs.nav.commit_identity"),
             PrefPage::RepoHooks => t.tr("prefs.nav.hooks"),
             PrefPage::RepoTracker => t.tr("prefs.nav.tracker"),
@@ -179,6 +182,7 @@ pub struct PrefsState {
     pub ssh: crate::state::ssh::SshPage,
     pub profiles: crate::state::profiles::ProfilesPage,
     pub keys: crate::state::keys_page::KeysPage,
+    pub trust: crate::state::trust_list::TrustPage,
     /// The git config values as last read or saved: what the Save / Revert bar compares with.
     pub git_saved: Option<GitConfigValues>,
     /// The leave waiting on the "Save your changes?" question.
@@ -220,6 +224,7 @@ impl PrefsState {
             ssh: Default::default(),
             profiles: Default::default(),
             keys: Default::default(),
+            trust: Default::default(),
             git_saved: None,
             leaving: None,
             leave_approved: false,

@@ -78,6 +78,8 @@ impl Default for Settings {
             repo_forge_filters: HashMap::new(),
             repo_trust: HashMap::new(),
             repo_trust_prints: HashMap::new(),
+            repo_trust_times: HashMap::new(),
+            repo_trust_from: HashMap::new(),
             status_tip_shown: HashMap::new(),
             repo_submodule_updates: HashMap::new(),
             repo_year_branches: HashMap::new(),

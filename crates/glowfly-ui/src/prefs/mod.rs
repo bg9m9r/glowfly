@@ -42,6 +42,8 @@ mod theme_picker;
 mod theme_row;
 mod tools;
 mod trello;
+mod trusted_repos;
+mod trusted_repos_row;
 mod updates_row;
 // For the chip catalog golden (`snapshot_tests_chips.rs`).
 #[cfg(test)]
@@ -117,6 +119,13 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
     let updates = updates_row::UpdatesView {
         updates: &st.updates,
         last_checked: st.settings.updates.last_checked.map(|t| st.settings.format_time(t, st.cues.now, st.cues.utc_offset)),
+    };
+    let trust_rows = glowfly_model::state::trust_list::rows(&st.settings, &prefs.trust);
+    let trust_view = trusted_repos::TrustedView {
+        when: trust_rows.iter().map(|r| r.at.map(|at| st.settings.format_time(at, st.cues.now, st.cues.utc_offset))).collect(),
+        rows: trust_rows,
+        checked: prefs.trust.missing.is_some(),
+        t,
     };
     let switching = st.profile_switch;
     // Field by field, beside the `&mut` borrows of the copies below.
@@ -217,6 +226,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
                         sparse::sparse_page(ui, &prefs.sparse, (&mut fields.sparse_paths, &mut fields.sparse_mode), &sparse_cx, msgs)
                     }
                     PrefPage::Ssh => ssh::ssh_page(ui, t, &prefs.ssh, &mut fields.ssh_upload_title, &ssh_cx, msgs),
+                    PrefPage::Trust => trusted_repos::trusted_page(ui, &trust_view, &mut fields.trust_filter, msgs),
                     _ => {
                         let Some(git) = fields.git.as_mut() else { return };
                         match page {

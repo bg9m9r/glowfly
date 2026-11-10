@@ -15,6 +15,7 @@ Button "Herramientas externas"
 Button "Terminal"
 Button "Firma de commits"
 Button "SSH"
+Button "Repositorios de confianza"
 Label "Apariencia"
 Label "Tema"
 CheckBox "Seguir el modo oscuro o claro del sistema" [off]

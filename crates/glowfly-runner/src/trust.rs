@@ -1,5 +1,6 @@
 //! Repository trust's work in the runner: reading the repositories Glowfly just made from a
-//! trusted one, so they can be trusted on the same terms (`Effect::Trust`), and the re-check
+//! trusted one, so they can be trusted on the same terms (`Effect::Trust`), checking which
+//! decided folders still exist (Preferences > Trusted repositories), and the re-check
 //! just before trust-gated work starts (`Effect::Checked`, `verify`): the repository is scanned
 //! again with libgit2 (settings, hooks read whole, the commands file, where hooks and config
 //! programs follow the working tree, and the same for each checked-out submodule, which git
@@ -36,6 +37,7 @@ pub(super) fn run(e: TrustEffect) -> Msg {
                 .collect();
             Msg::Trust(TrustMsg::Inherited { kind, from, repos, open })
         }
+        TrustEffect::CheckFolders(paths) => Msg::Trust(TrustMsg::FoldersChecked(super::platform::check_folders(&paths))),
     }
 }
 

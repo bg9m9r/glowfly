@@ -1,6 +1,6 @@
 //! What Preferences' pages write besides the settings (`PrefsFields`): the search, the git
 //! config values, the sign-in form, Git LFS's new pattern, Git Flow's form, the sparse paths,
-//! the SSH key's upload title, the profile fields and forms and the Keyboard filter. The view
+//! the SSH key's upload title, the profile fields and forms and the Keyboard and Trusted repositories filters. The view
 //! draws them from a copy each frame and sends a changed copy back as `EditMsg::Prefs`; update
 //! takes it back (`PrefsState::apply`), clearing the error a page shows for a field that
 //! changed. The secrets are in `ViewState::secrets`, and Generate SSH key's fields in
@@ -38,6 +38,8 @@ pub struct PrefsFields {
     pub profile: ProfileFields,
     /// Keyboard's filter field.
     pub keys_filter: String,
+    /// Trusted repositories' filter field.
+    pub trust_filter: String,
 }
 
 /// Profiles' identity fields and its open rename and New profile forms.
@@ -75,6 +77,7 @@ impl PrefsState {
                 adding: pr.adding.clone(),
             },
             keys_filter: self.keys.filter.clone(),
+            trust_filter: self.trust.filter.clone(),
         }
     }
 
@@ -114,5 +117,6 @@ impl PrefsState {
         pr.renaming = f.profile.renaming;
         pr.adding = f.profile.adding;
         self.keys.filter = f.keys_filter;
+        self.trust.filter = f.trust_filter;
     }
 }

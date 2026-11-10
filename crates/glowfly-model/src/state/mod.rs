@@ -161,6 +161,7 @@ pub mod tools;
 pub mod touched;
 pub mod trello;
 pub mod trust;
+pub mod trust_list;
 pub mod undo;
 pub mod undo_preview;
 pub mod updates;

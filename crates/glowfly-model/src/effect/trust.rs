@@ -1,5 +1,6 @@
 //! What repository trust asks the runner (runner/trust.rs): reading repositories Glowfly just
-//! made from a trusted one, so they can be trusted too (update/trust_inherit.rs).
+//! made from a trusted one, so they can be trusted too (update/trust_inherit.rs), and which
+//! decided folders still exist (Preferences > Trusted repositories, update/trust_revoke.rs).
 
 use super::EffectMeta;
 use super::SandboxRule;
@@ -11,12 +12,15 @@ pub enum TrustEffect {
     /// Resolves and scans each of `paths` (a new worktree, newly checked-out submodules) made
     /// from the trusted repository `from` (its real path). Reads only; then `open` opens.
     Inherit { kind: InheritKind, from: PathBuf, paths: Vec<PathBuf>, open: Option<PathBuf> },
+    /// Checks which of these decided folders are still there (`TrustMsg::FoldersChecked`).
+    CheckFolders(Vec<PathBuf>),
 }
 
 impl EffectMeta for TrustEffect {
     fn name(&self) -> &'static str {
         match self {
             TrustEffect::Inherit { .. } => "inherit-trust",
+            TrustEffect::CheckFolders(_) => "check-trust-folders",
         }
     }
 

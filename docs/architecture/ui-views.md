@@ -289,6 +289,8 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/ssh/service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
 - `prefs/ssh/sources.rs`: Preferences > SSH, under the key cards: the `~/.ssh/config` IdentityFile entries that can't be listed as cards (each with where it is and why), and the keys only the agent holds, as compact cards that can only copy their public key.
 - `prefs/ssh/windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
+- `prefs/trusted_repos.rs`: Preferences > Trusted repositories: the intro, the filter (from eight decisions on) and Forget missing folders, then the list or why it is empty.
+- `prefs/trusted_repos_row.rs`: Preferences > Trusted repositories: one decision's row: name, decision chip and Revoke or Forget; under it the path, date, source, heir count and a painted Not found mark.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
 - `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
 

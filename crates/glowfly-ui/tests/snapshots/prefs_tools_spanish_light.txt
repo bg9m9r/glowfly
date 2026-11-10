@@ -15,6 +15,7 @@ Button "Herramientas externas" [selected]
 Button "Terminal"
 Button "Firma de commits"
 Button "SSH"
+Button "Repositorios de confianza"
 Label "Herramientas externas"
 Label "Editor"
 Label "Programa del editor"

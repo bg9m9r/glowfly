@@ -125,6 +125,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_forge_filters",
     "repo_trust",
     "repo_trust_prints",
+    "repo_trust_times",
+    "repo_trust_from",
     "status_tip_shown",
     "repo_submodule_updates",
     "repo_year_branches",

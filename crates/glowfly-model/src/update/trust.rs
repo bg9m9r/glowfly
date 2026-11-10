@@ -26,6 +26,9 @@ pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Ve
         TrustMsg::AskForTerminal { real } => ask(st, &real, true),
         TrustMsg::Inherited { kind, from, repos, open } => super::trust_inherit::inherited(st, kind, &from, repos, open, fx),
         TrustMsg::Stale(s) => super::trust_seal::stale(st, *s),
+        TrustMsg::Revoke { real } => super::trust_revoke::revoke(st, &real, fx),
+        TrustMsg::ForgetMissing => super::trust_revoke::forget_missing(st, fx),
+        TrustMsg::FoldersChecked(checks) => super::trust_revoke::folders_checked(st, &checks),
     }
 }
 
@@ -81,6 +84,8 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
     } else {
         record(&mut st.settings, real, RepoTrust::NotTrusted);
     }
+    // The user's own decision, made now: an inherited one no longer follows its source.
+    st.settings.stamp_trust(real, Some(st.cues.now), None);
     fx.extend(super::prefs::save_settings(st));
     if matches!(st.modal, Some(Modal::Trust(_))) {
         st.modal = None;
@@ -299,6 +304,7 @@ pub(super) fn loaded(st: &mut AppState, kind: LoadKind, fx: &mut Vec<Effect>) {
     let save = if let Some(i) = made {
         st.trust.created.remove(i);
         record_trusted(&mut st.settings, &real, print);
+        st.settings.stamp_trust(&real, Some(st.cues.now), None);
         true
     } else if changed && adopt {
         tracing::debug!("adopting what git lfs install added to {}", real.display());

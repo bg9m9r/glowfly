@@ -177,6 +177,7 @@ mod tools;
 mod trello;
 pub mod trust;
 mod trust_inherit;
+mod trust_revoke;
 mod trust_seal;
 pub mod undo;
 mod undo_offers;

@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Label "Git"
 Label "Git program"
 RadioButton "Use Git from your PATH" [off]

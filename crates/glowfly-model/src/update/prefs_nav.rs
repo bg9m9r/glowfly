@@ -1,7 +1,8 @@
 //! Showing a Preferences page: the one path that opening Preferences on a page, the navigation
 //! column and each area's `ShowPage` message take, running what that page needs as it opens
 //! (finding installed gits, filling the profiles, reading ~/.ssh, the repository's tracker
-//! boards, LFS and sparse status, the Git Flow form, or git config's diff and merge tools).
+//! boards, LFS and sparse status, the Git Flow form, git config's diff and merge tools, or which
+//! folders with a trust decision still exist).
 //! The handlers are called directly, not through `update`, so the unsaved-changes guard sees
 //! the row once.
 
@@ -50,6 +51,7 @@ pub(super) fn enter_page(st: &mut AppState, page: PrefPage, fx: &mut Vec<Effect>
         PrefPage::RepoGitFlow => super::gitflow::fill(st),
         PrefPage::RepoSparse => super::sparse::load(st, fx),
         PrefPage::Tools => super::tool_git::read_for_page(st, fx),
+        PrefPage::Trust => super::trust_revoke::page_opened(st, fx),
         PrefPage::General
         | PrefPage::Integrations
         | PrefPage::Ui
