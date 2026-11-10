@@ -4,7 +4,7 @@
 use super::super::find::{self, Pick, Region};
 use super::Journey;
 use eframe::egui;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{self, Queryable};
 use glowfly_core::i18n::Lang;
 
 impl Journey {
@@ -129,11 +129,18 @@ impl Journey {
         true
     }
 
-    /// Types `text` into the text field named `name`, or returns false when there is none.
-    pub fn try_type(&mut self, name: &str, text: &str) -> bool {
-        if find::field(&self.h, name).is_none() {
-            return false;
+    /// Replaces what the text field named `name` holds with `text`, as a user who deletes it
+    /// first (End, then Backspace), or returns false when there is no such field.
+    pub fn try_replace(&mut self, name: &str, text: &str) -> bool {
+        {
+            let Some(node) = find::field(&self.h, name) else { return false };
+            let held = node.value().unwrap_or_default().chars().count();
+            if held > 0 {
+                node.key_press(kittest::Key::End);
+                (0..held).for_each(|_| node.key_press(kittest::Key::Backspace));
+            }
         }
+        self.settle();
         self.type_into(name, text);
         true
     }

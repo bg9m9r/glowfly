@@ -104,3 +104,46 @@ fn a_branch_deleted_through_its_dialog_passes() {
     assert!(o.broke.is_none(), "{}", report(&o, &actions(&o)));
     assert!(!o.state.contains("topic"), "topic is gone: {}", o.state);
 }
+
+#[test]
+fn undo_after_continue_returns_to_before_the_operation() {
+    // Continue finishes the rebase, and the app records the whole rebase: Undo goes back to before
+    // it began, not to the rebase in progress.
+    let text =
+        "seed 1\nrebase \"side\"\ncheckout \"side\"\noutside create \"notes.txt\" +3\nresolve-ours \"shared.txt\"\nstash\ncontinue\nundo\n";
+    // With a branch deleted during the rebase, one Undo doesn't bring the branch back too.
+    let deleted = "seed 1
+rebase \"side\"
+checkout \"side\"
+outside create \"notes.txt\" +3
+delete-branch \"side\"
+                   confirm \"Delete anyway\"
+select-wip
+resolve-ours \"shared.txt\"
+stash
+continue
+undo
+";
+    for (tag, case) in [("op-undo", text), ("op-undo-deleted", deleted)] {
+        let (seed, list) = parse_case(case).unwrap();
+        let o = run(tag, seed, Plan::Replay(list), Checks { slow_every: 1 });
+        assert!(o.broke.is_none(), "{}", report(&o, &actions(&o)));
+    }
+}
+
+#[test]
+fn undo_after_a_step_of_two_entries_is_not_judged() {
+    // Stash and check out records the checkout and then the put-back of the changes: one Undo
+    // takes the changes back into the stash and stays on main.
+    let text = "seed 1
+create-branch \"b456\"
+outside write \"a.txt\" +1
+checkout \"main\"
+confirm \"Stash and check out\"
+undo
+";
+    let (seed, list) = parse_case(text).unwrap();
+    let o = run("two-entries", seed, Plan::Replay(list), Checks { slow_every: 1 });
+    assert!(o.broke.is_none(), "{}", report(&o, &actions(&o)));
+    assert!(o.state.contains("branch: main"), "{}", o.state);
+}

@@ -292,10 +292,14 @@ impl Runner {
             };
             let stop_ref = stop.as_ref().map(|(_, s)| s);
             let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop_ref, gate: None, send: &send, seams };
-            let msg = guard::guarded(recovery, || match check {
-                Some(c) => trust::checked(c, effect, |text| failed.failed(text), &cx),
-                None => execute_with(effect, &cx),
-            });
+            let msg = guard::guarded_noting(
+                recovery,
+                || busy.panicked(),
+                || match check {
+                    Some(c) => trust::checked(c, effect, |text| failed.failed(text), &cx),
+                    None => execute_with(effect, &cx),
+                },
+            );
             if let Some((key, s)) = &stop {
                 stops.release(*key, s);
             }

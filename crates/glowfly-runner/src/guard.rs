@@ -258,10 +258,18 @@ impl Recovery {
 }
 
 /// Runs `f`, turning a panic into `recovery`'s failure message (and logging it).
+#[cfg(test)]
 pub(super) fn guarded(recovery: Recovery, f: impl FnOnce() -> Option<Msg>) -> Option<Msg> {
+    guarded_noting(recovery, || {}, f)
+}
+
+/// Runs `f`, turning a panic into `recovery`'s failure message (and logging it), and calling
+/// `on_panic` when it panicked (the sandbox's tally of effects that did).
+pub(super) fn guarded_noting(recovery: Recovery, on_panic: impl FnOnce(), f: impl FnOnce() -> Option<Msg>) -> Option<Msg> {
     match catch_unwind(AssertUnwindSafe(f)) {
         Ok(msg) => msg,
         Err(payload) => {
+            on_panic();
             let panic = payload
                 .downcast_ref::<&str>()
                 .map(|s| (*s).to_owned())

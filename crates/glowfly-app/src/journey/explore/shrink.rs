@@ -1,16 +1,18 @@
 //! Shrinking a failing session: replaying its action list with chunks removed (halves, then
 //! quarters, down to single actions) while the same rule still breaks, then making each kept
 //! action simpler (shorter text, fewer lines). The predicate replays from a fresh scene, so this
-//! file knows nothing about the app; a deadline keeps a failing run short.
+//! file knows nothing about the app; replays of the next few chunks run side by side, and a
+//! deadline keeps a failing run short.
 
 use super::action::{Action, Outside};
 use std::time::Instant;
 
 /// The shortest sub-list of `actions` for which `breaks` still holds (ddmin: halves, then
 /// quarters, down to single actions, keeping any shorter list that breaks), then each kept
-/// action simplified by `simpler` (a shorter summary, fewer lines). Stops at `deadline`,
-/// returning the best so far.
-pub(super) fn shrink(actions: Vec<Action>, mut breaks: impl FnMut(&[Action]) -> bool, deadline: Instant) -> Vec<Action> {
+/// action simplified by `simpler` (a shorter summary, fewer lines). Up to `width` lists are
+/// tried at once; the first of them (in list order) that breaks is kept, so the result doesn't
+/// depend on `width`. Stops at `deadline`, returning the best so far.
+pub(super) fn shrink(actions: Vec<Action>, breaks: impl Fn(&[Action]) -> bool + Sync, deadline: Instant, width: usize) -> Vec<Action> {
     let mut best = actions;
     let time_left = || Instant::now() < deadline;
     let mut parts = 2;
@@ -19,14 +21,18 @@ pub(super) fn shrink(actions: Vec<Action>, mut breaks: impl FnMut(&[Action]) -> 
         let mut removed = false;
         let mut start = 0;
         while start < best.len() && time_left() {
-            let end = (start + chunk).min(best.len());
-            let without: Vec<Action> = best[..start].iter().chain(&best[end..]).cloned().collect();
-            if !without.is_empty() && breaks(&without) {
-                // The next chunk has moved up to `start`.
-                best = without;
-                removed = true;
-            } else {
-                start = end;
+            // The lists without each of the next `width` chunks; the first that breaks is kept.
+            let starts: Vec<usize> = (start..best.len()).step_by(chunk).take(width.max(1)).collect();
+            let tries: Vec<Vec<Action>> =
+                starts.iter().map(|&at| best[..at].iter().chain(&best[(at + chunk).min(best.len())..]).cloned().collect()).collect();
+            match first_breaking(&tries, &breaks) {
+                Some(k) => {
+                    // The chunk after the removed one has moved up to its start.
+                    start = starts[k];
+                    best = tries.into_iter().nth(k).unwrap_or_default();
+                    removed = true;
+                }
+                None => start = starts.last().map_or(best.len(), |at| at + chunk),
             }
         }
         if removed {
@@ -54,6 +60,19 @@ pub(super) fn shrink(actions: Vec<Action>, mut breaks: impl FnMut(&[Action]) -> 
         }
     }
     best
+}
+
+/// The index of the first non-empty list in `tries` for which `breaks` holds, each tried on its
+/// own thread.
+fn first_breaking(tries: &[Vec<Action>], breaks: &(impl Fn(&[Action]) -> bool + Sync)) -> Option<usize> {
+    if let [only] = tries {
+        return (!only.is_empty() && breaks(only)).then_some(0);
+    }
+    std::thread::scope(|s| {
+        let runs: Vec<_> = tries.iter().map(|t| s.spawn(move || !t.is_empty() && breaks(t))).collect();
+        let held: Vec<bool> = runs.into_iter().map(|r| r.join().unwrap_or(false)).collect();
+        held.iter().position(|b| *b)
+    })
 }
 
 /// Simpler versions of `a` to try in its place, simplest first: a one-letter summary, then half

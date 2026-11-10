@@ -12,7 +12,6 @@ use super::rng::Rng;
 use super::scene::{PATHS, Scene};
 use super::shadow::Shadow;
 use git2::RepositoryState;
-use glowfly_core::i18n::Lang;
 
 /// The labels of the buttons a dialog may offer; Cancel is the way out of any of them.
 const MODAL_BUTTONS: [&str; 12] = [
@@ -71,7 +70,7 @@ pub(super) fn applicable(j: &Journey, scene: &Scene, active: &str, r: &Reading, 
         .collect();
 
     if j.shown("Uncommitted changes", true, Region::Central) {
-        out.push((SelectWip, 2));
+        out.push((SelectWip, 6));
     }
     let can_stage = details("Stage all");
     if can_stage && let Some(p) = pick(rng, &unstaged) {
@@ -92,8 +91,10 @@ pub(super) fn applicable(j: &Journey, scene: &Scene, active: &str, r: &Reading, 
     {
         out.push((StageHunk((*p).clone()), 6));
     }
-    let button = Lang::En.trn("commit.button.commit", r.staged.len(), &[("push", &""), ("skip", &"")]);
-    if !r.staged.is_empty() && r.conflicted.is_empty() && j.shown(&button, false, Region::Details) {
+    // The commit button reads "Commit" until a summary is typed, and the commit step selects the
+    // working tree's row itself, so the summary field or that row is enough.
+    let committable = j.shown("Commit summary", true, Region::Details) || j.shown("Uncommitted changes", true, Region::Central);
+    if !r.staged.is_empty() && r.conflicted.is_empty() && r.state == RepositoryState::Clean && committable {
         out.push((Commit(format!("msg {}", rng.below(1000))), 8));
     }
     if r.head.is_some() && r.conflicted.is_empty() && j.shown("Amend last commit", false, Region::Details) {
@@ -103,7 +104,7 @@ pub(super) fn applicable(j: &Journey, scene: &Scene, active: &str, r: &Reading, 
         out.push((CreateBranch(fresh_branch(rng, r)), 3));
     }
     for b in &others {
-        out.push((Checkout((*b).clone()), 4));
+        out.push((Checkout((*b).clone()), 2));
     }
     for b in others.iter().filter(|b| b.as_str() != "main") {
         out.push((DeleteBranch((*b).clone()), 1));
@@ -165,13 +166,13 @@ fn outside(scene: &Scene, active: &str, r: &Reading, rng: &mut Rng, calm: bool) 
     let lines = |rng: &mut Rng| (rng.below(3) + 1) as u8;
     let mut out = Vec::new();
     if let Some(p) = pick(rng, &present) {
-        out.push((Action::Outside(Outside::Write { path: (*p).to_owned(), lines: lines(rng) }), 6));
+        out.push((Action::Outside(Outside::Write { path: (*p).to_owned(), lines: lines(rng) }), 4));
     }
     if let Some(p) = pick(rng, &present) {
-        out.push((Action::Outside(Outside::Append { path: (*p).to_owned(), lines: lines(rng) }), 6));
+        out.push((Action::Outside(Outside::Append { path: (*p).to_owned(), lines: lines(rng) }), 4));
     }
     if let Some(p) = pick(rng, &absent) {
-        out.push((Action::Outside(Outside::Create { path: (*p).to_owned(), lines: lines(rng) }), 6));
+        out.push((Action::Outside(Outside::Create { path: (*p).to_owned(), lines: lines(rng) }), 4));
     }
     if let Some(p) = pick(rng, &present) {
         out.push((Action::Outside(Outside::Delete { path: (*p).to_owned() }), 1));
