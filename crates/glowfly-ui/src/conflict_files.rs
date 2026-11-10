@@ -183,10 +183,13 @@ fn resolved_row(
     let confirm = || super::details_wip::picks::mark_conflicted_msg(t, &paths);
     let staged = snap.staged.iter().any(|f| f.path == *path);
     let current = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
-    let selected = current || many.is_some();
-    // Mark conflicted shows at the row's end while the row is hovered or open; its menu has it too.
+    // A pick opens nothing, so the open file may be out of the picks: then it isn't drawn
+    // selected, as the picks' actions leave it out.
+    let selected = glowfly_model::state::conflict_picks::drawn_selected(open.conflict_held[1], path, current);
+    // Mark conflicted shows at the row's end while the row is hovered, open or picked; its menu
+    // has it too.
     let at = egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), super::widgets::LIST_ROW_H));
-    let show_action = selected || ui.rect_contains_pointer(at);
+    let show_action = current || selected || ui.rect_contains_pointer(at);
     let end = |ui: &mut egui::Ui| {
         if !show_action {
             return;

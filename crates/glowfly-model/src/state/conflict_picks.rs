@@ -1,9 +1,9 @@
 //! The files picked with Shift or Ctrl/Cmd in Conflicted Files or Resolved Files (shown during
 //! an operation in progress), gaps allowed (`ConflictPicks`, read as `wip_lists::Picked`): the
 //! two lists' files in on-screen order, the file each list has open (counted as picked while
-//! nothing is), a Shift run (`range`) and `prune` after a status read. Unlike the Unstaged and
-//! Staged Files picks they don't open anything, so they hold whatever is open. Read by
-//! `update/conflict_picks.rs` and the lists' views.
+//! nothing is), a Shift run (`range`), which rows draw selected (`drawn_selected`) and `prune`
+//! after a status read. Unlike the Unstaged and Staged Files picks they don't open anything, so
+//! the open file may be left out of them. Read by `update/conflict_picks.rs` and the lists' views.
 
 use super::wip_lists::Picked;
 use crate::state::AppState;
@@ -46,6 +46,14 @@ pub fn current(st: &AppState, resolved: bool) -> Option<String> {
 /// The picks of that list, if it holds them.
 pub fn held(st: &AppState, resolved: bool) -> Option<&ConflictPicks> {
     st.cues.conflict_picks.as_ref().filter(|p| p.resolved == resolved)
+}
+
+/// Whether the row of `path` draws selected, given that list's picks (`held`) and whether the
+/// row's file is the one open: while the list holds picks only they do (a single one left too),
+/// so the open file taken out of them doesn't look picked and every row drawn selected is one
+/// the actions take; with none, the open file.
+pub fn drawn_selected(held: Option<&ConflictPicks>, path: &str, open: bool) -> bool {
+    held.map_or(open, |p| p.paths.contains(path))
 }
 
 /// The files picked in that list in on-screen order, for the rows to draw selected and the

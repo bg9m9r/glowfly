@@ -40,6 +40,7 @@ use glowfly_model::msg::ConflictMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::StageMsg;
+use glowfly_model::state::conflict_picks::{ConflictPicks, drawn_selected};
 use glowfly_model::state::custom_commands::MenuCommands;
 use glowfly_model::state::file_folds::FileFolds;
 use glowfly_model::state::lfs::{TrackContext, track_items};
@@ -62,6 +63,7 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, 
         conflict: st.session.conflict.view.as_ref().map(|c| c.path.as_str()),
         picks: [picks[0].as_ref(), picks[1].as_ref()],
         conflict_picks: [conflict_picks[0].as_ref(), conflict_picks[1].as_ref()],
+        conflict_held: [false, true].map(|resolved| glowfly_model::state::conflict_picks::held(st, resolved)),
         resolve_why: resolve_why.as_deref(),
     };
 
@@ -144,6 +146,8 @@ pub(super) struct OpenFile<'a> {
     pub picks: [Option<&'a Picked>; 2],
     /// The same in Conflicted, then Resolved Files.
     pub conflict_picks: [Option<&'a Picked>; 2],
+    /// The picks Conflicted, then Resolved Files hold, however many (for the rows drawn selected).
+    pub conflict_held: [Option<&'a ConflictPicks>; 2],
     /// Why Mark resolved is off for the Conflicted Files picks, if it is.
     pub resolve_why: Option<&'a str>,
 }
@@ -211,7 +215,9 @@ pub(super) fn wip_file_row(
         Some(DiffTarget::Unstaged(p)) => !staged && *p == f.path,
         _ => false,
     };
-    let selected = current || picked;
+    // A conflicted pick opens nothing, so the open file may be out of the picks: then it isn't
+    // drawn selected, as the picks' actions leave it out.
+    let selected = if conflicted { drawn_selected(open.conflict_held[0], &f.path, current) } else { current || picked };
     // The row's action sits at its end: always on a conflicted row (Mark resolved), else while the
     // row is hovered or current, in place of its line counts. The S and U keys, the conflict
     // view's Mark resolved and the row's menu reach it too.
