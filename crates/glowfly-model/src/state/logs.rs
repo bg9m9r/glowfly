@@ -41,6 +41,11 @@ impl EntryId {
         static NEXT: AtomicU64 = AtomicU64::new(1);
         EntryId(NEXT.fetch_add(1, Ordering::Relaxed))
     }
+
+    /// The number the session gave it: larger for an entry logged later.
+    pub fn number(self) -> u64 {
+        self.0
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
