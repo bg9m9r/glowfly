@@ -44,7 +44,7 @@ fn a_feed_folder_skips_a_draft_or_a_prerelease() {
     let dir = scratch("drafts");
     let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
     std::fs::create_dir_all(&feed_dir).unwrap();
-    let feed = Feed::Folder(feed_dir.clone());
+    let feed = Feed::TestKeyFolder(feed_dir.clone());
     let current = Version::parse("0.1.0").unwrap();
     let check = || check_and_download(&feed, &current, Some(WIN), InstallKind::Installer, &dl);
     for key in ["draft", "prerelease"] {
