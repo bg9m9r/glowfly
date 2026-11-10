@@ -136,25 +136,14 @@ fn a_worktree_head_that_links_to_a_network_place_is_not_read() {
 #[test]
 fn a_worktree_whose_commondir_names_a_network_place_is_listed_from_its_admin_dir() {
     let dir = scratch_repo("offsite-wt-commondir");
-    write(
-        &dir, "a.txt", "a
-",
-    );
+    write(&dir, "a.txt", "a\n");
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "a"]);
     let folder = dir.with_file_name(format!("{}-wt", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&folder);
     git(&dir, &["worktree", "add", "-q", "-b", "side", &folder.display().to_string()]);
     let name = folder.file_name().unwrap().to_string_lossy().into_owned();
-    write(
-        &dir.join(".git/worktrees").join(&name),
-        "commondir",
-        &format!(
-            "{}
-",
-            git_spelling(&net_place())
-        ),
-    );
+    write(&dir.join(".git/worktrees").join(&name), "commondir", &format!("{}\n", git_spelling(&net_place())));
     let repo = git2::Repository::open(&dir).unwrap();
     let list = worktrees::list(&repo);
     let wt = list.iter().find(|w| w.name.as_deref() == Some(name.as_str())).expect("still listed");
@@ -183,15 +172,7 @@ fn a_submodule_whose_alternates_name_a_network_place_is_not_opened() {
     assert_eq!(trusted_paths(&dir), ["local"]);
 
     let objects = local.join(".git/objects/info");
-    write(
-        &objects,
-        "alternates",
-        &format!(
-            "{}
-",
-            git_spelling(&net_place().join("objects"))
-        ),
-    );
+    write(&objects, "alternates", &format!("{}\n", git_spelling(&net_place().join("objects"))));
     let repo = git2::Repository::open(&dir).unwrap();
     let local_offsite = crate::git_file::Offsite { path: "local".to_owned(), link: false };
     assert!(crate::git_file::offsite_gitlinks(&repo).contains(&local_offsite));
