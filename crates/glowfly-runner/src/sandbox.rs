@@ -25,7 +25,9 @@ pub(super) struct Sandbox {
 pub(super) struct Tally {
     pub(super) started: AtomicU64,
     pub(super) in_flight: Mutex<Vec<&'static str>>,
-    /// The names of effects whose worker unwound from a panic, in order.
+    /// The names of effects that panicked (the worker unwound, or its guard caught the panic), in
+    /// order. Kept in every build (a name per panic, which should never happen); only tests
+    /// read it, through `Runner::panicked`.
     pub(super) panicked: Mutex<Vec<&'static str>>,
 }
 

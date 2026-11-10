@@ -130,23 +130,9 @@ fn resolving_the_second_of_two_conflicts() {
     // topic and main both change shared.txt; make a.txt conflict too.
     use super::super::super::fixture::{commit_files, git, git_try};
     git(&scene.app, &["checkout", "-q", "topic"]);
-    commit_files(
-        &scene.app,
-        &[(
-            "a.txt", "topic a
-",
-        )],
-        "topic a",
-    );
+    commit_files(&scene.app, &[("a.txt", "topic a\n")], "topic a");
     git(&scene.app, &["checkout", "-q", "main"]);
-    commit_files(
-        &scene.app,
-        &[(
-            "a.txt", "main a
-",
-        )],
-        "main a",
-    );
+    commit_files(&scene.app, &[("a.txt", "main a\n")], "main a");
     assert!(!git_try(&scene.app, &["merge", "topic"]));
     step(&mut j, &scene, &mut shadow, Action::Refresh);
     let r = probe::read(&scene.app);

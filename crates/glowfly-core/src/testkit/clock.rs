@@ -2,6 +2,12 @@
 //! every run, so every git command gitcli starts inside a pinned root gets a fixed, rising date.
 //! Glowfly's own signatures (`undo::glowfly_signature`) follow the same clock.
 //!
+//! Every git command in a pinned root takes the next date, read-only ones too. The app's
+//! wall-clock timers (a delayed first build, a periodic recount) start commands at steps that
+//! depend on the machine's speed, so the commit ids the app makes, and that a report shows, can
+//! differ between machines. Nothing a session chooses depends on them: don't compare those ids
+//! across runs.
+//!
 //! Test and `testkit` builds only: a release build compiles none of this.
 
 use crate::paths::is_within;

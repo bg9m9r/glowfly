@@ -10,7 +10,6 @@ use super::action::{Action, Outside};
 use super::probe::Reading;
 use super::rng::Rng;
 use super::scene::{PATHS, Scene};
-use super::shadow::Shadow;
 use git2::RepositoryState;
 
 /// The labels of the buttons a dialog may offer; Cancel is the way out of any of them.
@@ -46,8 +45,8 @@ fn fresh_branch(rng: &mut Rng, r: &Reading) -> String {
 
 /// The actions that apply now with their weights, in the order of the vocabulary. `active` is
 /// the tab's repository (`app` or `lib`) and `r` its reading. While a dialog is open only its
-/// buttons apply. The shadow is not needed yet: the markers are minted when an edit is made.
-pub(super) fn applicable(j: &Journey, scene: &Scene, active: &str, r: &Reading, rng: &mut Rng, _shadow: &mut Shadow) -> Vec<(Action, u32)> {
+/// buttons apply.
+pub(super) fn applicable(j: &Journey, scene: &Scene, active: &str, r: &Reading, rng: &mut Rng) -> Vec<(Action, u32)> {
     if j.modal_open() {
         return MODAL_BUTTONS
             .iter()

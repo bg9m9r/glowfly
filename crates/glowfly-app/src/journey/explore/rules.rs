@@ -62,9 +62,9 @@ pub(super) fn no_lost_work(repo: &Path, name: &str, shadow: &Shadow) -> Result<(
 }
 
 /// Rule 4: the screen shows what the repository holds (`r`, read from disk just now). The head
-/// and branch names are read off the widgets' names. The changed-file set and the stash count
-/// have no reliable names on screen, so they are compared with the active tab's snapshot, which
-/// is what the lists on screen are drawn from.
+/// and branch names are read off the widgets' names. The local branches, the changed-file set and
+/// the stash count are also compared with the active tab's snapshot, which is what the lists on
+/// screen are drawn from (the changed files and stashes have no reliable names on screen).
 pub(super) fn screen_agrees(j: &Journey, r: &Reading) -> Result<(), String> {
     let mut wrong = Vec::new();
     let sidebar = j.labels(Region::Sidebar);
@@ -79,8 +79,9 @@ pub(super) fn screen_agrees(j: &Journey, r: &Reading) -> Result<(), String> {
             wrong.push(format!("the toolbar doesn't say {caption:?}"));
         }
     }
-    // The sidebar draws only the rows in view, so with many branches some are off screen: then
-    // only the checked-out branch (checked above) is held to be there.
+    // The rows drawn: the sidebar draws only the rows in view, so with many branches some are off
+    // screen and only the checked-out one (above) is held to be there. The snapshot's branch list
+    // is compared in full below.
     if r.branches.len() <= 8 {
         for name in r.branches.keys() {
             let head = format!("{name}, checked out");
@@ -104,6 +105,15 @@ pub(super) fn screen_agrees(j: &Journey, r: &Reading) -> Result<(), String> {
         }
         if changed != r.changed {
             wrong.push(format!("changed files: screen {changed:?}, disk {:?}", r.changed));
+        }
+        // The sidebar's branch rows are drawn from the snapshot's local branches, in both
+        // directions: a branch made and not shown, or one gone and still listed.
+        let locals: BTreeSet<&str> = snap.locals.iter().map(|b| b.name.as_str()).collect();
+        let disk: BTreeSet<&str> = r.branches.keys().map(String::as_str).collect();
+        if locals != disk {
+            let gone: Vec<&str> = locals.difference(&disk).copied().collect();
+            let unlisted: Vec<&str> = disk.difference(&locals).copied().collect();
+            wrong.push(format!("local branches: listed but gone {gone:?}, on disk but not listed {unlisted:?}"));
         }
         if snap.stashes.len() != r.stashes {
             wrong.push(format!("stashes: screen {}, disk {}", snap.stashes.len(), r.stashes));

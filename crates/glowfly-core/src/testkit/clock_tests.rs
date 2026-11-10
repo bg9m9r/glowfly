@@ -6,13 +6,29 @@ use crate::testkit::{git, set_identity};
 use git2::Repository;
 use std::path::PathBuf;
 
-fn folder(name: &str) -> PathBuf {
+/// A repository folder in the temporary folder, removed when the test is done with it.
+struct Folder(PathBuf);
+
+impl std::ops::Deref for Folder {
+    type Target = PathBuf;
+    fn deref(&self) -> &PathBuf {
+        &self.0
+    }
+}
+
+impl Drop for Folder {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn folder(name: &str) -> Folder {
     let dir = crate::paths::temp_dir().join(format!("glowfly-clock-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     git(&dir, &["init", "-q"]);
     set_identity(&dir);
-    dir
+    Folder(dir)
 }
 
 fn commit(dir: &std::path::Path, msg: &str, env: &[(&str, &str)]) {

@@ -79,7 +79,7 @@ Modified:
 
 - [ ] **Step 1: Write the failing test** `busy_dropped_while_panicking_is_recorded`: make a `Tally`, spawn a thread that does `let _b = tally.begin("boom"); panic!()`, join it (expect Err). Assert `lock(&tally.panicked).as_slice() == ["boom"]` and `in_flight` is empty. A second `begin("fine")` dropped normally adds nothing.
 - [ ] **Step 2: Run** `cargo test -p glowfly-runner --features test-support busy_dropped` → FAIL (no field `panicked`).
-- [ ] **Step 3: Implement.** Add `pub(super) panicked: Mutex<Vec<&'static str>>` to `Tally`. In `Busy::drop`, push `self.name` when `std::thread::panicking()`. Add `Runner::panicked` in `testing.rs` beside `in_flight_names`, and `GlowflyApp::panicked_effects` beside `in_flight_names` in `app_testing.rs`.
+- [ ] **Step 3: Implement.** Add `pub(super) panicked: Mutex<Vec<&'static str>>` to `Tally`. In `Busy::drop`, push `self.name` when `std::thread::panicking()`. Add `Runner::panicked` in `testing.rs` beside `in_flight_names`, and `GlowflyApp::panicked_effects` beside `in_flight_names` in `app_testing.rs`. (Task 10: a panic the effect guard catches is noted too, through `guard::guarded_noting` and `Busy::panicked`. The noting runs in every build, not only under `cfg(any(test, feature = "test-support"))`: a statement gated on `test` is a behaviour switch the hygiene check `test_switches.rs` refuses, and the cost is one name pushed per panic, which should never happen.)
 - [ ] **Step 4: Run** the test → PASS.
 - [ ] **Step 5: Commit** `test: record effects that panicked in the journey sandbox`.
 
