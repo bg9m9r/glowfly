@@ -8,6 +8,8 @@
   "files.folder_menu.stage_conflicted": "Resolve the conflicted files in this folder first.",
   "files.folder_menu.unstage": "Unstage folder",
   "files.hazard.not_utf8.label": "name isn't UTF-8",
+  "files.hazard.not_utf8.left_staged.one": "{count} file whose name isn't UTF-8 stays staged: Glowfly can't unstage it safely. Use Git on the command line.",
+  "files.hazard.not_utf8.left_staged.other": "{count} files whose names aren't UTF-8 stay staged: Glowfly can't unstage them safely. Use Git on the command line.",
   "files.hazard.not_utf8.reason": "This file's name isn't UTF-8, so Glowfly can't act on it safely; use Git on the command line.",
   "files.hazard.twins.label": "same file as another path",
   "files.hazard.twins.reason": "This file system can't tell this path from {paths}: they are one file on disk. Rename one of them in Git first.",

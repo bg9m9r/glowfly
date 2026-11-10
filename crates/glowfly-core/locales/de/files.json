@@ -8,6 +8,8 @@
   "files.folder_menu.stage_conflicted": "Löse zuerst die Konflikte in diesem Ordner.",
   "files.folder_menu.unstage": "Ordner zurücknehmen",
   "files.hazard.not_utf8.label": "Name ist kein UTF-8",
+  "files.hazard.not_utf8.left_staged.one": "{count} Datei, deren Name kein UTF-8 ist, bleibt bereitgestellt: Glowfly kann sie nicht sicher zurücknehmen. Nutze Git auf der Kommandozeile.",
+  "files.hazard.not_utf8.left_staged.other": "{count} Dateien, deren Namen kein UTF-8 sind, bleiben bereitgestellt: Glowfly kann sie nicht sicher zurücknehmen. Nutze Git auf der Kommandozeile.",
   "files.hazard.not_utf8.reason": "Der Name dieser Datei ist kein UTF-8, daher kann Glowfly nicht sicher damit arbeiten; nutze Git auf der Kommandozeile.",
   "files.hazard.twins.label": "dieselbe Datei wie ein anderer Pfad",
   "files.hazard.twins.reason": "Dieses Dateisystem unterscheidet diesen Pfad nicht von {paths}: Sie sind eine Datei auf der Festplatte. Benenne zuerst einen davon in Git um.",

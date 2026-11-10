@@ -34,7 +34,7 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             local(st, LocalOp::UnstagePaths(paths), fx);
         }
         StageMsg::StagePaths(paths) => super::stage_folder::stage_paths(st, paths, fx),
-        StageMsg::UnstagePaths(paths) => super::stage_folder::unstage_paths(st, paths, fx),
+        StageMsg::UnstagePaths(paths) => super::stage_folder::unstage_paths(st, paths, now, fx),
         StageMsg::StageAll => {
             // Staging a conflicted file marks it resolved, markers and all, so that is done
             // file by file in the conflict view. A toast, not the log: Ctrl+Shift+S sends this.
@@ -44,12 +44,9 @@ pub(super) fn stage(st: &mut AppState, msg: StageMsg, now: Instant, fx: &mut Vec
             }
             local(st, LocalOp::StageAll, fx);
         }
-        StageMsg::UnstageAll => {
-            let paths = st.snap.as_ref().map(|s| s.staged.iter().map(|f| f.path.clone()).collect()).unwrap_or_default();
-            local(st, LocalOp::UnstagePaths(paths), fx);
-        }
+        StageMsg::UnstageAll => super::stage_folder::unstage_all(st, now, fx),
         StageMsg::StageFolder(p) => super::stage_folder::stage(st, p, now, fx),
-        StageMsg::UnstageFolder(p) => super::stage_folder::unstage(st, p, fx),
+        StageMsg::UnstageFolder(p) => super::stage_folder::unstage(st, p, now, fx),
         StageMsg::DiscardFile(path) => {
             // `git restore` writes the file, so filters and attributes apply.
             if super::git_env::allows(st, glowfly_core::git_version::Feature::Restore, now) {
