@@ -161,10 +161,12 @@ fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path, places: &[Fo
     follows(ui, t, scan);
 }
 
-/// The most characters of a step the dialog shows.
+/// The most characters of a step a row shows; a longer one says it is cut.
 const STEP_CHARS: usize = 400;
 
 /// The steps a rebase, cherry-pick or revert in progress runs when it continues, one row each.
+/// A step longer than `STEP_CHARS` is cut with "…", and a line under it says so and shows all
+/// of it on hover: the decision covers the whole step.
 fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan) {
     if scan.steps.is_empty() {
         return;
@@ -174,12 +176,14 @@ fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan) {
     }
     ui.label(type_scale::section_text(ui, t.tr("trust.steps.title")));
     for step in &scan.steps {
-        let mut shown = printable(step);
-        if let Some((at, _)) = shown.char_indices().nth(STEP_CHARS) {
-            shown.truncate(at);
-            shown.push('…');
+        let whole = printable(step);
+        let cut = whole.char_indices().nth(STEP_CHARS).map(|(at, _)| format!("{}…", &whole[..at]));
+        rows::hook(ui, t, cut.as_deref().unwrap_or(&whole), Mark::Unknown { tip: t.tr("trust.unknown.tip") });
+        if cut.is_some() {
+            let more = whole.chars().count() - STEP_CHARS;
+            let note = t.trf("trust.steps.cut", &[("count", &more.to_string())]);
+            ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap()).on_hover_text(whole);
         }
-        rows::hook(ui, t, &shown, Mark::Unknown { tip: t.tr("trust.unknown.tip") });
     }
     ui.add(egui::Label::new(RichText::new(t.tr("trust.steps.note")).color(color::weak())).wrap());
     ui.add_space(6.0);

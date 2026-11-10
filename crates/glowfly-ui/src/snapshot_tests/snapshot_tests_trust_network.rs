@@ -32,13 +32,16 @@ fn trust_prompt_network() {
 
 #[test]
 fn trust_prompt_steps() {
-    let scan = TrustScan { steps: vec!["exec make test".into(), "--strategy=mine".into()], ..TrustScan::default() };
+    let long = format!("exec make {}", "x".repeat(450));
+    let scan = TrustScan { steps: vec!["exec make test".into(), "--strategy=mine".into(), long], ..TrustScan::default() };
     let mut h = harness(with_prompt(ThemeChoice::Dark, scan), true);
     h.run();
     h.check_snapshot("trust_prompt_steps");
     assert!(h.query_by_label("Commands the operation in progress runs").is_some());
     assert!(h.query_by_label("exec make test").is_some());
     assert!(h.query_by_label("--strategy=mine").is_some());
+    assert!(h.query_by_label_contains("xxx…").is_some(), "the long step is cut");
+    assert!(h.query_by_label_contains("60 more characters aren't shown").is_some(), "and says so");
     assert!(h.query_by_label_contains("Continuing or skipping").is_some());
     assert!(h.query_by_label("Settings that run commands").is_none());
 }

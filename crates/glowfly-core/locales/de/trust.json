@@ -30,6 +30,7 @@
   "trust.revoked_with.other": "Vertrauen in {name} und die {count} davon übernommenen Repositorys widerrufen. Glowfly fragt erneut, bevor Git deren Einstellungen oder Hooks ausführt.",
   "trust.stale.held": "{label} wurde nicht gestartet: Die Einstellungen oder Hooks des Repositorys haben sich seit der Prüfung geändert. Entscheide zuerst, ob du ihnen vertraust.",
   "trust.stale.terminal": "Das Terminal",
+  "trust.steps.cut": "Der Schritt darüber ist gekürzt: {count} weitere Zeichen werden nicht angezeigt. Zeigen Sie hierauf, um ihn ganz zu lesen.",
   "trust.steps.note": "Fortsetzen oder Überspringen im laufenden Rebase, Cherry-Pick oder Revert führt sie aus.",
   "trust.steps.title": "Befehle, die der laufende Vorgang ausführt",
   "trust.unchecked.conflicted": "Das Zusammenführen dessen, was dies holt, würde in {path}, wo Hooks ausgeführt werden, einen Konflikt ergeben und Konfliktmarkierungen in einem Hook hinterlassen. Vertrauen und ausführen führt es trotzdem aus.",
