@@ -309,13 +309,12 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
     out
 }
 
-/// Whether libgit2 is kept from `repo`'s submodules: its `.gitmodules` is one libgit2 would
-/// read differently from git (`gitmodules::Gitmodules::Unread`; libgit2's submodule code reads
-/// the file itself), or one of its gitlinks names a place that may not be followed
-/// (`offsite_gitlinks`).
+/// Whether libgit2 is kept from `repo`'s submodules: one of its gitlinks names a place that may
+/// not be followed (`offsite_gitlinks`), or its `.gitmodules` or that of a checked-out submodule
+/// at any depth is one libgit2 would read differently from git (`gitmodules::unread_anywhere`;
+/// libgit2's submodule code reads those files itself).
 pub(crate) fn submodules_unread(repo: &Repository) -> bool {
-    use crate::gitmodules::{Gitmodules, kind};
-    repo.workdir().is_some_and(|w| kind(w) == Gitmodules::Unread) || !offsite_gitlinks(repo).is_empty()
+    !offsite_gitlinks(repo).is_empty() || crate::gitmodules::unread_anywhere(repo)
 }
 
 /// `o` for a diff that reaches `repo`'s work tree, with every submodule left out when libgit2

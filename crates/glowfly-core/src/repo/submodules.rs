@@ -98,7 +98,7 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
     let offsite: HashSet<String> = offsite.into_iter().map(|o| o.path).collect();
     // libgit2's listing reads .gitmodules as an ordinary config file: one it would read
     // differently from git (`gitmodules`) empties the list too.
-    if repo.workdir().is_some_and(|w| crate::gitmodules::kind(w) == crate::gitmodules::Gitmodules::Unread) {
+    if crate::gitmodules::unread_anywhere(repo) {
         return Vec::new();
     }
     let Ok(subs) = repo.submodules() else { return Vec::new() };
