@@ -30,7 +30,8 @@ fn short(oid: Oid) -> String {
 /// where one of its parent folders should be. The write goes through libgit2's checkout, so line
 /// endings (`core.autocrlf`), the executable bit and symbolic links come out as git would write
 /// them; a file git converts (a `filter` driver or `working-tree-encoding`) is written by
-/// `git restore` instead, so the smudge runs.
+/// `git restore` instead, so the smudge runs. A symbolic link at the path is replaced, never
+/// written through.
 ///
 /// Unless `overwrite` is set, nothing is written when the working-tree file holds contents that
 /// neither the index nor a commit can bring back (it is untracked or ignored, has unstaged edits,
@@ -72,6 +73,15 @@ pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Re
 
     if !overwrite && let Some(reason) = unrecoverable(&repo, &root, path)? {
         return Err(Error::WouldOverwrite(reason));
+    }
+
+    // libgit2's checkout opens the path for writing and so writes through a link there (to
+    // wherever it points, outside the repository too); git replaces a link. Remove the link
+    // itself first: the caller saved it for Undo (`undo::saved`), and the forced checkout
+    // recreates the missing path.
+    let full = root.join(path);
+    if full.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
+        crate::persist::remove_link(&full)?;
     }
 
     if super::attrs::content_conversion(&repo, path).is_some() {

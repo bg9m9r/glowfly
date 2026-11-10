@@ -55,6 +55,24 @@ fn a_file_where_the_abort_needs_a_folder_refuses_it() {
 }
 
 #[test]
+fn a_link_at_one_of_its_paths_refuses_it() {
+    let dir = two_conflicts("abort-safe-link");
+    let link = dir.join("n.txt");
+    std::fs::remove_file(&link).unwrap();
+    if !file_link("u.txt", &link) {
+        let _ = std::fs::remove_dir_all(&dir);
+        return eprintln!("skipped: symbolic links can't be made here");
+    }
+    let r = abort_keeping(&dir, Some(&[]), |_| panic!("nothing runs"));
+    assert!(!r.ok && r.output.contains("n.txt isn't a regular file, so it can't be kept for Undo"), "{}", r.output);
+    assert!(r.output.starts_with(NOTHING_ABORTED));
+    assert_eq!(state(&dir), RepositoryState::Merge);
+    assert!(link.symlink_metadata().unwrap().file_type().is_symlink(), "the link is left in place");
+    assert_eq!(read(&dir, "u.txt"), "unrelated\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_path_under_a_file_reads_as_absent() {
     // ENOTDIR on Unix, not found on Windows: either way nothing is there.
     let dir = scratch_repo("abort-safe-notdir");
