@@ -1,5 +1,6 @@
-//! The open part of an activity row, under its title: a failure's cause in a full sentence,
-//! its fix (once) with any second fix beside it (Try again beside Delete lock file) and Copy
+//! The open part of an activity row, under its title: a failure's cause in a full sentence, the
+//! TLS settings git used for a certificate or revocation failure (state/tls_help.rs), its fix
+//! (once) with any second fix beside it (Try again beside Delete lock file) and Copy
 //! (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of
 //! line (the last `OUTPUT_LINES` of it); and the sub-rows of an open routine group.
 
@@ -16,6 +17,7 @@ use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::activity_rows::output_of;
 use glowfly_model::state::logs::LogEntry;
+use glowfly_model::state::tls_help::{self, TlsNote};
 
 /// The most output lines an open row draws; Copy has them all.
 pub(super) const OUTPUT_LINES: usize = 200;
@@ -35,6 +37,9 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
             if let Some(cause) = failed_run.map(|r| r.summary.as_str()).filter(|s| !s.is_empty()) {
                 ui.add(egui::Label::new(RichText::new(cause).color(color::text())).wrap());
             }
+            if let Some(note) = tls_help::note(&st.logs, e.id) {
+                tls_settings(ui, t, note);
+            }
             ui.horizontal(|ui| {
                 if let Some(label) = st.logs.fix_label(e.id)
                     && ui.add(buttons::primary(label).size(ControlSize::Small)).clicked()
@@ -53,6 +58,18 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
             output(ui, st, output_of(e));
             ui.add_space(BOTTOM - 6.0);
         });
+    });
+}
+
+/// The settings block: a quiet heading, then one small line per setting, a warning in its colour.
+fn tls_settings(ui: &mut Ui, t: glowfly_core::i18n::Lang, note: &TlsNote) {
+    ui.vertical(|ui| {
+        ui.spacing_mut().item_spacing.y = 2.0;
+        ui.label(RichText::new(t.tr("tls.settings.heading")).size(type_scale::SMALL).color(color::weak()));
+        for line in tls_help::lines(t, note) {
+            let c = if line.warn { color::warn() } else { color::text() };
+            ui.add(egui::Label::new(RichText::new(line.text).size(type_scale::SMALL).color(c)).wrap());
+        }
     });
 }
 

@@ -35,6 +35,7 @@ source file, update its line here. Features that span every layer are in
 - `op_preview.rs`: `OpPreviewMsg`, carried by the operation preview's open, result, Preview again and Apply.
 - `notify.rs`: `NotifyMsg`, carried by holding and closing toasts and clicks on desktop notifications.
 - `lock.rs`: `LockMsg`, Delete lock file's check after a failed job, the confirmed delete and its result.
+- `tls.rs`: `TlsMsg`, the TLS settings read for a certificate or revocation failure, Relax check confirmed and its result.
 - `repo_groups.rs`: `GroupMsg`, making, renaming, colouring, ordering and removing repository groups, moving favorites between them and adding repositories to one.
 - `msg/edit.rs`: `EditMsg`, a view's edited copy of the model fields update also reads (the commit draft, the welcome's form, a terminal tab's rename field and selection, the blame and File view's find and Line fields, Preferences' settings and own fields, a dialog's form, the danger confirmation's and auto-stash question's boxes, Generate SSH key's fields, the palette's query, the pull request's forms, the issue's comment box, the rebase editor's draft and the conflict output's buffer), and `edits_first`, which the shell runs on a frame's messages so the edits go first.
 - A few cross-cutting messages live in `Msg` itself (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …).
@@ -63,6 +64,7 @@ source file, update its line here. Features that span every layer are in
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
 - `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog, and the Push to all remotes job.
 - `lock.rs`: `LockEffect`: checking a lock file a failed job named, and deleting it (on the repository's queue).
+- `tls.rs`: `TlsEffect`: reading the TLS settings git used for a failed HTTPS job, and setting `http.schannelCheckRevoke` to best-effort (the repository's write on its queue; the global one dropped by the sandbox).
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
 - `files.rs`: `FilesEffect`: restoring a file from a commit, creating, renaming, deleting and discarding working-tree files, staging and conflict edits (`LocalOp`) and reverting part of a diff (all on the repository's queue), and listing the tracked files.
@@ -155,6 +157,7 @@ source file, update its line here. Features that span every layer are in
 - `state/activity_rows.rs`: the activity panel's rows, worked out from a tab's log: session headers, one row per run or note, and consecutive successful auto-fetches (routine runs) folded into one group.
 - `state/am_banner.rs`: the Applying patches banner on the WIP row while a `git am` series is stopped: the stopped patch and what to do next (the title, which patch of how many, is `op_actions::banner_title`), and its buttons' English labels, the ids the jobs run under.
 - `state/app_queries.rs`: `AppState`'s queries: whether hunk indexes are current and line operations blocked, the working folder, load options.
+- `state/tls_help.rs`: the TLS settings note kept per failed run (at most `FIX_LIMIT`) and its lines for the run's Details, with where each value is set and whether schannel ignores the CA file.
 - `state/askpass.rs`: credential prompts from git and ssh (through the askpass helper) waiting for the user; the dialog's fields are `PromptFields`, held in `ViewState::askpass` and never carried in a message.
 - `state/blame_find.rs`: find in the blame view and the file history's File view: the query, the lines that match, and the current match.
 - `state/blocked.rs`: the reason shared by every action that can't start while another one runs.
@@ -282,6 +285,7 @@ source file, update its line here. Features that span every layer are in
 - `clone_https.rs`: clones from a host with a connected account: an https clone's SSH-named submodules over https too (`-c url.<https>.insteadOf`), and Clone over HTTPS as <user> after an SSH clone fails for a key or an unknown host key.
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
 - `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files (names that aren't UTF-8 included, never opened) of the first complete status read after the job; a partial read keeps git's count, saying it may be incomplete; a failed read, another repository or the next job ends the wait.
+- `tls_fix.rs`: a TLS failure's help: Relax check for this repository and for all repositories on a revocation failure (asked first, not for a git older than 2.43), the write's result and the job run again, and the settings read after a certificate or revocation failure.
 - `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it), and staging or unstaging the selected files together.
 - `update/blame_find.rs`: moving within one blame: find in the file, go to line, and the next or previous run.

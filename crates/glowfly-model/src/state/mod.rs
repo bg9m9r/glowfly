@@ -153,6 +153,7 @@ pub mod tags;
 pub mod terminal;
 pub mod theme_names;
 pub mod tip;
+pub mod tls_help;
 pub mod toasts;
 pub mod tool_compare;
 pub mod tool_git;

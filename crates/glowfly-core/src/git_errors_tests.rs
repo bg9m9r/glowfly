@@ -178,10 +178,59 @@ fn certificates_git_cannot_verify() {
     // git-lfs, a Go program, says it its own way and names no URL git's way.
     let lfs = "batch request: Post \"https://git.corp.example/team/app.git/info/lfs/objects/batch\": x509: certificate signed by unknown authority\nerror: failed to push some refs to 'https://git.corp.example/team/app.git'";
     assert_eq!(classify(lfs), Some(Cause::Remote(RemoteFailure::Certificate { host: None })));
+    // Go 1.20 and later put "tls: failed to verify certificate" before it.
+    let go120 = "batch request: Post \"https://git.corp.example/team/app.git/info/lfs/objects/batch\": tls: failed to verify certificate: x509: certificate signed by unknown authority";
+    assert_eq!(classify(go120), Some(Cause::Remote(RemoteFailure::Certificate { host: None })));
     // A connection that never got as far as a certificate is still unreachable.
     let refused =
         "fatal: unable to access 'https://git.corp.example/a.git/': Failed to connect to git.corp.example port 443: Connection refused";
     assert_eq!(classify(refused), Some(Cause::Remote(RemoteFailure::Unreachable { host: Some(s("git.corp.example")) })));
+}
+
+#[test]
+fn revocation_checks_that_could_not_finish() {
+    use crate::remote_failure::RemoteFailure;
+    let at = Some(Cause::Remote(RemoteFailure::Revocation { host: Some(s("git.corp.example")) }));
+    let access = "fatal: unable to access 'https://git.corp.example/team/app.git/': ";
+    for said in [
+        "schannel: next InitializeSecurityContext failed: CRYPT_E_NO_REVOCATION_CHECK (0x80092012) - The revocation function was unable to check revocation for the certificate.",
+        "schannel: next InitializeSecurityContext failed: Unknown error (0x80092012) - The revocation function was unable to check revocation for the certificate.",
+        "schannel: next InitializeSecurityContext failed: CRYPT_E_REVOCATION_OFFLINE (0x80092013) - The revocation function was unable to check revocation because the revocation server was offline.",
+        // Windows words the description in its own UI language.
+        "schannel: next InitializeSecurityContext failed: Unknown error (0x80092013) - Die Sperrfunktion konnte die Sperrung nicht überprüfen, da der Sperrserver offline war.",
+        "schannel: CertGetCertificateChain trust error CERT_TRUST_IS_OFFLINE_REVOCATION",
+        "schannel: CertGetCertificateChain trust error CERT_TRUST_REVOCATION_STATUS_UNKNOWN",
+    ] {
+        let text = format!("{access}{said}");
+        assert_eq!(classify(&text), at, "{text}");
+    }
+    // A large push can fail in curl first; the fatal line after it names no URL.
+    let rpc = "error: RPC failed; curl 35 schannel: next InitializeSecurityContext failed: Unknown error (0x80092013) - The revocation function was unable to check revocation because the revocation server was offline.
+send-pack: unexpected disconnect while reading sideband packet
+fatal: the remote end hung up unexpectedly";
+    assert_eq!(classify(rpc), Some(Cause::Remote(RemoteFailure::Revocation { host: None })));
+    // A certificate that really is revoked isn't a check that couldn't finish.
+    let revoked =
+        format!("{access}schannel: next InitializeSecurityContext failed: CRYPT_E_REVOKED (0x80092010) - The certificate is revoked.");
+    assert!(!matches!(classify(&revoked), Some(Cause::Remote(RemoteFailure::Revocation { .. }))));
+}
+
+#[test]
+fn hook_and_signing_helper_certificate_words_are_not_transport_errors() {
+    use crate::remote_failure::RemoteFailure;
+    let hook = "remote: SSL certificate problem: unable to get local issuer certificate
+To https://git.corp.example/team/app.git
+ ! [remote rejected] main -> main (pre-receive hook declined)
+error: failed to push some refs to 'https://git.corp.example/team/app.git'";
+    assert_eq!(classify(hook), Some(Cause::PushRefused { reason: s("pre-receive hook declined") }));
+    let remote = "remote: schannel: CRYPT_E_REVOCATION_OFFLINE (0x80092013)
+error: failed to push some refs to 'https://git.corp.example/team/app.git'";
+    assert!(!matches!(classify(remote), Some(Cause::Remote(RemoteFailure::Revocation { .. }))));
+    // gitsign is a Go program too; its own HTTPS calls are no transport of git's.
+    let gitsign = "error getting signer: retrieving cert: Post https://fulcio.sigstore.dev/api/v2/signingCert: tls: failed to verify certificate: x509: certificate signed by unknown authority
+error: gpg failed to sign the data
+fatal: failed to write commit object";
+    assert_eq!(classify(gitsign), None);
 }
 
 #[test]

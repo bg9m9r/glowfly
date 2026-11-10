@@ -120,6 +120,7 @@ pub mod testkit;
 #[cfg(test)]
 pub(crate) mod testutil;
 pub mod text;
+pub mod tls_config;
 pub mod trust;
 pub mod undo;
 pub mod url_scheme;

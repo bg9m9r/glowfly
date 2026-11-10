@@ -39,7 +39,7 @@ catalogs! {
     "publish" "quit" "range_diff" "read_errors" "rebase" "rebase_errors" "refs" "release_notes" "remote_branch"
     "repo_colour" "repo_group" "repo_sync" "repos" "safe_dir" "search" "service_errors" "settings_file"
     "sidebar" "sign_in" "signature" "signing_errors" "stack" "stash" "status" "submodules"
-    "sync" "tabs" "tag" "terminal" "title_bar" "toolbar" "tools" "tour"
+    "sync" "tabs" "tag" "terminal" "title_bar" "tls" "toolbar" "tools" "tour"
     "trust" "undo" "update_errors" "updates" "watch" "welcome" "welcome_screen" "worktree_branch"
 }
 

@@ -17,6 +17,7 @@ here.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
 - `branches.rs`: the `Execute` impl of `BranchEffect` (the count, and each push of Push to all remotes in turn).
 - `lock.rs`: the `Execute` impl of `LockEffect` (`glowfly_core::lock_file`).
+- `tls.rs`: the `Execute` impl of `TlsEffect`: the TLS settings read (`glowfly_core::tls_config`, with `GIT_SSL_CAINFO` from the environment) and the `http.schannelCheckRevoke` write.
 - `control.rs`: `ControlEffect`s, carried out by `Runner::run` on the calling thread (watcher, credential answers, stops), never queued, so a stop or an answer reaches its job while that runs; its `Execute` impl only warns; tests in `control_tests.rs`.
 - `network.rs`: the `Execute` impl of `NetworkEffect`: a hosting service's calls (`forge_calls.rs`) and avatar downloads.
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.

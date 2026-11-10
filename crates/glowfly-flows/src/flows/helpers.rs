@@ -9,6 +9,7 @@ use glowfly_model::effect::ControlEffect;
 use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
+use glowfly_model::effect::TlsEffect;
 use glowfly_model::effect::{Effect, ForgeReply, ForgeResult, LoadKind, LocalOp, UiEffect};
 use glowfly_model::effect::{OsEffect, PrefsEffect};
 use glowfly_model::msg::CommitMsg;
@@ -96,6 +97,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
             | Effect::Tool(_)
             // Would write the developer's global git config.
             | Effect::Profile(_)
+            | Effect::Tls(TlsEffect::SetBestEffort { global: true, .. })
             | Effect::Onboarding(_)
             // Asks a hosting service.
             | Effect::Clone(glowfly_model::effect::CloneEffect::ListRepos { .. })
