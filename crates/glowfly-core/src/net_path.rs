@@ -139,6 +139,10 @@ fn unix_root(text: &str) -> Option<NetRoot> {
 /// goes through the same checks (at most `MAX_LINKS`). `named` must be absolute: a relative one
 /// would be read from the process's own folder.
 pub(crate) fn may_follow(named: &Path, home: &Path) -> bool {
+    // The OS is never asked about a name holding a NUL, so it can't be checked.
+    if named.as_os_str().as_encoded_bytes().contains(&0) {
+        return false;
+    }
     let home_root = root_of(home);
     if !may_follow_for(root_of(named).as_ref(), home_root.as_ref()) {
         return false;
@@ -215,9 +219,12 @@ fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
         if !may_follow_for(spelled_root_for(&next.to_string_lossy(), cfg!(windows)).as_ref(), home_root) {
             return false;
         }
-        let Ok(meta) = std::fs::symlink_metadata(&next) else {
+        let meta = match std::fs::symlink_metadata(&next) {
+            Ok(meta) => meta,
+            // A name the OS won't look up can't be checked.
+            Err(e) if e.kind() == std::io::ErrorKind::InvalidInput => return false,
             // Nothing further exists to be reached.
-            return true;
+            Err(_) => return true,
         };
         if !meta.file_type().is_symlink() {
             at = next;

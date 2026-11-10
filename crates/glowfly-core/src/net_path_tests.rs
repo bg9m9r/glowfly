@@ -118,6 +118,14 @@ fn same_root_rules() {
 }
 
 #[test]
+fn a_name_holding_a_nul_is_refused() {
+    let home = crate::paths::temp_dir();
+    // The OS is never asked about it, so whatever it leads to can't be checked.
+    assert!(!may_follow(&home.join("x\0y"), &home));
+    assert!(!walk(&home.join("x\0y"), &home, None));
+}
+
+#[test]
 fn links_to_a_network_place_are_refused() {
     let home = crate::paths::temp_dir().join(format!("glowfly-test-net-path-links-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&home);

@@ -56,8 +56,19 @@ pub(crate) fn read_small_in(file: &Path, base: &Path) -> Option<Vec<u8>> {
     read_file_bounded(file, SMALL_FILE)
 }
 
+/// `bytes` up to the first NUL: libgit2 reads a `.git` file, `commondir`, a worktree record and
+/// an alternates file as a C string, so nothing past a NUL is ever used.
+fn up_to_nul(bytes: &[u8]) -> &[u8] {
+    bytes.iter().position(|b| *b == 0).map_or(bytes, |n| &bytes[..n])
+}
+
+/// `bytes` up to the first NUL, as text.
+fn c_text(bytes: &[u8]) -> Option<String> {
+    String::from_utf8(up_to_nul(bytes).to_vec()).ok()
+}
+
 fn text_of(file: &Path) -> Option<String> {
-    read_file_bounded(file, SMALL_FILE).and_then(|b| String::from_utf8(b).ok())
+    read_file_bounded(file, SMALL_FILE).as_deref().and_then(c_text)
 }
 
 /// `named` joined to `base` unless absolute.
@@ -167,7 +178,7 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
 /// `admin`, as its `gitdir` record names it: absolute, or relative to `admin` (`git worktree add
 /// --relative-paths`). Refused when it may not be followed from `home`.
 pub(crate) fn worktree_folder(admin: &Path, home: &Path) -> Named {
-    let text = read_small_in(&admin.join("gitdir"), admin).and_then(|b| String::from_utf8(b).ok());
+    let text = read_small_in(&admin.join("gitdir"), admin).as_deref().and_then(c_text);
     let Some(line) = text.as_deref().and_then(|t| t.lines().next()).map(str::trim).filter(|l| !l.is_empty()) else {
         return Named::None;
     };

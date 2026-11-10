@@ -129,3 +129,21 @@ fn an_oversized_or_linked_alternates_file_is_refused() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_alternates_file_is_read_up_to_its_first_nul() {
+    let (dir, common) = repo("alt-nul");
+    let objects = common.join("objects");
+    let net = git_spelling(&net_place().join("objects"));
+    // libgit2 reads the file as a C string: nothing past the NUL is used.
+    alternates(&objects, &format!("\0{net}\n"));
+    assert_eq!(reachable(&common, &dir), Ok(()));
+    // A link to a network place inside a fan-out folder, named by a line cut by a NUL.
+    let fan = objects.join("ab");
+    std::fs::create_dir_all(&fan).unwrap();
+    if link_to(&net_place(), &fan.join("x"), true) {
+        alternates(&objects, "./ab/x\0\n");
+        assert!(reachable(&common, &dir).is_err(), "the line before the NUL is checked");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
