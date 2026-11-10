@@ -60,6 +60,7 @@ mod conflict_keys_tests;
 mod conflict_layout_tests;
 mod conflict_mark_safety_tests;
 mod conflict_mark_undo_tests;
+mod conflict_picks_tests;
 mod conflict_tests;
 mod conflict_undo_tests;
 mod current_hunk_tests;

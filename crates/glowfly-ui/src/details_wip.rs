@@ -16,7 +16,7 @@ pub(super) mod header;
 #[path = "details_wip_list.rs"]
 mod list;
 #[path = "details_wip_picks.rs"]
-mod picks;
+pub(super) mod picks;
 pub(super) use list::file_list;
 
 use super::UiCache;
@@ -55,10 +55,14 @@ pub(super) fn wip_panel(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, 
     // The file being opened is highlighted at once, so a click or a step answers immediately.
     let opening = st.cues.diff_opening.as_ref().filter(|t| t.is_working_tree());
     let picks = [false, true].map(|staged| wip_lists::picked(st, staged));
+    let conflict_picks = [false, true].map(|resolved| glowfly_model::state::conflict_picks::picked(st, resolved));
+    let resolve_why = conflict_picks[0].as_ref().and_then(|p| picks::resolve_blocked(st, st.settings.lang(), &p.paths));
     let open = OpenFile {
         diff: opening.or(st.session.diff.view.as_ref().map(|(t, _)| t)),
         conflict: st.session.conflict.view.as_ref().map(|c| c.path.as_str()),
         picks: [picks[0].as_ref(), picks[1].as_ref()],
+        conflict_picks: [conflict_picks[0].as_ref(), conflict_picks[1].as_ref()],
+        resolve_why: resolve_why.as_deref(),
     };
 
     let conflicted: Vec<&FileEntry> = snap.unstaged.iter().filter(|f| f.status == '!').collect();
@@ -138,6 +142,10 @@ pub(super) struct OpenFile<'a> {
     pub conflict: Option<&'a str>,
     /// The files picked with Shift or Ctrl/Cmd in Unstaged, then Staged Files, when several.
     pub picks: [Option<&'a Picked>; 2],
+    /// The same in Conflicted, then Resolved Files.
+    pub conflict_picks: [Option<&'a Picked>; 2],
+    /// Why Mark resolved is off for the Conflicted Files picks, if it is.
+    pub resolve_why: Option<&'a str>,
 }
 
 /// The Discard all confirmation, naming Undo's current key.
@@ -146,6 +154,13 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
         Some(k) => t.trf("details.wip.discard_all.body_key", &[("stash", &DISCARD_STASH_MESSAGE), ("key", &k)]),
         None => t.trf("details.wip.discard_all.body", &[("stash", &DISCARD_STASH_MESSAGE)]),
     }
+}
+
+/// How a click held picks files: Shift picks a range from the anchor, Ctrl (Cmd on macOS) adds
+/// or removes one file; None for a plain click.
+pub(super) fn pick_how(ui: &egui::Ui) -> Option<PickHow> {
+    let m = ui.input(|i| i.modifiers);
+    if m.shift { Some(PickHow::Range) } else { m.command.then_some(PickHow::Toggle) }
 }
 
 /// The file a step landed on, for its list to scroll to (`ViewCues::file_reveal`).
@@ -168,13 +183,15 @@ pub(super) fn wip_file_row(
     let target = || if staged { DiffTarget::Staged(f.path.clone()) } else { DiffTarget::Unstaged(f.path.clone()) };
     // A conflicted file opens in the conflict view; marking it resolved checks for markers first.
     let conflicted = !staged && f.status == '!';
-    // One of the files picked with Shift or Ctrl/Cmd (never a conflicted one, which has its own
-    // list): its button, menu and keys act on every pick.
-    let picked = !conflicted && open.picks[usize::from(staged)].is_some_and(|p| p.set.contains(&f.path));
-    let many = open.picks[usize::from(staged)].filter(|_| picked);
+    // One of the files picked with Shift or Ctrl/Cmd in its list (Conflicted Files has its own
+    // picks): its button, menu and keys act on every pick.
+    let list_picks = if conflicted { open.conflict_picks[0] } else { open.picks[usize::from(staged)] };
+    let picked = list_picks.is_some_and(|p| p.set.contains(&f.path));
+    let many = list_picks.filter(|_| picked);
     let toggle = || match (staged, conflicted, many) {
         (true, _, Some(p)) => Msg::Stage(StageMsg::UnstagePaths(p.paths.clone())),
         (false, false, Some(p)) => Msg::Stage(StageMsg::StagePaths(p.paths.clone())),
+        (false, true, Some(p)) => Msg::Conflict(ConflictMsg::MarkResolved(p.paths.clone())),
         (true, _, _) => Msg::Stage(StageMsg::UnstageFile(f.path.clone())),
         (false, true, _) => Msg::Conflict(ConflictMsg::MarkResolved(vec![f.path.clone()])),
         (false, false, _) => Msg::Stage(StageMsg::StageFile(f.path.clone())),
@@ -208,9 +225,12 @@ pub(super) fn wip_file_row(
     let end = |ui: &mut egui::Ui| {
         let button = if narrow { buttons::icon_only(Icon::Check, action) } else { buttons::quiet(action).size(ControlSize::Small) };
         if show_action {
-            let b = ui.add(button.enabled(usable));
+            let why = many.and(open.resolve_why).filter(|_| conflicted);
+            let b = ui.add(button.enabled(usable && why.is_none()).why(why));
             let b = match many {
+                _ if why.is_some() => b,
                 Some(p) if staged => b.on_hover_text(t.trn("details.wip.picks.unstage.tip", p.paths.len(), &[])),
+                Some(p) if conflicted => b.on_hover_text(t.trn("details.wip.picks.resolve.tip", p.paths.len(), &[])),
                 Some(p) => b.on_hover_text(t.trn("details.wip.picks.stage.tip", p.paths.len(), &[])),
                 None => b,
             };
@@ -246,17 +266,12 @@ pub(super) fn wip_file_row(
     }
     .response;
     if r.clicked() {
-        // Shift picks a range from the anchor, Ctrl (Cmd on macOS) adds or removes one file.
-        let m = ui.input(|i| i.modifiers);
-        let pick = |how| Msg::Repo(RepoMsg::PickWipFile { staged, path: f.path.clone(), how });
-        msgs.push(if conflicted {
-            Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone()))
-        } else if m.shift {
-            pick(PickHow::Range)
-        } else if m.command {
-            pick(PickHow::Toggle)
-        } else {
-            Msg::Repo(RepoMsg::OpenDiff(target()))
+        msgs.push(match pick_how(ui) {
+            // A conflicted pick doesn't open the file: the conflict view may hold unsaved choices.
+            Some(how) if conflicted => Msg::Conflict(ConflictMsg::Pick { resolved: false, path: f.path.clone(), how }),
+            Some(how) => Msg::Repo(RepoMsg::PickWipFile { staged, path: f.path.clone(), how }),
+            None if conflicted => Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())),
+            None => Msg::Repo(RepoMsg::OpenDiff(target())),
         });
     }
     // Shift+F10 opens the selected file's menu while its list has the keyboard.
@@ -267,8 +282,10 @@ pub(super) fn wip_file_row(
             super::wip_keys::focused_list(ui.ctx()) == Some(staged)
         };
     r.row_menu_for(keyboard, |ui| {
-        if let Some(p) = many {
-            return picks::menu(ui, t, msgs, staged, &p.paths, &picks::PickBlocks::of(t, snap, &p.paths));
+        match many {
+            Some(p) if conflicted => return picks::conflicted_menu(ui, t, msgs, &p.paths, open.resolve_why),
+            Some(p) => return picks::menu(ui, t, msgs, staged, &p.paths, &picks::PickBlocks::of(t, snap, &p.paths)),
+            None => {}
         }
         if conflicted {
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));

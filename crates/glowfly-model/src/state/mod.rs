@@ -21,6 +21,7 @@ pub(crate) mod confirm;
 pub mod conflict;
 pub mod conflict_check;
 pub mod conflict_files;
+pub mod conflict_picks;
 pub mod conflict_strip;
 pub mod custom_commands;
 pub mod dashboard;

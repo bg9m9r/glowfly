@@ -61,6 +61,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             // A plain click ends the picks; the keys and pick clicks open through
             // `open_file_diff` and set them afterwards.
             st.cues.wip_picks = None;
+            st.cues.conflict_picks = None;
             open_file_diff(st, target, fx)
         }
         RepoMsg::PickWipFile { staged, path, how } => super::wip_picks::pick(st, staged, path, how, fx),

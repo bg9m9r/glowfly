@@ -3,6 +3,8 @@
 //! row's end (Mark all resolved in the header), and resolved files with Mark conflicted (one
 //! or all). Each list takes the keyboard focus as a whole (`file_list_keys.rs`): its keys open
 //! the file they land on, and Mark resolved of the open file moves on to the next conflicted one.
+//! Shift+click and Ctrl/Cmd+click pick several files of a list (gaps allowed) without opening
+//! them; a picked row's button and menu (`details_wip_picks.rs`) act on them all.
 
 use super::common::menu_item;
 use super::details::file_reveal::reveal;
@@ -167,15 +169,21 @@ fn resolved_row(
     msgs: &mut Vec<Msg>,
 ) -> egui::Response {
     let (path, t) = (&r.entry.path, st.settings.lang());
-    let why = blocked(st, t, r);
-    let mark = t.tr("conflict.files.mark_conflicted.button");
-    let confirm = || {
-        let body = mark_conflicted_body(t, std::slice::from_ref(path));
-        let then = Msg::Conflict(ConflictMsg::MarkConflicted(vec![path.clone()]));
-        Msg::confirm(t.tr("conflict.files.mark_conflicted.title"), body, mark, then)
+    // One of several files picked with Shift or Ctrl/Cmd: its button and menu act on them all.
+    let many = open.conflict_picks[1].filter(|p| p.set.contains(path));
+    let why = match many {
+        Some(p) => {
+            let rows = st.session.conflict_files.resolved_rows(snap);
+            rows.into_iter().filter(|r| p.set.contains(&r.entry.path)).find_map(|r| blocked(st, t, r))
+        }
+        None => blocked(st, t, r),
     };
+    let mark = t.tr("conflict.files.mark_conflicted.button");
+    let paths = many.map_or_else(|| vec![path.clone()], |p| p.paths.clone());
+    let confirm = || super::details_wip::picks::mark_conflicted_msg(t, &paths);
     let staged = snap.staged.iter().any(|f| f.path == *path);
-    let selected = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
+    let current = matches!(open.diff, Some(DiffTarget::Staged(p)) if p == path);
+    let selected = current || many.is_some();
     // Mark conflicted shows at the row's end while the row is hovered or open; its menu has it too.
     let at = egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), super::widgets::LIST_ROW_H));
     let show_action = selected || ui.rect_contains_pointer(at);
@@ -184,7 +192,11 @@ fn resolved_row(
             return;
         }
         let b = buttons::quiet(mark).size(ControlSize::Small).enabled(why.is_none());
-        let b = if why.is_some() { b.why(why.as_deref()) } else { b.tip(t.tr("conflict.files.mark_conflicted.tip")) };
+        let tip = match many {
+            Some(p) => t.trn("details.wip.picks.conflicted.tip", p.paths.len(), &[]),
+            None => t.tr("conflict.files.mark_conflicted.tip").to_owned(),
+        };
+        let b = if why.is_some() { b.why(why.as_deref()) } else { b.tip(&tip) };
         if ui.add(b).clicked() {
             msgs.push(confirm());
         }
@@ -196,11 +208,18 @@ fn resolved_row(
         super::path_warnings::mark(ui, t, &r.entry);
     })
     .response;
-    if row.clicked() && staged {
-        msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone()))));
+    if row.clicked() {
+        match super::details_wip::pick_how(ui) {
+            Some(how) => msgs.push(Msg::Conflict(ConflictMsg::Pick { resolved: true, path: path.clone(), how })),
+            None if staged => msgs.push(Msg::Repo(RepoMsg::OpenDiff(DiffTarget::Staged(path.clone())))),
+            None => {}
+        }
     }
-    let keyboard = selected && file_list_keys::focused(ui.ctx()) == Some(FileList::Resolved);
+    let keyboard = current && file_list_keys::focused(ui.ctx()) == Some(FileList::Resolved);
     row.row_menu_for(keyboard, |ui| {
+        if let Some(p) = many {
+            return super::details_wip::picks::resolved_menu(ui, t, msgs, &p.paths, why.as_deref());
+        }
         super::common::menu_item_if(msgs, ui, mark, why.as_deref(), confirm());
         menu_item(msgs, ui, t.tr("common.copy_path"), Msg::Copy(path.clone()));
         if r.entry.hazard.is_none() {

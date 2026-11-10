@@ -17,6 +17,8 @@ pub(super) fn pick(st: &mut AppState, staged: bool, path: String, how: PickHow, 
     if conflicted || !still_listed(st, &target(staged, &path)) {
         return;
     }
+    // Picks belong to one list at a time.
+    st.cues.conflict_picks = None;
     let open_here = cursor(st).and_then(|t| path_in(staged, t)).map(str::to_owned);
     let held = wip_lists::picks(st, staged).cloned();
     match how {

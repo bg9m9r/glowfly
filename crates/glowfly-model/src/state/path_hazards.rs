@@ -44,6 +44,7 @@ pub fn target(msg: &Msg) -> Option<(&str, bool)> {
         Msg::Blame(BlameMsg::Open { path, .. }) => (path, false),
         Msg::Repo(RepoMsg::OpenDiff(t)) => (t.path(), false),
         Msg::Repo(RepoMsg::PickWipFile { path, .. }) => (path, false),
+        Msg::Conflict(ConflictMsg::Pick { path, .. }) => (path, false),
         Msg::Tools(ToolsMsg::OpenFile { path, .. }) => (path, false),
         // Stashing a file puts its HEAD version back on disk.
         // Several picks rely on the menu's block and the dialog's stashable filter.

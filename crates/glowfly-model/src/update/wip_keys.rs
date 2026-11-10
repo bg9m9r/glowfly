@@ -52,6 +52,7 @@ fn extend(st: &mut AppState, staged: bool, m: ListMove, fx: &mut Vec<Effect>) {
     open(st, t, fx);
     let paths = wip_lists::range(st, staged, &anchor, &head).into_iter().collect();
     st.cues.wip_picks = Some(WipPicks { staged, anchor, paths });
+    st.cues.conflict_picks = None;
 }
 
 /// Space: stages (Unstaged Files) or unstages the picked files, or the current file alone.

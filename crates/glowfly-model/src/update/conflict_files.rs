@@ -71,6 +71,7 @@ pub(super) fn confirmed(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effe
         c.step_on_resolve = true;
     }
     super::ops::local(st, LocalOp::MarkResolved(paths), fx);
+    st.cues.conflict_picks = None;
 }
 
 /// Mark conflicted (confirmed in the view): only resolved files whose record has both sides,
@@ -83,6 +84,7 @@ pub(super) fn mark_conflicted(st: &mut AppState, paths: Vec<String>, fx: &mut Ve
     let paths: Vec<String> = paths.into_iter().filter(|p| !super::conflict::in_tool(st, p)).collect();
     if !paths.is_empty() {
         super::ops::local(st, LocalOp::MarkConflicted(paths), fx);
+        st.cues.conflict_picks = None;
     }
 }
 

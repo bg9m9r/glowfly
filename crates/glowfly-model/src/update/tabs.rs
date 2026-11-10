@@ -256,6 +256,7 @@ pub fn park(st: &mut AppState) -> Parked {
     st.cues.stage_move_on = None;
     // The WIP lists' selection and places name the parked tab's files.
     st.cues.wip_picks = None;
+    st.cues.conflict_picks = None;
     st.cues.wip_place = [None, None];
     st.cues.diff_cursor = None;
     // Reads the forge data, so before it moves.

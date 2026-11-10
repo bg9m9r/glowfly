@@ -85,6 +85,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             }
             // A picked file that left its list doesn't rejoin the picks when it comes back.
             crate::state::wip_lists::prune(st);
+            crate::state::conflict_picks::prune(st);
             super::conflict_count::status_read(st, read);
             super::pick::state_changed(st, state_before);
             super::auto_stash::seen(st, false, now, fx);
