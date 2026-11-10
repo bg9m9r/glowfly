@@ -103,7 +103,12 @@ pub(super) fn git(dir: &Path, args: &[&str]) {
 
 /// [`git`] for a command that may fail (a conflicting merge): whether it succeeded.
 pub(super) fn git_try(dir: &Path, args: &[&str]) -> bool {
-    glowfly_core::testkit::try_git_env(dir, args, &GIT_ENV).0
+    git_output(dir, args).0
+}
+
+/// [`git_try`] with the command's output as well.
+pub(super) fn git_output(dir: &Path, args: &[&str]) -> (bool, String) {
+    glowfly_core::testkit::try_git_env(dir, args, &GIT_ENV)
 }
 
 /// The repository settings every journey repository gets, so the user's global config (signing,

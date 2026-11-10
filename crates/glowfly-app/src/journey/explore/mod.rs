@@ -8,6 +8,7 @@
 //! - `reach`: whether markers and commit summaries are reachable in a repository.
 //! - `choose`: the actions the screen offers a step, with their weights.
 //! - `probe`: whether a step's action took effect, from readings of the repository around it.
+//! - `rules`: the six invariants every step must keep.
 //! - `perform`: doing one action, through the app's widgets or on disk (`perform_outside`).
 
 mod action;
@@ -17,5 +18,6 @@ mod perform_outside;
 mod probe;
 mod reach;
 mod rng;
+mod rules;
 mod scene;
 mod shadow;
