@@ -178,6 +178,7 @@ pub fn plan_with(workdir: &Path, action: &Action, redo: bool, opts: Options) -> 
             refs::remove_branch(&repo, &pos, name, *oid, format!("Branch {name} has moved since it was created"))
         }
         Action::CreateTag { name, oid } => refs::tag(&repo, name, *oid, redo),
+        Action::DeleteTag { name, oid, .. } => refs::deleted_tag(&repo, name, *oid, redo),
         Action::SetBranch { name, from, to } => refs::set_branch(&repo, &pos, name, *from, *to, redo),
         Action::Restacked { .. } => restacked::plan(workdir, &repo, action, redo)?,
         Action::Moved { branch, from, to, .. } => {

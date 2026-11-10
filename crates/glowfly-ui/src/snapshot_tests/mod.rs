@@ -193,6 +193,7 @@ pub(super) mod snapshot_tests_tab_states;
 pub(super) mod snapshot_tests_tabs_style;
 pub(super) mod snapshot_tests_tag;
 pub(super) mod snapshot_tests_tag_annotate;
+pub(super) mod snapshot_tests_tag_delete;
 pub(super) mod snapshot_tests_tag_menu;
 pub(super) mod snapshot_tests_terminal;
 pub(super) mod snapshot_tests_terminal_colors;

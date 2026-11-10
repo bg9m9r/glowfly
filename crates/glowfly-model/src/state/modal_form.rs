@@ -112,7 +112,7 @@ macro_rules! modal_forms {
 
 modal_forms! {
     forms: [
-        NewTag, AnnotateTag, NewWorktree, RemoveWorktree, DeleteRemoteBranch, LockWorktree, MoveWorktree, AddSubmodule,
+        NewTag, AnnotateTag, DeleteTag, NewWorktree, RemoveWorktree, DeleteRemoteBranch, LockWorktree, MoveWorktree, AddSubmodule,
         EditSubmodule, RemoveSubmodule, Clone, Init, Publish, RenameBranch, RenameStash, StashPush, NewFile, GitFlowStart,
         GitFlowFinish, Remote, AddFork, CreateFork, ForgeFilter, CreateIssue, RewordCommit, UndoCreated, ApplyPatch, SavePatch,
         RenameTab, RepoGroup, AddToGroup, Mainline,

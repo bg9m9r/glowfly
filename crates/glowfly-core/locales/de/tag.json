@@ -1,5 +1,20 @@
 {
   "tag.delete.body": "Lokalen Tag {tag} löschen?",
+  "tag.delete.button_remotes.one": "Hier und auf 1 Remote löschen",
+  "tag.delete.button_remotes.other": "Hier und auf {count} Remotes löschen",
+  "tag.delete.deleted_from": "Gelöscht auf {remotes}.",
+  "tag.delete.done_here": "Tag {tag} hier gelöscht.",
+  "tag.delete.done_remotes": "Tag {tag} hier und auf {remotes} gelöscht.",
+  "tag.delete.failed_local": "Tag {tag} konnte nicht gelöscht werden: {why}. Kein Remote wurde geändert.",
+  "tag.delete.failed_remote": "Tag {tag} hier gelöscht, aber auf {remote} nicht: {why}.",
+  "tag.delete.gone": "Tag {tag} existiert nicht mehr.",
+  "tag.delete.had_none": "Auf {remotes} gab es keinen Tag {tag}.",
+  "tag.delete.invalid": "Kein gültiger Tag-Name.",
+  "tag.delete.moved": "Tag {tag} zeigt jetzt auf {sha}. Öffne Löschen erneut.",
+  "tag.delete.no_remote": "Es gibt kein Remote namens {remote}.",
+  "tag.delete.not_tried": "Nicht versucht: {remotes}.",
+  "tag.delete.remotes_label": "Auch löschen auf:",
+  "tag.delete.remotes_note": "Ein Remote ohne diesen Tag wird übersprungen. Rückgängig holt nur den lokalen Tag zurück, und wer ihn schon abgerufen hat, behält seine Kopie.",
   "tag.delete.title": "Tag löschen",
   "tag.delete_remote.body": "Tag {tag} von {remotes} löschen? Dein lokaler Tag bleibt, und wer ihn schon abgerufen hat, behält seine Kopie.",
   "tag.delete_remote.button_all": "Von allen Remotes löschen",
@@ -10,6 +25,6 @@
   "tag.menu.all_remotes_ask": "Alle Remotes…",
   "tag.menu.annotate": "Annotieren…",
   "tag.menu.annotate.tip": "Diesen einfachen Tag durch einen annotierten Tag auf demselben Commit ersetzen",
-  "tag.menu.delete_from_remote": "Vom Remote löschen",
-  "tag.menu.delete_locally": "Lokal löschen…"
+  "tag.menu.delete": "Löschen…",
+  "tag.menu.delete_from_remote": "Vom Remote löschen"
 }

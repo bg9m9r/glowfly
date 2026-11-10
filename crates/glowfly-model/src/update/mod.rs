@@ -166,6 +166,7 @@ pub mod tabs;
 mod tabs_close;
 mod tag_annotate;
 mod tag_checkout;
+mod tag_delete;
 mod tags;
 mod terminal;
 mod themes;

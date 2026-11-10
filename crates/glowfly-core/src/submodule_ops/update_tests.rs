@@ -94,6 +94,7 @@ fn undos_that_move_the_work_tree() {
         Action::Commit { branch: None, from: o, to: o, message: "m".into(), amend: false },
         Action::CreateBranch { name: "b".into(), oid: o, upstream: None },
         Action::CreateTag { name: "t".into(), oid: o },
+        Action::DeleteTag { name: "t".into(), oid: o, remotes: vec!["origin".into()] },
         Action::StashDrop { stash: o, message: "m".into() },
     ];
     for a in &still {

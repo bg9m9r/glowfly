@@ -75,6 +75,7 @@ impl PaletteCommand {
             C::StashOp { .. } => return None,
             C::ChooseProfile => "profile-switch",
             C::ChooseCheckout => "switch-branch",
+            C::ChooseTagToDelete => "delete-tag",
             C::SwitchProfile(_) => return None,
             C::ChooseStashToRename => "stash-rename",
             C::RenameStash { .. } => return None,
@@ -146,7 +147,7 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::Graphite) => "theme-graphite",
             C::Theme(ThemeChoice::Porcelain) => "theme-porcelain",
             C::Theme(ThemeChoice::Custom(_)) => return None,
-            C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::OpenRecent(_) => return None,
+            C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::DeleteTag(_) | C::OpenRecent(_) => return None,
             // Names are the user's own data.
             C::Custom(_) => return None,
             C::CopyLink(crate::deep_link::LinkTarget::Repository { .. }) => "copy-repo-link",

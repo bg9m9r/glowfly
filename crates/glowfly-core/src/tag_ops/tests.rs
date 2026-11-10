@@ -84,6 +84,7 @@ fn tag_and_push_commands() {
     assert_eq!(tag_cmd("v1", sha, "notes"), ["tag", "-a", "v1", sha, "-m", "notes"]);
     assert_eq!(push_tag_cmd("origin", "v1"), ["push", "--", "origin", "refs/tags/v1:refs/tags/v1"]);
     assert_eq!(delete_remote_tag_cmd("origin", "v1"), ["push", "--delete", "--", "origin", "refs/tags/v1"]);
+    assert_eq!(delete_tag_cmd("v1"), ["tag", "-d", "--", "v1"]);
     assert_eq!(delete_remote_tag_cmd("origin", "release/1.0"), ["push", "--delete", "--", "origin", "refs/tags/release/1.0"]);
     assert_eq!(annotate_tag_cmd("v1", sha, "notes"), ["tag", "-a", "-f", "-m", "notes", "--", "v1", sha]);
     assert_eq!(annotate_tag_cmd("release/1.0", sha, "notes"), ["tag", "-a", "-f", "-m", "notes", "--", "release/1.0", sha]);

@@ -26,6 +26,8 @@ pub struct Before {
     paused: Option<resumed::Paused>,
     /// For a stash drop: the stash commit it drops and its list message.
     dropped: Option<(Oid, Option<String>)>,
+    /// For a tag delete: the ref's own target, the tag object for an annotated tag.
+    tag: Option<Oid>,
 }
 
 #[derive(Debug)]
@@ -96,14 +98,26 @@ fn stash_summary(repo: &Repository, stash: Oid) -> String {
 pub fn before(workdir: &Path, kind: &UndoKind) -> Result<Before> {
     let repo = Repository::open(workdir)?;
     let (head, head_oid) = head(&repo);
-    let mut b =
-        Before { head, head_oid, branch: None, stash_top: None, locals: None, existed: false, apply: None, paused: None, dropped: None };
+    let mut b = Before {
+        head,
+        head_oid,
+        branch: None,
+        stash_top: None,
+        locals: None,
+        existed: false,
+        apply: None,
+        paused: None,
+        dropped: None,
+        tag: None,
+    };
     match kind {
         UndoKind::DeleteBranch(name) | UndoKind::SetBranch(name) => b.branch = local_branch(&repo, name),
         UndoKind::DiscardAll | UndoKind::Reset(ResetMode::Hard) | UndoKind::StashPush { .. } => b.stash_top = stash_top(&repo),
         UndoKind::Checkout => b.locals = Some(local_names(&repo)?),
         UndoKind::CreateBranch(name) => b.existed = ref_exists(&repo, &format!("refs/heads/{name}")),
         UndoKind::CreateTag(name) => b.existed = ref_exists(&repo, &format!("refs/tags/{name}")),
+        // Tags keep no reflog, so the target is read now: nothing names it after the delete.
+        UndoKind::DeleteTag { name, .. } => b.tag = repo.find_reference(&format!("refs/tags/{name}")).ok().and_then(|r| r.target()),
         UndoKind::StashApply { rev, .. } => {
             let found = apply_target(workdir, rev.as_deref().unwrap_or("stash@{0}")).ok();
             let (target, message) = found.map_or((None, None), |(o, m)| (Some(o), m));
@@ -206,6 +220,10 @@ pub fn after(workdir: &Path, kind: UndoKind, mut before: Before) -> Result<Optio
             let target = repo.find_reference(&format!("refs/tags/{name}")).ok().and_then(|r| r.target());
             target.map(|oid| Action::CreateTag { name, oid })
         }
+        UndoKind::DeleteTag { name, remotes } => match before.tag {
+            Some(oid) if !ref_exists(&repo, &format!("refs/tags/{name}")) => Some(Action::DeleteTag { name, oid, remotes }),
+            _ => None,
+        },
         UndoKind::Move { op, detail } => moved.map(|(from, to)| Action::Moved { op, detail, branch: branch_name(&pos), from, to }),
         UndoKind::SetBranch(name) => match (before.branch, local_branch(&repo, &name)) {
             (Some((from, _)), Some((to, _))) if from != to => Some(Action::SetBranch { name, from, to }),

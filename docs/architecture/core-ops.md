@@ -95,7 +95,7 @@ source file, update its line here.
 
 - Undo and redo of Glowfly's own operations.
 - `kinds.rs` recognises their command lines; `action.rs` holds the recorded actions and their labels; `record.rs` the state before and after; `planning.rs` plans the reversal.
-- `refs.rs`: branches and tags.
+- `refs.rs`: branches and tags, created or deleted.
 - `moved.rs`: merges, pulls, cherry-picks, reverts and rebases.
 - `stash.rs`: stashes, pops, applies and drops; tests in `stash_tests.rs` and `stash_bytes_tests.rs`.
 - `reset.rs`: resets.

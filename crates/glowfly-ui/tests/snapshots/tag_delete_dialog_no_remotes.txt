@@ -1,0 +1,6 @@
+Dialog
+  Label "Delete tag"
+  Button "Close this dialog"
+  Label "Delete local tag v0.1.0?"
+  Button "Cancel" [focused]
+  Button "Delete"

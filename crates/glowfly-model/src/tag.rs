@@ -1,5 +1,6 @@
-//! Messages of the New tag and Annotate dialogs and the TAGS section's remote actions
-//! (state/tags.rs, update/tags.rs, update/tag_annotate.rs, ui/tags.rs, ui/tag_dialog.rs).
+//! Messages of the New tag, Annotate and Delete tag dialogs and the TAGS section's remote actions
+//! (state/tags.rs, state/tag_delete.rs, update/tags.rs, update/tag_annotate.rs,
+//! update/tag_delete.rs, ui/tags.rs, ui/tag_dialog.rs, ui/tag_delete_dialog.rs).
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TagMsg {
@@ -25,6 +26,12 @@ pub enum TagMsg {
     /// Checks out tag `tag` detached (`git checkout refs/tags/<tag>`), from the TAGS menu, the
     /// graph's tag labels and the palette.
     Checkout { tag: String },
+    /// From the TAGS row menu, the graph's tag labels and the palette: opens the Delete tag
+    /// dialog at the commit the snapshot has for `tag`.
+    OpenDelete { tag: String },
+    /// From the Delete tag dialog: deletes `tag`, which pointed at commit `at` when it opened,
+    /// then deletes it from each of `remotes` in the same job.
+    Delete { tag: String, at: git2::Oid, remotes: Vec<String> },
 }
 
 impl TagMsg {
@@ -39,7 +46,9 @@ impl TagMsg {
             | Self::SetPushNewTags(..)
             | Self::OpenAnnotate { .. }
             | Self::Annotate { .. }
-            | Self::Checkout { .. } => None,
+            | Self::Checkout { .. }
+            | Self::OpenDelete { .. }
+            | Self::Delete { .. } => None,
         }
     }
 }

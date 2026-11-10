@@ -10,15 +10,7 @@ use glowfly_core::settings::Settings;
 
 impl Pick {
     pub fn new(kind: PickKind) -> Self {
-        Self {
-            kind,
-            items: Items::Loading,
-            stashes: Vec::new(),
-            profiles: Vec::new(),
-            issues: Vec::new(),
-            checkouts: Vec::new(),
-            ranked: None,
-        }
+        Self { kind, items: Items::Loading, stashes: Vec::new(), profiles: Vec::new(), issues: Vec::new(), refs: Vec::new(), ranked: None }
     }
 
     /// A stash sub-list over `list`, labelled by the stash messages.
@@ -66,7 +58,23 @@ impl Pick {
         let refs = super::commands::ref_entries(Some(snap));
         let checkouts: Vec<Entry> = refs.locals.into_iter().chain(refs.held).chain(refs.others).collect();
         let labels = checkouts.iter().map(|e| e.label.strip_prefix("Checkout ").unwrap_or(&e.label).to_owned()).collect();
-        Self { items: Items::Ready(labels), checkouts, ..Self::new(PickKind::SwitchBranch) }
+        Self { items: Items::Ready(labels), refs: checkouts, ..Self::new(PickKind::SwitchBranch) }
+    }
+
+    /// The Delete tag sub-list: one row per tag of `snap` (tags on a tree or blob aren't
+    /// listed), with the tagged commit's short sha as its detail.
+    pub fn tags_to_delete(snap: &glowfly_core::repo::Snapshot) -> Self {
+        use super::commands::{entry, with_detail};
+        let refs: Vec<Entry> = snap
+            .tags
+            .iter()
+            .map(|(name, oid)| {
+                let e = entry(PaletteCommand::DeleteTag(name.clone()), name.clone(), "");
+                with_detail(e, Some(oid.to_string()[..7].to_owned()))
+            })
+            .collect();
+        let labels = snap.tags.iter().map(|(n, _)| n.clone()).collect();
+        Self { items: Items::Ready(labels), refs, ..Self::new(PickKind::DeleteTag) }
     }
 
     /// The dim text at the right of item `index`: a stash's ref, a profile's email, or what a
@@ -76,7 +84,7 @@ impl Pick {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
             PickKind::GitFlowIssue(_) | PickKind::ViewIssue => self.issues.get(index).map(|r| r.detail.clone()),
-            PickKind::SwitchBranch => self.checkouts.get(index).and_then(|e| e.detail.clone()),
+            PickKind::SwitchBranch | PickKind::DeleteTag => self.refs.get(index).and_then(|e| e.detail.clone()),
             PickKind::FileHistory | PickKind::Blame => None,
         }
     }
@@ -96,7 +104,7 @@ impl Pick {
                 self.issues.get(index).map(|r| PaletteCommand::StartGitFlowFromIssue { kind, name: r.name.clone() })
             }
             PickKind::ViewIssue => self.issues.get(index).map(|r| PaletteCommand::ViewIssue(r.key.clone())),
-            PickKind::SwitchBranch => self.checkouts.get(index).map(|e| e.command.clone()),
+            PickKind::SwitchBranch | PickKind::DeleteTag => self.refs.get(index).map(|e| e.command.clone()),
         }
     }
 

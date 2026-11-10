@@ -20,6 +20,7 @@
   "job.label.create_worktree": "Crear worktree",
   "job.label.delete_branch": "Eliminar rama",
   "job.label.delete_local_and_remote_branch": "Eliminar la rama local y la remota",
+  "job.label.delete_local_and_remote_tag": "Eliminar etiqueta local y remota",
   "job.label.delete_remote_branch": "Eliminar rama remota",
   "job.label.delete_tag": "Eliminar etiqueta",
   "job.label.discard_all": "Descartar todos los cambios",

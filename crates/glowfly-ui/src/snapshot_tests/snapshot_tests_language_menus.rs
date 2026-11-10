@@ -110,7 +110,7 @@ fn menus_german() {
 
     // TAGS v0.1.0.
     right_click_row(&mut h, "v0.1.0", 0);
-    assert!(h.query_by_label(de.tr("tag.menu.delete_locally")).is_some(), "the tag menu is German");
+    assert!(h.query_by_label(de.tr("tag.menu.delete")).is_some(), "the tag menu is German");
     assert_no_english(&h, "the tag menu");
     open_submenu(&mut h, de.tr("tag.menu.delete_from_remote"));
     assert!(h.query_by_label(de.tr("tag.menu.all_remotes_ask")).is_some());
@@ -153,11 +153,10 @@ fn menu_confirmations_german() {
     assert!(h.state().1.iter().any(dialog), "the branch's Delete opens its dialog");
 
     right_click_row(&mut h, "v0.1.0", 0);
-    h.get_by_label(de.tr("tag.menu.delete_locally")).click();
+    h.get_by_label(de.tr("tag.menu.delete")).click();
     h.run();
-    let body = de.trf("tag.delete.body", &[("tag", &"v0.1.0")]);
-    let want = (de.tr("tag.delete.title").to_owned(), body, de.tr("common.delete.button").to_owned());
-    assert_eq!(confirm_danger(&h), Some(want), "the tag's Delete locally asks in German");
+    let opens = |m: &Msg| matches!(m, Msg::Tag(glowfly_model::tag::TagMsg::OpenDelete { tag }) if tag == "v0.1.0");
+    assert!(h.state().1.iter().any(opens), "the tag's Delete opens its dialog");
     drop(h);
     remove_fixture(&dir);
 }

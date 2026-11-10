@@ -164,6 +164,7 @@ mod tab_list;
 mod tab_paint;
 mod tab_state;
 mod tabs;
+mod tag_delete_dialog;
 mod tag_dialog;
 mod tags;
 mod terminal;

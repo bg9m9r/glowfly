@@ -67,6 +67,12 @@ pub enum UndoKind {
     DiscardAll,
     CreateBranch(String),
     CreateTag(String),
+    /// `tag -d [--] <name>`. `remotes` are the remotes the same job deletes it from afterwards:
+    /// never undone, only named in the label; empty when classified from a command line.
+    DeleteTag {
+        name: String,
+        remotes: Vec<String>,
+    },
     /// `detail` names what was merged, picked or rebased onto, for the label.
     Move {
         op: MoveOp,
@@ -128,6 +134,9 @@ impl UndoKind {
             ["branch", name, start] | ["branch", "--" | "--track", name, start] if plain(name) && plain(start) => {
                 Some(UndoKind::CreateBranch((*name).to_owned()))
             }
+            ["tag", "-d", name] | ["tag", "-d", "--", name] if plain(name) => {
+                Some(UndoKind::DeleteTag { name: (*name).to_owned(), remotes: vec![] })
+            }
             ["tag", name, at] if plain(name) && plain(at) => Some(UndoKind::CreateTag((*name).to_owned())),
             ["tag", "-a", name, at, "-m", _] if plain(name) && plain(at) => Some(UndoKind::CreateTag((*name).to_owned())),
             [op @ ("merge" | "cherry-pick" | "revert"), "--continue"] | [op @ ("cherry-pick" | "revert"), "--skip"] => {
@@ -143,6 +152,15 @@ impl UndoKind {
             }
             _ => stash_kind(&a, argv),
         }
+    }
+}
+
+impl UndoKind {
+    /// Whether a failed or stopped job still records this kind: a job that deletes the local
+    /// tag and then its copies on remotes keeps the local delete undoable when a later command
+    /// fails or the job is stopped. `after` finds the tag gone only if its own command ran.
+    pub fn kept_when_failed(&self) -> bool {
+        matches!(self, UndoKind::DeleteTag { .. })
     }
 }
 

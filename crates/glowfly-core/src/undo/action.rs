@@ -117,6 +117,13 @@ pub enum Action {
         name: String,
         oid: Oid,
     },
+    /// A deleted local tag. `oid` is the ref's own target: the tag object for an annotated tag.
+    /// `remotes` are the remotes the same job also deleted it from, which undo leaves alone.
+    DeleteTag {
+        name: String,
+        oid: Oid,
+        remotes: Vec<String>,
+    },
     Moved {
         op: MoveOp,
         detail: Option<String>,
@@ -245,6 +252,15 @@ fn cut50(message: &str) -> String {
     if summary.chars().count() > 50 { format!("{cut}…") } else { cut }
 }
 
+/// "a", "a and b", or "a, b and c".
+fn and_list(items: &[String]) -> String {
+    match items {
+        [] => String::new(),
+        [one] => one.clone(),
+        [init @ .., last] => format!("{} and {last}", init.join(", ")),
+    }
+}
+
 fn moved(op: MoveOp, detail: Option<&str>) -> String {
     match (op, detail) {
         (MoveOp::Pull, _) | (_, None) => op.noun().to_owned(),
@@ -284,6 +300,8 @@ impl Action {
             Action::Restore { path, .. } => format!("restore of {path}"),
             Action::CreateBranch { name, .. } => format!("creation of branch {name}"),
             Action::CreateTag { name, .. } => format!("creation of tag {name}"),
+            Action::DeleteTag { name, remotes, .. } if remotes.is_empty() => format!("delete of tag {name}"),
+            Action::DeleteTag { name, remotes, .. } => format!("delete of tag {name} (here only, not on {})", and_list(remotes)),
             Action::Moved { op, detail, .. } => moved(*op, detail.as_deref()),
             Action::StashPush { message, .. } => format!("stash '{}'", cut50(message)),
             Action::StashApply { pop: true, message, .. } => format!("unstash of '{}'", cut50(message)),
@@ -309,6 +327,12 @@ impl Action {
             self,
             Action::Discard { .. } | Action::DeleteFile { .. } | Action::StashDrop { .. } | Action::AbortKept { .. } | Action::Batch { .. }
         )
+    }
+
+    /// Whether the action stays recorded when its job failed or was stopped after it: a tag
+    /// delete whose later remote deletes failed is still undoable here.
+    pub fn kept_when_failed(&self) -> bool {
+        matches!(self, Action::DeleteTag { .. })
     }
 
     /// Whether a refusal for local changes can offer to stash them and undo anyway: for undoing

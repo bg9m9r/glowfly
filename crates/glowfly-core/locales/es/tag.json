@@ -1,5 +1,20 @@
 {
   "tag.delete.body": "¿Eliminar la etiqueta local {tag}?",
+  "tag.delete.button_remotes.one": "Eliminar aquí y en 1 remoto",
+  "tag.delete.button_remotes.other": "Eliminar aquí y en {count} remotos",
+  "tag.delete.deleted_from": "Eliminada de {remotes}.",
+  "tag.delete.done_here": "Etiqueta {tag} eliminada aquí.",
+  "tag.delete.done_remotes": "Etiqueta {tag} eliminada aquí y de {remotes}.",
+  "tag.delete.failed_local": "No se pudo eliminar la etiqueta {tag}: {why}. No se cambió ningún remoto.",
+  "tag.delete.failed_remote": "Etiqueta {tag} eliminada aquí, pero no se pudo eliminar de {remote}: {why}.",
+  "tag.delete.gone": "La etiqueta {tag} ya no existe.",
+  "tag.delete.had_none": "En {remotes} no existía la etiqueta {tag}.",
+  "tag.delete.invalid": "No es un nombre de etiqueta válido.",
+  "tag.delete.moved": "La etiqueta {tag} se ha movido a {sha}. Abre Eliminar de nuevo.",
+  "tag.delete.no_remote": "No hay ningún remoto llamado {remote}.",
+  "tag.delete.not_tried": "Sin intentar: {remotes}.",
+  "tag.delete.remotes_label": "Eliminarla también de:",
+  "tag.delete.remotes_note": "Un remoto sin esta etiqueta se omite. Deshacer solo recupera la etiqueta local, y quien ya la obtuvo conserva su copia.",
   "tag.delete.title": "Eliminar etiqueta",
   "tag.delete_remote.body": "¿Eliminar la etiqueta {tag} de {remotes}? Tu etiqueta local se queda, y quien ya la obtuvo conserva su copia.",
   "tag.delete_remote.button_all": "Eliminar de todos los remotos",
@@ -10,6 +25,6 @@
   "tag.menu.all_remotes_ask": "Todos los remotos…",
   "tag.menu.annotate": "Anotar…",
   "tag.menu.annotate.tip": "Sustituir esta etiqueta ligera por una etiqueta anotada en el mismo commit",
-  "tag.menu.delete_from_remote": "Eliminar del remoto",
-  "tag.menu.delete_locally": "Eliminar localmente…"
+  "tag.menu.delete": "Eliminar…",
+  "tag.menu.delete_from_remote": "Eliminar del remoto"
 }

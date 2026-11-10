@@ -18,7 +18,7 @@ use std::time::Instant;
 
 /// `with_origin` plus a second bare remote `backup` and a local tag `v1`. Returns (state,
 /// working repository, origin, backup).
-fn with_two(name: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
+pub(super) fn with_two(name: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
     let (mut st, work, origin) = with_origin(name);
     let backup = work.with_file_name(format!("{}-backup.git", work.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&backup);
@@ -68,7 +68,7 @@ fn toast(st: &AppState) -> String {
     st.toasts.last().map(|t| t.text.clone()).unwrap_or_default()
 }
 
-fn running() -> RunningJob {
+pub(super) fn running() -> RunningJob {
     RunningJob {
         label: "Fetch".into(),
         workdir: None,

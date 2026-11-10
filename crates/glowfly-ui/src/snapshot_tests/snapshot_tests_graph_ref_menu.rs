@@ -61,10 +61,10 @@ fn graph_label_menu_many() {
     h.check_snapshot("graph_label_menu_tag");
     assert!(h.query_by_label("Checkout (detached)").is_some(), "the tag's menu");
     h.state_mut().1.clear();
-    h.get_by_label("Delete locally…").click();
+    h.get_by_label("Delete…").click();
     h.run();
-    let confirm = h.state().1.iter().any(|m| matches!(m, Msg::ConfirmDanger { title, .. } if title == "Delete tag"));
-    assert!(confirm, "the confirmation is asked for");
+    let opens = h.state().1.iter().any(|m| matches!(m, Msg::Tag(TagMsg::OpenDelete { tag }) if tag == "v0.1.0"));
+    assert!(opens, "the Delete tag dialog is asked for");
     drop(h);
     remove_fixture(&dir);
 }

@@ -1,5 +1,5 @@
-//! Command lines and checks for creating a tag, annotating a lightweight one, pushing it and
-//! deleting it from a remote.
+//! Command lines and checks for creating a tag, annotating a lightweight one, pushing it, and
+//! deleting it here and from a remote.
 //! Everything here is pure; the app runs the commands through `gitcli` so hooks, credentials and
 //! the user's git config apply.
 
@@ -120,6 +120,12 @@ pub fn annotate_tag_cmd(name: &str, at: &str, message: &str) -> Vec<String> {
 /// pushed instead.
 pub fn push_tag_cmd(remote: &str, name: &str) -> Vec<String> {
     args(&["push", "--", remote, &format!("refs/tags/{name}:refs/tags/{name}")])
+}
+
+/// Deletes the local tag `name` only (`git tag -d -- <name>`); its copies on remotes stay. Run
+/// through `gitcli`, so the reference-transaction hook and the user's config apply.
+pub fn delete_tag_cmd(name: &str) -> Vec<String> {
+    args(&["tag", "-d", "--", name])
 }
 
 /// Deletes tag `name` from `remote`. The full ref makes sure a branch named like the tag is never

@@ -1,7 +1,7 @@
 //! The New tag dialog: opening it, creating the tag (and pushing it in the same job), and the
 //! push checkbox's setting. Also the TAGS row menu's remote push and delete: one job with a
 //! command per remote, and the headline that names the remote when it ends. Annotating a
-//! lightweight tag is in `tag_annotate.rs`.
+//! lightweight tag is in `tag_annotate.rs`, the Delete tag dialog's delete in `tag_delete.rs`.
 
 use super::ops::{self, JobSpec};
 use crate::effect::Effect;
@@ -29,6 +29,8 @@ pub(super) fn handle(st: &mut AppState, msg: TagMsg, fx: &mut Vec<Effect>) {
         TagMsg::OpenAnnotate { tag } => super::tag_annotate::open(st, tag),
         TagMsg::Annotate { tag, at, message } => super::tag_annotate::annotate(st, &tag, &at, &message, fx),
         TagMsg::Checkout { tag } => super::tag_checkout::checkout(st, tag, fx),
+        TagMsg::OpenDelete { tag } => super::tag_delete::open(st, tag),
+        TagMsg::Delete { tag, at, remotes } => super::tag_delete::delete(st, tag, at, remotes, fx),
     }
 }
 
@@ -109,7 +111,7 @@ fn start_remote(st: &mut AppState, op: RemoteTagOp, tag: String, remotes: Vec<St
     // Remote tags aren't undoable, so nothing is recorded.
     // Also for a job waiting for the trust prompt; dropping it clears this.
     if ops::start_job(st, JobSpec::new(label.clone(), cmds), fx) != ops::Started::No {
-        st.tag_job = Some(RemoteTagJob { label, op, tag, remotes: targets });
+        st.tag_job = Some(RemoteTagJob { label, op, tag, remotes: targets, local: false });
     }
 }
 
@@ -119,6 +121,9 @@ pub(super) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<Stri
     let pending = st.tag_job.take()?;
     if st.job.as_ref().is_none_or(|j| j.label != pending.label) {
         return None;
+    }
+    if pending.local {
+        return crate::state::tag_delete::headline(st.settings.lang(), &pending, ok, output);
     }
     Some(if ok { pending.done() } else { pending.failed(output) })
 }

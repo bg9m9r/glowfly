@@ -38,6 +38,7 @@ start with `state/`, `update/` or `ui/`.
 - `submodule_dialogs.rs`: the Add submodule dialog (a URL, the folder it goes in, an optional branch), the Edit submodule dialog (its URL and branch) and the Remove submodule confirmation (what it deletes and what would be lost), each with a side pane that explains the step.
 - `tab_dialog.rs`: the Rename tab dialog (`Modal::RenameTab`): the name the tab shows instead of its folder's.
 - `tag_dialog.rs`: the New tag dialog: a plain tag, or an annotated one whose message is required.
+- `tag_delete_dialog.rs`: Delete tag (`Modal::DeleteTag`): the question, a checkbox per remote to delete it from too with the note on what undo and other clones keep, and the danger button counting the ticked remotes.
 - `trash_offer_dialog.rs`: the No Trash on this drive dialog (`Modal::TrashOffer`): the trash on a file's drive can't be used, so the file can go to the Trash in the home folder (copied there) or be deleted permanently instead.
 - `undo_dialog.rs`: the dialog before undoing a checkout that created a branch (`Modal::UndoCreated`): it switches back, and also deletes the branch while the box is ticked.
 - `worktree_dialog.rs`: the Create worktree dialog: a folder (typed, or a parent picked with Browse…), an optional new branch (required for a remote branch, which it then tracks) and whether to open the worktree in a tab, with a side pane that explains the step.

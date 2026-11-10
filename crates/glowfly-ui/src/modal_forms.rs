@@ -96,6 +96,7 @@ pub(crate) fn draw(ui: &mut egui::Ui, cx: Cx, modal: &mut Modal, env: &DialogEnv
         }
         Modal::NewTag(form) => crate::tag_dialog::new_tag(ui, cx, form, snap, env.push_tags, msgs),
         Modal::AnnotateTag(form) => crate::tag_dialog::annotate_tag(ui, cx, form, snap, msgs),
+        Modal::DeleteTag(form) => crate::tag_delete_dialog::show(ui, cx, form, idle, msgs),
         Modal::NewWorktree(form) => crate::worktree_dialog::new_worktree(ui, cx, form, snap, msgs),
         Modal::DeleteRemoteBranch(form) => crate::remote_branch_delete_dialog::show(ui, cx, form, msgs),
         Modal::RemoveWorktree(form) => crate::worktree_manage_dialog::remove(ui, cx, form, idle, msgs),

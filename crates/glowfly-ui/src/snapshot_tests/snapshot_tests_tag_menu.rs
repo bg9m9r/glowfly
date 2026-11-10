@@ -1,6 +1,6 @@
 //! The TAGS row menu: the tag's name once in the header, annotate (lightweight tags only), the
 //! Push to submenu (each remote or all of them), hide or solo in the graph, the Copy submenu,
-//! delete locally, the Delete from remote submenu, which items show for one remote or none, the
+//! Delete… (the Delete tag dialog), the Delete from remote submenu, which items show for one remote or none, the
 //! remote items disabled while a job runs, the remote delete confirmation, and the markers on
 //! hidden and soloed tag rows. Remotes are injected into the
 //! shared fixture's snapshot so the images are deterministic.
@@ -30,7 +30,7 @@ const ITEMS: [&str; 9] = [
     "Show only this",
     "Copy name",
     "Copy link",
-    "Delete locally…",
+    "Delete…",
     "Delete from remote",
 ];
 
@@ -151,7 +151,7 @@ fn tag_row_menu_one_remote() {
     h.run_steps(2);
     let at = tag_row(&h, "v0.1.0");
     click_steps(&mut h, at, PointerButton::Secondary);
-    assert!(!h.get_by_label("Delete locally…").is_disabled());
+    assert!(!h.get_by_label("Delete…").is_disabled());
     h.get_by_label("Push to").hover();
     h.run_steps(3);
     assert!(submenu_item(&h, "Push to", "origin").is_disabled(), "a job is running");
@@ -166,11 +166,13 @@ fn tag_row_menu_one_remote() {
     h.run();
     open_menu(&mut h);
     assert!(h.query_by_label("Checkout (detached)").is_some());
-    assert!(h.query_by_label("Delete locally…").is_some());
+    assert!(h.query_by_label("Delete…").is_some());
     assert!(h.query_by_label("Push to").is_none() && h.query_by_label("Delete from remote").is_none());
-    h.get_by_label("Delete locally…").click();
+    h.get_by_label("Delete…").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::ConfirmDanger { title, button, .. } if title == "Delete tag" && button == "Delete")));
+    let opens = |m: &Msg| matches!(m, Msg::Tag(TagMsg::OpenDelete { tag }) if tag == "v0.1.0");
+    assert!(pushed(&h, &opens), "Delete… opens the Delete tag dialog");
+    assert!(!pushed(&h, &|m| matches!(m, Msg::ConfirmDanger { .. })), "no confirmation of its own");
     drop(h);
     remove_fixture(&dir);
 }

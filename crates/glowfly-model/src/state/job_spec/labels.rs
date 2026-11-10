@@ -34,6 +34,7 @@ fn fixed(t: Lang, label: &str) -> Option<&'static str> {
         "Delete local and remote branch" => t.tr("job.label.delete_local_and_remote_branch"),
         "Delete remote branch" => t.tr("job.label.delete_remote_branch"),
         "Delete tag" => t.tr("job.label.delete_tag"),
+        "Delete local and remote tag" => t.tr("job.label.delete_local_and_remote_tag"),
         "Discard all changes" => t.tr("job.label.discard_all"),
         "Download file contents" => t.tr("job.label.download_contents"),
         "Drop commits" => t.tr("job.label.drop_commits"),
@@ -117,6 +118,7 @@ mod tests {
     fn other_languages_translate_fixed_and_named_labels() {
         assert_eq!(shown(Lang::De, "Pull"), "Pullen");
         assert_eq!(shown(Lang::Es, "Fetch all"), "Obtener todo");
+        assert_eq!(shown(Lang::De, "Delete local and remote tag"), "Lokalen und entfernten Tag löschen");
         assert_eq!(shown(Lang::De, "Fetch origin"), "origin abrufen");
         assert_eq!(shown(Lang::Es, "Remove submodule libs/x"), "Quitar el submódulo libs/x");
         // Unknown, or a name with a space in it: as it is.

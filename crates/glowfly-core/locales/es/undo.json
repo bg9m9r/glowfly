@@ -39,6 +39,7 @@
   "undo.preview.revert_again": "Lo vuelve a revertir",
   "undo.preview.stash_again": "Vuelve a guardar los cambios",
   "undo.preview.stash_back": "Vuelve a aplicar el stash y lo descarta",
+  "undo.preview.tag_remotes_stay": "Sigue eliminada de {remotes}; súbela para devolverla allí",
   "undo.preview.takes_off.one": "Quita {count} commit",
   "undo.preview.takes_off.other": "Quita {count} commits",
   "undo.preview.unapply": "Quita los cambios aplicados",

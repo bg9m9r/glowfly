@@ -86,6 +86,24 @@ fn describe_names_the_action() {
 }
 
 #[test]
+fn a_tag_delete_names_the_remotes_undo_leaves_alone() {
+    let o = Oid::zero();
+    let deleted =
+        |remotes: &[&str]| Action::DeleteTag { name: "v1".into(), oid: o, remotes: remotes.iter().map(|r| (*r).to_owned()).collect() };
+    assert_eq!(deleted(&[]).describe(), "delete of tag v1");
+    assert_eq!(deleted(&["origin"]).describe(), "delete of tag v1 (here only, not on origin)");
+    assert_eq!(deleted(&["origin", "backup"]).describe(), "delete of tag v1 (here only, not on origin and backup)");
+    assert_eq!(deleted(&["a", "b", "c"]).describe(), "delete of tag v1 (here only, not on a, b and c)");
+    // Only a tag delete stays recorded when a later command of its job failed.
+    assert!(deleted(&["origin"]).kept_when_failed());
+    assert!(!Action::CreateTag { name: "v1".into(), oid: o }.kept_when_failed());
+    assert!(!Action::DeleteBranch { name: "x".into(), oid: o, upstream: None }.kept_when_failed());
+    assert!(UndoKind::DeleteTag { name: "v1".into(), remotes: vec![] }.kept_when_failed());
+    assert!(!UndoKind::CreateTag("v1".into()).kept_when_failed());
+    assert!(!UndoKind::DeleteBranch("x".into()).kept_when_failed());
+}
+
+#[test]
 fn a_resolution_is_named_and_reports_what_it_wrote() {
     let o = Oid::zero();
     let ids = crate::repo::ConflictIds { ancestor: None, ours: Some(o), theirs: Some(o) };

@@ -99,7 +99,9 @@ impl Execute for JobEffect {
                             (ok, output, None, false)
                         }
                     };
-                    let recorded = |k| if ok { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
+                    // A tag delete is recorded even when a later remote delete failed or was stopped.
+                    let keep = ok || record.as_ref().is_some_and(undo::UndoKind::kept_when_failed);
+                    let recorded = |k| if keep { before.and_then(|b| undo::after(&cwd, k, b).ok().flatten()) } else { None };
                     let undo = if ok && irreversible { None } else { record.map(|k| UndoResult::Recorded(recorded(k))) };
                     let undo = op_stops::stopped(&cwd, ok, start).or(undo);
                     let undo = if ok && aborts { Some(UndoResult::Aborted(undo::op_start(&cwd))) } else { undo };
