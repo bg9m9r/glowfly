@@ -58,7 +58,7 @@ pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Re
     }
 
     // A forced checkout would delete whatever is in the way; refuse instead.
-    if root.join(path).symlink_metadata().is_ok_and(|m| m.is_dir()) {
+    if super::work_path(&root, path)?.symlink_metadata().is_ok_and(|m| m.is_dir()) {
         return Err(Error::Other(format!("a folder named {path} is in the way")));
     }
     let mut prefix = root.clone();
@@ -79,7 +79,7 @@ pub fn restore_file(workdir: &Path, oid: Oid, path: &str, overwrite: bool) -> Re
     // wherever it points, outside the repository too); git replaces a link. Remove the link
     // itself first: the caller saved it for Undo (`undo::saved`), and the forced checkout
     // recreates the missing path.
-    let full = root.join(path);
+    let full = super::work_path(&root, path)?;
     if full.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
         crate::persist::remove_link(&full)?;
     }
@@ -113,7 +113,7 @@ pub(crate) fn restore_would_lose(workdir: &Path, path: &str) -> Result<bool> {
 /// Looks at the disk itself: ignored files and skip-worktree or assume-unchanged entries are
 /// left out of status, so status alone would call them clean.
 fn unrecoverable(repo: &Repository, root: &Path, path: &str) -> Result<Option<String>> {
-    let full = root.join(path);
+    let full = super::work_path(root, path)?;
     if full.symlink_metadata().is_err() {
         return Ok(None);
     }

@@ -216,6 +216,15 @@ trust scan all run for untrusted repositories too.
    a config: the Submodules list is empty, `refs_key` stamps only the index's gitlinks, and
    libgit2's status and diffs to the working tree leave out every submodule row
    (`git_file::submodules_unread`, the same places as rule 7).
+9. **A name from a tree, the index, a diff, a status row or `.gitmodules` is joined to the work
+   tree only through `repo::work_path`** (the `contained` rules: no leading `/`, no empty, `.`
+   or `..` part, no `.git` part; on Windows no `\` or `:` and no part ending in a dot or space).
+   `Path::join` replaces the work tree with an absolute, drive-relative (`C:x`) or UNC name
+   (`\server\share\a`, `//server/share/a`, `\?\…`), and git stores `\` and `:` as ordinary name
+   bytes. A name that isn't a plain relative path inside the work tree is never looked up: it
+   counts as absent (a commit's file list, LFS marks, marker counts, binary sides, the open-file
+   stamp), a gitlink so named has no folder, and Open, Show in folder, the editor, the external
+   tools, Restore, Revert and resolving a conflict refuse it.
 
 ### Names Glowfly creates or accepts
 

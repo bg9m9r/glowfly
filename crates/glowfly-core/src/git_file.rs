@@ -297,8 +297,8 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
         }
         last = Some(e.path.clone());
         let Ok(path) = String::from_utf8(e.path) else { continue };
-        // One part at a time, so the folder uses the platform's separators.
-        let folder = path.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+        // A name that isn't a plain path inside the work tree has no folder there.
+        let Ok(folder) = crate::repo::work_path(workdir, &path) else { continue };
         let dot = folder.join(".git");
         if !may_follow(&folder, workdir) {
             out.push(Offsite { path, link: true });

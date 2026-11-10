@@ -121,7 +121,7 @@ fn side(repo: &Repository, workdir: &Path, source: &SideSource, caps: Caps, draw
     let (path, size) = match source {
         SideSource::Empty => return Ok(None),
         SideSource::Blob { id, path, .. } => (path.as_str(), repo.odb()?.read_header(*id)?.0 as u64),
-        SideSource::Working(p) => match std::fs::metadata(workdir.join(p)) {
+        SideSource::Working(p) => match super::work_path(workdir, p).and_then(|f| Ok(std::fs::metadata(f)?)) {
             Ok(meta) => (p.as_str(), meta.len()),
             Err(_) => return Ok(None),
         },
@@ -172,7 +172,8 @@ fn contents(repo: &Repository, workdir: &Path, source: &SideSource, cap: u64) ->
         SideSource::Blob { id, .. } => Some(repo.find_blob(*id)?.content().to_vec()),
         SideSource::Working(p) => {
             let mut out = Vec::new();
-            let read = std::fs::File::open(workdir.join(p)).and_then(|f| f.take(cap + 1).read_to_end(&mut out));
+            let file = super::work_path(workdir, p).map_err(std::io::Error::other);
+            let read = file.and_then(std::fs::File::open).and_then(|f| f.take(cap + 1).read_to_end(&mut out));
             read.ok().filter(|_| out.len() as u64 <= cap).map(|_| out)
         }
         SideSource::Empty => None,

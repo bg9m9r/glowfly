@@ -23,8 +23,8 @@ pub(crate) enum Opened {
 /// Opens the repository of the submodule at `path` (repo-relative, with '/') in the parent
 /// working tree `workdir`.
 pub(crate) fn open_at(workdir: &Path, path: &str) -> Opened {
-    // One component at a time, so the folder uses the platform's separators.
-    let folder = path.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+    // A name that isn't a plain path inside the work tree has no folder there.
+    let Ok(folder) = super::work_path(workdir, path) else { return Opened::NotCheckedOut };
     if !crate::net_path::may_follow(&folder, workdir) {
         return Opened::Refused;
     }

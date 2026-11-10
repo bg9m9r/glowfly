@@ -31,7 +31,7 @@ fn blob_is_pointer(repo: &Repository, id: Option<Oid>) -> bool {
 }
 
 fn file_is_pointer(workdir: Option<&Path>, path: &str) -> bool {
-    workdir.is_some_and(|w| pointer::read_file(&w.join(path)).is_some())
+    workdir.is_some_and(|w| super::work_path(w, path).is_ok_and(|p| pointer::read_file(&p).is_some()))
 }
 
 /// Marks a whole status read's rows: staged rows by the index blob (HEAD's for a staged
@@ -142,7 +142,7 @@ pub(super) fn diff_change(repo: &Repository, target: &DiffTarget, diff: &Diff) -
     let new = match d.status() {
         Delta::Deleted => LfsSide::Absent,
         _ if new_in_workdir => {
-            let disk = rpath::text(rpath::delta_bytes(&d)).zip(repo.workdir()).map(|(p, w)| w.join(p));
+            let disk = rpath::text(rpath::delta_bytes(&d)).zip(repo.workdir()).and_then(|(p, w)| super::work_path(w, &p).ok());
             disk.map_or(LfsSide::Absent, |p| file_side(&p))
         }
         _ => blob_side(repo, d.new_file().id()),
