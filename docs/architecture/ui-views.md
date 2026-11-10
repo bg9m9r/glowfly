@@ -111,7 +111,7 @@ start with `state/`, `update/` or `ui/`.
 - `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
 - `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode; the picked files are drawn selected.
-- `details_wip_picks.rs`: a picked row's menu while several files of its list are picked: Stage or Unstage and Discard changes, each naming the count. Tests in `snapshot_tests/snapshot_tests_wip_picks.rs`.
+- `details_wip_picks.rs`: a picked row's menu while several files of its list are picked: Stage or Unstage, Discard changes and Delete, each naming the count and off with the reason a pick blocks it (`PickBlocks`). Tests in `snapshot_tests/snapshot_tests_wip_picks.rs`.
 - `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames by which list it is), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.

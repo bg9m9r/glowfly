@@ -56,6 +56,7 @@ Button "Stage"
 Label "Modified"
 Button "Stage 3 files"
 Button "Discard changes in 3 files…"
+Button "Delete 3 files…"
 Button "app.txt" [on]
 Button "Stage"
 Label "Modified"

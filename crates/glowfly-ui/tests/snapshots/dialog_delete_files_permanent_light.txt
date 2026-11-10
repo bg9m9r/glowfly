@@ -1,0 +1,6 @@
+Dialog
+  Label "Delete 2 files"
+  Button "Close this dialog"
+  Label "The 2 selected files are deleted from your working tree. Glowfly keeps copies so Undo (Ctrl+Z) can bring them back while this tab is open; a file over 64 MB with changes only your working tree holds is too large to keep a copy of, so the delete stops there. 1 of them is new in the staging area and leaves it too."
+  Button "Cancel" [focused]
+  Button "Delete 2 files"

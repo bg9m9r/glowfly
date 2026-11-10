@@ -207,7 +207,8 @@ pub enum Action {
         during: Option<HeadAt>,
     },
     /// Several files' content actions recorded as one entry (`batch.rs`): each part is a
-    /// whole-file `Discard` or a `DeleteFile` (an untracked file discarded), done as `op`.
+    /// whole-file `Discard` or a `DeleteFile` (an untracked file discarded, or a working copy
+    /// deleted), done as `op`.
     Batch {
         op: super::BatchOp,
         parts: Vec<Action>,
@@ -296,7 +297,7 @@ impl Action {
             Action::SetBranch { name, to, .. } => format!("move of branch {name} to {}", short(*to)),
             Action::Restacked { detail, .. } => detail.clone(),
             Action::AbortKept { op, .. } => format!("abort of {}", op.noun()),
-            Action::Batch { op: super::BatchOp::Discard, parts } => format!("discard in {} files", parts.len()),
+            Action::Batch { op, parts } => op.describe(parts.len()),
         }
     }
 

@@ -148,12 +148,6 @@ pub(super) fn discard_all_text(t: Lang, keys: &Keymap) -> String {
     }
 }
 
-/// Why the picked `paths` can't be discarded: the first one Glowfly can't act on safely.
-fn unsafe_reason(t: Lang, snap: &Snapshot, paths: &[String]) -> Option<String> {
-    let rows = snap.unstaged.iter().filter(|f| paths.contains(&f.path));
-    rows.into_iter().find_map(|f| f.hazard.as_ref().map(|h| glowfly_model::state::files::discard_unsafe(t, &f.path, &h.reason(t))))
-}
-
 /// The file a step landed on, for its list to scroll to (`ViewCues::file_reveal`).
 pub(super) type Reveal<'a> = Option<&'a (DiffTarget, u64)>;
 
@@ -274,7 +268,7 @@ pub(super) fn wip_file_row(
         };
     r.row_menu_for(keyboard, |ui| {
         if let Some(p) = many {
-            return picks::menu(ui, t, msgs, staged, &p.paths, unsafe_reason(t, snap, &p.paths).as_deref());
+            return picks::menu(ui, t, msgs, staged, &p.paths, &picks::PickBlocks::of(t, snap, &p.paths));
         }
         if conflicted {
             menu_item(msgs, ui, t.tr("details.wip.open_conflict"), Msg::Conflict(ConflictMsg::OpenConflict(f.path.clone())));

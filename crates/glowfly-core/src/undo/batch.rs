@@ -1,5 +1,6 @@
 //! Several files' content actions recorded as one undo entry (`Action::Batch`): each part is a
-//! whole-file `Discard` or a `DeleteFile` (an untracked file discarded). Undo and redo plan every
+//! whole-file `Discard` or a `DeleteFile` (an untracked file discarded, or a working copy
+//! deleted). Undo and redo plan every
 //! part as it would be planned alone and carry the plans out in order (`Plan::Each`). A part
 //! that already holds what this would put there (an earlier run stopped partway) is skipped, and
 //! a part that holds neither refuses the whole entry, naming its file.
@@ -15,6 +16,18 @@ pub enum BatchOp {
     /// Their unstaged changes discarded (tracked ones restored from the index, untracked ones
     /// deleted).
     Discard,
+    /// Their working copies deleted (Delete..., Unstage and delete...).
+    Delete,
+}
+
+impl BatchOp {
+    /// The entry's description for `n` files (English, as the other actions' are).
+    pub fn describe(self, n: usize) -> String {
+        match self {
+            BatchOp::Discard => format!("discard in {n} files"),
+            BatchOp::Delete => format!("delete of {n} files"),
+        }
+    }
 }
 
 /// The undo entry for `parts`, done together as `op`: None when nothing was done, the part

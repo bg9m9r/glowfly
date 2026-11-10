@@ -1,0 +1,6 @@
+Dialog
+  Label "Delete 3 files"
+  Button "Close this dialog"
+  Label "The 3 selected files go to the Recycle Bin; Undo (Ctrl+Z) puts them back while this tab is open."
+  Button "Cancel" [focused]
+  Button "Move 3 files to the Recycle Bin"

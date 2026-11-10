@@ -74,6 +74,7 @@ Button "search.txt" [on]
 Button "Unstage"
 Label "Added"
 Button "Unstage 2 files"
+Button "Delete 2 files…"
 Label "Commit"
 TextInput "Commit summary"
 MultilineTextInput "Commit description"

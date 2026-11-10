@@ -1,10 +1,12 @@
 //! Undoing and redoing several files discarded as one entry (`Action::Batch`) against real
 //! repositories, with a stand-in trash folder: every file comes back and goes again, a file put
-//! back by hand is skipped, and a file changed since refuses the whole entry.
+//! back by hand is skipped, and a file changed since refuses the whole entry; the same for
+//! several files deleted (`BatchOp::Delete`), a staged-new one staged again.
 
 use super::test_bin::*;
 use super::*;
 use crate::repo;
+use crate::testkit::git_out;
 use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
@@ -128,4 +130,89 @@ fn describe_names_the_count_and_batch_is_content() {
     let a = Action::Batch { op: BatchOp::Discard, parts: vec![part.clone(), part.clone(), part] };
     assert_eq!(a.describe(), "discard in 3 files");
     assert!(a.is_content());
+}
+
+/// A repository with a.txt committed and edited, n.txt staged as new and the untracked u.txt.
+fn delete_base(name: &str) -> PathBuf {
+    let dir = scratch_repo(name);
+    write(&dir, "a.txt", "a\n");
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    write(&dir, "a.txt", "a edited\n");
+    write(&dir, "n.txt", "n new\n");
+    git(&dir, &["add", "n.txt"]);
+    write(&dir, "u.txt", "u new\n");
+    dir
+}
+
+/// Deletes a.txt, n.txt (leaving the index too) and u.txt to the stand-in trash, the way a
+/// multi-file delete does: the entry it records.
+fn delete_all(dir: &Path) -> Action {
+    let gone = |p: &str| delete_saving(dir, p, DeleteVia::Trash, false, T).unwrap().undo.expect("undoable");
+    let n = delete_staged_saving(dir, "n.txt", DeleteVia::Trash, false, T).unwrap().undo.expect("undoable");
+    batch(BatchOp::Delete, vec![gone("a.txt"), n, gone("u.txt")]).expect("a batch")
+}
+
+fn indexed(dir: &Path, f: &str) -> bool {
+    git_out(dir, &["ls-files", "--", f]).trim() == f
+}
+
+#[test]
+fn batch_delete_undo_puts_every_file_back_and_redo_deletes_them_again() {
+    let dir = delete_base("ubatch-delete");
+    let a = delete_all(&dir);
+    assert!(matches!(a, Action::Batch { op: BatchOp::Delete, .. }));
+    assert!(["a.txt", "n.txt", "u.txt"].iter().all(|f| read(&dir, f).is_none()));
+    assert!(!indexed(&dir, "n.txt"), "the staged-new file left the index");
+
+    let undo = steps(&dir, &a, false);
+    assert_eq!(undo.len(), 3);
+    assert!(undo.iter().all(|(_, p)| matches!(p, Plan::PutBack { .. })), "{undo:?}");
+    undo.into_iter().for_each(|(_, p)| carry(&dir, p));
+    assert_eq!(read(&dir, "a.txt").unwrap(), b"a edited\n");
+    assert_eq!(read(&dir, "n.txt").unwrap(), b"n new\n");
+    assert_eq!(read(&dir, "u.txt").unwrap(), b"u new\n");
+    assert!(indexed(&dir, "n.txt"), "staged again");
+
+    let redo = steps(&dir, &a, true);
+    assert_eq!(redo.len(), 3);
+    assert!(redo.iter().all(|(_, p)| matches!(p, Plan::DeleteAgain { .. })), "{redo:?}");
+    redo.into_iter().for_each(|(_, p)| carry(&dir, p));
+    assert!(["a.txt", "n.txt", "u.txt"].iter().all(|f| read(&dir, f).is_none()), "deleted again");
+    assert!(!indexed(&dir, "n.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn batch_delete_skips_a_file_put_back_by_hand() {
+    let dir = delete_base("ubatch-delete-skip");
+    let a = delete_all(&dir);
+    write(&dir, "u.txt", "u new\n");
+    let undo = steps(&dir, &a, false);
+    let paths: Vec<String> = undo
+        .iter()
+        .map(|(part, _)| match part {
+            Action::DeleteFile { path, .. } => path.clone(),
+            other => panic!("{other:?}"),
+        })
+        .collect();
+    assert_eq!(paths, ["a.txt", "n.txt"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn batch_delete_refuses_when_a_path_holds_something_else() {
+    let dir = delete_base("ubatch-delete-other");
+    let a = delete_all(&dir);
+    write(&dir, "a.txt", "someone else's\n");
+    let Plan::Refuse(r) = plan(&dir, &a, false).unwrap() else { panic!("expected a refusal") };
+    assert!(r.message().contains("a.txt"), "{r:?}");
+    assert_eq!(read(&dir, "a.txt").unwrap(), b"someone else's\n");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn batch_op_describes_the_count() {
+    assert_eq!(BatchOp::Delete.describe(3), "delete of 3 files");
+    assert_eq!(BatchOp::Discard.describe(2), "discard in 2 files");
 }

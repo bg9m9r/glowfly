@@ -259,6 +259,11 @@ fn files_history_save_and_session_effects_keep_their_metadata() {
             SandboxRule::Run,
         ),
         (
+            Effect::Files(FilesEffect::DeletePaths { workdir: w.clone(), files: Vec::new(), mode: crate::effect::DeleteMode::Trash }),
+            ("delete-paths", scoped, scoped, true),
+            SandboxRule::Run,
+        ),
+        (
             Effect::History(HistoryEffect::FileHistory {
                 workdir: w.clone(),
                 path: "a.txt".into(),

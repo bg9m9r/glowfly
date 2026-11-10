@@ -68,6 +68,7 @@ fn write_failed(
         FailedWrite::Restore { path } => crate::msg::restore_failed(&path, &words, undo.is_some(), None),
         // The key hint would name the active tab's Undo, which isn't this one's.
         FailedWrite::DiscardPaths { path, done } => super::work_files_discard::stopped_text(t, done, &path, &words, ""),
+        FailedWrite::DeletePaths { path, done } => super::work_files_delete_many::stopped_text(t, done, &path, &words, ""),
     };
     st.log_in(Some(workdir), false, text);
     if let Some(a) = undo {

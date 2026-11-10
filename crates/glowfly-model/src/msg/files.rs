@@ -2,7 +2,7 @@
 //! files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
 
 use super::{FailedWrite, Inactive};
-use crate::effect::{DeleteMode, DiscardEach, FileOp, WorkFileOk};
+use crate::effect::{DeleteEach, DeleteMode, DiscardEach, FileOp, WorkFileOk};
 use git2::Oid;
 use glowfly_core::error::WriteFailed;
 use glowfly_core::repo::RestoredFrom;
@@ -109,6 +109,15 @@ pub enum WorkFileMsg {
     /// A DiscardPaths effect finished: `done` files were discarded, then it stopped at `failed`
     /// (if any). `undo` puts back every file discarded (one entry, `undo::batch`).
     PathsDiscarded { done: usize, failed: Option<(String, WriteFailed)>, undo: Option<Action> },
+    /// Ask to delete these picked files of Unstaged or Staged Files with one confirmation
+    /// (update/work_files_delete_many.rs).
+    DeletePaths(Vec<String>),
+    /// Run the multi-file delete the confirmation agreed to, the way it described it.
+    DeletePathsConfirmed { files: Vec<DeleteEach>, mode: DeleteMode },
+    /// A DeletePaths effect finished: `done` files went (`no_undo` of them with nothing Undo can
+    /// put back: links, or files over 64 MB), then it stopped at `failed` (if any). `undo` puts
+    /// back every file that went (one entry, `undo::batch`).
+    PathsDeleted { mode: DeleteMode, done: usize, no_undo: usize, failed: Option<(String, WriteFailed)>, undo: Option<Action> },
 }
 
 impl WorkFileMsg {
@@ -125,12 +134,19 @@ impl WorkFileMsg {
             | Self::DeleteFile { .. }
             | Self::DeleteConfirmed(..)
             | Self::DiscardPaths(..)
-            | Self::DiscardPathsConfirmed { .. } => None,
+            | Self::DiscardPathsConfirmed { .. }
+            | Self::DeletePaths(..)
+            | Self::DeletePathsConfirmed { .. } => None,
             Self::PathsDiscarded { failed: None, undo: Some(a), .. } => Some(Inactive::Undo(a)),
             Self::PathsDiscarded { failed: Some((path, error)), done, undo } => {
                 Some(Inactive::WriteFailed { at: FailedWrite::DiscardPaths { path, done }, error, undo })
             }
             Self::PathsDiscarded { .. } => None,
+            Self::PathsDeleted { failed: None, undo: Some(a), .. } => Some(Inactive::Undo(a)),
+            Self::PathsDeleted { failed: Some((path, error)), done, undo, .. } => {
+                Some(Inactive::WriteFailed { at: FailedWrite::DeletePaths { path, done }, error, undo })
+            }
+            Self::PathsDeleted { .. } => None,
             Self::WorkFileDone { op, result } => Some(Inactive::WorkFile { op, result }),
             Self::WorkFileFailed { op, error, undo } => {
                 Some(Inactive::LogAndUndo { text: crate::update::work_files::failure(&op, &error), undo: *undo })

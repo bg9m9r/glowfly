@@ -35,6 +35,7 @@ mod credentials;
 mod custom_commands;
 mod dashboard;
 mod deep_link;
+mod delete_paths;
 mod diff;
 mod diff_gaps;
 mod discard_paths;
