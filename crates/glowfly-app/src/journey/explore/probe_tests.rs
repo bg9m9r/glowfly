@@ -210,3 +210,30 @@ fn undoing_a_checkout_between_branches_at_one_commit_is_an_effect() {
     assert_eq!(took_effect(&Action::Undo, &before, &after), Some(true));
     assert_eq!(took_effect(&Action::Redo, &after, &after), Some(false));
 }
+
+#[test]
+fn names_are_the_ones_the_app_shows() {
+    assert_eq!(super::name(b"src/b.txt"), "src/b.txt");
+    assert_eq!(super::name("caf\u{e9}.txt".as_bytes()), "caf\u{e9}.txt");
+    // A byte that isn't UTF-8 is named as the app's file lists name it, not as U+FFFD.
+    assert_eq!(super::name(b"caf\xe9.txt"), r"caf\xE9.txt");
+    assert_eq!(super::name(b"dir\xff/\xfe"), r"dir\xFF/\xFE");
+}
+
+#[test]
+fn a_conflicted_name_that_is_not_utf8_is_read() {
+    // Written into the index only, so it runs where such a file can't be made (Windows, macOS).
+    let (_fx, dir) = repo("not-utf8");
+    let r = git2::Repository::open(&dir).unwrap();
+    let mut index = r.index().unwrap();
+    for stage in 1..=3u16 {
+        let base = index.get_path(std::path::Path::new("a.txt"), 0).unwrap();
+        let path = b"caf\xe9.txt".to_vec();
+        let flags = (stage << 12) | path.len() as u16;
+        index.add(&git2::IndexEntry { path, flags, ..base }).unwrap();
+    }
+    index.write().unwrap();
+    let reading = read(&dir);
+    assert!(reading.conflicted.contains(r"caf\xE9.txt"), "{:?}", reading.conflicted);
+    assert!(reading.changed.contains(r"caf\xE9.txt"), "{:?}", reading.changed);
+}
