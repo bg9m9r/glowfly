@@ -105,7 +105,7 @@ pub fn revert(workdir: &Path, req: &RevertRequest) -> Result<Reverted> {
     // libgit2's own spelling of the working tree, so `blob_path` sees the file as inside it and
     // runs the clean filters.
     let root = repo.workdir().ok_or_else(|| Error::Unsupported("a bare repository has no working tree".into()))?;
-    let file = root.join(work);
+    let file = root.join(super::workfile::contained(work)?);
     if file.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
         return Err(Error::Unsupported("symbolic links can't be reverted".into()));
     }

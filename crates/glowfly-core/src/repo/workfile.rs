@@ -133,6 +133,16 @@ pub(crate) fn contained(path: &str) -> Result<&str> {
     Ok(path)
 }
 
+/// Where the repository-relative `path` ('/' separators, as a tree, the index, a diff or
+/// `.gitmodules` names it; one trailing '/' for a folder row is allowed) is under `root`, joined
+/// one part at a time so it uses the platform's separators. An error, with nothing joined or
+/// touched, for a name that isn't a plain relative path inside the work tree (`contained`): an
+/// absolute, drive-relative or UNC name joined to `root` would replace it.
+pub fn work_path(root: &Path, path: &str) -> Result<PathBuf> {
+    let rel = contained(path.strip_suffix('/').unwrap_or(path))?;
+    Ok(rel.split('/').fold(root.to_path_buf(), |at, part| at.join(part)))
+}
+
 pub(super) fn problem(p: PathProblem) -> Error {
     Error::Other(p.message())
 }

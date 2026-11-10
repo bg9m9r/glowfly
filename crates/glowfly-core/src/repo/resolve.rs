@@ -133,7 +133,7 @@ pub fn write_partial_resolution(workdir: &Path, path: &str, contents: &str, expe
     };
     let bytes = super::tool_sides::blob_bytes(workdir, id, path, true, None)?;
     let opts = crate::persist::WriteOptions { refuse_links: true, ..Default::default() };
-    Ok(crate::persist::write_file(&workdir.join(path), &bytes, opts)?)
+    Ok(crate::persist::write_file(&super::work_path(workdir, path)?, &bytes, opts)?)
 }
 
 const TYPE_MASK: u32 = 0o170000;
@@ -147,7 +147,7 @@ const STAGE_MASK: u16 = 0x3000;
 pub fn resolve_with_side(workdir: &Path, path: &str, side: Side, expected: &ConflictIds) -> Result<()> {
     let repo = Repository::open(workdir)?;
     let (mut index, conflict) = checked_index(&repo, path, expected)?;
-    let full = workdir.join(path);
+    let full = super::work_path(workdir, path)?;
     let chosen = match side {
         Side::Ours => conflict.our,
         Side::Theirs => conflict.their,
@@ -215,7 +215,7 @@ fn clear_stage(entry: &mut IndexEntry) {
 fn check_out(workdir: &Path, path: &str, index: git2::Index, repo: Repository) -> Result<()> {
     drop(index);
     drop(repo);
-    let full = workdir.join(path);
+    let full = super::work_path(workdir, path)?;
     // checkout-index replaces a file but not a link; a link is never written through.
     if is_link(&full) {
         remove_working(&full)?;

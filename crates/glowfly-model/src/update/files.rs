@@ -107,7 +107,11 @@ pub(super) fn handle(st: &mut AppState, msg: FilesMsg, now: Instant, fx: &mut Ve
         }
         FilesMsg::ShowWorkingFile(p) => {
             if let Some(w) = st.workdir() {
-                fx.push(Effect::Os(OsEffect::RevealPath(w.join(&p))));
+                // A name that isn't a plain path inside the work tree names no file there.
+                match glowfly_core::repo::work_path(&w, &p) {
+                    Ok(file) => fx.push(Effect::Os(OsEffect::RevealPath(file))),
+                    Err(_) => st.log(false, st.settings.lang().trf("details.wip.delete_files.gone", &[("path", &p)])),
+                }
             }
         }
     }

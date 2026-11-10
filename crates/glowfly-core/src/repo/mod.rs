@@ -200,7 +200,7 @@ pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os
 pub use unmerged::unmerged_count;
 pub(crate) use workfile::contained;
 pub use workfile::{
-    PathProblem, Written, check_new_path, check_new_path_for, create_file, delete_file, new_path_warning, new_path_warning_for,
+    PathProblem, Written, check_new_path, check_new_path_for, create_file, delete_file, new_path_warning, new_path_warning_for, work_path,
 };
 pub use workfile_mv::rename_file_staged;
 pub use workfile_rename::rename_file;
@@ -370,6 +370,8 @@ mod walk_reuse_tests;
 mod walk_tests;
 #[cfg(test)]
 mod whole_tests;
+#[cfg(test)]
+mod work_path_tests;
 #[cfg(test)]
 mod workfile_case_tests;
 #[cfg(test)]

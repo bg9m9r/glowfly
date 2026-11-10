@@ -237,8 +237,8 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         }
         last = Some(e.path.clone());
         let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
-        // One part at a time, so the folder uses the platform's separators.
-        let folder = rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+        // A name that isn't a plain path inside the work tree has no folder there.
+        let Ok(folder) = crate::repo::work_path(workdir, rel) else { continue };
         // Never opened when its files name another network place (git_file).
         if !matches!(crate::git_file::other_repo(&folder, workdir), crate::git_file::Found::Repo(_)) {
             continue;
