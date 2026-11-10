@@ -2,8 +2,8 @@
 //! (streamed to disk, with progress at most every `PROGRESS_EVERY` and a stop checked between
 //! chunks), checking a downloaded file again, Install and restart (runner/update_restart.rs), and
 //! at the start: removing the staging folders and old programs earlier updates left behind and
-//! the temporary files stopped downloads left in Downloads, and reading how the last installer
-//! run went.
+//! the temporary files stopped downloads left in Downloads (only after a download was noted in
+//! the logs folder), and reading how the last installer run went.
 
 use super::execute::{Cx, Execute};
 use super::update_restart;
@@ -57,8 +57,9 @@ fn tidy() -> Option<Msg> {
         cleared.unrecorded,
         cleared.failed
     );
-    if let Some(dir) = settings::downloads_dir() {
-        let n = app_update::remove_stopped_downloads(&dir, SystemTime::now());
+    // Downloads is read only after a download was noted: on macOS a first read asks for access.
+    if let Some(own) = settings::log_dir() {
+        let n = app_update::tidy_downloads(&own, settings::downloads_dir, SystemTime::now());
         tracing::debug!("removed {n} temporary files stopped downloads left");
     }
     let last = settings::log_dir().and_then(|dir| app_update::take_last_install(&dir))?;
@@ -76,7 +77,12 @@ fn download(offer: &Offer, cx: &Cx<'_>) -> UpdateMsg {
         }
     };
     let result = app_update::Feed::from_env().and_then(|feed| match settings::downloads_dir() {
-        Some(dir) => app_update::download_streamed(&feed, offer, &dir, &mut progress, &cancelled),
+        Some(dir) => {
+            if let Some(own) = settings::log_dir() {
+                app_update::note_download_started(&own);
+            }
+            app_update::download_streamed(&feed, offer, &dir, &mut progress, &cancelled)
+        }
         None => Err(UpdateError::NoDownloadsFolder),
     });
     match result {
