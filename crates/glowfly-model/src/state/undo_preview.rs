@@ -69,16 +69,7 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
             let args: &[(&str, &dyn std::fmt::Display)] = &[("tag", name)];
             vec![pick(t.trf("undo.preview.delete_tag", args), t.trf("undo.preview.create_tag_again", args))]
         }
-        Action::DeleteTag { name, remotes, .. } => {
-            let args: &[(&str, &dyn std::fmt::Display)] = &[("tag", name)];
-            let mut rows = vec![pick(t.trf("undo.preview.create_tag_again", args), t.trf("undo.preview.delete_tag", args))];
-            // Undo brings back only the local tag; the remotes it was deleted from stay without it.
-            if !redo && !remotes.is_empty() {
-                let list = super::tags::remote_list_in(t, remotes);
-                rows.push(TipRow::Line(t.trf("undo.preview.tag_remotes_stay", &[("remotes", &list)])));
-            }
-            rows
-        }
+        Action::DeleteTag { name, remotes, .. } => deleted_tag(t, name, remotes, redo),
         Action::DiscardAll { .. } => vec![pick(t.tr("undo.preview.restore_changes").into(), t.tr("undo.preview.discard_all_again").into())],
         Action::Discard { path, what, .. } => {
             let reverted = matches!(what, Discarded::RevertedHunk | Discarded::RevertedLines(_) | Discarded::RevertedFile);
@@ -139,6 +130,21 @@ pub fn preview(t: Lang, a: &Action, snap: Option<&Snapshot>, redo: bool) -> TipP
         }
     };
     TipPreview::new(heading, rows)
+}
+
+/// A deleted tag: undo brings back only the local tag, and says which remotes it was deleted
+/// from stay without it; redo deletes it here again.
+fn deleted_tag(t: Lang, name: &str, remotes: &[String], redo: bool) -> Vec<TipRow> {
+    let args: &[(&str, &dyn std::fmt::Display)] = &[("tag", &name)];
+    if redo {
+        return vec![TipRow::Line(t.trf("undo.preview.delete_tag", args))];
+    }
+    let mut rows = vec![TipRow::Line(t.trf("undo.preview.create_tag_again", args))];
+    if !remotes.is_empty() {
+        let list = super::tags::remote_list_in(t, remotes);
+        rows.push(TipRow::Line(t.trf("undo.preview.tag_remotes_stay", &[("remotes", &list)])));
+    }
+    rows
 }
 
 /// "main goes back to 1a2b3c4" (undo, to `from`) or "main moves to 4d5e6f7" (redo, to `to`).
