@@ -70,5 +70,6 @@
   "files.warnings.more.one": "y {count} más",
   "files.warnings.more.other": "y {count} más",
   "files.warnings.shared": "Un archivo de este disco representa varias rutas seguidas ({paths}). Descartar, eliminar y restaurar están desactivados para ellas.",
+  "files.warnings.submodules_unread": "Los submódulos no se muestran: un archivo .gitmodules aquí o en un submódulo no es un archivo simple que Glowfly pueda leer.",
   "files.warnings.title": "Nombres de archivo"
 }

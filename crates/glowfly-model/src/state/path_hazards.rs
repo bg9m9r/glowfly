@@ -69,7 +69,8 @@ pub fn refusal(st: &AppState, msg: &Msg) -> Option<String> {
 }
 
 /// The working-tree banner's lines about paths: index paths that are one name to some file
-/// system, and a `core.ignorecase` that disagrees with this one. Empty when all is well.
+/// system, a `core.ignorecase` that disagrees with this one, and submodules left out because a
+/// `.gitmodules` isn't a plain file. Empty when all is well.
 pub fn warnings(t: Lang, snap: &Snapshot) -> Vec<String> {
     let mut out = Vec::new();
     let (here, elsewhere): (Vec<&Collision>, Vec<&Collision>) =
@@ -88,5 +89,8 @@ pub fn warnings(t: Lang, snap: &Snapshot) -> Vec<String> {
         out.push(t.trf("files.warnings.elsewhere", &[("paths", &list(&elsewhere))]));
     }
     out.extend(snap.case_mismatch().map(str::to_owned));
+    if snap.submodules_unread {
+        out.push(t.tr("files.warnings.submodules_unread").to_owned());
+    }
     out
 }
