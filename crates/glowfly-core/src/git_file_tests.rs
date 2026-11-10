@@ -53,6 +53,11 @@ fn a_commondir_is_read_up_to_its_first_nul() {
         write(&admin, "commondir", "./link\0\n");
         assert!(matches!(common_dir_of(&admin, &dir), Named::Refused(_)), "the text before the NUL is checked");
     }
+    // The whole file is trimmed before the NUL ends it: what is left before the NUL stays.
+    let file = admin.join("commondir");
+    assert_eq!(value_in(b"../.. \0z"), Value::Text("../.. ".into()));
+    write(&admin, "commondir", "../..\n\0");
+    assert_eq!(common_dir_of(&admin, &dir), Named::Refused(file), "a LF before the NUL is part of the path");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -93,11 +98,16 @@ fn a_git_file_is_read_whole_as_libgit2_reads_it() {
     // Only ASCII whitespace is trimmed, after `gitdir:` and at the end.
     write(&inner, ".git", "gitdir:\t \x0b./sub \x0c\r\n");
     assert_eq!(dirs_of(&inner, &dir), Found::Repo(RepoDirs { git_dir: inner.join("./sub"), common: inner.join("./sub") }));
-    assert_eq!(value_in("gitdir: link\u{a0}\n".as_bytes()), Value::Text("gitdir: link\u{a0}".into()), "U+00A0 is kept");
-    if link_to(&net_place(), &inner.join("link\u{a0}"), true) {
-        write(&inner, ".git", "gitdir: link\u{a0}\n");
-        assert_eq!(dirs_of(&inner, &dir), Found::Refused(inner.join("link\u{a0}")));
+    // libgit2 trims before the NUL takes effect: `x<SP>` and `x<LF>` are its paths.
+    assert_eq!(value_in(b"gitdir: x \0y"), Value::Text("gitdir: x ".into()));
+    write(&inner, ".git", "gitdir: x\n\0");
+    assert_eq!(dirs_of(&inner, &dir), Found::Refused(dot.clone()), "a LF before the NUL");
+    // A locale may count U+00A0 as a space: a value starting or ending with one isn't followed.
+    for text in ["gitdir: link\u{a0}\n", "gitdir:\u{a0}link\n", "gitdir: ./sub\u{3000}"] {
+        write(&inner, ".git", text);
+        assert_eq!(dirs_of(&inner, &dir), Found::Refused(dot.clone()), "{text:?}");
     }
+    assert_eq!(value_in("gitdir: a\u{a0}b".as_bytes()), Value::Text("gitdir: a\u{a0}b".into()), "inside a name it is kept");
     // Too big to read whole: libgit2 would still read it.
     write(&inner, ".git", &format!("gitdir: {}{}", git_spelling(&net_place()), " ".repeat(SMALL_FILE as usize)));
     assert_eq!(dirs_of(&inner, &dir), Found::Refused(dot));
@@ -202,6 +212,8 @@ fn worktree_records_absolute_relative_and_network() {
 ",
     );
     assert_eq!(worktree_folder(&admin, &common), Named::Refused(record));
+    write(&admin, "gitdir", " \n");
+    assert_eq!(worktree_folder(&admin, &common), Named::Refused(admin.join("gitdir")), "an empty record");
     std::fs::remove_file(admin.join("gitdir")).unwrap();
     assert_eq!(worktree_folder(&admin, &common), Named::None);
     let _ = std::fs::remove_dir_all(&dir);

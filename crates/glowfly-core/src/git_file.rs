@@ -80,8 +80,9 @@ enum Value {
 }
 
 /// `file` read as libgit2 reads a `.git` file, `commondir` or worktree record
-/// (`git_futils_readbuffer`, then `git_str_rtrim`): up to the first NUL, with trailing ASCII
-/// whitespace (`git__isspace`, never Unicode spaces) trimmed and every line kept.
+/// (`git_futils_readbuffer`, then `git_str_rtrim`): trailing ASCII whitespace (`git__isspace`)
+/// trimmed from the whole file first, then cut at the first NUL with nothing trimmed again (so
+/// `x<SP><NUL>` is `x<SP>`), every line kept.
 fn value_of(file: &Path) -> Value {
     let Some(bytes) = read_file_bounded(file, SMALL_FILE) else {
         return if std::fs::symlink_metadata(file).is_ok() { Value::Unsure } else { Value::Missing };
@@ -90,12 +91,17 @@ fn value_of(file: &Path) -> Value {
 }
 
 fn value_in(bytes: &[u8]) -> Value {
-    let b = up_to_nul(bytes);
-    let b = &b[..b.iter().rposition(|c| !git_space(*c)).map_or(0, |n| n + 1)];
-    match std::str::from_utf8(b) {
-        Ok(t) if !t.contains(['\n', '\r']) => Value::Text(t.to_owned()),
+    let trimmed = &bytes[..bytes.iter().rposition(|c| !git_space(*c)).map_or(0, |n| n + 1)];
+    match std::str::from_utf8(up_to_nul(trimmed)) {
+        Ok(t) if !t.contains(['\n', '\r']) && !t.ends_with(unicode_space) => Value::Text(t.to_owned()),
         _ => Value::Unsure,
     }
+}
+
+/// A non-ASCII space: on Unix libgit2 trims with `isspace()`, which a locale other than C may
+/// widen, so a value starting or ending with one is never followed.
+fn unicode_space(c: char) -> bool {
+    !c.is_ascii() && c.is_whitespace()
 }
 
 /// A `commondir` or worktree record's value as libgit2 resolves it: absolute as it is, and
@@ -164,6 +170,9 @@ pub(crate) fn dirs_of(folder: &Path, home: &Path) -> Found {
         // Nothing after `gitdir:`: libgit2 counts the file as malformed.
         if named.is_empty() {
             return Found::None;
+        }
+        if named.starts_with(unicode_space) {
+            return Found::Refused(dot);
         }
         let named = joined(folder, named);
         if !may_follow(&named, home) {
@@ -241,10 +250,10 @@ pub(crate) fn worktree_folder(admin: &Path, home: &Path) -> Named {
     // libgit2's `git_worktree__read_link`: the whole trimmed record.
     let text = match value_of(&file) {
         Value::Missing => return Named::None,
-        Value::Text(t) if t.is_empty() => return Named::None,
         Value::Text(t) => t,
         Value::Unsure => return Named::Refused(file),
     };
+    // An empty record is an absolute path to libgit2 (`dirname("")`): refused below too.
     let Some(named) = joined_as_libgit2(admin, &text) else { return Named::Refused(file) };
     if may_follow(&named, home) { Named::At(named) } else { Named::Refused(named) }
 }

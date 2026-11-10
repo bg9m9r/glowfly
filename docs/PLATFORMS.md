@@ -147,12 +147,14 @@ trust scan all run for untrusted repositories too.
    line not starting with `.` (a quoted one too) is refused, since libgit2 reads it from the
    process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
    and more than 32 stores in all. A `.git` file, `commondir` and worktree record are read as
-   libgit2 reads them: the whole file up to its first NUL, with trailing ASCII whitespace
-   trimmed (space, TAB, LF, VT, FF, CR, never a Unicode space) and, after `gitdir:`, leading
-   ASCII whitespace too. One whose value still holds a LF or CR (libgit2 takes every line as one
-   path), isn't UTF-8, or can't be read whole (over 4 KiB, not a regular file) is refused, and so
-   is a `commondir` or record that is relative without starting with `./` or `../`, which
-   libgit2 resolves against the process's own folder.
+   libgit2 reads them: trailing ASCII whitespace (space, TAB, LF, VT, FF, CR) is trimmed from
+   the whole file first, then the value ends at the first NUL with nothing trimmed again (so
+   `x<SP><NUL>` names `x<SP>`), and after `gitdir:` leading ASCII whitespace is skipped. One
+   whose value still holds a LF or CR (libgit2 takes every line as one path), starts or ends
+   with a non-ASCII space (libgit2's `isspace()` on Unix depends on the locale), isn't UTF-8 or
+   can't be read whole (over 4 KiB, not a regular file) is refused, and so is a `commondir` or
+   record that is empty or relative without starting with `./` or `../`, which libgit2 resolves
+   against the process's own folder.
 2. **The spelling is checked before anything is touched.** On Windows, with either separator:
    UNC (`\\server\share`), `\\?\UNC\`, `\\.\UNC\` and `\??\UNC\`, `\\wsl$` and
    `\\wsl.localhost`, and any other device-namespace path (`\\?\GLOBALROOT\…`, `\\.\pipe\…`) that
