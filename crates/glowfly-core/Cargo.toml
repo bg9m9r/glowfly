@@ -19,6 +19,11 @@ testkit = []
 # The checks the fuzz targets in fuzz/ run (src/fuzzing/), and the crate-private parsers they
 # reach. Only the fuzz crate turns this on.
 fuzzing = []
+# Trust the committed minisign test key (app_update/signature.rs TEST_KEY) for a feed folder
+# (GLOWFLY_UPDATE_FEED): only for the Installers workflow's builds, whose update-feed checks sign
+# local feeds with it. Never on in a release build; glowfly-core's own tests make their test-key
+# feeds themselves (app_update/feed.rs, Feed::TestKeyFolder).
+installer-check = []
 
 [dependencies]
 chrono.workspace = true

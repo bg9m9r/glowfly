@@ -21,8 +21,9 @@ pub(super) const KEYS: &[&str] = &[
 
 /// The test key (C61175B0AC05E8D3). Its secret half is committed on purpose
 /// (`minisign_fixtures/test-only.key`), so the tests and the installer checks can sign local
-/// feeds; it is trusted only for a feed folder (GLOWFLY_UPDATE_FEED), never for the hosting
-/// service's releases.
+/// feeds. It is trusted only for a feed folder (GLOWFLY_UPDATE_FEED), and only in glowfly-core's
+/// tests and builds with the `installer-check` feature (feed.rs, `Feed::TestKeyFolder`). A release
+/// build never trusts it.
 pub(super) const TEST_KEY: &str = "RWTT6AWssHURxjR/C+5C0lcSHiG4EvwQ/guMhtYrkrb3zLIErX70zLDk";
 
 /// The largest signature file read (minisign's are about 300 bytes).

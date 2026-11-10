@@ -161,7 +161,7 @@ fn a_folder_feed_download_is_verified() {
     let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
     std::fs::create_dir_all(&feed_dir).unwrap();
     standard_feed(&feed_dir);
-    let feed = Feed::Folder(feed_dir);
+    let feed = Feed::TestKeyFolder(feed_dir);
     for (kind, name, bytes) in [(InstallKind::Installer, MSI, MSI_BYTES), (InstallKind::Portable, ZIP, ZIP_BYTES)] {
         let o = offer_for(&feed, kind);
         assert_eq!(o.asset.as_ref().map(|a| a.name.as_str()), Some(name));
@@ -187,7 +187,7 @@ fn a_folder_feed_rejects_a_wrong_checksum() {
     std::fs::create_dir_all(&feed_dir).unwrap();
     let sums = format!("{}  {MSI}\n{}", "0".repeat(64), sum_line(ZIP, ZIP_BYTES));
     write_feed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES), (ZIP, ZIP_BYTES)], Some(sums));
-    let feed = Feed::Folder(feed_dir);
+    let feed = Feed::TestKeyFolder(feed_dir);
     let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err().to_string();
     assert!(err.contains("didn't match its published checksum"), "{err}");
     assert!(is_empty(&dl), "no file and no temp file");
@@ -200,7 +200,7 @@ fn a_file_changed_after_listing_is_refused() {
     let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
     std::fs::create_dir_all(&feed_dir).unwrap();
     standard_feed(&feed_dir);
-    let feed = Feed::Folder(feed_dir.clone());
+    let feed = Feed::TestKeyFolder(feed_dir.clone());
     let o = offer_for(&feed, InstallKind::Installer);
     std::fs::write(feed_dir.join(MSI), [MSI_BYTES, b"!"].concat()).unwrap();
     let err = download(&feed, &o, &dl).unwrap_err().to_string();
@@ -218,7 +218,7 @@ fn a_folder_feed_without_the_files_sum_downloads_nothing() {
     let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
     std::fs::create_dir_all(&feed_dir).unwrap();
     write_feed(&feed_dir, "v0.1.1", &[(MSI, MSI_BYTES), (ZIP, ZIP_BYTES)], Some(sum_line(ZIP, ZIP_BYTES)));
-    let feed = Feed::Folder(feed_dir.clone());
+    let feed = Feed::TestKeyFolder(feed_dir.clone());
     let err = download(&feed, &offer_for(&feed, InstallKind::Installer), &dl).unwrap_err().to_string();
     assert!(err.contains("doesn't publish a checksum") && err.contains(MSI), "{err}");
     assert!(is_empty(&dl));
@@ -239,7 +239,7 @@ fn check_and_download_outcomes() {
     let dir = scratch("check");
     let (feed_dir, dl) = (dir.join("feed"), dir.join("dl"));
     std::fs::create_dir_all(&feed_dir).unwrap();
-    let feed = Feed::Folder(feed_dir.clone());
+    let feed = Feed::TestKeyFolder(feed_dir.clone());
     let check = |current: &str, platform| check_and_download(&feed, &v(current), platform, InstallKind::Installer, &dl);
     assert_eq!(check("0.1.0", Some(WIN)), Ok(Checked::UpToDate { latest: None }), "no release.json");
     standard_feed(&feed_dir);
@@ -275,7 +275,7 @@ fn a_flatpak_copy_is_told_and_downloads_nothing() {
     ];
     let sums: String = files.iter().map(|(n, b)| sum_line(n, b)).collect();
     write_feed(&feed_dir, "v0.1.1", &files, Some(sums));
-    let feed = Feed::Folder(feed_dir);
+    let feed = Feed::TestKeyFolder(feed_dir);
     let linux = Some(Platform { os: TargetOs::Linux, arch: Arch::X86_64 });
     match check_and_download(&feed, &v("0.1.0"), linux, InstallKind::Flatpak, &dl) {
         Ok(Checked::UpdateWithFlatpak { offer }) => assert_eq!((offer.version, offer.asset), (v("0.1.1"), None)),
@@ -310,7 +310,7 @@ fn a_folder_feed_serves_arm_files() {
     ];
     let sums: String = files.iter().map(|(n, b)| sum_line(n, b)).collect();
     write_feed(&feed_dir, "v0.1.1", &files, Some(sums));
-    let feed = Feed::Folder(feed_dir);
+    let feed = Feed::TestKeyFolder(feed_dir);
     let release = feed.latest().unwrap().expect("a release");
     let wanted = [
         (Platform { os: TargetOs::Windows, arch: Arch::Aarch64 }, InstallKind::Installer, files[0]),

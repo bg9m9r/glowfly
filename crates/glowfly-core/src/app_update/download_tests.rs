@@ -17,7 +17,7 @@ fn feed_with(dir: &Path, bytes: &[u8], sum_of: &[u8]) -> (Feed, PathBuf) {
     let feed_dir = dir.join("feed");
     std::fs::create_dir_all(&feed_dir).unwrap();
     write_feed(&feed_dir, "v0.1.1", &[(MSI, bytes)], Some(sum_line(MSI, sum_of)));
-    (Feed::Folder(feed_dir), dir.join("dl"))
+    (Feed::TestKeyFolder(feed_dir), dir.join("dl"))
 }
 
 fn names(dir: &Path) -> Vec<String> {

@@ -2,7 +2,8 @@
 # what each step leaves behind; it also checks that the zip and the install hold the licence and
 # notice files. Run by the Installers workflow (.github/workflows/installers.yml)
 # after scripts/package-windows.ps1 built an older MSI (tag v0.0.1) and the current one from the
-# same program.
+# same program. The packages must come from a program built with --features installer-check:
+# the update-feed check signs its feeds with the test key.
 #
 #   pwsh scripts/installer-check-windows.ps1 -Msi dist/glowfly-v0.1.0-x86_64-pc-windows-msvc.msi `
 #     -OldMsi <dir>/glowfly-v0.0.1-x86_64-pc-windows-msvc.msi `
