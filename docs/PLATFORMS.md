@@ -382,8 +382,9 @@ trust scan all run for untrusted repositories too.
    `rename_noclobber`): it takes the next free name, or refuses the download after 5
    (`UpdateError::NameTaken`). Temporary files a stopped or killed download left
    (`.glowfly-*.<pid>.<n>.tmp`, regular files older than an hour, so one still being written is
-   left alone) are removed at the next start and before the next download
-   (`app_update::remove_stopped_downloads`). Install and restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
+   left alone) are removed before the next download, and at the next start only after a
+   download was noted in the logs folder (`app_update::tidy_downloads`): a start never reads
+   Downloads by itself, since on macOS that read asks the user for access. Install and restart (`app_update::restart`, `runner/update_restart.rs`) follows these rules:
    - The file is verified again (`read_verified`) before it is run, copied or unpacked.
    - Only a portable copy's program (the resolved `current_exe`) and the doc files already
      beside it are replaced, through `persist::move_aside` and `persist::write_file`, and a
