@@ -278,13 +278,15 @@ pub(crate) fn worktree_head(repo: &Repository, name: &str) -> Option<Oid> {
 pub(crate) struct Offsite {
     /// Repository-relative, with `/`.
     pub path: String,
-    /// The folder (or its `.git`) itself is a link leading there: libgit2's submodule list
-    /// stats it through the link.
+    /// The folder (or its `.git`) itself is a link leading there (libgit2's submodule list
+    /// stats it through the link), or the gitlink's name can't be looked at.
     pub link: bool,
 }
 
 /// The gitlinks in `repo`'s index whose folder, or the repository in it, names a place that
-/// may not be followed from the work tree.
+/// may not be followed from the work tree, and (as `link`) the ones whose name can't be looked
+/// at. None in a bare repository (libgit2 looks no submodule up there) or without a readable
+/// index (libgit2's status then fails by itself).
 pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
     let (Some(workdir), Ok(mut index)) = (repo.workdir(), repo.index()) else { return Vec::new() };
     let _ = index.read(false);
@@ -296,9 +298,20 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
             continue;
         }
         last = Some(e.path.clone());
-        let Ok(path) = String::from_utf8(e.path) else { continue };
-        // A name that isn't a plain path inside the work tree has no folder there.
-        let Ok(folder) = crate::repo::work_path(workdir, &path) else { continue };
+        // libgit2 joins the name's bytes to the work tree as they are. A name that can't be
+        // joined the same way here (not UTF-8, or not a plain relative path inside the work
+        // tree) can't be looked at, so it counts as one libgit2 must be kept from.
+        let path = match String::from_utf8(e.path) {
+            Ok(p) => p,
+            Err(e) => {
+                out.push(Offsite { path: String::from_utf8_lossy(e.as_bytes()).into_owned(), link: true });
+                continue;
+            }
+        };
+        let Ok(folder) = crate::repo::work_path(workdir, &path) else {
+            out.push(Offsite { path, link: true });
+            continue;
+        };
         let dot = folder.join(".git");
         if !may_follow(&folder, workdir) {
             out.push(Offsite { path, link: true });
@@ -307,6 +320,32 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
         }
     }
     out
+}
+
+/// Whether the repository of `d`, found in `folder`, has `folder` as the work tree libgit2 would
+/// give it (`load_workdir`): no linked-worktree record or `commondir` in its git dir, and every
+/// `core.worktree` its own config files set (as written; relative to the git dir) resolves to
+/// `folder`. False when that can't be told. Called once `other_repo` allowed the repository, so
+/// the config files' includes are ones libgit2 may follow.
+pub(crate) fn work_tree_is(d: &RepoDirs, folder: &Path) -> bool {
+    // libgit2 takes a git dir with a `gitdir` file as a linked worktree's and uses the folder
+    // that record names.
+    if d.common != d.git_dir || d.git_dir.join("gitdir").symlink_metadata().is_ok() {
+        return false;
+    }
+    let Ok(mut cfg) = git2::Config::new() else { return false };
+    for (file, level) in [(d.common.join("config"), ConfigLevel::Local), (d.git_dir.join("config.worktree"), ConfigLevel::Worktree)] {
+        if file.is_file() && cfg.add_file(&file, level, false).is_err() {
+            return false;
+        }
+    }
+    let Ok(entries) = cfg.entries(Some(r"^core\.worktree$")) else { return false };
+    let real = crate::paths::resolve(folder);
+    let mut same = true;
+    let read = entries.for_each(|e| {
+        same &= crate::config_entry::utf8(e).is_some_and(|v| !v.is_empty() && crate::paths::resolve(&joined(&d.git_dir, v)) == real);
+    });
+    read.is_ok() && same
 }
 
 /// Whether libgit2 is kept from `repo`'s submodules: one of its gitlinks names a place that may

@@ -217,20 +217,25 @@ trust scan all run for untrusted repositories too.
    itself wherever it looks a submodule up, and its status of a checked-out submodule compares
    that submodule's work tree, which reads the submodule's own `.gitmodules`, and so on down. So
    the work tree's file and that of every checked-out submodule below it are looked at first
-   (`gitmodules::unread_anywhere`: to depth 8 and 4096 submodules, past which it counts as not
-   plain; a submodule below the first level whose files name a place rule 1 refuses counts
-   too). When any isn't plain, the Submodules list is empty, the working-tree banner says so
+   (`gitmodules::unread_anywhere`). Whatever can't be told counts as not plain: a gitlink whose
+   name isn't UTF-8 or isn't a plain relative path inside the work tree (rule 9; rule 7's scan
+   counts such a gitlink the same way), a submodule whose repository names another work tree
+   than its own folder (a `core.worktree` that doesn't resolve to it, or a linked-worktree record
+   or `commondir` in its git dir; libgit2 would compare that work tree), one whose index can't
+   be read, one below the first level whose files name a place rule 1 refuses, and anything
+   past depth 8 or 4096 submodules. When any isn't plain, the Submodules list is empty, the working-tree banner says so
    (`Snapshot::submodules_unread`), and libgit2's status and its diffs to the working tree leave
    out every submodule row (`git_file::submodules_unread`, the same places as rule 7, plus the
    gitlink diff's "changes inside" flag and the status before a worktree's creation is
-   undone). The walk costs one stat and small read of `.gitmodules` and one stat of the index per
-   checked-out submodule on each status read; a submodule's index is parsed again only when its
-   size or time changed.
+   undone). The banner line is set by full loads only, so it can lag the list until the next
+   one. Per checked-out submodule the walk costs what `git_file::other_repo` looks at, one read
+   of its config, one stat and small read of `.gitmodules` and one stat of its index on each
+   status read; a submodule's index is parsed again only when its size or time changed.
 9. **A name from a tree, the index, a diff, a status row or `.gitmodules` is joined to the work
    tree only through `repo::work_path`** (the `contained` rules: no leading `/`, no empty, `.`
    or `..` part, no `.git` part; on Windows no `\` or `:` and no part ending in a dot or space).
    `Path::join` replaces the work tree with an absolute, drive-relative (`C:x`) or UNC name
-   (`\server\share\a`, `//server/share/a`, `\?\…`), and git stores `\` and `:` as ordinary name
+   (`\\server\share\a`, `//server/share/a`, `\\?\…`), and git stores `\` and `:` as ordinary name
    bytes. A name that isn't a plain relative path inside the work tree is never looked up: it
    counts as absent (a commit's file list, LFS marks, marker counts, binary sides, the open-file
    stamp), a gitlink so named has no folder, and Open, Show in folder, the editor, the external
@@ -992,11 +997,8 @@ Gaps that are accepted for now:
   allowed, a loose object file or pack file that is itself a link is followed when libgit2 reads
   that object (only the store folders' direct entries are checked), and a work tree's
   `.gitignore` and `.gitattributes` that are links are read through by libgit2
-  (#699). libgit2 still reads a `.gitmodules` that isn't plain (rule 8) where it looks a
-  submodule up outside those reads: a status or working-tree diff that meets a nested repository
-  the index doesn't track, or a gitlink the compared commit doesn't have; and the single-path
-  actions the user starts (staging or discarding a hunk, Restore file, resolving a conflict with
-  one side) when the path acted on is itself a gitlink. A file swapped between the check and the read isn't caught.
+  (#699). Rule 8 covers the status, Submodules list and working-tree diff reads it names; libgit2
+  calls outside them are not covered. A file swapped between the check and the read isn't caught.
   A local repository's linked worktree or submodule on a share is shown but not validated or
   counted (the submodule as not checked out). A refused nested repository that later stops
   naming a network place is tracked again only once its folder's `.git` comes or goes.

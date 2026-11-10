@@ -225,8 +225,14 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         }
         last = Some(e.path.clone());
         let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
-        // A name that isn't a plain path inside the work tree has no folder there.
-        let Ok(folder) = crate::repo::work_path(workdir, rel) else { continue };
+        // An absolute, drive or `..` spelling is never joined. Any other name is a folder git's
+        // status may run git in, also one that reads as `.git` on another file system.
+        let plain = !rel.starts_with('/') && rel.split('/').all(|p| !p.is_empty() && p != "." && p != "..");
+        if !plain || (cfg!(windows) && rel.contains(['\\', ':'])) {
+            continue;
+        }
+        // One part at a time, so the folder uses the platform's separators.
+        let folder = rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
         // Never opened when its files name another network place (git_file).
         if !matches!(crate::git_file::other_repo(&folder, workdir), crate::git_file::Found::Repo(_)) {
             continue;

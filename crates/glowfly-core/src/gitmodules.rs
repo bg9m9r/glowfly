@@ -5,7 +5,7 @@
 //! callers keep libgit2 from the submodules of such a repository (`git_file::submodules_unread`).
 
 use crate::config_includes::read_file_bounded;
-use crate::git_file::{Found, dirs_of, other_repo};
+use crate::git_file::{Found, other_repo, work_tree_is};
 use git2::Repository;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -67,68 +67,77 @@ const MAX_WALKED: usize = 4096;
 /// Whether libgit2 would read a `.gitmodules` differently from git anywhere it reads one for
 /// `repo`'s work tree: the work tree's own, or that of a checked-out submodule at any depth
 /// (libgit2's status of a submodule compares its work tree, which reads the submodule's own
-/// `.gitmodules` when its index holds a gitlink, and so on down). A submodule below the first
-/// level whose files name a place that may not be followed counts too, as do ones past
-/// `MAX_DEPTH` or `MAX_WALKED`, which can't be told. Per checked-out submodule: one stat and
-/// bounded read of its `.gitmodules`, one stat of its index, and its index read again only when
-/// that file changed.
+/// `.gitmodules` when its index holds a gitlink, and so on down). Whatever can't be told counts
+/// as unread: a gitlink whose name isn't UTF-8 or isn't a plain relative path inside the work
+/// tree, a submodule whose repository names another work tree than its own folder
+/// (`git_file::work_tree_is`), one whose index can't be read, one below the first level whose
+/// files name a place that may not be followed, and ones past `MAX_DEPTH` or `MAX_WALKED`. Per
+/// checked-out submodule: what `git_file::other_repo` looks at, one stat and bounded read of its
+/// `.gitmodules`, one stat of its index, and its index read again only when that file changed.
 pub(crate) fn unread_anywhere(repo: &Repository) -> bool {
+    // A bare repository: libgit2 looks no submodule up without a work tree.
     let Some(workdir) = repo.workdir() else { return false };
     if kind(workdir) == Gitmodules::Unread {
         return true;
     }
-    let Ok(mut index) = repo.index() else { return false };
+    let Ok(mut index) = repo.index() else { return true };
     let _ = index.read(false);
-    let links = index.iter().filter(|e| e.mode == 0o160000).filter_map(|e| String::from_utf8(e.path).ok()).collect();
+    let links = index.iter().filter(|e| e.mode == 0o160000).map(|e| e.path).collect();
     below(workdir, links, 0, &mut 0)
 }
 
-/// Whether a checked-out submodule among `links` (gitlink paths in `workdir`'s index), or below
-/// one, has an unread `.gitmodules`.
-fn below(workdir: &Path, mut links: Vec<String>, depth: usize, walked: &mut usize) -> bool {
+/// Whether a checked-out submodule among `links` (gitlink names in `workdir`'s index), or below
+/// one, has an unread `.gitmodules` or can't be told.
+fn below(workdir: &Path, mut links: Vec<Vec<u8>>, depth: usize, walked: &mut usize) -> bool {
+    // A conflicted gitlink has an entry per side.
     links.dedup();
-    for path in links {
-        // A name that isn't a plain path inside the work tree has no folder there.
-        let Ok(folder) = crate::repo::work_path(workdir, &path) else { continue };
-        // The first level was looked at whole by `git_file::offsite_gitlinks`; below it, what
-        // libgit2 would open is checked here.
-        let found = if depth == 0 { dirs_of(&folder, workdir) } else { other_repo(&folder, workdir) };
-        let dirs = match found {
+    for name in links {
+        // libgit2 joins the name's bytes to the work tree as they are; a name that can't be
+        // joined the same way here can't be looked at.
+        let Ok(path) = String::from_utf8(name) else { return true };
+        let Ok(folder) = crate::repo::work_path(workdir, &path) else { return true };
+        let dirs = match other_repo(&folder, workdir) {
             Found::Repo(d) => d,
+            // No `.git` there, or one that names nothing: libgit2 finds no repository to open.
             Found::None => continue,
+            // At the first level `git_file::offsite_gitlinks` reports it, and every caller
+            // keeps libgit2 from such a submodule by that.
             Found::Refused(_) if depth == 0 => continue,
             Found::Refused(_) => return true,
         };
         *walked += 1;
-        if depth + 1 >= MAX_DEPTH || *walked > MAX_WALKED || kind(&folder) == Gitmodules::Unread {
+        if depth + 1 >= MAX_DEPTH || *walked > MAX_WALKED || !work_tree_is(&dirs, &folder) || kind(&folder) == Gitmodules::Unread {
             return true;
         }
-        if below(&folder, gitlinks_of(&dirs.git_dir.join("index")), depth + 1, walked) {
+        let Some(inner) = gitlinks_of(&dirs.git_dir.join("index")) else { return true };
+        if below(&folder, inner, depth + 1, walked) {
             return true;
         }
     }
     false
 }
 
-/// An index file's size and time when it was read, and the gitlink paths it held.
-type Seen = (u64, Option<SystemTime>, Vec<String>);
+/// An index file's size and time when it was read, and the gitlink names it held.
+type Seen = (u64, Option<SystemTime>, Vec<Vec<u8>>);
 
-/// The gitlink paths in the index file `file`, sorted as the index is; remembered until the
-/// file's size or time changes. Empty for a missing or unreadable index.
-fn gitlinks_of(file: &Path) -> Vec<String> {
+/// The gitlink names in the index file `file`, sorted as the index is; remembered until the
+/// file's size or time changes. Empty without an index file (libgit2 then reads an empty
+/// index); None for one that can't be read.
+fn gitlinks_of(file: &Path) -> Option<Vec<Vec<u8>>> {
     static SEEN: Mutex<Option<HashMap<PathBuf, Seen>>> = Mutex::new(None);
-    let Ok(meta) = std::fs::metadata(file) else { return Vec::new() };
+    let meta = match std::fs::metadata(file) {
+        Ok(m) => m,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Some(Vec::new()),
+        Err(_) => return None,
+    };
     let stamp = (meta.len(), meta.modified().ok());
     if let Ok(seen) = SEEN.lock()
         && let Some((len, time, links)) = seen.as_ref().and_then(|m| m.get(file))
         && (*len, *time) == stamp
     {
-        return links.clone();
+        return Some(links.clone());
     }
-    let links: Vec<String> = match git2::Index::open(file) {
-        Ok(index) => index.iter().filter(|e| e.mode == 0o160000).filter_map(|e| String::from_utf8(e.path).ok()).collect(),
-        Err(_) => Vec::new(),
-    };
+    let links: Vec<Vec<u8>> = git2::Index::open(file).ok()?.iter().filter(|e| e.mode == 0o160000).map(|e| e.path).collect();
     if let Ok(mut seen) = SEEN.lock() {
         let map = seen.get_or_insert_with(HashMap::new);
         if map.len() >= MAX_WALKED {
@@ -136,7 +145,7 @@ fn gitlinks_of(file: &Path) -> Vec<String> {
         }
         map.insert(file.to_path_buf(), (stamp.0, stamp.1, links.clone()));
     }
-    links
+    Some(links)
 }
 
 #[cfg(test)]
