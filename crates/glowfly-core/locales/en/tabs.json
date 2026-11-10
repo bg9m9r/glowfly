@@ -20,5 +20,9 @@
   "tabs.menu.reopen": "Reopen closed tab",
   "tabs.menu.reopen.blocked": "No tab has been closed yet.",
   "tabs.new_tab.name": "New tab",
-  "tabs.new_tab.tip": "New tab"
+  "tabs.new_tab.tip": "New tab",
+  "tabs.saved_file.blocked.toast": "Glowfly can't read the tabs it saved last time ({detail}), so the open tabs aren't saved until it can.",
+  "tabs.saved_file.kept.log.one": "{count} line of the saved tabs file couldn't be read and was dropped; the file was kept as {path} first.",
+  "tabs.saved_file.kept.log.other": "{count} lines of the saved tabs file couldn't be read and were dropped; the file was kept as {path} first.",
+  "tabs.saved_file.read_late.log": "The tabs saved last time could be read now; they are kept and open again at the next start."
 }

@@ -85,7 +85,7 @@ pub(crate) fn skipped(effect: &Effect) -> bool {
         Effect::Ui(_)
             | Effect::Os(OsEffect::PickFolder { .. } | OsEffect::OpenUrl(_) | OsEffect::OpenTerminal(_) | OsEffect::OpenFolder(_))
             | Effect::Network(NetworkEffect::Forge { .. }) | Effect::Account(_)
-            | Effect::Save(SaveEffect::Settings(_) | SaveEffect::Recent(_) | SaveEffect::Tabs { .. })
+            | Effect::Save(_)
             | Effect::Control(ControlEffect::Watch(_) | ControlEffect::SweepWatch { .. } | ControlEffect::AnswerPrompt { .. })
             // Shells are never started by these tests.
             | Effect::Terminal(_)

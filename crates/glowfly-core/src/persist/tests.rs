@@ -1,13 +1,13 @@
 use super::*;
 
-fn scratch(name: &str) -> PathBuf {
+pub(super) fn scratch(name: &str) -> PathBuf {
     let dir = crate::paths::temp_dir().join(format!("glowfly-persist-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
 
-fn leftovers(dir: &Path) -> Vec<String> {
+pub(super) fn leftovers(dir: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
     names.sort();
     names
@@ -166,7 +166,7 @@ fn a_read_only_target_is_replaced_and_stays_read_only() {
 
 /// Makes `link` a symbolic link to `target`; false where links can't be made (Windows without
 /// Developer Mode or the privilege).
-fn symlink_file(target: &Path, link: &Path) -> bool {
+pub(super) fn symlink_file(target: &Path, link: &Path) -> bool {
     #[cfg(unix)]
     let made = std::os::unix::fs::symlink(target, link);
     #[cfg(windows)]

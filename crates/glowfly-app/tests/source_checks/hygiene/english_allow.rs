@@ -18,7 +18,6 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-runner/src/patches.rs", 4),
     ("crates/glowfly-runner/src/platform/terminal.rs", 3),
     ("crates/glowfly-runner/src/profiles.rs", 1),
-    ("crates/glowfly-runner/src/sandbox.rs", 3),
     ("crates/glowfly-runner/src/saves.rs", 3),
     ("crates/glowfly-runner/src/ssh.rs", 2),
     ("crates/glowfly-runner/src/stashes.rs", 1),

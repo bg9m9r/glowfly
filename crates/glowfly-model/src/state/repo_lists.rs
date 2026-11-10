@@ -7,6 +7,9 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Settings;
 use std::path::{Path, PathBuf};
 
+/// The most entries the Recent list holds.
+pub const RECENT_LIMIT: usize = 12;
+
 /// The favorite repositories in the order shown: each group's, then the ungrouped ones, each in
 /// the order the user put them (`repo_groups`). The favorite keys follow it.
 pub fn favorites(s: &Settings) -> Vec<PathBuf> {

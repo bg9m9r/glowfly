@@ -61,7 +61,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             let recent = std::mem::take(&mut st.recent);
             st.recent = recent.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();
             st.recent.insert(0, snap.workdir.clone());
-            st.recent.truncate(12);
+            st.recent.truncate(crate::state::repo_lists::RECENT_LIMIT);
             fx.push(Effect::Save(SaveEffect::Recent(st.recent.clone())));
             let missing = std::mem::take(&mut st.missing_repos);
             st.missing_repos = missing.into_iter().filter(|p| !st.names_repo(&snap, p)).collect();

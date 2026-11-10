@@ -43,7 +43,7 @@ source file, update its line here. Features that span every layer are in
 - `msg/files.rs`: messages of the file menus: restoring a file from a commit, opening and showing working-tree files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
 - `msg/keys.rs`: messages of Preferences > Keyboard (update/keys.rs).
 - `msg/layout.rs`: messages for the window's zoom, full screen, showing or hiding its panels and how the changed-file lists show their files (update/layout.rs).
-- `msg/recent.rs`: messages for the recent and favorite repository lists (update/recent.rs).
+- `msg/recent.rs`: messages for the recent and favorite repository lists (update/recent.rs), and the runner's reports on saving recent.txt and tabs.txt (`StateFile`, `SaveNotes`; update/recent_files.rs).
 - `msg/repos.rs`: messages for finding repositories in project folders, and fetching or pulling many listed repositories at once (update/repos.rs).
 - `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/local_done.rs, update/commit.rs, update/undo.rs, update/stash.rs).
 
@@ -70,7 +70,7 @@ source file, update its line here. Features that span every layer are in
 - `load.rs`: `LoadEffect`: loading the repository, reading its status, and an index change's rows.
 - `diff.rs`: `DiffEffect`: the open diff, finishing its highlighting (with `Runner::run`'s cancel ticket), the unchanged lines between its hunks and a binary diff's sides.
 - `history.rs`: `HistoryEffect`: a file's or folder's history, the path search and the graph's line counts (the last two on `Runner::run`'s workers); and `FileTextRequest`, the File view's read.
-- `save.rs`: `SaveEffect`: saves of the settings, the recent repositories and the open tabs (`SandboxRule::Save`).
+- `save.rs`: `SaveEffect`: saves of the settings, the recent repositories (and Clear recent, `ClearRecent`) and the open tabs (`SandboxRule::Save`).
 - `session.rs`: `SessionEffect`: which recent repositories' folders are gone, and the restored tabs' groups.
 - `network.rs`: `NetworkEffect`: a hosting service's calls (`ForgeCall`, scoped to the repository) and avatar downloads, both dropped by the whole-app tests' runner.
 - `control.rs`: `ControlEffect`: setting and sweeping the watcher, answering a credential prompt and stopping a running git command, which `Runner::run` carries out itself (untimed, never queued).
@@ -308,6 +308,7 @@ source file, update its line here. Features that span every layer are in
 - `update/rebase_remaining.rs`: the rebase panel on the remaining steps of a running interactive rebase: opening it, its list arriving, and Update steps running `git rebase --edit-todo` as the active job.
 - `update/rebase_resume.rs`: the rebase banner's Continue and Skip commit: run as a rebase job whose result (`RebaseMsg::RebaseFinished`) says where the rebase stopped next, and the headlines for stopped rebases.
 - `update/recent.rs`: the recent and favorite repository lists: removing and clearing recent entries, toggling, reordering and opening favorites, marking folders that are gone and removing them.
+- `update/recent_files.rs`: the runner's reports on saving recent.txt and tabs.txt: a kept copy logged, a late-read recent list merged into the Recent list, a refused save toasted; tests in `recent_files_tests.rs`.
 - `update/remote_forks.rs`: view a remote on its hosting service, and the fork dialogs: Add a fork (list the repository's forks, pick one, add it as a remote) and Fork (find the user's own fork or fork into their account, then add and fetch it).
 - `update/remotes.rs`: the REMOTE section: Add and Edit remote (the dialog's form checked again against the current snapshot), Fetch one remote, and Remove after a confirmation.
 - `update/repos.rs`: repositories across folders: the Find repositories dialog and its scan (repo_scan.rs), and fetch or pull across listed repositories (repo_sync.rs).

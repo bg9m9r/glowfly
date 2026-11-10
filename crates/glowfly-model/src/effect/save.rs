@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 pub enum SaveEffect {
     Settings(Box<Settings>),
     Recent(Vec<PathBuf>),
+    /// Empty recent.txt for good (Clear recent): never merged with entries a late read found.
+    ClearRecent,
     /// The open tabs (repositories), their labels (parallel to `paths`) and which one is
     /// active, for the next start.
     Tabs {
@@ -25,6 +27,7 @@ impl EffectMeta for SaveEffect {
         match self {
             SaveEffect::Settings(_) => "save-settings",
             SaveEffect::Recent(_) => "save-recent",
+            SaveEffect::ClearRecent => "clear-recent",
             SaveEffect::Tabs { .. } => "save-tabs",
         }
     }

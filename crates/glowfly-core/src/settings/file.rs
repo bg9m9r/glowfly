@@ -54,9 +54,17 @@ impl Settings {
     /// The saved settings, or defaults. A file that can't be read fully is moved aside first
     /// (so a later save can't overwrite it) and the problem is returned for the user; one that
     /// can't be read at all, or moved, stays put and the problem says saving must wait.
+    ///
+    /// Called once, at start: afterwards only the newest `persist::KEPT_BACKUPS` of the
+    /// `settings.json.bak*` copies are kept (a copy this load just made is the newest). The other
+    /// loads (`load_from`, `load_with`, `reload`) don't prune.
     pub fn load() -> (Settings, Option<LoadProblem>) {
         match settings_file() {
-            Some(f) => Settings::load_from(&f),
+            Some(f) => {
+                let loaded = Settings::load_from(&f);
+                crate::persist::prune_backups(&f, crate::persist::KEPT_BACKUPS);
+                loaded
+            }
             None => (Settings::default(), None),
         }
     }

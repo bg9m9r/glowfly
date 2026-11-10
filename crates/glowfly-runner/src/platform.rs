@@ -8,7 +8,10 @@ use std::path::{Path, PathBuf};
 pub mod open_events;
 mod state_files;
 mod terminal;
-pub use state_files::{load_recent, load_tabs, parse_recent, parse_tabs, save_recent, save_recent_to, save_tabs, save_tabs_to};
+pub use state_files::{
+    SaveRefused, clear_recent, clear_recent_to, load_recent, load_tabs, parse_recent, parse_tabs, save_recent, save_recent_to, save_tabs,
+    save_tabs_to,
+};
 pub use terminal::open_terminal;
 
 /// What is at each of `paths`: whether it is a folder (false when gone, or unreachable: a
@@ -74,7 +77,7 @@ mod tests {
     #[test]
     fn restored_tabs_keep_folders_that_are_gone() {
         let gone = glowfly_core::paths::temp_dir().join(format!("glowfly-gone-tab-{}", std::process::id()));
-        let (paths, _, active) = parse_tabs(&state_files::format_tabs(std::slice::from_ref(&gone), &[], 0));
+        let (paths, _, active) = parse_tabs(&format!("0\n{}", glowfly_core::paths::encode(&gone)));
         assert_eq!((paths, active), (vec![gone.clone()], 0), "not checked on the UI thread");
         let checks = check_folders(std::slice::from_ref(&gone));
         assert!(!checks[0].present && checks[0].folder.is_none());

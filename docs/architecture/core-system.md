@@ -146,7 +146,7 @@ source file, update its line here.
 
 ## Files, logs, text and dates
 
-- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs; backups beside a file (`move_aside`, `keep_copy`); `rename_new` moves a file or folder to a free name.
+- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs; backups beside a file (`persist/backups.rs`); `rename_new` moves a file or folder to a free name.
 - `logs.rs`, `logs/`: Glowfly's log files.
 - `activity.rs`: the activity log's file format and trimming.
 - `rotate.rs`: the size-rotating writer of the error and performance logs.
@@ -169,6 +169,7 @@ source file, update its line here.
 - `advisory_ignores_tests.rs`: `deny.toml`'s advisory ignores and `osv-scanner.toml`'s `[[IgnoredVulns]]` list the same ids with the same reasons, each osv-scanner entry with an `ignoreUntil` date, and SECURITY.md's Known advisories table names the same ids.
 - `glowfly_core::app_identity` holds Glowfly's identity with the OS (`APP_ID`, `DESKTOP_ENTRY`).
 - `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
+- `persist/backups.rs`: backups beside a file (`move_aside`, `keep_copy`), numbered one past the highest already there (`backup_number` says which names count), and `prune_backups`, which keeps the newest `KEPT_BACKUPS` regular files at start; tests in `backups_tests.rs`.
 - `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
 - `i18n/catalog.rs`: the bundled catalogs: per language, one flat JSON object of key → text per area (`locales/<lang>/<area>.json`), compiled in and merged on first use; tests in `catalog_tests.rs` (each file parses, holds only its area's sorted keys, no key in two files, the area list matches the folders).
 - `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.

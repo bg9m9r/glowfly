@@ -1,5 +1,6 @@
 {
   "repos.clear.link": "Clear",
+  "repos.clear_recent.blocked.toast": "The Recent list is cleared only until Glowfly restarts: its file can't be read ({detail}), so it isn't saved over.",
   "repos.clear_recent.body.one": "Remove all {count} repository from the Recent list? Nothing on disk is touched, and favorites are kept.",
   "repos.clear_recent.body.other": "Remove all {count} repositories from the Recent list? Nothing on disk is touched, and favorites are kept.",
   "repos.clear_recent.button": "Clear",
@@ -29,6 +30,10 @@
   "repos.open_tag.label": "open",
   "repos.open_tag.tip": "Open in a tab. Click to switch to it.",
   "repos.recent.header": "Recent",
+  "repos.recent_file.blocked.toast": "Glowfly can't read its list of recent repositories ({detail}), so changes to the list aren't saved until it can.",
+  "repos.recent_file.kept.log.one": "{count} line of the recent repositories file couldn't be read and was dropped; the file was kept as {path} first.",
+  "repos.recent_file.kept.log.other": "{count} lines of the recent repositories file couldn't be read and were dropped; the file was kept as {path} first.",
+  "repos.recent_file.read_late.log": "The list of recent repositories could be read now; the repositories it held are back in the Recent list.",
   "repos.remove.button": "Remove",
   "repos.remove_missing.body_both.one": "Remove {count} repository that can't be found from the Favorites and Recent lists ({favorites} in Favorites, {recent} in Recent)? Nothing on disk is touched.",
   "repos.remove_missing.body_both.other": "Remove {count} repositories that can't be found from the Favorites and Recent lists ({favorites} in Favorites, {recent} in Recent)? Nothing on disk is touched.",

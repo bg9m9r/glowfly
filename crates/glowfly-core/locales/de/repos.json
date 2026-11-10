@@ -1,5 +1,6 @@
 {
   "repos.clear.link": "Leeren",
+  "repos.clear_recent.blocked.toast": "Die Liste Zuletzt verwendet ist nur bis zum Neustart von Glowfly geleert: Ihre Datei kann nicht gelesen werden ({detail}), deshalb wird sie nicht überschrieben.",
   "repos.clear_recent.body.one": "Das {count} Repository aus der Liste Zuletzt verwendet entfernen? Auf der Festplatte wird nichts verändert, und Favoriten bleiben erhalten.",
   "repos.clear_recent.body.other": "Alle {count} Repositorys aus der Liste Zuletzt verwendet entfernen? Auf der Festplatte wird nichts verändert, und Favoriten bleiben erhalten.",
   "repos.clear_recent.button": "Leeren",
@@ -29,6 +30,10 @@
   "repos.open_tag.label": "offen",
   "repos.open_tag.tip": "In einem Tab geöffnet. Klicke, um dorthin zu wechseln.",
   "repos.recent.header": "Zuletzt verwendet",
+  "repos.recent_file.blocked.toast": "Glowfly kann seine Liste der zuletzt verwendeten Repositorys nicht lesen ({detail}), deshalb werden Änderungen an der Liste erst gespeichert, wenn das wieder geht.",
+  "repos.recent_file.kept.log.one": "{count} Zeile der Datei mit den zuletzt verwendeten Repositorys konnte nicht gelesen werden und wurde verworfen; die Datei wurde vorher als {path} aufbewahrt.",
+  "repos.recent_file.kept.log.other": "{count} Zeilen der Datei mit den zuletzt verwendeten Repositorys konnten nicht gelesen werden und wurden verworfen; die Datei wurde vorher als {path} aufbewahrt.",
+  "repos.recent_file.read_late.log": "Die Liste der zuletzt verwendeten Repositorys konnte jetzt gelesen werden; ihre Repositorys stehen wieder unter Zuletzt verwendet.",
   "repos.remove.button": "Entfernen",
   "repos.remove_missing.body_both.one": "{count} Repository, das nicht gefunden wird, aus den Favoriten und der Liste Zuletzt verwendet entfernen ({favorites} in Favoriten, {recent} in Zuletzt verwendet)? Auf der Festplatte wird nichts verändert.",
   "repos.remove_missing.body_both.other": "{count} Repositorys, die nicht gefunden werden, aus den Favoriten und der Liste Zuletzt verwendet entfernen ({favorites} in Favoriten, {recent} in Zuletzt verwendet)? Auf der Festplatte wird nichts verändert.",

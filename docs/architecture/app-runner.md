@@ -54,7 +54,7 @@ here.
 - `runner/profiles.rs`: switching profiles: writing a profile's identity to the global git config, then reading the config back for Preferences.
 - `runner/queue.rs`: one queue per repository for the effects that change it (index, working tree, refs), so a stage, discard or conflict save never runs at the same time as a pull, a checkout or another edit of the same repository: each runs after the ones queued before it.
 - `runner/revert.rs`: reverting part of a commit or comparison diff in the working tree (`FilesEffect::Revert`), with the working copy saved before and after so the revert can be undone.
-- `runner/saves.rs`: the `Execute` impl of `SaveEffect` and its own thread per save: saving Glowfly's own files (settings, recent repositories, open tabs), each file's saves in order.
+- `runner/saves.rs`: the `Execute` impl of `SaveEffect` and its own thread per save: saving Glowfly's own files (settings, recent repositories, open tabs), each file's saves in order; `save_in` writes one into a folder (the config folder, or the sandbox's), and what a save of recent.txt or tabs.txt did besides writing, or why it was refused, comes back as `RecentMsg::StateFileSaved` / `StateFileBlocked`; tests in `saves_tests.rs`.
 - `runner/session.rs`: the `Execute` impl of `SessionEffect`: checking the recent repositories' folders and reading the restored tabs' groups.
 - `runner/signatures.rs`: checking a commit's signature with git (`CommitEffect::VerifySignature`).
 - `runner/commit.rs`: the `Execute` impl of `CommitEffect`: a commit's detail and its signature check (`signatures.rs`).
@@ -69,7 +69,9 @@ here.
 ## `runner/platform.rs` and `platform/`: OS integration
 
 - `runner/platform.rs`: which listed folders are missing, the file manager; `runner/platform/terminal.rs`: terminals.
-- `runner/platform/state_files.rs`: the recent-repositories and open-tabs files (a bad line costs only itself, a failed read stops saves over the file, private on Unix); its tests in `state_files_tests.rs`.
+- `runner/platform/state_files.rs`: what a session holds about the recent-repositories and open-tabs files: unread (a failed start read: each save tries one read and writes nothing while it fails, reporting the first refusal), skipped lines (the file is copied before the first save replaces it) and carried entries (what a late read found, merged into every save until the session saves them itself); a leading BOM is dropped; private on Unix. Tests in `state_files_tests.rs` and `state_files_held_tests.rs`.
+- `runner/platform/state_files/recent.rs`: recent.txt: reading, parsing (with the lines skipped), saving with the carried entries merged and capped, and Clear recent (`clear_recent`), which empties it without them; old backups pruned at start.
+- `runner/platform/state_files/tabs.rs`: tabs.txt: reading, parsing (with the lines skipped), and saving with the carried tabs appended after the open ones (never the active one); old backups pruned at start.
 - `runner/platform/open_events.rs`: the inbox where the folders and links the OS hands over wait until the runner attaches.
 - `platform/mod.rs`: the window's glue with the OS, only for the shell and `main.rs` (the files below).
 - `platform/a11y_system.rs`: the system's reduce-motion, high-contrast and text-size settings, read for the shell (Windows system parameters and registry, AppKit's `NSWorkspace`, GNOME's gsettings on a thread) through a `Watch` whose reader tests replace.

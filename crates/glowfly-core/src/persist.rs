@@ -14,9 +14,14 @@
 //! briefly holds the file, so that is retried. Temporary files a crash left behind are removed
 //! by the next write of the same file. [`LatestOnly`] keeps saves that run on separate threads
 //! from landing out of order.
+//!
+//! Backups beside a file ([`move_aside`], [`keep_copy`]) are numbered one past the highest
+//! already there, and [`prune_backups`] keeps the newest [`KEPT_BACKUPS`] of them (`backups.rs`).
 
+mod backups;
 mod replace;
 
+pub use backups::{KEPT_BACKUPS, backup_number, keep_copy, move_aside, prune_backups};
 use replace::{clean_stale_temps, rename_retrying, replace, set_mode, sync_dir};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -244,32 +249,6 @@ pub fn rename_new(from: &Path, to: &Path) -> std::io::Result<()> {
         sync_dir(parent);
     }
     Ok(())
-}
-
-/// Moves `path` aside to the first free `<name>.bak`, `<name>.bak-2`, `<name>.bak-3`, … and
-/// returns the new name.
-pub fn move_aside(path: &Path) -> std::io::Result<PathBuf> {
-    let backup = free_backup_name(path);
-    std::fs::rename(path, &backup)?;
-    Ok(backup)
-}
-
-/// Writes `bytes` (what was read from `path`) to the backup name `move_aside` would pick, leaving
-/// `path` where it is, and returns that name. The copy is private (`WriteOptions::private`), as
-/// the files kept this way are.
-pub fn keep_copy(path: &Path, bytes: &[u8]) -> std::io::Result<PathBuf> {
-    let backup = free_backup_name(path);
-    write_file(&backup, bytes, WriteOptions { private: true, ..WriteOptions::default() })?;
-    Ok(backup)
-}
-
-/// The first of `<name>.bak`, `<name>.bak-2`, `<name>.bak-3`, … beside `path` that doesn't exist.
-fn free_backup_name(path: &Path) -> PathBuf {
-    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    (1..)
-        .map(|i| path.with_file_name(if i == 1 { format!("{name}.bak") } else { format!("{name}.bak-{i}") }))
-        .find(|p| p.symlink_metadata().is_err())
-        .expect("an unused backup name")
 }
 
 /// Orders saves of one file that run on separate threads: each save takes a ticket when it is
