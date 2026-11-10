@@ -1,5 +1,7 @@
 {
   "git_errors.clone_https.button": "Über HTTPS als {user} klonen",
+  "git_errors.conflicts.incomplete.one": "Bei Konflikten in mindestens {count} Datei angehalten (die Liste von Git ist womöglich unvollständig). Löse sie, dann setze fort oder brich ab.",
+  "git_errors.conflicts.incomplete.other": "Bei Konflikten in mindestens {count} Dateien angehalten (die Liste von Git ist womöglich unvollständig). Löse sie, dann setze fort oder brich ab.",
   "git_errors.conflicts.one": "Bei Konflikten in {count} Datei angehalten. Löse sie, dann setze fort oder brich ab.",
   "git_errors.conflicts.other": "Bei Konflikten in {count} Dateien angehalten. Löse sie, dann setze fort oder brich ab.",
   "git_errors.conflicts.unlisted": "Bei Konflikten angehalten. Löse sie, dann setze fort oder brich ab.",

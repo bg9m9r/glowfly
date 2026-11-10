@@ -7,6 +7,7 @@
 use crate::msg::{BranchMsg, ConflictMsg, JobMsg, Msg, PrefsMsg, StashMsg};
 use crate::remote::RemoteMsg;
 use crate::state::auto_stash::StashRetry;
+use crate::state::conflict_files::conflicted_paths;
 use crate::state::job_spec::Retry;
 use crate::state::prefs::PrefPage;
 use crate::state::{AppState, RunningJob, ToastAction};
@@ -138,9 +139,10 @@ fn failing_remote(snap: &Snapshot, output: &str) -> Option<String> {
     found.map(|r| r.name.clone())
 }
 
-/// The first conflicted file the snapshot shows.
+/// The first conflicted file the snapshot shows that git can be given (not a name that isn't
+/// UTF-8).
 fn first_conflict(snap: Option<&Snapshot>) -> Option<String> {
-    snap?.unstaged.iter().find(|f| f.status == '!').map(|f| f.path.clone())
+    snap.map(conflicted_paths)?.into_iter().next()
 }
 
 /// "<label> succeeded", or "<label> failed: <the last line git printed>" (not a line-ending
