@@ -29,6 +29,11 @@ pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Ve
         TrustMsg::Revoke { real } => super::trust_revoke::revoke(st, &real, fx),
         TrustMsg::ForgetMissing => super::trust_revoke::forget_missing(st, fx),
         TrustMsg::FoldersChecked(checks) => super::trust_revoke::folders_checked(st, &checks),
+        TrustMsg::ToggleStep(i) => {
+            if let Some(Modal::Trust(p)) = &mut st.modal {
+                p.open_step = (p.open_step != Some(i)).then_some(i);
+            }
+        }
     }
 }
 

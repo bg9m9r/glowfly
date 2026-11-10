@@ -30,6 +30,8 @@ pub enum TrustMsg {
     ForgetMissing,
     /// Which of the decided folders exist (`TrustEffect::CheckFolders`).
     FoldersChecked(Vec<crate::msg::FolderCheck>),
+    /// The open prompt's Show all or Show less on the cut step row at this index.
+    ToggleStep(usize),
 }
 
 /// A checked effect that didn't start (`TrustMsg::Stale`).
@@ -68,7 +70,8 @@ impl TrustMsg {
             | Self::Stale(_)
             | Self::Revoke { .. }
             | Self::ForgetMissing
-            | Self::FoldersChecked(_) => None,
+            | Self::FoldersChecked(_)
+            | Self::ToggleStep(_) => None,
         }
     }
 }

@@ -141,6 +141,9 @@ pub struct TrustPrompt {
     /// Why what the held job brings in couldn't be compared (a partial clone, a long replay, a
     /// revision Glowfly can't resolve as git does): Trust and run runs it without comparing.
     pub unchecked: Option<Box<crate::effect::Accepted>>,
+    /// The step row (its index in the steps shown) whose whole text is open (Show all); a
+    /// step too long for its row is cut otherwise (`rows::step_rows`).
+    pub open_step: Option<usize>,
 }
 
 /// The prompt for the loaded repository `snap`.
@@ -161,6 +164,7 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
         terminal: false,
         incoming: None,
         unchecked: None,
+        open_step: None,
     }
 }
 
@@ -326,6 +330,7 @@ pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::inco
         Unchecked::Patched { path, .. } => t.trf("trust.unchecked.patched", &[("path", &printable(path))]),
         Unchecked::Conflicted(p) => t.trf("trust.unchecked.conflicted", &[("path", &printable(p))]),
         Unchecked::Unmodeled(what) => t.trf("trust.unchecked.unmodeled", &[("what", &printable(what))]),
+        Unchecked::State(files) => t.trf("trust.unchecked.state", &[("files", &printable(files))]),
     }
 }
 

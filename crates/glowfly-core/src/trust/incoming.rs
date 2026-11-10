@@ -101,6 +101,9 @@ pub enum Unchecked {
     Conflicted(String),
     /// A command, or a form of one, Glowfly doesn't read (what it is).
     Unmodeled(String),
+    /// Files of the rebase or pick in progress (their names, `TrustScan::unread`) that couldn't
+    /// be read for the commands continuing it runs.
+    State(String),
 }
 
 /// `cmd`'s subcommand (`fetch` in `-c x=y fetch origin`).

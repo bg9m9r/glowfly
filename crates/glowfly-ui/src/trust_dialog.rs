@@ -13,16 +13,19 @@ use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
 use super::trust_dialog_rows::{self as rows, Mark};
 use super::widgets::{self, Icon, buttons, icon};
+use crate::theme::sizes::ControlSize;
 use crate::theme::type_scale;
 use eframe::egui::{self, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_core::text::printable;
+use glowfly_core::trust::incoming::Unchecked;
 use glowfly_core::trust::known::{self, Known};
 use glowfly_core::trust::{ConfigCommand, Follow, TrustScan, is_network_setting};
 use glowfly_model::msg::{Msg, TrustMsg};
-use glowfly_model::state::trust::rows::row_follows;
+use glowfly_model::state::trust::rows::{self as model_rows, StepRow, row_follows};
 use glowfly_model::state::trust::{TrustPrompt, hooks_label, shown_value};
 use std::path::Path;
+use std::sync::Arc;
 
 /// Draws the prompt; returns true when Cancel was clicked (the dialog closes without a
 /// decision). The other buttons send a decision and update closes it. Enter never trusts: the
@@ -30,13 +33,15 @@ use std::path::Path;
 /// answer is filled: this is a safety decision, so no button is styled as the expected one.
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     let title = match (&p.incoming, &p.gained) {
+        // Not about what a commit brings in: the repository's own files couldn't be read.
+        _ if p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_))) => "Trust this repository?",
         _ if p.unchecked.is_some() => cx.t.tr("trust.incoming.title"),
         (Some(_), _) => cx.t.tr("trust.incoming.title"),
         (None, Some(_)) => "Trust this repository again?",
         (None, None) => "Trust this repository?",
     };
     let mut d = Dialog::new(cx, title).begin(ui);
-    d.body(ui, |ui| body(ui, cx.t, p));
+    d.body(ui, |ui| body(ui, cx.t, p, msgs));
     let footer = if p.held.is_some() || p.terminal {
         Footer::new().cancel().danger(buttons::secondary("Trust and run"))
     } else {
@@ -50,7 +55,7 @@ pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
 }
 
 /// Where the repository is, the job waiting, and what in it runs programs.
-fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
+fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt, msgs: &mut Vec<Msg>) {
     ui.label(RichText::new(printable(&p.name)).font(type_scale::strong(ui, type_scale::BODY)));
     rows::path_line(ui, &glowfly_core::native_path::shown(&p.workdir));
     if p.held.is_some() || p.terminal || p.refused {
@@ -94,6 +99,7 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt) {
         ui.add_space(8.0);
         egui::ScrollArea::vertical().id_salt("trust-findings").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
             findings(ui, t, shown, &p.workdir, &row_follows(p, None));
+            steps(ui, t, shown, p.open_step, msgs);
             for m in &shown.submodules {
                 ui.add_space(4.0);
                 ui.label(RichText::new(format!("In submodule {}", printable(&m.path))).font(type_scale::strong(ui, type_scale::BODY)));
@@ -157,33 +163,57 @@ fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path, places: &[Fo
             rows::hook(ui, t, &printable(h), mark);
         }
     }
-    steps(ui, t, scan);
     follows(ui, t, scan);
 }
 
-/// The most characters of a step a row shows; a longer one says it is cut.
-const STEP_CHARS: usize = 400;
+/// The most height an opened step takes before it scrolls.
+const STEP_OPEN_H: f32 = 120.0;
+
+/// The rows of `steps`, made once and kept while the steps stay the same.
+fn step_rows(ui: &Ui, steps: &[String]) -> Arc<(Vec<String>, Vec<StepRow>)> {
+    let id = egui::Id::new("trust-step-rows");
+    let kept: Option<Arc<(Vec<String>, Vec<StepRow>)>> = ui.ctx().data(|d| d.get_temp(id));
+    if let Some(kept) = kept.filter(|k| k.0 == steps) {
+        return kept;
+    }
+    let made = Arc::new((steps.to_vec(), model_rows::step_rows(steps)));
+    ui.ctx().data_mut(|d| d.insert_temp(id, Arc::clone(&made)));
+    made
+}
 
 /// The steps a rebase, cherry-pick or revert in progress runs when it continues, one row each.
-/// A step longer than `STEP_CHARS` is cut with "…", and a line under it says so and shows all
-/// of it on hover: the decision covers the whole step.
-fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan) {
+/// The decision covers each whole step: one too long for its row is cut with "…", says how
+/// much is left out and has Show all, which shows all of it (scrolling past `STEP_OPEN_H`).
+fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan, open: Option<usize>, msgs: &mut Vec<Msg>) {
     if scan.steps.is_empty() {
         return;
     }
-    if !scan.hooks.is_empty() {
-        ui.add_space(6.0);
-    }
+    ui.add_space(6.0);
     ui.label(type_scale::section_text(ui, t.tr("trust.steps.title")));
-    for step in &scan.steps {
-        let whole = printable(step);
-        let cut = whole.char_indices().nth(STEP_CHARS).map(|(at, _)| format!("{}…", &whole[..at]));
-        rows::hook(ui, t, cut.as_deref().unwrap_or(&whole), Mark::Unknown { tip: t.tr("trust.unknown.tip") });
-        if cut.is_some() {
-            let more = whole.chars().count() - STEP_CHARS;
-            let note = t.trf("trust.steps.cut", &[("count", &more.to_string())]);
-            ui.add(egui::Label::new(RichText::new(note).color(color::weak())).wrap()).on_hover_text(whole);
+    let mark = Mark::Unknown { tip: t.tr("trust.unknown.tip") };
+    let kept = step_rows(ui, &scan.steps);
+    for (i, row) in kept.1.iter().enumerate() {
+        let Some((cut, more)) = &row.cut else {
+            rows::hook(ui, t, &row.whole, mark);
+            continue;
+        };
+        let opened = open == Some(i);
+        if opened {
+            let area = egui::ScrollArea::vertical().id_salt(("trust-step", i)).max_height(STEP_OPEN_H).auto_shrink([false, true]);
+            area.show(ui, |ui| rows::hook(ui, t, &row.whole, mark));
+        } else {
+            rows::hook(ui, t, cut, mark);
         }
+        ui.horizontal_wrapped(|ui| {
+            if !opened {
+                let note = t.trn("trust.steps.cut", *more, &[("count", more)]);
+                ui.label(RichText::new(note).color(color::weak()));
+            }
+            let label = t.tr(if opened { "trust.steps.show_less" } else { "trust.steps.show_all" });
+            if ui.add(buttons::secondary(label).size(ControlSize::Small)).clicked() {
+                msgs.push(Msg::Trust(TrustMsg::ToggleStep(i)));
+            }
+        });
     }
     ui.add(egui::Label::new(RichText::new(t.tr("trust.steps.note")).color(color::weak())).wrap());
     ui.add_space(6.0);

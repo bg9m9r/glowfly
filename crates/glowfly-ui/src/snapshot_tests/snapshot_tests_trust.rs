@@ -18,7 +18,7 @@ pub(super) fn with_prompt(theme: ThemeChoice, scan: TrustScan) -> AppState {
     prompt_state(theme, scan, false, None)
 }
 
-fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option<&str>) -> AppState {
+pub(super) fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option<&str>) -> AppState {
     let mut st = AppState::new(settings(theme), Vec::new(), Instant::now());
     let workdir = PathBuf::from("C:/work/tools");
     let held = held.map(str::to_owned);
@@ -33,6 +33,7 @@ fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, held: Option
         terminal: false,
         incoming: None,
         unchecked: None,
+        open_step: None,
     }));
     st
 }

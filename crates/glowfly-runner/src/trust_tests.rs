@@ -76,6 +76,37 @@ fn a_hook_that_appears_in_a_clean_repository_holds_the_job() {
 }
 
 #[test]
+fn a_rebase_file_that_cant_be_read_holds_every_job_whatever_was_decided() {
+    let dir = repo("unread");
+    let todo = dir.join(".git/rebase-merge/git-rebase-todo");
+    // A folder where the todo would be: there, but nothing to read steps from.
+    std::fs::create_dir_all(&todo).unwrap();
+    let reason = Unchecked::State("rebase-merge/git-rebase-todo".into());
+    // A decision made on this very scan doesn't cover it, nor does none.
+    let saved = SavedTrust::trusted(Some(glowfly_core::trust::scan_at(&dir).unwrap().print()));
+    for saved in [None, Some(saved)] {
+        let Verdict::Unchecked(found) = verify(&check(&dir, saved.clone()), &job(&dir)) else { panic!("held") };
+        assert_eq!(found.1, reason);
+        // Trust and run passes that reason for this run only: the next check asks again.
+        let accepted = glowfly_model::effect::Accepted { at: None, reason: reason.clone() };
+        let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved.clone()) };
+        assert!(matches!(verify(&once, &job(&dir)), Verdict::Pass(_)));
+        assert!(matches!(verify(&check(&dir, saved.clone()), &job(&dir)), Verdict::Unchecked(_)));
+        // Another reason accepted doesn't pass this one.
+        let other = glowfly_model::effect::Accepted { at: None, reason: Unchecked::State("sequencer/todo".into()) };
+        assert!(matches!(verify(&TrustCheck { accepted: Some(other), ..check(&dir, saved) }, &job(&dir)), Verdict::Unchecked(_)));
+    }
+    // Executing it sends the job back with the reason, instead of running it.
+    match execute_checked(check(&dir, None), job(&dir)) {
+        Some(Msg::Trust(TrustMsg::Stale(s))) => assert_eq!(s.unchecked.map(|a| a.reason), Some(reason)),
+        _ => panic!("held, not run"),
+    }
+    std::fs::remove_dir(&todo).unwrap();
+    assert!(matches!(verify(&check(&dir, None), &job(&dir)), Verdict::Pass(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_repository_that_cant_be_read_fails_the_job_rather_than_run_it() {
     let dir = repo("gone");
     let _ = std::fs::remove_dir_all(&dir);

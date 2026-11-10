@@ -8,7 +8,9 @@
 //! decision it was sent under, and where hooks or programs follow the working tree, what the
 //! work brings in is compared too (runner/trust_gate.rs): the commits an
 //! effect names before it starts, and for a job of git commands each command's just before it
-//! runs, a pull pinned to the commits its fetch brought. Nothing the repository names runs for
+//! runs, a pull pinned to the commits its fetch brought. A job in a repository whose rebase or
+//! pick in progress has files that couldn't be read for the commands it runs
+//! (`TrustScan::unread`) is held each time, whatever was decided, until Trust and run. Nothing the repository names runs for
 //! the check; a pull's fetch runs (under the settings just checked) to learn what it merges.
 //! A scan or comparison that fails holds the work back: it never runs unchecked.
 
@@ -109,10 +111,18 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     if !trust::allows(c.saved.as_ref(), &now) {
         return Verdict::Stale(Box::new((now, None)));
     }
+    let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
+    // A rebase's or pick's files that couldn't be read for the commands it runs: no saved
+    // decision covers them, so a job waits for Trust and run each time.
+    if matches!(c.sealed, Sealed::Job { .. }) && !now.unread.is_empty() {
+        let reason = Unchecked::State(now.unread.join(", "));
+        if accept != Some(&reason) {
+            return Verdict::Unchecked(Box::new((now, reason)));
+        }
+    }
     if now.follows.is_empty() {
         return Verdict::Pass(None);
     }
-    let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
     match trust_gate::compare(&c.workdir, &now.follows, c.saved.as_ref(), &trust_gate::targets(effect), accept) {
         Ok(()) => {
             let commands = matches!(

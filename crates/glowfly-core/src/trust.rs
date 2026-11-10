@@ -75,6 +75,10 @@ pub struct TrustScan {
     /// it continues (`steps.rs`): `exec <command>` or `--strategy=<name>`, in file order.
     /// Empty in a submodule: Glowfly continues only the top repository's.
     pub steps: Vec<String>,
+    /// The files of a rebase or pick in progress that are there but couldn't be read for
+    /// their steps (`steps.rs`), by name in the git dir. Never part of the print, and no
+    /// decision covers them: the runner asks each time a job would run (`Unchecked::State`).
+    pub unread: Vec<String>,
 }
 
 /// What `scan` found in one submodule.
@@ -155,7 +159,8 @@ pub fn scan_now(repo: &Repository) -> TrustScan {
 fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
     let mut out = scan_own(repo, reading);
     out.commands = repo.workdir().and_then(commands_digest);
-    out.steps = steps::find(repo);
+    let found = steps::find(repo);
+    (out.steps, out.unread) = (found.steps, found.unread);
     out
 }
 

@@ -1,6 +1,7 @@
 //! The trust prompt's setting and hook rows as the dialog draws them: which part of a shown
 //! value is the program git runs (`value_parts`, emphasised), and what a row's recognition is
-//! checked against (`row_follows`). Display only: nothing here changes what is trusted.
+//! checked against (`row_follows`), and a step's text with what a row shows of a long one
+//! (`step_rows`). Display only: nothing here changes what is trusted.
 
 use super::TrustPrompt;
 use glowfly_core::trust::{Follow, TrustScan};
@@ -38,6 +39,30 @@ pub fn row_follows(p: &TrustPrompt, sub: Option<&str>) -> Vec<Follow> {
     out
 }
 
+/// The most characters of a step its row shows before Show all.
+pub const STEP_CHARS: usize = 400;
+
+/// A step of a rebase or pick in progress as the dialog shows it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StepRow {
+    /// All of it, control characters made visible.
+    pub whole: String,
+    /// For a step longer than `STEP_CHARS`: its first `STEP_CHARS` characters with "…", and
+    /// how many more there are.
+    pub cut: Option<(String, usize)>,
+}
+
+/// The rows of `steps` (`TrustScan::steps`), in order. The decision covers each whole step, so
+/// a cut row says how much is left out and the dialog offers to show all of it.
+pub fn step_rows(steps: &[String]) -> Vec<StepRow> {
+    let row = |step: &String| {
+        let whole = glowfly_core::text::printable(step);
+        let cut = whole.char_indices().nth(STEP_CHARS).map(|(at, _)| (format!("{}…", &whole[..at]), whole[at..].chars().count()));
+        StepRow { whole, cut }
+    };
+    steps.iter().map(row).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -64,6 +89,17 @@ mod tests {
     }
 
     #[test]
+    fn a_long_step_is_cut_with_the_count_left_out() {
+        let long = format!("exec {}", "é".repeat(STEP_CHARS));
+        let rows = step_rows(&["exec make".into(), long.clone(), "x".repeat(STEP_CHARS)]);
+        assert_eq!(rows[0], StepRow { whole: "exec make".into(), cut: None });
+        let (cut, more) = rows[1].cut.as_ref().expect("longer than a row shows");
+        assert_eq!((cut.chars().count(), *more), (STEP_CHARS + 1, 5));
+        assert!(cut.ends_with('…') && rows[1].whole == long);
+        assert_eq!(rows[2].cut, None, "exactly a row's worth isn't cut");
+    }
+
+    #[test]
     fn rows_check_the_whole_scan_s_places_too() {
         let sub = |f: &str| SubmoduleScan { path: "lib".into(), scan: TrustScan { follows: vec![follow(f)], ..TrustScan::default() } };
         let scan = TrustScan { follows: vec![follow("git-lfs")], submodules: vec![sub("git-lfs.exe")], ..TrustScan::default() };
@@ -79,6 +115,7 @@ mod tests {
             terminal: false,
             incoming: None,
             unchecked: None,
+            open_step: None,
         };
         assert_eq!(row_follows(&p, None), [follow("tools/x"), follow("git-lfs")]);
         assert_eq!(row_follows(&p, Some("lib")), [follow("bin/y"), follow("git-lfs.exe")]);
