@@ -7,7 +7,7 @@ use crate::state::AppState;
 use git2::Oid;
 use glowfly_core::diff_rows::row_of_file_line;
 use glowfly_core::lfs::pointer::LfsChange;
-use glowfly_core::repo::{DiffTarget, FileDiff};
+use glowfly_core::repo::{DiffTarget, FileDiff, GitlinkMove};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn loaded(
@@ -17,6 +17,7 @@ pub(super) fn loaded(
     generation: u64,
     result: Result<FileDiff, String>,
     lfs: Option<LfsChange>,
+    gitlink: Option<Box<GitlinkMove>>,
     raw: Option<Oid>,
     fx: &mut Vec<Effect>,
 ) {
@@ -79,6 +80,7 @@ pub(super) fn loaded(
                 st.cues.file_reveal = Some((target.clone(), generation));
             }
             super::lfs::diff_loaded(st, &target, lfs);
+            st.session.diff.gitlink = gitlink.map(|g| (target.clone(), g));
             st.session.diff.view = Some((target, std::sync::Arc::new(d)));
             st.session.diff.raw = raw;
             st.session.diff.shown_gen = generation;

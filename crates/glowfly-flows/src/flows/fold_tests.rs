@@ -53,7 +53,7 @@ fn late_changes() -> FileDiff {
 /// Delivers `d` for `target` as the result of the request in flight.
 fn arrive(st: &mut AppState, target: DiffTarget, reload: bool, result: Result<FileDiff, ReadFailed>) {
     let generation = st.session.diff.generation;
-    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None, raw: None }));
+    run(st, Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs: None, raw: None, gitlink: None }));
 }
 
 #[test]

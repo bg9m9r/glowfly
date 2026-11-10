@@ -157,6 +157,7 @@ pub mod status_tip;
 pub mod submodule_add;
 mod submodule_batch;
 mod submodule_edit;
+mod submodule_inside;
 mod submodule_remove;
 mod submodules;
 mod sync_voice;

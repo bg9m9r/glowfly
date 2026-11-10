@@ -2,7 +2,8 @@
 //! the status dot's and the row's tooltips, why open, update, copy and edit are blocked, the update confirmation (with the
 //! commits it would leave behind) and the update command. The Add submodule dialog's rules are in
 //! `add.rs`, the Edit dialog's in `edit.rs`, the Remove submodule confirmation's in `remove.rs`,
-//! and batch updates (Initialize all, Update all, updating after checkouts) in `batch.rs`.
+//! batch updates (Initialize all, Update all, updating after checkouts) in `batch.rs`, and
+//! Record this checkout and the jobs run inside a submodule (Fetch, Pull, Discard changes inside) in `inside.rs`.
 
 use super::AppState;
 use git2::Oid;
@@ -16,6 +17,7 @@ use glowfly_core::submodule_ops::is_relative_url;
 pub mod add;
 pub mod batch;
 pub mod edit;
+pub mod inside;
 pub mod remove;
 
 /// How many commits a confirmation names.

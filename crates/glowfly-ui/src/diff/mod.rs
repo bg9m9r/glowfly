@@ -22,6 +22,7 @@
 
 mod comment_add;
 pub(crate) mod fold;
+mod gitlink_card;
 mod header;
 mod hex;
 mod hunk_header;
@@ -340,7 +341,8 @@ pub(super) fn drag_over(ui: &Ui, v: &DiffView, rect: Rect, hunk: usize, line: us
 
 /// The diff's rows without the header bar: what `show` draws below it, and what views that
 /// embed a commit's diff of a file (the file history) draw. A Git LFS pointer on either side
-/// shows a summary instead, until "Show pointer text"; a binary file shows its image preview or
+/// shows a summary instead, until "Show pointer text", and a submodule's gitlink its card (above
+/// the rows of a type change); a binary file shows its image preview or
 /// sizes (`preview`), and a diff without hunks an empty state (whitespace-only, with a way to show it, when Ignore whitespace
 /// hides the changes). Commit
 /// diffs have Revert hunk buttons and line selection for Revert lines (both off while
@@ -354,6 +356,9 @@ pub(super) fn body(ui: &mut Ui, st: &AppState, view: &mut ViewState, cache: &mut
     }
     if glowfly_model::state::lfs_notes::pointer_shown(st) {
         lfs_note::pointer_bar(ui, msgs);
+    }
+    if gitlink_card::shown(ui, st, msgs) {
+        return;
     }
     {
         let Some((_, diff)) = &st.session.diff.view else { return };

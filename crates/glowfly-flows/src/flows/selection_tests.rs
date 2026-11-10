@@ -298,6 +298,7 @@ fn two_commit_diff_end_to_end() {
         result: Err(said("old")),
         lfs: None,
         raw: None,
+        gitlink: None,
     });
     up(&mut st, stale);
     assert_eq!(st.session.diff.view.as_ref().map(|(t, _)| t), Some(&target));

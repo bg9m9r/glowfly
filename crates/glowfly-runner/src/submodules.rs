@@ -1,5 +1,6 @@
 //! The SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a
-//! batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
+//! batch update) again before its update or removal is confirmed, checking the Add dialog's folder, removing one, and
+//! reading one's branch before Pull inside it.
 
 use super::execute::{Cx, Execute};
 use glowfly_core::{repo, submodule_ops};
@@ -30,6 +31,10 @@ pub(super) fn run(e: SubmoduleEffect) -> Msg {
         SubmoduleEffect::Remove(r) => {
             let report = submodule_ops::remove(&r.repo, &r.path, &r.name);
             SubmoduleMsg::Removed { request: r, report }
+        }
+        SubmoduleEffect::ReadHead { workdir, path } => {
+            let result = repo::submodule_head(&workdir, &path).map_err(|e| e.to_string());
+            SubmoduleMsg::HeadRead { path, result }
         }
     })
 }

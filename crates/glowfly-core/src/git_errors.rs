@@ -4,6 +4,9 @@
 use crate::auth_failure::{self, AuthNeed};
 use std::borrow::Cow;
 
+#[path = "git_errors_submodule.rs"]
+mod submodule;
+
 /// Why a git command failed, as far as its output tells.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Cause {
@@ -73,6 +76,11 @@ pub enum Cause {
     FetchMovedHead {
         from: String,
     },
+    /// Changes inside the submodules at `paths` (empty when git names none) stopped a checkout,
+    /// reset or submodule update.
+    SubmoduleChanges {
+        paths: Vec<String>,
+    },
 }
 
 /// Why `output` (a failed job's combined output, untranslated) says git failed, when it is a
@@ -97,6 +105,10 @@ pub fn classify(output: &str) -> Option<Cause> {
     }
     if let Some(f) = crate::remote_failure::read(&text) {
         return Some(Cause::Remote(f));
+    }
+    // Before local changes: the submodule's own git prints those lines too.
+    if let Some(c) = submodule::changes(&lines) {
+        return Some(c);
     }
     let untracked = |l: &str| {
         l.contains("untracked working tree files would be overwritten by") || l.contains("untracked working tree files would be removed by")

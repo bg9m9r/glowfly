@@ -122,6 +122,7 @@ fn adopt_requires_same_old_text() {
         result: Ok(fresh),
         lfs: None,
         raw: None,
+        gitlink: None,
     });
     let fx = update(&mut st, msg, Instant::now());
     assert!(hl(shown(&st)).is_pending(), "not adopted");

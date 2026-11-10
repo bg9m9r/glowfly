@@ -262,6 +262,7 @@ mod submodule_add_tests;
 mod submodule_after_tests;
 mod submodule_batch_tests;
 mod submodule_edit_tests;
+mod submodule_inside_tests;
 mod submodule_remove_tests;
 mod submodule_sparse_tests;
 mod submodule_tests;

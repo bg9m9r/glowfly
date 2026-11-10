@@ -65,14 +65,14 @@ pub(super) fn load_job(
                 whole,
                 "diff highlighted"
             );
-            (v.diff, v.lfs, v.raw)
+            (v.diff, v.lfs, v.raw, v.gitlink)
         })
         .map_err(ReadFailed::from);
-    let (result, lfs, raw) = match result {
-        Ok((d, lfs, raw)) => (Ok(d), lfs, raw),
-        Err(e) => (Err(e), None, None),
+    let (result, lfs, raw, gitlink) = match result {
+        Ok((d, lfs, raw, gitlink)) => (Ok(d), lfs, raw, gitlink),
+        Err(e) => (Err(e), None, None, None),
     };
-    Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw })
+    Msg::Repo(RepoMsg::DiffLoaded { target, reload, generation, result, lfs, raw, gitlink })
 }
 
 /// Syntax spans and word marks for a loaded diff and its whole file, reusing `previous`'s spans,

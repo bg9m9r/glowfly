@@ -55,6 +55,8 @@ pub enum RepoMsg {
         lfs: Option<glowfly_core::lfs::pointer::LfsChange>,
         /// The hunk's exact bytes, hashed (`repo::ViewDiff::raw`); None on an error.
         raw: Option<Oid>,
+        /// A submodule gitlink's move (`repo::ViewDiff::gitlink`); None on an error.
+        gitlink: Option<Box<glowfly_core::repo::GitlinkMove>>,
     },
     StatsLoaded(Vec<(Oid, usize, usize, usize)>),
     /// Stats asked for but not worked out: a newer request came first (the graph scrolled on).

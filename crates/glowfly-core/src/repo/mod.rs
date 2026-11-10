@@ -15,7 +15,7 @@
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file or link back for undo), `noclobber` and
 //! `removal` (working-tree files), `tracked`,
 //! `attrs` (gitattributes, read from the source `attr_source` picks for the version shown), `submodules` (and `submodule_add`, the checks on a new submodule's
-//! folder), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
+//! folder; `submodule_inside`, opening a submodule's own repository; `gitlink_move`, which way a gitlink moved), `worktrees` (and `worktree_counts`, other worktrees' changes), `remotes` and
 //! `shallow`; `pr_compare` (a pull request's source tip, files and commits), `line_map` (a file's lines mapped across commits, following renames, for pull request threads), `divergence` (the commits on each side of a branch and its upstream, from the
 //! loaded graph), `unmerged` (the commits deleting a branch would leave on no branch), `push_config` and `push_target` (where a plain push goes, or why git refuses it) and `fetch_time` (when FETCH_HEAD was written). Paths: `entry`
 //! (file rows and their hazards), `rpath` (git's path bytes), `exact` (index edits that match
@@ -49,6 +49,7 @@ mod file_at;
 mod file_bytes;
 mod folder_history;
 mod fsmonitor;
+mod gitlink_move;
 mod graph_cache;
 mod history;
 mod history_forward;
@@ -92,6 +93,7 @@ mod status_merge;
 mod status_paths;
 mod status_speed;
 mod submodule_add;
+mod submodule_inside;
 mod submodules;
 mod template;
 mod tool_sides;
@@ -144,6 +146,7 @@ pub use fsmonitor::{
     monitor_enable_cmd, monitor_offer, monitor_offer_for, monitor_record_cmd, monitor_start_cmd, monitor_status_cmd, monitor_stop_cmd,
     stop_monitor, turn_off_monitor, turn_on_monitor,
 };
+pub use gitlink_move::{CommitRun, GITLINK_COUNT_MAX, GITLINK_LIST_MAX, GitlinkMove, MoveKind, Unknown as GitlinkUnknown};
 pub use graph_cache::GraphCache;
 pub use history::{FileHistory, HistoryEntry, HistoryStart, file_history};
 pub use history_forward::name_at_head;
@@ -186,6 +189,7 @@ pub use status_speed::{
     untracked_cache_works,
 };
 pub use submodule_add::check_submodule_path;
+pub use submodule_inside::{InsideHead, submodule_head};
 pub use submodules::{LEFT_BEHIND_MAX, SubmoduleInfo, SubmoduleMemo, SubmoduleState, submodules_at, submodules_if_any};
 pub use template::{CommitTemplate, commit_template};
 pub use tool_sides::{DiffSides, MergeSides, SideSource, TOOL_FILE_TIMEOUT, blob_bytes, diff_sides, is_conflicted, merge_sides};

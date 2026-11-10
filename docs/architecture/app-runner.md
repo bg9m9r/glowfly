@@ -65,7 +65,7 @@ here.
 - `runner/stats.rs`: line counts for the graph's CHANGES column.
 - `runner/svg_worker.rs` (tests in `svg_worker_tests.rs`): the generic preview `Worker` (one named thread per preview kind) and the one that draws SVG previews for `DiffEffect::BinarySides`: one drawing at a time, a newer request replacing the queued one, callers giving up after 3 s (the side shows "Can't preview this SVG") while the drawing runs on.
 - `runner/font_worker.rs`: the font previews' own `Worker` thread, with the same 3 s deadline (the side shows "Can't preview this font").
-- `runner/submodules.rs`: the SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a batch update) again before its update or removal is confirmed, checking the Add dialog's folder, and removing one.
+- `runner/submodules.rs`: the SUBMODULES section's effects (`Effect::Submodule`): reading one submodule (or all, for a batch update) again before its update or removal is confirmed, checking the Add dialog's folder, removing one, and reading a submodule's branch for Pull inside.
 - `runner/terminal_out.rs`: a shell's output on its way to the UI thread, which parses it.
 - `runner/tools/git_tool.rs`: running the diff and merge tools git config names (Preferences > External tools sets none).
 

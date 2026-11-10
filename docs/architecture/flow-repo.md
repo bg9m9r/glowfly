@@ -203,6 +203,13 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - No batch initializes a submodule a cone sparse checkout leaves out (`SubmoduleInfo::outside_sparse`, `BatchPlan::outside`); they are named in the log once per repository and session.
 - `opened` offers (once per session) to initialize a newly opened repository's submodules; a clone made with Clone submodules too unticked, or any sparse clone (its own step did its folders' submodules), counts as offered (`update/clone.rs`, matched by any name of the repository, as trust's `names_repo` does), so it isn't given them.
 
+## Inside a submodule
+
+- A diff of a gitlink loads its move with the hunks (`ViewDiff::gitlink`, from `repo/gitlink_move.rs`) into `DiffSlot::gitlink`; `state/gitlink_card.rs` turns it into the card's text, and the card shows only while the diff on screen is that target's.
+- The SUBMODULES row's Record this checkout is the usual Stage of the gitlink; Fetch, Pull and Discard changes inside run as jobs whose folder is the submodule's (`JobSpec::cwd`), behind that repository's trust gate, and Discard is recorded for undo in the submodule's own tab.
+- `st.submodules.inside` remembers the job until `finish_job` ends it, which refreshes the parent when it is still the active tab.
+- A checkout, reset or `submodule update` stopped by changes inside a submodule fails with `Cause::SubmoduleChanges`, whose toast offers Open submodule for the first one checked out here.
+
 ## Auto-stash
 
 - Files: `update/auto_stash.rs`, `update/auto_stash_saved.rs`, `update/auto_stash_restack.rs`, `update/pull_request/checkout.rs`, `update/branch_checkout.rs`, `state/auto_stash.rs`, `ui/auto_stash_dialog.rs`, `glowfly-core/src/stash_ops/saved.rs`, `glowfly-runner/src/auto_stash_made.rs`.
