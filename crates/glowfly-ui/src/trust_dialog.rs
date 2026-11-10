@@ -1,5 +1,6 @@
 //! The "Trust this repository?" dialog: what in the repository's own config and hooks makes git
-//! run programs (and, apart, settings that change how git connects: TLS checks and proxies),
+//! run programs (and, apart, settings that change how git connects: TLS checks, proxies and the
+//! cookie file),
 //! and the Trust / Don't trust choice (update/trust.rs records it). When a git
 //! job the user started, or the built-in terminal's shells, wait for the decision, it says so
 //! and offers Trust and run or Cancel instead. For a repository trusted earlier that gained

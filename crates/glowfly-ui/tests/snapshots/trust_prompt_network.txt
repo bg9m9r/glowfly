@@ -14,7 +14,7 @@ Dialog
   Label "remote.origin.proxy = proxy.example:8080"
   Label "Not recognised"
   Label "http.https://example.com/.sslCAInfo = certs/ca.pem"
-  Label "These can turn off certificate checks or send Git's traffic, sign-ins included, through another server."
+  Label "These can turn off certificate checks, send Git's traffic, sign-ins included, through another server, or name a file Git reads cookies from and writes them to."
   Label "Trust it only if you know where it came from."
   Label "Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
   Button "Don't trust"

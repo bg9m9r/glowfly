@@ -1,7 +1,7 @@
 //! Which config settings are a reason to ask before git runs in a repository (`command_key`):
 //! those that make git or git-lfs run a program, and those that change how git connects to a
-//! server (TLS checks and proxies, `network_key`), which a repository from elsewhere shouldn't
-//! steer unasked since its sign-ins travel over them.
+//! server (TLS checks, proxies and the cookie file, `network_key`), which a repository from
+//! elsewhere shouldn't steer unasked since its sign-ins travel over them.
 
 use git2::Config;
 use std::borrow::Cow;
@@ -27,10 +27,17 @@ const COMMAND_KEYS: &[(&str, &str)] = &[
     ("lfs.standalonetransferagent", "lfs.standaloneTransferAgent"),
 ];
 
-/// The `http.*` and `http.<url>.*` keys that weaken TLS checks or send traffic through a proxy,
-/// as libgit2 returns them, with their usual spelling.
-const HTTP_KEYS: &[(&str, &str)] =
-    &[("sslverify", "sslVerify"), ("sslcainfo", "sslCAInfo"), ("sslcapath", "sslCAPath"), ("proxy", "proxy")];
+/// The `http.*` and `http.<url>.*` keys that weaken TLS checks, send traffic through a proxy,
+/// or name the file git reads cookies from and (with `saveCookies`) writes them to, as libgit2
+/// returns them, with their usual spelling.
+const HTTP_KEYS: &[(&str, &str)] = &[
+    ("sslverify", "sslVerify"),
+    ("sslcainfo", "sslCAInfo"),
+    ("sslcapath", "sslCAPath"),
+    ("proxy", "proxy"),
+    ("cookiefile", "cookieFile"),
+    ("savecookies", "saveCookies"),
+];
 
 /// The git commands Glowfly runs that aren't built into git, so a repository's alias of the
 /// same name runs in their place when the program is missing (git looks for `git-<name>`
@@ -110,8 +117,8 @@ pub(super) fn command_key(name: &str, value: &str) -> Option<String> {
 }
 
 /// The display key when `name` (as libgit2 returns it: section and key lowercase) changes how
-/// git connects: TLS checks and proxies, for every URL (`http.sslVerify`) or one
-/// (`http.<url>.sslVerify`), and a remote's proxy. Any value counts, `true` and a bare host
+/// git connects: TLS checks, proxies and the cookie file, for every URL (`http.sslVerify`) or
+/// one (`http.<url>.sslVerify`), and a remote's proxy. Any value counts, `true` and a bare host
 /// too: the repository shouldn't pick where sign-ins go or which certificates vouch for them.
 pub(super) fn network_key(name: &str) -> Option<String> {
     let (section, rest) = name.split_once('.')?;
