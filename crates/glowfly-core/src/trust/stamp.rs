@@ -1,6 +1,7 @@
 //! A cheap stamp of what a trust scan reads (`scan_now`): the size and modification time of
 //! the repository's own config files and the files they include, of each file in the hooks
-//! folder, of the commands file, and the commit HEAD is on (the version of the hooks and config
+//! folder, of the commands file, of the todo and strategy files of a rebase or pick in progress
+//! (`steps::FILES`), and the commit HEAD is on (the version of the hooks and config
 //! programs that follow the working tree); the config files and hooks of its submodules' git
 //! dirs (`repo::submodule_stamps`), and the commit each submodule that follows its own working
 //! tree is on. Stats and small reads only: while the stamp is unchanged, the scan it was taken
@@ -20,6 +21,7 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
     if let Some(w) = repo.workdir() {
         files.push(w.join(".glowfly").join("commands.toml"));
     }
+    files.extend(super::steps::FILES.iter().map(|f| repo.path().join(f)));
     for f in &files {
         meta(f, &mut h);
     }

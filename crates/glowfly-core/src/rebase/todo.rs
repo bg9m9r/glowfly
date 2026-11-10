@@ -271,6 +271,29 @@ pub(crate) fn own_line(line: &str) -> Option<OwnLine> {
     named("reword-", ".base").filter(|_| cmd.starts_with("git rev-parse HEAD >")).map(OwnLine::Base)
 }
 
+/// Whether the todo line `line` is, character for character after its `exec` (or `x`) keyword,
+/// one [`build`] writes for the message folder `msg_dir`: then the files there it reads or
+/// writes. Stricter than [`own_line`], which goes by the file names in a line: the trust scan
+/// passes over these lines only (`trust/steps.rs`).
+pub(crate) fn own_files(msg_dir: &Path, line: &str) -> Option<Vec<PathBuf>> {
+    let (verb, command) = line.trim().split_once(char::is_whitespace)?;
+    if !matches!(verb, "exec" | "x") {
+        return None;
+    }
+    let (oid, message) = match own_line(line)? {
+        OwnLine::Base(oid) => (oid, None),
+        OwnLine::Amend { oid, file } => (oid, Some(msg_dir.join(file.name(oid)))),
+    };
+    let mut written = String::new();
+    let base = record_base(msg_dir, oid, &mut written);
+    let mut files = vec![msg_dir.join(format!("reword-{oid}.base"))];
+    if let Some(path) = message {
+        written = guarded_amend(&base, &shell_quote(&path.to_string_lossy()));
+        files.push(path);
+    }
+    (written.trim_end().strip_prefix("exec ") == Some(command.trim_start())).then_some(files)
+}
+
 /// Writes the `exec` line that records HEAD before the commit `oid` is replayed; returns the
 /// record's path, shell-quoted.
 pub(super) fn record_base(msg_dir: &Path, oid: Oid, text: &mut String) -> String {

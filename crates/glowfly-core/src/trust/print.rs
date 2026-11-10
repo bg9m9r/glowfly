@@ -10,8 +10,9 @@ use std::collections::BTreeSet;
 
 /// The hashed items of a scan: one per setting (key and value), one per hook (its name in any
 /// letter case, with its script's digest), one for the repository's commands file (its
-/// digest) and one per place in the working tree hooks run from (with the version tracked
-/// there), and the same for each checked-out submodule under its path.
+/// digest), one per place in the working tree hooks run from (with the version tracked
+/// there) and one per step of a rebase or pick in progress that runs a program, and the same
+/// for each checked-out submodule under its path.
 ///
 /// Prints saved before hook contents and the commands file were part of it hold hooks by name
 /// alone: those items never match now, so a repository trusted with hooks or a commands file
@@ -75,6 +76,11 @@ fn commands_item(prefix: &str, digest: &str) -> String {
     format!("{prefix}x\0{digest}")
 }
 
+/// A step of the rebase or pick in progress that runs a program (`TrustScan::steps`).
+fn step_item(prefix: &str, step: &str) -> String {
+    format!("{prefix}t\0{step}")
+}
+
 fn submodule_prefix(path: &str) -> String {
     format!("s\0{path}\0")
 }
@@ -90,8 +96,9 @@ impl TrustScan {
         TrustPrint(out)
     }
 
-    /// What this scan found that `p` lacks: the new or changed settings, hooks and commands
-    /// file (with `hooks_dir` when any hooks remain), and the submodules with such findings.
+    /// What this scan found that `p` lacks: the new or changed settings, hooks, steps and
+    /// commands file (with `hooks_dir` when any hooks remain), and the submodules with such
+    /// findings.
     pub fn gained_since(&self, p: &TrustPrint) -> TrustScan {
         let mut out = gained_own(self, "", p);
         out.submodules = self
@@ -112,6 +119,7 @@ fn own_items(scan: &TrustScan, prefix: &str, out: &mut BTreeSet<String>) {
     out.extend(scan.hooks.iter().map(|h| hash(&hook_item(prefix, scan, h))));
     out.extend(scan.commands.iter().map(|d| hash(&commands_item(prefix, d))));
     out.extend(scan.follows.iter().map(|f| hash(&follow_item(prefix, f))));
+    out.extend(scan.steps.iter().map(|s| hash(&step_item(prefix, s))));
 }
 
 /// `scan`'s own settings and hooks whose items under `prefix` aren't in `p`.
@@ -123,7 +131,8 @@ fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
     let hooks_dir = if hooks.is_empty() { None } else { scan.hooks_dir.clone() };
     let commands = scan.commands.clone().filter(|d| !p.0.contains(&hash(&commands_item(prefix, d))));
     let follows = scan.follows.iter().filter(|f| !p.0.contains(&hash(&follow_item(prefix, f)))).cloned().collect();
-    TrustScan { config, hooks, hook_digests, known_hooks, hooks_dir, submodules: Vec::new(), commands, follows }
+    let steps = scan.steps.iter().filter(|s| !p.0.contains(&hash(&step_item(prefix, s)))).cloned().collect();
+    TrustScan { config, hooks, hook_digests, known_hooks, hooks_dir, submodules: Vec::new(), commands, follows, steps }
 }
 
 /// Whether git may run in a repository whose saved decision is `saved` and whose scan is

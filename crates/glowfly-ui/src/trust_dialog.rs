@@ -1,6 +1,6 @@
 //! The "Trust this repository?" dialog: what in the repository's own config and hooks makes git
 //! run programs (and, apart, settings that change how git connects: TLS checks, proxies and the
-//! cookie file),
+//! cookie file, and the steps a rebase or pick in progress runs on continuing),
 //! and the Trust / Don't trust choice (update/trust.rs records it). When a git
 //! job the user started, or the built-in terminal's shells, wait for the decision, it says so
 //! and offers Trust and run or Cancel instead. For a repository trusted earlier that gained
@@ -157,7 +157,32 @@ fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path, places: &[Fo
             rows::hook(ui, t, &printable(h), mark);
         }
     }
+    steps(ui, t, scan);
     follows(ui, t, scan);
+}
+
+/// The most characters of a step the dialog shows.
+const STEP_CHARS: usize = 400;
+
+/// The steps a rebase, cherry-pick or revert in progress runs when it continues, one row each.
+fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan) {
+    if scan.steps.is_empty() {
+        return;
+    }
+    if !scan.hooks.is_empty() {
+        ui.add_space(6.0);
+    }
+    ui.label(type_scale::section_text(ui, t.tr("trust.steps.title")));
+    for step in &scan.steps {
+        let mut shown = printable(step);
+        if let Some((at, _)) = shown.char_indices().nth(STEP_CHARS) {
+            shown.truncate(at);
+            shown.push('…');
+        }
+        rows::hook(ui, t, &shown, Mark::Unknown { tip: t.tr("trust.unknown.tip") });
+    }
+    ui.add(egui::Label::new(RichText::new(t.tr("trust.steps.note")).color(color::weak())).wrap());
+    ui.add_space(6.0);
 }
 
 /// One group of settings under `title`, one `key = value` row each with its `mark`; nothing

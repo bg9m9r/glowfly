@@ -22,6 +22,8 @@
   "trust.revoked_with.other": "Revoked trust in {name} and the {count} repositories passed on from it. Glowfly asks again before Git runs their settings or hooks.",
   "trust.stale.held": "{label} didn't start: the repository's settings or hooks changed since they were checked. Decide whether to trust them first.",
   "trust.stale.terminal": "The terminal",
+  "trust.steps.note": "Continuing or skipping in the rebase, cherry-pick or revert in progress runs these.",
+  "trust.steps.title": "Commands the operation in progress runs",
   "trust.unchecked.conflicted": "Merging what it brings in would conflict in {path}, where hooks run from, leaving conflict markers in a hook. Trust and run runs it anyway.",
   "trust.unchecked.patched": "A patch it applies writes {path}, where hooks run from, and Git would run what it writes. Trust and run runs it anyway.",
   "trust.unchecked.unmodeled": "Glowfly can't tell what {what} writes where hooks run from, so it wasn't compared with what you trusted. Trust and run runs it anyway.",

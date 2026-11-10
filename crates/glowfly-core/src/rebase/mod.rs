@@ -46,6 +46,7 @@ pub use quick::{QuickEdit, QuickPlan, prepare_edit};
 pub use remaining::{EditTodoRequest, Remaining, edit_todo, remaining};
 pub use run::{Resume, resume, start};
 pub(crate) use run::{outcome, stash_tip};
+pub(crate) use todo::{MSG_DIR, own_files};
 pub use todo::{
     build, default_combined, editor_command, group_end, install_todo, is_unchanged, listed_oids, problem, problem_with, shell_quote,
     shell_quote_for,
@@ -332,6 +333,8 @@ pub(crate) fn short(oid: Oid) -> String {
 mod merges_tests;
 #[cfg(test)]
 mod merges_todo_tests;
+#[cfg(test)]
+mod own_lines_tests;
 #[cfg(test)]
 mod plan_tests;
 #[cfg(test)]
