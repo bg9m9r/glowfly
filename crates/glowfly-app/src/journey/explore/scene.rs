@@ -10,7 +10,7 @@ use super::rng::Rng;
 use std::path::PathBuf;
 
 pub(super) struct Scene {
-    #[expect(dead_code, reason = "used by Task 6; for now it keeps the folders until the scene is dropped")]
+    #[expect(dead_code, reason = "never read: it keeps the folders until the scene is dropped")]
     pub fx: Fixture,
     pub app: PathBuf,
     pub lib: PathBuf,
@@ -44,7 +44,7 @@ fn branch_work(app: &std::path::Path, name: &str, line: usize, count: usize) {
 
 /// A scene for the session `seed`; `tag` keeps the folders of sessions running at once apart.
 pub(super) fn build(tag: &str, seed: u64) -> Scene {
-    let fx = Fixture::new(&format!("explore-{tag}-{seed}"));
+    let fx = Fixture::new(&format!("explore-scene-{tag}-{seed}"));
     fx.pin_dates();
     let mut rng = Rng::new(seed);
 

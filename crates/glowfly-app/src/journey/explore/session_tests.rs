@@ -30,9 +30,8 @@ fn bad_cases_are_refused() {
     assert_eq!(parse_case("# a comment\n\nseed 3\n"), Ok((3, Vec::new())));
 }
 
-/// Seed 11's first 25 steps break no rule. (Seeds 2, 8 and 9 meet a known app bug within 40
-/// steps: resolving a conflicted file whose text was rewritten outside the app keeps the old text
-/// only for the in-memory undo, so rule 3 finds it lost.)
+/// Seed 11's first 25 steps break no rule. (Seed 9 breaks rule 3 within 15 steps: a second
+/// kept-work record prunes the first, whose pinned fixture date is months before the real clock.)
 #[test]
 fn same_seed_same_session() {
     let checks = Checks { slow_every: 5 };
@@ -75,4 +74,35 @@ fn the_report_names_the_rule_seed_and_actions() {
     for part in ["no-lost-work", "step 4", "work lost from app", "seed 9", "stash\nundo", "branch main"] {
         assert!(text.contains(part), "{part:?} missing from:\n{text}");
     }
+}
+
+#[test]
+fn a_dialogs_button_finishes_the_action_that_opened_it() {
+    use super::super::{probe, scene};
+    use super::{Judged, judged};
+    let s = scene::build("judged", 1);
+    let r = probe::read(&s.app);
+    let at = |action: Action, mark: u64| Judged { tab: "app".into(), action, before: r.clone(), mark, undoable: None };
+    let mut pending = None;
+    assert!(judged(&mut pending, at(Action::DeleteBranch("topic".into()), 1), true, true).is_none(), "the dialog is open");
+    assert!(judged(&mut pending, at(Action::Confirm("Delete anyway".into()), 2), false, true).is_none(), "still open");
+    let done = judged(&mut pending, at(Action::Confirm("Delete anyway".into()), 3), true, false).expect("finished");
+    assert_eq!((done.action, done.mark), (Action::DeleteBranch("topic".into()), 1), "judged with its own reading and mark");
+    assert!(pending.is_none());
+
+    assert!(judged(&mut pending, at(Action::Checkout("side".into()), 4), true, true).is_none());
+    assert!(judged(&mut pending, at(Action::Confirm("Cancel".into()), 5), true, false).is_none(), "Cancel finishes nothing");
+    assert!(pending.is_none());
+    assert!(judged(&mut pending, at(Action::Confirm("Delete".into()), 6), true, false).is_none(), "nothing pending");
+    let plain = judged(&mut pending, at(Action::Stash, 7), true, false).expect("no dialog");
+    assert_eq!(plain.action, Action::Stash);
+    assert!(judged(&mut pending, at(Action::Stash, 8), false, false).is_none(), "skipped");
+}
+
+#[test]
+fn a_branch_deleted_through_its_dialog_passes() {
+    let plan = Plan::Replay(vec![Action::DeleteBranch("topic".into()), Action::Confirm("Delete anyway".into())]);
+    let o = run("delete", 3, plan, Checks { slow_every: 1 });
+    assert!(o.broke.is_none(), "{}", report(&o, &actions(&o)));
+    assert!(!o.state.contains("topic"), "topic is gone: {}", o.state);
 }

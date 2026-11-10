@@ -5,7 +5,11 @@
 //!
 //! A dialog left open is settled before choosing; when it offers no usable button even then,
 //! Escape closes it. That Escape is not a step and is not recorded: a replay meets the same
-//! dialog and presses it again.
+//! dialog and presses it again (`Outcome::state` says before which steps it was pressed). A
+//! dialog that Escape doesn't close either ends the walk there, and `state` says so.
+//!
+//! An action that opens a dialog (delete a branch, check out with changes, some undos) is judged
+//! by rules 5 and 6 when the dialog's button finishes it, against the reading from before it.
 
 use super::super::fixture::{Fixture, git_output};
 use super::super::harness::Journey;
@@ -69,6 +73,46 @@ struct Walk<'a> {
     /// The tab and the reading from before the last performed step, when that step recorded an
     /// action in the app's undo history: what an Undo next must return to.
     undoable: Option<(String, Reading)>,
+    /// The action whose dialog is still open, to judge when its button finishes it.
+    pending: Option<Judged>,
+    /// The steps before which `unstick` pressed Escape.
+    escapes: Vec<usize>,
+    /// The step before which the walk stopped on a dialog nothing closed.
+    stalled: Option<usize>,
+}
+
+/// An action as rules 5 and 6 judge it: its tab, the reading and log mark from before it, and
+/// what an Undo then had to return to.
+#[derive(Clone, Debug)]
+struct Judged {
+    tab: String,
+    action: Action,
+    before: Reading,
+    mark: u64,
+    undoable: Option<(String, Reading)>,
+}
+
+/// Which action, if any, this step finishes: `now` itself when it was performed and left no
+/// dialog open, or the pending action a dialog's button (not Cancel) finished. An action that
+/// opened a dialog waits in `pending`; Cancel drops it.
+fn judged(pending: &mut Option<Judged>, now: Judged, performed: bool, dialog_open: bool) -> Option<Judged> {
+    match &now.action {
+        Action::Confirm(label) if label == "Cancel" && !dialog_open => {
+            *pending = None;
+            None
+        }
+        Action::Confirm(_) if dialog_open => None,
+        Action::Confirm(_) => pending.take().filter(|p| performed && p.tab == now.tab),
+        _ if !performed => None,
+        _ if dialog_open => {
+            *pending = Some(now);
+            None
+        }
+        _ => {
+            *pending = None;
+            Some(now)
+        }
+    }
 }
 
 /// Runs a session on the scene of `seed`; `tag` keeps the folders of sessions running at once apart.
@@ -83,6 +127,9 @@ pub(super) fn run(tag: &str, seed: u64, plan: Plan, checks: Checks) -> Outcome {
         current: None,
         active: "app".to_owned(),
         undoable: None,
+        pending: None,
+        escapes: Vec::new(),
+        stalled: None,
     };
     // The journey lives inside: a panic drops it (the app and its threads) before the scene.
     let broke = match catch_unwind(AssertUnwindSafe(|| walk.session(tag, seed, plan))) {
@@ -92,7 +139,21 @@ pub(super) fn run(tag: &str, seed: u64, plan: Plan, checks: Checks) -> Outcome {
             Some(Broken { rule: Rule::NoCrash, step: walk.steps.len(), detail: panic_text(payload.as_ref()) })
         }
     };
-    let state = state_of(walk.dir(&walk.active));
+    let mut state = String::new();
+    if let Some(at) = walk.stalled {
+        state.push_str(&format!(
+            "the walk ended early, before step {at}: a dialog that neither its buttons nor Escape closed
+"
+        ));
+    }
+    if !walk.escapes.is_empty() {
+        state.push_str(&format!(
+            "Escape closed a dialog with no usable button before steps {:?}
+",
+            walk.escapes
+        ));
+    }
+    state.push_str(&state_of(walk.dir(&walk.active)));
     Outcome { seed, steps: walk.steps, broke, state }
 }
 
@@ -118,7 +179,7 @@ fn active_tab(j: &Journey) -> String {
 }
 
 /// What rule 6 holds `action` to. One that stopped on new conflicts (a merge, a rebase or its
-/// next step, a pop) did something and also didn't finish: the app says so with a failure toast
+/// next step, a pop, a checkout whose stash came back conflicted) did something and also didn't finish: the app says so with a failure toast
 /// ("Stopped on conflicts…"), and the conflicts on screen are rule 4's, so either is right here.
 fn took(action: &Action, before: &Reading, after: &Reading) -> Option<bool> {
     let stopped = !after.conflicted.is_empty() && !after.conflicted.is_subset(&before.conflicted);
@@ -132,14 +193,17 @@ impl Walk<'_> {
 
     fn session(&mut self, tag: &str, seed: u64, plan: Plan) -> Option<Broken> {
         let s = self.scene;
-        let fx = Fixture::new(&format!("explore-ui-{tag}-{seed}"));
+        let fx = Fixture::new(&format!("explore-session-{tag}-{seed}"));
         let mut j = Journey::start_many(fx, s.app.clone(), vec![s.lib.clone()], vec![s.app.clone(), s.lib.clone()]);
         let (count, replay) = match plan {
             Plan::Random { steps } => (steps, None),
             Plan::Replay(list) => (list.len(), Some(list)),
         };
         for at in 0..count {
-            self.unstick(&mut j);
+            if !self.unstick(&mut j) {
+                self.stalled = Some(self.steps.len() + 1);
+                break;
+            }
             self.active = active_tab(&j);
             let before = probe::read(self.dir(&self.active));
             let mark = j.log_mark();
@@ -161,20 +225,25 @@ impl Walk<'_> {
         if n == 0 || !n.is_multiple_of(self.checks.slow_every) { self.slow(n).err() } else { None }
     }
 
-    /// Settles an open dialog; when it still offers no usable button, presses Escape.
-    fn unstick(&mut self, j: &mut Journey) {
+    /// Settles an open dialog; when it still offers no usable button, presses Escape. False when
+    /// the dialog is open even then.
+    fn unstick(&mut self, j: &mut Journey) -> bool {
         for _ in 0..2 {
             if !j.modal_open() {
-                return;
+                return true;
             }
             j.settle();
             let r = probe::read(self.dir(&active_tab(j)));
             // With a dialog open, `applicable` lists only its buttons and draws nothing.
             if !j.modal_open() || !applicable(j, self.scene, &self.active, &r, &mut self.rng, &mut self.shadow).is_empty() {
-                return;
+                return true;
             }
         }
+        self.escapes.push(self.steps.len() + 1);
+        self.pending = None;
         j.press(Key::Escape);
+        j.settle();
+        !j.modal_open()
     }
 
     /// Performs `action`, records it and checks the rules after it.
@@ -197,27 +266,30 @@ impl Walk<'_> {
         if let Err(detail) = rules::screen_agrees(j, &shown) {
             return broken(Rule::ScreenAgrees, detail);
         }
-        // An action that opened a dialog isn't finished: the dialog's button is the next step.
-        let finished = matches!(done, Done::Performed) && !j.modal_open();
-        let toasts = j.toasts_since_action();
-        let errors = j.errors_logged_since(mark);
-        let refused = toasts.iter().any(|(ok, _)| !ok) || !errors.is_empty();
-        if action == Action::Undo
-            && finished
-            && !refused
-            && let Some((undone_tab, earlier)) = &self.undoable
-            && *undone_tab == tab
-            && let Err(detail) = rules::undo_returns(earlier, &after)
-        {
-            return broken(Rule::UndoReturns, detail);
+        let performed = matches!(done, Done::Performed);
+        let now = Judged { tab: tab.clone(), action: action.clone(), before, mark, undoable: self.undoable.clone() };
+        let subject = judged(&mut self.pending, now, performed, j.modal_open());
+        if let Some(s) = &subject {
+            let toasts = j.toasts_since_action();
+            let errors = j.errors_logged_since(s.mark);
+            let refused = toasts.iter().any(|(ok, _)| !ok) || !errors.is_empty();
+            if s.action == Action::Undo
+                && !refused
+                && let Some((undone_tab, earlier)) = &s.undoable
+                && *undone_tab == s.tab
+                && let Err(detail) = rules::undo_returns(earlier, &after)
+            {
+                return broken(Rule::UndoReturns, detail);
+            }
+            if let Err(detail) = rules::errors_reported(took(&s.action, &s.before, &after), &toasts, &errors) {
+                let what = if s.action == action { String::new() } else { format!(" ({} finished by this dialog)", s.action) };
+                return broken(Rule::ErrorsReported, format!("{detail}{what} (toasts {toasts:?}, logged errors {errors:?})"));
+            }
         }
-        if finished && let Err(detail) = rules::errors_reported(took(&action, &before, &after), &toasts, &errors) {
-            return broken(Rule::ErrorsReported, format!("{detail} (toasts {toasts:?}, logged errors {errors:?})"));
-        }
-        if matches!(done, Done::Performed) {
+        if performed {
             let in_app = !matches!(action, Action::Outside(_)) && self.active == tab;
             let undoable = in_app && j.state().session.undo.recorded > recorded;
-            self.undoable = undoable.then_some((tab, before));
+            self.undoable = subject.filter(|_| undoable).map(|s| (tab, s.before));
         }
         if n.is_multiple_of(self.checks.slow_every) { self.slow(n).err() } else { None }
     }
