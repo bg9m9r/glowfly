@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Label "Diff viewer"
 Label "Font size"
 SpinButton "Font size" = "12.5 pt" = 12.5

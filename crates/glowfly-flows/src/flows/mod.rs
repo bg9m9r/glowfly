@@ -292,6 +292,7 @@ mod trust_patch_export_tests;
 mod trust_print_tests;
 mod trust_recheck_programs_tests;
 mod trust_recheck_tests;
+mod trust_revoke_tests;
 mod trust_terminal_tests;
 mod trust_tests;
 mod undo_abort_tests;

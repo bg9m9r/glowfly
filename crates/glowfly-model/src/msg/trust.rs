@@ -1,6 +1,7 @@
 //! Messages of the repository trust prompt (update/trust.rs), of passing trust on to the
 //! repositories Glowfly makes from a trusted one (update/trust_inherit.rs) and of the runner's
-//! re-check finding a repository no longer covered just before work started (update/trust_seal.rs).
+//! re-check finding a repository no longer covered just before work started (update/trust_seal.rs)
+//! and of Preferences > Trusted repositories (update/trust_revoke.rs).
 
 use super::Inactive;
 use crate::state::trust::InheritKind;
@@ -22,6 +23,13 @@ pub enum TrustMsg {
     /// The runner didn't start `Stale::effect`: its repository's scan just before it would
     /// have run isn't covered by the decision it was sent under (update/trust_seal.rs).
     Stale(Box<Stale>),
+    /// Preferences > Trusted repositories: remove the decision for `real` and every decision
+    /// passed on from it (the row's Revoke or Forget; update/trust_revoke.rs).
+    Revoke { real: PathBuf },
+    /// Remove the decisions of every folder the last check found missing.
+    ForgetMissing,
+    /// Which of the decided folders exist (`TrustEffect::CheckFolders`).
+    FoldersChecked(Vec<crate::msg::FolderCheck>),
 }
 
 /// A checked effect that didn't start (`TrustMsg::Stale`).
@@ -53,7 +61,14 @@ impl TrustMsg {
     /// as it is a user intent or an unscoped result (`Stale` too) and never comes back scoped.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::Decide { .. } | Self::Ask { .. } | Self::AskForTerminal { .. } | Self::Inherited { .. } | Self::Stale(_) => None,
+            Self::Decide { .. }
+            | Self::Ask { .. }
+            | Self::AskForTerminal { .. }
+            | Self::Inherited { .. }
+            | Self::Stale(_)
+            | Self::Revoke { .. }
+            | Self::ForgetMissing
+            | Self::FoldersChecked(_) => None,
         }
     }
 }

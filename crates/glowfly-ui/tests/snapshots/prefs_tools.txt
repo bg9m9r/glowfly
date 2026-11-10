@@ -15,6 +15,7 @@ Button "External tools" [selected]
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Label "External tools"
 Label "Editor"
 Label "Editor executable"

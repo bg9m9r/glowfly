@@ -110,6 +110,8 @@ const INDEX: &[(PrefPage, &str, Option<&str>)] = &[
     (PrefPage::Terminal, "prefs.terminal.shell.label", None),
     (PrefPage::Terminal, "prefs.tools.terminal.label", Some("prefs.tools.terminal.help")),
     (PrefPage::Terminal, "prefs.tools.terminal_args.label", Some("prefs.tools.terminal_args.help")),
+    (PrefPage::Trust, "prefs.trust.decisions.label", Some("prefs.trust.decisions.help")),
+    (PrefPage::Trust, "prefs.trust.forget_missing.label", Some("prefs.trust.forget_missing.help")),
     (PrefPage::RepoIdentity, "prefs.identity.email.label", Some("prefs.identity.email.help")),
     (PrefPage::RepoIdentity, "prefs.identity.name.label", None),
     (PrefPage::RepoHooks, "prefs.hooks.monitor.label", None),

@@ -1,5 +1,5 @@
 //! The runner's trust re-check: a repository that changed since its decision, or can't be
-//! read, is held or failed instead of run.
+//! read, is held or failed instead of run; and the check of which decided folders still exist.
 
 use super::*;
 use crate::testing::execute_checked;
@@ -108,4 +108,17 @@ fn a_status_read_that_fails_its_check_reads_without_git() {
     };
     assert!(!git_status);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn checking_decided_folders_reports_which_are_there() {
+    let present = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-trust-present-{}", std::process::id()));
+    std::fs::create_dir_all(&present).unwrap();
+    let gone = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-trust-gone-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&gone);
+    let Msg::Trust(TrustMsg::FoldersChecked(checks)) = run(TrustEffect::CheckFolders(vec![present.clone(), gone.clone()])) else {
+        panic!("expected FoldersChecked")
+    };
+    assert_eq!(checks.iter().map(|c| (c.path.clone(), c.present)).collect::<Vec<_>>(), [(present.clone(), true), (gone, false)]);
+    let _ = std::fs::remove_dir_all(&present);
 }

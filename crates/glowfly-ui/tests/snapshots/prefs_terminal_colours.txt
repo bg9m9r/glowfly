@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal" [selected]
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Label "Terminal"
 Label "Built-in terminal"
 Label "Default shell"

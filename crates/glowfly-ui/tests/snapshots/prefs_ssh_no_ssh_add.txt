@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH" [selected]
+Button "Trusted repositories"
 Label "SSH"
 Label "Keys"
 Button "Reload keys"

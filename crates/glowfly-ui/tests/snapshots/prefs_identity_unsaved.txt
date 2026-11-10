@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Label "This repository · demo"
 Button "Commit identity" [selected]
 Button "Git hooks"

@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Button "GitHub  ✔" [selected]
 Button "GitHub Enterprise Server"
 Button "GitLab"

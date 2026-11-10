@@ -16,7 +16,7 @@ use glowfly_model::worktree::WorktreeMsg;
 use std::path::{Path, PathBuf};
 
 /// A folder next to `dir` for its new worktree, emptied first.
-fn wt_folder(dir: &Path) -> PathBuf {
+pub(super) fn wt_folder(dir: &Path) -> PathBuf {
     let root = dir.with_file_name(format!("{}-worktrees", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&root);
     root.join("side")
@@ -24,7 +24,7 @@ fn wt_folder(dir: &Path) -> PathBuf {
 
 /// Creates a worktree for a new branch `side` at `folder` through the dialog, running the job
 /// and what follows to the end.
-fn create_worktree(st: &mut AppState, folder: &Path, open: bool) {
+pub(super) fn create_worktree(st: &mut AppState, folder: &Path, open: bool) {
     drive(st, Msg::Worktree(WorktreeMsg::CreateDialog(WorktreeBase::Branch("main".into()))));
     let Some(Modal::NewWorktree(f)) = st.modal.as_mut() else { panic!("the Create worktree dialog") };
     f.branch = "side".into();
@@ -38,7 +38,7 @@ fn saved(st: &AppState, folder: &Path) -> Option<SavedTrust> {
     st.settings.saved_trust(&resolve(folder))
 }
 
-fn cleanup(dir: &Path, folder: &Path) {
+pub(super) fn cleanup(dir: &Path, folder: &Path) {
     let _ = std::fs::remove_dir_all(folder.parent().unwrap());
     let _ = std::fs::remove_dir_all(dir);
 }

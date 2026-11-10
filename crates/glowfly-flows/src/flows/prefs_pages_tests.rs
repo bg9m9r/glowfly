@@ -19,7 +19,7 @@ use glowfly_model::state::prefs::GitConfigValues;
 use glowfly_model::tools::ToolsMsg;
 use std::time::Instant;
 
-const PAGES: [PrefPage; 19] = [
+const PAGES: [PrefPage; 20] = [
     General,
     Git,
     Profile,
@@ -33,6 +33,7 @@ const PAGES: [PrefPage; 19] = [
     Terminal,
     Signing,
     Ssh,
+    Trust,
     RepoIdentity,
     RepoHooks,
     RepoTracker,
@@ -52,7 +53,8 @@ fn show_page(page: PrefPage) -> Option<Msg> {
         RepoGitFlow => Msg::GitFlow(GitFlowMsg::ShowPage),
         RepoSparse => Msg::Sparse(SparseMsg::ShowPage),
         Tools => Msg::Tools(ToolsMsg::ShowPage),
-        General | Integrations | Ui | Accessibility | Language | DiffViewer | Keyboard | Terminal | Signing | RepoIdentity | RepoHooks => {
+        General | Integrations | Ui | Accessibility | Language | DiffViewer | Keyboard | Terminal | Signing | Trust | RepoIdentity
+        | RepoHooks => {
             return None;
         }
     })

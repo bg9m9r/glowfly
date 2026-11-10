@@ -134,10 +134,14 @@ impl Settings {
         Some(SavedTrust { trust, print: get(&self.repo_trust_prints, real).cloned() })
     }
 
-    /// Saves the decision `t` for the repository at `real` (None removes it). Don't trust, or
-    /// no print, removes the saved print.
+    /// Saves the decision `t` for the repository at `real` (None removes it, with its time and
+    /// source). Don't trust, or no print, removes the saved print.
     pub fn set_trust(&mut self, real: &Path, t: Option<SavedTrust>) {
         let print = t.as_ref().filter(|t| t.trust == RepoTrust::Trusted).and_then(|t| t.print.clone());
+        if t.is_none() {
+            set(&mut self.repo_trust_times, real, None);
+            set(&mut self.repo_trust_from, real, None);
+        }
         set(&mut self.repo_trust, real, t.map(|t| t.trust));
         set(&mut self.repo_trust_prints, real, print);
     }

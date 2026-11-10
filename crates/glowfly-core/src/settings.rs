@@ -73,7 +73,7 @@ pub use theme_choice::ThemeChoice;
 pub use themes::{BuiltinTheme, ColorValue, SystemPair, ThemeCatalog, ThemeFile, ThemeProblem};
 pub use tools::{EDITOR_FILE_ARGS, EDITOR_REPO_ARGS, ExternalTools};
 pub use tracker::TrackerChoice;
-pub use trust::{RepoTrust, SavedTrust};
+pub use trust::{RepoTrust, SavedTrust, TrustDecision};
 pub use ui_choices::{BranchVisibility, Corner, Density, DescriptionMode, DiffLayout, DiffMode};
 pub use updates::{NewsChip, UpdatePrefs, WhatsNew};
 pub use zoom::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS, snap_zoom, zoom_in_from, zoom_out_from};
@@ -227,6 +227,13 @@ pub struct Settings {
     pub repo_trust: HashMap<String, RepoTrust>,
     /// What each Trusted decision was made on (`trust::TrustPrint`), keyed like `repo_trust`; none for older decisions.
     pub repo_trust_prints: HashMap<String, crate::trust::TrustPrint>,
+    /// When each trust decision was made (Unix seconds), keyed like `repo_trust`; none for older decisions.
+    #[serde(default)]
+    pub repo_trust_times: HashMap<String, i64>,
+    /// The repository each inherited decision (a worktree's, a submodule's) was passed on from,
+    /// as its `repo_keys` key; keyed like `repo_trust`. Revoking that repository revokes these too.
+    #[serde(default)]
+    pub repo_trust_from: HashMap<String, String>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
     pub status_tip_shown: HashMap<String, bool>,
     /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.

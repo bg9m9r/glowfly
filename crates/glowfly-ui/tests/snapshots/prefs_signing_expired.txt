@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing" [selected]
 Button "SSH"
+Button "Trusted repositories"
 Label "Commit signing"
 Label "Signing format"
 ComboBox "Signing format"

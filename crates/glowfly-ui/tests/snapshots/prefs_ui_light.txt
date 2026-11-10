@@ -15,6 +15,7 @@ Button "External tools"
 Button "Terminal"
 Button "Commit signing"
 Button "SSH"
+Button "Trusted repositories"
 Label "Appearance"
 Label "Theme"
 CheckBox "Match the system's dark or light mode" [off]

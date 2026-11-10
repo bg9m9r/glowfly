@@ -83,6 +83,7 @@ pub(super) fn inherited(
             continue;
         }
         record_trusted(&mut st.settings, &repo.real, print);
+        st.settings.stamp_trust(&repo.real, Some(st.cues.now), Some(from));
         names.push(folder_name(&repo.real));
     }
     if !names.is_empty() {
