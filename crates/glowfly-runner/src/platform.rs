@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn explorer_selects_only_a_path_that_stays_inside_its_quotes() {
         assert_eq!(select_argument(Path::new(r"C:\repo\R&D 100%\a.txt")).as_deref(), Some(r#"/select,"C:\repo\R&D 100%\a.txt""#));
-        assert_eq!(select_argument(Path::new("C:\\repo\\a\" \"b.txt")), None);
+        assert_eq!(select_argument(Path::new("C:\\repo\\a\"b.txt")), None);
         assert_eq!(select_argument(Path::new("C:\\repo\\a\nb.txt")), None);
     }
 
