@@ -71,6 +71,22 @@ fn an_own_line_that_was_edited_is_listed() {
     let elsewhere = base.replace("/glowfly-rebase/", "/elsewhere/glowfly-rebase/");
     std::fs::write(todo_path(&dir), todo.replace(base, &elsewhere)).unwrap();
     assert_eq!(scan_at(&dir).unwrap().steps, [elsewhere]);
+    // Any character more is another command to sh: a no-break space or a form feed after the
+    // line or before its command, which git doesn't drop as it drops spaces and tabs.
+    for other in ["\u{a0}", "\x0c", "\u{3000}", "\x0b"] {
+        let after = format!("{base}{other}");
+        let before_command = base.replacen("exec ", &format!("exec {other}"), 1);
+        let between = base.replacen("exec ", &format!("exec  {other} "), 1);
+        for line in [after, before_command, between] {
+            std::fs::write(todo_path(&dir), todo.replace(base, &line)).unwrap();
+            let s = scan_at(&dir).unwrap();
+            assert_eq!(s.steps.len(), 1, "{line:?}");
+            assert!(s.steps[0].contains(other) && !allows(Some(&before), &s), "{line:?}");
+        }
+    }
+    // Spaces and tabs around the keyword are git's to drop: still Glowfly's line.
+    std::fs::write(todo_path(&dir), todo.replace(base, &format!(" \t{}", base.replacen("exec ", "exec \t ", 1)))).unwrap();
+    assert!(scan_at(&dir).unwrap().is_empty());
     assert_eq!(state(&dir), git2::RepositoryState::RebaseInteractive);
     let _ = std::fs::remove_dir_all(&dir);
 }
