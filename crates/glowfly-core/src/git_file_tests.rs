@@ -42,6 +42,21 @@ fn a_commondir_naming_a_network_place_is_refused() {
 }
 
 #[test]
+fn a_commondir_is_read_up_to_its_first_nul() {
+    let dir = scratch_repo("git-file-commondir-nul");
+    let admin = dir.join(".git/worktrees/wt");
+    std::fs::create_dir_all(&admin).unwrap();
+    // libgit2 reads the file as a C string: nothing past the NUL is used.
+    write(&admin, "commondir", &format!("../..\0{}\n", git_spelling(&net_place())));
+    assert_eq!(common_dir_of(&admin, &dir), Named::At(crate::paths::resolve(&dir.join(".git"))));
+    if link_to(&net_place(), &admin.join("link"), true) {
+        write(&admin, "commondir", "./link\0\n");
+        assert!(matches!(common_dir_of(&admin, &dir), Named::Refused(_)), "the text before the NUL is checked");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_submodule_style_git_file_is_followed() {
     let dir = scratch_repo("git-file-absorbed");
     let modules = dir.join(".git/modules/sub");

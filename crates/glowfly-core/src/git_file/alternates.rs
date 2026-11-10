@@ -62,8 +62,8 @@ fn store(objects: &Path, base: &Path, home: &Path, depth: usize, seen: &mut Vec<
     }
     // Too large, not a regular file, or unreadable.
     let Some(bytes) = read_file_bounded(&file, ALTERNATES_MAX) else { return Err(file) };
-    // Split as libgit2's `git__strtok(.., "\r\n")` does.
-    for line in bytes.split(|b| *b == b'\r' || *b == b'\n') {
+    // Read as a C string, split as libgit2's `git__strtok(.., "\r\n")` does.
+    for line in super::up_to_nul(&bytes).split(|b| *b == b'\r' || *b == b'\n') {
         if line.is_empty() || line[0] == b'#' {
             continue;
         }
