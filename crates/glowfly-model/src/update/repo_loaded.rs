@@ -47,6 +47,7 @@ pub(super) fn finished(
 }
 
 fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, fx: &mut Vec<Effect>) {
+    let anchor = super::graph_anchor::take(st, kind);
     let state_before = st.snap.as_ref().filter(|_| kind == LoadKind::Refresh).map(|s| s.state);
     st.known.learn_snapshot(&snap);
     if kind == LoadKind::Open && super::tabs::open_elsewhere(st, &snap, fx) {
@@ -146,6 +147,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     let slow = st.snap.as_ref().and_then(|s| s.slow_status.clone());
     super::status_tip::check(st, slow.as_ref(), now, fx);
     super::deep_link_open::ready(st, now, fx);
+    super::graph_anchor::restore(st, anchor);
     if reload {
         super::refresh::reload_after(st, fx);
     }

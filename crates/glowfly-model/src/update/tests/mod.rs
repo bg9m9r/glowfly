@@ -24,6 +24,7 @@ pub(super) mod editor_tests;
 pub(super) mod forge_errors_tests;
 pub(super) mod getting_started_tests;
 pub(super) mod git_program_tests;
+pub(super) mod graph_anchor_tests;
 pub(super) mod graph_columns_tests;
 pub(super) mod hints_rules_tests;
 pub(super) mod hints_tests;

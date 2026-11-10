@@ -1,7 +1,7 @@
 //! The per-tab view state that parks with its tab inside `RepoSession::tab_view`: the folders
 //! collapsed in the changed-file lists and the open diff's opened folds with the mode and layout
 //! its top row was counted in, which only update changes. What the views write for the active
-//! tab (the graph's scroll and the diff's top row, the search bar's text, the sidebar's ref
+//! tab (the graph's scroll and row height and the diff's top row, the search bar's text, the sidebar's ref
 //! filter and the empty sections expanded) is `TabViewState` (`ViewState::tab`), parked beside
 //! the session (`Parked::view`); `update/tabs.rs` restores the scroll and recounts the top row on
 //! return. Also whether the tab's history was freed while parked.
@@ -21,6 +21,9 @@ pub struct TabViewState {
     /// The graph's scroll offset and viewport height from the last frame, recorded by the view;
     /// the graph scrolls back to the offset on return.
     pub graph_scroll: (f32, f32),
+    /// The graph's row height in the last frame, recorded by the view with `graph_scroll`; 0
+    /// until the graph is drawn. Reloads anchor the scroll with it (`state/graph_anchor.rs`).
+    pub graph_row_h: f32,
     /// First diff row visible in the last frame, recorded by the view (with `TabView::diff_expanded`'s
     /// folds open).
     pub diff_top_row: usize,

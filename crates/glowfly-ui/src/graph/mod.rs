@@ -193,6 +193,7 @@ fn table(
         last
     });
     view.tab.graph_scroll = (out.state.offset.y, out.inner_rect.height());
+    view.tab.graph_row_h = row_h;
     if more::wants_more(st, out.inner, total, filtered) {
         msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
     }
