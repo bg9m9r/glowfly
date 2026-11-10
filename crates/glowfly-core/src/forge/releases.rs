@@ -20,12 +20,13 @@ pub fn releases_api(repository: &str) -> Option<String> {
     (ok(owner) && ok(repo) && repo != "." && repo != "..").then(|| format!("https://api.github.com/repos/{owner}/{repo}/releases/latest"))
 }
 
-/// The newest published release of `repository`; None when it has none yet.
+/// The newest published release of `repository`; None when it has none yet, or when the answer
+/// is a draft or a prerelease.
 pub fn latest_release(repository: &str) -> Result<Option<Release>> {
     let url = releases_api(repository).ok_or_else(|| Error::Unsupported(format!("Glowfly can't check {repository} for releases")))?;
     let req = public_request(&url, false)?.set("Accept", "application/vnd.github+json").set("X-GitHub-Api-Version", "2022-11-28");
     match call_get(req) {
-        Ok(resp) => Ok(Some(parse_release(&read_capped(resp.into_reader(), MAX_RELEASE_JSON)?)?)),
+        Ok(resp) => Ok(parse_release(&read_capped(resp.into_reader(), MAX_RELEASE_JSON)?)?),
         Err(Error::NotFound(_)) => Ok(None),
         Err(Error::Forbidden(m)) | Err(Error::Http { status: 429, message: m }) => {
             let said = if m.is_empty() { String::new() } else { format!(" ({m})") };

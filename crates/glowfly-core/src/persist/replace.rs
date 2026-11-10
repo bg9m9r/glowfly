@@ -33,15 +33,15 @@ pub(super) fn set_mode(f: &File, old: Option<&Metadata>, executable: Option<bool
 
 /// Windows errors worth a short wait and another try: access denied (a file being deleted, or
 /// held by a scanner), sharing violation and lock violation.
-fn retryable(e: &io::Error) -> bool {
+pub(super) fn retryable(e: &io::Error) -> bool {
     cfg!(windows) && matches!(e.raw_os_error(), Some(5 | 32 | 33))
 }
 
-fn pause(attempt: u32) {
+pub(super) fn pause(attempt: u32) {
     std::thread::sleep(Duration::from_millis(15 * u64::from(attempt)));
 }
 
-const ATTEMPTS: u32 = 8;
+pub(super) const ATTEMPTS: u32 = 8;
 
 /// Renames `from` over `to`. `std::fs::rename` replaces an existing target on every platform
 /// (on Windows through `MoveFileExW` with `MOVEFILE_REPLACE_EXISTING`). Windows refuses to

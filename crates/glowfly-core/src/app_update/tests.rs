@@ -139,14 +139,14 @@ fn release_json_is_parsed_and_cleaned() {
             {"name": "no-link.zip", "size": 1},
             {"name": "SHA256SUMS", "size": 99, "browser_download_url": "https://github.com/d/SHA256SUMS"}
         ]}"###;
-    let r = parse_release(json).unwrap();
+    let r = parse_release(json).unwrap().expect("published");
     assert_eq!((r.tag.as_str(), r.name.as_str(), r.body.as_str()), ("v0.3.0", "v0.3.0", "## Notes"));
     assert_eq!(r.html_url, "https://github.com/bg9m9r/glowfly/releases/tag/v0.3.0");
     assert_eq!(r.published_at.as_deref(), Some("2026-10-20T10:00:00Z"));
     let names: Vec<&str> = r.assets.iter().map(|a| a.name.as_str()).collect();
     assert_eq!(names, ["glowfly-v0.3.0-x86_64-pc-windows-msvc.msi", "SHA256SUMS"]);
     assert_eq!(r.assets[0].size, 1234);
-    let r = parse_release(br#"{"tag_name": "v1.0.0", "html_url": "javascript:alert(1)"}"#).unwrap();
+    let r = parse_release(br#"{"tag_name": "v1.0.0", "html_url": "javascript:alert(1)"}"#).unwrap().expect("published");
     assert_eq!((r.html_url.as_str(), r.assets.len()), ("", 0));
     assert!(parse_release(b"[]").is_err());
     for bad in ["", ".", "..", "a/b", r"a\b", "C:x", "a b", &"x".repeat(129)] {

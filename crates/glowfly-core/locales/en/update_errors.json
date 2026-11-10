@@ -15,6 +15,7 @@
   "update_errors.install_with": "Install it with: sudo {tool} install {path}",
   "update_errors.internal": "Glowfly hit an internal error ({effect}): {panic}",
   "update_errors.larger_than_expected": "{name} is larger than expected",
+  "update_errors.name_taken": "Couldn't save {name} in {dir}: other files took its name and the next free ones while it downloaded. Nothing was replaced; download it again.",
   "update_errors.no_checksum": "This release doesn't publish a checksum for {name}, so it wasn't downloaded.",
   "update_errors.no_download": "This release has no download for this system.",
   "update_errors.no_downloads_folder": "No folder to download into",

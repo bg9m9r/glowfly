@@ -175,6 +175,8 @@ source file, update its line here.
 - `opens.rs`: whether "open in the default program" would run a working-tree file rather than show it.
 - `persist/backups.rs`: backups beside a file (`move_aside`, `keep_copy`), numbered one past the highest already there (`backup_number` says which names count), and `prune_backups`, which keeps the newest `KEPT_BACKUPS` regular files at start; tests in `backups_tests.rs`.
 - `persist/link.rs`: symbolic links Undo and the journal put back: made beside the path and renamed over it (`write_link`), or only where nothing is (`create_link`); on Windows file links with backslashes.
+- `persist/new_file.rs`: `write_streamed_new`, a streamed write finished by a move that refuses a taken name and asks for the next one; tests in `new_file_tests.rs`.
+- `persist/temp_names.rs`: `temp_target`, which file a temporary file was written for.
 - `persist/replace.rs`: the platform steps of a crash-safe write: permissions, the rename over the old file (with Windows' read-only attribute and brief locks), flushing the folder, and old temporary files.
 - `i18n/catalog.rs`: the bundled catalogs: per language, one flat JSON object of key → text per area (`locales/<lang>/<area>.json`), compiled in and merged on first use; tests in `catalog_tests.rs` (each file parses, holds only its area's sorted keys, no key in two files, the area list matches the folders).
 - `i18n/system.rs`: the OS's UI language: read once at startup from its ordered list of preferred languages, and never again while Glowfly runs.
@@ -191,14 +193,16 @@ source file, update its line here.
 ## Glowfly's own updates (`app_update.rs`, `app_update/`)
 
 - `version.rs`: semantic versions.
-- `release.rs`: the release and its files, with unsafe links and names dropped.
+- `release.rs`: the release and its files, with unsafe links and names dropped; a release its JSON marks as a draft or a prerelease reads as no release.
+- `release_tests.rs`: drafts and prereleases skipped from the hosting service and a feed folder, with nothing offered or downloaded.
 - `assets.rs`: this platform, how this copy was installed (installer, .rpm, AppImage or portable) and which file to fetch.
 - `host.rs`: the machine's real processor under emulation.
 - `appimage.rs`: whether this copy runs from an AppImage and which file that is.
 - `sums.rs`: `SHA256SUMS` files.
 - `signature.rs`: `SHA256SUMS.minisig`, verified with `minisign-verify` against the pinned keys (`KEYS`; a feed folder also trusts the committed test key, in test and `installer-check` builds only), and its trusted comment checked against the offered tag (`Glowfly <tag>: SHA256SUMS`), before any checksum is trusted; fixtures in `minisign_fixtures/`, tests in `signature_tests.rs`.
-- `download.rs`: downloading a file into the Downloads folder once the signed `SHA256SUMS` lists it, streamed to a temporary file beside it and renamed into place only after its SHA-256 matches, with progress and Cancel; `check_saved` reads a saved file again.
-- `download_tests.rs`: streamed downloads from a local feed (progress, Cancel and a mismatch removing the partial file).
+- `download.rs`: downloading a file into the Downloads folder once the signed `SHA256SUMS` lists it, streamed to a temporary file beside it and moved into place only after its SHA-256 matches, never replacing a file that appeared meanwhile (the next free name, else `NameTaken`), with progress and Cancel; `check_saved` reads a saved file again.
+- `download_tests.rs`: streamed downloads from a local feed (progress, Cancel and a mismatch removing the partial file, a name taken meanwhile never replaced).
+- `leftovers.rs`: temporary files of stopped or killed downloads in Downloads (Glowfly's own pattern, regular files, untouched for an hour), removed at start and before a download; tests in `leftovers_tests.rs`.
 - `feed.rs`: where releases are read from: the hosting service or a local folder named by `GLOWFLY_UPDATE_FEED` (a `TestKeyFolder`, trusting the test key, only in an `installer-check` build or glowfly-core's tests).
 - `check.rs`: the headless check behind `glowfly --check-update`.
 - `method.rs`: Install and restart: how a downloaded file is installed.

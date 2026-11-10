@@ -1,16 +1,19 @@
 //! Downloading an offered file: its checksum first, from the release's `SHA256SUMS` once its
 //! minisign signature verifies, then the file, streamed to a temporary file
-//! beside its final name and hashed on the way. It is renamed into place (through
-//! `persist::write_streamed`) only once it is the announced size and matches the checksum, so a
-//! half-written or mismatched file never appears under the final name. A cancelled or failed
-//! download removes the temporary file. [`check_saved`] tells whether a saved file is still there
-//! and unchanged.
+//! beside its final name and hashed on the way. It is moved into place (through
+//! `persist::write_streamed_new`) only once it is the announced size and matches the checksum, so
+//! a half-written or mismatched file never appears under the final name. That move never replaces
+//! a file that appeared under the name meanwhile: it takes the next free name, or refuses
+//! (`NameTaken`) once those are taken too. A cancelled or failed download removes the temporary
+//! file, and a download first clears what stopped ones left (`leftovers.rs`). [`check_saved`]
+//! tells whether a saved file is still there and unchanged.
 
 use super::{Asset, Feed, Offer, SumsSource, UpdateError, signature, sums};
 use crate::native_path::shown;
 use sha2::{Digest, Sha256};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 /// The largest file Glowfly downloads.
 pub const MAX_DOWNLOAD: u64 = 512 * 1024 * 1024;
@@ -101,6 +104,7 @@ pub fn download_streamed(
         return Err(UpdateError::TooLarge { name: asset.name.clone(), mb: MAX_DOWNLOAD / (1024 * 1024) });
     }
     std::fs::create_dir_all(dir).map_err(|e| UpdateError::CreateFailed { path: shown(dir), said: e.to_string() })?;
+    super::leftovers::remove_stopped_downloads(dir, SystemTime::now());
     let same = dir.join(&asset.name);
     if file_digest(&same, asset.size) == Some(want) {
         return Ok(Some(Saved { path: same, sha256: want }));
@@ -109,10 +113,13 @@ pub fn download_streamed(
         return Ok(None);
     }
     let mut reader = feed.open(asset).map_err(|e| download_failed(asset, e))?;
-    let path = dir.join(free_name(&asset.name, |n| dir.join(n).symlink_metadata().is_ok()));
+    let taken = |n: &str| dir.join(n).symlink_metadata().is_ok();
+    let first = dir.join(free_name(&asset.name, taken));
     let mut stopped = None;
-    let written = crate::persist::write_streamed(&path, crate::persist::WriteOptions::default(), |file| {
-        let end = match copy_hashed(&mut *reader, file, asset, &path, progress, cancelled) {
+    // The next free name is worked out again from what the folder holds when the first is taken.
+    let next = || dir.join(free_name(&asset.name, taken));
+    let written = crate::persist::write_streamed_new(&first, crate::persist::WriteOptions::default(), next, |file| {
+        let end = match copy_hashed(&mut *reader, file, asset, &first, progress, cancelled) {
             Ok(digest) if digest == want => return Ok(()),
             Ok(_) => Stop::Failed(UpdateError::ChecksumMismatch),
             Err(end) => end,
@@ -121,10 +128,13 @@ pub fn download_streamed(
         Err(io::Error::other("the download stopped"))
     });
     match (written, stopped) {
-        (Ok(()), _) => Ok(Some(Saved { path, sha256: want })),
+        (Ok(path), _) => Ok(Some(Saved { path, sha256: want })),
         (Err(_), Some(Stop::Cancelled)) => Ok(None),
         (Err(_), Some(Stop::Failed(e))) => Err(e),
-        (Err(e), None) => Err(UpdateError::SaveFailed { path: shown(&path), said: e.to_string() }),
+        (Err(e), None) if e.kind() == io::ErrorKind::AlreadyExists => {
+            Err(UpdateError::NameTaken { name: asset.name.clone(), dir: shown(dir) })
+        }
+        (Err(e), None) => Err(UpdateError::SaveFailed { path: shown(&first), said: e.to_string() }),
     }
 }
 

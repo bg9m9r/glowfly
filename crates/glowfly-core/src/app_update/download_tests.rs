@@ -1,5 +1,6 @@
 //! Streamed downloads from a local feed folder: progress, the temporary file beside the final
-//! name, Cancel and a checksum mismatch removing it, and checking a saved file again.
+//! name, Cancel and a checksum mismatch removing it, a name taken meanwhile never replaced, and
+//! checking a saved file again.
 
 use super::feed_tests::{MSI, is_empty, offer_for, scratch, sum_line, write_feed};
 use super::*;
@@ -7,13 +8,13 @@ use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
 
 /// A file of several chunks, so a download reports progress more than once.
-fn large() -> Vec<u8> {
+pub(super) fn large() -> Vec<u8> {
     (0..300_000u32).map(|i| (i % 251) as u8).collect()
 }
 
 /// A feed folder in `dir` publishing `bytes` as the MSI, with `sum_of`'s checksum; and the
 /// download folder beside it.
-fn feed_with(dir: &Path, bytes: &[u8], sum_of: &[u8]) -> (Feed, PathBuf) {
+pub(super) fn feed_with(dir: &Path, bytes: &[u8], sum_of: &[u8]) -> (Feed, PathBuf) {
     let feed_dir = dir.join("feed");
     std::fs::create_dir_all(&feed_dir).unwrap();
     write_feed(&feed_dir, "v0.1.1", &[(MSI, bytes)], Some(sum_line(MSI, sum_of)));
@@ -116,5 +117,29 @@ fn a_different_file_of_the_same_name_is_never_overwritten() {
     assert_eq!(saved.path, dl.join("glowfly-v0.1.1-x86_64-pc-windows-msvc (1).msi"));
     assert_eq!(std::fs::read(&saved.path).unwrap(), bytes);
     assert_eq!(std::fs::read_to_string(dl.join(MSI)).unwrap(), "something else", "never overwritten");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_name_taken_during_the_download_is_never_replaced() {
+    let dir = scratch("taken-meanwhile");
+    let bytes = large();
+    let (feed, dl) = feed_with(&dir, &bytes, &bytes);
+    let o = offer_for(&feed, InstallKind::Installer);
+    let appeared = Cell::new(false);
+    let mut progress = |_: Progress| {
+        // A browser saves the same file while Glowfly downloads it.
+        if !appeared.replace(true) {
+            std::fs::write(dl.join(MSI), "appeared meanwhile").unwrap();
+        }
+    };
+    let saved = download_streamed(&feed, &o, &dl, &mut progress, &|| false).unwrap().expect("not cancelled");
+    let second = "glowfly-v0.1.1-x86_64-pc-windows-msvc (1).msi";
+    assert_eq!(saved.path, dl.join(second));
+    assert_eq!(std::fs::read(&saved.path).unwrap(), bytes);
+    assert_eq!(std::fs::read_to_string(dl.join(MSI)).unwrap(), "appeared meanwhile", "never replaced");
+    let mut now = names(&dl);
+    now.sort();
+    assert_eq!(now, [second, MSI]);
     let _ = std::fs::remove_dir_all(&dir);
 }

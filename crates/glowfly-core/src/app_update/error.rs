@@ -52,6 +52,9 @@ pub enum UpdateError {
     ChecksumMismatch,
     /// The download couldn't be written to disk.
     SaveFailed { path: String, said: String },
+    /// Every free name for `name` in `dir` was taken by other files while it downloaded;
+    /// nothing was replaced.
+    NameTaken { name: String, dir: String },
     /// The download ended at `got` bytes rather than the announced `want`.
     WrongSize { name: String, got: u64, want: u64 },
     /// The download was stopped before it finished (the headless check).
@@ -147,6 +150,10 @@ impl std::fmt::Display for UpdateError {
             Self::BadFileName { name } => write!(f, "{name} isn't a file name Glowfly reads"),
             Self::ChecksumMismatch => f.write_str("The download didn't match its published checksum and was discarded."),
             Self::SaveFailed { path, said } => write!(f, "Couldn't save {path}: {said}"),
+            Self::NameTaken { name, dir } => write!(
+                f,
+                "Couldn't save {name} in {dir}: other files took its name and the next free ones while it downloaded. Nothing was replaced; download it again."
+            ),
             Self::WrongSize { name, got, want } => {
                 write!(f, "The download of {name} was {got} bytes instead of {want}, so it was discarded.")
             }
