@@ -316,6 +316,26 @@ fn remove_tree_removes_a_link_but_not_its_target() {
 }
 
 #[test]
+fn remove_link_removes_only_links() {
+    let dir = scratch("remove-link");
+    let (file, link, folder, folder_link) = (dir.join("a.txt"), dir.join("l"), dir.join("d"), dir.join("dl"));
+    std::fs::write(&file, "keep").unwrap();
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("in.txt"), "in").unwrap();
+    assert_eq!(remove_link(&file).unwrap_err().kind(), std::io::ErrorKind::InvalidInput, "a file is refused");
+    assert!(file.exists() && remove_link(&dir.join("missing")).is_ok());
+    if symlink_file(Path::new("a.txt"), &link) {
+        remove_link(&link).unwrap();
+        assert!(link.symlink_metadata().is_err() && std::fs::read(&file).unwrap() == b"keep", "the link went, its target stays");
+    }
+    if dir_link(&folder, &folder_link) {
+        remove_link(&folder_link).unwrap();
+        assert!(folder_link.symlink_metadata().is_err() && folder.join("in.txt").exists(), "a folder link went, its folder stays");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_private_write_keeps_the_file_to_its_user() {
     let dir = scratch("private");
     let file = dir.join("run").join("instance.json");

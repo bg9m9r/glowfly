@@ -146,7 +146,7 @@ source file, update its line here.
 
 ## Files, logs, text and dates
 
-- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs; backups beside a file (`persist/backups.rs`); `rename_new` moves a file or folder to a free name.
+- `persist.rs`: crash-safe writes of Glowfly's own files and of files saved for the user (patches), `write_streamed` for large files; appends to logs; backups beside a file (`persist/backups.rs`); `rename_new` moves a file or folder to a free name; `remove_link` and `remove_tree` remove a link itself, never what it points to.
 - `logs.rs`, `logs/`: Glowfly's log files.
 - `activity.rs`: the activity log's file format and trimming.
 - `rotate.rs`: the size-rotating writer of the error and performance logs.

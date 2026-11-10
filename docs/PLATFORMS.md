@@ -167,7 +167,8 @@ second one next to it.
    link wherever Undo, Redo and the journal check what a path holds (`Saved::held_by`).
    Targets are saved with forward slashes (Windows' backslashes turned into slashes, and back
    when the link is made). Windows folder links and junctions are not saved: a discard or
-   delete of one runs without Undo.
+   delete of one runs without Undo. Restore from a commit removes a link at the path first
+   (`persist::remove_link`), since libgit2's checkout would write through it.
 3. **A replaced file keeps its permissions and read-only attribute.** Set the exec bit only
    through `WriteOptions::executable`, only when it changes (`persist::needs_chmod`), honour
    `core.fileMode`, and never fail a write because chmod failed (vfat, some shares).
@@ -202,14 +203,16 @@ second one next to it.
    `NoRecycleFiles`; `repo/trash/win.rs`, decided by the pure `bin_refuses`). With no UI shown,
    the shell deletes for good without saying so. Read them for the volume's mount point
    (`GetVolumePathNameW`), not the drive letter: a volume mounted in a folder has its own.
-4. **Remove links without following them,** and re-check parent folders before trashing.
+4. **Remove links without following them** (`persist::remove_link`, `persist::remove_tree`), and
+   re-check parent folders before trashing.
 5. **On Linux, check the mount's trash folders before calling the `trash` crate**
    (`repo/trash/xdg.rs`, decided by the pure `volume_trash_usable` in `home.rs`, which picks a
    folder as the crate does). When they can't be used, refuse with `HomeTrashOnly` and ask
    (Move to home Trash, Delete permanently) instead of letting the crate copy the file into the
    home Trash without a word. `repo::home_trash` does the move the user agreed to.
 6. **A delete keeps what undo needs first:** the working copy's bytes as a blob (files up to
-   64 MB, `undo::MAX_KEPT_BYTES`; not links) and, for Unstage and delete, the staged entry
+   64 MB, `undo::MAX_KEPT_BYTES`; a symbolic link's target, never the file it points to; not
+   Windows folder links or junctions) and, for Unstage and delete, the staged entry
    (`undo/deleted.rs`; also for Discard of an untracked file, and kept when the delete fails
    after the file went). A permanent delete whose confirmation promised Undo refuses a file over
    the limit (`Error::NoCopyKept`, decided when it runs, so a file that grew meanwhile counts)

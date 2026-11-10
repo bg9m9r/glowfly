@@ -65,6 +65,33 @@ fn restores_when_missing_from_workdir() {
 }
 
 #[test]
+fn restore_replaces_a_link_without_writing_through_it() {
+    let dir = scratch_repo("restore-link");
+    git(&dir, &["config", "core.symlinks", "true"]);
+    let v1 = commit(&dir, &[("f.txt", "v1\n")], "one");
+    commit(&dir, &[("f.txt", "v2\n")], "two");
+    write(&dir, "target.txt", "keep\n");
+    let link = dir.join("f.txt");
+    std::fs::remove_file(&link).unwrap();
+    if !file_link("target.txt", &link) {
+        let _ = std::fs::remove_dir_all(&dir);
+        return eprintln!("skipped: symbolic links can't be made here");
+    }
+    // Without overwrite, a link over a tracked file is a change nothing else holds.
+    let e = restore_file(&dir, v1, "f.txt", false).unwrap_err();
+    assert!(matches!(e, crate::error::Error::WouldOverwrite(_)), "{e}");
+    assert!(link.symlink_metadata().unwrap().file_type().is_symlink(), "the link is left alone");
+    assert_eq!(text(&dir, "target.txt"), "keep\n");
+
+    restore_file(&dir, v1, "f.txt", true).unwrap();
+    let meta = link.symlink_metadata().unwrap();
+    assert!(meta.is_file() && !meta.file_type().is_symlink(), "the link was replaced by a file");
+    assert_eq!(text(&dir, "f.txt"), "v1\n");
+    assert_eq!(text(&dir, "target.txt"), "keep\n", "nothing was written through the link");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn deleted_by_commit_falls_back_to_parent() {
     let dir = scratch_repo("restore-deleted");
     let a = commit(&dir, &[("f.txt", "from A\n"), ("other.txt", "x\n")], "A");

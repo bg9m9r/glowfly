@@ -158,7 +158,7 @@ pub fn remove_tree(path: &Path) -> std::io::Result<()> {
         r => r?,
     };
     if meta.file_type().is_symlink() {
-        return remove_link(path, &meta);
+        return remove_link_as(path, &meta);
     }
     if !meta.is_dir() {
         return remove_file(path);
@@ -169,9 +169,24 @@ pub fn remove_tree(path: &Path) -> std::io::Result<()> {
     std::fs::remove_dir(path)
 }
 
-/// Removes the link at `path` itself. Windows removes a link to a folder (or a junction) as a
-/// folder, which leaves its target as it is.
-fn remove_link(path: &Path, meta: &std::fs::Metadata) -> std::io::Result<()> {
+/// Removes the symbolic link (or Windows junction) at `path` itself, never what it points to. A
+/// missing path is fine; anything at `path` that isn't a link is refused with `InvalidInput` and
+/// left alone.
+pub fn remove_link(path: &Path) -> std::io::Result<()> {
+    let meta = match std::fs::symlink_metadata(path) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        r => r?,
+    };
+    if !meta.file_type().is_symlink() {
+        let msg = format!("{} isn't a symbolic link", path.display());
+        return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, msg));
+    }
+    remove_link_as(path, &meta)
+}
+
+/// Removes the link at `path` (whose metadata is `meta`) itself. Windows removes a link to a
+/// folder (or a junction) as a folder, which leaves its target as it is.
+fn remove_link_as(path: &Path, meta: &std::fs::Metadata) -> std::io::Result<()> {
     #[cfg(windows)]
     {
         use std::os::windows::fs::FileTypeExt;

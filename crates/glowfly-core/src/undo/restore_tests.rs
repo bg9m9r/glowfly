@@ -138,9 +138,12 @@ fn restore_over_a_symlink_undoes() {
     git(&dir, &["config", "core.symlinks", "true"]);
     std::fs::remove_file(dir.join("f.txt")).unwrap();
     if !file_link("elsewhere", &dir.join("f.txt")) {
+        let _ = std::fs::remove_dir_all(&dir);
         return eprintln!("skipped: symbolic links can't be made here");
     }
     let a = restore_saving(&dir, v1, "f.txt", true).unwrap().1.expect("undoable");
+    assert!(dir.join("elsewhere").symlink_metadata().is_err(), "nothing was written through the link");
+    assert!(dir.join("f.txt").symlink_metadata().unwrap().is_file(), "the link was replaced by the file");
     assert!(matches!(&a, Action::Restore { before: Some(b), after: Some(f), .. } if b.link && !f.link), "{a:?}");
     assert_eq!(read(&dir, "f.txt").unwrap(), b"v1\n");
     apply(&dir, &a, false);
