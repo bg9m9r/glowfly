@@ -339,3 +339,22 @@ fn submodule_update_reads_its_path_literally() {
     assert!(!checked_out("lib1"), "the glob reading would have updated lib1 too");
     cleanup(&[&parent, &lib]);
 }
+
+#[test]
+fn a_submodule_whose_path_is_not_inside_the_work_tree_is_not_acted_on() {
+    let (mut st, parent, lib) = opened("sm-path-outside");
+    let mut names = vec!["../elsewhere", "/x/y", "libs/../../elsewhere"];
+    if cfg!(windows) {
+        names.extend([r"C:\elsewhere", "C:elsewhere", r"\h\s\a"]);
+    }
+    for name in names {
+        st.snap.as_mut().unwrap().submodules[0].path = name.to_owned();
+        for m in [open(name), msg(name, true)] {
+            let fx = update(&mut st, m, Instant::now());
+            assert!(fx.is_empty(), "{name}: {fx:?}");
+            assert_eq!(last_log(&st).1, format!("Submodule {name} is no longer in this repository."));
+        }
+    }
+    let _ = std::fs::remove_dir_all(&parent);
+    let _ = std::fs::remove_dir_all(&lib);
+}

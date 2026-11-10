@@ -89,7 +89,8 @@ fn start(st: &mut AppState, kind: InsideKind, path: &str, fx: &mut Vec<Effect>) 
     let label = inside::label(kind, &sm.path);
     // A job with its own folder gets no undo record by itself: Discard is Discard all's.
     let record = (kind == InsideKind::Discard).then_some(UndoKind::DiscardAll);
-    let spec = JobSpec { cwd: Some(folder_of(&parent, &sm.path)), record, ..JobSpec::new(label.clone(), inside::cmds(kind)) };
+    let Some(folder) = folder_of(&parent, &sm.path) else { return };
+    let spec = JobSpec { cwd: Some(folder), record, ..JobSpec::new(label.clone(), inside::cmds(kind)) };
     if matches!(start_job(st, spec, fx), Started::Now | Started::Held) {
         st.submodules.inside = Some(InsideJob { parent, path: sm.path, kind, label });
     }
