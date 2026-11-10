@@ -172,6 +172,7 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
                 terminal: false,
                 incoming: incoming.map(Box::new),
                 unchecked: unchecked.map(Box::new),
+                open_step: None,
             };
             super::trust::hold(st, job, effect, prompt, !active);
         }

@@ -1,0 +1,12 @@
+Dialog
+  Label "Trust this repository?"
+  Button "Close this dialog"
+  Label "tools"
+  Label "C:\\work\\tools"
+  Label "Continue rebase needs git to run this repository's settings and hooks."
+  Label "Glowfly couldn't read rebase-merge/git-rebase-todo of the rebase, cherry-pick or revert in progress (too large, not a plain file, or somewhere it doesn't follow), so it can't tell which commands continuing it would run. Trust and run runs it anyway."
+  Label "Nothing in its settings or hooks runs programs right now."
+  Label "Trust it only if you know where it came from."
+  Label "Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
+  Button "Cancel" [focused]
+  Button "Trust and run"

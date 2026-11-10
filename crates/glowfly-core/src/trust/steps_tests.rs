@@ -38,7 +38,7 @@ fn a_todo_without_exec_steps_runs_nothing() {
     state_file(&dir, "rebase-merge/git-rebase-todo", todo.as_bytes());
     state_file(&dir, "sequencer/todo", b"pick 1234567 one\nrevert 89abcde two\n");
     state_file(&dir, "rebase-merge/strategy", b"ort\n");
-    state_file(&dir, "sequencer/opts", b"[options]\n\tstrategy = \"recursive\"\n\tstrategy-option = theirs\n\tmainline = 1\n");
+    state_file(&dir, "sequencer/opts", b"[options]\n\tstrategy = recursive\n\tstrategy-option = theirs\n\tmainline = 1\n");
     let s = scan_at(&dir).unwrap();
     assert!(s.steps.is_empty() && s.is_empty(), "{s:?}");
     assert!(allows(None, &s));
@@ -65,7 +65,8 @@ fn a_merge_strategy_that_isnt_gits_own_is_listed() {
     assert_eq!(steps(&dir), ["--strategy="]);
     std::fs::remove_dir_all(dir.join(".git/rebase-merge")).unwrap();
     state_file(&dir, "sequencer/opts", b"[options] strategy = ort\n[options]\n\tStrategy=theirs-first\n");
-    assert_eq!(steps(&dir), ["--strategy=theirs-first"]);
+    let listed = steps(&dir);
+    assert!(listed.len() == 1 && listed[0].starts_with("--strategy=theirs-first [sequencer/opts "), "{listed:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -140,9 +141,16 @@ fn the_options_file_is_read_at_least_as_git_reads_it() {
         let git = gits_strategies(&dir).unwrap_or_else(|| panic!("git refused {name:?}"));
         assert!(git.iter().any(|s| !STRATEGIES.contains(&s.as_str())), "{name:?}: {git:?}");
     }
+    // Read by git as one of its own, but not plainly so on the line: listed all the same.
+    let overmatched: [&[u8]; 3] =
+        [b"[options]\n\tstrategy = \"recursive\"\n", b"[options]\n\tstrategy = ort ; why\n", b"[options]\n\tstrategy = or\\\nt\n"];
+    for bytes in overmatched {
+        state_file(&dir, "sequencer/opts", bytes);
+        assert_eq!(steps(&dir).len(), 1, "{:?}", String::from_utf8_lossy(bytes));
+    }
     let unlisted: [&[u8]; 7] = [
         b"[options]\n\tstrategy = ort\n",
-        b"\xEF\xBB\xBF[a][options] strategy = \"recursive\"\n",
+        b"\xEF\xBB\xBF[a][options] strategy = recursive\n",
         b"[options]\r\n\tstrategy=resolve\r\n",
         b"[options]\n\t\tSTRATEGY\t=\toctopus\t\n",
         b"[options] strategy = ours\n",
@@ -172,25 +180,60 @@ fn a_strategy_file_with_more_than_a_name_and_a_line_ending_is_listed() {
 }
 
 #[test]
-fn a_file_that_cant_be_read_whole_is_a_reason_to_ask() {
+fn a_continued_strategy_value_is_listed_with_the_whole_files_digest() {
+    let dir = scratch_repo("trust-steps-opts-continued");
+    state_file(&dir, "sequencer/opts", b"[options]\n\tstrategy = \\\nmine\n");
+    let one = scan_at(&dir).unwrap();
+    state_file(&dir, "sequencer/opts", b"[options]\n\tstrategy = \\\nyours\n");
+    let other = scan_at(&dir).unwrap();
+    assert_eq!((one.steps.len(), other.steps.len()), (1, 1));
+    assert!(one.steps[0].starts_with("--strategy=\\ [sequencer/opts "), "{one:?}");
+    assert_ne!(one.steps, other.steps, "the files differ only in the continued line");
+    assert!(!one.print().covers(&other.print()) && !other.print().covers(&one.print()));
+    // Any other change to the file is another step too.
+    state_file(&dir, "sequencer/opts", b"[options]\n\tstrategy = \\\nmine\n\tmainline = 1\n");
+    assert!(!one.print().covers(&scan_at(&dir).unwrap().print()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_file_that_cant_be_read_whole_is_unread_and_in_no_print() {
     let dir = scratch_repo("trust-steps-unread");
+    let clean = scan_at(&dir).unwrap().print();
     for name in FILES {
-        // Larger than is read: listed by name, and again when another takes its place.
-        let mut big = vec![b'#'; MAX_BYTES as usize + 1];
-        state_file(&dir, name, &big);
-        let first = scan_at(&dir).unwrap();
-        assert_eq!(first.steps.len(), 1, "{name}");
-        assert!(first.steps[0].starts_with(&format!("{name} ")) && !first.is_empty() && !allows(None, &first), "{first:?}");
-        big.push(b'#');
-        state_file(&dir, name, &big);
-        assert!(!first.print().covers(&scan_at(&dir).unwrap().print()), "{name}");
+        // Larger than is read.
+        state_file(&dir, name, &vec![b'#'; MAX_BYTES as usize + 1]);
+        let big = scan_at(&dir).unwrap();
+        assert_eq!((big.unread.as_slice(), big.steps.len()), (&[name.to_owned()][..], 0), "{name}");
+        assert_eq!(big.print(), clean, "nothing of it is saved with a decision");
         // A folder in its place.
         std::fs::remove_file(dir.join(".git").join(name)).unwrap();
         std::fs::create_dir(dir.join(".git").join(name)).unwrap();
-        let folder = steps(&dir);
-        assert!(folder.len() == 1 && folder[0].starts_with(&format!("{name} ")), "{folder:?}");
+        assert_eq!(scan_at(&dir).unwrap().unread, [name], "a folder");
         std::fs::remove_dir(dir.join(".git").join(name)).unwrap();
-        assert!(scan_at(&dir).unwrap().is_empty(), "{name}");
+        // At the size read, it is read.
+        state_file(&dir, name, &vec![b'\n'; MAX_BYTES as usize]);
+        assert!(scan_at(&dir).unwrap().unread.is_empty(), "{name}");
+        std::fs::remove_file(dir.join(".git").join(name)).unwrap();
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_file_that_leads_where_glowfly_doesnt_follow_is_unread() {
+    let dir = scratch_repo("trust-steps-offsite");
+    for name in FILES {
+        let path = dir.join(".git").join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // An automounted host's folder: never looked up.
+        std::os::unix::fs::symlink("/net/glowfly-test.invalid/todo", &path).unwrap();
+        assert_eq!(scan_at(&dir).unwrap().unread, [name]);
+        std::fs::remove_file(&path).unwrap();
+        // A link to nothing is no file to git either.
+        std::os::unix::fs::symlink(dir.join("nothing-here"), &path).unwrap();
+        assert!(scan_at(&dir).unwrap().unread.is_empty(), "{name}");
+        std::fs::remove_file(&path).unwrap();
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -132,7 +132,7 @@ fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
     let commands = scan.commands.clone().filter(|d| !p.0.contains(&hash(&commands_item(prefix, d))));
     let follows = scan.follows.iter().filter(|f| !p.0.contains(&hash(&follow_item(prefix, f)))).cloned().collect();
     let steps = scan.steps.iter().filter(|s| !p.0.contains(&hash(&step_item(prefix, s)))).cloned().collect();
-    TrustScan { config, hooks, hook_digests, known_hooks, hooks_dir, submodules: Vec::new(), commands, follows, steps }
+    TrustScan { config, hooks, hook_digests, known_hooks, hooks_dir, submodules: Vec::new(), commands, follows, steps, unread: Vec::new() }
 }
 
 /// Whether git may run in a repository whose saved decision is `saved` and whose scan is

@@ -56,6 +56,7 @@ pub(super) mod system_a11y_tests;
 pub(super) mod tab_glance_tests;
 pub(super) mod terminal_schemes_tests;
 pub(super) mod themes_tests;
+pub(super) mod trust_prompt_tests;
 pub(super) mod trust_revoke_tests;
 pub(super) mod undo_rename_tests;
 pub(super) mod updates_errors_tests;

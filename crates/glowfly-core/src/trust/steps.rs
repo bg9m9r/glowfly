@@ -1,8 +1,7 @@
 //! The steps left in a rebase, cherry-pick or revert in progress that run a program when it
 //! continues (`TrustScan::steps`): each `exec` step of its todo, and a merge strategy that
 //! isn't one of git's own, which git runs as `git merge-<name>`. Read as bytes with nothing
-//! run, and overmatched: a line git would refuse is listed too, and a file that is too large,
-//! isn't a plain file or may not be followed is listed by its name with its digest.
+//! run, and overmatched: a line git would refuse is listed too.
 //!
 //! A step's text is kept byte for byte as git and sh take it: git drops only spaces and tabs
 //! before a line and after its keyword, and one CR at its end, and sh splits words on nothing
@@ -12,8 +11,12 @@
 //! they are exactly as Glowfly writes them for this repository (`rebase::own_files`) and the
 //! files they name in its message folder are plain files, or not there yet: those lines only
 //! record HEAD there and amend a message from there.
+//!
+//! A file that is too large, isn't a plain file or may not be followed has no steps to list
+//! and none to save a decision on: it is named in `TrustScan::unread`, which no decision
+//! covers, so the runner asks each time a job would run (runner/trust.rs).
 
-use super::digest::{self, Reading};
+use super::digest;
 use super::keys::text_of;
 use git2::Repository;
 use std::path::Path;
@@ -38,8 +41,8 @@ pub(super) const MAX_BYTES: u64 = digest::MAX_BYTES;
 enum State {
     Missing,
     Bytes(Vec<u8>),
-    /// There, but too large, not a plain file or not to be followed: the step that stands for it.
-    Unread(String),
+    /// There, but too large, not a plain file or not to be followed.
+    Unread,
 }
 
 /// The file `name` in the git dir `git`: a plain file of at most `MAX_BYTES`, read only where
@@ -47,7 +50,7 @@ enum State {
 fn read(git: &Path, name: &str) -> State {
     let file = git.join(name);
     if !crate::net_path::may_follow(&file, git) {
-        return State::Unread(format!("{name} {}", digest::UNREADABLE));
+        return State::Unread;
     }
     let missing = |e: &std::io::Error| e.kind() == std::io::ErrorKind::NotFound;
     match std::fs::symlink_metadata(&file) {
@@ -56,60 +59,70 @@ fn read(git: &Path, name: &str) -> State {
         Ok(m) if m.file_type().is_symlink() && std::fs::metadata(&file).is_err_and(|e| missing(&e)) => return State::Missing,
         _ => {}
     }
-    match crate::config_includes::read_file_bounded(&file, MAX_BYTES) {
-        Some(bytes) => State::Bytes(bytes),
-        // Its digest (past the cap, its length and time), so another file in its place asks again.
-        None => State::Unread(format!("{name} {}", digest::of_file(&file, Reading::Capped))),
-    }
+    crate::config_includes::read_file_bounded(&file, MAX_BYTES).map_or(State::Unread, State::Bytes)
 }
 
-/// The steps left in `repo` that run a program, in file order, each once: an `exec` step as
-/// `exec <command>`, another strategy as `--strategy=<name>`, a file that wasn't read as its
-/// name and digest.
-pub(super) fn find(repo: &Repository) -> Vec<String> {
+/// What `find` read.
+#[derive(Default)]
+pub(super) struct Found {
+    /// The steps that run a program, in file order, each once: an `exec` step as
+    /// `exec <command>`, another strategy as `--strategy=<name>`.
+    pub steps: Vec<String>,
+    /// The files of `FILES` that are there but weren't read.
+    pub unread: Vec<String>,
+}
+
+/// The steps left in `repo` that run a program, and the files that couldn't be read for them.
+pub(super) fn find(repo: &Repository) -> Found {
     let git = repo.path();
     let msg_dir = git.join(crate::rebase::MSG_DIR);
-    let mut out: Vec<String> = Vec::new();
-    let mut add = |step: String| {
-        if !out.contains(&step) {
-            out.push(step);
+    let mut out = Found::default();
+    let bytes_of = |name: &str, unread: &mut Vec<String>| match read(git, name) {
+        State::Missing => None,
+        State::Bytes(bytes) => Some(bytes),
+        State::Unread => {
+            unread.push(name.to_owned());
+            None
         }
     };
-    let strategy = |name: &[u8]| (!STRATEGIES.iter().any(|s| s.as_bytes() == name)).then(|| format!("--strategy={}", text_of(name)));
+    let add = |steps: &mut Vec<String>, step: String| {
+        if !steps.contains(&step) {
+            steps.push(step);
+        }
+    };
     for file in TODOS {
-        match read(git, file) {
-            State::Missing => {}
-            State::Unread(step) => add(step),
-            State::Bytes(bytes) => {
-                for command in bytes.split(|b| *b == b'\n').filter_map(exec) {
-                    let command = text_of(command);
-                    if !own(&msg_dir, &command) {
-                        add(format!("exec {command}"));
-                    }
-                }
+        let Some(bytes) = bytes_of(file, &mut out.unread) else { continue };
+        for command in bytes.split(|b| *b == b'\n').filter_map(exec) {
+            let command = text_of(command);
+            if !own(&msg_dir, &command) {
+                add(&mut out.steps, format!("exec {command}"));
             }
         }
     }
-    match read(git, STRATEGY) {
-        State::Missing => {}
-        State::Unread(step) => add(step),
-        State::Bytes(bytes) => {
-            // As git writes it: the name and one line ending. Anything else is another name
-            // to one of git's readers of this file.
-            let name = bytes.strip_suffix(b"\n").map_or(&bytes[..], |b| b.strip_suffix(b"\r").unwrap_or(b));
-            strategy(name).into_iter().for_each(&mut add);
+    if let Some(bytes) = bytes_of(STRATEGY, &mut out.unread) {
+        // As git writes it: the name and one line ending. Anything else is another name to
+        // one of git's readers of this file.
+        let name = bytes.strip_suffix(b"\n").map_or(&bytes[..], |b| b.strip_suffix(b"\r").unwrap_or(b));
+        if !is_gits(name) {
+            add(&mut out.steps, format!("--strategy={}", text_of(name)));
         }
     }
-    match read(git, OPTS) {
-        State::Missing => {}
-        State::Unread(step) => add(step),
-        State::Bytes(bytes) => {
-            // Git's config parser passes over a byte order mark.
-            let bytes = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&bytes);
-            bytes.split(|b| *b == b'\n').flat_map(opts_strategies).filter_map(strategy).for_each(&mut add);
+    if let Some(bytes) = bytes_of(OPTS, &mut out.unread) {
+        // Git's config parser passes over a byte order mark.
+        let text = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&bytes);
+        // A value that isn't plainly one of git's names may be read otherwise by git (quotes,
+        // escapes, a comment, a line continued on the next): it is listed as far as this line
+        // shows it, with the digest of the whole file, so any other file is another step.
+        for value in text.split(|b| *b == b'\n').flat_map(opts_strategies).filter(|v| !is_gits(v)) {
+            add(&mut out.steps, format!("--strategy={} [{OPTS} {}]", text_of(value), digest::of_bytes(&bytes)));
         }
     }
     out
+}
+
+/// Whether `name` is, byte for byte, one of the strategies that come with git.
+fn is_gits(name: &[u8]) -> bool {
+    STRATEGIES.iter().any(|s| s.as_bytes() == name)
 }
 
 fn blank(b: &u8) -> bool {
@@ -150,22 +163,18 @@ fn own(msg_dir: &Path, command: &str) -> bool {
 
 /// The value after each `=` on one line of the options file whose key, the run of letters,
 /// digits and `-` right before it (spaces and tabs between), is `strategy` in any letter case:
-/// whatever section the line is in and wherever on the line a header ends. Spaces, tabs and
-/// CRs around the value and plain quotes around all of it are taken off; anything git would
-/// read otherwise (a comment, a continued line, quotes or escapes inside) leaves a name that
-/// isn't one of git's, so the reader lists at least what git's own config parser would find.
+/// whatever section the line is in and wherever on the line a header ends. Only spaces, tabs
+/// and CRs around the value are taken off, so the reader finds at least every key git's own
+/// config parser would, and a value is one of git's names only when the line says so plainly.
 fn opts_strategies(line: &[u8]) -> Vec<&[u8]> {
     let space = |b: &u8| matches!(b, b' ' | b'\t' | b'\r');
     let mut out = Vec::new();
     for at in line.iter().enumerate().filter(|(_, b)| **b == b'=').map(|(i, _)| i) {
         let before = skip_end(&line[..at], blank);
         let key = &before[skip_end(before, |b| b.is_ascii_alphanumeric() || *b == b'-').len()..];
-        if !key.eq_ignore_ascii_case(b"strategy") {
-            continue;
+        if key.eq_ignore_ascii_case(b"strategy") {
+            out.push(skip_end(skip(&line[at + 1..], space), space));
         }
-        let value = skip_end(skip(&line[at + 1..], space), space);
-        let inside = value.strip_prefix(b"\"").and_then(|v| v.strip_suffix(b"\""));
-        out.push(inside.filter(|v| !v.contains(&b'"') && !v.contains(&b'\\')).unwrap_or(value));
     }
     out
 }
