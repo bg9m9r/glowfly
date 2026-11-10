@@ -47,7 +47,7 @@ fn cases() -> Vec<(Vec<u8>, bool)> {
     ]
 }
 
-/// A folder holding `inc.cfg`, which gives submodule `a` another URL.
+/// A folder holding `inc.cfg`, a config file with a URL for submodule `a`.
 fn folder(name: &str) -> std::path::PathBuf {
     let dir = crate::paths::temp_dir().join(format!("glowfly-test-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
@@ -76,7 +76,7 @@ fn every_spelling_libgit2_or_git_follows_counts_as_an_include_section() {
         // git follows one only when asked to, which shows what its syntax takes as one.
         let asked = output(&dir, &args(&["config", "--includes", "-f", ".gitmodules", "--get-all", "submodule.a.url"]), "", &[], None);
         let git_follows = asked.stdout.lines().any(|l| l == "included");
-        assert!(named || !(libgit2_follows || git_follows), "followed without counting: {shown:?}");
+        assert!(named || !(libgit2_follows || git_follows), "counts as an include section: {shown:?}");
         followed += usize::from(libgit2_follows);
         // Read the way git reads `.gitmodules`, the included value is never seen.
         let read = open(&dir).and_then(|c| c.get_string("submodule.a.url").ok());
@@ -133,7 +133,7 @@ fn a_repository_whose_gitmodules_names_an_include_keeps_libgit2_from_its_submodu
     let written = std::fs::read_to_string(parent.join(".gitmodules")).unwrap();
     std::fs::write(parent.join(".gitmodules"), format!("{written}[include]\n\tpath = inc.cfg\n")).unwrap();
     let followed = repo.find_submodule("libs/lib").unwrap().url().map(str::to_owned);
-    assert_eq!(followed.as_deref(), Some("included"), "libgit2's own submodule code follows it");
+    assert_eq!(followed.as_deref(), Some("included"), "libgit2 reads the file as an ordinary config file");
 
     assert!(crate::git_file::submodules_unread(&repo));
     assert_eq!(crate::repo::submodules_at(&parent).unwrap(), Vec::new());
@@ -142,5 +142,63 @@ fn a_repository_whose_gitmodules_names_an_include_keeps_libgit2_from_its_submodu
     assert_eq!(snap.submodules, Vec::new());
     assert!(snap.unstaged.iter().any(|f| f.path == ".gitmodules"), "{:?}", snap.unstaged);
     let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-gitmodules-unread-lib-{}", std::process::id())));
+    let _ = std::fs::remove_dir_all(&parent);
+}
+
+/// `with_submodule`, with a repository of its own checked out at `n` inside the submodule and
+/// recorded there as a gitlink (and in the parent), then given one more commit.
+fn with_nested(name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+    let (parent, sub) = with_submodule(name);
+    let inner = sub.join("n");
+    std::fs::create_dir_all(&inner).unwrap();
+    init_repo(&inner);
+    write(&inner, "n.txt", "one\n");
+    git(&inner, &["add", "."]);
+    git(&inner, &["commit", "-q", "-m", "inner"]);
+    write(&sub, ".gitmodules", "[submodule \"n\"]\n\tpath = n\n\turl = ./n\n");
+    write(&sub, "inc.cfg", "[submodule \"n\"]\n\tignore = all\n");
+    git(&sub, &["add", ".gitmodules", "inc.cfg", "n"]);
+    git(&sub, &["commit", "-q", "-m", "nested"]);
+    git(&parent, &["add", "libs/lib"]);
+    git(&parent, &["commit", "-q", "-m", "nested"]);
+    write(&inner, "n.txt", "two\n");
+    git(&inner, &["commit", "-q", "-a", "-m", "inner two"]);
+    (parent, sub)
+}
+
+fn unstaged_paths(parent: &std::path::Path) -> Vec<String> {
+    crate::repo::load(parent, &crate::repo::LoadOptions::all(100)).unwrap().unstaged.into_iter().map(|f| f.path).collect()
+}
+
+#[test]
+fn a_checked_out_submodules_own_gitmodules_counts_too() {
+    let (parent, sub) = with_nested("gitmodules-nested");
+    let repo = git2::Repository::open(&parent).unwrap();
+    // Plain at both levels: the submodule shows its inner repository's other commit.
+    assert!(!crate::git_file::submodules_unread(&repo));
+    assert_eq!(unstaged_paths(&parent), ["libs/lib"]);
+    assert_eq!(crate::repo::submodules_at(&parent).unwrap().len(), 1);
+
+    // The submodule's own file with an include section (committed there, so only the inner
+    // repository's commit differs): submodules are left out of the parent's reads.
+    write(&sub, ".gitmodules", "[submodule \"n\"]\n\tpath = n\n\turl = ./n\n[include]\n\tpath = inc.cfg\n");
+    git(&sub, &["commit", "-q", "-m", "include", ".gitmodules"]);
+    git(&parent, &["add", "libs/lib"]);
+    git(&parent, &["commit", "-q", "-m", "include"]);
+    assert_eq!(kind(&parent), Gitmodules::Plain);
+    assert_eq!(kind(&sub), Gitmodules::Unread);
+    assert!(crate::git_file::submodules_unread(&repo));
+    assert_eq!(unstaged_paths(&parent), Vec::<String>::new());
+    assert_eq!(crate::repo::submodules_at(&parent).unwrap(), Vec::new());
+    assert!(crate::repo::load(&parent, &crate::repo::LoadOptions::all(100)).unwrap().submodules_unread);
+
+    // Plain again: read as before.
+    write(&sub, ".gitmodules", "[submodule \"n\"]\n\tpath = n\n\turl = ./n\n");
+    git(&sub, &["commit", "-q", "-m", "plain", ".gitmodules"]);
+    git(&parent, &["add", "libs/lib"]);
+    git(&parent, &["commit", "-q", "-m", "plain"]);
+    assert!(!crate::git_file::submodules_unread(&repo));
+    assert_eq!(unstaged_paths(&parent), ["libs/lib"]);
+    let _ = std::fs::remove_dir_all(crate::paths::temp_dir().join(format!("glowfly-test-gitmodules-nested-lib-{}", std::process::id())));
     let _ = std::fs::remove_dir_all(&parent);
 }

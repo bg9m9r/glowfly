@@ -70,5 +70,6 @@
   "files.warnings.more.one": "und {count} weitere",
   "files.warnings.more.other": "und {count} weitere",
   "files.warnings.shared": "Eine Datei auf diesem Datenträger steht für mehrere verfolgte Pfade ({paths}). Verwerfen, Löschen und Wiederherstellen sind für sie aus.",
+  "files.warnings.submodules_unread": "Submodule werden nicht angezeigt: Eine .gitmodules-Datei hier oder in einem Submodul ist keine einfache Datei, die Glowfly lesen kann.",
   "files.warnings.title": "Dateinamen"
 }
