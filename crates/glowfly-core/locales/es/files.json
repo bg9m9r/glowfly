@@ -8,6 +8,8 @@
   "files.folder_menu.stage_conflicted": "Resuelve primero los archivos en conflicto de esta carpeta.",
   "files.folder_menu.unstage": "Quitar carpeta",
   "files.hazard.not_utf8.label": "el nombre no es UTF-8",
+  "files.hazard.not_utf8.left_staged.one": "{count} archivo cuyo nombre no es UTF-8 sigue preparado: Glowfly no puede quitarlo de preparados con seguridad. Usa Git en la línea de comandos.",
+  "files.hazard.not_utf8.left_staged.other": "{count} archivos cuyos nombres no son UTF-8 siguen preparados: Glowfly no puede quitarlos de preparados con seguridad. Usa Git en la línea de comandos.",
   "files.hazard.not_utf8.reason": "El nombre de este archivo no es UTF-8, así que Glowfly no puede actuar sobre él con seguridad; usa Git en la línea de comandos.",
   "files.hazard.twins.label": "mismo archivo que otra ruta",
   "files.hazard.twins.reason": "Este sistema de archivos no distingue esta ruta de {paths}: son un solo archivo en el disco. Primero cambia el nombre de una de ellas en Git.",

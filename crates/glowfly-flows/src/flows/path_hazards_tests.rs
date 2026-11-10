@@ -1,10 +1,13 @@
 //! Rows Glowfly won't act on: a name that isn't UTF-8 refuses every file action, and a path that
 //! shares one file on disk with another index path refuses the destructive ones, before any
-//! effect or confirmation.
+//! effect or confirmation. Unstaging everything (or a folder, or picked rows) leaves such a name
+//! staged and says so.
 
+use super::tests::{finish, git};
 use super::work_files_tests::{loaded, run};
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::{Collision, DiffTarget, FileEntry, Folding, Hazard, HunkOp};
+use glowfly_core::repo::{self, Collision, DiffTarget, FileEntry, Folding, Hazard, HunkOp, LoadOptions};
+use glowfly_model::effect::{Effect, FilesEffect, LocalOp};
 use glowfly_model::msg::{FilesMsg, HistoryMsg, Msg, RepoMsg, StageMsg, WorkFileMsg};
 use glowfly_model::state::path_hazards::warnings;
 
@@ -76,5 +79,67 @@ fn the_banner_says_where_twins_share_a_file() {
     let w = warnings(Lang::En, snap);
     assert!(w[0].contains("One file on this disk"), "{w:?}");
     assert!(w[1].contains("core.ignorecase is false"), "{w:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The local op in `fx`, if any.
+fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
+    fx.iter().find_map(|e| match e {
+        Effect::Files(FilesEffect::LocalOp { op, .. }) => Some(op),
+        _ => None,
+    })
+}
+
+#[test]
+fn unstage_all_leaves_a_name_that_is_not_utf8_staged_and_says_so() {
+    // Written into the index only, so it runs where such a file can't be made (Windows, macOS).
+    let (mut st, dir) = loaded("hazard-unstage-all");
+    git(&dir, &["add", "a.txt"]);
+    let r = git2::Repository::open(&dir).unwrap();
+    let mut index = r.index().unwrap();
+    let base = index.get_path(std::path::Path::new("a.txt"), 0).unwrap();
+    let path = b"caf\xe9.txt".to_vec();
+    index.add(&git2::IndexEntry { flags: path.len() as u16, path, ..base }).unwrap();
+    index.write().unwrap();
+    st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
+    let staged: Vec<_> = st.snap.as_ref().unwrap().staged.iter().map(|f| f.path.clone()).collect();
+    assert_eq!(staged, ["a.txt", SHOWN], "both staged");
+
+    let fx = run(&mut st, Msg::Stage(StageMsg::UnstageAll));
+    assert_eq!(local_op(&fx), Some(&LocalOp::UnstagePaths(vec!["a.txt".into()])), "the shown name names no file: {fx:?}");
+    assert!(
+        matches!(&st.toasts[..], [t] if !t.ok && t.text.contains("1 file whose name isn't UTF-8 stays staged")),
+        "{:?}",
+        st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>()
+    );
+    finish(&mut st, fx);
+    let index = git2::Repository::open(&dir).unwrap().index().unwrap();
+    let head = r.head().unwrap().peel_to_tree().unwrap().get_name("a.txt").unwrap().id();
+    assert_eq!(index.get_path(std::path::Path::new("a.txt"), 0).unwrap().id, head, "a.txt is unstaged");
+    assert!(index.iter().any(|e| e.path == b"caf\xe9.txt"), "the odd name is still staged");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unstaging_a_folder_or_picked_rows_says_which_names_stay_staged() {
+    let (mut st, dir) = loaded("hazard-unstage-picked");
+    let snap = st.snap.as_mut().unwrap();
+    snap.staged = vec![FileEntry::new("src/a.txt", 'M'), odd("src/caf\\xE9.txt", 'A', Hazard::NotUtf8(b"src/caf\xe9.txt".to_vec()))];
+    for msg in [
+        Msg::Stage(StageMsg::UnstageFolder("src".into())),
+        Msg::Stage(StageMsg::UnstagePaths(vec!["src/a.txt".into(), "src/caf\\xE9.txt".into()])),
+    ] {
+        st.toasts.clear();
+        let fx = run(&mut st, msg);
+        assert_eq!(local_op(&fx), Some(&LocalOp::UnstagePaths(vec!["src/a.txt".into()])), "{fx:?}");
+        assert!(
+            matches!(&st.toasts[..], [t] if !t.ok && t.text.contains("isn't UTF-8")),
+            "{:?}",
+            st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>()
+        );
+    }
+    st.toasts.clear();
+    run(&mut st, Msg::Stage(StageMsg::UnstagePaths(vec!["src/a.txt".into()])));
+    assert!(st.toasts.is_empty(), "nothing left behind, nothing said");
     let _ = std::fs::remove_dir_all(&dir);
 }
