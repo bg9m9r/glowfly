@@ -66,7 +66,9 @@ struct Disk<'a> {
 impl Disk<'_> {
     /// Whether something nothing tracks is in the way of writing `path` (a gitlink with `link`).
     fn blocks(&mut self, path: &str, link: bool) -> bool {
-        if let Ok(m) = self.workdir.join(path).symlink_metadata() {
+        // A name that isn't a plain path inside the work tree is never looked up: nothing is there.
+        let Ok(full) = crate::repo::work_path(self.workdir, path) else { return false };
+        if let Ok(m) = full.symlink_metadata() {
             let blocked = if m.is_dir() { !link && self.holds_untracked(path) } else { !self.tracked.has(path) };
             if blocked {
                 return true;
@@ -87,6 +89,7 @@ impl Disk<'_> {
 
     /// Whether folder `rel` holds a file nothing tracks, at any depth.
     fn holds_untracked(&self, rel: &str) -> bool {
+        // `rel` is a path `blocks` looked up, or one this listed below it.
         let Ok(entries) = std::fs::read_dir(self.workdir.join(rel)) else { return false };
         entries.flatten().any(|e| {
             let child = format!("{rel}/{}", e.file_name().to_string_lossy());

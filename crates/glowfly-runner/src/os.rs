@@ -38,9 +38,12 @@ fn failed(text: String) -> Option<Msg> {
 
 /// The log line for a path that is gone, or None when it exists (a broken symlink counts).
 fn missing(p: &Path) -> Option<Msg> {
-    p.symlink_metadata()
-        .is_err()
-        .then(|| Msg::Logged { ok: false, text: format!("{} is not in the working tree", glowfly_core::native_path::shown(p)) })
+    p.symlink_metadata().is_err().then(|| not_there(&glowfly_core::native_path::shown(p)))
+}
+
+/// The log line for `shown`, a path with nothing at it.
+fn not_there(shown: &str) -> Msg {
+    Msg::Logged { ok: false, text: format!("{shown} is not in the working tree") }
 }
 
 /// Opens an `https://` link in the browser. Anything else (other schemes, file paths, links
@@ -73,7 +76,11 @@ pub(super) fn open_folder(dir: &Path) -> Option<Msg> {
 /// it. Unless `confirmed`, a file the system would run (see [`runs`]) comes back as
 /// `OpenNeedsConfirm` instead.
 pub(super) fn open_path(workdir: &Path, rel: &str, confirmed: bool) -> Option<Msg> {
-    let p = glowfly_core::native_path::native(&workdir.join(rel));
+    // A name that isn't a plain path inside the work tree names no file there.
+    let Ok(file) = glowfly_core::repo::work_path(workdir, rel) else {
+        return Some(not_there(rel));
+    };
+    let p = glowfly_core::native_path::native(&file);
     if let Some(m) = missing(&p) {
         return Some(m);
     }
