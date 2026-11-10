@@ -36,7 +36,7 @@ mod shadow;
 mod shrink;
 
 use action::Action;
-use session::{Checks, Outcome, Plan, case_text, parse_case, report, run};
+use session::{Checks, Outcome, Plan, actions, case_text, parse_case, report, run};
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
@@ -52,15 +52,15 @@ const STEPS: usize = 60;
 const SHRINK_FOR: Duration = Duration::from_secs(60);
 const SHRINK_WIDTH: usize = 4;
 
-fn actions(o: &Outcome) -> Vec<Action> {
-    o.steps.iter().map(|s| s.action.clone()).collect()
-}
-
 /// The report of a session that broke a rule: its actions shrunk (each replay asking for the same
-/// rule), the case written to the temporary folder.
+/// rule, and for a panic the same first line, so one cause doesn't shrink into another), the case
+/// written to the temporary folder.
 fn shrunk_report(tag: &str, o: &Outcome) -> String {
     let Some(broke) = &o.broke else { return report(o, &actions(o)) };
     let rule = broke.rule;
+    let first_line = |detail: &str| detail.lines().next().unwrap_or_default().to_owned();
+    let cause = first_line(&broke.detail);
+    let same = |b: &rules::Broken| b.rule == rule && (rule != rules::Rule::NoCrash || first_line(&b.detail) == cause);
     // A replay runs the slow rules once, at its end: a repository broken or work lost on the way
     // stays so, and replays after every step of them would leave no time to shrink a long
     // session. The other rules are checked after every step anyway.
@@ -72,21 +72,18 @@ fn shrunk_report(tag: &str, o: &Outcome) -> String {
     let replay = |list: &[Action]| {
         let n = tries.fetch_add(1, Ordering::SeqCst) + 1;
         let again = run(&format!("{tag}-shrink{n}"), o.seed, Plan::Replay(list.to_vec()), Checks { slow_every });
-        again.broke.is_some_and(|b| b.rule == rule)
+        again.broke.as_ref().is_some_and(same)
     };
     let width = std::thread::available_parallelism().map_or(2, |n| (n.get() / 2).clamp(1, SHRINK_WIDTH));
     let shrunk = shrink::shrink(actions(o), replay, began + SHRINK_FOR, width);
     let took = format!("shrunk in {} replays, {width} at a time, {:.0?}", tries.load(Ordering::SeqCst), began.elapsed());
-    let path = glowfly_core::paths::temp_dir().join(format!("glowfly-explore-{}.txt", o.seed));
+    let name = format!("glowfly-explore-{tag}-{}-{}.txt", std::process::id(), o.seed);
+    let path = glowfly_core::paths::temp_dir().join(name);
     let saved = match std::fs::write(&path, case_text(o.seed, rule, &shrunk)) {
         Ok(()) => format!("the case is also in {}", path.display()),
         Err(e) => format!("the case could not be written to {}: {e}", path.display()),
     };
-    format!(
-        "{}{saved} ({took})
-",
-        report(o, &shrunk)
-    )
+    format!("{}{saved} ({took})\n", report(o, &shrunk))
 }
 
 #[test]
@@ -120,7 +117,9 @@ fn explore_cases() {
     let dir = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/src/journey/explore/cases"));
     for (name, text) in saved_cases(dir) {
         let (seed, list) = parse_case(&text).unwrap_or_else(|e| panic!("cases/{name}: {e}"));
-        let o = run("case", seed, Plan::Replay(list), Checks { slow_every: 1 });
+        // Each case has folders of its own, named by its file: two cases may share a seed.
+        let stem = name.trim_end_matches(".txt");
+        let o = run(&format!("case-{stem}"), seed, Plan::Replay(list), Checks { slow_every: 1 });
         assert!(o.broke.is_none(), "cases/{name} breaks again:\n{}", report(&o, &actions(&o)));
     }
 }
@@ -137,7 +136,7 @@ fn env_number(name: &str, default: u64) -> u64 {
 /// steps (500) from `GLOWFLY_EXPLORE_START` (1), the slow rules after every step. Every failure
 /// is shrunk and reported before the test fails.
 #[test]
-#[ignore = "a long run; see CLAUDE.md's Commands"]
+#[ignore = "a long run; see CONTRIBUTING.md or cases/README.md"]
 fn explore_soak() {
     let seeds = env_number("GLOWFLY_EXPLORE_SEEDS", 20);
     let steps = env_number("GLOWFLY_EXPLORE_STEPS", 500) as usize;

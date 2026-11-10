@@ -7,7 +7,6 @@ use super::super::action::{Action, Outside};
 use super::super::probe;
 use super::super::rng::Rng;
 use super::super::scene::{self, Scene};
-use super::super::shadow::Shadow;
 use super::applicable;
 
 /// A scene and the app open on its `app` repository (the app's own folders are apart from the scene's).
@@ -19,7 +18,7 @@ fn start(tag: &str) -> (Scene, Journey) {
 
 fn choices(j: &Journey, scene: &Scene, seed: u64) -> Vec<Action> {
     let r = probe::read(&scene.app);
-    applicable(j, scene, "app", &r, &mut Rng::new(seed), &mut Shadow::new(seed)).into_iter().map(|(a, _)| a).collect()
+    applicable(j, scene, "app", &r, &mut Rng::new(seed)).into_iter().map(|(a, _)| a).collect()
 }
 
 #[test]
@@ -35,10 +34,7 @@ fn clean_main_offers_basics() {
 #[test]
 fn staged_changes_offer_a_commit() {
     let (scene, mut j) = start("staged");
-    write(
-        &scene.app, "a.txt", "edited
-",
-    );
+    write(&scene.app, "a.txt", "edited\n");
     assert!(git_try(&scene.app, &["add", "a.txt"]));
     j.refresh();
     // The commit button reads plain "Commit" until a summary is typed.

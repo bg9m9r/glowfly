@@ -3,11 +3,7 @@
 
 use super::super::action::{Action, Outside};
 use super::super::rules::Rule;
-use super::{Checks, Outcome, Plan, case_text, parse_case, report, run};
-
-fn actions(o: &Outcome) -> Vec<Action> {
-    o.steps.iter().map(|s| s.action.clone()).collect()
-}
+use super::{Checks, Outcome, Plan, actions, case_text, parse_case, report, run};
 
 #[test]
 fn case_round_trip() {
@@ -112,18 +108,7 @@ fn undo_after_continue_returns_to_before_the_operation() {
     let text =
         "seed 1\nrebase \"side\"\ncheckout \"side\"\noutside create \"notes.txt\" +3\nresolve-ours \"shared.txt\"\nstash\ncontinue\nundo\n";
     // With a branch deleted during the rebase, one Undo doesn't bring the branch back too.
-    let deleted = "seed 1
-rebase \"side\"
-checkout \"side\"
-outside create \"notes.txt\" +3
-delete-branch \"side\"
-                   confirm \"Delete anyway\"
-select-wip
-resolve-ours \"shared.txt\"
-stash
-continue
-undo
-";
+    let deleted = "seed 1\nrebase \"side\"\ncheckout \"side\"\noutside create \"notes.txt\" +3\ndelete-branch \"side\"\nconfirm \"Delete anyway\"\nselect-wip\nresolve-ours \"shared.txt\"\nstash\ncontinue\nundo\n";
     for (tag, case) in [("op-undo", text), ("op-undo-deleted", deleted)] {
         let (seed, list) = parse_case(case).unwrap();
         let o = run(tag, seed, Plan::Replay(list), Checks { slow_every: 1 });
@@ -135,13 +120,7 @@ undo
 fn undo_after_a_step_of_two_entries_is_not_judged() {
     // Stash and check out records the checkout and then the put-back of the changes: one Undo
     // takes the changes back into the stash and stays on main.
-    let text = "seed 1
-create-branch \"b456\"
-outside write \"a.txt\" +1
-checkout \"main\"
-confirm \"Stash and check out\"
-undo
-";
+    let text = "seed 1\ncreate-branch \"b456\"\noutside write \"a.txt\" +1\ncheckout \"main\"\nconfirm \"Stash and check out\"\nundo\n";
     let (seed, list) = parse_case(text).unwrap();
     let o = run("two-entries", seed, Plan::Replay(list), Checks { slow_every: 1 });
     assert!(o.broke.is_none(), "{}", report(&o, &actions(&o)));
