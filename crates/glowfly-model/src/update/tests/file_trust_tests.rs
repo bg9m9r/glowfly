@@ -19,14 +19,14 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 /// A loaded repository with a.txt committed, whose scan found nothing.
-fn clean(name: &str) -> AppState {
+pub(super) fn clean(name: &str) -> AppState {
     let mut st = state();
     st.snap = Some(snapshot(name));
     st
 }
 
 /// `clean`, whose scan lists a filter program: undecided, so git is held.
-fn held(name: &str) -> AppState {
+pub(super) fn held(name: &str) -> AppState {
     let mut st = clean(name);
     let snap = st.snap.as_mut().unwrap();
     snap.trust_scan.config.push(ConfigCommand { key: "filter.x.clean".into(), value: "x".into() });
@@ -36,7 +36,7 @@ fn held(name: &str) -> AppState {
 }
 
 /// `clean` the user chose not to trust.
-fn refused(name: &str) -> AppState {
+pub(super) fn refused(name: &str) -> AppState {
     let mut st = clean(name);
     let real = real(&st);
     record(&mut st.settings, &real, RepoTrust::NotTrusted);
@@ -45,7 +45,7 @@ fn refused(name: &str) -> AppState {
 }
 
 /// `held`, trusted on what its scan lists.
-fn trusted(name: &str) -> AppState {
+pub(super) fn trusted(name: &str) -> AppState {
     let mut st = held(name);
     let print = st.snap.as_ref().unwrap().trust_print.clone();
     let real = real(&st);
@@ -54,16 +54,16 @@ fn trusted(name: &str) -> AppState {
     st
 }
 
-fn real(st: &AppState) -> PathBuf {
+pub(super) fn real(st: &AppState) -> PathBuf {
     st.snap.as_ref().unwrap().real_workdir.clone()
 }
 
-fn send(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn send(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     update_sealed(st, msg, Instant::now())
 }
 
 /// The file effects among `fx`, each with what its re-check is sealed as.
-fn files(fx: Vec<Effect>) -> Vec<(FilesEffect, Option<Sealed>)> {
+pub(super) fn files(fx: Vec<Effect>) -> Vec<(FilesEffect, Option<Sealed>)> {
     let mut out = Vec::new();
     for e in fx {
         let sealed = e.trust_check().map(|c| c.sealed.clone());
@@ -75,14 +75,14 @@ fn files(fx: Vec<Effect>) -> Vec<(FilesEffect, Option<Sealed>)> {
 }
 
 /// The label of what the open trust prompt says waits.
-fn waits(st: &AppState) -> Option<String> {
+pub(super) fn waits(st: &AppState) -> Option<String> {
     match &st.modal {
         Some(Modal::Trust(p)) => p.held.clone(),
         _ => None,
     }
 }
 
-fn decide(st: &mut AppState, trusted: bool) -> Vec<Effect> {
+pub(super) fn decide(st: &mut AppState, trusted: bool) -> Vec<Effect> {
     let real = real(st);
     send(st, Msg::Trust(TrustMsg::Decide { real, trusted }))
 }
@@ -105,7 +105,7 @@ fn waits_then_runs(mut st: AppState, msg: Msg, label: &str) -> FilesEffect {
     effect
 }
 
-fn stage_file() -> Msg {
+pub(super) fn stage_file() -> Msg {
     Msg::Stage(StageMsg::StageFile("a.txt".into()))
 }
 

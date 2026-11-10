@@ -68,8 +68,9 @@ pub(super) fn confirmed(st: &mut AppState, paths: Vec<String>, fx: &mut Vec<Effe
         return;
     }
     let open = st.session.conflict.view.as_ref().is_some_and(|c| paths.contains(&c.path));
-    let now = super::ops::local(st, LocalOp::MarkResolved(paths), fx) == super::jobs::Started::Now;
-    if let Some(c) = st.session.conflict.view.as_mut().filter(|_| open && now) {
+    // Also for one that waits for the trust prompt (`file_trust::dropped` clears it).
+    let started = super::ops::local(st, LocalOp::MarkResolved(paths), fx) != super::jobs::Started::No;
+    if let Some(c) = st.session.conflict.view.as_mut().filter(|_| open && started) {
         c.step_on_resolve = true;
     }
     st.cues.conflict_picks = None;

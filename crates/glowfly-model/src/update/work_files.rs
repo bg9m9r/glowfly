@@ -275,10 +275,13 @@ fn rename(st: &mut AppState, from: String, to: String, stage: bool, fx: &mut Vec
     if let Some(workdir) = st.workdir()
         && start(st, &op)
     {
-        // A staged rename is `git mv`: while git is held here its dialog says so and stays open.
+        // A staged rename is `git mv`: while git is held here its dialog, which no prompt
+        // opens over, says so and stays open (the log has it too).
         let held = super::file_trust::held_text(st, st.settings.lang().tr("trust.files.rename"));
-        if super::file_trust::push(st, FilesEffect::Work { workdir, op: op.clone() }, fx) != super::jobs::Started::Now {
-            fail(st, &op, &to, held);
+        let started = super::file_trust::push(st, FilesEffect::Work { workdir, op: op.clone() }, fx);
+        if let Some(form) = form_for(&mut st.modal, &op).filter(|_| started == super::jobs::Started::No) {
+            form.busy = false;
+            form.error = Some((to, held));
         }
     }
 }

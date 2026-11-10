@@ -144,13 +144,13 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
     }
 }
 
-/// Sends the open conflict's change `op` (ops::local) and, once it is on its way, marks the
-/// view as saving and returns it for what else its sender notes. One held for the trust prompt
-/// marks nothing: it runs when the repository is trusted, and its result settles the view like
-/// any other.
+/// Sends the open conflict's change `op` (ops::local) and, when it is on its way or waits for
+/// the trust prompt, marks the view as saving and returns it for what else its sender notes: a
+/// change that waited settles the view like one sent at once when it runs, and one that is
+/// dropped has the marks cleared (`file_trust::dropped`).
 fn sent<'a>(st: &'a mut AppState, op: LocalOp, fx: &mut Vec<Effect>) -> Option<&'a mut ConflictView> {
-    let now = super::ops::local(st, op, fx) == super::ops::Started::Now;
-    let c = st.session.conflict.view.as_mut().filter(|_| now)?;
+    let started = super::ops::local(st, op, fx) != super::ops::Started::No;
+    let c = st.session.conflict.view.as_mut().filter(|_| started)?;
     c.saving = true;
     Some(c)
 }

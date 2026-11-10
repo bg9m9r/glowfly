@@ -13,9 +13,10 @@ use crate::state::AppState;
 use crate::state::trust::WaitingFor;
 
 /// Pushes `effect`, or holds it for the trust prompt while git is held in the active
-/// repository and the effect starts git. `Held`: nothing was pushed and it runs once the
-/// repository is trusted, so the caller marks nothing as in flight. `No`: no prompt could open
-/// (another dialog is open); the log says why nothing ran.
+/// repository and the effect starts git. `Held`: nothing was pushed; it runs once the
+/// repository is trusted, and a conflict change's sender marks its view as for one sent at
+/// once (`dropped` clears that if it never runs). `No`: no prompt could open (another dialog
+/// is open); the log says why nothing ran.
 pub(super) fn push(st: &mut AppState, effect: FilesEffect, fx: &mut Vec<Effect>) -> Started {
     if !effect.runs_git() || st.runs_git_unasked() {
         fx.push(Effect::Files(effect));
@@ -24,10 +25,28 @@ pub(super) fn push(st: &mut AppState, effect: FilesEffect, fx: &mut Vec<Effect>)
     let t = st.settings.lang();
     let label = label(t, &effect).to_owned();
     st.log(false, held_text(st, &label));
-    // Only what the open prompt names waits.
-    st.trust.waiting = None;
     super::trust::hold_waiting(st, WaitingFor::Read(Effect::Files(effect)), Some(label));
     if st.trust.waiting.is_some() { Started::Held } else { Started::No }
+}
+
+/// Waiting file work was dropped (update/trust_waiting.rs): a conflict change no longer counts
+/// as being saved in the open conflict view.
+pub(super) fn dropped(st: &mut AppState, effect: &Effect) {
+    let conflict = matches!(
+        effect,
+        Effect::Files(FilesEffect::LocalOp {
+            op: LocalOp::ResolveConflict { .. }
+                | LocalOp::SavePartialResolution { .. }
+                | LocalOp::ResolveWithSide { .. }
+                | LocalOp::MarkResolved(_),
+            ..
+        })
+    );
+    if let Some(c) = st.session.conflict.view.as_mut().filter(|_| conflict) {
+        c.saving = false;
+        c.step_on_resolve = false;
+        c.pending_save = None;
+    }
 }
 
 /// Why `label` didn't run while git is held in the repository.

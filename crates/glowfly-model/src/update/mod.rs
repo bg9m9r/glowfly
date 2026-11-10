@@ -182,6 +182,7 @@ pub mod trust;
 mod trust_inherit;
 mod trust_revoke;
 mod trust_seal;
+mod trust_waiting;
 pub mod undo;
 mod undo_offers;
 mod updates;
@@ -230,6 +231,8 @@ pub fn update_sealed(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     // test) left belong to no effect here.
     let mark = st.trust.seals.len();
     let mut fx = update_plain(st, msg, now);
+    // Whatever replaced the trust prompt, nothing it named still waits.
+    trust_waiting::prune(st);
     trust_seal::wrap(st, &mut fx, mark);
     fx
 }
