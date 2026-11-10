@@ -29,10 +29,10 @@ pub(super) fn push(st: &mut AppState, effect: FilesEffect, fx: &mut Vec<Effect>)
     if st.trust.waiting.is_some() { Started::Held } else { Started::No }
 }
 
-/// Waiting file work was dropped (update/trust_waiting.rs): a conflict change no longer counts
-/// as being saved in the open conflict view.
-pub(super) fn dropped(st: &mut AppState, effect: &Effect) {
-    let conflict = matches!(
+/// Whether `effect` is a conflict change the conflict view marks as being saved while it waits
+/// or runs (update/conflict.rs, conflict_files.rs).
+pub(super) fn is_conflict_change(effect: &Effect) -> bool {
+    matches!(
         effect,
         Effect::Files(FilesEffect::LocalOp {
             op: LocalOp::ResolveConflict { .. }
@@ -41,8 +41,25 @@ pub(super) fn dropped(st: &mut AppState, effect: &Effect) {
                 | LocalOp::MarkResolved(_),
             ..
         })
-    );
-    if let Some(c) = st.session.conflict.view.as_mut().filter(|_| conflict) {
+    )
+}
+
+/// File work that waited for the repository at `real` ended without running
+/// (`trust_waiting::not_run`): a conflict change no longer counts as being saved in that
+/// repository's conflict view, in the active tab or a parked one.
+pub(super) fn dropped(st: &mut AppState, effect: &Effect, real: &std::path::Path) {
+    if !is_conflict_change(effect) {
+        return;
+    }
+    let at = crate::state::tabs::is_repo_at;
+    let view = if st.snap.as_ref().is_some_and(|s| at(s, real)) {
+        st.session.conflict.view.as_mut()
+    } else {
+        let parked = st.tabs.iter_mut().filter_map(|t| t.parked.as_mut());
+        let mut of_repo = parked.filter(|p| p.snap.as_ref().is_some_and(|s| at(s, real)));
+        of_repo.next().and_then(|p| p.session.conflict.view.as_mut())
+    };
+    if let Some(c) = view {
         c.saving = false;
         c.step_on_resolve = false;
         c.pending_save = None;

@@ -177,7 +177,9 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
         }
         Sealed::Waiting { kind, label } => {
             if !active {
-                return;
+                // It ran for a tab that isn't active now: nothing asks, and it ends unrun.
+                let what = if kind == WaitingKind::Read { WaitingFor::Read(effect) } else { WaitingFor::Terminal(effect) };
+                return super::trust_waiting::not_run(st, &what, &check.real);
             }
             let what = match (kind, effect) {
                 (WaitingKind::Preview, Effect::OpPreview(job)) => {
@@ -193,7 +195,10 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
                 false,
                 t.trf("trust.stale.held", &[("label", &label.clone().unwrap_or_else(|| t.tr("trust.stale.terminal").to_owned()))]),
             );
-            super::trust::hold_waiting(st, what, label);
+            // No prompt could take it again (another dialog is open): it ends unrun.
+            if let Some(back) = super::trust_waiting::hold(st, what, label) {
+                super::trust_waiting::not_run(st, &back, &check.real);
+            }
         }
         Sealed::Shell { id } => {
             if let Some(s) = st.terminal.sessions.iter_mut().find(|s| s.id == id && s.status == SessionStatus::Starting) {
