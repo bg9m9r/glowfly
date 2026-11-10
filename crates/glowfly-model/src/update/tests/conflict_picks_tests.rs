@@ -2,14 +2,15 @@
 //! (`conflict_picks.rs`): Ctrl/Cmd picks with gaps without opening anything, Shift ranges from
 //! the open file, removing a pick, what ends the picks (a plain click, the Unstaged and Staged
 //! Files picks, an arrow key, the action), a NotUtf8 name refused, the actions on several picks
-//! (one markers read before Mark resolved, one Mark conflicted), and a status read pruning them.
+//! (one markers read before Mark resolved, one Mark conflicted), a status read pruning them, and
+//! the open file left out of the picks not drawn selected.
 
 use super::tests::state;
 use super::update;
 use crate::effect::{ConflictEffect, ConflictRead, Effect, FilesEffect, LocalOp};
 use crate::msg::{ConflictMsg, LoadMsg, Msg, RepoMsg};
 use crate::state::conflict::ConflictView;
-use crate::state::conflict_picks::picked;
+use crate::state::conflict_picks::{drawn_selected, picked};
 use crate::state::list_keys::{FileList, ListMove};
 use crate::state::op_fixture::{rows, snapshot};
 use crate::state::wip_lists::PickHow;
@@ -190,4 +191,37 @@ fn a_status_read_prunes_picks_that_left_the_list() {
     send(&mut st, Msg::Load(loaded));
     let held = st.cues.conflict_picks.as_ref().map(|p| p.paths.iter().cloned().collect::<Vec<_>>());
     assert_eq!(held, Some(vec!["b.txt".to_owned(), "c.txt".to_owned()]));
+}
+
+/// The rows of that list drawn selected, in order, `open` being the open file.
+fn drawn(st: &AppState, resolved: bool, open: &str) -> Vec<&'static str> {
+    let held = crate::state::conflict_picks::held(st, resolved);
+    ["a.txt", "b.txt", "c.txt"].into_iter().filter(|p| drawn_selected(held, p, *p == open)).collect()
+}
+
+#[test]
+fn the_open_file_taken_out_of_the_picks_isnt_drawn_selected() {
+    let mut st = conflicted("cpicks-drawn");
+    assert_eq!(drawn(&st, false, "a.txt"), ["a.txt"], "no picks: the open file");
+    pick(&mut st, false, "b.txt", PickHow::Toggle);
+    pick(&mut st, false, "c.txt", PickHow::Toggle);
+    assert_eq!(drawn(&st, false, "a.txt"), ["a.txt", "b.txt", "c.txt"]);
+    pick(&mut st, false, "a.txt", PickHow::Toggle);
+    assert_eq!(picks(&st, false), ["b.txt", "c.txt"]);
+    assert_eq!(drawn(&st, false, "a.txt"), ["b.txt", "c.txt"], "drawn as the action takes them");
+    assert_eq!(st.session.conflict.view.as_ref().map(|c| c.path.as_str()), Some("a.txt"), "still open");
+
+    // A single pick left still shows, without the open file.
+    pick(&mut st, false, "b.txt", PickHow::Toggle);
+    assert!(picked(&st, false).is_none());
+    assert_eq!(drawn(&st, false, "a.txt"), ["c.txt"]);
+    pick(&mut st, false, "b.txt", PickHow::Toggle);
+    assert_eq!(drawn(&st, false, "a.txt"), ["b.txt", "c.txt"], "no hidden pick reappears");
+    assert_eq!(picks(&st, false), ["b.txt", "c.txt"]);
+
+    // Resolved Files too.
+    let mut st = resolved("cpicks-drawn-resolved");
+    pick(&mut st, true, "c.txt", PickHow::Toggle);
+    pick(&mut st, true, "a.txt", PickHow::Toggle);
+    assert_eq!(drawn(&st, true, "a.txt"), ["c.txt"]);
 }

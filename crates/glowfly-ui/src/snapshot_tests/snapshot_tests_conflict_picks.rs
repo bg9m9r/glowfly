@@ -1,12 +1,14 @@
 //! Several files picked in Conflicted Files or Resolved Files during a merge: picked rows draw
 //! selected with a gap between them, a Ctrl/Cmd+click sends the pick message without opening
 //! the file, and a picked row's menu is the selection menu (Mark N files resolved, or Mark N
-//! files conflicted... asking first, off while a pick can't go back). Made-up conflicted and
-//! resolved files are injected into the shared fixture's snapshot.
+//! files conflicted... asking first, off while a pick can't go back), and the open file left out
+//! of the picks isn't drawn selected. Made-up conflicted and resolved files are injected into the
+//! shared fixture's snapshot.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use super::snapshot_tests_wip_picks::{click_with, labels, right_click, row};
 use crate::snapshot_check::CheckSnapshot;
+use eframe::egui::accesskit::{Role, Toggled};
 use eframe::egui::{Modifiers, PointerButton};
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
@@ -136,6 +138,37 @@ fn resolved_picks_menu_blocked() {
     right_click(&mut h, at);
     assert!(h.get_by_label("Mark 2 files conflicted…").is_disabled(), "zeta.txt has no record of both sides");
     h.check_snapshot("resolved_picks_menu_blocked");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// The rows of `names` drawn selected (their first button toggled on: a Resolved Files row
+/// comes before its Staged Files twin).
+fn drawn(h: &egui_kittest::Harness<'_, (AppState, Vec<Msg>)>, names: &[&'static str]) -> Vec<&'static str> {
+    let on = |name: &str| h.get_all_by_role_and_label(Role::Button, name).next().is_some_and(|n| n.toggled() == Some(Toggled::True));
+    names.iter().copied().filter(|n| on(n)).collect()
+}
+
+#[test]
+fn the_open_file_out_of_the_picks_isnt_drawn_selected() {
+    // Alpha open in the conflict view, then taken out of the picks: beta and gamma are left.
+    let (mut st, dir) = mid_merge(ThemeChoice::Dark, "conflict-picks-open-out", &CONFLICTED, &[], picks(false, &["beta.txt", "gamma.txt"]));
+    st.session.conflict.view = Some(glowfly_model::state::conflict::ConflictView::loading("alpha.txt".into()));
+    // The commit panel expanded beside the conflict view, so its lists show.
+    st.cues.details_expanded_for = Some(glowfly_model::state::layout::ToolView::Conflict);
+    let mut h = harness(st, true);
+    // The conflict view's loading animation keeps repainting.
+    h.run_steps(3);
+    assert_eq!(drawn(&h, &CONFLICTED), ["beta.txt", "gamma.txt"]);
+    drop(h);
+    remove_fixture(&dir);
+
+    // Delta's staged diff open, only zeta picked.
+    let (mut st, dir) = mid_merge(ThemeChoice::Dark, "resolved-picks-open-out", &CONFLICTED[..1], &RESOLVED, picks(true, &["zeta.txt"]));
+    st.cues.diff_opening = Some(glowfly_core::repo::DiffTarget::Staged("delta.txt".into()));
+    let mut h = harness(st, true);
+    h.run();
+    assert_eq!(drawn(&h, &RESOLVED), ["zeta.txt"]);
     drop(h);
     remove_fixture(&dir);
 }
