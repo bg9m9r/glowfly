@@ -95,3 +95,37 @@ fn log_marks_separate_old_entries_from_new() {
     assert!(j.errors_logged_since(mark).is_empty());
     assert!(j.toasts_since_action().iter().all(|(ok, _)| *ok));
 }
+
+#[test]
+fn a_resolved_merge_needs_no_view_conflicts() {
+    let (scene, mut j) = start("merge");
+    assert!(!git_try(&scene.app, &["merge", "topic"]), "topic conflicts with the head");
+    j.refresh();
+    j.select_wip();
+    let r = probe::read(&scene.app);
+    assert!(!r.conflicted.is_empty());
+    assert_eq!(screen_agrees(&j, &r), Ok(()), "conflicts shown");
+    for path in &r.conflicted {
+        assert!(git_try(&scene.app, &["checkout", "--ours", "--", path]));
+        assert!(git_try(&scene.app, &["add", "--", path]));
+    }
+    j.refresh();
+    let r = probe::read(&scene.app);
+    assert!(r.conflicted.is_empty());
+    assert_eq!(r.state, git2::RepositoryState::Merge);
+    assert_eq!(screen_agrees(&j, &r), Ok(()), "merge still open, every conflict resolved");
+}
+
+#[test]
+fn screen_disagrees_about_files_changed_outside() {
+    let (scene, mut j) = start("files");
+    std::fs::write(scene.app.join("a.txt"), "changed\n").unwrap();
+    j.refresh();
+    assert_eq!(screen_agrees(&j, &probe::read(&scene.app)), Ok(()));
+    assert!(git_try(&scene.app, &["add", "a.txt"]));
+    let r = probe::read(&scene.app);
+    let err = screen_agrees(&j, &r).unwrap_err();
+    assert!(err.contains("staged files"), "{err}");
+    j.refresh();
+    assert_eq!(screen_agrees(&j, &r), Ok(()));
+}

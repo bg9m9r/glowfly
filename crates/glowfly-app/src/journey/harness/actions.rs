@@ -151,7 +151,7 @@ impl Journey {
 
     /// The text of the failed activity-log entries logged after `mark`.
     pub fn errors_logged_since(&self, mark: u64) -> Vec<String> {
-        self.log_entries().filter(|e| !e.ok && e.id.number() > mark).map(|e| e.text.clone()).collect()
+        self.log_entries().filter(|e| !e.ok && e.earlier.is_none() && e.id.number() > mark).map(|e| e.text.clone()).collect()
     }
 
     fn log_entries(&self) -> impl Iterator<Item = &glowfly_model::state::LogEntry> {
