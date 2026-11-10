@@ -1,6 +1,6 @@
 //! What a diff with a Git LFS pointer on either side shows instead of the pointer text: the
 //! sizes and what changed (`state::lfs_notes::summary_text`), with a way to the pointer text and
-//! back.
+//! back; and the box it sits in, which the gitlink card shares (`card_frame`).
 
 use crate::theme::color;
 use crate::theme::type_scale;
@@ -12,8 +12,7 @@ use glowfly_model::state::lfs_notes::{LfsSummary, POINTER_BAR, SHOW_SUMMARY, SUM
 /// The summary block in the diff's place.
 pub(super) fn summary(ui: &mut Ui, s: &LfsSummary, msgs: &mut Vec<Msg>) {
     ui.add_space(6.0);
-    let frame = egui::Frame::group(ui.style()).fill(color::banner()).inner_margin(egui::Margin::same(10));
-    frame.outer_margin(egui::Margin::symmetric(8, 0)).show(ui, |ui| {
+    card_frame(ui).show(ui, |ui| {
         ui.label(RichText::new(&s.title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text()));
         for (line, oid) in &s.lines {
             let r = ui.add(egui::Label::new(RichText::new(line).color(color::weak())).wrap());
@@ -29,6 +28,13 @@ pub(super) fn summary(ui: &mut Ui, s: &LfsSummary, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Lfs(LfsMsg::ShowPointer(true)));
         }
     });
+}
+
+/// The box a diff shows in place of its rows: this summary's, and the gitlink card's, so the two
+/// read as one family.
+pub(super) fn card_frame(ui: &Ui) -> egui::Frame {
+    let frame = egui::Frame::group(ui.style()).fill(color::banner()).inner_margin(egui::Margin::same(10));
+    frame.outer_margin(egui::Margin::symmetric(8, 0))
 }
 
 /// The slim bar above the pointer text's rows, back to the summary.

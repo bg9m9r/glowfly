@@ -7,6 +7,7 @@
 //! two read as one family.
 
 use crate::theme::{color, type_scale};
+use crate::widgets::icon;
 use eframe::egui::{self, Label, Painter, Pos2, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_model::msg::Msg;
@@ -35,8 +36,7 @@ pub(super) fn show(ui: &mut Ui, t: Lang, card: &CardText, record: Option<&str>, 
     ui.add_space(6.0);
     let scroll = egui::ScrollArea::vertical().id_salt("gitlink_card").auto_shrink([false, true]).max_height(max);
     scroll.show(ui, |ui| {
-        let frame = egui::Frame::group(ui.style()).fill(color::banner()).inner_margin(egui::Margin::same(10));
-        frame.outer_margin(egui::Margin::symmetric(8, 0)).show(ui, |ui| {
+        super::lfs_note::card_frame(ui).show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.spacing_mut().item_spacing.y = 6.0;
             contents(ui, t, card, record, open, msgs);
@@ -48,7 +48,7 @@ pub(super) fn show(ui: &mut Ui, t: Lang, card: &CardText, record: Option<&str>, 
 fn contents(ui: &mut Ui, t: Lang, card: &CardText, record: Option<&str>, open: Option<&str>, msgs: &mut Vec<Msg>) {
     ui.horizontal(|ui| {
         if let Some(mark) = card.mark {
-            let (r, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
+            let (r, _) = ui.allocate_exact_size(vec2(icon::SIZE_MD, icon::SIZE_MD), Sense::hover());
             paint_mark(ui.painter(), r.center(), mark, color::text());
         }
         let title = RichText::new(&card.title).font(type_scale::strong(ui, type_scale::BODY)).color(color::text());
@@ -57,7 +57,7 @@ fn contents(ui: &mut Ui, t: Lang, card: &CardText, record: Option<&str>, open: O
     if let Some((old, new, full_old, full_new)) = &card.ids {
         ui.horizontal(|ui| {
             ui.add(Label::new(mono(old, color::weak()))).on_hover_text(full_old);
-            let (r, _) = ui.allocate_exact_size(vec2(24.0, 14.0), Sense::hover());
+            let (r, _) = ui.allocate_exact_size(vec2(24.0, icon::SIZE_SM), Sense::hover());
             paint_arrow(ui.painter(), r, true, color::weak());
             ui.add(Label::new(mono(new, color::text()))).on_hover_text(full_new);
         });
@@ -121,7 +121,7 @@ fn paint_arrow(p: &Painter, r: Rect, forward: bool, col: egui::Color32) {
 /// The title's direction mark, 16 points across, centred on `c`: an arrow forward or back, or a
 /// line that forks in two for another line of history.
 fn paint_mark(p: &Painter, c: Pos2, mark: Mark, col: egui::Color32) {
-    let r = Rect::from_center_size(c, vec2(16.0, 16.0));
+    let r = Rect::from_center_size(c, vec2(icon::SIZE_MD, icon::SIZE_MD));
     match mark {
         Mark::Forward => paint_arrow(p, r, true, col),
         Mark::Backward => paint_arrow(p, r, false, col),
