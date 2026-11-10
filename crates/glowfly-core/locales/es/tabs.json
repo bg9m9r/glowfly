@@ -20,5 +20,9 @@
   "tabs.menu.reopen": "Reabrir pestaña cerrada",
   "tabs.menu.reopen.blocked": "Aún no se ha cerrado ninguna pestaña.",
   "tabs.new_tab.name": "Nueva pestaña",
-  "tabs.new_tab.tip": "Nueva pestaña"
+  "tabs.new_tab.tip": "Nueva pestaña",
+  "tabs.saved_file.blocked.toast": "Glowfly no puede leer las pestañas que guardó la última vez ({detail}), así que las pestañas abiertas no se guardan hasta que pueda.",
+  "tabs.saved_file.kept.log.one": "No se pudo leer {count} línea del archivo de pestañas guardadas y se descartó; antes se guardó una copia del archivo como {path}.",
+  "tabs.saved_file.kept.log.other": "No se pudieron leer {count} líneas del archivo de pestañas guardadas y se descartaron; antes se guardó una copia del archivo como {path}.",
+  "tabs.saved_file.read_late.log": "Ya se pudieron leer las pestañas guardadas la última vez; se conservan y vuelven a abrirse en el próximo inicio."
 }

@@ -18,7 +18,7 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
         RecentMsg::ClearRecent => {
             if !st.recent.is_empty() {
                 st.recent.clear();
-                fx.push(Effect::Save(SaveEffect::Recent(Vec::new())));
+                fx.push(Effect::Save(SaveEffect::ClearRecent));
             }
         }
         RecentMsg::SetFavorite { path, favorite: true } => {
@@ -44,6 +44,8 @@ pub(super) fn handle(st: &mut AppState, msg: RecentMsg, now: Instant, fx: &mut V
             unfavorite(st, &p, fx);
         }
         RecentMsg::SetColour { path, colour } => super::repo_colour::set(st, &path, colour, fx),
+        RecentMsg::StateFileSaved { file, notes } => super::recent_files::saved(st, file, notes, fx),
+        RecentMsg::StateFileBlocked { file, clearing, detail } => super::recent_files::blocked(st, file, clearing, &detail, now),
     }
 }
 

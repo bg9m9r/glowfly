@@ -1,5 +1,6 @@
 {
   "repos.clear.link": "Vaciar",
+  "repos.clear_recent.blocked.toast": "La lista Recientes solo queda vacía hasta que Glowfly se reinicie: su archivo no se puede leer ({detail}), así que no se sobrescribe.",
   "repos.clear_recent.body.one": "¿Quitar el {count} repositorio de la lista de recientes? No se toca nada en el disco y se conservan los favoritos.",
   "repos.clear_recent.body.other": "¿Quitar los {count} repositorios de la lista de recientes? No se toca nada en el disco y se conservan los favoritos.",
   "repos.clear_recent.button": "Vaciar",
@@ -29,6 +30,10 @@
   "repos.open_tag.label": "abierto",
   "repos.open_tag.tip": "Abierto en una pestaña. Haz clic para ir a ella.",
   "repos.recent.header": "Recientes",
+  "repos.recent_file.blocked.toast": "Glowfly no puede leer su lista de repositorios recientes ({detail}), así que los cambios en la lista no se guardan hasta que pueda.",
+  "repos.recent_file.kept.log.one": "No se pudo leer {count} línea del archivo de repositorios recientes y se descartó; antes se guardó una copia del archivo como {path}.",
+  "repos.recent_file.kept.log.other": "No se pudieron leer {count} líneas del archivo de repositorios recientes y se descartaron; antes se guardó una copia del archivo como {path}.",
+  "repos.recent_file.read_late.log": "Ya se pudo leer la lista de repositorios recientes; sus repositorios vuelven a estar en Recientes.",
   "repos.remove.button": "Quitar",
   "repos.remove_missing.body_both.one": "¿Quitar {count} repositorio que no se encuentra de las listas de favoritos y recientes ({favorites} en favoritos, {recent} en recientes)? No se toca nada en el disco.",
   "repos.remove_missing.body_both.other": "¿Quitar {count} repositorios que no se encuentran de las listas de favoritos y recientes ({favorites} en favoritos, {recent} en recientes)? No se toca nada en el disco.",

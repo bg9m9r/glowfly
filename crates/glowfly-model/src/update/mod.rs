@@ -115,6 +115,7 @@ mod rebase_quick;
 mod rebase_remaining;
 pub mod rebase_resume;
 mod recent;
+mod recent_files;
 pub mod refresh;
 mod refresh_index;
 mod refresh_paths;

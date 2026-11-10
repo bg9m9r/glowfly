@@ -143,6 +143,14 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - A startup load whose `LoadProblem` is `locked` sets `settings_file.unreadable` (`SettingsFile::hold`) before the first startup step (`shell/app_start.rs`), since some save, and `PrefsMsg::SettingsUnreadable` reports it after them: defaults are in use, and `update/prefs.rs::save_settings` returns no save while it is set, so they can't replace the user's file. Journey: `journey/settings_unreadable.rs`.
 - The banner (under the toolbar and above Preferences) stays until Try again (`PrefsEffect::ReadSettings`, `Settings::reload`) reads the file; its settings then replace the defaults (a toast says when edits made meanwhile were dropped), the keymap, the terminal panel and live settings follow, the git they name is put into effect (`GitEnvEffect::Use`, after any check already running), what Glowfly recorded by itself meanwhile (release notes seen, the last update check, one-time notices; `state/settings_file.rs::carry_records`) is kept where newer and isn't counted as a dropped edit (`user_view`), and saving goes on. Open settings folder shows where the file is.
 
+## Unreadable recent and tabs files
+
+- Files: `runner/platform/state_files.rs` (with `state_files/recent.rs` and `state_files/tabs.rs`), `runner/saves.rs`, `update/recent_files.rs`.
+- The start read drops one leading BOM and decodes each line on its own. A line that isn't UTF-8 is skipped (logged with `tracing::warn!`), and the file's bytes are held: the first save of that file this session copies them beside it (`persist::keep_copy`) before writing, and the activity log names the copy (`RecentMsg::StateFileSaved`, `notes.kept`).
+- A start read that fails every retry holds the file unread. Each save of it then tries one read, with no waits: while that fails nothing is written, and only the first refusal of the session is toasted (`RecentMsg::StateFileBlocked`). Once it works (or the file is gone), the entries on disk are merged after the session's (recent capped at `RECENT_LIMIT`; tabs never become the active one) and carried into every later save until the session saves them itself. The model adds the late recent entries to the Recent list and checks their folders; late tabs come back at the next start.
+- Clear recent sends `SaveEffect::ClearRecent`, which empties the file without the carried entries; while the file can't be read it is refused and toasted every time (`clearing: true`).
+- At start, `Settings::load`, `load_recent` and `load_tabs` keep the newest `persist::KEPT_BACKUPS` of their `<file>.bak*` copies (`persist::prune_backups`).
+
 ## Git LFS notices
 
 - Files: `state/lfs.rs`'s `LfsSession`, `state/lfs_notes.rs`, `state/session.rs` (the open diff's note), `ui/lfs_banner.rs`, `ui/lfs_badge.rs`, `ui/diff/lfs_note.rs`.

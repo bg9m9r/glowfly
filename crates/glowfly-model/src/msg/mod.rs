@@ -71,7 +71,7 @@ pub use op_preview::{OpPreviewMsg, ResetMode};
 pub use partial::{ContentFailure, PartialMsg};
 pub use prefs::{FilePurpose, FolderPurpose, PaletteMsg, PrefsMsg};
 pub use rebase::RebaseMsg;
-pub use recent::{FolderCheck, RecentMsg};
+pub use recent::{FolderCheck, RecentMsg, SaveNotes, StateFile};
 pub use repo::{LoadMsg, RepoMsg, WatchMsg};
 pub use repo_groups::GroupMsg;
 pub use repos::{ReposMsg, ScanFound};

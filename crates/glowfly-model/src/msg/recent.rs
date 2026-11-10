@@ -29,6 +29,31 @@ pub enum RecentMsg {
     /// Give the repository at `path` a colour, or with None take it away (the tab menu's and the
     /// repository list's Color submenus).
     SetColour { path: PathBuf, colour: Option<RepoColour> },
+    /// A save of recent.txt or tabs.txt did more than write it (the runner sends this only when
+    /// `notes` isn't empty): see [`SaveNotes`].
+    StateFileSaved { file: StateFile, notes: SaveNotes },
+    /// A save of recent.txt or tabs.txt was refused: the file couldn't be read at start and still
+    /// can't (`detail`: its path and the error), so nothing was written. `clearing`: it was Clear
+    /// recent.
+    StateFileBlocked { file: StateFile, clearing: bool, detail: String },
+}
+
+/// recent.txt or tabs.txt (runner/platform/state_files.rs).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateFile {
+    Recent,
+    Tabs,
+}
+
+/// What a save of one of them did besides writing it.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SaveNotes {
+    /// The file couldn't be read at start; this save read it, and these entries were on disk
+    /// (recent: newest first; tabs: their paths). They are merged into every save from now on.
+    pub read_late: Option<Vec<PathBuf>>,
+    /// Lines that couldn't be decoded were skipped; the file was copied here, with that many
+    /// lines skipped, before this save replaced it.
+    pub kept: Option<(PathBuf, usize)>,
 }
 
 /// What `SessionEffect::CheckRepoFolders` found at one listed folder.
@@ -55,7 +80,9 @@ impl RecentMsg {
             | Self::OpenAll(_)
             | Self::RemoveMissing
             | Self::Forget(_)
-            | Self::SetColour { .. } => None,
+            | Self::SetColour { .. }
+            | Self::StateFileSaved { .. }
+            | Self::StateFileBlocked { .. } => None,
         }
     }
 }

@@ -1,10 +1,12 @@
 //! Tests of the recent-repositories and open-tabs files: their format, lines that aren't valid
 //! UTF-8, reads that fail, and (on Unix) who may read them.
 
+use super::recent::*;
+use super::tabs::*;
 use super::*;
 
 /// A fresh folder for one test, named for it so tests running at once don't share files.
-fn scratch(name: &str) -> PathBuf {
+pub(super) fn scratch(name: &str) -> PathBuf {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-state-files-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
@@ -65,10 +67,12 @@ fn names_that_are_not_utf8_survive_the_files() {
 
 #[test]
 fn a_line_that_is_not_utf8_costs_only_that_line() {
-    let recent = parse_recent_bytes(b"/w/a\n/w/caf\xe9\r\n/w/b\n");
+    let (recent, skipped) = parse_recent_bytes(b"/w/a\n/w/caf\xe9\r\n/w/b\n");
     assert_eq!(recent, [PathBuf::from("/w/a"), PathBuf::from("/w/b")]);
+    assert_eq!(skipped, 1);
     // A bad path drops its tab; a bad byte in a label only loses that character.
-    let (paths, labels, active) = parse_tabs_bytes(b"2\n/w/a\tFront\xffend\n/w/\xc3(\tGone\n/w/c\n");
+    let ((paths, labels, active), skipped) = parse_tabs_bytes(b"2\n/w/a\tFront\xffend\n/w/\xc3(\tGone\n/w/c\n");
+    assert_eq!(skipped, 1, "a damaged label isn't a skipped line");
     assert_eq!(paths, [PathBuf::from("/w/a"), PathBuf::from("/w/c")]);
     assert_eq!(labels, [Some("Front\u{fffd}end".to_owned()), None]);
     assert_eq!(active, 1, "clamped to the tabs that were kept");
@@ -92,11 +96,12 @@ fn a_failed_read_keeps_the_list_from_the_next_save() {
     let denied = |_: &Path| Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied));
     assert!(load_recent_with(&recent, &[], denied).is_empty());
     assert!(load_tabs_with(&tabs, &[], denied).0.is_empty());
-    // This session's saves leave the files as they were, for the next start to restore.
-    save_recent_to(&recent, &[dir.join("new")]).unwrap();
-    save_tabs_to(&tabs, &[dir.join("new")], &[], 0).unwrap();
-    assert_eq!(parse_recent_bytes(&std::fs::read(&recent).unwrap()), kept);
-    assert_eq!(parse_tabs_bytes(&std::fs::read(&tabs).unwrap()), (kept, vec![None; 3], 2));
+    // This session's saves, whose one read fails too, leave the files as they were, for the
+    // next start to restore.
+    assert!(matches!(save_recent_with(&recent, &[dir.join("new")], false, denied), Err(SaveRefused::Unread { .. })));
+    assert!(matches!(save_tabs_with(&tabs, &[dir.join("new")], &[], 0, denied), Err(SaveRefused::Unread { .. })));
+    assert_eq!(parse_recent_bytes(&std::fs::read(&recent).unwrap()).0, kept);
+    assert_eq!(parse_tabs_bytes(&std::fs::read(&tabs).unwrap()).0, (kept, vec![None; 3], 2));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -112,7 +117,7 @@ fn a_read_that_fails_then_works_is_used_and_saves_go_on() {
     };
     assert_eq!(load_recent_with(&recent, &[Duration::from_millis(1)], busy_once), [dir.join("one")]);
     save_recent_to(&recent, &[dir.join("two"), dir.join("one")]).unwrap();
-    assert_eq!(parse_recent_bytes(&std::fs::read(&recent).unwrap()), [dir.join("two"), dir.join("one")]);
+    assert_eq!(parse_recent_bytes(&std::fs::read(&recent).unwrap()).0, [dir.join("two"), dir.join("one")]);
     // No file yet is no failure: the first save writes it.
     let missing = dir.join("tabs.txt");
     assert_eq!(load_tabs_with(&missing, &[], |p: &Path| std::fs::read(p)), (Vec::new(), Vec::new(), 0));

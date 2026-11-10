@@ -83,13 +83,9 @@ pub fn recorded(backup: &Path) -> bool {
 }
 
 /// Whether `name` is a backup `persist::move_aside` makes of a file called `program`:
-/// `<program>.bak`, or `<program>.bak-<n>` with `n` of 2 or more.
+/// `<program>.bak`, or `<program>.bak-<n>` with `n` of 2 or more (`persist::backup_number`).
 pub fn is_backup_name(program: &str, name: &str) -> bool {
-    let Some(rest) = name.strip_prefix(program).and_then(|r| r.strip_prefix(".bak")) else { return false };
-    match rest.strip_prefix('-') {
-        None => rest.is_empty(),
-        Some(n) => !n.is_empty() && !n.starts_with('0') && n.bytes().all(|b| b.is_ascii_digit()) && n != "1",
-    }
+    persist::backup_number(program, name).is_some()
 }
 
 /// The backups of `program` in its folder: regular files (not links) named as

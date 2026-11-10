@@ -273,6 +273,7 @@ fn files_history_save_and_session_effects_keep_their_metadata() {
         (Effect::History(HistoryEffect::Stats { workdir: w.clone(), oids: vec![oid] }), ("stats", scoped, None, true), SandboxRule::Run),
         (Effect::Save(SaveEffect::Settings(Box::default())), ("save-settings", None, None, true), SandboxRule::Save),
         (Effect::Save(SaveEffect::Recent(vec![w.clone()])), ("save-recent", None, None, true), SandboxRule::Save),
+        (Effect::Save(SaveEffect::ClearRecent), ("clear-recent", None, None, true), SandboxRule::Save),
         (
             Effect::Save(SaveEffect::Tabs { paths: vec![w.clone()], labels: vec![None], active: 0 }),
             ("save-tabs", None, None, true),

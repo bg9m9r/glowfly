@@ -81,15 +81,7 @@ impl Runner {
 
 /// `saves::save_now`, writing into `folder`.
 pub(super) fn save_into(folder: &Path, effect: SaveEffect) -> Option<Msg> {
-    let (what, result) = match effect {
-        SaveEffect::Settings(settings) => ("settings", settings.save_to(&folder.join("settings.json"))),
-        SaveEffect::Recent(list) => ("the recent repositories", super::platform::save_recent_to(&folder.join("recent.txt"), &list)),
-        SaveEffect::Tabs { paths, labels, active } => {
-            ("the open tabs", super::platform::save_tabs_to(&folder.join("tabs.txt"), &paths, &labels, active))
-        }
-    };
-    let e = result.err()?;
-    Some(Msg::Logged { ok: false, text: format!("Could not save {what}: {e}") })
+    super::saves::save_in(folder, effect)
 }
 
 #[cfg(test)]
@@ -245,6 +237,10 @@ mod tests {
         assert_eq!(crate::platform::parse_tabs(&tabs), (vec![repo], vec![Some("Web".to_owned())], 0));
         let saved = std::fs::read_to_string(dir.join("settings.json")).unwrap();
         assert!(saved.contains("\"auto_fetch_minutes\": 7"), "{saved}");
+        assert!(rx.try_recv().is_err(), "nothing failed");
+        assert!(runner.admit(Effect::Save(SaveEffect::ClearRecent)).is_none());
+        let recent = std::fs::read_to_string(dir.join("recent.txt")).unwrap();
+        assert!(crate::platform::parse_recent(&recent).is_empty(), "{recent}");
         assert!(rx.try_recv().is_err(), "nothing failed");
         assert!(runner.dropped().is_empty() && runner.started() == 0);
         let _ = std::fs::remove_dir_all(&dir);

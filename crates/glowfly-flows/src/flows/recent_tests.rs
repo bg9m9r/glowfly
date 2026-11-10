@@ -65,7 +65,7 @@ fn clear_recent_empties_the_list_and_keeps_favorites() {
     let fx = run(&mut st, RecentMsg::ClearRecent);
     assert!(st.recent.is_empty());
     assert_eq!(st.settings.favorite_repos, ["/w/b"]);
-    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::Recent(l))] if l.is_empty()), "{fx:?}");
+    assert!(matches!(&fx[..], [Effect::Save(SaveEffect::ClearRecent)]), "{fx:?}");
     assert!(run(&mut st, RecentMsg::ClearRecent).is_empty(), "nothing to clear");
 }
 
