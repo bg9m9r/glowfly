@@ -225,14 +225,7 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         }
         last = Some(e.path.clone());
         let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
-        // An absolute, drive or `..` spelling is never joined. Any other name is a folder git's
-        // status may run git in, also one that reads as `.git` on another file system.
-        let plain = !rel.starts_with('/') && rel.split('/').all(|p| !p.is_empty() && p != "." && p != "..");
-        if !plain || (cfg!(windows) && rel.contains(['\\', ':'])) {
-            continue;
-        }
-        // One part at a time, so the folder uses the platform's separators.
-        let folder = rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+        let Some(folder) = gitlink_folder(workdir, rel) else { continue };
         // Never opened when its files name another network place (git_file).
         if !matches!(crate::git_file::other_repo(&folder, workdir), crate::git_file::Found::Repo(_)) {
             continue;
@@ -246,6 +239,18 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         }
         scan_submodules(&sub, &path, depth + 1, out);
     }
+}
+
+/// The folder of the gitlink named `rel` in `workdir`, one part at a time so it uses the
+/// platform's separators. None for an absolute, drive or `..` spelling, which is never joined.
+/// Any other name is a folder git's status may run git in, also one that reads as `.git` on
+/// another file system.
+fn gitlink_folder(workdir: &Path, rel: &str) -> Option<PathBuf> {
+    let plain = !rel.starts_with('/') && rel.split('/').all(|p| !p.is_empty() && p != "." && p != "..");
+    if !plain || (cfg!(windows) && rel.contains(['\\', ':'])) {
+        return None;
+    }
+    Some(rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c)))
 }
 
 /// `scan` of the repository at `path`.

@@ -118,7 +118,7 @@ fn joined_as_libgit2(base: &Path, named: &str) -> Option<PathBuf> {
 }
 
 /// `named` joined to `base` unless absolute.
-fn joined(base: &Path, named: &str) -> PathBuf {
+pub(crate) fn joined(base: &Path, named: &str) -> PathBuf {
     let named = Path::new(named);
     if named.is_absolute() { named.to_path_buf() } else { base.join(named) }
 }
@@ -201,7 +201,11 @@ pub(crate) fn other_repo(folder: &Path, home: &Path) -> Found {
 /// The first place libgit2 opening the repository of `d` would reach that may not be followed:
 /// a link directly in its git dir, common dir or their `info/`, a link in its object store or a
 /// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
-/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`.
+/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`. Also what can't be told
+/// the way libgit2 would take it: an entry named like `.git` inside a `.git` folder (libgit2
+/// opens a submodule by its `.git` path, and looks for a `.git` inside that first), and a
+/// conditional include section in its config files or a file they include (the config read
+/// here follows none, libgit2's own open does).
 fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     let mut dirs = vec![d.git_dir.clone()];
     if d.common != d.git_dir {
@@ -211,6 +215,10 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
         for at in [dir.clone(), dir.join("info")] {
             let Ok(read) = std::fs::read_dir(&at) else { continue };
             for e in read.flatten() {
+                // Listed and compared by name, as a volume that ignores case would find it.
+                if at == folder.join(".git") && e.file_name().to_str().is_none_or(crate::names::is_git_dir_name) {
+                    return Err(e.path());
+                }
                 // The listing's own type: a link is never followed to tell.
                 if e.file_type().is_ok_and(|t| t.is_symlink()) && !may_follow(&e.path(), &at) {
                     return Err(e.path());
@@ -221,7 +229,15 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     // Read when a status compares the submodule's HEAD tree.
     alternates::reachable(&d.common, home)?;
     let roots = config_includes::repo_roots(&d.git_dir, Some(&d.common));
-    config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home))?;
+    let included = config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home))?;
+    for file in roots.iter().chain(&included.files) {
+        match read_file_bounded(file, config_includes::MAX_FILE_BYTES) {
+            Some(bytes) if crate::gitmodules::names_section(&bytes, b"includeif") => return Err(file.clone()),
+            // There, but not a file that can be read whole.
+            None if file.symlink_metadata().is_ok() => return Err(file.clone()),
+            _ => {}
+        }
+    }
     // The includes are allowed, so libgit2 may follow them; an unreadable config fails the
     // open by itself.
     let Ok(mut cfg) = git2::Config::new() else { return Ok(()) };
@@ -320,32 +336,6 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
         }
     }
     out
-}
-
-/// Whether the repository of `d`, found in `folder`, has `folder` as the work tree libgit2 would
-/// give it (`load_workdir`): no linked-worktree record or `commondir` in its git dir, and every
-/// `core.worktree` its own config files set (as written; relative to the git dir) resolves to
-/// `folder`. False when that can't be told. Called once `other_repo` allowed the repository, so
-/// the config files' includes are ones libgit2 may follow.
-pub(crate) fn work_tree_is(d: &RepoDirs, folder: &Path) -> bool {
-    // libgit2 takes a git dir with a `gitdir` file as a linked worktree's and uses the folder
-    // that record names.
-    if d.common != d.git_dir || d.git_dir.join("gitdir").symlink_metadata().is_ok() {
-        return false;
-    }
-    let Ok(mut cfg) = git2::Config::new() else { return false };
-    for (file, level) in [(d.common.join("config"), ConfigLevel::Local), (d.git_dir.join("config.worktree"), ConfigLevel::Worktree)] {
-        if file.is_file() && cfg.add_file(&file, level, false).is_err() {
-            return false;
-        }
-    }
-    let Ok(entries) = cfg.entries(Some(r"^core\.worktree$")) else { return false };
-    let real = crate::paths::resolve(folder);
-    let mut same = true;
-    let read = entries.for_each(|e| {
-        same &= crate::config_entry::utf8(e).is_some_and(|v| !v.is_empty() && crate::paths::resolve(&joined(&d.git_dir, v)) == real);
-    });
-    read.is_ok() && same
 }
 
 /// Whether libgit2 is kept from `repo`'s submodules: one of its gitlinks names a place that may
