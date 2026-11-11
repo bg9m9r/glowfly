@@ -32,13 +32,14 @@ use std::sync::Arc;
 /// footer's tone makes Cancel the default (and with no Cancel there is no default). Neither
 /// answer is filled: this is a safety decision, so no button is styled as the expected one.
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
+    // Files of its own that couldn't be read aren't about what a commit brings in, nor about
+    // what changed since: the plain question.
+    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_)));
     let title = match (&p.incoming, &p.gained) {
-        // Not about what a commit brings in: the repository's own files couldn't be read.
-        _ if p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_))) => "Trust this repository?",
-        _ if p.unchecked.is_some() => cx.t.tr("trust.incoming.title"),
-        (Some(_), _) => cx.t.tr("trust.incoming.title"),
-        (None, Some(_)) => "Trust this repository again?",
-        (None, None) => "Trust this repository?",
+        _ if p.unchecked.is_some() && !unread => cx.t.tr("trust.incoming.title"),
+        (Some(_), _) if !unread => cx.t.tr("trust.incoming.title"),
+        (None, Some(_)) if !unread => "Trust this repository again?",
+        _ => "Trust this repository?",
     };
     let mut d = Dialog::new(cx, title).begin(ui);
     d.body(ui, |ui| body(ui, cx.t, p, msgs));
@@ -166,8 +167,8 @@ fn findings(ui: &mut Ui, t: Lang, scan: &TrustScan, workdir: &Path, places: &[Fo
     follows(ui, t, scan);
 }
 
-/// The most height an opened step takes before it scrolls.
-const STEP_OPEN_H: f32 = 120.0;
+/// The most lines of an opened step in view before it scrolls.
+const STEP_OPEN_LINES: f32 = 6.0;
 
 /// The rows of `steps`, made once and kept while the steps stay the same.
 fn step_rows(ui: &Ui, steps: &[String]) -> Arc<(Vec<String>, Vec<StepRow>)> {
@@ -183,7 +184,7 @@ fn step_rows(ui: &Ui, steps: &[String]) -> Arc<(Vec<String>, Vec<StepRow>)> {
 
 /// The steps a rebase, cherry-pick or revert in progress runs when it continues, one row each.
 /// The decision covers each whole step: one too long for its row is cut with "…", says how
-/// much is left out and has Show all, which shows all of it (scrolling past `STEP_OPEN_H`).
+/// much is left out and has Show all, which shows all of it (scrolling past `STEP_OPEN_LINES`).
 fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan, open: Option<usize>, msgs: &mut Vec<Msg>) {
     if scan.steps.is_empty() {
         return;
@@ -199,7 +200,10 @@ fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan, open: Option<usize>, msgs: &mut
         };
         let opened = open == Some(i);
         if opened {
-            let area = egui::ScrollArea::vertical().id_salt(("trust-step", i)).max_height(STEP_OPEN_H).auto_shrink([false, true]);
+            let area = egui::ScrollArea::vertical()
+                .id_salt(("trust-step", i))
+                .max_height(ui.text_style_height(&egui::TextStyle::Monospace) * STEP_OPEN_LINES)
+                .auto_shrink([false, true]);
             area.show(ui, |ui| rows::hook(ui, t, &row.whole, mark));
         } else {
             rows::hook(ui, t, cut, mark);
@@ -209,7 +213,7 @@ fn steps(ui: &mut Ui, t: Lang, scan: &TrustScan, open: Option<usize>, msgs: &mut
                 let note = t.trn("trust.steps.cut", *more, &[("count", more)]);
                 ui.label(RichText::new(note).color(color::weak()));
             }
-            let label = t.tr(if opened { "trust.steps.show_less" } else { "trust.steps.show_all" });
+            let label = if opened { t.tr("trust.steps.show_less") } else { t.tr("trust.steps.show_all") };
             if ui.add(buttons::secondary(label).size(ControlSize::Small)).clicked() {
                 msgs.push(Msg::Trust(TrustMsg::ToggleStep(i)));
             }

@@ -40,7 +40,7 @@ pub fn row_follows(p: &TrustPrompt, sub: Option<&str>) -> Vec<Follow> {
 }
 
 /// The most characters of a step its row shows before Show all.
-pub const STEP_CHARS: usize = 400;
+const STEP_CHARS: usize = 400;
 
 /// A step of a rebase or pick in progress as the dialog shows it.
 #[derive(Clone, Debug, PartialEq)]
