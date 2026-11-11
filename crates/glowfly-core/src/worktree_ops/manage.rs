@@ -118,7 +118,7 @@ pub fn classify(still_registered: bool, folder_exists: bool, output: &str) -> Re
 /// of them names another network place (`git_file::offsite_gitlinks`): the read would open it.
 pub fn dirty_count(worktree: &Path) -> Result<usize> {
     let repo = Repository::open(worktree)?;
-    let offsite = !crate::git_file::offsite_gitlinks(&repo).is_empty();
+    let offsite = crate::git_file::submodules_unread(&repo);
     let mut opts = StatusOptions::new();
     opts.include_untracked(true).recurse_untracked_dirs(false).include_ignored(false).exclude_submodules(offsite);
     let statuses = repo.statuses(Some(&mut opts))?;

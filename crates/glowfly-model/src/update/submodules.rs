@@ -27,8 +27,8 @@ pub(super) fn handle(st: &mut AppState, msg: SubmoduleMsg, now: Instant, fx: &mu
                 st.log(false, format!("Can't open {path}: {why}"));
                 return;
             }
-            let Some(workdir) = st.workdir() else { return };
-            super::tabs::open(st, folder_of(&workdir, &sm.path), fx);
+            let Some(folder) = st.workdir().and_then(|w| folder_of(&w, &sm.path)) else { return };
+            super::tabs::open(st, folder, fx);
         }
         SubmoduleMsg::Update { path, confirmed } => {
             let Some(sm) = find(st, &path) else { return };
@@ -98,21 +98,27 @@ fn update(st: &mut AppState, sm: &SubmoduleInfo, fx: &mut Vec<Effect>) {
     let label = job_label(sm);
     if start_job(st, JobSpec::new(label.clone(), vec![update_args(&sm.path)]), fx) == Started::Now
         && !sm.is_initialized()
-        && let Some(workdir) = st.workdir()
+        && let Some(folder) = st.workdir().and_then(|w| folder_of(&w, &sm.path))
     {
-        super::trust_inherit::expect(st, &label, InheritKind::Submodule, vec![folder_of(&workdir, &sm.path)]);
+        super::trust_inherit::expect(st, &label, InheritKind::Submodule, vec![folder]);
     }
 }
 
-/// The folder of the submodule at `path` (slashes) in the repository at `workdir`, one
-/// component at a time so it uses the platform's separators.
-pub(super) fn folder_of(workdir: &Path, path: &str) -> PathBuf {
-    path.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c))
+/// The folder of the submodule at `path` (slashes) in the repository at `workdir`, with the
+/// platform's separators; None for a path that isn't a plain relative one inside the work tree
+/// (`repo::work_path`), which has no folder there.
+pub(super) fn folder_of(workdir: &Path, path: &str) -> Option<PathBuf> {
+    glowfly_core::repo::work_path(workdir, path).ok()
 }
 
-/// The submodule at `path` in the active tab's snapshot; logs when it is gone.
+/// The submodule at `path` in the active tab's snapshot; logs when it is gone. One whose path
+/// isn't a plain relative one inside the work tree (`folder_of`) counts as gone: nothing acts on it.
 pub(super) fn find(st: &mut AppState, path: &str) -> Option<SubmoduleInfo> {
-    let found = st.snap.as_ref().and_then(|s| s.submodules.iter().find(|m| m.path == path).cloned());
+    let found = st
+        .snap
+        .as_ref()
+        .and_then(|s| s.submodules.iter().find(|m| m.path == path).cloned())
+        .filter(|m| folder_of(Path::new(""), &m.path).is_some());
     if found.is_none() {
         st.log(false, format!("Submodule {path} is no longer in this repository."));
     }

@@ -221,9 +221,10 @@ pub(super) fn absent_paths(repo: &Repository, files: &[FileEntry]) -> HashSet<St
     files.iter().filter(|f| f.hazard.is_some() || !on_disk(repo, &f.path)).map(|f| f.path.clone()).collect()
 }
 
-/// Whether something is at `path` in the working tree (never in a bare repository).
+/// Whether something is at `path` in the working tree (never in a bare repository, and never
+/// for a name that isn't a plain relative path inside it, which is not looked up: `work_path`).
 pub(super) fn on_disk(repo: &Repository, path: &str) -> bool {
-    repo.workdir().is_some_and(|root| root.join(path).symlink_metadata().is_ok())
+    repo.workdir().is_some_and(|root| super::work_path(root, path).is_ok_and(|p| p.symlink_metadata().is_ok()))
 }
 
 pub(super) fn path_opts(path: &str) -> DiffOptions {

@@ -62,7 +62,8 @@ pub(super) fn submit(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let cmd = add_cmd(&req.url, &req.path, req.branch.as_deref());
-    let (label, folder) = (job_label(&req.path), super::submodules::folder_of(&form.repo, &req.path));
+    let Some(folder) = super::submodules::folder_of(&form.repo, &req.path) else { return };
+    let label = job_label(&req.path);
     if ops::start_job(st, JobSpec::new(label.clone(), vec![cmd]), fx) == Started::Now {
         super::trust_inherit::expect(st, &label, InheritKind::Submodule, vec![folder]);
         close(st);

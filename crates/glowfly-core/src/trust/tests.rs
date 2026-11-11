@@ -300,3 +300,76 @@ fn a_home_relative_hooks_path_is_expanded_as_git_does() {
     assert_eq!(home_expanded(".githooks", Some(home)), Some(Path::new(".githooks").to_path_buf()));
     assert_eq!(home_expanded("~/hooks", None), Some(Path::new("~/hooks").to_path_buf()));
 }
+
+#[test]
+fn a_submodule_in_a_folder_with_an_unusual_name_is_scanned() {
+    let top = scratch_repo("trust-sub-odd-name");
+    write(&top, "a.txt", "a\n");
+    git(&top, &["add", "."]);
+    git(&top, &["commit", "-q", "-m", "one"]);
+    for name in ["my libs/sub mod", "deps/-x", "caf\u{e9}"] {
+        let inner = name.split('/').fold(top.clone(), |p, c| p.join(c));
+        std::fs::create_dir_all(&inner).unwrap();
+        crate::testutil::init_repo(&inner);
+        write(&inner, "n.txt", "one\n");
+        git(&inner, &["add", "."]);
+        git(&inner, &["commit", "-q", "-m", "inner"]);
+        git(&inner, &["config", "core.fsmonitor", ".git/fsmon.sh"]);
+        let head = Repository::open(&inner).unwrap().head().unwrap().target().unwrap().to_string();
+        git(&top, &["update-index", "--add", "--cacheinfo", &format!("160000,{head},{name}")]);
+    }
+    let s = scan_at(&top).unwrap();
+    let mut paths: Vec<&str> = s.submodules.iter().map(|m| m.path.as_str()).collect();
+    paths.sort_unstable();
+    assert_eq!(paths, ["caf\u{e9}", "deps/-x", "my libs/sub mod"]);
+    let _ = std::fs::remove_dir_all(&top);
+}
+
+#[test]
+fn a_gitlink_folder_is_joined_only_for_a_plain_relative_name() {
+    let root = if cfg!(windows) { PathBuf::from(r"C:\work\repo") } else { PathBuf::from("/work/repo") };
+    for name in ["libs/lib", "git~1", ".git.", "a b/c"] {
+        let want = name.split('/').fold(root.clone(), |p, c| p.join(c));
+        assert_eq!(gitlink_folder(&root, name), Some(want), "{name:?}");
+    }
+    let mut refused = vec!["/x/y", "//h/s/a", "../x", "a/../../x", "a//b", "./a", ""];
+    if cfg!(windows) {
+        refused.extend([r"C:\x", "C:x", "C:/x", r"\h\s\a", r"\?\C:\x", r"\x"]);
+    }
+    for name in refused {
+        assert_eq!(gitlink_folder(&root, name), None, "{name:?}");
+    }
+}
+
+#[test]
+fn a_submodule_that_cant_be_checked_is_listed_so_the_repository_asks() {
+    let (top, sub) = (scratch_repo("trust-sub-unchecked-top"), scratch_repo("trust-sub-unchecked-lib"));
+    write(&sub, "lib.txt", "lib\n");
+    git(&sub, &["add", "."]);
+    git(&sub, &["commit", "-q", "-m", "lib"]);
+    git(&top, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &sub.display().to_string(), "deps/lib"]);
+    assert!(scan_at(&top).unwrap().is_empty(), "an ordinary submodule is nothing to ask about");
+
+    // More included files than are read, and a setting that runs a program.
+    let git_dir = top.join(".git/modules/deps/lib");
+    let config = std::fs::read_to_string(git_dir.join("config")).unwrap();
+    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    std::fs::write(git_dir.join("config"), format!("{config}[core]\n\tfsmonitor = .git/fsmon.sh\n[include]\n{many}")).unwrap();
+    let s = scan_at(&top).unwrap();
+    assert!(!s.is_empty());
+    assert_eq!(s.submodules.len(), 1, "{s:?}");
+    assert_eq!(s.submodules[0].path, "deps/lib");
+    let last = format!(".git/modules/deps/lib/many{}.cfg", crate::config_includes::MAX_FILES);
+    assert_eq!(keys(&s.submodules[0].scan), [(UNCHECKED_KEY, last.as_str())]);
+    let unchecked = s.print();
+    assert_ne!(unchecked, TrustScan::default().print());
+
+    // Readable to its end again: its own settings are listed, and the print is another one.
+    let fits: String = (0..3).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    std::fs::write(git_dir.join("config"), format!("{config}[core]\n\tfsmonitor = .git/fsmon.sh\n[include]\n{fits}")).unwrap();
+    let s = scan_at(&top).unwrap();
+    assert_eq!(keys(&s.submodules[0].scan), [("core.fsmonitor", ".git/fsmon.sh")]);
+    assert_ne!(s.print(), unchecked);
+    let _ = std::fs::remove_dir_all(&top);
+    let _ = std::fs::remove_dir_all(&sub);
+}

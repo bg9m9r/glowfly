@@ -117,7 +117,7 @@ pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut Defau
     modules_stamps(&repo.commondir().join("modules"), 0, now, h);
     let Some(workdir) = repo.workdir() else { return };
     let mut paths = Vec::new();
-    if let Ok(cfg) = git2::Config::open(&workdir.join(".gitmodules"))
+    if let Some(cfg) = crate::gitmodules::open(workdir)
         && let Ok(entries) = cfg.entries(Some(r"^submodule\..*\.path$"))
     {
         // A bare `path` key names nothing.
@@ -132,8 +132,8 @@ pub(crate) fn submodule_stamps(repo: &Repository, now: SystemTime, h: &mut Defau
     paths.sort();
     paths.dedup();
     for p in paths {
-        // One part at a time, so the folder uses the platform's separators.
-        let folder = p.split('/').fold(workdir.to_path_buf(), |f, c| f.join(c));
+        // A name that isn't a plain path inside the work tree has no folder there.
+        let Ok(folder) = super::work_path(workdir, &p) else { continue };
         match git_file::other_repo(&folder, workdir) {
             Found::Repo(d) => {
                 p.hash(h);
@@ -213,7 +213,7 @@ pub fn open_file_stamp(workdir: &Path, path: &str) -> Option<u64> {
     let now = SystemTime::now();
     let mut h = DefaultHasher::new();
     path.hash(&mut h);
-    file_stamp(&workdir.join(path), now).hash(&mut h);
+    super::work_path(workdir, path).ok().map(|p| file_stamp(&p, now)).hash(&mut h);
     file_stamp(&repo.path().join("index"), now).hash(&mut h);
     Some(h.finish())
 }

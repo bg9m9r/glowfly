@@ -9,6 +9,7 @@ use glowfly_core::external_tools::{self, DiffVars, Launch, MergeVars, temp};
 use glowfly_core::repo;
 use glowfly_model::msg::Msg;
 use glowfly_model::tools::{DiffToolRequest, LaunchFailure, MergeEnd, MergeToolRequest, ToolKind, ToolsMsg};
+use std::path::{Path, PathBuf};
 
 /// What to say about a failure to prepare the files: the bare reason for the ones Glowfly
 /// words itself ("no changes in a.txt", "a.txt is a submodule; …").
@@ -23,6 +24,14 @@ pub(super) fn launch_failure(e: &Error) -> LaunchFailure {
     if e.is_not_found() { LaunchFailure::NotFound } else { LaunchFailure::Other(e.to_string()) }
 }
 
+/// What the template's path variable gets for the file `name`: its place in the work tree, or
+/// the new side's copy `remote` for a name that isn't a plain relative path inside it (a stored
+/// version this system can't hold under that name), so a tool is never handed a path outside
+/// the work tree. A working-tree side with such a name is refused before this (`diff_files`).
+fn shown_path(workdir: &Path, name: &str, remote: &Path) -> PathBuf {
+    repo::work_path(workdir, name).unwrap_or_else(|_| remote.to_path_buf())
+}
+
 /// Writes the diff's versions and starts the diff tool on them. Only a failure is reported.
 pub(super) fn open_diff(req: DiffToolRequest) -> Option<Msg> {
     let failed = |failure| {
@@ -33,7 +42,7 @@ pub(super) fn open_diff(req: DiffToolRequest) -> Option<Msg> {
         Ok(f) => f,
         Err(e) => return failed(LaunchFailure::Files(reason(&e))),
     };
-    let path = req.workdir.join(req.target.path());
+    let path = shown_path(&req.workdir, req.target.path(), &files.remote);
     let vars = DiffVars { local: &files.local, remote: &files.remote, path: &path, repo: &req.workdir };
     let started = vars.expand(&req.template).map_err(|e| Error::Other(e.to_string())).and_then(|args| {
         external_tools::spawn(&Launch { program: req.program.clone(), args, cwd: req.workdir.clone(), own_console: false })
@@ -83,7 +92,19 @@ mod tests {
     use super::super::fixture::{conflicted, git};
     use super::*;
     use glowfly_core::repo::DiffTarget;
-    use std::path::Path;
+
+    #[test]
+    fn the_path_variable_stays_inside_the_work_tree() {
+        let (root, remote) = (Path::new("work"), Path::new("session").join("new.txt"));
+        assert_eq!(shown_path(root, "docs/a.txt", &remote), root.join("docs").join("a.txt"));
+        let mut names = vec!["../a.txt", "/x/a.txt", "//h/s/a.txt"];
+        if cfg!(windows) {
+            names.extend(["12:00.log", r"C:\x\a.txt", r"\h\s\a.txt", "notes."]);
+        }
+        for name in names {
+            assert_eq!(shown_path(root, name, &remote), remote, "{name}");
+        }
+    }
 
     fn merge(dir: &Path, program: &str, template: &str) -> MergeEnd {
         let req = MergeToolRequest {

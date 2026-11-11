@@ -307,3 +307,38 @@ fn admin_locked_reads_the_reason_and_never_follows_a_far_link() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// An inner repository with `extra.cfg` beside its config and an include of it, by its bare
+/// name, in that config.
+fn inner_with_include(name: &str, extra: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+    let dir = scratch_repo(name);
+    let inner = dir.join("inner");
+    git2::Repository::init(&inner).unwrap();
+    let config = inner.join(".git/config");
+    let text = std::fs::read_to_string(&config).unwrap();
+    std::fs::write(inner.join(".git/extra.cfg"), extra).unwrap();
+    std::fs::write(&config, format!("{text}[include]\n\tpath = extra.cfg\n")).unwrap();
+    (dir, inner)
+}
+
+#[test]
+fn a_value_set_through_a_relative_include_is_seen() {
+    let (dir, inner) = inner_with_include("git-file-relative-include", "[core]\n\tautocrlf = false\n");
+    assert!(matches!(other_repo(&inner, &dir), Found::Repo(_)));
+    let place = git_spelling(&net_place().join("tree"));
+    for key in ["worktree", "excludesFile", "attributesFile"] {
+        std::fs::write(inner.join(".git/extra.cfg"), format!("[core]\n\t{key} = {place}\n")).unwrap();
+        assert!(matches!(other_repo(&inner, &dir), Found::Refused(_)), "{key}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn more_included_files_than_are_read_is_refused() {
+    let many = |n: usize| (0..n).map(|i| format!("[include]\n\tpath = many{i}.cfg\n")).collect::<String>();
+    let (dir, inner) = inner_with_include("git-file-many-includes", &many(crate::config_includes::MAX_FILES - 1));
+    assert!(matches!(other_repo(&inner, &dir), Found::Repo(_)), "extra.cfg and the rest fit");
+    std::fs::write(inner.join(".git/extra.cfg"), many(crate::config_includes::MAX_FILES)).unwrap();
+    assert!(matches!(other_repo(&inner, &dir), Found::Refused(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}

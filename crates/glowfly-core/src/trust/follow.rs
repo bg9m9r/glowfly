@@ -135,7 +135,7 @@ pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<Stri
 }
 
 /// `path` with `.` parts dropped and `..` parts applied; None when `..` climbs past its start.
-fn lexical(path: &Path) -> Option<PathBuf> {
+pub(super) fn lexical(path: &Path) -> Option<PathBuf> {
     let mut out = PathBuf::new();
     for c in path.components() {
         match c {

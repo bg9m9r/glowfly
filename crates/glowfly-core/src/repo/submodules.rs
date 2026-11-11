@@ -96,9 +96,14 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
         return Vec::new();
     }
     let offsite: HashSet<String> = offsite.into_iter().map(|o| o.path).collect();
+    // libgit2's listing reads .gitmodules as an ordinary config file: one it would read
+    // differently from git (`gitmodules`) empties the list too.
+    if crate::gitmodules::unread_anywhere(repo) {
+        return Vec::new();
+    }
     let Ok(subs) = repo.submodules() else { return Vec::new() };
     // A snapshot: only a snapshot hands out values as bytes.
-    let gitmodules = repo.workdir().and_then(|w| git2::Config::open(&w.join(".gitmodules")).and_then(|mut c| c.snapshot()).ok());
+    let gitmodules = repo.workdir().and_then(crate::gitmodules::open).and_then(|mut c| c.snapshot().ok());
     let config = repo.config().and_then(|mut c| c.snapshot()).ok();
     let base = url_base(repo, config.as_ref());
     let workdir = repo.workdir().map(Path::to_path_buf);
@@ -126,9 +131,8 @@ pub(super) fn list(repo: &Repository, whole: Option<&[FileEntry]>, memo: Option<
             let (state, left_behind) = if far {
                 (SubmoduleState::Uninitialized, Vec::new())
             } else {
-                // One component at a time, so the folder uses the platform's separators.
                 let folder_exists =
-                    workdir.as_ref().is_some_and(|w| path.split('/').fold(w.clone(), |p, c| p.join(c)).symlink_metadata().is_ok());
+                    workdir.as_ref().is_some_and(|w| super::work_path(w, &path).is_ok_and(|f| f.symlink_metadata().is_ok()));
                 let known = Known {
                     recorded,
                     checked_out,

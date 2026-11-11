@@ -146,7 +146,7 @@ trust scan all run for untrusted repositories too.
    5 (a line starting with `.` from the `objects` folder, an absolute one as it is). A relative
    line not starting with `.` (a quoted one too) is refused, since libgit2 reads it from the
    process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
-   and more than 32 stores in all. A `.git` file, `commondir` and worktree record are read as
+   and more than 32 stores in all. So is a repository whose config includes more files than are read (64), or a file that can't be read whole. A `.git` file, `commondir` and worktree record are read as
    libgit2 reads them: trailing ASCII whitespace (space, TAB, LF, VT, FF, CR) is trimmed from
    the whole file first, then the value ends at the first NUL with nothing trimmed again (so
    `x<SP><NUL>` names `x<SP>`), and after `gitdir:` leading ASCII whitespace is skipped. One
@@ -189,10 +189,13 @@ trust scan all run for untrusted repositories too.
    `trust/stamp.rs` and `repo_identity.rs`; `repo_scan.rs` reads only the first bytes of a
    `.git` and never follows it. `trust/follow.rs` resolves config-named paths (`core.hooksPath`,
    hook links, program paths), like the opened repository's include files: a follow-up.
-7. **What a refusal looks like** (logged once at debug level, no toast): a nested repository in
+7. **What a refusal looks like** (logged once at debug level, no toast; the same for a config
+   whose include list can't be read to its end, rule 1, which is a local file and not a network
+   place): a nested repository in
    the sweep is walked as a plain folder by the outer rules (one tracked before is named once as
    `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,
-   left out of the trust scan, stamped as offsite in `refs_key`, and libgit2's status leaves out
+   left out of the trust scan (one refused for a local file is listed there as a single
+   `unchecked` finding naming the file, so the repository asks before git runs), stamped as offsite in `refs_key`, and libgit2's status leaves out
    every submodule row (an empty Submodules list when a gitlink folder is itself a link there,
    since libgit2's listing stats it through the link), as do its diffs to the working tree
    (`git_file::skip_offsite_submodules`: comparing with the working tree, the unstaged diff,
@@ -209,6 +212,44 @@ trust scan all run for untrusted repositories too.
    from their admin dirs, never opening a worktree's folder. A submodule or nested repository
    whose object store links to such a place, or whose alternates name one, is refused like one
    whose `.git` file does. The watcher doesn't watch a common dir on another network root.
+8. **`.gitmodules` is read the way git reads it** (`gitmodules.rs`): a regular file of at most
+   1 MiB, never through a link, with `[include]` and `[includeIf]` sections not followed (git
+   ignores them there; libgit2 reads the file as an ordinary config file and follows them). A
+   file that isn't that, or that holds `[include` in any letter case anywhere, is never opened as
+   a config by Glowfly (`refs_key` then stamps only the index's gitlinks). libgit2 reads the file
+   itself wherever it looks a submodule up, and its status of a checked-out submodule compares
+   that submodule's work tree, which reads the submodule's own `.gitmodules`, and so on down. So
+   the work tree's file and that of every checked-out submodule below it are looked at first
+   (`gitmodules::unread_anywhere`). Whatever can't be told counts as not plain: a gitlink whose
+   name isn't UTF-8 or isn't a plain relative path inside the work tree (rule 9; rule 7's scan
+   counts such a gitlink the same way), a submodule whose repository names another work tree
+   than its own folder (a `core.worktree` that doesn't resolve to it, or a linked-worktree record
+   or `commondir` in its git dir; libgit2 would compare that work tree), one whose index can't
+   be read, one whose own config files (or a file they include) hold a conditional include
+   section, one whose list of included files can't be read to its end, one whose `.git` folder
+   holds an entry named like `.git` (libgit2 follows conditional includes only when it opens the
+   repository itself, and opens a submodule by its `.git` path, looking for a `.git` inside that
+   first; these are the walk's own checks, at every level, and `git_file::other_repo`'s other
+   callers don't apply them), one below the first level whose files name a place rule 1 refuses, and anything
+   past depth 8 or 4096 submodules. When any isn't plain, the Submodules list is empty, the working-tree banner says so
+   (`Snapshot::submodules_unread`), and libgit2's status and its diffs to the working tree leave
+   out every submodule row (`git_file::submodules_unread`, the same places as rule 7, plus the
+   gitlink diff's "changes inside" flag and the status before a worktree's creation is
+   undone). A config file's path is handed to libgit2 with `/` alone on Windows
+   (`git_file::libgit2_spelling`), since libgit2 resolves a relative `include.path` from the last
+   `/`. The banner line is set by full loads only, so it can lag the list until the next
+   one. Per checked-out submodule the walk costs what `git_file::other_repo` looks at, one read
+   of its config, one stat and small read of `.gitmodules` and one stat of its index on each
+   status read; a submodule's index is parsed again only when its size or time changed.
+9. **A name from a tree, the index, a diff, a status row or `.gitmodules` is joined to the work
+   tree only through `repo::work_path`** (the `contained` rules: no leading `/`, no empty, `.`
+   or `..` part, no `.git` part; on Windows no `\` or `:` and no part ending in a dot or space).
+   `Path::join` replaces the work tree with an absolute, drive-relative (`C:x`) or UNC name
+   (`\\server\share\a`, `//server/share/a`, `\\?\…`), and git stores `\` and `:` as ordinary name
+   bytes. A name that isn't a plain relative path inside the work tree is never looked up: it
+   counts as absent (a commit's file list, LFS marks, marker counts, binary sides, the open-file
+   stamp), a gitlink so named has no folder, and Open, Show in folder, the editor, the external
+   tools, Restore, Revert and resolving a conflict refuse it.
 
 ### Names Glowfly creates or accepts
 
@@ -965,8 +1006,9 @@ Gaps that are accepted for now:
   (`core.hooksPath`, program files) are read by the trust scan unguarded. In a store that is
   allowed, a loose object file or pack file that is itself a link is followed when libgit2 reads
   that object (only the store folders' direct entries are checked), and a work tree's
-  `.gitignore`, `.gitattributes` and `.gitmodules` that are links are read through by libgit2
-  (#699). A file swapped between the check and the read isn't caught.
+  `.gitignore` and `.gitattributes` that are links are read through by libgit2
+  (#699). Rule 8 covers the status, Submodules list and working-tree diff reads it names; libgit2
+  calls outside them are not covered. A file swapped between the check and the read isn't caught.
   A local repository's linked worktree or submodule on a share is shown but not validated or
   counted (the submodule as not checked out). A refused nested repository that later stops
   naming a network place is tracked again only once its folder's `.git` comes or goes.

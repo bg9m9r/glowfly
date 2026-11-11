@@ -34,8 +34,7 @@ pub fn removal_facts(workdir: &Path, path: &str) -> Result<Option<RemovalFacts>>
     let Some(info) = crate::repo::submodules_at(workdir)?.into_iter().find(|m| m.path == path) else { return Ok(None) };
     let git_dir = native(Repository::open(workdir)?.path());
     let module = module_dir(&git_dir, &info.name).ok().filter(|d| d.symlink_metadata().is_ok());
-    // One component at a time, so the folder uses the platform's separators.
-    let folder = path.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+    let folder = crate::repo::work_path(workdir, path)?;
     // An uninitialized submodule can still hold commits of its own in the stored module.
     let repo = Repository::open(&folder).ok().or_else(|| module.as_ref().and_then(|d| Repository::open(d).ok()));
     let unpushed = repo.as_ref().and_then(|r| unpushed(r).ok()).unwrap_or_default();

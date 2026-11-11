@@ -118,7 +118,7 @@ fn joined_as_libgit2(base: &Path, named: &str) -> Option<PathBuf> {
 }
 
 /// `named` joined to `base` unless absolute.
-fn joined(base: &Path, named: &str) -> PathBuf {
+pub(crate) fn joined(base: &Path, named: &str) -> PathBuf {
     let named = Path::new(named);
     if named.is_absolute() { named.to_path_buf() } else { base.join(named) }
 }
@@ -201,7 +201,8 @@ pub(crate) fn other_repo(folder: &Path, home: &Path) -> Found {
 /// The first place libgit2 opening the repository of `d` would reach that may not be followed:
 /// a link directly in its git dir, common dir or their `info/`, a link in its object store or a
 /// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
-/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`.
+/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`. A list of included files
+/// that was cut short refuses the file it stopped at.
 fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     let mut dirs = vec![d.git_dir.clone()];
     if d.common != d.git_dir {
@@ -227,7 +228,7 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     let Ok(mut cfg) = git2::Config::new() else { return Ok(()) };
     for (file, level) in [(d.common.join("config"), ConfigLevel::Local), (d.git_dir.join("config.worktree"), ConfigLevel::Worktree)] {
         if file.is_file() {
-            let _ = cfg.add_file(&file, level, false);
+            let _ = cfg.add_file(&libgit2_spelling(&file), level, false);
         }
     }
     let value = |key: &str, base: &Path| cfg.get_path(key).ok().map(|p| if p.is_absolute() { p } else { base.join(p) });
@@ -236,6 +237,14 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
         Some(p) => Err(p),
         None => Ok(()),
     }
+}
+
+/// `file` as libgit2 must be given a config file's path: with `/` alone on Windows. libgit2
+/// finds the folder a relative `include.path` starts from by the last `/`, so with a `\` before
+/// the file name it would look the include up somewhere else than its own open of the same
+/// repository does.
+pub(crate) fn libgit2_spelling(file: &Path) -> PathBuf {
+    if cfg!(windows) { PathBuf::from(file.to_string_lossy().replace('\\', "/")) } else { file.to_path_buf() }
 }
 
 /// The `.git` file of the linked worktree whose admin dir (`<common>/worktrees/<id>`) is
@@ -278,13 +287,15 @@ pub(crate) fn worktree_head(repo: &Repository, name: &str) -> Option<Oid> {
 pub(crate) struct Offsite {
     /// Repository-relative, with `/`.
     pub path: String,
-    /// The folder (or its `.git`) itself is a link leading there: libgit2's submodule list
-    /// stats it through the link.
+    /// The folder (or its `.git`) itself is a link leading there (libgit2's submodule list
+    /// stats it through the link), or the gitlink's name can't be looked at.
     pub link: bool,
 }
 
 /// The gitlinks in `repo`'s index whose folder, or the repository in it, names a place that
-/// may not be followed from the work tree.
+/// may not be followed from the work tree, and (as `link`) the ones whose name can't be looked
+/// at. None in a bare repository (libgit2 looks no submodule up there) or without a readable
+/// index (libgit2's status then fails by itself).
 pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
     let (Some(workdir), Ok(mut index)) = (repo.workdir(), repo.index()) else { return Vec::new() };
     let _ = index.read(false);
@@ -296,9 +307,20 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
             continue;
         }
         last = Some(e.path.clone());
-        let Ok(path) = String::from_utf8(e.path) else { continue };
-        // One part at a time, so the folder uses the platform's separators.
-        let folder = path.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
+        // libgit2 joins the name's bytes to the work tree as they are. A name that can't be
+        // joined the same way here (not UTF-8, or not a plain relative path inside the work
+        // tree) can't be looked at, so it counts as one libgit2 must be kept from.
+        let path = match String::from_utf8(e.path) {
+            Ok(p) => p,
+            Err(e) => {
+                out.push(Offsite { path: String::from_utf8_lossy(e.as_bytes()).into_owned(), link: true });
+                continue;
+            }
+        };
+        let Ok(folder) = crate::repo::work_path(workdir, &path) else {
+            out.push(Offsite { path, link: true });
+            continue;
+        };
         let dot = folder.join(".git");
         if !may_follow(&folder, workdir) {
             out.push(Offsite { path, link: true });
@@ -309,11 +331,19 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
     out
 }
 
-/// `o` for a diff that reaches `repo`'s work tree, with every submodule left out when one of its
-/// gitlinks names a place that may not be followed (`offsite_gitlinks`): libgit2's diff opens
-/// each submodule folder's repository to compare it, as its status does.
+/// Whether libgit2 is kept from `repo`'s submodules: one of its gitlinks names a place that may
+/// not be followed (`offsite_gitlinks`), or its `.gitmodules` or that of a checked-out submodule
+/// at any depth is one libgit2 would read differently from git (`gitmodules::unread_anywhere`;
+/// libgit2's submodule code reads those files itself).
+pub(crate) fn submodules_unread(repo: &Repository) -> bool {
+    !offsite_gitlinks(repo).is_empty() || crate::gitmodules::unread_anywhere(repo)
+}
+
+/// `o` for a diff that reaches `repo`'s work tree, with every submodule left out when libgit2
+/// is kept from them (`submodules_unread`): its diff reads `.gitmodules` and opens each
+/// submodule folder's repository to compare it, as its status does.
 pub(crate) fn skip_offsite_submodules<'o>(repo: &Repository, o: &'o mut DiffOptions) -> &'o mut DiffOptions {
-    if !offsite_gitlinks(repo).is_empty() {
+    if submodules_unread(repo) {
         o.ignore_submodules(true);
     }
     o

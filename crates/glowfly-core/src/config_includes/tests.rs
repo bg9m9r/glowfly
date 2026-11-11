@@ -163,7 +163,18 @@ fn cycles_end_and_depth_and_count_are_bounded() {
 
     let many: String = (0..100).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
     mark(&dir, "wide.cfg", &format!("[include]\n{many}"));
-    assert_eq!(included(&[dir.join("wide.cfg")], &Context::default()).files.len(), MAX_FILES);
+    let wide = included(&[dir.join("wide.cfg")], &Context::default());
+    assert_eq!(wide.files.len(), MAX_FILES);
+
+    // Where files are vetted, a list that ends early gives back the file it stopped at; one
+    // that fits is whole.
+    let all = |_: &Path| true;
+    let fits: String = (0..MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    mark(&dir, "fits.cfg", &format!("[include]\n{fits}"));
+    let whole = included_within(&[dir.join("fits.cfg")], &Context::default(), &all).unwrap();
+    assert_eq!(whole.files.len(), MAX_FILES);
+    mark(&dir, "over.cfg", &format!("[include]\n{fits}\tpath = one-more.cfg\n"));
+    assert_eq!(included_within(&[dir.join("over.cfg")], &Context::default(), &all), Err(dir.join("one-more.cfg")));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -204,4 +215,22 @@ fn a_relative_include_in_a_linked_file_starts_beside_the_link() {
     assert_eq!(git_reads(&dir), ["gitconfig", "beside-the-link"]);
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_dir_all(&base);
+}
+
+/// An include that names a link leading nowhere is a missing file, as it is to git.
+#[cfg(unix)]
+#[test]
+fn an_include_naming_a_link_that_leads_nowhere_is_a_missing_file() {
+    let dir = scratch_repo("includes-dangling");
+    std::os::unix::fs::symlink(dir.join("no-such-file"), dir.join("gone.cfg")).unwrap();
+    write(&dir, "root.cfg", "[include]\n\tpath = gone.cfg\n\tpath = there.cfg\n");
+    write(&dir, "there.cfg", "[mark]\n\tname = there\n");
+    let all = |_: &Path| true;
+    let found = included_within(&[dir.join("root.cfg")], &Context::default(), &all).unwrap();
+    assert_eq!(found.files, [dir.join("gone.cfg"), dir.join("there.cfg")]);
+    // Something that is there but isn't a file to read ends the list.
+    std::fs::remove_file(dir.join("gone.cfg")).unwrap();
+    std::fs::create_dir(dir.join("gone.cfg")).unwrap();
+    assert_eq!(included_within(&[dir.join("root.cfg")], &Context::default(), &all), Err(dir.join("gone.cfg")));
+    let _ = std::fs::remove_dir_all(&dir);
 }

@@ -82,7 +82,7 @@ fn run(st: &mut AppState, batch: Batch, list: &[SubmoduleInfo], confirmed: bool,
         && !new.is_empty()
         && let Some(workdir) = st.workdir()
     {
-        let folders = new.iter().map(|p| super::submodules::folder_of(&workdir, p)).collect();
+        let folders = new.iter().filter_map(|p| super::submodules::folder_of(&workdir, p)).collect();
         super::trust_inherit::expect(st, label, InheritKind::Submodule, folders);
     }
 }

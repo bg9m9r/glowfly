@@ -72,7 +72,9 @@ pub fn included(roots: &[PathBuf], cx: &Context) -> Included {
 }
 
 /// `included`, touching a file (a root too) only when `may` allows it: the first one refused
-/// stops the walk and is given back. For a repository Glowfly opens on its own, whose include
+/// stops the walk and is given back, and so is the file at which the list was cut short
+/// (`MAX_FILES` reached, or a file that is there but can't be read whole), since what lies past
+/// it can't be told. For a repository Glowfly opens on its own, whose include
 /// paths its own files name (`git_file`), before libgit2 follows them.
 pub(crate) fn included_within(roots: &[PathBuf], cx: &Context, may: &dyn Fn(&Path) -> bool) -> Result<Included, PathBuf> {
     if let Some(r) = roots.iter().find(|r| !may(r)) {
@@ -118,7 +120,13 @@ impl Walk<'_> {
         if !self.allowed(file) {
             return;
         }
-        let Some(text) = read_small(file) else { return };
+        let Some(text) = read_small(file) else {
+            // A link that leads nowhere is a missing file, to git and libgit2 too.
+            if file.metadata().is_ok() {
+                self.cut(file);
+            }
+            return;
+        };
         for entry in parse::includes(&text) {
             if self.refused.is_some() {
                 return;
@@ -137,6 +145,7 @@ impl Walk<'_> {
                 continue;
             }
             if self.out.files.len() >= MAX_FILES {
+                self.cut(&path);
                 return;
             }
             self.seen.push(real);
@@ -144,6 +153,13 @@ impl Walk<'_> {
             if depth + 1 < MAX_DEPTH {
                 self.read(&path, depth + 1);
             }
+        }
+    }
+
+    /// The list ends before `file`'s own includes; where files are vetted, that refuses it.
+    fn cut(&mut self, file: &Path) {
+        if self.may.is_some() && self.refused.is_none() {
+            self.refused = Some(file.to_path_buf());
         }
     }
 

@@ -114,3 +114,22 @@ fn ordinary_files_open_unasked_and_the_runner_can_still_ask() {
     assert!(last_log(&st).starts_with("Did not open bin/run: it is an executable file"), "{}", last_log(&st));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn show_in_folder_takes_only_names_inside_the_work_tree() {
+    let (mut st, dir) = loaded("show-inside");
+    let fx = run(&mut st, Msg::Files(FilesMsg::ShowWorkingFile("docs/notes.txt".into())));
+    assert!(matches!(&fx[..], [Effect::Os(OsEffect::RevealPath(p))] if *p == dir.join("docs").join("notes.txt")), "{fx:?}");
+    let mut names = vec!["/outside/a.txt", "//h/s/a.txt", "../a.txt", "docs/../../a.txt"];
+    if cfg!(windows) {
+        names.extend([r"C:\outside\a.txt", "C:a.txt", r"\h\s\a.txt", r"\?\C:\outside\a.txt"]);
+    }
+    for name in names {
+        assert!(run(&mut st, Msg::Files(FilesMsg::ShowWorkingFile(name.into()))).is_empty(), "{name}");
+        assert_eq!(last_log(&st), format!("{name} isn't in your working tree"));
+        let open = glowfly_model::tools::ToolsMsg::OpenFile { path: name.into(), line: None };
+        let fx = run(&mut st, Msg::Tools(open));
+        assert!(!fx.iter().any(|e| matches!(e, Effect::Tool(glowfly_model::tools::ToolEffect::Launch { .. }))), "{name}: {fx:?}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}

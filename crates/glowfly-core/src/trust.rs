@@ -223,7 +223,8 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
 /// Adds the submodules of `repo` (at `prefix` in the top repository) that run programs. Like
 /// git's status, this takes every gitlink in the index whose folder holds a repository, listed
 /// in .gitmodules or not, except one whose files name another network place than the work
-/// tree's (`git_file::other_repo`), which is never opened, as one libgit2 can't open.
+/// tree's (`git_file::other_repo`), which is never opened, as one libgit2 can't open. One that
+/// isn't opened for a local reason is listed with the single finding `UNCHECKED_KEY`.
 fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<SubmoduleScan>) {
     let (Some(workdir), Ok(index)) = (repo.workdir(), repo.index()) else { return };
     if depth >= MAX_SUBMODULE_DEPTH {
@@ -237,21 +238,48 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
         }
         last = Some(e.path.clone());
         let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
-        // One part at a time, so the folder uses the platform's separators.
-        let folder = rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c));
-        // Never opened when its files name another network place (git_file).
-        if !matches!(crate::git_file::other_repo(&folder, workdir), crate::git_file::Found::Repo(_)) {
-            continue;
+        let Some(folder) = gitlink_folder(workdir, rel) else { continue };
+        let path = if prefix.is_empty() { rel.to_owned() } else { format!("{prefix}/{rel}") };
+        match crate::git_file::other_repo(&folder, workdir) {
+            crate::git_file::Found::Repo(_) => {}
+            // Not opened because a local file of its own couldn't be read the way git reads it
+            // (an include list that ends early, a file that can't be read whole): git still runs
+            // in it, so it is listed as one finding, which asks and which a decision covers.
+            crate::git_file::Found::Refused(file) if crate::net_path::may_follow(&file, workdir) => {
+                let file = follow::lexical(&file).unwrap_or(file);
+                let shown = file.strip_prefix(workdir).unwrap_or(&file).to_string_lossy().replace('\\', "/");
+                let config = vec![ConfigCommand { key: UNCHECKED_KEY.to_owned(), value: shown }];
+                out.push(SubmoduleScan { path, scan: TrustScan { config, ..TrustScan::default() } });
+                continue;
+            }
+            // Never opened when its files name another network place (git_file), or when
+            // nothing is checked out there.
+            _ => continue,
         }
         // Doesn't search upward, so a folder that isn't checked out finds nothing.
         let Ok(sub) = Repository::open(&folder) else { continue };
-        let path = if prefix.is_empty() { rel.to_owned() } else { format!("{prefix}/{rel}") };
         let own = scan_own(&sub, Reading::Whole);
         if !own.is_empty() {
             out.push(SubmoduleScan { path: path.clone(), scan: own });
         }
         scan_submodules(&sub, &path, depth + 1, out);
     }
+}
+
+/// The key of the one finding listed for a submodule that couldn't be checked; its value is the
+/// file that couldn't be read, relative to the work tree.
+pub const UNCHECKED_KEY: &str = "unchecked";
+
+/// The folder of the gitlink named `rel` in `workdir`, one part at a time so it uses the
+/// platform's separators. None for an absolute, drive or `..` spelling, which is never joined.
+/// Any other name is a folder git's status may run git in, also one that reads as `.git` on
+/// another file system.
+fn gitlink_folder(workdir: &Path, rel: &str) -> Option<PathBuf> {
+    let plain = !rel.starts_with('/') && rel.split('/').all(|p| !p.is_empty() && p != "." && p != "..");
+    if !plain || (cfg!(windows) && rel.contains(['\\', ':'])) {
+        return None;
+    }
+    Some(rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c)))
 }
 
 /// `scan` of the repository at `path`.

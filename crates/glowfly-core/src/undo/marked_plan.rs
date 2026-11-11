@@ -26,7 +26,8 @@ pub(super) fn op_heads(repo: &Repository) -> Vec<(String, String)> {
 }
 
 /// Refuses `paths` when two of them are one file where case doesn't count (`core.ignoreCase`),
-/// or when a folder on the way to one is a symbolic link, which a write would go through.
+/// when one isn't a plain relative path inside the work tree, or when a folder on the way to one
+/// is a symbolic link, which a write would go through.
 pub(super) fn check_paths(repo: &Repository, paths: &[String]) -> Result<()> {
     let ignore_case = repo.config().and_then(|c| c.get_bool("core.ignoreCase")).unwrap_or(false);
     if ignore_case {
@@ -39,6 +40,7 @@ pub(super) fn check_paths(repo: &Repository, paths: &[String]) -> Result<()> {
     }
     let workdir = repo.workdir().ok_or_else(|| Error::Other("The repository has no working tree".into()))?;
     for p in paths {
+        crate::repo::contained(p)?;
         if let Some(dir) = linked_folder(workdir, p) {
             return Err(Error::Unsupported(format!("{dir} is a symbolic link, so Glowfly won't write {p} through it")));
         }
