@@ -146,7 +146,7 @@ trust scan all run for untrusted repositories too.
    5 (a line starting with `.` from the `objects` folder, an absolute one as it is). A relative
    line not starting with `.` (a quoted one too) is refused, since libgit2 reads it from the
    process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
-   and more than 32 stores in all. So is a repository whose config includes more files than are read (64), or a file that can't be read whole. A `.git` file, `commondir` and worktree record are read as
+   and more than 32 stores in all. The files a config includes are looked at up to 64 of them. A `.git` file, `commondir` and worktree record are read as
    libgit2 reads them: trailing ASCII whitespace (space, TAB, LF, VT, FF, CR) is trimmed from
    the whole file first, then the value ends at the first NUL with nothing trimmed again (so
    `x<SP><NUL>` names `x<SP>`), and after `gitdir:` leading ASCII whitespace is skipped. One
@@ -223,7 +223,9 @@ trust scan all run for untrusted repositories too.
    than its own folder (a `core.worktree` that doesn't resolve to it, or a linked-worktree record
    or `commondir` in its git dir; libgit2 would compare that work tree), one whose index can't
    be read, one whose own config files (or a file they include) hold a conditional include
-   section, one whose list of included files can't be read to its end, one whose `.git` folder
+   section, one whose list of included files can't be read to its end (more than the 64 looked
+   at, or a file that is there but can't be read whole; a link that leads nowhere is a missing
+   file), one whose `.git` folder
    holds an entry named like `.git` (libgit2 follows conditional includes only when it opens the
    repository itself, and opens a submodule by its `.git` path, looking for a `.git` inside that
    first; these are the walk's own checks, at every level, and `git_file::other_repo`'s other

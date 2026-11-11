@@ -334,11 +334,11 @@ fn a_value_set_through_a_relative_include_is_seen() {
 }
 
 #[test]
-fn more_included_files_than_are_read_is_refused() {
+fn more_included_files_than_are_read_still_opens() {
     let many = |n: usize| (0..n).map(|i| format!("[include]\n\tpath = many{i}.cfg\n")).collect::<String>();
     let (dir, inner) = inner_with_include("git-file-many-includes", &many(crate::config_includes::MAX_FILES - 1));
     assert!(matches!(other_repo(&inner, &dir), Found::Repo(_)), "extra.cfg and the rest fit");
     std::fs::write(inner.join(".git/extra.cfg"), many(crate::config_includes::MAX_FILES)).unwrap();
-    assert!(matches!(other_repo(&inner, &dir), Found::Refused(_)));
+    assert!(matches!(other_repo(&inner, &dir), Found::Repo(_)), "vetted up to the limit, as before");
     let _ = std::fs::remove_dir_all(&dir);
 }

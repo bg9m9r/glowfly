@@ -146,11 +146,15 @@ fn taken_alike(d: &crate::git_file::RepoDirs, folder: &Path, home: &Path) -> boo
     let Ok(included) = crate::config_includes::included_within(&roots, &cx, &|p| crate::net_path::may_follow(p, home)) else {
         return false;
     };
+    // More files than are listed, or one that can't be read whole: the rest can't be told.
+    if included.cut_short {
+        return false;
+    }
     let conditional =
         roots.iter().chain(&included.files).any(|file| match read_file_bounded(file, crate::config_includes::MAX_FILE_BYTES) {
             Some(bytes) => names_section(&bytes, b"includeif"),
             // There, but not a file that can be read whole.
-            None => file.symlink_metadata().is_ok(),
+            None => file.metadata().is_ok(),
         });
     !conditional && work_tree_is(d, folder)
 }
