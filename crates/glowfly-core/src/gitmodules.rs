@@ -5,7 +5,7 @@
 //! callers keep libgit2 from the submodules of such a repository (`git_file::submodules_unread`).
 
 use crate::config_includes::read_file_bounded;
-use crate::git_file::{Found, other_repo, work_tree_is};
+use crate::git_file::{Found, other_repo};
 use git2::Repository;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -52,10 +52,15 @@ pub(crate) fn open(workdir: &Path) -> Option<git2::Config> {
 /// looked at, and a byte that isn't ASCII stands for any letter, since libgit2 lowers the name
 /// with the C library's `tolower`, which a locale can widen.
 pub(crate) fn names_include_section(bytes: &[u8]) -> bool {
-    const NAME: &[u8] = b"include";
+    names_section(bytes, b"include")
+}
+
+/// `names_include_section` for sections whose name starts with `name` (lower case): `includeif`
+/// for the conditional ones alone.
+pub(crate) fn names_section(bytes: &[u8], name: &[u8]) -> bool {
     bytes
-        .windows(NAME.len() + 1)
-        .any(|w| w[0] == b'[' && w[1..].iter().zip(NAME).all(|(b, n)| !b.is_ascii() || b.to_ascii_lowercase() == *n))
+        .windows(name.len() + 1)
+        .any(|w| w[0] == b'[' && w[1..].iter().zip(name).all(|(b, n)| !b.is_ascii() || b.to_ascii_lowercase() == *n))
 }
 
 /// How deep below the opened repository checked-out submodules are looked at (the trust scan's
@@ -70,7 +75,7 @@ const MAX_WALKED: usize = 4096;
 /// `.gitmodules` when its index holds a gitlink, and so on down). Whatever can't be told counts
 /// as unread: a gitlink whose name isn't UTF-8 or isn't a plain relative path inside the work
 /// tree, a submodule whose repository names another work tree than its own folder
-/// (`git_file::work_tree_is`), one whose index can't be read, one below the first level whose
+/// (`work_tree_is`), one whose index can't be read, one below the first level whose
 /// files name a place that may not be followed, and ones past `MAX_DEPTH` or `MAX_WALKED`. Per
 /// checked-out submodule: what `git_file::other_repo` looks at, one stat and bounded read of its
 /// `.gitmodules`, one stat of its index, and its index read again only when that file changed.
@@ -117,6 +122,35 @@ fn below(workdir: &Path, mut links: Vec<Vec<u8>>, depth: usize, walked: &mut usi
     false
 }
 
+/// Whether the repository of `d`, found in `folder`, has `folder` as the work tree libgit2 would
+/// give it (`load_workdir`): no linked-worktree record or `commondir` in its git dir, and every
+/// `core.worktree` its own config files set (as written; relative to the git dir) resolves to
+/// `folder`. False when that can't be told. Called once `other_repo` allowed the repository, so
+/// the config files' includes are ones libgit2 may follow.
+fn work_tree_is(d: &crate::git_file::RepoDirs, folder: &Path) -> bool {
+    // libgit2 takes a git dir with a `gitdir` file as a linked worktree's and uses the folder
+    // that record names.
+    if d.common != d.git_dir || d.git_dir.join("gitdir").symlink_metadata().is_ok() {
+        return false;
+    }
+    let Ok(mut cfg) = git2::Config::new() else { return false };
+    for (file, level) in
+        [(d.common.join("config"), git2::ConfigLevel::Local), (d.git_dir.join("config.worktree"), git2::ConfigLevel::Worktree)]
+    {
+        if file.is_file() && cfg.add_file(&file, level, false).is_err() {
+            return false;
+        }
+    }
+    let Ok(entries) = cfg.entries(Some(r"^core\.worktree$")) else { return false };
+    let real = crate::paths::resolve(folder);
+    let mut same = true;
+    let read = entries.for_each(|e| {
+        same &= crate::config_entry::utf8(e)
+            .is_some_and(|v| !v.is_empty() && crate::paths::resolve(&crate::git_file::joined(&d.git_dir, v)) == real);
+    });
+    read.is_ok() && same
+}
+
 /// An index file's size and time when it was read, and the gitlink names it held.
 type Seen = (u64, Option<SystemTime>, Vec<Vec<u8>>);
 
@@ -148,6 +182,9 @@ fn gitlinks_of(file: &Path) -> Option<Vec<Vec<u8>>> {
     Some(links)
 }
 
+#[cfg(test)]
+#[path = "gitmodules_layout_tests.rs"]
+mod layout_tests;
 #[cfg(test)]
 #[path = "gitmodules_tests.rs"]
 mod tests;

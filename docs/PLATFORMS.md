@@ -222,7 +222,11 @@ trust scan all run for untrusted repositories too.
    counts such a gitlink the same way), a submodule whose repository names another work tree
    than its own folder (a `core.worktree` that doesn't resolve to it, or a linked-worktree record
    or `commondir` in its git dir; libgit2 would compare that work tree), one whose index can't
-   be read, one below the first level whose files name a place rule 1 refuses, and anything
+   be read, one whose own config files (or a file they include) hold a conditional include
+   section or whose `.git` folder holds an entry named like `.git` (`git_file::other_repo`
+   refuses both, at the first level as rule 7 does: libgit2 follows conditional includes only
+   when it opens the repository itself, and opens a submodule by its `.git` path, looking for a
+   `.git` inside that first), one below the first level whose files name a place rule 1 refuses, and anything
    past depth 8 or 4096 submodules. When any isn't plain, the Submodules list is empty, the working-tree banner says so
    (`Snapshot::submodules_unread`), and libgit2's status and its diffs to the working tree leave
    out every submodule row (`git_file::submodules_unread`, the same places as rule 7, plus the
