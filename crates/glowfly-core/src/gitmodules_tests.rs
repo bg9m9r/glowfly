@@ -147,7 +147,7 @@ fn a_repository_whose_gitmodules_names_an_include_keeps_libgit2_from_its_submodu
 
 /// `with_submodule`, with a repository of its own checked out at `n` inside the submodule and
 /// recorded there as a gitlink (and in the parent), then given one more commit.
-fn with_nested(name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+pub(super) fn with_nested(name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
     let (parent, sub) = with_submodule(name);
     let inner = sub.join("n");
     std::fs::create_dir_all(&inner).unwrap();
@@ -245,7 +245,7 @@ fn add_gitlink(repo: &git2::Repository, name: &[u8]) {
     index.write().unwrap();
 }
 
-fn one_commit(name: &str) -> std::path::PathBuf {
+pub(super) fn one_commit(name: &str) -> std::path::PathBuf {
     let dir = scratch_repo(name);
     write(&dir, "a.txt", "a\n");
     git(&dir, &["add", "."]);
