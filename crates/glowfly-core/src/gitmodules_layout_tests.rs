@@ -154,3 +154,29 @@ fn a_work_tree_named_through_a_relative_include_counts() {
     let _ = std::fs::remove_dir_all(&other);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// 65 includes in the config at `git_dir`, after a setting that runs a program.
+fn many_includes(git_dir: &Path) {
+    let config = std::fs::read_to_string(git_dir.join("config")).unwrap();
+    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    std::fs::write(git_dir.join("config"), format!("{config}[core]\n\tfsmonitor = .git/fsmon.sh\n[include]\n{many}")).unwrap();
+}
+
+#[test]
+fn an_include_list_past_the_limit_counts_only_in_the_walk() {
+    let (parent, sub) = with_submodule("gitmodules-many-includes");
+    let repo = Repository::open(&parent).unwrap();
+    many_includes(&parent.join(".git/modules/libs/lib"));
+    // The walk can't tell what lies past the limit.
+    assert!(submodules_unread(&repo));
+    // The other readers go on as before: it is no network place, it opens, and the trust scan
+    // reads the setting in the part that was looked at.
+    assert_eq!(crate::git_file::offsite_gitlinks(&repo), Vec::new());
+    assert!(matches!(crate::git_file::other_repo(&sub, &parent), crate::git_file::Found::Repo(_)));
+    let scan = crate::trust::scan_at(&parent).unwrap();
+    let found: Vec<(&str, Vec<&str>)> =
+        scan.submodules.iter().map(|m| (m.path.as_str(), m.scan.config.iter().map(|c| c.key.as_str()).collect())).collect();
+    assert_eq!(found, [("libs/lib", vec!["core.fsmonitor"])]);
+    let _ = std::fs::remove_dir_all(lib_of("gitmodules-many-includes"));
+    let _ = std::fs::remove_dir_all(&parent);
+}

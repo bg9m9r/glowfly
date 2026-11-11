@@ -201,8 +201,7 @@ pub(crate) fn other_repo(folder: &Path, home: &Path) -> Found {
 /// The first place libgit2 opening the repository of `d` would reach that may not be followed:
 /// a link directly in its git dir, common dir or their `info/`, a link in its object store or a
 /// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
-/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`. A list of included files
-/// that was cut short refuses the file it stopped at.
+/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`.
 fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     let mut dirs = vec![d.git_dir.clone()];
     if d.common != d.git_dir {

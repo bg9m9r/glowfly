@@ -171,3 +171,17 @@ fn a_worktree_of_a_repository_with_a_conditional_include_is_still_counted() {
     assert_eq!((row.read, row.changes), (ChangesRead::Counted, DIRTY));
     cleanup(&[&wt, &dir]);
 }
+
+#[test]
+fn a_worktree_of_a_repository_with_many_includes_is_still_counted() {
+    let dir = two_files("wtcount-many-includes");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let config = dir.join(".git/config");
+    let text = std::fs::read_to_string(&config).unwrap();
+    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    std::fs::write(&config, format!("{text}[include]\n{many}")).unwrap();
+    let count = count_worktree(&wt, None, COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
+    cleanup(&[&wt, &dir]);
+}
