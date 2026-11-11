@@ -41,7 +41,9 @@ pub(crate) fn kind(workdir: &Path) -> Gitmodules {
 
 /// `workdir`'s `.gitmodules` as a config, when it is `Gitmodules::Plain`.
 pub(crate) fn open(workdir: &Path) -> Option<git2::Config> {
-    (kind(workdir) == Gitmodules::Plain).then(|| git2::Config::open(&workdir.join(".gitmodules")).ok()).flatten()
+    (kind(workdir) == Gitmodules::Plain)
+        .then(|| git2::Config::open(&crate::git_file::libgit2_spelling(&workdir.join(".gitmodules"))).ok())
+        .flatten()
 }
 
 /// Whether `bytes` hold `[` directly followed by `include` in any letter case, anywhere: the
@@ -111,7 +113,7 @@ fn below(workdir: &Path, mut links: Vec<Vec<u8>>, depth: usize, walked: &mut usi
             Found::Refused(_) => return true,
         };
         *walked += 1;
-        if depth + 1 >= MAX_DEPTH || *walked > MAX_WALKED || !work_tree_is(&dirs, &folder) || kind(&folder) == Gitmodules::Unread {
+        if depth + 1 >= MAX_DEPTH || *walked > MAX_WALKED || !taken_alike(&dirs, &folder, workdir) || kind(&folder) == Gitmodules::Unread {
             return true;
         }
         let Some(inner) = gitlinks_of(&dirs.git_dir.join("index")) else { return true };
@@ -122,11 +124,42 @@ fn below(workdir: &Path, mut links: Vec<Vec<u8>>, depth: usize, walked: &mut usi
     false
 }
 
+/// Whether libgit2's status of the submodule in `folder` would open the repository of `d` and
+/// read its config as it is read here, with `folder` as its work tree. False, counting the
+/// submodule as unread, for what can't be told: an entry named like `.git` inside its `.git`
+/// folder (libgit2 opens a submodule by its `.git` path, and looks for a `.git` inside that
+/// first), a conditional include section in its config files or a file they include (the
+/// config read here follows none, libgit2's own open does; conditions aren't evaluated), a list
+/// of included files that can't be read to its end, and another work tree (`work_tree_is`).
+/// Asked only for the submodule walk: `git_file::other_repo`'s other callers keep its own rules.
+fn taken_alike(d: &crate::git_file::RepoDirs, folder: &Path, home: &Path) -> bool {
+    let dot = folder.join(".git");
+    if d.git_dir == dot {
+        // Listed and compared by name, as a volume that ignores case would find it.
+        let Ok(read) = std::fs::read_dir(&dot) else { return false };
+        if read.flatten().any(|e| e.file_name().to_str().is_none_or(crate::names::is_git_dir_name)) {
+            return false;
+        }
+    }
+    let roots = crate::config_includes::repo_roots(&d.git_dir, Some(&d.common));
+    let cx = crate::config_includes::Context::of_repo(&d.git_dir);
+    let Ok(included) = crate::config_includes::included_within(&roots, &cx, &|p| crate::net_path::may_follow(p, home)) else {
+        return false;
+    };
+    let conditional =
+        roots.iter().chain(&included.files).any(|file| match read_file_bounded(file, crate::config_includes::MAX_FILE_BYTES) {
+            Some(bytes) => names_section(&bytes, b"includeif"),
+            // There, but not a file that can be read whole.
+            None => file.symlink_metadata().is_ok(),
+        });
+    !conditional && work_tree_is(d, folder)
+}
+
 /// Whether the repository of `d`, found in `folder`, has `folder` as the work tree libgit2 would
 /// give it (`load_workdir`): no linked-worktree record or `commondir` in its git dir, and every
 /// `core.worktree` its own config files set (as written; relative to the git dir) resolves to
-/// `folder`. False when that can't be told. Called once `other_repo` allowed the repository, so
-/// the config files' includes are ones libgit2 may follow.
+/// `folder`. False when that can't be told. Called once the config files' includes are known
+/// to be ones libgit2 may follow (`taken_alike`).
 fn work_tree_is(d: &crate::git_file::RepoDirs, folder: &Path) -> bool {
     // libgit2 takes a git dir with a `gitdir` file as a linked worktree's and uses the folder
     // that record names.
@@ -137,7 +170,7 @@ fn work_tree_is(d: &crate::git_file::RepoDirs, folder: &Path) -> bool {
     for (file, level) in
         [(d.common.join("config"), git2::ConfigLevel::Local), (d.git_dir.join("config.worktree"), git2::ConfigLevel::Worktree)]
     {
-        if file.is_file() && cfg.add_file(&file, level, false).is_err() {
+        if file.is_file() && cfg.add_file(&crate::git_file::libgit2_spelling(&file), level, false).is_err() {
             return false;
         }
     }

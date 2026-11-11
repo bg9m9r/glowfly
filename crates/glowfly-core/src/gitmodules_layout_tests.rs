@@ -92,6 +92,7 @@ fn a_conditional_include_in_a_submodules_config_counts_as_unread() {
     for section in ["[includeIf \"gitdir:**\"]", "[INCLUDEIF \"gitdir/i:**\"]", "[includeif \"onbranch:**\"]"] {
         std::fs::write(git_dir.join("config"), format!("{config}{section}\n\tpath = extra.cfg\n")).unwrap();
         assert!(submodules_unread(&repo), "{section}");
+        assert!(crate::repo::load(&parent, &crate::repo::LoadOptions::all(100)).unwrap().submodules_unread, "{section}");
         assert_eq!(submodules_at(&parent).unwrap().iter().filter(|m| m.is_initialized()).count(), 0, "{section}");
     }
     // In a file the config includes, too.
@@ -116,4 +117,40 @@ fn an_entry_named_like_a_git_dir_inside_a_git_folder_counts_as_unread() {
         assert!(submodules_unread(&repo), "{name}");
         let _ = std::fs::remove_dir_all(&dir);
     }
+}
+
+/// `core.worktree` set in a file the submodule's config includes by a relative path counts like
+/// one set in the config itself.
+#[test]
+fn a_work_tree_named_through_a_relative_include_counts() {
+    // A `.git` file leading to a git dir under the parent's.
+    let (parent, _sub) = with_submodule("gitmodules-include-file");
+    let other = sibling(&parent, "other");
+    std::fs::create_dir_all(&other).unwrap();
+    let extra = format!("[core]\n\tworktree = {}\n", git_spelling(&other));
+    let git_dir = parent.join(".git/modules/libs/lib");
+    let config = std::fs::read_to_string(git_dir.join("config")).unwrap();
+    let without: String = config.lines().filter(|l| !l.contains("worktree")).map(|l| format!("{l}\n")).collect();
+    std::fs::write(git_dir.join("extra.cfg"), "[core]\n\tworktree = ../../../../libs/lib\n").unwrap();
+    std::fs::write(git_dir.join("config"), format!("{without}[include]\n\tpath = extra.cfg\n")).unwrap();
+    assert!(!submodules_unread(&Repository::open(&parent).unwrap()), "the folder itself, named in the included file");
+    std::fs::write(git_dir.join("extra.cfg"), &extra).unwrap();
+    assert!(submodules_unread(&Repository::open(&parent).unwrap()));
+    for dir in [&other, &parent, &lib_of("gitmodules-include-file")] {
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    // A `.git` folder in the submodule's own folder.
+    let dir = embedded("gitmodules-include-folder");
+    let other = sibling(&dir, "other");
+    std::fs::create_dir_all(&other).unwrap();
+    let config = dir.join("sub/.git/config");
+    let text = std::fs::read_to_string(&config).unwrap();
+    std::fs::write(&config, format!("{text}[include]\n\tpath = extra.cfg\n")).unwrap();
+    std::fs::write(dir.join("sub/.git/extra.cfg"), "[core]\n\tautocrlf = false\n").unwrap();
+    assert!(!submodules_unread(&Repository::open(&dir).unwrap()));
+    std::fs::write(dir.join("sub/.git/extra.cfg"), format!("[core]\n\tworktree = {}\n", git_spelling(&other))).unwrap();
+    assert!(submodules_unread(&Repository::open(&dir).unwrap()));
+    let _ = std::fs::remove_dir_all(&other);
+    let _ = std::fs::remove_dir_all(&dir);
 }

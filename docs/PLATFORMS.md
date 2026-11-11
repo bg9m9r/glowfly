@@ -146,7 +146,7 @@ trust scan all run for untrusted repositories too.
    5 (a line starting with `.` from the `objects` folder, an absolute one as it is). A relative
    line not starting with `.` (a quoted one too) is refused, since libgit2 reads it from the
    process's own folder; so is an alternates file over 64 KiB or one that isn't a regular file,
-   and more than 32 stores in all. A `.git` file, `commondir` and worktree record are read as
+   and more than 32 stores in all. So is a repository whose config includes more files than are read (64), or a file that can't be read whole. A `.git` file, `commondir` and worktree record are read as
    libgit2 reads them: trailing ASCII whitespace (space, TAB, LF, VT, FF, CR) is trimmed from
    the whole file first, then the value ends at the first NUL with nothing trimmed again (so
    `x<SP><NUL>` names `x<SP>`), and after `gitdir:` leading ASCII whitespace is skipped. One
@@ -223,15 +223,18 @@ trust scan all run for untrusted repositories too.
    than its own folder (a `core.worktree` that doesn't resolve to it, or a linked-worktree record
    or `commondir` in its git dir; libgit2 would compare that work tree), one whose index can't
    be read, one whose own config files (or a file they include) hold a conditional include
-   section or whose `.git` folder holds an entry named like `.git` (`git_file::other_repo`
-   refuses both, at the first level as rule 7 does: libgit2 follows conditional includes only
-   when it opens the repository itself, and opens a submodule by its `.git` path, looking for a
-   `.git` inside that first), one below the first level whose files name a place rule 1 refuses, and anything
+   section, one whose list of included files can't be read to its end, one whose `.git` folder
+   holds an entry named like `.git` (libgit2 follows conditional includes only when it opens the
+   repository itself, and opens a submodule by its `.git` path, looking for a `.git` inside that
+   first; these are the walk's own checks, at every level, and `git_file::other_repo`'s other
+   callers don't apply them), one below the first level whose files name a place rule 1 refuses, and anything
    past depth 8 or 4096 submodules. When any isn't plain, the Submodules list is empty, the working-tree banner says so
    (`Snapshot::submodules_unread`), and libgit2's status and its diffs to the working tree leave
    out every submodule row (`git_file::submodules_unread`, the same places as rule 7, plus the
    gitlink diff's "changes inside" flag and the status before a worktree's creation is
-   undone). The banner line is set by full loads only, so it can lag the list until the next
+   undone). A config file's path is handed to libgit2 with `/` alone on Windows
+   (`git_file::libgit2_spelling`), since libgit2 resolves a relative `include.path` from the last
+   `/`. The banner line is set by full loads only, so it can lag the list until the next
    one. Per checked-out submodule the walk costs what `git_file::other_repo` looks at, one read
    of its config, one stat and small read of `.gitmodules` and one stat of its index on each
    status read; a submodule's index is parsed again only when its size or time changed.
