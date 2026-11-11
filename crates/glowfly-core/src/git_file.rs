@@ -201,11 +201,8 @@ pub(crate) fn other_repo(folder: &Path, home: &Path) -> Found {
 /// The first place libgit2 opening the repository of `d` would reach that may not be followed:
 /// a link directly in its git dir, common dir or their `info/`, a link in its object store or a
 /// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
-/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`. Also what can't be told
-/// the way libgit2 would take it: an entry named like `.git` inside a `.git` folder (libgit2
-/// opens a submodule by its `.git` path, and looks for a `.git` inside that first), and a
-/// conditional include section in its config files or a file they include (the config read
-/// here follows none, libgit2's own open does).
+/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`. A list of included files
+/// that was cut short refuses the file it stopped at.
 fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     let mut dirs = vec![d.git_dir.clone()];
     if d.common != d.git_dir {
@@ -215,10 +212,6 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
         for at in [dir.clone(), dir.join("info")] {
             let Ok(read) = std::fs::read_dir(&at) else { continue };
             for e in read.flatten() {
-                // Listed and compared by name, as a volume that ignores case would find it.
-                if at == folder.join(".git") && e.file_name().to_str().is_none_or(crate::names::is_git_dir_name) {
-                    return Err(e.path());
-                }
                 // The listing's own type: a link is never followed to tell.
                 if e.file_type().is_ok_and(|t| t.is_symlink()) && !may_follow(&e.path(), &at) {
                     return Err(e.path());
@@ -229,21 +222,13 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     // Read when a status compares the submodule's HEAD tree.
     alternates::reachable(&d.common, home)?;
     let roots = config_includes::repo_roots(&d.git_dir, Some(&d.common));
-    let included = config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home))?;
-    for file in roots.iter().chain(&included.files) {
-        match read_file_bounded(file, config_includes::MAX_FILE_BYTES) {
-            Some(bytes) if crate::gitmodules::names_section(&bytes, b"includeif") => return Err(file.clone()),
-            // There, but not a file that can be read whole.
-            None if file.symlink_metadata().is_ok() => return Err(file.clone()),
-            _ => {}
-        }
-    }
+    config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home))?;
     // The includes are allowed, so libgit2 may follow them; an unreadable config fails the
     // open by itself.
     let Ok(mut cfg) = git2::Config::new() else { return Ok(()) };
     for (file, level) in [(d.common.join("config"), ConfigLevel::Local), (d.git_dir.join("config.worktree"), ConfigLevel::Worktree)] {
         if file.is_file() {
-            let _ = cfg.add_file(&file, level, false);
+            let _ = cfg.add_file(&libgit2_spelling(&file), level, false);
         }
     }
     let value = |key: &str, base: &Path| cfg.get_path(key).ok().map(|p| if p.is_absolute() { p } else { base.join(p) });
@@ -252,6 +237,14 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
         Some(p) => Err(p),
         None => Ok(()),
     }
+}
+
+/// `file` as libgit2 must be given a config file's path: with `/` alone on Windows. libgit2
+/// finds the folder a relative `include.path` starts from by the last `/`, so with a `\` before
+/// the file name it would look the include up somewhere else than its own open of the same
+/// repository does.
+pub(crate) fn libgit2_spelling(file: &Path) -> PathBuf {
+    if cfg!(windows) { PathBuf::from(file.to_string_lossy().replace('\\', "/")) } else { file.to_path_buf() }
 }
 
 /// The `.git` file of the linked worktree whose admin dir (`<common>/worktrees/<id>`) is

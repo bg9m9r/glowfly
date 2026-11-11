@@ -163,7 +163,18 @@ fn cycles_end_and_depth_and_count_are_bounded() {
 
     let many: String = (0..100).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
     mark(&dir, "wide.cfg", &format!("[include]\n{many}"));
-    assert_eq!(included(&[dir.join("wide.cfg")], &Context::default()).files.len(), MAX_FILES);
+    let wide = included(&[dir.join("wide.cfg")], &Context::default());
+    assert_eq!((wide.files.len(), wide.cut_short), (MAX_FILES, true));
+
+    // Where files are vetted, a list that ends early gives back the file it stopped at; one
+    // that fits is whole.
+    let all = |_: &Path| true;
+    let fits: String = (0..MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    mark(&dir, "fits.cfg", &format!("[include]\n{fits}"));
+    let whole = included_within(&[dir.join("fits.cfg")], &Context::default(), &all).unwrap();
+    assert_eq!((whole.files.len(), whole.cut_short), (MAX_FILES, false));
+    mark(&dir, "over.cfg", &format!("[include]\n{fits}\tpath = one-more.cfg\n"));
+    assert_eq!(included_within(&[dir.join("over.cfg")], &Context::default(), &all), Err(dir.join("one-more.cfg")));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
