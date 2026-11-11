@@ -32,7 +32,7 @@ pub(super) fn add(workdir: &Path, nested: &mut BTreeMap<PathBuf, Nested>, rel: &
     }
     let abs = workdir.join(rel);
     if let Found::Refused(p) = git_file::other_repo(&abs, workdir) {
-        tracing::debug!(folder = %abs.display(), named = %p.display(), "nested repository names a network place: walked as a plain folder");
+        tracing::debug!(folder = %abs.display(), named = %p.display(), "nested repository names a place or file that isn't followed: walked as a plain folder");
         return;
     }
     nested.insert(rel.to_path_buf(), Nested { ignores: Ignores::open(&abs), refs: refs_of(&abs, workdir) });
@@ -64,7 +64,7 @@ pub(super) fn compare(workdir: &Path, nested: &mut BTreeMap<PathBuf, Nested>, fo
     for (rel, n) in nested.iter_mut() {
         let abs = workdir.join(rel);
         if let Found::Refused(p) = git_file::other_repo(&abs, workdir) {
-            tracing::debug!(folder = %abs.display(), named = %p.display(), "nested repository now names a network place: no longer tracked");
+            tracing::debug!(folder = %abs.display(), named = %p.display(), "nested repository now names a place or file that isn't followed: no longer tracked");
             found.push(abs.join(".git").join("HEAD"));
             gone.push(rel.clone());
             continue;

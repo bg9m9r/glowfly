@@ -150,7 +150,7 @@ fn taken_alike(d: &crate::git_file::RepoDirs, folder: &Path, home: &Path) -> boo
         roots.iter().chain(&included.files).any(|file| match read_file_bounded(file, crate::config_includes::MAX_FILE_BYTES) {
             Some(bytes) => names_section(&bytes, b"includeif"),
             // There, but not a file that can be read whole.
-            None => file.symlink_metadata().is_ok(),
+            None => file.metadata().is_ok(),
         });
     !conditional && work_tree_is(d, folder)
 }

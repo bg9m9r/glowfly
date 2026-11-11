@@ -340,3 +340,36 @@ fn a_gitlink_folder_is_joined_only_for_a_plain_relative_name() {
         assert_eq!(gitlink_folder(&root, name), None, "{name:?}");
     }
 }
+
+#[test]
+fn a_submodule_that_cant_be_checked_is_listed_so_the_repository_asks() {
+    let (top, sub) = (scratch_repo("trust-sub-unchecked-top"), scratch_repo("trust-sub-unchecked-lib"));
+    write(&sub, "lib.txt", "lib\n");
+    git(&sub, &["add", "."]);
+    git(&sub, &["commit", "-q", "-m", "lib"]);
+    git(&top, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &sub.display().to_string(), "deps/lib"]);
+    assert!(scan_at(&top).unwrap().is_empty(), "an ordinary submodule is nothing to ask about");
+
+    // More included files than are read, and a setting that runs a program.
+    let git_dir = top.join(".git/modules/deps/lib");
+    let config = std::fs::read_to_string(git_dir.join("config")).unwrap();
+    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    std::fs::write(git_dir.join("config"), format!("{config}[core]\n\tfsmonitor = .git/fsmon.sh\n[include]\n{many}")).unwrap();
+    let s = scan_at(&top).unwrap();
+    assert!(!s.is_empty());
+    assert_eq!(s.submodules.len(), 1, "{s:?}");
+    assert_eq!(s.submodules[0].path, "deps/lib");
+    let last = format!(".git/modules/deps/lib/many{}.cfg", crate::config_includes::MAX_FILES);
+    assert_eq!(keys(&s.submodules[0].scan), [(UNCHECKED_KEY, last.as_str())]);
+    let unchecked = s.print();
+    assert_ne!(unchecked, TrustScan::default().print());
+
+    // Readable to its end again: its own settings are listed, and the print is another one.
+    let fits: String = (0..3).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    std::fs::write(git_dir.join("config"), format!("{config}[core]\n\tfsmonitor = .git/fsmon.sh\n[include]\n{fits}")).unwrap();
+    let s = scan_at(&top).unwrap();
+    assert_eq!(keys(&s.submodules[0].scan), [("core.fsmonitor", ".git/fsmon.sh")]);
+    assert_ne!(s.print(), unchecked);
+    let _ = std::fs::remove_dir_all(&top);
+    let _ = std::fs::remove_dir_all(&sub);
+}

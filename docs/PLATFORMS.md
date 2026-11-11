@@ -189,10 +189,13 @@ trust scan all run for untrusted repositories too.
    `trust/stamp.rs` and `repo_identity.rs`; `repo_scan.rs` reads only the first bytes of a
    `.git` and never follows it. `trust/follow.rs` resolves config-named paths (`core.hooksPath`,
    hook links, program paths), like the opened repository's include files: a follow-up.
-7. **What a refusal looks like** (logged once at debug level, no toast): a nested repository in
+7. **What a refusal looks like** (logged once at debug level, no toast; the same for a config
+   whose include list can't be read to its end, rule 1, which is a local file and not a network
+   place): a nested repository in
    the sweep is walked as a plain folder by the outer rules (one tracked before is named once as
    `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,
-   left out of the trust scan, stamped as offsite in `refs_key`, and libgit2's status leaves out
+   left out of the trust scan (one refused for a local file is listed there as a single
+   `unchecked` finding naming the file, so the repository asks before git runs), stamped as offsite in `refs_key`, and libgit2's status leaves out
    every submodule row (an empty Submodules list when a gitlink folder is itself a link there,
    since libgit2's listing stats it through the link), as do its diffs to the working tree
    (`git_file::skip_offsite_submodules`: comparing with the working tree, the unstaged diff,
