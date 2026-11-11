@@ -151,3 +151,23 @@ fn a_worktree_whose_git_file_names_a_network_place_is_never_opened() {
     drop(repo);
     cleanup(&[&wt, &dir]);
 }
+
+#[test]
+fn a_worktree_of_a_repository_with_a_conditional_include_is_still_counted() {
+    let dir = two_files("wtcount-conditional");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let config = dir.join(".git/config");
+    let text = std::fs::read_to_string(&config).unwrap();
+    std::fs::write(dir.join(".git/extra.cfg"), "[core]\n\tautocrlf = false\n").unwrap();
+    std::fs::write(&config, format!("{text}[includeIf \"gitdir:**\"]\n\tpath = extra.cfg\n")).unwrap();
+
+    let count = count_worktree(&wt, None, COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
+    let repo = Repository::open(&dir).unwrap();
+    let mut list = super::super::worktrees::list(&repo);
+    count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
+    let row = list.iter().find(|w| !w.current).expect("the linked worktree");
+    assert_eq!((row.read, row.changes), (ChangesRead::Counted, DIRTY));
+    cleanup(&[&wt, &dir]);
+}

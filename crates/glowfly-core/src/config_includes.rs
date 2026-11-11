@@ -58,6 +58,10 @@ pub struct Included {
     pub files: Vec<PathBuf>,
     /// An `onbranch:` condition was read: switching branches can change `files`.
     pub on_branch: bool,
+    /// The list isn't everything git would read: `MAX_FILES` was reached, or a file that is
+    /// there couldn't be read whole (over `MAX_FILE_BYTES`, or not a regular file), so what it
+    /// includes isn't known.
+    pub cut_short: bool,
 }
 
 /// The files `roots` include, directly or through each other, for `cx`. The roots themselves
@@ -72,7 +76,8 @@ pub fn included(roots: &[PathBuf], cx: &Context) -> Included {
 }
 
 /// `included`, touching a file (a root too) only when `may` allows it: the first one refused
-/// stops the walk and is given back. For a repository Glowfly opens on its own, whose include
+/// stops the walk and is given back, and so is the file at which the list was cut short
+/// (`Included::cut_short`), since what lies past it can't be told. For a repository Glowfly opens on its own, whose include
 /// paths its own files name (`git_file`), before libgit2 follows them.
 pub(crate) fn included_within(roots: &[PathBuf], cx: &Context, may: &dyn Fn(&Path) -> bool) -> Result<Included, PathBuf> {
     if let Some(r) = roots.iter().find(|r| !may(r)) {
@@ -118,7 +123,12 @@ impl Walk<'_> {
         if !self.allowed(file) {
             return;
         }
-        let Some(text) = read_small(file) else { return };
+        let Some(text) = read_small(file) else {
+            if file.symlink_metadata().is_ok() {
+                self.cut(file);
+            }
+            return;
+        };
         for entry in parse::includes(&text) {
             if self.refused.is_some() {
                 return;
@@ -137,6 +147,7 @@ impl Walk<'_> {
                 continue;
             }
             if self.out.files.len() >= MAX_FILES {
+                self.cut(&path);
                 return;
             }
             self.seen.push(real);
@@ -144,6 +155,14 @@ impl Walk<'_> {
             if depth + 1 < MAX_DEPTH {
                 self.read(&path, depth + 1);
             }
+        }
+    }
+
+    /// The list ends before `file`'s own includes; where files are vetted, that refuses it.
+    fn cut(&mut self, file: &Path) {
+        self.out.cut_short = true;
+        if self.may.is_some() && self.refused.is_none() {
+            self.refused = Some(file.to_path_buf());
         }
     }
 
