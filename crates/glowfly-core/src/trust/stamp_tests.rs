@@ -88,20 +88,36 @@ fn relative_includes_past_the_most_listed_are_not_listed() {
 }
 
 #[test]
-fn a_value_or_folder_past_the_longest_followed_is_not_listed() {
+fn a_path_past_the_longest_followed_is_not_listed() {
     let dir = scratch_repo("stamp-include-long");
-    let long = "a".repeat(MAX_PATH_BYTES + 1);
-    // A folder that long ends the folders to look in, as one too many does.
-    let deep = format!("{}/x.cfg", "b/".repeat(MAX_PATH_BYTES / 2));
-    include(&dir, [long, deep, "after.cfg".to_owned()].into_iter());
-    // libgit2 on Windows refuses a config that names a path this long: nothing is scanned then.
-    let Ok(repo) = Repository::open(&dir) else {
-        let _ = std::fs::remove_dir_all(&dir);
-        return;
-    };
+    // Under a condition that isn't met, so libgit2 lists the settings without opening the files.
+    let config = dir.join(".git/config");
+    let text = std::fs::read_to_string(&config).unwrap();
+    // The second fits as a value, but not joined to the git dir.
+    let values = ["a".repeat(MAX_PATH_BYTES + 1), "b".repeat(MAX_PATH_BYTES - 8), "after.cfg".to_owned()];
+    let lines: String = values
+        .iter()
+        .map(|v| {
+            format!(
+                "	path = {v}
+"
+            )
+        })
+        .collect();
+    std::fs::write(
+        &config,
+        format!(
+            "{text}[includeIf \"gitdir:/nowhere/\"]
+{lines}"
+        ),
+    )
+    .unwrap();
+    let repo = Repository::open(&dir).unwrap();
     let found = include_entries(&repo);
     let listed: Vec<(usize, bool)> = found.iter().map(|i| (i.paths.len(), i.unsure)).collect();
-    assert_eq!(listed, [(0, true), (1, false), (0, true)]);
-    assert_eq!(scan_now(&repo).follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), [""]);
+    assert_eq!(listed, [(0, true), (0, true), (1, false)]);
+    let scan = scan_now(&repo);
+    assert_eq!(scan.follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), [""]);
+    assert_ne!(stamp(&repo, &scan), stamp(&repo, &scan));
     let _ = std::fs::remove_dir_all(&dir);
 }
