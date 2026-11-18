@@ -78,6 +78,9 @@ pub struct HistoryIndex {
     /// The query request still answering, if any, and the query and index it asked.
     pub pending: Option<u64>,
     pub asked: Option<(CommitQuery, Arc<CommitIndex>)>,
+    /// The stamp of the mailmap (`MailmapText::stamp`) that `answer`, `pending` and `asked` are
+    /// for; a snapshot with another one drops them.
+    pub mailmap: u64,
     /// Counts query requests; never reset.
     pub requests: u64,
     /// An older match Enter asked to load: selected once a load shows it.

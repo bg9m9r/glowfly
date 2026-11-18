@@ -108,6 +108,7 @@ fn the_walk_keeps_the_commit_it_stopped_at() {
     use super::load_more_tests::{point, raw_commit};
     use super::walk::newest_commits;
     use super::walk_order::TimeQueue;
+    use crate::mailmap::Mailmap;
     let dir = scratch_repo("walk-frontier");
     let repo = git2::Repository::open(&dir).unwrap();
     // Two tips over one root, every commit at the same time: only the push order breaks ties.
@@ -124,8 +125,8 @@ fn the_walk_keeps_the_commit_it_stopped_at() {
     }
     let total = 7;
     for k in 0..total {
-        let w = newest_commits(&repo, &tips, k, None).unwrap();
-        let next = newest_commits(&repo, &tips, k + 1, None).unwrap();
+        let w = newest_commits(&repo, &tips, k, None, &Mailmap::none()).unwrap();
+        let next = newest_commits(&repo, &tips, k + 1, None, &Mailmap::none()).unwrap();
         let loaded: Vec<Oid> = w.commits.iter().map(|c| c.oid).collect();
         let want: Vec<Oid> = next.commits.iter().map(|c| c.oid).filter(|o| !loaded.contains(o)).collect();
         let frontier = w.frontier.expect("cut short");
@@ -134,7 +135,7 @@ fn the_walk_keeps_the_commit_it_stopped_at() {
         assert_eq!(next.truncated, k + 1 < total);
         assert_eq!(next.frontier.as_ref().map(|f| f.len()).unwrap_or(0) > 0, k + 1 < total);
     }
-    let all = newest_commits(&repo, &tips, total, None).unwrap();
+    let all = newest_commits(&repo, &tips, total, None, &Mailmap::none()).unwrap();
     assert!(!all.truncated && all.frontier.is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }

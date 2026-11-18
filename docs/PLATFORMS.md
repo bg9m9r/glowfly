@@ -160,6 +160,10 @@ trust scan all run for untrusted repositories too.
    can't be read whole (over 4 KiB, not a regular file) is refused, and so is a `commondir` or
    record that is empty or relative without starting with `./` or `../`, which libgit2 resolves
    against the process's own folder.
+   The mailmap is read the same way (`mailmap.rs`): `.mailmap` only as a plain file (never a
+   link), `mailmap.file` only where `may_follow` allows from the work tree, each at most 1 MiB
+   through `read_file_bounded`; libgit2's own `Repository::mailmap()` follows links and checks
+   nothing, so it is not called.
 2. **The spelling is checked before anything is touched.** On Windows, with either separator:
    UNC (`\\server\share`), `\\?\UNC\`, `\\.\UNC\` and `\??\UNC\`, `\\wsl$` and
    `\\wsl.localhost`, and any other device-namespace path (`\\?\GLOBALROOT\…`, `\\.\pipe\…`) that

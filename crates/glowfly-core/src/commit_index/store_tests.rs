@@ -5,6 +5,8 @@
 use super::build_tests::{branchy, commit_at, index, rows, snapshot};
 use super::store::{RESAVE_COMMITS, layout};
 use super::*;
+use crate::commit_query::CommitQuery;
+use crate::mailmap::Mailmap;
 use crate::repo::LoadOptions;
 use crate::testutil::*;
 use std::path::{Path, PathBuf};
@@ -60,7 +62,7 @@ fn a_saved_index_reads_back_the_same() {
     assert!((0..ix.len()).any(|p| ix.summary_at(p) == Some("") && ix.body_at(p) == Some("")));
     for q in ["body", "café", "🎉", "author:test", "author:nobody"] {
         let q = CommitQuery::parse(q);
-        assert_eq!(back.matching(&q, &never), ix.matching(&q, &never));
+        assert_eq!(back.matching(&q, &Mailmap::none(), &never), ix.matching(&q, &Mailmap::none(), &never));
     }
     done(&store, &[&dir]);
 }

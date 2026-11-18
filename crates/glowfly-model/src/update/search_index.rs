@@ -22,6 +22,16 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
         ix.asked = None;
         return;
     };
+    // Another mailmap shows other names: what was answered or asked is out of date. The index
+    // itself (signatures as written) stays; it is asked again below.
+    let stamp = st.snap.as_ref().map_or(0, |s| s.mailmap.stamp());
+    if st.session.search.index.mailmap != stamp {
+        let ix = &mut st.session.search.index;
+        ix.answer = None;
+        ix.pending = None;
+        ix.asked = None;
+        ix.mailmap = stamp;
+    }
     if st.index_answer().is_some() {
         return;
     }
@@ -31,11 +41,11 @@ pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
     if asking {
         return;
     }
-    let Some(workdir) = st.snap.as_ref().map(|s| s.workdir.clone()) else { return };
+    let Some((workdir, mailmap)) = st.snap.as_ref().map(|s| (s.workdir.clone(), s.mailmap.clone())) else { return };
     ix.requests += 1;
     ix.pending = Some(ix.requests);
     ix.asked = Some((query.clone(), Arc::clone(&index)));
-    fx.push(Effect::Index(IndexEffect::Query { workdir, request: ix.requests, index, query }));
+    fx.push(Effect::Index(IndexEffect::Query { workdir, request: ix.requests, index, query, mailmap }));
 }
 
 /// The index's answer to request `request`: kept when it is the one pending, then a filtering

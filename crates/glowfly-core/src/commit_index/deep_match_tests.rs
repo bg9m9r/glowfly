@@ -5,6 +5,8 @@
 use super::build_tests::{commit_at, index, snapshot};
 use super::store::{FORMAT, layout};
 use super::*;
+use crate::commit_query::CommitQuery;
+use crate::mailmap::Mailmap;
 use crate::repo::{BODY_PREVIEW, LoadOptions};
 use crate::testutil::*;
 use std::collections::HashSet;
@@ -26,7 +28,7 @@ fn repo(name: &str) -> std::path::PathBuf {
 }
 
 fn found(ix: &CommitIndex, q: &str) -> Vec<u32> {
-    ix.matching(&CommitQuery::parse(q), &|| false).unwrap()
+    ix.matching(&CommitQuery::parse(q), &Mailmap::none(), &|| false).unwrap()
 }
 
 #[test]
