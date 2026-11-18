@@ -213,6 +213,7 @@ mod rebase_tests;
 mod rebase_undo_tests;
 mod rebase_update_refs_tests;
 mod recent_tests;
+mod ref_renames_tests;
 mod refresh_index_tests;
 mod refresh_paths_tests;
 mod refresh_tests;

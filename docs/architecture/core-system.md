@@ -111,7 +111,7 @@ source file, update its line here.
 - `terminal.rs`: the terminal's Colors choice (`TerminalColours`).
 - `graph_columns.rs`: which graph columns show (mapping an older file's combined COMMIT column onto AUTHOR and COMMIT).
 - Per-repository graph filters.
-- `colour_palette.rs`: the colour preset (standard or colour-blind safe; `branch_palette` in older files) and per-repository pinned branch colours.
+- `colour_palette.rs`: the colour preset (standard or colour-blind safe; `branch_palette` in older files) and per-repository pinned branch colours (`rename_branch_pin` moves a pin with a renamed branch).
 - `repo_colours.rs`: repository colours per working folder, saved as stable names (a retired name loads as its replacement).
 - `repo_groups.rs`: named groups of favorites with a colour each; every favorite stays in `favorite_repos`, so older versions still list them, and `new_group_colour` picks a new group's hue.
 - `forge_filters.rs`: per-repository PR and issue filters.
@@ -134,7 +134,7 @@ source file, update its line here.
 - `settings/builtin_themes.rs`: the built-in themes: their ids (a theme file's `base`), names, kinds, the themes that took the place of the retired ones, and how the settings' `ThemeChoice` maps onto them.
 - `settings/column_widths.rs`: widths of the graph's resizable columns (dragged from the header dividers), with the per-column defaults and limits.
 - `settings/editor.rs`: diff text size and tab stops (Preferences > Diff viewer).
-- `settings/graph_filter.rs`: refs hidden from or soloed in a repository's commit graph, saved per working directory.
+- `settings/graph_filter.rs`: refs hidden from or soloed in a repository's commit graph, saved per working directory; `rename`, `rename_remote` and `remove_remote` follow renames and removals made in Glowfly.
 - `settings/language.rs`: the UI language setting (Preferences > General): "system" or a language code.
 - `settings/panel_sizes.rs`: the sizes the window's drawers were last dragged to.
 - `settings/paths.rs`: where Glowfly keeps its own files (settings, recent repositories, tabs; the avatar cache is in `cache_dir`, the logs in `log_dir`).

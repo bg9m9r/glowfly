@@ -119,6 +119,7 @@ mod rebase_remaining;
 pub mod rebase_resume;
 mod recent;
 mod recent_files;
+mod ref_renames;
 pub mod refresh;
 mod refresh_index;
 mod refresh_paths;
