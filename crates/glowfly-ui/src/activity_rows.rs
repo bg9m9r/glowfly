@@ -2,15 +2,20 @@
 //! summary, duration and relative time on the right, a chevron when it folds), routine
 //! auto-fetches folded into one grey row, and earlier sessions under their headers, drawn
 //! dimmer. Right-clicking a run, a note or a routine group opens its row menu (Copy entry, Copy
-//! log). The rows come from `state::activity_rows::rows`; the open part is in
-//! ui/activity_fold.rs. Newest at the bottom, where the scroll sticks.
+//! log). The rows come from `state::activity_filter::filtered_rows` (Failures only and the search
+//! leave no routine groups; the matched text is marked in the title and summary); the open part
+//! is in ui/activity_fold.rs. The list is one Tab stop with a keyboard cursor (ui/activity_keys.rs).
+//! Newest at the bottom, where the scroll sticks.
 
+use super::activity_keys;
 use super::common::{menu_item, menu_item_if};
 use super::theme::{color, type_scale};
 use super::widgets::row_menu::RowMenuExt;
 use super::widgets::severity::{self, Severity};
 use super::widgets::{self, Icon, paint_cut_text, paint_icon_sized, row_fill};
-use crate::widgets::paint_text;
+use crate::widgets::marked_text::{Mark, runs};
+use crate::widgets::truncate::cut_job;
+use crate::widgets::{marked_text, paint_text};
 use eframe::egui::{self, Align, Align2, Color32, FontId, Pos2, Rect, Response, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::dates;
 use glowfly_core::i18n::Lang;
@@ -18,7 +23,8 @@ use glowfly_core::logs::format_took;
 use glowfly_model::logs::LogsMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::activity_copy::copy_log_blocked;
-use glowfly_model::state::activity_rows::{ActivityRow, SessionHead, foldable, rows, title_of};
+use glowfly_model::state::activity_filter::{Filter, filtered_rows, is_open};
+use glowfly_model::state::activity_rows::{ActivityRow, SessionHead, foldable, title_of};
 use glowfly_model::state::logs::EntryId;
 use glowfly_model::state::{AppState, ViewState};
 use std::time::Duration;
@@ -46,30 +52,63 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut 
         ui.label(egui::RichText::new(t.tr("logs.activity.empty")).color(color::faint()));
         return;
     }
-    // A reveal lets go of the bottom for its frame and jumps there within it: sticking, or an
-    // animation that only starts next frame, would be pulled back to the bottom.
-    let revealing = view.activity_reveal.is_some();
-    let area = egui::ScrollArea::vertical().stick_to_bottom(!revealing).animated(!revealing);
-    area.auto_shrink([false, false]).show(ui, |ui| {
+    let filter = Filter::new(st.logs.failures_only, &view.logs_search);
+    let rows = filtered_rows(&st.log, &filter);
+    if rows.is_empty() {
+        return super::activity_search::none_line(ui, t, filter.failures_only, &view.logs_search, false);
+    }
+    let list_focused = activity_keys::target(ui, rows.len(), t.tr("logs.activity.list"));
+    // A reveal or a cursor move lets go of the bottom for its frame and jumps within it:
+    // sticking, or an animation that only starts next frame, would be pulled back to the bottom.
+    let jump = view.activity_reveal.is_some() || view.activity_focus_scroll;
+    let area = egui::ScrollArea::vertical().stick_to_bottom(!jump).animated(!jump);
+    let mut cursor_shown = false;
+    let out = area.auto_shrink([false, false]).show(ui, |ui| {
         ui.spacing_mut().item_spacing.y = 0.0;
-        for (n, row) in rows(&st.log).into_iter().enumerate() {
-            let (rect, id) = match row {
+        for (n, row) in rows.into_iter().enumerate() {
+            let (resp, id) = match row {
                 ActivityRow::Session(head) => {
                     session_head(ui, st, head, n == 0);
                     continue;
                 }
-                ActivityRow::Entry(i) => (entry(ui, st, i, msgs), st.log[i].id),
+                ActivityRow::Entry(i) => (entry(ui, st, &filter, i, msgs), st.log[i].id),
                 ActivityRow::Routine { first, last, count } => (routine(ui, st, first, last, count, msgs), st.log[first].id),
             };
+            cursor_shown |= cursor(ui, view, list_focused, id, &resp);
             if view.activity_reveal == Some(id) {
                 // The row's own line at the top, its open part below it.
-                ui.scroll_to_rect(rect, Some(Align::Min));
+                ui.scroll_to_rect(resp.rect, Some(Align::Min));
                 view.activity_reveal = None;
             }
         }
         // Once: a row that is gone (cleared) isn't looked for again.
         view.activity_reveal = None;
+        view.activity_focus_scroll = false;
     });
+    if list_focused && !cursor_shown {
+        let rect = super::file_list_keys::shown_rect(&out);
+        crate::theme::tokens::focus_ring_inset(ui.painter(), rect, 0);
+    }
+}
+
+/// After a row: a click makes it the keyboard cursor and gives the list the focus. While the
+/// list has the focus its cursor row is ringed, reported as selected and scrolled into view
+/// once after a move. Whether `resp` is the cursor row, ringed.
+fn cursor(ui: &mut Ui, view: &mut ViewState, list_focused: bool, id: EntryId, resp: &Response) -> bool {
+    if resp.clicked() {
+        view.activity_focus = Some(id);
+        activity_keys::request(ui.ctx());
+    }
+    let current = view.activity_focus == Some(id);
+    if current && view.activity_focus_scroll {
+        ui.scroll_to_rect(resp.rect, None);
+    }
+    let on = list_focused && current;
+    if on {
+        crate::theme::tokens::focus_ring_inset(ui.painter(), resp.rect, 0);
+        super::access::mark_selected(resp);
+    }
+    on
 }
 
 /// "Earlier session · <date>" or "This session", with a hairline under it.
@@ -107,13 +146,15 @@ pub(super) struct RowLook<'a> {
     /// A routine group's sub-row: 28 px of small faint text, its time as the title (with the
     /// tooltip), nothing on the right but the duration.
     pub sub: bool,
+    /// The lowercase search text, marked in the title and summary; empty for none.
+    pub needle: &'a str,
 }
 
 /// Allocates and paints one row; `mark` paints its result mark centred on the point given.
 /// Returns its response, which senses clicks (a row that doesn't fold still has its row menu).
 pub(super) fn paint_row(ui: &mut Ui, st: &AppState, look: &RowLook, mark: impl FnOnce(&egui::Painter, Pos2)) -> Response {
     let t = st.settings.lang();
-    let sense = if look.sub { Sense::hover() } else { Sense::click() };
+    let sense = if look.sub { Sense::hover() } else { Sense::CLICK };
     let height = if look.sub { SUB_ROW_H } else { ROW_H };
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), height), sense);
     if !ui.is_rect_visible(rect) {
@@ -139,12 +180,19 @@ pub(super) fn paint_row(ui: &mut Ui, st: &AppState, look: &RowLook, mark: impl F
     }
     let left = rect.left() + TITLE_X;
     let (font, summary_color) = if look.sub { (small, color::faint()) } else { (type_scale::font(type_scale::BODY), color::weak()) };
-    let title = paint_cut_text(p, pos2(left, cy), look.title, font.clone(), look.title_color, right - left);
+    // The find fill is worked out on the surface under the text: the hover's, else the panel's.
+    let under = if resp.hovered() { color::current().hover } else { color::panel() };
+    let mark = (!look.needle.is_empty()).then(|| Mark { fill: color::find_fill(under), ink: color::text() });
+    let marked = |p: &egui::Painter, at: Pos2, text: &str, font: &FontId, col: Color32, max_w: f32| {
+        let found = runs(text, look.needle);
+        marked_text::paint_cut_marked(p, at, cut_job(text, font.clone(), col), max_w, &found, mark)
+    };
+    let title = marked(p, pos2(left, cy), look.title, &font, look.title_color, right - left);
     if look.sub {
         time_rect = title.rect;
     }
     let from = title.rect.right() + GAP;
-    let summary = paint_cut_text(p, pos2(from, cy), look.summary, font, summary_color, right - from);
+    let summary = marked(p, pos2(from, cy), look.summary, &font, summary_color, right - from);
     let pointer = ui.ctx().pointer_hover_pos();
     if pointer.is_some_and(|q| time_rect.contains(q)) {
         return resp.on_hover_text(look.time_tip.as_str());
@@ -176,12 +224,13 @@ fn spoken(t: Lang, title: &str, ok: bool, summary: &str) -> String {
     if summary.is_empty() { format!("{title}, {status}") } else { format!("{title}, {status}, {summary}") }
 }
 
-/// A run or a note, and its open part when it is folded open. Returns its row's rect.
-fn entry(ui: &mut Ui, st: &AppState, i: usize, msgs: &mut Vec<Msg>) -> Rect {
+/// A run or a note, and its open part when it is folded open (by hand, or by the search finding
+/// its text in the output). Returns its row's response.
+fn entry(ui: &mut Ui, st: &AppState, filter: &Filter, i: usize, msgs: &mut Vec<Msg>) -> Response {
     let e = &st.log[i];
     let t = st.settings.lang();
     let dim = e.earlier.is_some();
-    let open = foldable(e).then(|| st.logs.open.contains(&e.id));
+    let open = foldable(e).then(|| is_open(&st.logs, e, filter));
     let summary = e.run.as_ref().map_or("", |r| r.summary.as_str());
     let look = RowLook {
         title: title_of(e),
@@ -192,6 +241,7 @@ fn entry(ui: &mut Ui, st: &AppState, i: usize, msgs: &mut Vec<Msg>) -> Rect {
         time_tip: verbose(st, e.at),
         open,
         sub: false,
+        needle: filter.needle(),
     };
     let fade = |c: Color32| if dim { c.gamma_multiply(DIM) } else { c };
     let (ok, is_run) = (e.ok, e.run.is_some());
@@ -210,14 +260,15 @@ fn entry(ui: &mut Ui, st: &AppState, i: usize, msgs: &mut Vec<Msg>) -> Rect {
     }
     row_menu(&resp, st, e.id, msgs);
     if open == Some(true) {
-        super::activity_fold::show(ui, st, e, msgs);
+        super::activity_fold::show(ui, st, e, filter.needle(), msgs);
     }
-    resp.rect
+    resp
 }
 
 /// Routine successes `first..=last`, standing for `count` runs: one grey row, and the runs it
-/// holds as sub-rows when it is folded open. Returns the grey row's rect.
-fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, msgs: &mut Vec<Msg>) -> Rect {
+/// holds as sub-rows when it is folded open. Returns the grey row's response. Only drawn with no
+/// filter on.
+fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, msgs: &mut Vec<Msg>) -> Response {
     let t = st.settings.lang();
     let (head, newest) = (&st.log[first], &st.log[last]);
     let id: EntryId = head.id;
@@ -238,6 +289,7 @@ fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, ms
         time_tip: t.trf("logs.activity.routine.tip", &[("first", &from), ("last", &to)]),
         open: Some(open),
         sub: false,
+        needle: "",
     };
     let dim = head.earlier.is_some();
     let resp = paint_row(ui, st, &look, |p, c| {
@@ -255,7 +307,7 @@ fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, ms
             super::activity_fold::sub_row(ui, st, e);
         }
     }
-    resp.rect
+    resp
 }
 
 /// A row's right-click menu, below the row: Copy entry (a routine group's `id` copies the whole

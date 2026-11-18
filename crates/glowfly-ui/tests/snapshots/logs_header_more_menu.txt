@@ -13,6 +13,9 @@ Button "Clear"
 Button "Activity" [on]
 Button "Errors" [off]
 Button "Performance" [off]
+TextInput "Search titles, causes and output"
+CheckBox "Failures only" [off]
+Unknown "Activity log"
 Button "Push, done, Everything up-to-date"
 Button "Auto-fetch, done, Ran 5 times"
 Button "Pull, failed, Your changes to 1 file would be overwritten."

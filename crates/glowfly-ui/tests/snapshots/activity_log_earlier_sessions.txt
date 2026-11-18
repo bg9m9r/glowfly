@@ -11,6 +11,9 @@ Button "Clear"
 Button "Activity" [on]
 Button "Errors" [off]
 Button "Performance" [off]
+TextInput "Search titles, causes and output"
+CheckBox "Failures only" [off]
+Unknown "Activity log"
 Label "Earlier session · January 29, 2026 9:30 AM"
 Label "Fetched origin, done"
 Button "Fetch, done, From example.com:team/glowfly"

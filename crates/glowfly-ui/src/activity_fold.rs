@@ -2,13 +2,15 @@
 //! TLS settings git used for a certificate or revocation failure (state/tls_help.rs), its fix
 //! (once) with any second fix beside it (Try again beside Delete lock file) and Copy
 //! (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of
-//! line (the last `OUTPUT_LINES` of it); and the sub-rows of an open routine group.
+//! line (the last `OUTPUT_LINES` of it), the text a search found marked in the cause and the
+//! output; and the sub-rows of an open routine group.
 
 use super::activity_rows::{RowLook, TITLE_X, paint_row};
 use super::theme::{color, type_scale};
 use super::widgets::buttons;
 use crate::theme::sizes::ControlSize;
 use crate::theme::tokens::radius;
+use crate::widgets::marked_text::{Mark, append_marked};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Color32, CornerRadius, Margin, RichText, Stroke, Ui};
 use glowfly_core::logs::{OutputLine, classify_line, output_lines};
@@ -25,7 +27,7 @@ pub(super) const OUTPUT_LINES: usize = 200;
 const BOTTOM: f32 = 8.0;
 
 /// Draws `e`'s open part, indented to its title.
-pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>) {
+pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, needle: &str, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let indent = TITLE_X;
     ui.horizontal_top(|ui| {
@@ -35,7 +37,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
             ui.spacing_mut().item_spacing.y = 6.0;
             let failed_run = e.run.as_ref().filter(|_| !e.ok);
             if let Some(cause) = failed_run.map(|r| r.summary.as_str()).filter(|s| !s.is_empty()) {
-                ui.add(egui::Label::new(RichText::new(cause).color(color::text())).wrap());
+                cause_label(ui, cause, needle);
             }
             if let Some(note) = tls_help::note(&st.logs, e.id) {
                 tls_settings(ui, t, note);
@@ -55,10 +57,23 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, e: &LogEntry, msgs: &mut Vec<Msg>
                     msgs.push(Msg::Logs(LogsMsg::CopyEntry(e.id)));
                 }
             });
-            output(ui, st, output_of(e));
+            output(ui, st, output_of(e), needle);
             ui.add_space(BOTTOM - 6.0);
         });
     });
+}
+
+/// A failed run's cause in a full sentence, the match of `needle` marked.
+fn cause_label(ui: &mut Ui, cause: &str, needle: &str) {
+    if needle.is_empty() {
+        ui.add(egui::Label::new(RichText::new(cause).color(color::text())).wrap());
+        return;
+    }
+    let mut job = LayoutJob::default();
+    let format = TextFormat { font_id: type_scale::font(type_scale::BODY), color: color::text(), ..Default::default() };
+    let mark = Mark { fill: color::find_fill(color::panel()), ink: color::text() };
+    append_marked(&mut job, cause, format, needle, mark);
+    ui.add(egui::Label::new(job).wrap());
 }
 
 /// The settings block: a quiet heading, then one small line per setting, a warning in its colour.
@@ -86,7 +101,7 @@ fn line_color(k: OutputLine) -> Color32 {
 
 /// The output block: the last `OUTPUT_LINES` lines of `text` (blank ones at the end left
 /// out), under a note when some were left out. Nothing for no output.
-fn output(ui: &mut Ui, st: &AppState, text: &str) {
+fn output(ui: &mut Ui, st: &AppState, text: &str, needle: &str) {
     let mut lines: Vec<&str> = output_lines(text).collect();
     while lines.last().is_some_and(|l| l.trim().is_empty()) {
         lines.pop();
@@ -100,11 +115,14 @@ fn output(ui: &mut Ui, st: &AppState, text: &str) {
         ui.label(RichText::new(note).size(type_scale::SMALL).color(color::faint()));
     }
     let font = type_scale::mono(type_scale::SMALL);
+    let mark = Mark { fill: color::find_fill(color::bg()), ink: color::text() };
     let mut job = LayoutJob::default();
     for (n, line) in lines[skip..].iter().enumerate() {
-        let sep = if n == 0 { "" } else { "\n" };
         let format = TextFormat { font_id: font.clone(), color: line_color(classify_line(line)), ..Default::default() };
-        job.append(&format!("{sep}{line}"), 0.0, format);
+        if n > 0 {
+            job.append("\n", 0.0, format.clone());
+        }
+        append_marked(&mut job, line, format, needle, mark);
     }
     egui::Frame::new()
         .fill(color::bg())
@@ -130,6 +148,7 @@ pub(super) fn sub_row(ui: &mut Ui, st: &AppState, e: &LogEntry) {
         time_tip: st.settings.format_verbose(e.at, st.cues.utc_offset),
         open: None,
         sub: true,
+        needle: "",
     };
     paint_row(ui, st, &look, |_, _| {});
 }

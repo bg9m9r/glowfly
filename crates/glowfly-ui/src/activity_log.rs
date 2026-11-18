@@ -1,8 +1,8 @@
 //! The logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and
-//! Performance tabs on the left, quiet icon buttons on the right with the More menu's Copy log
-//! and Export logs, a hairline under it), then
+//! Performance tabs and the search field (ui/activity_search.rs) on the left, quiet icon buttons
+//! on the right with the More menu's Copy log and Export logs, a hairline under it), then
 //! the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance
-//! log, read by the runner.
+//! log, read by the runner, its lines filtered by the search with the match marked.
 
 use super::common::menu_item_if;
 use super::pane_status::{self, Failure};
@@ -11,13 +11,16 @@ use super::theme::color;
 use crate::theme::sizes::ControlSize;
 use crate::widgets::Icon;
 use crate::widgets::ghost::{self, divider, ghost, icon_tip};
+use crate::widgets::marked_text::{Mark, append_marked};
 use crate::widgets::menu::popup_below;
 use crate::widgets::segmented::segmented;
+use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align, Layout, PopupCloseBehavior, Rect, RichText, Sense, Stroke, TextStyle, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::settings::SizedPanel;
 use glowfly_model::logs::{LogKind, LogsMsg};
 use glowfly_model::msg::Msg;
 use glowfly_model::state::activity_copy::copy_log_blocked;
+use glowfly_model::state::activity_filter::{Filter, matching_lines};
 use glowfly_model::state::panel_layout::{self, ACTIVITY, MAIN_MIN_HEIGHT};
 use glowfly_model::state::tip::Tip;
 use glowfly_model::state::{AppState, ViewState};
@@ -50,7 +53,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
         header(ui, st, view, msgs);
         match st.logs.tab {
             LogKind::Activity => super::activity_rows::show(ui, st, view, msgs),
-            kind => file(ui, st, kind, msgs),
+            kind => file(ui, st, view, kind, msgs),
         }
     });
     panel_size::track(ctx, view, SizedPanel::Activity, id, resp.response.rect.height(), msgs);
@@ -70,6 +73,8 @@ fn header(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>)
     if let Some(kind) = segmented(&mut l, ControlSize::Regular, st.logs.tab, &tabs) {
         msgs.push(Msg::Logs(LogsMsg::Show(kind)));
     }
+    l.add_space(12.0);
+    super::activity_search::controls(&mut l, st, view, msgs);
     let x = rect.x_range().expand(SIDE);
     ui.painter().hline(x, rect.bottom() - 0.5, Stroke::new(1.0_f32, color::border()));
 }
@@ -124,12 +129,13 @@ fn more(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// The end of the error or performance log, one monospace row per line.
-fn file(ui: &mut Ui, st: &AppState, kind: LogKind, msgs: &mut Vec<Msg>) {
+/// The end of the error or performance log, one monospace row per line that has the search text
+/// (all of them with no search), the match marked.
+fn file(ui: &mut Ui, st: &AppState, view: &ViewState, kind: LogKind, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     ui.add_space(4.0);
-    let view = st.logs.file.as_ref().filter(|v| v.kind == kind);
-    let tail = match view.and_then(|v| v.tail.as_ref()) {
+    let log = st.logs.file.as_ref().filter(|v| v.kind == kind);
+    let tail = match log.and_then(|v| v.tail.as_ref()) {
         None => return pane_status::loading_line(ui, t.tr("logs.file.reading")),
         Some(Err(e)) => {
             let f = Failure { title: t.tr("logs.file.failed"), error: e, retry: Some(Msg::Logs(LogsMsg::Show(kind))) };
@@ -141,30 +147,37 @@ fn file(ui: &mut Ui, st: &AppState, kind: LogKind, msgs: &mut Vec<Msg>) {
         }
         Some(Ok(tail)) => tail,
     };
+    let needle = Filter::new(false, &view.logs_search);
+    let needle = needle.needle();
+    let shown = matching_lines(&tail.lines, needle);
+    if shown.is_empty() {
+        return super::activity_search::none_line(ui, t, false, &view.logs_search, true);
+    }
     let note = usize::from(tail.truncated);
+    let mark = Mark { fill: color::find_fill(color::panel()), ink: color::text() };
     let row_height = ui.text_style_height(&TextStyle::Monospace) + ui.spacing().item_spacing.y;
-    egui::ScrollArea::both().stick_to_bottom(true).auto_shrink([false, false]).show_rows(
-        ui,
-        row_height,
-        tail.lines.len() + note,
-        |ui, rows| {
-            for i in rows {
-                let text = match i.checked_sub(note) {
-                    None => RichText::new(t.tr("logs.file.cut")).color(color::faint()),
-                    Some(n) => {
-                        let line = &tail.lines[n];
-                        let c = if line.contains(" ERROR ") {
-                            color::removed()
-                        } else if line.contains(" WARN ") {
-                            color::warn()
-                        } else {
-                            color::text()
-                        };
-                        RichText::new(line).monospace().color(c)
-                    }
-                };
-                ui.add(egui::Label::new(text).extend());
+    egui::ScrollArea::both().stick_to_bottom(true).auto_shrink([false, false]).show_rows(ui, row_height, shown.len() + note, |ui, rows| {
+        for i in rows {
+            let Some(n) = i.checked_sub(note) else {
+                ui.add(egui::Label::new(RichText::new(t.tr("logs.file.cut")).color(color::faint())).extend());
+                continue;
+            };
+            let line = &tail.lines[shown[n]];
+            let c = if line.contains(" ERROR ") {
+                color::removed()
+            } else if line.contains(" WARN ") {
+                color::warn()
+            } else {
+                color::text()
+            };
+            if needle.is_empty() {
+                ui.add(egui::Label::new(RichText::new(line).monospace().color(c)).extend());
+            } else {
+                let mut job = LayoutJob::default();
+                let format = TextFormat { font_id: TextStyle::Monospace.resolve(ui.style()), color: c, ..Default::default() };
+                append_marked(&mut job, line, format, needle, mark);
+                ui.add(egui::Label::new(job).extend());
             }
-        },
-    );
+        }
+    });
 }

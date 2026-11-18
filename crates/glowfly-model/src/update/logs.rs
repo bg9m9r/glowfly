@@ -1,8 +1,8 @@
 //! The logs: loading the earlier sessions' activity, writing new lines to the activity file,
 //! the panel's tabs, the logs folder and extended logging. The runner's log worker does the
 //! file work and stamps the times (runner/logs.rs). Finished jobs, open rows and fixes are in
-//! update/logs_runs.rs; Copy entry and Copy log in update/logs_copy.rs; Export logs in
-//! update/logs_export.rs.
+//! update/logs_runs.rs; the filters, folding and the list's keys in update/logs_filter.rs; Copy
+//! entry and Copy log in update/logs_copy.rs; Export logs in update/logs_export.rs.
 
 use crate::effect::Effect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
@@ -57,7 +57,10 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
         LogsMsg::DismissFailure(id) => {
             st.logs.dismissed.insert(id);
         }
-        LogsMsg::Fold(id) => super::logs_runs::fold(st, id),
+        LogsMsg::Fold(id) => super::logs_filter::fold(st, id),
+        LogsMsg::SetFailuresOnly(on) => super::logs_filter::set_failures_only(st, on),
+        LogsMsg::SearchChanged => super::logs_filter::search_changed(st),
+        LogsMsg::RowKey(key) => super::logs_filter::row_key(st, key),
         LogsMsg::Fix(id) => super::logs_runs::fix(st, id, false, now, fx),
         LogsMsg::AltFix(id) => super::logs_runs::fix(st, id, true, now, fx),
         LogsMsg::CopyEntry(id) => super::logs_copy::copy_entry(st, id, fx),
@@ -107,6 +110,7 @@ pub(super) fn clear(st: &mut AppState, fx: &mut Vec<Effect>) {
     let tag = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
     let cleared: std::collections::HashSet<_> = st.log.drain(..).map(|e| e.id).collect();
     st.logs.open.retain(|id| !cleared.contains(id));
+    st.logs.search_closed.retain(|id| !cleared.contains(id));
     st.logs.fixes.retain(|(id, _)| !cleared.contains(id));
     st.logs.alt_fixes.retain(|(id, _)| !cleared.contains(id));
     st.logs.pending.retain(|l| !same_repo(l.repo.as_deref(), tag.as_deref()));

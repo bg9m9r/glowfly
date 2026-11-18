@@ -222,3 +222,97 @@ fn open_returns_appended_runs() {
     assert_eq!(entries, all);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+fn routine(at: i64, ok: bool) -> ActivityEntry {
+    ActivityEntry {
+        session: 100,
+        at,
+        ok,
+        text: format!("Auto-fetch {at}"),
+        repo: None,
+        run: Some(RunInfo { title: "Auto-fetch".into(), routine: true, ..RunInfo::default() }),
+    }
+}
+
+fn run(at: i64, ok: bool) -> ActivityEntry {
+    ActivityEntry {
+        session: 100,
+        at,
+        ok,
+        text: format!("Push {at}"),
+        repo: None,
+        run: Some(RunInfo { title: "Push".into(), ..RunInfo::default() }),
+    }
+}
+
+fn read_back(path: &Path) -> Vec<ActivityEntry> {
+    parse_activity(&std::fs::read_to_string(path).unwrap()).0
+}
+
+#[test]
+fn open_drops_routine_successes_before_older_entries() {
+    let dir = scratch("routine-first");
+    let path = dir.join("activity.jsonl");
+    // Oldest first: a failure, a run, a streak of routine successes, then newer notes.
+    let mut all = vec![entry(1, "old failure"), run(2, true)];
+    all.extend((10..16).map(|at| routine(at, true)));
+    all.extend((20..24).map(|at| entry(at, &format!("note {at}"))));
+    std::fs::write(&path, all.iter().map(activity_line).collect::<String>()).unwrap();
+
+    let (_, entries) = ActivityFile::open(path.clone(), 9).unwrap();
+    // 12 entries, cap 9: the three oldest routine successes go.
+    let mut want = vec![entry(1, "old failure"), run(2, true)];
+    want.extend((13..16).map(|at| routine(at, true)));
+    want.extend((20..24).map(|at| entry(at, &format!("note {at}"))));
+    assert_eq!(entries, want);
+    assert_eq!(read_back(&path), want, "the file was rewritten to match");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn trim_falls_back_to_the_oldest_once_no_routine_success_is_left() {
+    let dir = scratch("routine-fallback");
+    let path = dir.join("activity.jsonl");
+    let mut all = vec![routine(1, true), routine(2, true)];
+    all.extend((10..18).map(|at| run(at, true)));
+    std::fs::write(&path, all.iter().map(activity_line).collect::<String>()).unwrap();
+
+    let (_, entries) = ActivityFile::open(path, 5).unwrap();
+    assert_eq!(entries, (13..18).map(|at| run(at, true)).collect::<Vec<_>>());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_failed_routine_run_is_kept_like_any_failure() {
+    let dir = scratch("routine-failed");
+    let path = dir.join("activity.jsonl");
+    let all = [routine(1, false), routine(2, true), entry(3, "plain"), routine(4, true), run(5, true)];
+    std::fs::write(&path, all.iter().map(activity_line).collect::<String>()).unwrap();
+
+    let (_, entries) = ActivityFile::open(path.clone(), 4).unwrap();
+    assert_eq!(entries, vec![routine(1, false), entry(3, "plain"), routine(4, true), run(5, true)]);
+    let (_, entries) = ActivityFile::open(path, 3).unwrap();
+    assert_eq!(entries, vec![routine(1, false), entry(3, "plain"), run(5, true)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn append_trim_drops_routine_first() {
+    let dir = scratch("append-routine");
+    let path = dir.join("activity.jsonl");
+    let (mut file, _) = ActivityFile::open(path.clone(), 4).unwrap();
+    file.append(&[run(1, true), run(2, false)]).unwrap();
+    for at in 10..16 {
+        file.append(&[routine(at, true)]).unwrap();
+    }
+    // 8 lines: not past twice the cap yet.
+    assert_eq!(line_count(&path), 8);
+    file.append(&[run(30, true)]).unwrap();
+    let kept = read_back(&path);
+    assert_eq!(kept.len(), 4);
+    assert!(kept.contains(&run(1, true)) && kept.contains(&run(2, false)) && kept.contains(&run(30, true)), "{kept:?}");
+    assert_eq!(kept.iter().filter(|e| e.run.as_ref().is_some_and(|r| r.routine)).count(), 1);
+    let (_, entries) = ActivityFile::open(path, 4).unwrap();
+    assert_eq!(entries, kept);
+    let _ = std::fs::remove_dir_all(&dir);
+}
