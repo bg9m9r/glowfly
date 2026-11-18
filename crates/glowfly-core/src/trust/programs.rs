@@ -46,7 +46,8 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<Pa
         }
     }
     for inc in super::stamp::include_entries(repo) {
-        let in_tree = inc.paths.iter().any(|p| !super::follow::inside(repo, workdir, p).is_empty());
+        // One whose file may be somewhere that isn't listed counts as in the working tree.
+        let in_tree = inc.unsure || inc.paths.iter().any(|p| !super::follow::inside(repo, workdir, p).is_empty());
         let key = match inc.name.get(..10) {
             Some(head) if head.eq_ignore_ascii_case("includeif.") => format!("includeIf.{}", &inc.name[10..]),
             _ => "include.path".to_owned(),

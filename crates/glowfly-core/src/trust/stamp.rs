@@ -49,7 +49,8 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
 /// ones too, which libgit2 lists at the same level), as named: `~` from the home folder, and a
 /// relative one from the git dir, from the common dir (a linked worktree's shared config) and
 /// from beside each file already found (git resolves it from the folder of the file that
-/// includes it). The scan follows those in the working tree (`programs.rs`).
+/// includes it). The scan follows those in the working tree (`programs.rs`). Bounded: see
+/// `include_entries`.
 pub(super) fn includes(repo: &Repository) -> Vec<PathBuf> {
     include_entries(repo).into_iter().flat_map(|e| e.paths).collect()
 }
@@ -60,12 +61,28 @@ pub(super) struct Include {
     pub name: String,
     pub value: String,
     pub paths: Vec<PathBuf>,
+    /// The file may be somewhere `paths` doesn't list: the include came after `MAX_INCLUDES`
+    /// others, or after the folders to look in reached `MAX_FOLDERS`.
+    pub unsure: bool,
 }
 
-/// Each include setting, in file order, with the files `includes` takes it to name.
+/// The most folders a relative include is looked up in.
+const MAX_FOLDERS: usize = 64;
+/// The most include settings whose files are listed.
+const MAX_INCLUDES: usize = 256;
+
+/// Each include setting, in file order, with the files `includes` takes it to name: a relative
+/// one in each folder a file found so far is in, each folder once. At most `MAX_FOLDERS`
+/// folders and `MAX_INCLUDES` settings are followed; an include past either is `unsure`.
 pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
     let mut out: Vec<Include> = Vec::new();
     let Ok(config) = repo.config() else { return out };
+    // Where an included file may be: the git dir, the common dir and beside each file found.
+    let mut folders = vec![repo.path().to_path_buf()];
+    if repo.commondir() != repo.path() {
+        folders.push(repo.commondir().to_path_buf());
+    }
+    let mut full = false;
     for level in [ConfigLevel::Local, ConfigLevel::Worktree] {
         let Ok(c) = config.open_level(level) else { continue };
         let Ok(mut entries) = c.entries(None) else { continue };
@@ -79,17 +96,26 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
             // A bare key names no file (git refuses one).
             let Some(v) = crate::config_entry::utf8(e) else { continue };
             let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
-            let mut paths = Vec::new();
-            if p.is_absolute() {
-                paths.push(p);
+            let past = out.len() >= MAX_INCLUDES;
+            let unsure = past || (full && !p.is_absolute());
+            let paths: Vec<PathBuf> = if past {
+                Vec::new()
+            } else if p.is_absolute() {
+                vec![p]
             } else {
-                paths.push(repo.path().join(&p));
-                if repo.commondir() != repo.path() {
-                    paths.push(repo.commondir().join(&p));
+                folders.iter().map(|d| d.join(&p)).collect()
+            };
+            for folder in paths.iter().filter_map(|f| f.parent()) {
+                if folders.iter().any(|d| d == folder) {
+                    continue;
                 }
-                paths.extend(out.iter().flat_map(|i| &i.paths).filter_map(|f| f.parent().map(|d| d.join(&p))));
+                if folders.len() >= MAX_FOLDERS {
+                    full = true;
+                    break;
+                }
+                folders.push(folder.to_path_buf());
             }
-            out.push(Include { name, value: v.to_owned(), paths });
+            out.push(Include { name, value: v.to_owned(), paths, unsure });
         }
     }
     out
@@ -116,3 +142,7 @@ fn meta(path: &Path, h: &mut DefaultHasher) {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "stamp_tests.rs"]
+mod tests;
