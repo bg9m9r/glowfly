@@ -44,6 +44,7 @@ use glowfly_model::state::conflict_picks::{ConflictPicks, drawn_selected};
 use glowfly_model::state::custom_commands::MenuCommands;
 use glowfly_model::state::file_folds::FileFolds;
 use glowfly_model::state::lfs::{TrackContext, track_items};
+use glowfly_model::state::old_path;
 use glowfly_model::state::op_steps::op_kind;
 use glowfly_model::state::tool_compare::ToolAvail;
 use glowfly_model::state::wip_lists::{self, PickHow, Picked};
@@ -261,14 +262,16 @@ pub(super) fn wip_file_row(
             );
             super::file_status::name_status(&letter, ctx.lang, f.status);
         }
-        super::list_row::file_tree::file_text(ui, &f.path, ctx.depth, selected, 0.0);
+        super::file_old_path::path_text(ui, ctx.lang, f, ctx.depth, selected, 0.0);
         super::path_warnings::mark(ui, ctx.lang, f);
         super::lfs_badge::badge(ui, f);
     };
+    // A renamed file is named by its whole "old to new" text; others by their path.
+    let name = old_path::row_name(t, f);
     let r = if ctx.keyed {
-        super::widgets::keyed_file_row_with_end(ui, selected, &f.path, end, row)
+        super::widgets::keyed_file_row_with_end(ui, selected, &name, end, row)
     } else {
-        super::widgets::file_row_with_end(ui, selected, &f.path, end, row)
+        super::widgets::file_row_with_end(ui, selected, &name, end, row)
     }
     .response;
     if r.clicked() {

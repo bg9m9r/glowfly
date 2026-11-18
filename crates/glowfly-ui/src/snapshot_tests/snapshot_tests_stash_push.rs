@@ -117,6 +117,34 @@ fn stash_push_dialog_unsafe_path() {
 }
 
 #[test]
+fn stash_push_dialog_renamed() {
+    let (mut st, dir) = with_files(ThemeChoice::Dark, "stash-push-renamed", &[("a.txt", 'M')], &[]);
+    st.snap.as_mut().unwrap().staged = vec![FileEntry { renamed_from: Some("a_old.txt".into()), ..FileEntry::new("a.txt", 'R') }];
+    st.modal = Some(Modal::StashPush(StashPushForm::new(StashScope::Files, vec!["a.txt".into()])));
+    let mut h = harness(st, true);
+    h.run();
+    // One row for the path (the unstaged change shows), with the note after it.
+    assert!(h.query_by_label("from a_old.txt").is_some(), "the weak note");
+    // The WIP list behind the dialog has a row of that name too.
+    assert!(h.query_by_role_and_label(Role::CheckBox, "a_old.txt to a.txt").is_some(), "the checkbox is named by the whole text");
+    h.check_snapshot("stash_push_dialog_renamed");
+
+    // Unticking and ticking it again, then Stash, still sends the new path.
+    h.get_by_role_and_label(Role::CheckBox, "a_old.txt to a.txt").click();
+    h.run();
+    assert!(h.query_by_label("0 of 1 file").is_some());
+    h.get_by_role_and_label(Role::CheckBox, "a_old.txt to a.txt").click();
+    h.run();
+    assert!(h.query_by_label("1 of 1 file").is_some());
+    stash_button(&h).click();
+    h.run();
+    let stashes = |m: &Msg| matches!(m, Msg::Stash(StashMsg::Push { paths, .. }) if paths.iter().map(String::as_str).eq(["a.txt"]));
+    assert!(pushed(&h, &stashes));
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn stash_push_dialog_staged_nothing_light() {
     let (st, dir) = dialog(ThemeChoice::Light, "stash-push-staged-nothing", &[], StashPushForm::new(StashScope::Staged, Vec::new()));
     let mut h = harness(st, false);

@@ -57,6 +57,7 @@ pub(super) mod snapshot_tests_file_header;
 pub(super) mod snapshot_tests_file_list_keys;
 pub(super) mod snapshot_tests_file_menu;
 pub(super) mod snapshot_tests_file_menu_lfs;
+pub(super) mod snapshot_tests_file_renames;
 pub(super) mod snapshot_tests_file_rows;
 pub(super) mod snapshot_tests_fireflies;
 pub(super) mod snapshot_tests_forge_filters;

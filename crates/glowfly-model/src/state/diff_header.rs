@@ -1,5 +1,5 @@
 //! The diff header as plain data, built once per frame by ui/diff/header/ and tested without
-//! egui: the file's folder, name, kind and change counts, the context it is shown in, where
+//! egui: the file's folder, name, old path (of a rename or copy), kind and change counts, the context it is shown in, where
 //! Previous and Next go and the counter between them, the View menu's settings, the file
 //! actions with their disabled reasons, and the one primary action. Its slow parts (change rows,
 //! counts, file order) come from a `HeaderCache` that keeps them between frames.
@@ -31,6 +31,8 @@ pub struct HeaderModel {
     /// The folder with its trailing '/' ("src/ui/"), or "" at the top level.
     pub folder: String,
     pub name: String,
+    /// The old path of a rename or copy, as the list the diff was opened from names it.
+    pub renamed_from: Option<String>,
     pub kind: FileKind,
     /// The status letter (untracked shows as A), `None` when the file's list isn't loaded.
     pub status: Option<char>,
@@ -200,6 +202,7 @@ pub(super) fn build(st: &AppState, view: &ViewState, parts: &HeaderCache) -> Opt
     Some(HeaderModel {
         folder,
         name,
+        renamed_from: order.renamed_from.clone(),
         kind: kind(&path, diff),
         status: order.status.map(|s| if s == '?' { 'A' } else { s }),
         change,

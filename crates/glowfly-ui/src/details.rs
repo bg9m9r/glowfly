@@ -20,6 +20,7 @@ use glowfly_model::msg::RepoMsg;
 use glowfly_model::state::custom_commands::MenuCommands;
 use glowfly_model::state::layout::Pane;
 use glowfly_model::state::lfs::{TrackContext, track_items};
+use glowfly_model::state::old_path;
 use glowfly_model::state::panel_layout::Fit;
 use glowfly_model::state::{AppState, Selection, ViewState};
 
@@ -108,12 +109,14 @@ pub(super) fn changed_file_row_at(
 ) -> egui::Response {
     let selected = open == Some(&target);
     let lines = actions.lines;
+    // A renamed or copied file is named by its whole "old to new" text; others by their path.
+    let name = old_path::row_name(t, f);
     let row = |ui: &mut egui::Ui| {
         super::list_row::file_tree::indent(ui, depth);
         super::file_status::status_chip(ui, t, f.status);
         // The counts keep their width; the path is cut before them.
         let reserve = lines.map_or(0.0, |(n, _)| super::line_counts::inline_width(ui.ctx(), n) + spacing::GRID);
-        super::list_row::file_tree::file_text(ui, &f.path, depth, selected, reserve);
+        super::file_old_path::path_text(ui, t, f, depth, selected, reserve);
         if let Some((n, _)) = lines {
             super::line_counts::inline(ui, n);
         }
@@ -121,10 +124,8 @@ pub(super) fn changed_file_row_at(
         super::lfs_badge::badge(ui, f);
     };
     let r = match lines {
-        Some((n, largest)) => {
-            widgets::keyed_file_row_with_end(ui, selected, &f.path, |ui| super::line_counts::bar_end(ui, n, largest), row)
-        }
-        None => widgets::keyed_file_row(ui, selected, &f.path, row),
+        Some((n, largest)) => widgets::keyed_file_row_with_end(ui, selected, &name, |ui| super::line_counts::bar_end(ui, n, largest), row),
+        None => widgets::keyed_file_row(ui, selected, &name, row),
     }
     .response;
     if r.clicked() {

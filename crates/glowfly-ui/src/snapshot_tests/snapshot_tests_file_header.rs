@@ -55,6 +55,27 @@ fn file_header_wide_dark() {
 }
 
 #[test]
+fn file_header_renamed_dark() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "file-header-renamed");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let lines: String = (1..=30).map(|i| format!("line {i}\n")).collect();
+    std::fs::write(dir.join("src/app.txt"), &lines).unwrap();
+    git(&dir, &["add", "src/app.txt"], DATE);
+    git(&dir, &["commit", "-q", "-m", "Add src/app.txt"], DATE);
+    git(&dir, &["mv", "src/app.txt", "src/main.txt"], DATE);
+    std::fs::write(dir.join("src/main.txt"), lines.replace("line 3\n", "line three\n")).unwrap();
+    git(&dir, &["add", "src/main.txt"], DATE);
+    open(&mut st, &dir, DiffTarget::Staged("src/main.txt".into()));
+    let h = render("file_header_renamed_dark", st, true);
+    for label in ["src/app.txt", "to", "src/", "main.txt", "Staged", "Unstage file"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label_contains("R +").is_some(), "the status chip starts with the rename's letter");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
 fn file_header_commit_light() {
     let (st, dir) = with_commit_diff("file-header-commit", ThemeChoice::Light, DiffLayout::Inline, false);
     let short = st.session.detail.as_ref().unwrap().oid.to_string()[..7].to_owned();

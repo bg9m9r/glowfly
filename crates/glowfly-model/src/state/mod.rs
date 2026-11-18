@@ -77,6 +77,7 @@ pub mod menu_native;
 pub mod modal;
 pub mod modal_form;
 pub mod notify;
+pub mod old_path;
 pub mod onboarding;
 pub mod onboarding_tour;
 pub mod op_actions;

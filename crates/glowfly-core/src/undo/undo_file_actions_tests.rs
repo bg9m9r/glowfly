@@ -102,6 +102,41 @@ fn unstage_deleted_file_of_a_rename_brings_the_staged_rename_back() {
     let (_, staged, _) = repo::status_at(&dir, true).unwrap();
     let staged: Vec<_> = staged.into_iter().map(|f| (f.path, f.status)).collect();
     assert_eq!(staged, [("new.txt".to_owned(), 'R')], "the rename pairs again");
+    assert_eq!(a.renamed_from(), Some("old.txt"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_action_of_a_deleted_rename_names_its_old_path() {
+    let dir = scratch_repo("ufa-delete-rename-names");
+    write(
+        &dir,
+        "old.txt",
+        "one
+two
+three
+four
+five
+",
+    );
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "base"]);
+    git(&dir, &["mv", "old.txt", "new.txt"]);
+    let a = delete_staged_saving(&dir, "new.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
+    assert_eq!(a.renamed_from(), Some("old.txt"));
+    write(
+        &dir, "n.txt", "new
+",
+    );
+    git(&dir, &["add", "n.txt"]);
+    let added = delete_staged_saving(&dir, "n.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
+    assert_eq!(added.renamed_from(), None, "a new file has no old path");
+    write(
+        &dir, "p.txt", "plain
+",
+    );
+    let plain = delete_saving(&dir, "p.txt", DeleteVia::Permanent, false, T).unwrap().undo.unwrap();
+    assert_eq!(plain.renamed_from(), None);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

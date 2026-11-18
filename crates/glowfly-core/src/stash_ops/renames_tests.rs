@@ -167,3 +167,15 @@ fn restore_blocked_output_names_the_path() {
     assert!(out.starts_with(RESTORE_BLOCKED), "{out}");
     assert!(out.contains("dir/a.txt, where the stash would put back"), "{out}");
 }
+
+#[test]
+fn a_stash_of_a_staged_rename_lists_its_old_path() {
+    let dir = committed("stash-detail-rename");
+    git(&dir, &["mv", "a.txt", "moved.txt"]);
+    git(&dir, &["stash"]);
+    let oid = git2::Oid::from_str(stdout(&dir, &["rev-parse", "stash@{0}"]).trim()).unwrap();
+    let detail = crate::repo::commit_detail(&dir, oid).unwrap();
+    let rows: Vec<_> = detail.files.iter().map(|f| (f.status, f.path.as_str(), f.renamed_from.as_deref())).collect();
+    assert_eq!(rows, [('R', "moved.txt", Some("a.txt"))]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -5,7 +5,7 @@
 
 use super::tests::{drive, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, entry, last_log, loaded, run, work_ops};
-use glowfly_core::repo::{Deleted, TrashProblem, TrashRefusal};
+use glowfly_core::repo::{Deleted, FileEntry, TrashProblem, TrashRefusal};
 use glowfly_core::undo::{Action, DeleteVia, Saved};
 use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use glowfly_model::msg::Msg;
@@ -127,6 +127,25 @@ fn unstage_confirm_trash() {
     assert_eq!(button, "Unstage");
     assert!(!body.contains(TRASH), "{body}");
     assert_eq!(op, FileOp::UnstageGone("n.txt".into()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unstage_confirm_trash_names_the_old_path() {
+    let (mut st, dir) = loaded("wft-unstage-from");
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = Vec::new();
+    snap.staged = vec![FileEntry { renamed_from: Some("q.txt".into()), ..entry("r.txt", 'R') }];
+    let (body, _, op) = ask(&mut st, "r.txt");
+    assert!(
+        body.starts_with(&format!(
+            "r.txt is staged as a rename of q.txt. It goes to the {TRASH} and the rename is unstaged: q.txt stays deleted"
+        )),
+        "{body}"
+    );
+    assert!(body.ends_with(&format!(" Undo ({}) brings back the file and the staged rename.", keys("Ctrl+Z"))), "{body}");
+    assert_eq!(confirm(&st).0, "Delete renamed file");
+    assert_eq!(op, unstage_delete("r.txt", DeleteMode::Trash));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

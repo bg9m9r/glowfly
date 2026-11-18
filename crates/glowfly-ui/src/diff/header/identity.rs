@@ -1,4 +1,5 @@
-//! The header's left side: the file-type icon, the folder (cut from the left when short of
+//! The header's left side: the file-type icon, the old path of a rename or copy (weak, cut from
+//! the left) with a painted arrow after it, the folder (cut from the left when short of
 //! room) and the name, the status chip (the letter, then the added and removed lines or the
 //! sizes) and the context chip (the commit, Unstaged, Staged or the compared range).
 
@@ -15,6 +16,7 @@ use eframe::egui::{self, Color32, FontId, Rect, Sense, Stroke, Ui, WidgetInfo, W
 use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::pointer::size_text;
 use glowfly_model::state::diff_header::{ChangeText, Context, FileKind, HeaderModel};
+use glowfly_model::state::old_path::OldPath;
 
 /// The gap between the left-hand parts.
 pub(super) const GAP: f32 = 8.0;
@@ -108,6 +110,10 @@ fn chip_width(ui: &Ui, parts: &[Part]) -> f32 {
 pub(super) fn widths(ui: &Ui, m: &HeaderModel, t: Lang, w: &mut Widths) {
     w.icon = ICON;
     w.gap = GAP;
+    if let Some(old) = &m.renamed_from {
+        w.old = width_of(ui, old, folder_font());
+        w.arrow = PART_GAP + ARROW_W + PART_GAP;
+    }
     w.folder = if m.folder.is_empty() { 0.0 } else { width_of(ui, &m.folder, folder_font()) };
     w.name = width_of(ui, &m.name, fonts::semibold(ui, PATH_PX));
     w.status = chip_width(ui, &status_parts(m));
@@ -126,6 +132,13 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, t: Lang, w: &Widths, plan: &Pla
     };
     paint_icon_sized(ui.painter(), rect.center(), icon, color::weak(), ICON);
     ui.add_space(GAP);
+    // The name's hover is the whole "old to new" text for any rename, cut or not.
+    let whole = m.renamed_from.as_deref().map(|old| OldPath::new(old, m.status).whole(t, &m.path));
+    if let (Some(old), Some(whole)) = (&m.renamed_from, &whole)
+        && plan.old_w > 0.0
+    {
+        old_path(ui, t, old, whole, plan.old_w);
+    }
     if plan.folder_w > 0.0 {
         let shown = cut_left(ui, &m.folder, &folder_font(), plan.folder_w);
         let cut = shown != m.folder;
@@ -137,11 +150,16 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, t: Lang, w: &Widths, plan: &Pla
     let name = egui::RichText::new(&m.name).font(fonts::semibold(ui, PATH_PX)).color(color::text());
     if plan.name_w + 0.5 < w.name {
         let (r, cut) = crate::widgets::cut_label(ui, name, plan.name_w);
-        if cut {
-            r.on_hover_text(&m.path);
-        }
+        match &whole {
+            Some(whole) => r.on_hover_text(whole),
+            None if cut => r.on_hover_text(&m.path),
+            None => r,
+        };
     } else {
-        ui.add(egui::Label::new(name).selectable(false).extend());
+        let r = ui.add(egui::Label::new(name).selectable(false).extend());
+        if let Some(whole) = &whole {
+            r.on_hover_text(whole);
+        }
     }
     if plan.status && w.status > 0.0 {
         ui.add_space(GAP);
@@ -154,6 +172,25 @@ pub(super) fn show(ui: &mut Ui, m: &HeaderModel, t: Lang, w: &Widths, plan: &Pla
             r.on_hover_text(s);
         }
     }
+}
+
+/// The old path of a rename or copy in `room` px (cut from the left), weak, named by its whole
+/// text, then a painted arrow named "to", each `PART_GAP` from the next part. Hovering either
+/// shows `whole`, the "old to new" text.
+fn old_path(ui: &mut Ui, t: Lang, old: &str, whole: &str, room: f32) {
+    let shown = cut_left(ui, old, &folder_font(), room);
+    let galley = ui.painter().layout_no_wrap(shown, folder_font(), color::weak());
+    let (rect, resp) = ui.allocate_exact_size(galley.size(), Sense::hover());
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, old));
+    ui.painter().galley(rect.min, galley, color::weak());
+    resp.on_hover_text(whole);
+    ui.add_space(PART_GAP);
+    let (slot, resp) = ui.allocate_exact_size(vec2(ARROW_W, ICON), Sense::hover());
+    let name = t.tr("diff.header.arrow");
+    resp.widget_info(|| WidgetInfo::labeled(WidgetType::Label, true, name));
+    arrow(ui.painter(), slot, color::weak());
+    resp.on_hover_text(whole);
+    ui.add_space(PART_GAP);
 }
 
 /// A pill of `parts` on the toolbar fill, named by its text.

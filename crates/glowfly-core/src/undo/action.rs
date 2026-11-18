@@ -248,6 +248,19 @@ pub enum Action {
     },
 }
 
+impl Action {
+    /// The old path of the staged rename an Unstage and delete or Unstage deleted file
+    /// dissolved, when it is UTF-8. None for every other action.
+    pub fn renamed_from(&self) -> Option<&str> {
+        match self {
+            Action::DeleteFile { staged: Some(s), .. } | Action::UnstageGone { staged: s, .. } => {
+                s.source.as_deref().and_then(|b| std::str::from_utf8(b).ok())
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Where HEAD was while an operation was in progress: commit `oid` on `branch` (`None`:
 /// detached).
 #[derive(Clone, Debug, PartialEq)]

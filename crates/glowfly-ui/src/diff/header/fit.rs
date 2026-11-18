@@ -1,13 +1,14 @@
 //! How the diff header fits its one row: given every part's width, which parts give way and in
 //! what order. Pure arithmetic, so the order is tested without egui.
 //!
-//! The row: the file (icon, folder, name, status chip, context chip), 16 px, the navigation
-//! (arrows and counter), a divider, an SVG's Text / Preview switch, the View button and ⋯; then, at the trailing edge, Stage file
-//! and ×. The order things give way: 1) the View button shortens to "View"; 2) the folder is cut
-//! from the left, down to nothing; 3) the nav counter drops; 4) the context chip drops; 5) the
-//! status chip drops; 6) last, the file name is cut. Each step happens only when the ones before
-//! it weren't enough; below the last the row is clipped. The switch, ⋯, Stage file and × never
-//! give way.
+//! The row: the file (icon, the old path and an arrow when it is a rename or copy, folder, name,
+//! status chip, context chip), 16 px, the navigation (arrows and counter), a divider, an SVG's
+//! Text / Preview switch, the View button and ⋯; then, at the trailing edge, Stage file and ×.
+//! The order things give way: 1) the View button shortens to "View"; 2) the old path is cut from
+//! the left and, under `MIN_OLD`, dropped together with its arrow; 3) the folder is cut from the
+//! left, down to nothing; 4) the nav counter drops; 5) the context chip drops; 6) the status chip
+//! drops; 7) last, the file name is cut. Each step happens only when the ones before it weren't
+//! enough; below the last the row is clipped. The switch, ⋯, Stage file and × never give way.
 
 /// The widths of the header's parts (0 for a part that isn't there). The groups' widths include
 /// the spacing inside them; `divider` is a divider with its margins, `gap` the space between the
@@ -15,6 +16,10 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(super) struct Widths {
     pub icon: f32,
+    /// The old path's text of a rename or copy, whole.
+    pub old: f32,
+    /// The arrow after it with its gap on each side; counted only while the old path shows.
+    pub arrow: f32,
     pub folder: f32,
     pub name: f32,
     pub status: f32,
@@ -40,6 +45,8 @@ pub(super) struct Widths {
 pub(super) struct Plan {
     /// The View button reads "View".
     pub view_short: bool,
+    /// The room for the old path (cut from the left to fit); 0 hides it and its arrow.
+    pub old_w: f32,
     /// The room for the folder (cut from the left to fit); 0 hides it.
     pub folder_w: f32,
     pub counter: bool,
@@ -61,6 +68,8 @@ pub(super) const TOOLS_SPACE: f32 = super::controls::SPACE;
 const TRAILING_GAP: f32 = super::actions::TRAILING_GAP;
 /// A folder cut narrower than this is dropped instead.
 const MIN_FOLDER: f32 = 28.0;
+/// An old path cut narrower than this is dropped instead, with its arrow.
+const MIN_OLD: f32 = 28.0;
 
 /// The space before the View group: a divider after the navigation, else 16 px after the file.
 pub(super) fn tools_lead(w: &Widths) -> f32 {
@@ -71,6 +80,9 @@ impl Plan {
     /// The file's width under this plan.
     fn file_width(&self, w: &Widths) -> f32 {
         let mut x = w.icon + w.gap + self.folder_w + self.name_w;
+        if self.old_w > 0.0 {
+            x += self.old_w + w.arrow;
+        }
         if self.status && w.status > 0.0 {
             x += w.gap + w.status;
         }
@@ -107,14 +119,31 @@ impl Plan {
 
 /// The plan for a header `avail` wide (inside its side padding).
 pub(super) fn plan(w: &Widths, avail: f32) -> Plan {
-    let mut p =
-        Plan { view_short: false, folder_w: w.folder, counter: true, context: true, status: true, name_w: w.name, right_width: 0.0 };
+    let mut p = Plan {
+        view_short: false,
+        old_w: w.old,
+        folder_w: w.folder,
+        counter: true,
+        context: true,
+        status: true,
+        name_w: w.name,
+        right_width: 0.0,
+    };
     if p.fits(w, avail) {
         return p;
     }
     if w.view_short > 0.0 && w.view_short < w.view_full {
         p.view_short = true;
         if p.fits(w, avail) {
+            return p;
+        }
+    }
+    if w.old > 0.0 {
+        p.old_w = 0.0;
+        let room = avail - MIN_GAP - p.right(w) - p.left_width(w) - w.arrow;
+        p.old_w = if room >= MIN_OLD { room.min(w.old) } else { 0.0 };
+        // A kept old path was given what is left, so it fits.
+        if p.fits(w, avail) || p.old_w > 0.0 {
             return p;
         }
     }
@@ -146,6 +175,8 @@ mod tests {
     fn widths() -> Widths {
         Widths {
             icon: 16.0,
+            old: 100.0,
+            arrow: 20.0,
             folder: 120.0,
             name: 80.0,
             status: 70.0,
@@ -163,19 +194,20 @@ mod tests {
         }
     }
 
-    const FILE: f32 = 16.0 + 8.0 + 120.0 + 80.0 + 8.0 + 70.0 + 8.0 + 60.0;
+    /// The file's parts: icon, old path with its arrow, folder, name and the two chips.
+    const FILE: f32 = 16.0 + 8.0 + 100.0 + 20.0 + 120.0 + 80.0 + 8.0 + 70.0 + 8.0 + 60.0;
 
     /// The narrowing steps a plan has taken, in the documented order.
-    fn steps(p: &Plan, w: &Widths) -> [bool; 6] {
-        [p.view_short, p.folder_w < w.folder, !p.counter, !p.context, !p.status, p.name_w < w.name]
+    fn steps(p: &Plan, w: &Widths) -> [bool; 7] {
+        [p.view_short, p.old_w < w.old, p.folder_w < w.folder, !p.counter, !p.context, !p.status, p.name_w < w.name]
     }
 
     #[test]
     fn everything_fits_when_wide() {
         let w = widths();
         let p = plan(&w, 1600.0);
-        assert_eq!(steps(&p, &w), [false; 6]);
-        assert_eq!(p.folder_w, w.folder);
+        assert_eq!(steps(&p, &w), [false; 7]);
+        assert_eq!((p.old_w, p.folder_w), (w.old, w.folder));
         assert_eq!(p.right_width, 90.0 + 8.0 + 28.0, "Stage file, 8 px, ×");
         assert_eq!(p.left_width(&w), FILE + 16.0 + 60.0 + 40.0 + 17.0 + 130.0 + 4.0 + 28.0, "the file, 16 px, nav, a divider, View and ⋯");
     }
@@ -185,6 +217,7 @@ mod tests {
         let w = widths();
         let mut last = 0;
         let mut seen_cut_folder = false;
+        let mut seen_cut_old = false;
         for avail in (0..=1600).rev().map(|a| a as f32) {
             let p = plan(&w, avail);
             let s = steps(&p, &w);
@@ -193,31 +226,48 @@ mod tests {
             assert!(s[taken..].iter().all(|t| !t), "{avail}: {s:?}");
             assert!(taken >= last, "{avail}: steps never come back as the header narrows");
             last = taken;
-            if taken < 6 {
+            if taken < 7 {
                 assert!(p.left_width(&w) + MIN_GAP + p.right_width <= avail + 0.01, "{avail}: fits until the last step");
+            }
+            if p.old_w > 0.0 && p.old_w < w.old {
+                seen_cut_old = true;
+                assert!(p.old_w >= MIN_OLD, "{avail}: a cut old path keeps its minimum");
+                assert!(
+                    p.folder_w == w.folder && p.counter && p.context && p.status && p.name_w == w.name,
+                    "{avail}: the old path before the folder"
+                );
+            }
+            if p.folder_w < w.folder {
+                assert_eq!(p.old_w, 0.0, "{avail}: the old path is gone once the folder is touched");
             }
             if p.folder_w > 0.0 && p.folder_w < w.folder {
                 seen_cut_folder = true;
                 assert!(p.counter && p.context && p.status && p.name_w == w.name, "{avail}: a cut folder before anything else");
             }
+            // The arrow is counted only while the old path shows.
+            let no_arrow = Widths { arrow: 0.0, ..w };
+            let counted = p.left_width(&w) - p.left_width(&no_arrow);
+            assert_eq!(counted, if p.old_w > 0.0 { w.arrow } else { 0.0 }, "{avail}");
             assert_eq!(p.right_width, 126.0, "{avail}: Stage file and × never give way");
         }
-        assert_eq!(last, 6, "the name is cut last");
+        assert_eq!(last, 7, "the name is cut last");
+        assert!(seen_cut_old, "the old path is cut before it is dropped");
         assert!(seen_cut_folder, "the folder is cut before it is dropped");
     }
 
     #[test]
     fn absent_parts_take_no_room() {
-        let w = Widths { more: 0.0, view_full: 0.0, view_short: 0.0, primary: 0.0, ..widths() };
+        let w = Widths { more: 0.0, view_full: 0.0, view_short: 0.0, primary: 0.0, old: 0.0, arrow: 0.0, ..widths() };
+        let file = FILE - 100.0 - 20.0;
         let p = plan(&w, 1600.0);
         assert_eq!(p.right_width, 28.0, "× alone");
-        assert_eq!(p.left_width(&w), FILE + 16.0 + 60.0 + 40.0, "no divider without a View group");
+        assert_eq!(p.left_width(&w), file + 16.0 + 60.0 + 40.0, "no divider without a View group");
         // Nothing to shorten: the folder is the first to give way.
         let p = plan(&w, 400.0);
         assert!(!p.view_short && p.folder_w < w.folder);
         // Without navigation the View group follows the file after 16 px.
-        let w = Widths { nav_arrows: 0.0, counter: 0.0, ..widths() };
-        assert_eq!(plan(&w, 1600.0).left_width(&w), FILE + 16.0 + 130.0 + 4.0 + 28.0);
+        let w = Widths { nav_arrows: 0.0, counter: 0.0, old: 0.0, arrow: 0.0, ..widths() };
+        assert_eq!(plan(&w, 1600.0).left_width(&w), file + 16.0 + 130.0 + 4.0 + 28.0);
     }
 
     #[test]

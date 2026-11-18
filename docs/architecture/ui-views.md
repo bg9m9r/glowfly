@@ -114,6 +114,7 @@ start with `state/`, `update/` or `ui/`.
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode; the picked files are drawn selected.
 - `details_wip_picks.rs`: a picked row's menu while several files of its list are picked: Stage or Unstage, Stash, Discard changes and Delete, each naming the count and off with the reason a pick blocks it (`PickBlocks`); for Conflicted Files Mark N files resolved, for Resolved Files Mark N files conflicted (`conflict_files.rs` draws those lists' picks). Tests in `snapshot_tests/snapshot_tests_wip_picks.rs` and `snapshot_tests_conflict_picks.rs`.
 - `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
+- `file_old_path.rs`: the weak old-path note after a renamed or copied file's path in a file row, and how it gives way (cut, then dropped, before the path is cut); the Stash dialog's checklist shares it.
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames by which list it is), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.
 - `list_focus.rs`: a file list that takes the keyboard focus as one Tab stop: its focus target, the keys it takes before any binding (`state/list_keys.rs`; each list names which beyond its moves, `KeySet`), and its arrows kept from egui's focus moves from its first frame on (`restore`). Reuse it for any other file list.
@@ -134,13 +135,13 @@ start with `state/`, `update/` or `ui/`.
 ## Diff
 
 - `diff/header/`: the diff's file header, one 48 px row built from `state/diff_header.rs`'s model.
-- `diff/header/identity.rs`: the file's icon, folder, name and chips.
+- `diff/header/identity.rs`: the file's icon, a rename's old path with its painted arrow, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
 - `diff/header/view_menu.rs`: the View button and its menu.
 - `diff/header/svg_switch.rs`: the Text / Preview switch of an SVG that git diffs as text.
 - `diff/header/actions.rs`: the ⋯ menu of file actions and the diff tool, the small secondary Stage or Unstage, and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
-- `diff/header/fit.rs`: which parts fit, in narrowing order.
+- `diff/header/fit.rs`: which parts fit, in narrowing order (the old path gives way before the folder).
 - `diff/text_sel.rs`: text selection in the diff's code: the press, double- and triple-click, Shift-click and drag with auto-scroll past the edge, the opaque `code_sel` (`code_sel_dim` without the keyboard) behind the glyphs with its nub, the diff's own keyboard focus, Ctrl+C through `state/diff_text.rs`'s `copy`, Ctrl+A (`DiffMsg::SelectAllText`) and the code's screen-reader document node.
 - `diff/row_menu.rs`: the diff's right-click menu over a line's code (Copy, Copy with diff signs, Copy lines, Copy hunk as patch, then the hunk header's line actions on the selected or clicked line), kept or dropping the text selection by where the click lands, and Shift+F10 at the topmost selected line.
 - `diff/preview.rs`: a binary diff's body: the image's Before and After over a checkerboard, Added and Deleted placeholders, a card for an image that can't be decoded, or both sizes for any other binary; an SVG on Preview (or stored binary) shows the same way, with too-large, unreadable, linked-files and loading states, and a font as its specimen (`diff/preview_font.rs`) with the same states.

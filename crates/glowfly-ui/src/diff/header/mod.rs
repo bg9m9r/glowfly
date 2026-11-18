@@ -1,5 +1,6 @@
 //! The diff header: one 48 px row on the raised surface, a 1 px border under it. From the left:
-//! the file (its type icon, folder and name, a status chip and a context chip), 16 px, previous /
+//! the file (its type icon, a rename's old path and an arrow, folder and name, a status chip and
+//! a context chip), 16 px, previous /
 //! next change with a counter, a thin divider, an SVG's Text / Preview switch (`svg_switch`), the
 //! View menu and ⋯ (the file actions and the diff tool); at the trailing edge Stage file or Unstage file (secondary, small) and Close. The
 //! header has no filled button (`docs/COLOUR.md`, "The accent"). The row never wraps: `fit::plan`
@@ -112,6 +113,9 @@ fn leading_tools(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &fit::Plan, key
     }
 }
 
+#[cfg(test)]
+#[path = "rename_tests.rs"]
+mod rename_tests;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

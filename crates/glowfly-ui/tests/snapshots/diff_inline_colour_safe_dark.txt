@@ -64,7 +64,7 @@ Button "Show staged files as tree"
 Button "Unstage all"
 Label "Staged files (1)"
 Unknown "Staged files (1)"
-Button "sign-in.txt" [off]
+Button "login.txt to sign-in.txt" [off]
 Label "Renamed"
 Label "Commit"
 TextInput "Commit summary"
@@ -127,6 +127,8 @@ painted:
   "A"
   "D"
   "R"
+  "sign-in.txt"
+  "from login.txt"
   "Summary"
   "Description"
   "M"

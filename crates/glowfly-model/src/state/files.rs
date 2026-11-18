@@ -145,6 +145,11 @@ pub fn staged_rename(snap: &glowfly_core::repo::Snapshot, path: &str) -> bool {
     snap.staged.iter().any(|f| f.path == path && f.status == 'R')
 }
 
+/// The old path of the staged rename whose new path is `path`, when it is UTF-8.
+pub fn staged_rename_from<'a>(snap: &'a glowfly_core::repo::Snapshot, path: &str) -> Option<&'a str> {
+    snap.staged.iter().find(|f| f.path == path && f.status == 'R').and_then(|f| f.renamed_from.as_deref())
+}
+
 /// Whether deleting `path` also takes it out of the index: it is staged as new or as a staged
 /// rename's new path.
 pub fn unstages_on_delete(snap: &glowfly_core::repo::Snapshot, path: &str) -> bool {

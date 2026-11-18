@@ -13,7 +13,7 @@ use crate::keymap::BindingId;
 use crate::msg::Msg;
 use crate::msg::WorkFileMsg;
 use crate::state::files::TrashOffer;
-use crate::state::files::{TRASH, staged_rename, unstages_on_delete};
+use crate::state::files::{TRASH, staged_rename, staged_rename_from, unstages_on_delete};
 use crate::state::path_hazards::hazard_of;
 use crate::state::{AppState, Modal};
 use glowfly_core::i18n::Lang;
@@ -36,7 +36,8 @@ pub(super) fn ask_delete(st: &mut AppState, path: String) {
     let hint = st.keymap.paren(BindingId::Undo);
     if unstages_on_delete(snap, &path) {
         let t = st.settings.lang();
-        st.modal = Some(unstage_confirm(t, path.clone(), staged_rename(snap, &path), gone, unstaged.is_some(), mode, &hint));
+        let staged = if staged_rename(snap, &path) { Staged::Renamed(staged_rename_from(snap, &path)) } else { Staged::New };
+        st.modal = Some(unstage_confirm(t, path.clone(), staged, gone, unstaged.is_some(), mode, &hint));
         return;
     }
     if gone {
@@ -112,33 +113,49 @@ pub(super) fn discard_seen(st: &mut AppState, path: String, seen: Option<Box<See
     }
 }
 
-/// The confirmation for `path`, staged as new or (`renamed`) as a staged rename's new path:
+/// What a path whose deletion unstages it is staged as.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Staged<'a> {
+    New,
+    /// A rename's new path, with the old path when it is known (UTF-8).
+    Renamed(Option<&'a str>),
+}
+
+/// The confirmation for `path`, staged as new or as a staged rename's new path (`staged`):
 /// unstage only when the working copy is `gone`, otherwise unstage and delete the way `mode`
-/// says, warning about unstaged `edits`. `hint` is the Undo key (" (Ctrl+Z)").
-pub(super) fn unstage_confirm(t: Lang, path: String, renamed: bool, gone: bool, edits: bool, mode: DeleteMode, hint: &str) -> Modal {
+/// says, warning about unstaged `edits`. `hint` is the Undo key (" (Ctrl+Z)"). A rename whose old
+/// path is known names it.
+pub(super) fn unstage_confirm(t: Lang, path: String, staged: Staged, gone: bool, edits: bool, mode: DeleteMode, hint: &str) -> Modal {
+    let renamed = staged != Staged::New;
     if gone {
-        let body = if renamed {
-            format!(
+        let body = match staged {
+            Staged::Renamed(Some(old)) => t.trf("files.unstage_gone.renamed_from", &[("path", &path), ("old", &old)]),
+            Staged::Renamed(None) => format!(
                 "{path} is staged as a rename but is no longer in your working tree. This removes the rename from the staging area; the file it was renamed from shows as deleted in your working tree, and discarding that brings back its committed version."
-            )
-        } else {
-            t.trf("files.unstage_gone.body", &[("path", &path), ("hint", &hint)])
+            ),
+            Staged::New => t.trf("files.unstage_gone.body", &[("path", &path), ("hint", &hint)]),
         };
         let then = Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageGone(path))));
         return Modal::Confirm { title: "Unstage deleted file".into(), body, button: "Unstage".into(), then };
     }
     let trash = mode == DeleteMode::Trash;
-    let mut body = match (renamed, trash) {
-        (true, true) => format!(
+    let mut body = match (staged, trash) {
+        (Staged::Renamed(Some(old)), true) => {
+            t.trf("files.unstage_delete.trash_renamed_from", &[("path", &path), ("old", &old), ("trash", &TRASH), ("hint", &hint)])
+        }
+        (Staged::Renamed(Some(old)), false) => {
+            t.trf("files.unstage_delete.permanent_renamed_from", &[("path", &path), ("old", &old), ("hint", &hint)])
+        }
+        (Staged::Renamed(None), true) => format!(
             "{path} is staged as a rename. It goes to the {TRASH} and the rename is unstaged: the file it was renamed from stays deleted in your working tree as an unstaged change, and discarding that brings back its committed version. Undo{hint} brings back the file and the staged rename."
         ),
-        (true, false) => t.trf("files.unstage_delete.permanent_renamed", &[("path", &path), ("hint", &hint)]),
-        (false, true) => {
+        (Staged::Renamed(None), false) => t.trf("files.unstage_delete.permanent_renamed", &[("path", &path), ("hint", &hint)]),
+        (Staged::New, true) => {
             format!(
                 "{path} is a new file in the staging area. It goes to the {TRASH} and leaves the staging area; Undo{hint} stages it again."
             )
         }
-        (false, false) => t.trf("files.unstage_delete.permanent_new", &[("path", &path), ("hint", &hint)]),
+        (Staged::New, false) => t.trf("files.unstage_delete.permanent_new", &[("path", &path), ("hint", &hint)]),
     };
     // Undo keeps the edits in the permanent case too: they are the bytes it puts back.
     if edits && trash {
@@ -241,8 +258,17 @@ pub(super) enum UndoNote<'a> {
 }
 
 /// The toast after `path` was deleted (and, when `unstaged`, taken out of the index), with
-/// `note` about Undo.
-pub(super) fn deleted_text(path: &str, mode: DeleteMode, deleted: Deleted, unstaged: bool, note: UndoNote) -> String {
+/// `note` about Undo. `renamed_from`: the old path of the staged rename that unstaging dissolved,
+/// which the toast names before the Undo note.
+pub(super) fn deleted_text(
+    t: Lang,
+    path: &str,
+    mode: DeleteMode,
+    deleted: Deleted,
+    unstaged: bool,
+    renamed_from: Option<&str>,
+    note: UndoNote,
+) -> String {
     let also = if unstaged { " and removed it from the staging area" } else { "" };
     let mut text = match (deleted, mode) {
         (Deleted::Trashed, DeleteMode::HomeTrash) => format!("Moved {path} to the Trash in your home folder{also}."),
@@ -255,6 +281,10 @@ pub(super) fn deleted_text(path: &str, mode: DeleteMode, deleted: Deleted, unsta
         }
         (Deleted::Permanently, _) => format!("Deleted {path}{also}."),
     };
+    if let Some(old) = renamed_from.filter(|_| unstaged) {
+        text.push(' ');
+        text.push_str(&t.trf("files.unstage_delete.rename_unstaged", &[("old", &old)]));
+    }
     match (note, deleted) {
         (UndoNote::None, _) | (UndoNote::TooLarge, Deleted::LinkRemoved) => {}
         (UndoNote::Undo(hint), _) => text.push_str(&format!(" Undo{hint} puts it back.")),

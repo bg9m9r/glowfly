@@ -88,12 +88,15 @@ impl StashPushForm {
 }
 
 /// The working-tree files: unstaged and staged entries merged by path (the unstaged status
-/// wins), sorted by path, untracked included. A row keeps the hazard either list gives it.
+/// wins), sorted by path, untracked included. A row keeps the hazard either list gives it, and
+/// the old path of a staged rename under an unstaged change to the same path.
 pub fn wip_files(snap: &Snapshot) -> Vec<FileEntry> {
     let mut by_path: BTreeMap<&str, FileEntry> = snap.staged.iter().map(|f| (f.path.as_str(), f.clone())).collect();
     for f in &snap.unstaged {
-        let hazard = f.hazard.clone().or_else(|| by_path.get(f.path.as_str()).and_then(|s| s.hazard.clone()));
-        by_path.insert(f.path.as_str(), FileEntry { hazard, ..f.clone() });
+        let staged = by_path.get(f.path.as_str());
+        let hazard = f.hazard.clone().or_else(|| staged.and_then(|s| s.hazard.clone()));
+        let renamed_from = f.renamed_from.clone().or_else(|| staged.and_then(|s| s.renamed_from.clone()));
+        by_path.insert(f.path.as_str(), FileEntry { hazard, renamed_from, ..f.clone() });
     }
     by_path.into_values().collect()
 }
@@ -136,3 +139,7 @@ pub fn label(scope: StashScope) -> &'static str {
         StashScope::Files => "Stash selected files",
     }
 }
+
+#[cfg(test)]
+#[path = "stashes_tests.rs"]
+mod tests;
