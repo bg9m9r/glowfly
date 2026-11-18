@@ -92,3 +92,16 @@ source file, update its line here. Each section lists one feature's files in eve
 - `update/pick.rs`, `update/pick_done.rs`: the cherry-pick or revert job and the toast naming commits that changed nothing.
 - `ui/details_multi.rs`: the details panel's list, gap note and combined list.
 - `ui/details_stacked.rs`: each commit's own changes stacked.
+
+## Chapters view (`ChaptersMsg`)
+
+- Files: `chapters.rs` (core), `settings/history_mode.rs`, `msg/chapters.rs`, `state/chapters.rs`, `state/chapters/moves.rs`, `state/chapters/words.rs`, `update/chapters.rs`, `ui/graph/view_switch.rs`, `ui/graph/chapters/`.
+- Grouping is pure and re-run by `update/chapters.rs::settle` when the snapshot's stamp (loaded commits, HEAD, refs, tags) changes; nothing else about refreshing or loading more history knows about it.
+- `chapters.rs`: HEAD's first-parent history as chapters; `chapters/words.rs` and `chapters/release.rs` hold its text rules and the release-tag heuristic.
+- `settings/history_mode.rs`: the per-repository choice between the graph and the list.
+- `msg/chapters.rs`: the switch, expanding a chapter and selecting one.
+- `state/chapters.rs`: the choice, the grouping, what is expanded, the rows, and what a chapter selects (its commit, or its run as one line of commits through `MultiSelection::build_line`).
+- `state/chapters/moves.rs`: moving over the rows with the keyboard; `state/chapters/words.rs`: the row's texts.
+- `update/chapters.rs`: the handler and `settle`.
+- `ui/graph/view_switch.rs`: the Commits | Chapters switch; an open search bar shows the Commits view and disables Chapters with the reason.
+- `ui/graph/chapters/`: the list, its rows and its keys.

@@ -80,6 +80,8 @@ Button "Copy" [disabled]
 Button "Paste"
 Button "Select all"
 Button "Clear"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

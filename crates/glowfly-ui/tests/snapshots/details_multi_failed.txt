@@ -63,6 +63,8 @@ Label "Couldn't compare these commits"
 Label "Could not find the merge base of these commits"
 Button "Try again"
 Button "Copy details"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

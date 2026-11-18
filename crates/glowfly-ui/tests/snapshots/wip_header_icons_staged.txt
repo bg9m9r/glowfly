@@ -65,6 +65,8 @@ CheckBox "Nach dem Commit pushen" [off]
 Button "Committen" [disabled]
 Button "Weitere Commit-Optionen"
 Label "Schreibe eine Zusammenfassung, um zu committen."
+Button "Commits" [on]
+Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

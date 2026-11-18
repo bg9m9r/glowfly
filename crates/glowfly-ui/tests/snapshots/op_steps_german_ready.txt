@@ -67,6 +67,8 @@ CheckBox "Letzten Commit nachbessern" [disabled, off]
 CheckBox "Nach dem Commit pushen" [off]
 Button "Merge committen"
 Button "Weitere Commit-Optionen"
+Button "Commits" [on]
+Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

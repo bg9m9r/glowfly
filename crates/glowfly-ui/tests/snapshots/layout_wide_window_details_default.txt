@@ -59,6 +59,8 @@ Label "1 changed file"
 Unknown "1 changed file"
 Button "app.txt" [off]
 Label "Modified"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

@@ -68,6 +68,8 @@ CheckBox "Amend last commit" [off]
 CheckBox "Push after committing" [off]
 Button "Commit 2 files"
 Button "More commit options"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

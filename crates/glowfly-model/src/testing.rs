@@ -63,6 +63,31 @@ pub fn long_repo(name: &str, count: usize) -> PathBuf {
     dir
 }
 
+/// A repository whose `main` holds empty commits `(who, seconds, summary)`, oldest first: `who`
+/// is the author and committer (name `who`, email `<who>@example.com`), `seconds` both dates
+/// (Unix seconds). For tests of the Chapters view, whose grouping reads authors and times.
+pub fn history_repo(name: &str, commits: &[(&str, i64, &str)]) -> PathBuf {
+    glowfly_core::partial::allow_extension();
+    let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    git(&dir, &["init", "-q", "-b", "main"]);
+    set_identity(&dir);
+    for &(who, secs, msg) in commits {
+        let (email, date) = (format!("{who}@example.com"), format!("@{secs} +0000"));
+        let env = [
+            ("GIT_AUTHOR_NAME", who),
+            ("GIT_AUTHOR_EMAIL", email.as_str()),
+            ("GIT_COMMITTER_NAME", who),
+            ("GIT_COMMITTER_EMAIL", email.as_str()),
+            ("GIT_AUTHOR_DATE", date.as_str()),
+            ("GIT_COMMITTER_DATE", date.as_str()),
+        ];
+        glowfly_core::testkit::git_env(&dir, &["commit", "-q", "--allow-empty", "-m", msg], &env);
+    }
+    dir
+}
+
 /// Undoes `scratch_repo`'s uncommitted edit of a.txt, for tests of checkouts, pulls and merges
 /// the auto-stash prompt would otherwise stop to ask about.
 pub fn clean_tree(dir: &Path) {

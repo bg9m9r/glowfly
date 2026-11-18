@@ -72,6 +72,8 @@ Button "src/lib/lex.rs" [off]
 Label "Added"
 Button "notes.txt" [off]
 Label "Added"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

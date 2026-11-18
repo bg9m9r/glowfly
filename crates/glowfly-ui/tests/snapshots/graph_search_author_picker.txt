@@ -74,6 +74,8 @@ TextInput "Filter authors"
 Button "Ada Lovelace <ada@example.com>" [off]
 Button "Grace Hopper <grace@example.com>" [off]
 Button "Close"
+Button "Commits" [on]
+Button "Chapters" [disabled, off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

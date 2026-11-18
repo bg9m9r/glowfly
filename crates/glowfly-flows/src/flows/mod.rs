@@ -43,6 +43,7 @@ mod branch_delete_tests;
 mod branch_sync_tests;
 mod branch_tests;
 mod build_status_tests;
+mod chapters_tests;
 mod cherry_pick_tests;
 mod clone_https_tests;
 mod clone_service_tests;
