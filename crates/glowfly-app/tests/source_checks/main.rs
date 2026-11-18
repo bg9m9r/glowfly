@@ -7,7 +7,7 @@
 //! functions only shrinking; `access_names` ratchets controls the view snapshots show without a
 //! screen-reader name; `architecture_docs` checks that `docs/architecture/` names every source
 //! file; `config_values` keeps git config entry values read through glowfly-core's
-//! `config_entry`; `log_encoding` keeps the git commands that print commit text on `gitcli::utf8_args`.
+//! `config_entry`; `log_encoding` keeps the git commands that print commit text on `gitcli::utf8_args`;
 //! `stash_actions` keeps the messages that act on one stash behind their builder.
 //! All of them read the sources through glowfly-ui's string-aware
 //! `view_checks/support/lexer.rs`.
