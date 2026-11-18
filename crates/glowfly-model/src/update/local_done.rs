@@ -41,7 +41,7 @@ pub(super) fn partial_text(t: glowfly_core::i18n::Lang, error: &WriteFailed) -> 
 /// After a local op: a save that failed can be tried again; one that worked moves the conflict
 /// view on once the status shows the file resolved (`recorded`: it changed the file, so its
 /// toast offers Undo).
-fn settle(st: &mut AppState, failed: bool, recorded: bool, now: Instant, fx: &mut Vec<Effect>) {
+pub(super) fn settle(st: &mut AppState, failed: bool, recorded: bool, now: Instant, fx: &mut Vec<Effect>) {
     let mut saved = None;
     // A conflict change that still waits for the trust prompt hasn't run: this is the result
     // of another operation, and the view stays marked for the change.

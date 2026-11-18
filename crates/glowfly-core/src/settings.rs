@@ -253,6 +253,8 @@ pub struct Settings {
     /// Preferences > External tools.
     #[serde(default)]
     pub external_tools: ExternalTools,
+    /// Pick trivial conflicts when a file opens in the conflict view (Preferences > External tools).
+    pub conflict_auto_picks: bool,
     /// Named profiles (Preferences > Profile): identities, and the accounts and preferences of
     /// the ones not current; seeded from the global git identity when the page first opens.
     pub profiles: Vec<Profile>,

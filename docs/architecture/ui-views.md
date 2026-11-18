@@ -110,7 +110,7 @@ start with `state/`, `update/` or `ui/`.
 - `details_commit.rs`: the selected commit's details, title first: the title as git splits it, the author's row, the body block, the files.
 - `details_chips.rs`: the details' row of quiet chips for the SHA, parents and committer, drawn by `widgets/chip.rs`.
 - `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
-- `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
+- `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`, whose Conflicted Files header always has a more-actions menu holding Take the trivial picks in all files (Mark all resolved joins it when it doesn't fit).
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode; the picked files are drawn selected.
 - `details_wip_picks.rs`: a picked row's menu while several files of its list are picked: Stage or Unstage, Stash, Discard changes and Delete, each naming the count and off with the reason a pick blocks it (`PickBlocks`); for Conflicted Files Mark N files resolved, for Resolved Files Mark N files conflicted (`conflict_files.rs` draws those lists' picks). Tests in `snapshot_tests/snapshot_tests_wip_picks.rs` and `snapshot_tests_conflict_picks.rs`.
 - `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
@@ -291,6 +291,7 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/ssh/service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
 - `prefs/ssh/sources.rs`: Preferences > SSH, under the key cards: the `~/.ssh/config` IdentityFile entries that can't be listed as cards (each with where it is and why), and the keys only the agent holds, as compact cards that can only copy their public key.
 - `prefs/ssh/windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
+- `prefs/tools.rs`: Preferences > External tools: the editor, diff tool and merge tool with their arguments, then the Conflict view section with its one switch, Pick trivial conflicts when a file opens.
 - `prefs/trusted_repos.rs`: Preferences > Trusted repositories: the intro, the filter (from eight decisions on) and Forget missing folders, then the list or why it is empty.
 - `prefs/trusted_repos_row.rs`: Preferences > Trusted repositories: one decision's row: name, decision chip and Revoke or Forget; under it the path, date, source, heir count and a painted Not found mark.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.

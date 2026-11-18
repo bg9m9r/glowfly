@@ -3,10 +3,12 @@
 //! warning before marking files with markers left resolved runs the marker check through the
 //! runner, so it is the app crate's (`runner_snapshots`).
 
-use super::snapshot_tests::{render, with_conflict};
+use super::snapshot_tests::{harness, render, with_conflict};
+use crate::snapshot_check::CheckSnapshot;
 pub(crate) use crate::snapshot_fixtures::scenes::{fill_lists, merging};
+use egui_kittest::kittest::Queryable;
 use glowfly_core::conflict_pick::ChunkPick;
-use glowfly_core::repo::Side;
+use glowfly_core::repo::{Hazard, Side};
 use glowfly_model::msg::{ConflictMsg, Msg};
 use glowfly_model::state::AppState;
 use std::path::PathBuf;
@@ -20,6 +22,42 @@ fn wip_conflicted_and_resolved() {
     assert_eq!(st.session.conflict_files.count_note(glowfly_core::i18n::Lang::En, "beta.txt"), Some(("no markers left".into(), true)));
     assert_eq!(st.session.conflict_files.resolved_rows(st.snap.as_ref().unwrap()).len(), 1);
     render("wip_conflicted_and_resolved", st, true);
+    super::snapshot_tests::remove_fixture(&dir);
+}
+
+/// The Conflicted Files header's more-actions button opens a menu with Take the trivial picks in
+/// all files; the item sends its message.
+#[test]
+fn conflicted_files_more_menu() {
+    let (mut st, dir) = merging("conflict-files-menu", true);
+    fill_lists(&mut st, &dir);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("Mark all resolved").is_some(), "Mark all resolved stays the visible button");
+    h.get_by_label("More actions for conflicted files").click();
+    h.run();
+    h.check_snapshot("conflicted_files_more_menu");
+    assert!(!h.get_by_label("Take the trivial picks in all files").is_disabled());
+    h.get_by_label("Take the trivial picks in all files").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Conflict(ConflictMsg::TakeTrivialPicks))), "{}", h.state().1.len());
+    drop(h);
+    super::snapshot_tests::remove_fixture(&dir);
+}
+
+#[test]
+fn take_trivial_is_off_when_no_name_can_be_given_to_git() {
+    let (mut st, dir) = merging("conflict-files-menu-off", true);
+    fill_lists(&mut st, &dir);
+    for f in st.snap.as_mut().unwrap().unstaged.iter_mut().filter(|f| f.status == '!') {
+        f.hazard = Some(Hazard::NotUtf8(vec![0xff]));
+    }
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("More actions for conflicted files").click();
+    h.run();
+    assert!(h.get_by_label("Take the trivial picks in all files").is_disabled());
+    drop(h);
     super::snapshot_tests::remove_fixture(&dir);
 }
 

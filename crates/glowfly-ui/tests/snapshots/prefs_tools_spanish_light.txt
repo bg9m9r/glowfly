@@ -58,6 +58,11 @@ Label "{base} es el ancestro común (un archivo vacío…"
 Link "Más información"
 Label "Argumentos"
 Button "Restaurar los argumentos por defecto"
+Label "Vista de conflictos"
+Label "Conflictos triviales"
+CheckBox "Elegir los conflictos triviales al abrir un archivo" [on]
+Label "Un conflicto es trivial cuando un lado dejó las…"
+Link "Más información"
 painted:
   "El programa que Glowfly inicia para abrir archivos y\nrepositorios. Déjalo vacío para no usar ninguno."
   "Estos argumentos tienen una comilla sin cerrar; no se pueden\nusar hasta que se corrija."

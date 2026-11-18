@@ -5,7 +5,7 @@ use crate::flows::conflict_files_tests::both_resolved;
 use crate::flows::conflict_tests::two_conflicts;
 use crate::flows::{drive, scratch_repo, state};
 use glowfly_model::effect::ConflictEffect;
-use glowfly_model::effect::{ConflictRead, Effect};
+use glowfly_model::effect::{ConflictRead, Effect, FilesEffect, LocalOp};
 use glowfly_model::msg::{ConflictMsg, Msg, PaletteMsg, RepoMsg};
 use glowfly_model::state::palette::{PaletteCommand as C, entries};
 use glowfly_model::state::{AppState, Modal};
@@ -69,5 +69,29 @@ fn resolved_files_can_be_marked_conflicted_from_the_palette() {
     assert!(body.starts_with("Mark a.txt conflicted again?"), "{body}");
     assert!(matches!(*then, Msg::Conflict(ConflictMsg::MarkConflicted(ref p)) if *p == owned(&["a.txt"])));
     assert_eq!(C::MarkConflicted("a.txt".into()).recall_key(), None, "one file isn't remembered");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn take_trivial_picks_is_listed_while_files_are_conflicted() {
+    let take = |st: &AppState| {
+        entries(st).into_iter().filter(|e| e.label.starts_with("Take the trivial")).map(|e| (e.label, e.detail)).collect::<Vec<_>>()
+    };
+    let dir = scratch_repo("pc-trivial-clean");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert!(take(&st).is_empty(), "nothing is conflicted");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    let dir = two_conflicts("pc-trivial");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    assert_eq!(take(&st), [("Take the trivial picks in all files".to_owned(), Some("2 files".to_owned()))]);
+    let fx = run_cmd(&mut st, C::TakeTrivialPicks);
+    let sent = fx.into_iter().any(|e| {
+        matches!(e.unsealed(), Effect::Files(FilesEffect::LocalOp { op: LocalOp::TakeTrivialPicks(p), .. }) if p == owned(&["a.txt", "b.txt"]))
+    });
+    assert!(sent, "the op is sent for both files");
+    assert_eq!(C::TakeTrivialPicks.recall_key(), Some("take-trivial-picks"));
     let _ = std::fs::remove_dir_all(&dir);
 }

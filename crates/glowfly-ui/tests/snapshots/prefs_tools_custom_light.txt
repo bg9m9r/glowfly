@@ -56,6 +56,11 @@ Link "Learn more"
 Label "{output} is missing, so the tool won't be given that version."
 Label "Arguments"
 Button "Restore default arguments"
+Label "Conflict view"
+Label "Trivial conflicts"
+CheckBox "Pick trivial conflicts when a file opens" [on]
+Label "A conflict is trivial when one side left the lines…"
+Link "Learn more"
 painted:
   "The program Glowfly starts to open files and repositories. Leave\nit empty for none."
   "The program that compares two versions of a file. Leave it empty\nto use the diff tool Git config names (diff.tool), if any."

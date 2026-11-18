@@ -1,5 +1,6 @@
 //! Preferences > External tools: the editor that opens files and the repository, the diff tool
-//! that compares a file's versions, and the merge tool that resolves a conflict (the external
+//! that compares a file's versions, the merge tool that resolves a conflict and, after it, the
+//! conflict view's switch for picking trivial conflicts when a file opens (the external
 //! terminal is on the Terminal page, which shares `program_field` and `warnings`). Each tool's
 //! arguments warn about an unmatched quote, names that are not its placeholders and (diff and
 //! merge tools) the versions they leave out. An empty diff or merge tool field says which tool
@@ -7,7 +8,7 @@
 //! once (the shell saves the settings when they change); Browse… asks update to show a file
 //! dialog.
 
-use super::{help, row, section, text_field, warn};
+use super::{check_row, help, row, section, text_field, warn};
 use crate::widgets::buttons;
 use eframe::egui::Ui;
 use glowfly_core::external_tools::git_config::{GitTools, ToolMode};
@@ -58,6 +59,7 @@ pub fn tools_page(ui: &mut Ui, s: &mut Settings, git: &GitToolsView, msgs: &mut 
 
     diff_section(ui, t, s, git, msgs);
     merge_section(ui, t, s, git, msgs);
+    conflicts_section(ui, t, s);
 }
 
 /// Under an empty diff or merge tool field: the tool git config names for `mode`, what it runs,
@@ -127,6 +129,14 @@ fn merge_section(ui: &mut Ui, t: Lang, s: &mut Settings, git: &GitToolsView, msg
             reset_merge(s);
         }
     });
+}
+
+/// The conflict view: whether a file opens with its trivial conflicts already picked.
+fn conflicts_section(ui: &mut Ui, t: Lang, s: &mut Settings) {
+    section(ui, t.tr("prefs.tools.conflicts.section"));
+    let (label, check, help) =
+        (t.tr("prefs.tools.auto_picks.label"), t.tr("prefs.tools.auto_picks.check"), t.tr("prefs.tools.auto_picks.help"));
+    check_row(ui, label, &mut s.conflict_auto_picks, check, Some(help));
 }
 
 /// A program's text field and its Browse… button.

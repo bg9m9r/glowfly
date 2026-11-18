@@ -28,6 +28,7 @@ mod conflict_check;
 mod conflict_count;
 pub mod conflict_files;
 mod conflict_picks;
+mod conflict_trivial;
 mod custom_commands;
 mod custom_commands_run;
 mod dashboard;

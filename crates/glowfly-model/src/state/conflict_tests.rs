@@ -53,7 +53,7 @@ fn saved_picks_come_back_over_the_automatic_ones() {
     v.opened.insert(2);
     let cleans = CleanEdits::from([(4, vec!["END\n".into()])]);
     let saved = SavedPicks { picks: vec![ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs)], cleans: cleans.clone() };
-    v.set_file_saved(file(), Some(saved));
+    v.set_file_saved(file(), Some(saved), true);
     assert_eq!(v.picks, [ChunkPick::Sides(Choice::Ours), ChunkPick::Sides(Choice::Theirs)]);
     assert_eq!(v.auto, [Some(Trivial::Identical), None], "the automatic pick came back as it was: still tagged");
     assert_eq!((v.restored, &v.cleans, v.user_choices()), (2, &cleans, 0));
@@ -79,4 +79,23 @@ fn picked_counts_every_resolved_chunk_and_reset_asks_only_then() {
     let Msg::ConfirmDanger { body, button, then, .. } = v.reset_msg(Lang::En) else { panic!("asks first") };
     assert_eq!((body.as_str(), button.as_str()), ("Clear the picks of 2 conflicts? Text you typed stays.", "Reset picks"));
     assert!(matches!(*then, Msg::Conflict(ConflictMsg::ConflictReset)));
+}
+
+#[test]
+fn with_automatic_picks_off_nothing_is_picked_but_saved_picks_come_back() {
+    let mut v = ConflictView::loading("f.txt".into());
+    v.set_file_saved(file(), None, false);
+    assert_eq!(v.picks, [ChunkPick::default(), ChunkPick::default()]);
+    assert_eq!(v.auto, [None, None]);
+    assert_eq!(v.current, 0, "starts on the first open chunk");
+
+    let saved = SavedPicks { picks: vec![ChunkPick::Sides(Choice::Ours), ChunkPick::default()], cleans: CleanEdits::new() };
+    v.set_file_saved(file(), Some(saved.clone()), false);
+    assert_eq!(v.picks, [ChunkPick::Sides(Choice::Ours), ChunkPick::default()]);
+    assert_eq!((v.auto.clone(), v.restored, v.current), (vec![None, None], 1, 1));
+
+    v.set_file_saved(file(), Some(saved), true);
+    assert_eq!((v.auto.clone(), v.restored), (vec![Some(Trivial::Identical), None], 1));
+    v.set_file_saved(file(), None, true);
+    assert_eq!((v.picks[0].clone(), v.current), (ChunkPick::Sides(Choice::Ours), 1));
 }

@@ -169,3 +169,17 @@ fn conflict_view_while_the_merge_tool_has_the_file() {
     assert!(h.get_by_label("Mark resolved as is").is_disabled(), "staging now would stage the markers");
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
 }
+
+#[test]
+fn preferences_tools_auto_picks_switch() {
+    use egui_kittest::kittest::Queryable;
+    let mut h = harness_sized(page(ThemeChoice::Dark, ExternalTools::default()), true, eframe::egui::vec2(1400.0, 1420.0));
+    h.run();
+    let check = "Pick trivial conflicts when a file opens";
+    assert!(h.query_by_label("Conflict view").is_some(), "its own section after Merge tool");
+    assert!(h.query_by_label("Trivial conflicts").is_some());
+    assert!(h.state().0.settings.conflict_auto_picks, "on by default");
+    h.get_by_label(check).click();
+    h.run();
+    assert!(!h.state().0.settings.conflict_auto_picks);
+}

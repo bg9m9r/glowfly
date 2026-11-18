@@ -1,6 +1,7 @@
 //! Undo and redo of conflict changes made without the conflict view's editor: Mark resolved
-//! (`git add`), Mark conflicted (`git checkout -m`) and taking one side's whole version or its
-//! deletion (binary, deleted, link and submodule conflicts). Each file's index entries (the
+//! (`git add`), Mark conflicted (`git checkout -m`), taking one side's whole version or its
+//! deletion (binary, deleted, link and submodule conflicts) and taking the trivial picks in
+//! several files at once. Each file's index entries (the
 //! conflict's stages 1 to 3, or its stage-0 entry, or none) and what is on disk at its path are
 //! recorded before and after the change, with the commits the operation in progress names
 //! (MERGE_HEAD and the like). Undo puts the "before" back exactly (`marked_put.rs`,
@@ -29,6 +30,8 @@ pub enum ConflictChange {
     MarkConflicted,
     /// One side's whole version taken (or its deletion, when that side deleted the file).
     Took(Side),
+    /// The trivial picks taken: each file resolved from its stages.
+    TrivialPicks,
 }
 
 /// A stage-0 entry's kept flags: assume-unchanged (`KEPT_FLAGS` of `flags`) and the extended
@@ -255,6 +258,7 @@ pub(super) fn describe(change: ConflictChange, files: &[ConflictFile]) -> String
     match change {
         ConflictChange::MarkResolved => format!("marking {n} resolved"),
         ConflictChange::MarkConflicted => format!("marking {n} conflicted"),
+        ConflictChange::TrivialPicks => format!("taking the trivial picks in {n}"),
         ConflictChange::Took(_) if deleted => format!("deletion of {n} to resolve the conflict"),
         ConflictChange::Took(Side::Ours) => format!("taking our version of {n}"),
         ConflictChange::Took(Side::Theirs) => format!("taking their version of {n}"),
@@ -270,6 +274,7 @@ pub(super) fn wrote(change: ConflictChange, files: &[ConflictFile], redo: bool) 
         (ConflictChange::MarkConflicted, true) | (_, false) => format!("Brought back the {conflicts} in {n}"),
         (ConflictChange::MarkResolved, true) => format!("Marked {n} resolved again"),
         (ConflictChange::Took(_), true) => format!("Resolved {n} again with the same version"),
+        (ConflictChange::TrivialPicks, true) => format!("Resolved {n} again with the trivial picks"),
     }
 }
 

@@ -62,6 +62,7 @@ mod conflict_mark_safety_tests;
 mod conflict_mark_undo_tests;
 mod conflict_picks_tests;
 mod conflict_tests;
+mod conflict_trivial_tests;
 mod conflict_undo_tests;
 mod current_hunk_tests;
 mod custom_commands_palette_tests;

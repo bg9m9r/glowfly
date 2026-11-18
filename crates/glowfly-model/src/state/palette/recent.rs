@@ -87,6 +87,7 @@ impl PaletteCommand {
             C::StageAll => "stage-all",
             C::UnstageAll => "unstage-all",
             C::MarkAllResolved => "mark-all-resolved",
+            C::TakeTrivialPicks => "take-trivial-picks",
             C::MarkAllConflicted => "mark-all-conflicted",
             C::MarkConflicted(_) => return None,
             C::Undo => "undo",

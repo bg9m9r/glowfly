@@ -1,4 +1,4 @@
-use super::conflict_saved::saved_picks_with_limit;
+use super::conflict_saved::{WorkingCopy, saved_picks_with_limit, working_copy, working_copy_with_limit};
 use super::*;
 use crate::conflict_pick::{ChunkPick, render_picks};
 use crate::gitcli::{args, run};
@@ -40,6 +40,8 @@ fn a_partial_save_comes_back() {
     let dir = merging("saved-picks", &[]);
     let f = load_conflict(&dir, "f.txt").unwrap();
     assert_eq!(saved_picks(&dir, &f), None, "git's own markers bring nothing back");
+    assert_eq!(working_copy(&dir, &f), WorkingCopy::Untouched);
+    assert_eq!(working_copy_with_limit(&dir, &f, 10), WorkingCopy::Unreadable);
     let f = save_first_ours(&dir);
     let saved = saved_picks(&dir, &f).expect("the pick comes back");
     assert_eq!(saved.picks, [Choice::Ours.into(), ChunkPick::default()]);

@@ -177,6 +177,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
             let Some(snap) = &st.snap else { return };
             Msg::Conflict(ConflictMsg::MarkResolved(conflicted_paths(snap)))
         }
+        C::TakeTrivialPicks => Msg::Conflict(ConflictMsg::TakeTrivialPicks),
         C::MarkAllConflicted => {
             let paths = restorable_paths(st);
             if paths.is_empty() {

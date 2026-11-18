@@ -4,7 +4,7 @@
 use super::attrs::content_conversion;
 use super::conflict::{ConflictContent, ConflictFile};
 use super::markers::read_text;
-use crate::conflict_restore::{SavedPicks, restore};
+use crate::conflict_restore::{ReadBack, SavedPicks, read_back};
 use git2::{AttrCheckFlags, AttrValue, Repository};
 use std::path::Path;
 
@@ -22,18 +22,55 @@ pub fn saved_picks(workdir: &Path, file: &ConflictFile) -> Option<SavedPicks> {
 
 /// `saved_picks` reading files of at most `max` bytes.
 pub(super) fn saved_picks_with_limit(workdir: &Path, file: &ConflictFile, max: u64) -> Option<SavedPicks> {
+    match working_copy_with_limit(workdir, file, max) {
+        WorkingCopy::Saved(s) => Some(s),
+        _ => None,
+    }
+}
+
+/// How the working file of a conflict stands against its stages.
+#[derive(Clone, Debug, PartialEq)]
+pub(super) enum WorkingCopy {
+    /// Exactly as git wrote it.
+    Untouched,
+    /// Picks saved with markers, or text typed in.
+    Saved(SavedPicks),
+    /// Its markers can't be matched with the conflict.
+    Unmatched,
+    /// Git converts the file (the attribute that says so): the bytes aren't the stages' text.
+    Converted(String),
+    /// Not text, or not a regular text file git left there that can be read.
+    Unreadable,
+}
+
+/// The state of the working file of `file`, reading files of at most `RESTORE_MAX` bytes.
+pub(super) fn working_copy(workdir: &Path, file: &ConflictFile) -> WorkingCopy {
+    working_copy_with_limit(workdir, file, RESTORE_MAX)
+}
+
+/// `working_copy` reading files of at most `max` bytes.
+pub(super) fn working_copy_with_limit(workdir: &Path, file: &ConflictFile, max: u64) -> WorkingCopy {
     if !matches!(file.content, ConflictContent::Text(_)) {
-        return None;
+        return WorkingCopy::Unreadable;
     }
     {
         // Closed before the file is read (Windows locks files that are held open).
-        let repo = Repository::open(workdir).ok()?;
-        if content_conversion(&repo, &file.path).is_some() || ident(&repo, &file.path) {
-            return None;
+        let Ok(repo) = Repository::open(workdir) else { return WorkingCopy::Unreadable };
+        if let Some(attr) = content_conversion(&repo, &file.path) {
+            return WorkingCopy::Converted(attr);
+        }
+        if ident(&repo, &file.path) {
+            return WorkingCopy::Converted("ident".into());
         }
     }
-    let text = String::from_utf8(read_text(workdir, &file.path, max)?).ok()?;
-    restore(file, &text)
+    let Some(text) = read_text(workdir, &file.path, max).and_then(|b| String::from_utf8(b).ok()) else {
+        return WorkingCopy::Unreadable;
+    };
+    match read_back(file, &text) {
+        ReadBack::Untouched => WorkingCopy::Untouched,
+        ReadBack::Saved(s) => WorkingCopy::Saved(s),
+        ReadBack::Unmatched => WorkingCopy::Unmatched,
+    }
 }
 
 /// Whether git expands `$Id$` in `path` (the `ident` attribute).
