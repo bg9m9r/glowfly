@@ -1,20 +1,17 @@
 //! What Glowfly tells about Git LFS outside the preferences page: the main window's banner when
-//! a repository stores files in LFS but git-lfs is missing, the badge on file rows that hold
-//! pointers, and the summary a diff shows instead of pointer text (ui/lfs_banner.rs,
-//! ui/lfs_badge.rs, ui/diff/lfs_note.rs; the state is `lfs::LfsSession`, and the open diff's note
-//! is `session::DiffSlot::lfs`).
+//! a repository stores files in LFS but git-lfs is missing (or older than Glowfly works with: two
+//! forms, each dismissed on its own), the badge on file rows that hold pointers, and the summary
+//! a diff shows instead of pointer text (ui/lfs_banner.rs, ui/lfs_badge.rs, ui/diff/lfs_note.rs;
+//! the state is `lfs::LfsSession`, and the open diff's note is `session::DiffSlot::lfs`).
 
 use super::AppState;
-use super::lfs::{LfsDiffNote, LfsInstall};
+use super::lfs::{LfsDiffNote, LfsInstall, LfsProblem};
+use glowfly_core::i18n::Lang;
+use glowfly_core::lfs;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer, size_text};
 use glowfly_core::paths::same_spelling;
 use std::path::Path;
 
-pub const BANNER_TEXT: &str = "This repository stores files in Git LFS, but git-lfs isn't installed. Changes to those files may be \
-                               committed as regular files instead of LFS pointers.";
-pub const BANNER_SETTINGS: &str = "Git LFS settings…";
-pub const BANNER_GET: &str = "Get Git LFS";
-pub const BANNER_DISMISS: &str = "Dismiss";
 pub const BADGE: &str = "LFS";
 pub const BADGE_TIP: &str = "Stored in Git LFS: Git keeps a small pointer file and git-lfs keeps the content.";
 pub const SUMMARY_SHOW_POINTER: &str = "Show pointer text";
@@ -23,14 +20,28 @@ pub const SHOW_SUMMARY: &str = "Show summary";
 
 const STORED: &str = "Stored in Git LFS";
 
-/// The active workdir when its banner shows: git-lfs is known to be missing, an attributes file
-/// (the root's, a nested one or info/attributes) stores patterns in LFS, and the banner wasn't dismissed for it this session.
-pub fn banner_workdir(st: &AppState) -> Option<&Path> {
+/// The main window's banner: the active workdir and what is wrong with git-lfs.
+pub struct LfsBanner<'a> {
+    pub workdir: &'a Path,
+    pub problem: LfsProblem,
+}
+
+/// The banner when it shows: git-lfs is known to be missing or too old, an attributes file (the
+/// root's, a nested one or info/attributes) stores patterns in LFS, and the banner wasn't
+/// dismissed for that repository and that form this session.
+pub fn banner(st: &AppState) -> Option<LfsBanner<'_>> {
     let snap = st.snap.as_ref()?;
-    let shows = st.lfs.install == LfsInstall::Missing
-        && !snap.lfs_patterns.is_empty()
-        && !st.lfs.banner_dismissed.iter().any(|d| same_spelling(d, &snap.workdir));
-    shows.then_some(snap.workdir.as_path())
+    let problem = st.lfs.install.problem()?;
+    let dismissed = st.lfs.banner_dismissed.iter().any(|(d, p)| *p == problem && same_spelling(d, &snap.workdir));
+    (!snap.lfs_patterns.is_empty() && !dismissed).then_some(LfsBanner { workdir: snap.workdir.as_path(), problem })
+}
+
+/// The banner's text for the form `install` calls for.
+pub fn banner_text(t: Lang, install: &LfsInstall) -> String {
+    match install.too_old() {
+        Some(v) => t.trf("lfs.banner.too_old.text", &[("version", &v), ("min", &lfs::min_text())]),
+        None => t.tr("lfs.banner.missing.text").to_owned(),
+    }
 }
 
 /// The open diff's note when it is for the diff on screen.

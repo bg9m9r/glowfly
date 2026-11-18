@@ -22,7 +22,9 @@ pub enum LfsMsg {
         command: LfsCommand,
         confirmed: bool,
     },
-    /// Check whether git-lfs is installed (at startup).
+    /// Check whether git-lfs is installed and new enough (at startup and after a git switch; also on
+    /// a window focus regain while it is missing or too old, without the Checking state: see
+    /// `update::lfs::window_focused`).
     Detect,
     /// Track a file row's file, extension or folder (file context menu).
     TrackPath(TrackTarget),

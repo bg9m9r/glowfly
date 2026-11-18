@@ -11,7 +11,7 @@ use crate::theme::type_scale;
 use crate::widgets::buttons;
 use eframe::egui::{self, Key, RichText, Ui};
 use glowfly_core::i18n::Lang;
-use glowfly_core::lfs::{LfsCommand, LfsPattern, LfsStatus, PatternSource};
+use glowfly_core::lfs::{self, LfsCommand, LfsPattern, LfsStatus, PatternSource};
 use glowfly_model::lfs::LfsMsg;
 use glowfly_model::msg::FilesMsg;
 use glowfly_model::msg::Msg;
@@ -62,7 +62,7 @@ pub fn lfs_page(ui: &mut Ui, page: &LfsPage, pattern: &mut String, cx: &LfsConte
     let busy = cx.job.is_some();
     match &status.version {
         None => missing(ui, t, &status, msgs),
-        Some(_) if !status.initialized => not_set_up(ui, t, &status, repo, busy, msgs),
+        Some(version) if !status.initialized => not_set_up(ui, t, &status, version, repo, busy, msgs),
         Some(version) => set_up(ui, page, pattern, &status, version, cx, msgs),
     }
 }
@@ -112,9 +112,30 @@ fn missing(ui: &mut Ui, t: Lang, status: &LfsStatus, msgs: &mut Vec<Msg>) {
     }
 }
 
+/// git-lfs is older than Glowfly works with: the warning, how to fix it and the two buttons.
+/// Nothing is shown for a version that is new enough or can't be read.
+fn too_old_note(ui: &mut Ui, t: Lang, version: &str, msgs: &mut Vec<Msg>) {
+    if !lfs::too_old(version) {
+        return;
+    }
+    warn(ui, &t.trf("lfs.page.too_old.warn", &[("version", &version), ("min", &lfs::min_text())]));
+    help(ui, t.tr("lfs.page.too_old.help"));
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        let tip = t.trf("lfs.update.tip", &[("url", &INSTALL_URL)]);
+        if ui.add(buttons::secondary(t.tr("lfs.update.button")).tip(&tip)).clicked() {
+            msgs.push(Msg::OpenUrl(INSTALL_URL.into()));
+        }
+        if ui.add(buttons::secondary(t.tr("lfs.page.check_again.button"))).clicked() {
+            msgs.push(Msg::Lfs(LfsMsg::Reload));
+        }
+    });
+}
+
 /// git-lfs is installed but this repository isn't set up.
-fn not_set_up(ui: &mut Ui, t: Lang, status: &LfsStatus, repo: &str, busy: bool, msgs: &mut Vec<Msg>) {
+fn not_set_up(ui: &mut Ui, t: Lang, status: &LfsStatus, version: &str, repo: &str, busy: bool, msgs: &mut Vec<Msg>) {
     row(ui, t.tr("lfs.page.status.label"), |ui| {
+        too_old_note(ui, t, version, msgs);
         ui.label(RichText::new(t.trf("lfs.page.not_set_up.body", &[("repo", &repo)])).color(color::text()));
         help(ui, t.tr("lfs.page.not_set_up.help"));
         if !status.foreign_hooks.is_empty() {
@@ -138,6 +159,7 @@ fn set_up(ui: &mut Ui, page: &LfsPage, pattern: &mut String, status: &LfsStatus,
     let (t, busy) = (cx.lang, cx.job.is_some());
     row(ui, t.tr("lfs.page.status.label"), |ui| {
         ui.label(RichText::new(t.trf("lfs.page.enabled.body", &[("version", &version)])).color(color::text()));
+        too_old_note(ui, t, version, msgs);
     });
     row(ui, t.tr("lfs.page.patterns.label"), |ui| {
         if status.patterns.is_empty() {

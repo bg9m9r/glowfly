@@ -3,7 +3,7 @@
 //!
 //! What a file row can track (the file, its extension or its folder) is in `track`; which
 //! attributes files the patterns are read from is in `sources`; pointer files are read in
-//! `pointer`.
+//! `pointer`; git-lfs's version and the oldest one Glowfly works with are in `version`.
 //!
 //! Reading the status never runs a git-lfs command that writes: `git lfs track` without
 //! arguments, for example, quietly installs the hooks. Only `git lfs version` runs; the rest is
@@ -17,10 +17,12 @@ use std::path::{Path, PathBuf};
 pub mod pointer;
 mod sources;
 mod track;
+mod version;
 pub use sources::{MAX_BYTES, MAX_NESTED_FILES, PatternSource, patterns_in, repo_patterns, root_patterns};
 pub use track::{
     TrackTarget, check_target, extension, extension_pattern, folder_pattern, literal_glob, track_filename_args, track_targets,
 };
+pub use version::{MIN, min_text, numbers, parse_version, too_old};
 
 /// A pattern an attributes file stores in LFS.
 #[derive(Clone, Debug, PartialEq)]
@@ -60,13 +62,6 @@ impl LfsStatus {
     pub fn installed(&self) -> bool {
         self.version.is_some()
     }
-}
-
-/// The version in `git lfs version` output (`git-lfs/3.7.1 (GitHub; ...)` gives `3.7.1`).
-pub fn parse_version(out: &str) -> Option<String> {
-    let rest = out.lines().next()?.trim().strip_prefix("git-lfs/")?;
-    let version = rest.split_whitespace().next()?;
-    (!version.is_empty()).then(|| version.to_owned())
 }
 
 /// git-lfs's version, or None when `git lfs` isn't available. Runs outside every repository

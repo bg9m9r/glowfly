@@ -19,13 +19,6 @@ pub(super) fn ok(dir: &Path, a: Vec<String>) -> String {
 }
 
 #[test]
-fn version_parsing() {
-    assert_eq!(parse_version("git-lfs/3.7.1 (GitHub; windows amd64; go 1.25.1; git b84b3384)"), Some("3.7.1".into()));
-    assert_eq!(parse_version("git: 'lfs' is not a git command. See 'git --help'."), None);
-    assert_eq!(parse_version(""), None);
-}
-
-#[test]
 fn attributes_parsing() {
     let text = "# comment\r\n\r\n[attr]binary -diff -merge -text\r\n*.psd filter=lfs diff=lfs merge=lfs -text\r\n\
                 *.blend filter=lfs diff=lfs merge=lfs -text lockable\n*.txt text\n\

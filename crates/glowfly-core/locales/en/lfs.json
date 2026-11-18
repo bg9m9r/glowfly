@@ -1,4 +1,7 @@
 {
+  "lfs.banner.missing.text": "This repository stores files in Git LFS, but git-lfs isn't installed. Changes to those files may be committed as regular files instead of LFS pointers.",
+  "lfs.banner.settings.button": "Git LFS settings…",
+  "lfs.banner.too_old.text": "This repository stores files in Git LFS, but git-lfs {version} is too old: Glowfly needs {min} or newer. Checkouts and LFS commands may be slow or fail until you update it.",
   "lfs.menu.adds.tip": "Adds {target} to .gitattributes",
   "lfs.menu.adds_folder.tip": "Adds {target} to .gitattributes (subfolders included)",
   "lfs.menu.checking": "Checking whether Git LFS is installed…",
@@ -46,6 +49,8 @@
   "lfs.page.source.info.tip": "Set in .git/info/attributes, which only this copy of the repository uses and which isn't committed. To stop tracking it, edit that file.",
   "lfs.page.source.nested.tip": "Set in {file}, so it applies only inside {folder}/. To stop tracking it, edit that file.",
   "lfs.page.status.label": "Status",
+  "lfs.page.too_old.help": "Update it from git-lfs.com, then choose Check again.",
+  "lfs.page.too_old.warn": "git-lfs {version} is older than {min}, the oldest version Glowfly works with. Checkouts and LFS commands may be slow or fail.",
   "lfs.page.track.button": "Track",
   "lfs.page.untrack.button": "Untrack",
   "lfs.pattern.already_tracked": "{pattern} is already tracked.",
@@ -53,5 +58,7 @@
   "lfs.pattern.empty": "Enter a pattern.",
   "lfs.pattern.folder": "A pattern ending in / matches nothing in .gitattributes. To track a folder, use {pattern}**.",
   "lfs.pattern.git_file": "Git's own files (.gitattributes, .gitignore, .lfsconfig) can't be stored in LFS.",
-  "lfs.pattern.negated": "Patterns starting with ! aren't allowed in .gitattributes."
+  "lfs.pattern.negated": "Patterns starting with ! aren't allowed in .gitattributes.",
+  "lfs.update.button": "How to update Git LFS",
+  "lfs.update.tip": "Opens {url} in your browser"
 }

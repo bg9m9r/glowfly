@@ -1,11 +1,14 @@
 //! Preferences > Git LFS snapshots: set up with patterns, patterns from several attributes files,
-//! not set up yet (with a hook in the way), git-lfs missing in a repository that uses LFS, and a
-//! job running.
+//! not set up yet (with a hook in the way), git-lfs missing in a repository that uses LFS, git-lfs
+//! older than Glowfly works with, and a job running.
 
 use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
 use crate::snapshot_check::CheckSnapshot;
+use egui_kittest::kittest::Queryable;
 use glowfly_core::lfs::{LfsPattern, LfsStatus, PatternSource};
 use glowfly_core::settings::ThemeChoice;
+use glowfly_model::lfs::LfsMsg;
+use glowfly_model::msg::Msg;
 use glowfly_model::state::{AppState, PrefPage, PrefsState, RunningJob};
 use std::path::PathBuf;
 
@@ -74,6 +77,31 @@ fn prefs_lfs_missing() {
     };
     let (st, dir) = lfs_page(ThemeChoice::Dark, "lfs-missing", status);
     render("prefs_lfs_missing", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn prefs_lfs_too_old() {
+    let status = LfsStatus { version: Some("2.3.4".into()), ..enabled() };
+    let (st, dir) = lfs_page(ThemeChoice::Dark, "lfs-too-old", status);
+    render("prefs_lfs_too_old", st, true);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn prefs_lfs_too_old_not_set_up() {
+    let status = LfsStatus { version: Some("2.3.4".into()), initialized: false, ..enabled() };
+    let (st, dir) = lfs_page(ThemeChoice::Dark, "lfs-too-old-setup", status);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label_contains("git-lfs 2.3.4 is older than 2.9.0").is_some());
+    assert!(h.query_by_label("How to update Git LFS").is_some());
+    assert!(h.query_by_label_contains("isn't set up").is_some());
+    assert!(!h.get_by_label("Initialize LFS").is_disabled(), "Initialize stays available");
+    h.get_by_label("Check again").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Lfs(LfsMsg::Reload))));
+    drop(h);
     remove_fixture(&dir);
 }
 
