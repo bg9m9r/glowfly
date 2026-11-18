@@ -150,6 +150,9 @@ impl ChipSize {
     }
 }
 
+/// The height of a row or header of two text lines (a name over a line of detail), with room.
+pub const TWO_LINE_ROW_H: f32 = 56.0;
+
 /// Where `galley` goes to sit centred in `rect` from its left edge: its top on a whole point
 /// above the centre line (egui then snaps it to physical pixels), so text never sits low.
 pub fn text_pos(rect: Rect, galley: &Galley) -> Pos2 {

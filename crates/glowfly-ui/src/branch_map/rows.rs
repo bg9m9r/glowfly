@@ -4,9 +4,10 @@
 //! line 2 its numbers. Each row is one button for screen readers, named with the same numbers as
 //! text, and takes Tab focus.
 
+use super::INSET;
 use crate::access;
 use crate::journal::chip;
-use crate::theme::{color, type_scale};
+use crate::theme::{color, sizes, type_scale};
 use crate::widgets::chip::{self as chips, ChipSize};
 use crate::widgets::row_fill::{self, RowState};
 use crate::widgets::severity::{self, Severity};
@@ -18,8 +19,6 @@ use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::branch_map as words;
 
-const ROW_H: f32 = 56.0;
-const PAD_X: f32 = 16.0;
 /// The warning mark's size and the room kept for it before every name, so names line up.
 const MARK: f32 = 14.0;
 const MARK_ROOM: f32 = 22.0;
@@ -30,7 +29,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     egui::ScrollArea::vertical().id_salt("branch-map-rows").auto_shrink([false, false]).show_rows(
         ui,
-        ROW_H,
+        sizes::TWO_LINE_ROW_H,
         map.rows.len(),
         |ui, range| {
             ui.spacing_mut().item_spacing.y = 0.0;
@@ -38,7 +37,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
                 let row = &map.rows[i];
                 let selected = view.selected.as_ref() == Some(&row.branch);
                 let age = words::age(t, st.cues.now, row.time);
-                let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
+                let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), sizes::TWO_LINE_ROW_H), Sense::click());
                 access::name_button(&resp, true, &words::row_name(t, map, i, &age));
                 if selected {
                     access::mark_selected(&resp);
@@ -72,7 +71,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
 /// Paints row `i`'s two lines; returns where the time and the warning mark went.
 fn paint(ui: &Ui, st: &AppState, map: &BranchMap, i: usize, rect: Rect, age: &str) -> (Rect, Option<Rect>) {
     let (t, p) = (st.settings.lang(), ui.painter());
-    let (left, right) = (rect.left() + PAD_X, rect.right() - PAD_X);
+    let (left, right) = (rect.left() + INSET, rect.right() - INSET);
     let (y1, y2) = (rect.top() + 18.0, rect.top() + 39.0);
     let (small, body) = (type_scale::font(type_scale::SMALL), type_scale::font(type_scale::BODY));
     let time = paint_text(p, pos2(right, y1), Align2::RIGHT_CENTER, age, small.clone(), color::weak());

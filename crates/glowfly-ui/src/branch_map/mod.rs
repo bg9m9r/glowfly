@@ -10,7 +10,7 @@ mod rows;
 use crate::common::menu_item;
 use crate::empty_state::{EmptyIcon, empty_state};
 use crate::pane_status::{self, Failure};
-use crate::theme::{color, type_scale};
+use crate::theme::{color, sizes, type_scale};
 use crate::widgets::buttons;
 use eframe::egui::{Align, Layout, Rect, RichText, Sense, Ui, UiBuilder, pos2, vec2};
 use glowfly_core::i18n::Lang;
@@ -19,7 +19,6 @@ use glowfly_model::msg::Msg;
 use glowfly_model::state::AppState;
 use glowfly_model::state::branch_map::{self as words, BranchMapView};
 
-const HEADER_H: f32 = 56.0;
 const INSET: f32 = 16.0;
 /// Narrower than this, the pane goes under the list.
 const STACK_BELOW: f32 = 720.0;
@@ -55,14 +54,14 @@ fn body(ui: &mut Ui, st: &AppState, view: &BranchMapView, msgs: &mut Vec<Msg>) {
 
 /// The title and subtitle on the left, Close on the right.
 fn header(ui: &mut Ui, t: Lang, view: &BranchMapView, msgs: &mut Vec<Msg>) {
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), sizes::TWO_LINE_ROW_H), Sense::hover());
     let inner = rect.shrink2(vec2(INSET, 0.0));
     let mut row = ui.new_child(UiBuilder::new().max_rect(inner).layout(Layout::right_to_left(Align::Center)));
     if row.add(buttons::secondary(t.tr("common.close.button"))).on_hover_text(t.tr("branch_map.close.tip")).clicked() {
         msgs.push(Msg::BranchMap(BranchMapMsg::Close));
     }
     let room = row.available_width() - 16.0;
-    let left_rect = Rect::from_min_size(inner.min, vec2(room, HEADER_H));
+    let left_rect = Rect::from_min_size(inner.min, vec2(room, sizes::TWO_LINE_ROW_H));
     let mut left = row.new_child(UiBuilder::new().max_rect(left_rect).layout(Layout::top_down(Align::Min)));
     left.add_space(9.0);
     left.spacing_mut().item_spacing.y = 2.0;
