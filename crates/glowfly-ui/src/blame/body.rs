@@ -151,7 +151,7 @@ pub(super) fn body(
             });
         }
         painter.vline(sticky + GUTTER_W, row(first).top()..=row(end - 1).bottom(), (1.0, color::border()));
-        for i in first..end {
+        for (i, line) in blame.lines.iter().enumerate().take(end).skip(first) {
             let r = row(i);
             let y = r.top() + style.row_h / 2.0;
             paint_text(&painter, pos2(num_right, y), Align2::RIGHT_CENTER, (i + 1).to_string(), style.font.clone(), color::faint());
@@ -167,7 +167,6 @@ pub(super) fn body(
             });
             let clip = Rect::from_min_max(pos2(sticky + code_off, r.top()), r.max).intersect(ui.clip_rect());
             let code_painter = painter.with_clip_rect(clip);
-            let line = &blame.lines[i];
             let found = if view.find.query.is_empty() { Vec::new() } else { ranges(line, &view.find.query) };
             let marks = (!found.is_empty()).then_some((found.as_slice(), marks_col));
             let at = pos2(origin.x + code_off, y);
