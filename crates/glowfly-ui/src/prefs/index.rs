@@ -89,6 +89,7 @@ const INDEX: &[(PrefPage, &str, Option<&str>)] = &[
     (PrefPage::DiffViewer, "prefs.editor.word_highlights.label", Some("prefs.editor.word_highlights.help")),
     (PrefPage::DiffViewer, "prefs.editor.wrap.label", Some("prefs.editor.wrap.help")),
     (PrefPage::Tools, "prefs.tools.arguments.label", None),
+    (PrefPage::Tools, "prefs.tools.auto_picks.label", Some("prefs.tools.auto_picks.help")),
     (PrefPage::Tools, "prefs.tools.diff.label", Some("prefs.tools.diff.help")),
     (PrefPage::Tools, "prefs.tools.diff_args.label", None),
     (PrefPage::Tools, "prefs.tools.editor.label", Some("prefs.tools.editor.help")),

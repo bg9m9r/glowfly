@@ -22,7 +22,7 @@ use std::time::Instant;
 #[path = "conflict_edit.rs"]
 mod edit;
 
-pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) {
+pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
         ConflictMsg::OpenConflict(path) => {
             // A plain click ends the picks; a pick click doesn't open anything.
@@ -36,8 +36,9 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
             }
             match result {
                 Ok(f) => {
+                    let auto = st.settings.conflict_auto_picks;
                     if let Some(c) = st.session.conflict.view.as_mut() {
-                        c.set_file_saved(f, saved);
+                        c.set_file_saved(f, saved, auto);
                         // The first chunk still to pick (automatic picks come before it).
                         st.view.conflict_scroll_to = Some(c.current);
                     }
@@ -140,6 +141,8 @@ pub(super) fn handle(st: &mut AppState, msg: ConflictMsg, fx: &mut Vec<Effect>) 
         ConflictMsg::MarkResolved(paths) => super::conflict_files::mark_resolved(st, paths, fx),
         ConflictMsg::MarkResolvedConfirmed(paths) => super::conflict_files::confirmed(st, paths, fx),
         ConflictMsg::MarkConflicted(paths) => super::conflict_files::mark_conflicted(st, paths, fx),
+        ConflictMsg::TakeTrivialPicks => super::conflict_trivial::take(st, now, fx),
+        ConflictMsg::TrivialPicksTaken { taken, undo } => super::conflict_trivial::taken(st, taken, undo, now, fx),
         ConflictMsg::ConflictFilesRead { purpose, paths, result } => super::conflict_files::read_done(st, purpose, paths, result, fx),
     }
 }

@@ -224,6 +224,18 @@ fn marking_a_conflict_resolved_waits_for_trust_and_marks_nothing_in_flight() {
 }
 
 #[test]
+fn taking_the_trivial_picks_waits_for_trust_like_the_other_conflict_changes() {
+    let take = || Msg::Conflict(ConflictMsg::TakeTrivialPicks);
+    for (name, make) in [("ft-trivial-held", held as fn(&str) -> AppState), ("ft-trivial-refused", refused)] {
+        let ran = waits_then_runs(conflicted(make(name)), take(), "Resolve conflict");
+        assert!(matches!(ran, FilesEffect::LocalOp { op: LocalOp::TakeTrivialPicks(p), .. } if p == ["a.txt"]));
+    }
+    let mut st = conflicted(trusted("ft-trivial-trusted"));
+    let sent = files(send(&mut st, take()));
+    assert!(matches!(&sent[..], [(FilesEffect::LocalOp { op: LocalOp::TakeTrivialPicks(_), .. }, Some(Sealed::Read))]), "{sent:?}");
+}
+
+#[test]
 fn a_staged_rename_waits_for_trust_and_a_plain_one_does_not() {
     let rename = |stage| Msg::WorkFile(WorkFileMsg::RenameFile { from: "a.txt".into(), to: "b.txt".into(), stage });
     let tracked = |mut st: AppState| {
@@ -260,6 +272,7 @@ fn every_file_operation_says_whether_it_starts_git() {
         LocalOp::ResolveWithSide { path: p(), side: Side::Ours, expected: ids() },
         LocalOp::MarkResolved(vec![p()]),
         LocalOp::MarkConflicted(vec![p()]),
+        LocalOp::TakeTrivialPicks(vec![p()]),
     ];
     assert!(git.iter().all(LocalOp::runs_git));
     assert!(!LocalOp::UnstagePaths(vec![p()]).runs_git());

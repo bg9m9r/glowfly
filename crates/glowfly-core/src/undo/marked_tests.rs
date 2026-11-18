@@ -87,6 +87,7 @@ pub(super) fn mark(dir: &Path, change: ConflictChange, paths: &[&str]) -> Action
         ConflictChange::MarkResolved => mark_resolved(dir, &paths),
         ConflictChange::MarkConflicted => mark_conflicted(dir, &paths),
         ConflictChange::Took(side) => resolve_with_side(dir, &paths[0], side, &ids(dir, &paths[0])),
+        ConflictChange::TrivialPicks => repo::trivial_plan(dir, &paths).apply(dir),
     };
     conflicts_saving(dir, change, &paths, op).unwrap().expect("undoable")
 }

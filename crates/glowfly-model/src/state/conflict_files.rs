@@ -52,6 +52,9 @@ pub fn conflicted_paths(snap: &Snapshot) -> Vec<String> {
     snap.unstaged.iter().filter(|f| f.status == '!' && !matches!(f.hazard, Some(Hazard::NotUtf8(_)))).map(|f| f.path.clone()).collect()
 }
 
+#[path = "conflict_trivial.rs"]
+pub mod trivial;
+
 /// The conflicted file to open after `after` was resolved: the first one after it in list
 /// order, wrapping to the first.
 pub fn next_conflicted(snap: &Snapshot, after: &str) -> Option<String> {

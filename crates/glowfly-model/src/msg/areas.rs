@@ -35,7 +35,7 @@ macro_rules! msg_areas {
             /// The open diff's layout, folds, line selection and highlighting (update/diff.rs).
             Diff(crate::msg::DiffMsg) "diff" => diff::handle(now, fx);
             /// The conflict view (update/conflict.rs).
-            Conflict(crate::msg::ConflictMsg) "conflict" => conflict::handle(fx);
+            Conflict(crate::msg::ConflictMsg) "conflict" => conflict::handle(now, fx);
             /// A file's history (update/history.rs).
             History(crate::msg::HistoryMsg) "history" => history::handle(now, fx);
             /// The blame view (update/blame.rs).

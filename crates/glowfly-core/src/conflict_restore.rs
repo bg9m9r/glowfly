@@ -34,6 +34,26 @@ fn bare_all(lines: &[String]) -> Vec<&str> {
     lines.iter().map(|l| bare(l)).collect()
 }
 
+/// How a working file's text stands against the stages of its conflict.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ReadBack {
+    /// Every chunk is still a marker region and no clean line changed: the file as git wrote it.
+    Untouched,
+    /// Something came back: picks saved, or clean lines edited.
+    Saved(SavedPicks),
+    /// The text can't be matched with the stages (or the conflict isn't text).
+    Unmatched,
+}
+
+/// `restore`, telling a file as git wrote it from one that can't be matched.
+pub fn read_back(file: &ConflictFile, working: &str) -> ReadBack {
+    match matched(file, working) {
+        None => ReadBack::Unmatched,
+        Some(s) if s.cleans.is_empty() && s.picks.iter().all(|p| *p == ChunkPick::default()) => ReadBack::Untouched,
+        Some(s) => ReadBack::Saved(s),
+    }
+}
+
 /// The picks `working` (the working file's text) holds for `file`. `None` when nothing came
 /// back (every chunk still in markers and no clean line changed) or the text can't be matched
 /// with the stages: a clean run missing, an edited clean run holding a marker line, or a chunk
@@ -41,6 +61,15 @@ fn bare_all(lines: &[String]) -> Vec<&str> {
 /// git's diff3 style leaves when ours and theirs share lines inside a region: those lines are
 /// clean in the stages).
 pub fn restore(file: &ConflictFile, working: &str) -> Option<SavedPicks> {
+    match read_back(file, working) {
+        ReadBack::Saved(s) => Some(s),
+        _ => None,
+    }
+}
+
+/// The picks `working` holds, all default when it is as git wrote it; `None` when it can't be
+/// matched with the stages.
+fn matched(file: &ConflictFile, working: &str) -> Option<SavedPicks> {
     let ConflictContent::Text(segs) = &file.content else { return None };
     let w: Vec<&str> = working.split_inclusive('\n').collect();
     let spans = clean_spans(segs, &w)?;
@@ -68,7 +97,7 @@ pub fn restore(file: &ConflictFile, working: &str) -> Option<SavedPicks> {
         }
     }
     fill(file, &pending, w.get(at..)?, eol, &mut picks)?;
-    if picks.len() != file.chunk_count() || (cleans.is_empty() && picks.iter().all(|p| *p == ChunkPick::default())) {
+    if picks.len() != file.chunk_count() {
         return None;
     }
     Some(SavedPicks { picks, cleans })

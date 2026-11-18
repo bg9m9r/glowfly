@@ -10,7 +10,7 @@
 //! (git's built-in file system monitor), `diff` (and `diff_view`, a file's diff for the viewer, narrowed to it by `diff_scope`; `diff_gaps`, the unchanged lines between hunks), `line_counts` (lines added and removed per file of a commit or of the working tree),
 //! `history` (one file's commits, following renames back and forwards: `history_forward`; a folder's: `folder_history`), `file_at` (a file's text at a commit) and `file_bytes` (its bytes, binary or not, for the image preview), `blame`, `index` and `lines` (staging, line staging), `revert`, `restore`, `conflict`, `resolve`, `resolve_undo` (resolved files and their stage ids, Mark resolved and Mark
 //! conflicted), `markers` (conflict markers left in working files) and `conflict_saved` (the picks a
-//! file saved with markers holds), `template` (commit.template), `tool_sides` (versions for external
+//! file saved with markers holds), `trivial_resolve` (taking the trivial picks in many files), `template` (commit.template), `tool_sides` (versions for external
 //! tools) and `binary_sides` (a binary diff's sizes, image, SVG and font previews), `touching` (commits that
 //! changed a searched path), `workfile`, `workfile_mv`, `workfile_rm`, `workfile_unrm` (putting a deleted file or link back for undo), `noclobber` and
 //! `removal` (working-tree files), `tracked`,
@@ -101,6 +101,7 @@ mod touching;
 mod tracked;
 mod tracking;
 mod trash;
+mod trivial_resolve;
 mod unmerged;
 pub(crate) mod walk;
 pub(crate) mod walk_order;
@@ -197,6 +198,7 @@ pub use touching::{Touching, commits_touching};
 pub use tracked::{ListFilesFailed, tracked_paths};
 pub use tracking::Tracking;
 pub use trash::{TrashProblem, TrashRefusal, Untrashed, Untrasher, home_trash, os_trash, os_untrash};
+pub use trivial_resolve::{TrivialPlan, TrivialSkip, TrivialTaken, trivial_plan};
 pub use unmerged::unmerged_count;
 pub(crate) use workfile::contained;
 pub use workfile::{

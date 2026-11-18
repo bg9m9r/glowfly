@@ -24,6 +24,7 @@ mod refs;
 mod template;
 #[cfg(test)]
 mod tests;
+pub mod trivial;
 
 pub use template::Template;
 

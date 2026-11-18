@@ -220,6 +220,14 @@ pub enum ConflictMsg {
         path: String,
         how: crate::state::wip_lists::PickHow,
     },
+    /// Take the trivial picks in every conflicted file at once (update/conflict_trivial.rs).
+    TakeTrivialPicks,
+    /// What taking the trivial picks resolved, left and skipped, and the undo entry for the
+    /// resolved files.
+    TrivialPicksTaken {
+        taken: glowfly_core::repo::TrivialTaken,
+        undo: Option<glowfly_core::undo::Action>,
+    },
     /// The working files of `paths` read for markers (and the resolved files, for a summary).
     ConflictFilesRead {
         purpose: ConflictRead,
@@ -256,7 +264,10 @@ impl ConflictMsg {
             | Self::MarkResolvedConfirmed(..)
             | Self::MarkConflicted(..)
             | Self::Pick { .. }
+            | Self::TakeTrivialPicks
+            | Self::TrivialPicksTaken { undo: None, .. }
             | Self::ConflictFilesRead { result: Ok(_), .. } => None,
+            Self::TrivialPicksTaken { undo: Some(a), .. } => Some(crate::msg::Inactive::Undo(a)),
             Self::ConflictFilesRead { result: Err(e), .. } => Some(crate::msg::Inactive::ConflictFilesUnread(e)),
         }
     }

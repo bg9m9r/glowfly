@@ -95,7 +95,8 @@ source file, update its line here.
 
 - Conflicts and their resolution, keeping git's resolve-undo record: the resolved files, the stage ids of one record, Mark resolved and Mark conflicted: `resolve_undo.rs`.
 - Conflict markers left in working files: `markers.rs`.
-- The picks a file saved with markers holds: `conflict_saved.rs`.
+- The picks a file saved with markers holds, and whether a conflicted working file is as git wrote it, saved, unmatched, converted or unreadable (`WorkingCopy`): `conflict_saved.rs`.
+- Taking the trivial picks in many conflicted files at once: `trivial_resolve.rs` (`trivial_plan` only reads and sorts each path into resolved, left or skipped with a typed reason; `TrivialPlan::apply` resolves the first kind through `write_resolution`, which keeps git's resolve-undo record).
 - The branches a same-named ref shadows, and what git's merge title ends with (" into <branch>", from merge.suppressDest): `merge_dest.rs`.
 - The MERGE_MSG of a stopped merge, cherry-pick or revert without its comment lines, read from the worktree's own git dir and decoded from the commit encoding to prefill the commit draft: `merge_msg.rs`.
 - The operation in progress as loads report it: libgit2's state, or the pick or revert sequence `sequencer/todo` still holds after its stopped commit was committed: `op_state.rs`. Tests: `op_state_tests.rs`.

@@ -89,6 +89,7 @@ impl Default for Settings {
             new_group_colour: GroupColourDefault::Next,
             project_folders: Vec::new(),
             external_tools: ExternalTools::default(),
+            conflict_auto_picks: true,
             profiles: Vec::new(),
             active_profile: None,
             use_ssh_agent: false,

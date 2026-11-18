@@ -78,6 +78,8 @@ pub enum PaletteCommand {
     UnstageAll,
     /// Mark every conflicted file resolved (after the markers check, as the list's button).
     MarkAllResolved,
+    /// Take the trivial conflict picks in every conflicted file (resolving those with only trivial ones).
+    TakeTrivialPicks,
     /// Mark every resolved file that can be restored conflicted again (asks first).
     MarkAllConflicted,
     /// Mark this resolved file conflicted again (asks first).

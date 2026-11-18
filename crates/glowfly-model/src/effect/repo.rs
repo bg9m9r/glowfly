@@ -60,6 +60,9 @@ pub enum LocalOp {
     MarkResolved(Vec<String>),
     /// Brings back resolved files' conflicts from git's resolve-undo record.
     MarkConflicted(Vec<String>),
+    /// Resolves each of these conflicted files whose every conflict has a trivial pick and whose
+    /// working copy is as git wrote it.
+    TakeTrivialPicks(Vec<String>),
 }
 
 impl LocalOp {
@@ -77,7 +80,8 @@ impl LocalOp {
             | LocalOp::SavePartialResolution { .. }
             | LocalOp::ResolveWithSide { .. }
             | LocalOp::MarkResolved(_)
-            | LocalOp::MarkConflicted(_) => true,
+            | LocalOp::MarkConflicted(_)
+            | LocalOp::TakeTrivialPicks(_) => true,
             LocalOp::UnstagePaths(_) | LocalOp::Hunk { .. } | LocalOp::Lines { .. } => false,
         }
     }

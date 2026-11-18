@@ -692,3 +692,15 @@ fn graphite_is_the_default_dark_theme_and_dusk_keeps_its_own_name() {
 
 #[path = "hints_tests.rs"]
 mod hints_tests;
+
+#[test]
+fn conflict_auto_picks_is_on_for_old_files_and_round_trips() {
+    assert!(Settings::default().conflict_auto_picks);
+    for json in ["{}", r#"{"auto_fetch_minutes":5}"#] {
+        assert!(serde_json::from_str::<Settings>(json).unwrap().conflict_auto_picks, "{json}");
+    }
+    let off: Settings = serde_json::from_str(r#"{"conflict_auto_picks":false}"#).unwrap();
+    assert!(!off.conflict_auto_picks);
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&off).unwrap()).unwrap();
+    assert!(!back.conflict_auto_picks);
+}

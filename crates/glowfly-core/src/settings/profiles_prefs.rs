@@ -137,6 +137,8 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "new_group_colour",
     "project_folders",
     "external_tools",
+    // Beside the merge tool it is set with: a way of working at this machine.
+    "conflict_auto_picks",
     "profiles",
     "active_profile",
     "use_ssh_agent",

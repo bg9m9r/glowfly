@@ -122,7 +122,7 @@ fn conflict_restored() {
     let saved = repo::saved_picks(&dir, &f);
     assert_eq!(saved.as_ref().map(|s| s.picks.clone()), Some(vec![Choice::Theirs.into(), ChunkPick::default()]));
     let view = st.session.conflict.view.as_mut().unwrap();
-    view.set_file_saved(f, saved);
+    view.set_file_saved(f, saved, true);
     assert_eq!((view.restored, view.current, view.user_choices()), (1, 1, 0));
     render("conflict_restored", st, true);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
