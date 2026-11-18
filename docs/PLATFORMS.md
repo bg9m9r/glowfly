@@ -120,6 +120,11 @@ second one next to it.
     records (`ISO-8859-1` has no `€`, though WHATWG reads it as windows-1252). Read commit
     text through `commit_text` and git's message files (MERGE_MSG) as bytes, never with
     libgit2's `Repository::message`, which panics on bytes that aren't UTF-8.
+13. **Ask git for UTF-8 when its output is parsed for commit text** (`gitcli::utf8_args`): log,
+    show, blame, format-patch and range-diff re-encode names and messages into
+    `i18n.logOutputEncoding`, or `i18n.commitEncoding` when that is unset. The lists git keeps
+    for a rebase (`git-rebase-todo`, `done`) hold subjects in that encoding, whoever started the
+    rebase: read them with `rebase::list_text` and take only commands and ids from them.
 
 ### Paths a repository names
 

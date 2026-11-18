@@ -6,6 +6,7 @@ source file, update its line here.
 ## The git CLI
 
 - `gitcli.rs`: the git CLI, for commands that honour hooks, credentials and signing; reports every command's timing to the observer the app sets.
+- `gitcli/argv.rs`: argument lists: `args`, `subcommand` (the subcommand past git's global options) and `utf8_args`, which puts `-c i18n.logOutputEncoding=UTF-8` first for a command whose output is parsed for commit text.
 - `gitcli/askpass_vars.rs`: the askpass environment a git child gets, with the `DISPLAY` placeholder for the old OpenSSH its repository's ssh may be.
 - `gitcli/wait.rs` waits for a child: pipes drained on their own threads (a stoppable command's stderr in chunks as it arrives), a timeout, and a `Stop` the caller can ask.
 - `output_until` runs a command that can be stopped (`output_watching` also hands its stderr to the caller as git writes it), and `process_tree.rs` ends it with everything it started (a new session and its process group on Unix: SIGTERM, then SIGKILL after 3 s to whatever is left in the group; a job object on Windows, waited on until its processes are gone).
@@ -75,7 +76,7 @@ source file, update its line here.
 - Message files (`run.rs`, `remaining.rs`) are written in the repository's commit encoding and read back from it (`commit_encoding.rs`).
 - `update_refs.rs`: the `update-ref` steps git adds with `rebase.updateRefs` (predicted for the plan, branch aliases and the branches other worktrees hold included, compared when a list replaces git's); tests in `update_refs_tests.rs` and `update_refs_git_tests.rs`.
 - `rebase/error.rs`: `RebaseError`, why a rebase, a graph history edit, a remaining-steps edit or a restack was refused or failed: one variant per cause (`Busy` names the operation in progress, `LeftOut` a branch git won't move), git's own words in `Said`; `Display` is the English and the model words it (`typed::rebase`). The `--write-todo` helper hands its refusal back as JSON in `<prepared>.error` (`write_refusal`, `read_refusal`). Tests in `error_tests.rs`.
-- `rebase/progress.rs`: where a rebase in progress stands: how many of its commits are done, the commit it stopped at and why, and whether git holds an autostash.
+- `rebase/progress.rs`: where a rebase in progress stands: how many of its commits are done, the commit it stopped at and why, and whether git holds an autostash (as bytes: git writes subjects in its output encoding).
 - `rebase/quick.rs`: history edits chosen in the graph (reword, squash, drop), turned into a ready `StartRequest` for the same `git rebase -i` run the panel uses.
 - `rebase/todo.rs`: the todo list: checking a list before it runs, writing it in git's format (with the reword and combined message files), recognising the lines Glowfly adds, and installing it over the list git generated.
 

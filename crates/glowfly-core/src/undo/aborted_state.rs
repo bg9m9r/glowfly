@@ -133,8 +133,14 @@ pub(super) fn read(repo: &Repository, op: MoveOp, dir: &'static str, verb: &'sta
                     commits.push(oid);
                 }
             }
+            // git writes subjects in its output encoding: read the lists as bytes.
             for list in ["git-rebase-todo", "done"] {
-                commits.extend(todo_commits(repo, &file(list)?.unwrap_or_default()));
+                let text = match crate::rebase::list_text(&folder.join(list)) {
+                    Ok(t) => t,
+                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+                    Err(e) => return Err(e.into()),
+                };
+                commits.extend(todo_commits(repo, text.trim()));
             }
             (target, after, true)
         }

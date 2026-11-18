@@ -1,5 +1,5 @@
 use super::*;
-use crate::testutil::{empty_global_config, git, scratch_repo, ssh_signed_commit, write};
+use crate::testutil::{empty_global_config, git, scratch_repo, set_config, ssh_signed_commit, write};
 
 const FPR: &str = "0123456789ABCDEF0123456789ABCDEF01234567";
 
@@ -186,6 +186,28 @@ fn ssh_signatures_checked_by_git() {
     let _ = std::fs::remove_dir_all(&dir);
     let name = dir.file_name().unwrap().to_string_lossy().into_owned();
     for f in ["key", "key.pub", "gitconfig", "allowed", "other-key", "other-key.pub"] {
+        let _ = std::fs::remove_file(dir.with_file_name(format!("{name}-{f}")));
+    }
+}
+
+#[test]
+fn the_signer_survives_a_legacy_output_encoding() {
+    let dir = scratch_repo("sig-ssh-latin1");
+    let Some((oid, public)) = ssh_signed_commit(&dir, "a.txt", "signed") else { return };
+    let key = std::fs::read_to_string(&public).unwrap();
+    let allowed = dir.with_file_name(format!("{}-allowed", dir.file_name().unwrap().to_string_lossy()));
+    std::fs::write(&allowed, format!("zoë@example.com {key}")).unwrap();
+    set_config(&dir, &[("gpg.ssh.allowedSignersFile", &allowed.display().to_string())]);
+    let before = check(&dir, oid);
+    assert_eq!(before.status, SigStatus::Good, "{before:?}");
+    set_config(&dir, &[("i18n.logOutputEncoding", "latin1")]);
+    let after = check(&dir, oid);
+    assert_eq!(after, before);
+    let fffd = char::REPLACEMENT_CHARACTER;
+    assert!(!after.signer.contains(fffd) && !after.note.contains(fffd), "{after:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+    let name = dir.file_name().unwrap().to_string_lossy().into_owned();
+    for f in ["key", "key.pub", "gitconfig", "allowed"] {
         let _ = std::fs::remove_file(dir.with_file_name(format!("{name}-{f}")));
     }
 }

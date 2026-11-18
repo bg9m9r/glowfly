@@ -123,7 +123,7 @@ pub(crate) fn find_renames(
 /// `git log --raw` lists them from tree diffs (no rename detection, which would read blobs,
 /// and no lazy fetching). Empty when git can't say.
 pub(crate) fn history_blobs(workdir: &Path, at: Oid, path: &str) -> Vec<Oid> {
-    let a = [
+    let a = gitcli::utf8_args(&[
         "--literal-pathspecs",
         "log",
         "--format=",
@@ -136,9 +136,9 @@ pub(crate) fn history_blobs(workdir: &Path, at: Oid, path: &str) -> Vec<Oid> {
         &at.to_string(),
         "--",
         path,
-    ];
+    ]);
     let env = [gitcli::NO_PROMPTS, &[("GIT_NO_LAZY_FETCH", "1")]].concat();
-    let (out, stdout) = gitcli::output_bytes(workdir, &gitcli::args(&a), &env, Some(gitcli::READ_TIMEOUT));
+    let (out, stdout) = gitcli::output_bytes(workdir, &a, &env, Some(gitcli::READ_TIMEOUT));
     if !out.ok {
         return Vec::new();
     }

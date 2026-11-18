@@ -3,7 +3,8 @@
 //! ref's reflog (`bases::last_rewrite`); each side's range is cut at a mainline or the two
 //! versions' merge base (`bases::ranges`); git's output is read by `parse.rs`. It only reads:
 //! no ref, index or working file changes. git runs through gitcli without prompts and with a
-//! timeout; refs, ids and summaries are read with libgit2.
+//! timeout and asked for UTF-8 output ([`gitcli::utf8_args`]); refs, ids and summaries are read
+//! with libgit2.
 
 pub mod bases;
 pub mod parse;
@@ -130,12 +131,14 @@ pub enum Outcome {
     },
 }
 
-/// `git range-diff --no-color --abbrev=40 <old.base>..<old.tip> <new.base>..<new.tip>`, or
+/// `git -c i18n.logOutputEncoding=UTF-8 range-diff --no-color --abbrev=40 <old.base>..<old.tip>
+/// <new.base>..<new.tip>` (the override makes the interdiff's authors and messages UTF-8
+/// whatever the repository's output encoding), or
 /// `... <base> <old.tip> <new.tip>` when both sides start at the same base. git refuses an empty
 /// `x..x` range but takes an empty side in the three-argument form, which a merge-base cut gives
 /// when one version is an ancestor of the other.
 pub fn command(old: Range, new: Range) -> Vec<String> {
-    let mut args = vec!["range-diff".to_owned(), "--no-color".into(), "--abbrev=40".into()];
+    let mut args = gitcli::utf8_args(&["range-diff", "--no-color", "--abbrev=40"]);
     if old.base == new.base {
         args.extend([old.base.to_string(), old.tip.to_string(), new.tip.to_string()]);
     } else {

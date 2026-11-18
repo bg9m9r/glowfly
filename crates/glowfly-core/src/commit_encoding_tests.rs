@@ -84,7 +84,7 @@ fn an_iso_8859_1_repository_commits_only_latin1() {
     let repo = git2::Repository::open(&dir).unwrap();
     let c = repo.head().unwrap().peel_to_commit().unwrap();
     assert_eq!((c.message_encoding(), c.message_bytes()), (Some("ISO-8859-1"), &b"Caf\xe9\n"[..]));
-    let shown = crate::gitcli::run(&dir, &crate::gitcli::args(&["-c", "i18n.logOutputEncoding=UTF-8", "log", "-1", "--format=%B"])).1;
+    let shown = crate::gitcli::run(&dir, &crate::gitcli::utf8_args(&["log", "-1", "--format=%B"])).1;
     assert_eq!(shown.trim_end(), "Café");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -151,7 +151,7 @@ fn amending_twice_in_a_windows_1252_repository_keeps_the_message() {
         commit_like_glowfly(&dir, &head_message(&dir), true);
         assert_eq!(head_message(&dir), typed, "after amend {round}");
     }
-    let shown = crate::gitcli::run(&dir, &crate::gitcli::args(&["-c", "i18n.logOutputEncoding=UTF-8", "log", "-1", "--format=%B"])).1;
+    let shown = crate::gitcli::run(&dir, &crate::gitcli::utf8_args(&["log", "-1", "--format=%B"])).1;
     assert_eq!(shown.trim_end(), typed, "git reads it the same way");
     let _ = std::fs::remove_dir_all(&dir);
 }

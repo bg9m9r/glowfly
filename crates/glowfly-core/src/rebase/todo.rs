@@ -362,7 +362,7 @@ pub fn listed_oids(text: &str) -> Vec<String> {
 /// another worktree). On a mismatch git's todo is left as it is.
 pub fn install_todo(prepared: &Path, git_todo: &Path) -> Result<(), RebaseError> {
     // Read leniently: a branch name that isn't UTF-8 is then caught by its update-ref line.
-    let gits = String::from_utf8_lossy(&std::fs::read(git_todo)?).into_owned();
+    let gits = super::list_text(git_todo)?;
     let theirs = listed_oids(&gits);
     let text = std::fs::read_to_string(prepared)?;
     let ours = listed_oids(&text);

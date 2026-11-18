@@ -247,3 +247,10 @@ fn a_long_replay_is_compared_commit_by_commit_where_hooks_run_from() {
     assert!(matches!(got, Err(super::super::compare::Refused::Held(_))), "{got:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn reads_that_ask_for_utf8_output_are_not_held() {
+    let utf8 = |a: &[&str]| targets(&crate::gitcli::utf8_args(a));
+    assert_eq!(utf8(&["log", "-1"]), Ok(Vec::new()));
+    assert_eq!(utf8(&["format-patch", "-1", "--stdout", "1234567"]), Ok(Vec::new()));
+}

@@ -1,5 +1,6 @@
 use super::*;
-use crate::testutil::{git, scratch_repo, write};
+use crate::gitcli::args;
+use crate::testutil::{git, scratch_repo, set_config, write};
 use std::path::PathBuf;
 
 fn head(dir: &Path) -> Oid {
@@ -66,13 +67,40 @@ fn file_name_cuts_long_subjects_on_a_char_boundary() {
 fn format_patch_cmd_shape() {
     let oid = Oid::from_str("0123456789abcdef0123456789abcdef01234567").unwrap();
     let sha = "0123456789abcdef0123456789abcdef01234567";
-    let head = ["--literal-pathspecs", "format-patch", "-1", "--stdout", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", sha];
+    let head = [
+        "-c",
+        "i18n.logOutputEncoding=UTF-8",
+        "--literal-pathspecs",
+        "format-patch",
+        "-1",
+        "--stdout",
+        "--no-color",
+        "--src-prefix=a/",
+        "--dst-prefix=b/",
+        sha,
+    ];
     assert_eq!(format_patch_cmd(oid, &[]), head);
     let paths = vec!["a b.txt".to_owned(), "-x".to_owned()];
     let mut with: Vec<&str> = head.to_vec();
     with.insert(head.len() - 1, "-M");
     with.extend(["--", "a b.txt", "-x"]);
     assert_eq!(format_patch_cmd(oid, &paths), with);
+}
+
+#[test]
+fn a_patch_is_utf8_under_a_legacy_output_encoding() {
+    let dir = scratch_repo("patch-latin1");
+    set_config(&dir, &[("user.name", "Zoë Müller")]);
+    write(&dir, "a.txt", "one\n");
+    commit(&dir, "base");
+    write(&dir, "a.txt", "one\ntwo\n");
+    let oid = commit(&dir, "Añade café\n\nCuerpo con ñ");
+    set_config(&dir, &[("i18n.logOutputEncoding", "latin1")]);
+    let (text, _) = patch_text(&dir, &[oid]).unwrap();
+    assert!(text.contains("Content-Type: text/plain; charset=UTF-8"), "{text}");
+    assert!(text.contains("Cuerpo con ñ"), "{text}");
+    assert_eq!(inspect::summarize(text.as_bytes()).commits, 1);
+    cleanup(&dir);
 }
 
 #[test]

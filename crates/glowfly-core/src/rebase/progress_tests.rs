@@ -54,6 +54,49 @@ fn reword_exec_lines_not_counted() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[test]
+fn progress_reads_lists_that_are_not_utf8() {
+    let (dir, [_, c2, _, _]) = linear("rebase-progress-bytes");
+    let req = request(&dir, RebaseBase::FromCommit(c2), |items| {
+        items[0].action = RebaseAction::Edit;
+        items[1].action = RebaseAction::Edit;
+    });
+    let (ok, _) = stopped(start_copy(&dir, &req));
+    assert!(ok);
+    let before = progress(&dir).unwrap();
+    for list in ["done", "git-rebase-todo"] {
+        let path = dir.join(".git/rebase-merge").join(list);
+        let mut bytes = Vec::new();
+        for line in std::fs::read(&path).unwrap().split(|b| *b == b'\n').filter(|l| !l.is_empty()) {
+            bytes.extend_from_slice(line);
+            bytes.extend_from_slice(b" caf\xE9\n");
+        }
+        std::fs::write(&path, bytes).unwrap();
+    }
+    assert_eq!(progress(&dir), Some(before));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_plain_rebase_under_a_legacy_output_encoding_reports_its_stop() {
+    let dir = scratch_repo("rebase-progress-latin1");
+    commit(&dir, "f.txt", "base\n", "base");
+    git(&dir, &["checkout", "-q", "-b", "topic"]);
+    let first = commit(&dir, "f.txt", "topic\n", "Añade café");
+    commit(&dir, "g.txt", "g\n", "Otro café");
+    git(&dir, &["checkout", "-q", "main"]);
+    commit(&dir, "f.txt", "main\n", "main edit");
+    git(&dir, &["checkout", "-q", "topic"]);
+    set_config(&dir, &[("i18n.logOutputEncoding", "latin1")]);
+    let (ok, out) = crate::gitcli::run(&dir, &crate::gitcli::args(&["rebase", "main"]));
+    assert!(!ok, "the first commit conflicts: {out}");
+    let p = progress(&dir).expect("a rebase in progress");
+    assert_eq!((p.step, p.total, p.stop.kind, p.stop.oid), (1, 2, StopKind::Conflict, Some(first)));
+    assert_eq!(p.summary, "Añade café");
+    let _ = crate::gitcli::run(&dir, &crate::gitcli::args(&["rebase", "--abort"]));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// base, then a and b both changing f.txt; a rebase from a that drops a and so conflicts on b.
 fn conflicting(name: &str) -> (PathBuf, Oid) {
     let dir = scratch_repo(name);

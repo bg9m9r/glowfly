@@ -21,7 +21,7 @@ pub use inspect::{MAX_INSPECT, PatchSummary, inspect, summarize};
 pub use wip::{ChangesRequest, EMPTY_TREE, MAX_UNTRACKED, NO_CHANGES, WipScope, diff_cmd, untracked_cmd};
 
 use crate::error::{Error, Result};
-use crate::gitcli::{self, args};
+use crate::gitcli::{self, utf8_args};
 use git2::Oid;
 use std::path::Path;
 use std::time::Duration;
@@ -109,11 +109,12 @@ fn cut(s: &str) -> String {
 /// changes no file it prints the message alone, so such commits are left out before running
 /// it. The explicit prefixes keep a `diff.noprefix` from making a patch git apply rejects. With
 /// `paths`, renames are looked for even under `diff.renames=false` (`-M`), so a renamed file
-/// whose old path is among them stays a rename (see [`with_rename_sources`]).
+/// whose old path is among them stays a rename (see [`with_rename_sources`]). The message part
+/// is UTF-8 whatever the output encoding, so the patch's text matches its `Content-Type`.
 pub fn format_patch_cmd(oid: Oid, paths: &[String]) -> Vec<String> {
     let sha = oid.to_string();
     let mut cmd =
-        args(&["--literal-pathspecs", "format-patch", "-1", "--stdout", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", &sha]);
+        utf8_args(&["--literal-pathspecs", "format-patch", "-1", "--stdout", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", &sha]);
     if !paths.is_empty() {
         cmd.insert(cmd.len() - 1, "-M".into());
         cmd.push("--".into());
