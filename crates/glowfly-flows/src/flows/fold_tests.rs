@@ -44,14 +44,8 @@ fn late_changes() -> FileDiff {
         (from..=to).flat_map(|n| if [15, 28].contains(&n) { vec![del(n), add(n)] } else { vec![ctx(n)] }).collect()
     };
     let hunk = |from: u32, to: u32| Hunk { header: format!("@@ -{from} +{from} @@"), lines: lines(from, to) };
-    let mut d = FileDiff {
-        binary: false,
-        hunks: vec![hunk(12, 18), hunk(25, 30)],
-        highlight: None,
-        intraline: Default::default(),
-        whole: None,
-        old_lines: None,
-    };
+    #[rustfmt::skip]
+    let mut d = FileDiff { binary: false, hunks: vec![hunk(12, 18), hunk(25, 30)], highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     d.whole = WholeFile::new(&d.hunks, hunk(1, 30)).map(Box::new);
     d
 }
@@ -305,9 +299,9 @@ fn expand_all_and_collapse_all() {
     st.settings.diff_mode = DiffMode::Hunks;
     st.session.tab_view.diff_expanded = all.clone();
     run(&mut st, Msg::Diff(DiffMsg::CollapseAllUnchanged));
-    assert!(st.session.tab_view.diff_expanded.is_empty(), "the hunk view's runs close");
+    let closed = st.session.tab_view.diff_expanded.is_empty();
     run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
-    assert!(!st.session.tab_view.diff_expanded.is_empty(), "and open");
+    assert!(closed && !st.session.tab_view.diff_expanded.is_empty(), "the hunk view's runs close, then open");
 
     // With no diff open both are ignored.
     st.session.diff.view = None;
