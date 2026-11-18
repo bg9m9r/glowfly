@@ -284,3 +284,28 @@ fn odd_paths_come_back_exactly() {
     assert_eq!(row(&m, "one").1.files, names(&[path]));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn an_overlap_past_the_stored_file_cap_is_still_found() {
+    let dir = scratch_repo("bm-past-cap");
+    commit(&dir, "zeta.txt", &lines(&[]), "base");
+    git(&dir, &["checkout", "-q", "-b", "topic"]);
+    commit(&dir, "zeta.txt", &lines(&[(3, "topic")]), "topic");
+    git(&dir, &["checkout", "-q", "main"]);
+    for i in 0..MAX_PATHS + 10 {
+        write(
+            &dir,
+            &format!("bulk-{i:05}.txt"),
+            "x
+",
+        );
+    }
+    write(&dir, "zeta.txt", &lines(&[(3, "main")]));
+    git(&dir, &["add", "-A"]);
+    git(&dir, &["commit", "-q", "-m", "mass change"]);
+    let m = map(&dir);
+    let (i, _) = row(&m, "topic");
+    assert_eq!(pair(&m, "main", "topic").unwrap().shared, names(&["zeta.txt"]));
+    assert_eq!(m.conflicts_with_main(i), Some(&names(&["zeta.txt"])[..]));
+    let _ = std::fs::remove_dir_all(&dir);
+}

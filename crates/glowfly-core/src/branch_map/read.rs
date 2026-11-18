@@ -28,7 +28,9 @@ pub fn compute(workdir: &Path, req: &Request, known: &Forecasts, stop: &dyn Fn()
         files: Vec::new(),
         files_total: 0,
     }];
-    // The files each branch's merge base to the main branch's tip changed, for the main pairs.
+    // The whole sorted lists of changed files, for the overlaps (a row keeps only `MAX_PATHS`), and
+    // the files each branch's merge base to the main branch's tip changed, for the main pairs.
+    let mut whole: Vec<Vec<String>> = vec![Vec::new()];
     let mut main_sides: Vec<Vec<String>> = vec![Vec::new()];
     for (tip, time) in kept {
         if stop() {
@@ -36,7 +38,7 @@ pub fn compute(workdir: &Path, req: &Request, known: &Forecasts, stop: &dyn Fn()
         }
         let (ahead, behind) = repo.graph_ahead_behind(tip.oid, req.main.oid)?;
         let base = merge_base(&repo, tip.oid, req.main.oid)?;
-        let (files, files_total) = match base.filter(|b| *b != tip.oid) {
+        let (all_files, files_total) = match base.filter(|b| *b != tip.oid) {
             Some(b) => changed(&repo, b, tip.oid)?,
             None => (Vec::new(), 0),
         };
@@ -45,6 +47,8 @@ pub fn compute(workdir: &Path, req: &Request, known: &Forecasts, stop: &dyn Fn()
             None => Vec::new(),
         };
         main_sides.push(side);
+        let files = all_files[..all_files.len().min(MAX_PATHS)].to_vec();
+        whole.push(all_files);
         rows.push(Row { branch: tip.branch, tip: tip.oid, time, ahead, behind, base, files, files_total });
     }
     let current = req.current.as_ref().and_then(|c| rows.iter().position(|r| &r.branch == c));
@@ -52,8 +56,8 @@ pub fn compute(workdir: &Path, req: &Request, known: &Forecasts, stop: &dyn Fn()
     let mut merged = 0;
     for a in 0..rows.len() {
         for b in a + 1..rows.len() {
-            let ours = if a == 0 { &main_sides[b] } else { &rows[a].files };
-            let shared = common(ours, &rows[b].files);
+            let ours = if a == 0 { &main_sides[b] } else { &whole[a] };
+            let mut shared = common(ours, &whole[b]);
             if shared.is_empty() {
                 continue;
             }
@@ -69,6 +73,7 @@ pub fn compute(workdir: &Path, req: &Request, known: &Forecasts, stop: &dyn Fn()
                     merger.forecast(key.0, key.1).unwrap_or_else(|e| Forecast::Unknown(e.to_string()))
                 }
             };
+            shared.truncate(MAX_PATHS);
             pairs.push(Pair { a, b, shared, forecast });
         }
     }
@@ -95,7 +100,8 @@ fn kept(repo: &Repository, req: &Request) -> Result<Vec<(Tip, i64)>> {
 }
 
 /// The names of the files changed from `from`'s tree to `to`'s (a rename is its old and its new
-/// name: no rename detection), sorted with at most `MAX_PATHS` kept, and how many there were.
+/// name: no rename detection), sorted and whole (callers cut what they store), and how many deltas
+/// there were.
 fn changed(repo: &Repository, from: Oid, to: Oid) -> Result<(Vec<String>, usize)> {
     let (old, new) = (repo.find_commit(from)?.tree()?, repo.find_commit(to)?.tree()?);
     let mut opts = DiffOptions::new();
@@ -109,7 +115,6 @@ fn changed(repo: &Repository, from: Oid, to: Oid) -> Result<(Vec<String>, usize)
     let total = diff.deltas().len();
     names.sort();
     names.dedup();
-    names.truncate(MAX_PATHS);
     Ok((names, total))
 }
 

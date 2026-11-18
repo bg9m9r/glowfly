@@ -16,7 +16,8 @@ pub use read::compute;
 
 /// How many branches besides the main branch are measured.
 pub const MAX_BRANCHES: usize = 40;
-/// How many changed file names are kept per branch (the count stays exact).
+/// How many changed file names are kept per branch and per pair (the count stays exact; overlaps
+/// are found on the whole lists).
 pub const MAX_PATHS: usize = 5_000;
 
 /// Two tips, the smaller object id first: the key a trial merge is remembered under.
