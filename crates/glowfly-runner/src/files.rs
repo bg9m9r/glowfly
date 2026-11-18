@@ -101,6 +101,7 @@ pub(super) fn work_file(workdir: &Path, op: FileOp, trashers: undo::Trashers) ->
 }
 
 /// Discards the `seen` lines of `path` the way a partial line discard does, undo entry and all.
+/// The result is `StageMsg::LocalOpDone` or, for a lock file in the way, `LockMsg::LocalLocked`.
 fn lines_instead(workdir: &Path, path: &str, seen: &SeenLines) -> Msg {
     let s = seen.clone();
     let op = LocalOp::Lines {

@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Quick index/working-tree edits (through libgit2, or git where filters must run).
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LocalOp {
     StageFile(String),
     /// Stages these exact paths as `StageFile` does each.
@@ -83,6 +83,28 @@ impl LocalOp {
             | LocalOp::MarkConflicted(_)
             | LocalOp::TakeTrivialPicks(_) => true,
             LocalOp::UnstagePaths(_) | LocalOp::Hunk { .. } | LocalOp::Lines { .. } => false,
+        }
+    }
+}
+
+impl LocalOp {
+    /// Whether a failure on a lock file offers Delete lock file and Try again for it
+    /// (update/lock_local.rs): stage, unstage and discard ops; not conflict changes.
+    pub fn retryable(&self) -> bool {
+        match self {
+            LocalOp::StageFile(_)
+            | LocalOp::StagePaths(_)
+            | LocalOp::StageAll
+            | LocalOp::UnstagePaths(_)
+            | LocalOp::DiscardFile(_)
+            | LocalOp::Hunk { .. }
+            | LocalOp::Lines { .. } => true,
+            LocalOp::ResolveConflict { .. }
+            | LocalOp::SavePartialResolution { .. }
+            | LocalOp::ResolveWithSide { .. }
+            | LocalOp::MarkResolved(_)
+            | LocalOp::MarkConflicted(_)
+            | LocalOp::TakeTrivialPicks(_) => false,
         }
     }
 }

@@ -24,6 +24,7 @@ fn index(e: &W) -> usize {
         W::MissingContent { .. } => 1,
         W::Panicked { .. } => 2,
         W::Other { .. } => 3,
+        W::Locked { .. } => 4,
     }
 }
 
@@ -48,7 +49,22 @@ fn cases() -> Vec<(W, [&'static str; 3])> {
                 "Glowfly tuvo un error interno (local-op): boom",
             ],
         ),
+        (
+            locked(),
+            [
+                "Another Git program is using this repository (index.lock exists). Wait for it to finish, then try again. If none is running, delete that file.",
+                "Ein anderes Git-Programm verwendet dieses Repository (index.lock existiert). Warte, bis es fertig ist, und versuche es dann erneut. Wenn keines läuft, lösche diese Datei.",
+                "Otro programa de Git está usando este repositorio (existe index.lock). Espera a que termine e inténtalo de nuevo. Si no hay ninguno en marcha, borra ese archivo.",
+            ],
+        ),
     ]
+}
+
+/// The lock file `W::Locked` names in these tests: only its file name is shown.
+const LOCK: &str = "/r/.git/index.lock";
+
+fn locked() -> W {
+    W::Locked { lock: LOCK.into(), said: "the index is locked; this might be due to a concurrent or crashed process".into() }
 }
 
 const LANGS: [Lang; 3] = [Lang::En, Lang::De, Lang::Es];
@@ -64,7 +80,7 @@ fn every_variant_in_each_language() {
     let all = cases();
     let mut seen: Vec<usize> = all.iter().map(|(e, _)| index(e)).collect();
     seen.sort_unstable();
-    assert_eq!(seen, [0, 1, 2, 3]);
+    assert_eq!(seen, [0, 1, 2, 3, 4]);
     for (e, words) in all {
         assert_eq!(typed::write(Lang::En, &e), e.to_string(), "English is its Display");
         for (t, want) in LANGS.into_iter().zip(words) {
@@ -198,5 +214,20 @@ fn a_parked_tab_words_its_failed_writes_and_keeps_their_undo() {
         let after = st.tabs[0].parked.as_ref().map_or(0, |p| p.session.undo.undo.len());
         assert_eq!(after, before + usize::from(keeps_undo), "{want}");
     }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_parked_tab_logs_a_lock_failure_without_buttons() {
+    use crate::effect::LocalOp;
+    use crate::msg::LockMsg;
+    let dir = scratch_repo("write-errors-parked-lock");
+    let mut st = parked(&dir, "de");
+    let op = Box::new(LocalOp::UnstagePaths(vec!["a.txt".into()]));
+    let msg = Msg::Lock(LockMsg::LocalLocked { workdir: dir.clone(), op, lock: LOCK.into(), error: locked() });
+    assert!(update(&mut st, scoped(&dir, msg), Instant::now()).is_empty(), "no lock check for a parked tab");
+    let line = st.tabs[0].log.last().expect("a line in the parked tab's log");
+    assert_eq!((line.ok, line.text.as_str()), (false, typed::write(Lang::De, &locked()).as_str()));
+    assert!(st.logs.fixes.is_empty() && st.logs.alt_fixes.is_empty(), "no Try again for a parked tab");
     let _ = std::fs::remove_dir_all(&dir);
 }

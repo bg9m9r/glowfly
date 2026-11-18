@@ -253,6 +253,11 @@ impl AppState {
         self.log_to(None, ok, text.into(), None, true);
     }
 
+    /// `log`, returning the entry's id (for a note that keeps a fix, update/lock_local.rs).
+    pub fn log_noted(&mut self, ok: bool, text: impl Into<String>) -> EntryId {
+        self.log_to(None, ok, text.into(), None, true)
+    }
+
     /// Adds to the active tab's activity log without announcing a failure.
     pub fn log_quiet(&mut self, ok: bool, text: impl Into<String>) {
         self.log_to(None, ok, text.into(), None, false);

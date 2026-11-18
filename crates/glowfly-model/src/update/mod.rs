@@ -83,6 +83,7 @@ pub mod line_counts;
 mod load_more;
 mod local_done;
 mod lock_file;
+mod lock_local;
 mod logs;
 mod logs_copy;
 mod logs_export;

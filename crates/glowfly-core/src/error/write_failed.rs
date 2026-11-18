@@ -18,6 +18,9 @@ pub enum WriteFailed {
     Panicked { effect: String, panic: String },
     /// Any other error, in the words it has always shown.
     Other { said: String },
+    /// A lock file is in the way: its whole path as libgit2 or git named it (`lock_errors`),
+    /// and their own words.
+    Locked { lock: String, said: String },
 }
 
 impl From<Error> for WriteFailed {
@@ -53,6 +56,9 @@ impl fmt::Display for WriteFailed {
                 write!(f, "the contents of {path} haven't been downloaded from {remote} yet")
             }
             WriteFailed::Panicked { effect, panic } => write!(f, "Glowfly hit an internal error ({effect}): {panic}"),
+            WriteFailed::Locked { lock, .. } => {
+                f.write_str(&crate::i18n::Lang::En.trf("git_errors.locked", &[("file", &crate::lock_errors::file_name(lock))]))
+            }
         }
     }
 }
@@ -100,5 +106,14 @@ mod tests {
     fn panicked_displays_as_before() {
         let e = WriteFailed::Panicked { effect: "local-op".into(), panic: "boom".into() };
         assert_eq!(e.to_string(), "Glowfly hit an internal error (local-op): boom");
+    }
+
+    #[test]
+    fn locked_displays_the_lock_sentence_with_the_file_name_only() {
+        let e = WriteFailed::Locked { lock: "/r/.git/index.lock".into(), said: "the index is locked".into() };
+        assert_eq!(
+            e.to_string(),
+            "Another Git program is using this repository (index.lock exists). Wait for it to finish, then try again. If none is running, delete that file."
+        );
     }
 }

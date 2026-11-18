@@ -1,6 +1,7 @@
 //! A local op's result (`StageMsg::LocalOpDone`, `LocalOpFailed`): the failure worded in the
 //! user's language for the log, the undo recorded, then the conflict view, the WIP list and the
-//! status catch up.
+//! status catch up. One that failed on a lock file is logged by update/lock_local.rs, which
+//! settles through `settle_failed`.
 
 use crate::effect::Effect;
 use crate::state::AppState;
@@ -22,6 +23,12 @@ pub(super) fn done(st: &mut AppState, result: Result<Option<Action>, WriteFailed
         Ok(None) => {}
     }
     settle(st, failed, recorded, now, fx);
+}
+
+/// After a local op that failed on a lock (update/lock_local.rs logs it): the conflict view,
+/// the WIP list, the watcher and the status settle as for any failure (`done`).
+pub(super) fn settle_failed(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    settle(st, true, false, now, fx);
 }
 
 /// A conflict change that failed partway: its undo is recorded, and the log says Undo puts back

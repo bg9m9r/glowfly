@@ -1,5 +1,9 @@
 {
+  "lock.again.moved": "The change wasn't made again: its tab shows another repository now.",
+  "lock.again.switch_back": "The change wasn't made again: switch back to its tab first.",
+  "lock.again.tab_closed": "The change wasn't made again: its tab was closed.",
   "lock.delete.body": "No Git program is running, so {file} looks left behind by one that stopped. Glowfly will delete it, then run {job} again.\n\nOnly go on if no other program, such as an editor or another Git client, is working in this repository.\n\n{path}",
+  "lock.delete.body.change": "No Git program is running, so {file} looks left behind by one that stopped. Glowfly will delete it, then make the change again.\n\nOnly go on if no other program, such as an editor or another Git client, is working in this repository.\n\n{path}",
   "lock.delete.button": "Delete lock file",
   "lock.delete.confirm": "Delete and try again",
   "lock.delete.title": "Delete the lock file?",
