@@ -189,6 +189,7 @@ pub(super) mod snapshot_tests_stack;
 pub(super) mod snapshot_tests_stack_push;
 pub(super) mod snapshot_tests_stacked;
 pub(super) mod snapshot_tests_stash;
+pub(super) mod snapshot_tests_stash_dates;
 pub(super) mod snapshot_tests_stash_push;
 pub(super) mod snapshot_tests_status_glance;
 pub(super) mod snapshot_tests_submodule_dialogs;

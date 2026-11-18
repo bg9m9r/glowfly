@@ -3,7 +3,7 @@
 //! git's own "autostash" with their auto marker, the merge banner's line while the
 //! auto-stash waits, and the offer to put back an auto-stash a restart left waiting.
 
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use super::snapshot_tests::{NOW, harness, remove_fixture, with_repo};
 use super::snapshot_tests_conflict_files::{fill_lists, merging};
 use super::snapshot_tests_worktrees::pushed;
 use crate::snapshot_check::CheckSnapshot;
@@ -64,9 +64,9 @@ fn stashes_auto_marker() {
     let snap = st.snap.as_mut().unwrap();
     let oid = |i: usize| snap.commits[i].oid;
     snap.stashes = vec![
-        StashInfo { index: 0, message: "On main: Auto-stash before checking out login-page".into(), oid: oid(0) },
-        StashInfo { index: 1, message: "On main: login form tweaks".into(), oid: oid(1) },
-        StashInfo { index: 2, message: "autostash".into(), oid: oid(2) },
+        StashInfo { index: 0, message: "On main: Auto-stash before checking out login-page".into(), oid: oid(0), time: Some(NOW - 600) },
+        StashInfo { index: 1, message: "On main: login form tweaks".into(), oid: oid(1), time: Some(NOW - 3 * 86_400) },
+        StashInfo { index: 2, message: "autostash".into(), oid: oid(2), time: None },
     ];
     st.view.sections.local = false;
     st.view.sections.remote = false;
@@ -104,7 +104,7 @@ fn auto_stash_saved_offer() {
     let op = AutoStashFor::Merge { from: "feature".into(), into: "main".into() };
     let snap = st.snap.as_mut().unwrap();
     let oid = snap.commits[0].oid;
-    snap.stashes = vec![StashInfo { index: 0, message: format!("On main: {}", op.message()), oid }];
+    snap.stashes = vec![StashInfo { index: 0, message: format!("On main: {}", op.message()), oid, time: None }];
     let workdir = snap.workdir.clone();
     let saved = vec![SavedAutoStash::new(op.clone(), op.message(), oid)];
     let read = Msg::AutoStash(AutoStashMsg::SavedRead { workdir, saved });

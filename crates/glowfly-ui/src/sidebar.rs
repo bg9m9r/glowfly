@@ -250,7 +250,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &Grap
 
     let stash = (&actions.stash, &actions.stash_staged);
     let open = empty.open_mut(repo, Folding::Stashes, snap.stashes.len(), &mut sections.stashes);
-    super::stashes::section(ui, t, snap, open, (sel, &shown, filtering), stash, msgs);
+    super::stashes::section(ui, super::date_tip::Clock::of(st), snap, open, (sel, &shown, filtering), stash, msgs);
     let rows = super::worktrees::Rows { shown: &shown, sel, open_tabs: &open_tabs, add: &actions.worktree, filtering, t };
     let open = empty.open_mut(repo, Folding::Worktrees, glowfly_model::state::worktrees::listed(snap).len(), &mut sections.worktrees);
     super::worktrees::section(ui, snap, open, rows, hover_next, msgs);

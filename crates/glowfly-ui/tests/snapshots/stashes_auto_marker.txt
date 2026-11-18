@@ -107,6 +107,8 @@ painted:
   "Stashes"
   "3"
   "auto"
+  "10 minutes ago"
+  "3 days ago"
   "auto"
   "Worktrees"
   "0"

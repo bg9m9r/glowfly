@@ -1,6 +1,6 @@
 //! The command palette (Ctrl+P): a search field over the commands available now, ranked by a
 //! fuzzy match, or over a two-step command's items (tracked files for File history, stashes to
-//! apply, pop or delete), or a free-text step (the message for a new stash). The lists come
+//! apply, pop or delete; a stash's row shows its date before its ref), or a free-text step (the message for a new stash). The lists come
 //! from `state::palette`; this file only draws them (with the empty query's group headings) and
 //! turns keys and clicks into messages. The query is drawn from a copy and sent back as
 //! `EditMsg::PaletteQuery`; update then resets the selection and ranks a sub-list for it.
@@ -101,7 +101,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
                 commands_list(ui, st, view, &query, msgs, run_selected);
                 "Up/Down to choose, Enter to run, Esc to close"
             }
-            Mode::Pick(_) => pick_list(ui, p, &query, &mut view.palette_scroll, msgs, run_selected),
+            Mode::Pick(_) => pick_list(ui, st, &query, &mut view.palette_scroll, msgs, run_selected),
             &Mode::Input(kind) => input_step(ui, kind, &query, msgs, run_selected),
         };
         ui.add_space(6.0);
@@ -195,7 +195,7 @@ fn commands_list(ui: &mut Ui, st: &AppState, view: &mut ViewState, query: &str, 
             let selected = sel == Some(i);
             let e = &shown.entry;
             let key = e.shortcut(&st.keymap).or_else(|| st.custom_commands.key_hint(&e.command));
-            let r = row(ui, &e.label, e.detail.as_deref(), key, (&shown.matched, 0), names_ref_or_repo(&e.command), selected);
+            let (r, _) = row(ui, &e.label, e.detail.as_deref(), key, (&shown.matched, 0), names_ref_or_repo(&e.command), selected);
             if r.clicked() {
                 msgs.push(Msg::Palette(PaletteMsg::RunPaletteCommand(shown.entry.command.clone())));
             }
@@ -223,8 +223,10 @@ fn group_heading(ui: &mut Ui, title: &str) {
 
 /// A sub-list's items matching `query`, the one typed this frame (at most `MAX_PICK_ROWS`):
 /// update's ranking, or for a query changed this frame a ranking made now with its first row
-/// selected, as update will. `scroll` brings the selected row into view once. Returns the footer.
-fn pick_list(ui: &mut Ui, p: &Palette, query: &str, scroll: &mut bool, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
+/// selected, as update will. `scroll` brings the selected row into view once. A stash's detail
+/// reads "<date> · stash@{n}"; resting the pointer on it shows the full date. Returns the footer.
+fn pick_list(ui: &mut Ui, st: &AppState, query: &str, scroll: &mut bool, msgs: &mut Vec<Msg>, run_selected: bool) -> &'static str {
+    let Some(p) = st.palette.as_ref() else { return "" };
     let Mode::Pick(pk) = &p.mode else { return "" };
     let typed = query != p.query;
     let selected = if typed { 0 } else { p.selected };
@@ -246,9 +248,15 @@ fn pick_list(ui: &mut Ui, p: &Palette, query: &str, scroll: &mut bool, msgs: &mu
                         let label = pk.label(hit.index);
                         // A file's folder part (through the last '/') is dimmed.
                         let dim = if kind.dims_folders() { label.rfind('/').map_or(0, |b| label[..=b].chars().count()) } else { 0 };
-                        let detail = pk.detail(hit.index);
+                        let detail = pk.shown_detail(hit.index, &st.settings, st.cues.now, st.cues.utc_offset);
                         let names = kind.lists_refs();
-                        let resp = row(ui, label, detail.as_deref(), None, (&hit.matched, dim), names, i == sel);
+                        let (resp, detail_rect) = row(ui, label, detail.as_deref(), None, (&hit.matched, dim), names, i == sel);
+                        if resp.hovered()
+                            && detail_rect.zip(ui.ctx().pointer_hover_pos()).is_some_and(|(r, pos)| r.contains(pos))
+                            && let Some(tip) = pk.detail_tip(hit.index, &st.settings, st.cues.now, st.cues.utc_offset)
+                        {
+                            resp.clone().on_hover_text_at_pointer(tip);
+                        }
                         if resp.clicked()
                             && let Some(c) = pk.command(hit.index)
                         {
@@ -303,7 +311,8 @@ fn names_ref_or_repo(c: &PaletteCommand) -> bool {
 /// One row: the label with its matched characters in the accent colour (the chars before
 /// `dim_before` dimmed otherwise), then at the right in dim text the detail and, at the far
 /// right, the shortcut. The label is clipped before both, or for `names` (a ref or repository)
-/// cut in its middle, whole on hover.
+/// cut in its middle, whole on hover. Also returns where the detail was painted (None without
+/// one), for a caller that gives it a tooltip.
 fn row(
     ui: &mut Ui,
     label: &str,
@@ -312,7 +321,7 @@ fn row(
     (matched, dim_before): (&[usize], usize),
     names: bool,
     selected: bool,
-) -> Response {
+) -> (Response, Option<Rect>) {
     let (rect, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ROW_H), Sense::click());
     // Painted text has no accessible name; give the row one (screen readers and UI tests).
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label));
@@ -337,6 +346,7 @@ fn row(
         right_w = g.size().x + 18.0;
         p.galley(pos2(rect.right() - g.size().x - 10.0, sizes::text_pos(rect, &g).y), g, color::weak());
     }
+    let mut detail_rect = None;
     if let Some(detail) = detail {
         let g = p.layout_no_wrap(detail.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
         // 10px in from the row's edge, or 14px left of the shortcut (`right_w` already holds
@@ -344,6 +354,7 @@ fn row(
         let gap = if shortcut.is_some() { 6.0 } else { 10.0 };
         let x = rect.right() - right_w - g.size().x - gap;
         right_w += g.size().x + gap + 8.0;
+        detail_rect = Some(Rect::from_x_y_ranges(x..=x + g.size().x, rect.y_range()));
         p.galley(pos2(x, sizes::text_pos(rect, &g).y), g, color::weak());
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + 10.0, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
@@ -359,5 +370,5 @@ fn row(
     };
     let g = ui.fonts(|f| f.layout_job(job));
     p.with_clip_rect(text_rect).galley(pos2(text_rect.left(), sizes::text_pos(rect, &g).y), g, color::text());
-    if cut.is_some() { resp.on_hover_text(label) } else { resp }
+    (if cut.is_some() { resp.on_hover_text(label) } else { resp }, detail_rect)
 }

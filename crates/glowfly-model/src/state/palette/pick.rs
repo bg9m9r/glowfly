@@ -79,7 +79,8 @@ impl Pick {
     }
 
     /// The dim text at the right of item `index`: a stash's ref, a profile's email, or what a
-    /// checkout does.
+    /// checkout does. It is also the item's hidden search keyword, so it never holds a date;
+    /// `shown_detail` is what is drawn.
     pub fn detail(&self, index: usize) -> Option<String> {
         match self.kind {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
@@ -88,6 +89,30 @@ impl Pick {
             PickKind::SwitchBranch | PickKind::DeleteTag => self.refs.get(index).and_then(|e| e.detail.clone()),
             PickKind::FileHistory | PickKind::Blame => None,
         }
+    }
+
+    /// The stash commit's time of item `index` of a stash sub-list, when it is known.
+    fn stash_time(&self, index: usize) -> Option<i64> {
+        match self.kind {
+            PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).and_then(|s| s.time),
+            _ => None,
+        }
+    }
+
+    /// The detail as drawn: `detail`, and for a stash with a known time "<date> · stash@{n}" (the
+    /// day relative or in the user's Date format, in the app's zone).
+    pub fn shown_detail(&self, index: usize, settings: &Settings, now: i64, utc_offset: i32) -> Option<String> {
+        let detail = self.detail(index)?;
+        Some(match self.stash_time(index) {
+            Some(time) => format!("{} · {detail}", settings.format_day(time, now, utc_offset)),
+            None => detail,
+        })
+    }
+
+    /// The hover text of item `index`'s detail: a stash's full date (and its age when dates
+    /// aren't relative); None for the other kinds and for a stash without a known time.
+    pub fn detail_tip(&self, index: usize, settings: &Settings, now: i64, utc_offset: i32) -> Option<String> {
+        self.stash_time(index).map(|t| settings.date_tooltip(t, now, utc_offset))
     }
 
     /// What choosing item `index` runs.
@@ -178,3 +203,7 @@ impl Pick {
         Some(Ranked { query: query.to_owned(), matches, hits, total })
     }
 }
+
+#[cfg(test)]
+#[path = "pick_tests.rs"]
+mod tests;

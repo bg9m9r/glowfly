@@ -1,0 +1,11 @@
+Dialog
+  Label "Apply stash"
+  TextInput "Find a stash to apply" [focused]
+  Button "On main: login form tweaks" [selected]
+  Button "WIP on main: 1a2b3c4 Add search"
+  Button "On login-page: half-done validation"
+  Label "Up/Down to choose, Enter to apply, Backspace or Esc to go back"
+painted:
+  "02/01/2026 · stash@{0}"
+  "01/29/2026 · stash@{1}"
+  "12/23/2025 · stash@{2}"
