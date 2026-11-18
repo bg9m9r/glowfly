@@ -7,11 +7,12 @@ use crate::flows::update;
 use crate::flows::{drive, git, state};
 use glowfly_core::undo::Action;
 use glowfly_model::effect::Effect;
-use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::PaletteMsg;
 use glowfly_model::msg::RepoMsg;
-use glowfly_model::state::palette::{InputKind, Items, Mode, Pick, PickKind, StashAction, row_count, shown};
+use glowfly_model::msg::StashMsg;
+use glowfly_model::state::palette::{InputKind, Items, Mode, Pick, PickKind, row_count, shown};
+use glowfly_model::state::stash_confirm::StashAction;
 use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -235,7 +236,7 @@ fn delete_chosen_stash_confirms() {
     assert!(body.contains("On main: first") && body.contains("Undo brings it back"), "{body}");
     let first = st.snap.as_ref().unwrap().stashes[1].oid;
     assert!(
-        matches!(then.as_ref(), Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid }) if *oid == first),
+        matches!(then.as_ref(), Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 1, oid }) if *oid == first),
         "the confirmation doesn't drop the stash"
     );
     drive(&mut st, Msg::ConfirmAccepted);

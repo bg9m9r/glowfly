@@ -1,22 +1,50 @@
 //! Whether applying, popping or deleting a stash asks first, the one place that decides it for
 //! the STASHES menu, the palette, the toolbar's Pop and the journal's lost stashes. Pure.
+//! state/stash_actions.rs is the entry point for a listed stash.
 //!
 //! Delete always asks. Apply and Pop are refused while the index has conflicted entries (git
 //! can't apply a stash then), run straight away on a clean tree, and on top of uncommitted
 //! changes ask a question that names the files both the stash and the working tree change. That
 //! list needs the stash's files, so the question goes through `StashMsg::Ask`, which reads them
 //! (`StashEffect::ReadPaths`) and opens it with `ask_confirm`. Every pop and apply of a listed
-//! stash names it by position and commit (`JobMsg::Stash`), so git is refused if the list moved.
+//! stash names it by position and commit (`StashMsg::Run`), so git is refused if the list moved.
 
 use super::conflict_check::{POPOVER_FILES, file_list};
-use super::palette::kinds::StashAction;
 use super::rebase::has_conflicts;
 use super::stashes::drop_confirm_body;
 use crate::msg::{JobMsg, Msg, StashMsg};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::{Snapshot, StashInfo};
+use glowfly_core::repo::Snapshot;
 use std::collections::HashSet;
+
+/// What Apply, Unstash and Delete run on one listed stash.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StashAction {
+    Apply,
+    Pop,
+    Drop,
+}
+
+impl StashAction {
+    /// The `git stash` subcommand.
+    pub fn git_verb(self) -> &'static str {
+        match self {
+            StashAction::Apply => "apply",
+            StashAction::Pop => "pop",
+            StashAction::Drop => "drop",
+        }
+    }
+
+    /// The job's label in the activity log, as the sidebar names it.
+    pub fn job_label(self) -> &'static str {
+        match self {
+            StashAction::Apply => "Apply stash",
+            StashAction::Pop => "Unstash",
+            StashAction::Drop => "Delete stash",
+        }
+    }
+}
 
 /// What an accepted Apply or Pop runs.
 #[derive(Clone, Debug, PartialEq)]
@@ -39,22 +67,22 @@ pub struct StashAsk {
 
 impl StashAsk {
     /// The job the question's button runs.
-    pub fn job(&self) -> Msg {
+    pub(super) fn job(&self) -> Msg {
         match &self.run {
-            StashRun::Listed { index } => Msg::Job(JobMsg::Stash { action: self.action, index: *index, oid: self.oid }),
+            StashRun::Listed { index } => Msg::Stash(StashMsg::Run { action: self.action, index: *index, oid: self.oid }),
             StashRun::Git { label, cmds } => Msg::Job(JobMsg::Git { label: label.clone(), cmds: cmds.clone() }),
         }
     }
 }
 
 /// Why Apply and Pop can't run now, when the index has conflicted entries.
-pub fn apply_blocked(snap: &Snapshot, t: Lang) -> Option<&'static str> {
+pub(crate) fn apply_blocked(snap: &Snapshot, t: Lang) -> Option<&'static str> {
     has_conflicts(snap).then(|| t.tr("stash.blocked.conflicts"))
 }
 
 /// What `action` on the stash with commit `oid` (named `message`) sends: the job, the question
 /// before it, or the refusal over conflicts.
-pub fn guarded(snap: &Snapshot, t: Lang, action: StashAction, oid: Oid, message: &str, run: StashRun) -> Msg {
+pub(super) fn guarded(snap: &Snapshot, t: Lang, action: StashAction, oid: Oid, message: &str, run: StashRun) -> Msg {
     let ask = StashAsk { action, oid, message: message.to_owned(), run };
     match action {
         StashAction::Drop => Msg::confirm_danger("Delete stash", drop_confirm_body(message), "Delete", ask.job()),
@@ -64,17 +92,6 @@ pub fn guarded(snap: &Snapshot, t: Lang, action: StashAction, oid: Oid, message:
             None => ask.job(),
         },
     }
-}
-
-/// `action` on stash `s`, named by its position and commit.
-pub fn stash_msg(snap: &Snapshot, t: Lang, action: StashAction, s: &StashInfo) -> Msg {
-    guarded(snap, t, action, s.oid, &s.message, StashRun::Listed { index: s.index })
-}
-
-/// Pop of the newest stash as the snapshot shows it (`stash@{0}` with its commit); None
-/// without stashes.
-pub fn pop_latest(snap: &Snapshot, t: Lang) -> Option<Msg> {
-    Some(stash_msg(snap, t, StashAction::Pop, snap.stashes.first()?))
 }
 
 /// The paths in `stash_paths` that the working tree changes too (staged, unstaged or
@@ -128,4 +145,4 @@ pub fn ask_confirm(snap: &Snapshot, t: Lang, ask: &StashAsk, paths: Option<&[Str
 
 #[cfg(test)]
 #[path = "stash_confirm_tests.rs"]
-mod tests;
+pub(super) mod tests;

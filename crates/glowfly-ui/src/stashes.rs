@@ -3,7 +3,7 @@
 //! Without stashes, once expanded, a sentence on what a stash is and Stash changes…. The
 //! header's + opens the Stash dialog, and its menu stashes every change or only the staged ones.
 
-use super::common::{menu_danger, menu_item, menu_item_if};
+use super::common::{menu_danger, menu_item_if};
 use super::theme::color;
 use super::widgets;
 use super::widgets::empty_state::{self, Action};
@@ -14,10 +14,10 @@ use eframe::egui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops;
-use glowfly_model::msg::{Msg, RepoMsg, StashMsg};
+use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::state::Selection;
-use glowfly_model::state::palette::StashAction;
 use glowfly_model::state::section_actions::SectionAction;
+use glowfly_model::state::stash_actions::{self, StashOption};
 
 /// The selection, the left-panel filter, and whether it has text.
 type Filtered<'a> = (&'a Selection, &'a dyn Fn(&str) -> bool, bool);
@@ -65,18 +65,30 @@ pub(super) fn section(
         if auto {
             r = r.on_hover_text(t.tr("sidebar.stashes.auto.tip"));
         }
-        let stash = |action| glowfly_model::state::stash_confirm::stash_msg(snap, t, action, s);
-        let blocked = glowfly_model::state::stash_confirm::apply_blocked(snap, t);
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
         }
         r.row_menu(|ui| {
             super::common::menu_header(ui, &s.message);
-            menu_item_if(msgs, ui, t.tr("sidebar.stashes.menu.apply"), blocked, stash(StashAction::Apply));
-            menu_item_if(msgs, ui, t.tr("sidebar.stashes.menu.pop"), blocked, stash(StashAction::Pop));
-            menu_item(msgs, ui, t.tr("sidebar.stashes.menu.rename"), Msg::Stash(StashMsg::RenameDialog { oid: s.oid }));
-            separator(ui);
-            menu_danger(msgs, ui, t.tr("sidebar.stashes.menu.delete"), None, stash(StashAction::Drop));
+            for item in stash_actions::items(snap, t, s) {
+                let label = label(t, item.option);
+                if item.danger {
+                    separator(ui);
+                    menu_danger(msgs, ui, label, item.blocked, item.msg);
+                } else {
+                    menu_item_if(msgs, ui, label, item.blocked, item.msg);
+                }
+            }
         });
+    }
+}
+
+/// The menu text of `option`.
+fn label(t: Lang, option: StashOption) -> &'static str {
+    match option {
+        StashOption::Apply => t.tr("sidebar.stashes.menu.apply"),
+        StashOption::Pop => t.tr("sidebar.stashes.menu.pop"),
+        StashOption::Rename => t.tr("sidebar.stashes.menu.rename"),
+        StashOption::Drop => t.tr("sidebar.stashes.menu.delete"),
     }
 }

@@ -12,7 +12,8 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::PaletteMsg;
 use glowfly_model::state::AppState;
-use glowfly_model::state::palette::{InputKind, Mode, Palette, PaletteCommand, Pick, StashAction};
+use glowfly_model::state::palette::{InputKind, Mode, Palette, PaletteCommand, Pick};
+use glowfly_model::state::stash_confirm::StashAction;
 
 fn pushed(h: &Harness<'_, (AppState, Vec<Msg>)>, want: impl Fn(&Msg) -> bool) -> bool {
     h.state().1.iter().any(want)

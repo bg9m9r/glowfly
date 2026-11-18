@@ -1,16 +1,21 @@
-//! Messages for renaming a stash, the question before applying one and the Stash dialog
-//! (update/stash.rs), and the auto-stash
+//! Messages for every action on one stash (apply, pop, drop, rename), the question before
+//! applying one and the Stash dialog (update/stash.rs), and the auto-stash
 //! (update/auto_stash.rs), with the records a restart left waiting (update/auto_stash_saved.rs).
 
 use super::Inactive;
-use crate::state::stash_confirm::StashAsk;
+use crate::state::stash_confirm::{StashAction, StashAsk};
 use git2::Oid;
 use glowfly_core::error::ReadFailed;
 use glowfly_core::stash_ops::{SavedAutoStash, StashScope};
 use std::path::PathBuf;
 
-/// Renaming a stash and the Stash dialog (update/stash.rs, update/stash_push.rs).
+/// Every action on one stash (apply, pop, drop, rename), the question before applying one and
+/// the Stash dialog (update/stash.rs, update/stash_push.rs).
 pub enum StashMsg {
+    /// Applies, pops or drops the stash shown at `stash@{index}`, only if that entry still is
+    /// commit `oid` (another tab, worktree or terminal may have pushed or dropped one since).
+    /// Built only by state/stash_actions.rs and state/stash_confirm.rs.
+    Run { action: StashAction, index: usize, oid: Oid },
     /// Open the Rename stash dialog for the stash with this commit, found again in the snapshot.
     RenameDialog { oid: Oid },
     /// Give the stash with this commit this message: the dialog's text, from which `update`
@@ -34,7 +39,8 @@ impl StashMsg {
     /// The intents never come back scoped, and a question for a tab the user left is dropped.
     pub fn on_inactive(self) -> Option<Inactive> {
         match self {
-            Self::RenameDialog { .. }
+            Self::Run { .. }
+            | Self::RenameDialog { .. }
             | Self::Rename { .. }
             | Self::PushDialog { .. }
             | Self::Push { .. }

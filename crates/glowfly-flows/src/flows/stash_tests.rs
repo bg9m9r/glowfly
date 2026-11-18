@@ -6,16 +6,17 @@ use super::tests::{drive, git};
 use super::update;
 use glowfly_core::gitcli::args;
 use glowfly_model::effect::Effect;
-use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
-use glowfly_model::state::palette::StashAction;
+use glowfly_model::msg::StashMsg;
+use glowfly_model::state::stash_confirm::StashAction;
 use std::time::Instant;
 
 #[test]
 fn the_job_names_the_position_and_expects_the_commit() {
     let (mut st, dir) = two_stashes("stash-job");
     let oid = st.snap.as_ref().unwrap().stashes[1].oid;
-    let fx = update(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 1, oid }), Instant::now());
+    assert!(Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid }).on_inactive().is_none(), "an intent, never scoped");
+    let fx = update(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 1, oid }), Instant::now());
     match &fx[..] {
         [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, .. })] => {
             assert_eq!(cmds[..], [args(&["stash", "pop", "stash@{1}"])]);
@@ -34,7 +35,7 @@ fn a_shifted_stash_list_refuses_the_drop() {
     std::fs::write(dir.join("d.txt"), "d\n").unwrap();
     git(&dir, &["stash", "push", "-u", "-m", "third"]);
     for action in [StashAction::Drop, StashAction::Pop, StashAction::Apply] {
-        drive(&mut st, Msg::Job(JobMsg::Stash { action, index: second.index, oid: second.oid }));
+        drive(&mut st, Msg::Stash(StashMsg::Run { action, index: second.index, oid: second.oid }));
         let last = st.log.last().unwrap();
         assert!(!last.ok && last.text.contains("stash list changed") && last.text.contains("nothing was done"), "{}", last.text);
     }
@@ -49,7 +50,7 @@ fn a_shifted_stash_list_refuses_the_drop() {
 fn a_drop_logs_the_commit_so_it_can_be_recovered() {
     let (mut st, dir) = two_stashes("stash-dropped");
     let first = st.snap.as_ref().unwrap().stashes[1].clone();
-    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: first.index, oid: first.oid }));
+    drive(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: first.index, oid: first.oid }));
     let snap = st.snap.as_ref().unwrap();
     assert_eq!(snap.stashes.len(), 1);
     assert!(snap.stashes[0].message.contains("second"));

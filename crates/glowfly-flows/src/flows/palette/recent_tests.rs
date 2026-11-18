@@ -12,7 +12,8 @@ use glowfly_model::msg::Msg;
 use glowfly_model::msg::PaletteMsg;
 use glowfly_model::remote::RemoteMsg;
 use glowfly_model::state::AppState;
-use glowfly_model::state::palette::{PaletteCommand as C, StashAction, entries, shown};
+use glowfly_model::state::palette::{PaletteCommand as C, entries, shown};
+use glowfly_model::state::stash_confirm::StashAction;
 use std::collections::HashSet;
 use std::time::Instant;
 

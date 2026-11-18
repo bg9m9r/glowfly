@@ -30,7 +30,7 @@ use crate::msg::TrustMsg;
 use crate::state::conflict_files::{conflicted_paths, mark_conflicted_body, restorable_paths};
 use crate::state::palette::files::with_folders;
 use crate::state::palette::{self, Items, Mode, Palette, PaletteCommand, PickKind};
-use crate::state::stash_confirm;
+use crate::state::stash_actions::{self, StashOption};
 use crate::state::{AppState, PrefPage, Selection};
 use crate::tag::TagMsg;
 use glowfly_core::shallow_ops::Deepen;
@@ -148,30 +148,19 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::Stash => Msg::git("Stash", &["stash", "push", "-u"]),
         C::PopStash => {
             let t = st.settings.lang();
-            let Some(m) = st.snap.as_ref().and_then(|snap| stash_confirm::pop_latest(snap, t)) else {
+            let Some(m) = st.snap.as_ref().and_then(|snap| stash_actions::pop_latest(snap, t)) else {
                 st.log(false, "There are no stashes.");
                 return;
             };
             m
         }
         C::StashOp { action, oid } => {
-            let t = st.settings.lang();
-            let found = st.snap.as_ref().and_then(|snap| {
-                let s = snap.stashes.iter().find(|x| x.oid == oid)?;
-                Some(stash_confirm::stash_msg(snap, t, action, s))
-            });
-            let Some(m) = found else {
-                st.log(false, "That stash no longer exists.");
-                return;
-            };
+            let Some(m) = stash_option(st, action.into(), oid) else { return };
             m
         }
         C::RenameStash { oid } => {
-            if !st.snap.as_ref().is_some_and(|s| s.stashes.iter().any(|x| x.oid == oid)) {
-                st.log(false, "That stash no longer exists.");
-                return;
-            }
-            Msg::Stash(StashMsg::RenameDialog { oid })
+            let Some(m) = stash_option(st, StashOption::Rename, oid) else { return };
+            m
         }
         C::StashWithMessage(text) => {
             let t = text.trim();
@@ -299,7 +288,17 @@ fn mark_conflicted(t: glowfly_core::i18n::Lang, paths: Vec<String>) -> Msg {
     Msg::confirm(title, body, button, Msg::Conflict(ConflictMsg::MarkConflicted(paths)))
 }
 
-/// The same messages the sidebar's STASHES menu sends.
+/// The message `option` on the stash with commit `oid` sends, the same as the sidebar's
+/// STASHES menu; logs and gives None when the stash is gone.
+fn stash_option(st: &mut AppState, option: StashOption, oid: git2::Oid) -> Option<Msg> {
+    let t = st.settings.lang();
+    let msg = st.snap.as_ref().and_then(|snap| stash_actions::for_commit(snap, t, option, oid));
+    if msg.is_none() {
+        st.log(false, "That stash no longer exists.");
+    }
+    msg
+}
+
 /// The single selected commit, if any (WIP, nothing or several commits give None).
 fn selected_commit(st: &AppState) -> Option<git2::Oid> {
     match &st.session.selection {

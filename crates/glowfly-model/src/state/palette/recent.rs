@@ -12,7 +12,7 @@ use crate::state::layout::Panel;
 use crate::state::palette::commands::PaletteCommand;
 use crate::state::palette::commands::rebase::RebaseCommand;
 use crate::state::palette::commands::stack::StackCommand;
-use crate::state::palette::kinds::StashAction;
+use crate::state::stash_confirm::StashAction;
 use crate::submodule::SubmoduleMsg;
 use crate::tools::ToolsMsg;
 use glowfly_core::gitflow::FlowKind;

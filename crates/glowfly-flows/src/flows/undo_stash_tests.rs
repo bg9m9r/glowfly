@@ -6,9 +6,9 @@ use super::tests::{drive, git, scratch_repo, state};
 use super::update;
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE, UNDO_STASH_MESSAGE, UndoKind};
 use glowfly_model::effect::{Effect, UndoResult};
-use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, TabsMsg};
+use glowfly_model::msg::{CommitMsg, JobMsg, Msg, RepoMsg, StageMsg, StashMsg, TabsMsg};
 use glowfly_model::state::AppState;
-use glowfly_model::state::palette::StashAction;
+use glowfly_model::state::stash_confirm::StashAction;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -67,7 +67,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     git(&dir, &["stash", "push", "-q", "-m", "wip"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let oid = st.snap.as_ref().unwrap().stashes[0].oid;
-    let pop = Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid });
+    let pop = Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid });
     let fx = update(&mut st, pop, Instant::now());
     let want = UndoKind::StashApply { pop: true, rev: Some("stash@{0}".into()) };
     assert!(
@@ -86,7 +86,7 @@ fn pop_on_a_clean_tree_is_undoable_and_on_a_dirty_one_is_not() {
     // Onto local changes: the pop can't be told apart from them.
     std::fs::write(dir.join("b.txt"), "local\n").unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
-    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid }));
+    drive(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid }));
     assert!(st.session.undo.undo.is_empty());
     let (_, why) = st.session.undo.undo_entry(st.settings.lang(), true);
     assert!(why.as_deref().is_some_and(|w| w.starts_with("Can't undo Unstash")), "{why:?}");
@@ -189,7 +189,7 @@ fn stash_oids(st: &AppState) -> Vec<git2::Oid> {
 #[test]
 fn drop_from_the_sidebar_is_undoable() {
     let (mut st, dir, first) = two_stashes("undo-stash-drop");
-    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
+    drive(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 1, oid: first }));
     assert!(!stash_oids(&st).contains(&first));
     assert!(matches!(st.session.undo.undo.last(), Some(Action::StashDrop { stash, .. }) if *stash == first), "{:?}", st.session.undo.undo);
     assert!(st.session.undo.blocked.is_none());
@@ -214,7 +214,7 @@ fn drop_from_the_sidebar_is_undoable() {
 #[test]
 fn drop_redo_refused_when_dropped_elsewhere() {
     let (mut st, dir, first) = two_stashes("undo-stash-drop-elsewhere");
-    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
+    drive(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 1, oid: first }));
     drive(&mut st, Msg::Job(JobMsg::Undo));
     assert!(stash_oids(&st).contains(&first));
     git(&dir, &["stash", "drop", "-q", "stash@{0}"]);
@@ -231,7 +231,7 @@ fn drop_redo_refused_when_dropped_elsewhere() {
 #[test]
 fn a_dropped_stash_survives_a_job_that_cant_be_undone() {
     let (mut st, dir, first) = two_stashes("undo-stash-drop-unrelated");
-    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 1, oid: first }));
+    drive(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 1, oid: first }));
     // `-M` can write over a branch, so it is never recorded.
     drive(&mut st, Msg::git("Rename branch", &["branch", "-M", "--", "main", "trunk"]));
     assert_eq!(st.session.undo.blocked.as_deref(), Some("Rename branch"));

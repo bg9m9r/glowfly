@@ -50,13 +50,13 @@ macro_rules! msg_areas {
             Stage(crate::msg::StageMsg) "stage" => ops::stage(now, fx);
             /// The commit box (update/commit.rs).
             Commit(crate::msg::CommitMsg) "commit" => commit::handle(now, fx);
-            /// Git jobs: commands, push, stash, undo and redo, and their end (update/ops.rs).
+            /// Git jobs: commands, push, undo and redo, and their end (update/ops.rs).
             Job(crate::msg::JobMsg) "job" => ops::job(now, fx);
             /// Delete lock file after a job failed on a lock git left behind (update/lock_file.rs).
             Lock(crate::msg::LockMsg) "lock" => lock_file::handle(now, fx);
             /// Relaxing Schannel's revocation check and the TLS settings a certificate failure's Details show (update/tls_fix.rs).
             Tls(crate::msg::TlsMsg) "tls" => tls_fix::handle(now, fx);
-            /// Renaming a stash and the Stash dialog (update/stash.rs).
+            /// Applying, popping, deleting and renaming a stash, and the Stash dialog (update/stash.rs).
             Stash(crate::msg::StashMsg) "stash" => stash::handle(fx);
             /// Stash and carry on: the auto-stash prompt, putting it back and Show stash (update/auto_stash.rs).
             AutoStash(crate::msg::AutoStashMsg) "auto-stash" => auto_stash::handle(now, fx);

@@ -2,7 +2,7 @@
 //! details and the global keys that do the same (their current keys come from the effective keymap, `keymap/active.rs`).
 
 use crate::state::AppState;
-use crate::state::palette::kinds::StashAction;
+use crate::state::stash_confirm::StashAction;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::{DiffLayout, ThemeChoice};
 use std::path::{Path, PathBuf};

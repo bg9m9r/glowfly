@@ -1,5 +1,5 @@
 //! Messages for staging, committing and running git jobs (update/ops.rs, update/commit.rs,
-//! update/undo.rs, update/stash.rs).
+//! update/undo.rs).
 
 use super::{FailedWrite, Inactive};
 use crate::effect::{UndoOpts, UndoResult};
@@ -185,7 +185,7 @@ impl CommitMsg {
 }
 
 /// Git commands run as the active job, undo and redo, and the job's end (update/ops.rs,
-/// update/undo.rs, update/stash.rs).
+/// update/undo.rs).
 pub enum JobMsg {
     Git {
         label: String,
@@ -205,13 +205,6 @@ pub enum JobMsg {
         label: String,
         args: Vec<String>,
         keep: bool,
-    },
-    /// Applies, pops or drops the stash shown at `stash@{index}`, only if that entry still is
-    /// commit `oid` (another tab, worktree or terminal may have pushed or dropped one since).
-    Stash {
-        action: crate::state::palette::StashAction,
-        index: usize,
-        oid: Oid,
     },
     Push {
         force: bool,
@@ -275,7 +268,6 @@ impl JobMsg {
             Self::Git { .. }
             | Self::Journaled { .. }
             | Self::Abort { .. }
-            | Self::Stash { .. }
             | Self::Push { .. }
             | Self::Deepen(..)
             | Self::DeepenNow(..)

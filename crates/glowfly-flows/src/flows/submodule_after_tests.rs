@@ -13,10 +13,10 @@ use glowfly_core::repo::SubmoduleState;
 use glowfly_core::submodule_ops::batch_update_cmds;
 use glowfly_core::undo::{Action, DISCARD_STASH_MESSAGE};
 use glowfly_model::effect::{Effect, SubmoduleEffect};
-use glowfly_model::msg::{JobMsg, Msg, RepoMsg, SelectionMsg};
+use glowfly_model::msg::{JobMsg, Msg, RepoMsg, SelectionMsg, StashMsg};
 use glowfly_model::state::AppState;
-use glowfly_model::state::palette::StashAction;
 use glowfly_model::state::rebase_banner::action_msg;
+use glowfly_model::state::stash_confirm::StashAction;
 use glowfly_model::submodule::Batch;
 use std::path::Path;
 use std::time::Instant;
@@ -75,7 +75,7 @@ fn update_after_stash_pop() {
     stash_newer(&mut st, &parent, &["stash", "push", "-q"]);
     let oid = st.snap.as_ref().unwrap().stashes[0].oid;
     // A plain pop puts back the files but leaves the recorded commit: the check finds nothing.
-    let fx = after_job(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid }));
+    let fx = after_job(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid }));
     assert!(checks_all(&fx, Batch::Auto), "{fx:?}");
     let fx = step(&mut st, fx);
     assert!(st.job.is_none(), "{fx:?}");
