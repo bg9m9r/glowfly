@@ -382,4 +382,6 @@ mod linguist_tests;
 #[cfg(test)]
 mod memo_tests;
 #[cfg(test)]
+mod old_text_tests;
+#[cfg(test)]
 mod tests;

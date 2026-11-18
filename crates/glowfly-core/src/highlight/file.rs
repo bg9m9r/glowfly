@@ -17,7 +17,8 @@ pub fn highlight_file(hint: SyntaxHint<'_>, lines: &[String]) -> Option<Vec<Vec<
         DiffLine { origin: ' ', old: n, new: n, text: text.clone() }
     };
     let hunk = Hunk { header: String::new(), lines: lines.iter().enumerate().map(line).collect() };
-    let mut diff = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None };
+    let mut diff =
+        FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     let mut hl = highlight_diff(hint, &diff, None)?;
     if hl.is_pending() {
         diff.highlight = Some(hl);

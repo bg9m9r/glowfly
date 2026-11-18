@@ -80,7 +80,7 @@ fn outcome(statuses: &[Status]) -> Box<Outcome> {
 }
 
 fn empty_diff() -> FileDiff {
-    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 #[test]

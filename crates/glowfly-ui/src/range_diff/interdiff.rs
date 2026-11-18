@@ -112,7 +112,7 @@ fn rows(ui: &mut Ui, st: &AppState, diff: &FileDiff, widest: usize) {
                     }
                 }
             }
-            DiffRow::Block(_) | DiffRow::Fold(_) | DiffRow::GapLine { .. } => {}
+            DiffRow::Block(_) | DiffRow::Fold(_) | DiffRow::GapLine { .. } | DiffRow::GapBelow(_) => {}
         }
     });
 }

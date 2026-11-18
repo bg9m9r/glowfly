@@ -80,7 +80,7 @@ fn counters(s: &RepoSession) -> [u64; 12] {
 
 /// An empty diff of `a.txt`'s working copy.
 fn a_diff() -> Option<(DiffTarget, std::sync::Arc<FileDiff>)> {
-    let d = FileDiff { binary: false, hunks: vec![], highlight: None, intraline: Default::default(), whole: None };
+    let d = FileDiff { binary: false, hunks: vec![], highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     Some((DiffTarget::Unstaged("a.txt".into()), d.into()))
 }
 

@@ -25,8 +25,11 @@ pub enum DiffRow {
     Block(usize),
     /// An "N unchanged lines" row standing for the fold's lines (whole-file view only).
     Fold(crate::whole_file::Fold),
-    /// Line `line` of the unchanged run before hunk `hunk`, filled in (hunk view only).
+    /// Line `line` of the unchanged run before hunk `hunk`, filled in (hunk view only). The
+    /// run below the last hunk is the one before hunk `hunks.len()`.
     GapLine { hunk: usize, line: usize },
+    /// The closed run below the last hunk, one row after its last line (hunk view only).
+    GapBelow(GapSpan),
 }
 
 /// A row of the side-by-side layout.
@@ -42,8 +45,11 @@ pub enum SplitRow {
     /// An "N unchanged lines" row standing for the fold's lines (whole-file view only).
     Fold(crate::whole_file::Fold),
     /// Line `line` of the unchanged run before hunk `hunk`, filled in (hunk view only), on both
-    /// sides.
+    /// sides. The run below the last hunk is the one before hunk `hunks.len()`.
     GapLine { hunk: usize, line: usize },
+    /// The closed run below the last hunk, one row spanning both columns after its last line
+    /// (hunk view only).
+    GapBelow(GapSpan),
 }
 
 /// One header row per hunk, then one row per line.

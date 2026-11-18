@@ -5,7 +5,7 @@
 use super::diff::{file_patch, hunk_of};
 use super::*;
 use crate::error::Result;
-use crate::highlight::{self, OldText};
+use crate::highlight::{self, OldText, context::old_count};
 use git2::{Patch, Repository};
 use std::path::Path;
 use std::sync::Arc;
@@ -43,7 +43,7 @@ pub struct ViewDiff {
 /// whole file), an old blob over `highlight::OLD_TEXT_MAX_BYTES`, or one that doesn't match
 /// the hunks.
 pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<ViewDiff> {
-    load(workdir, target, opts, true, None)
+    load(workdir, target, opts, OldSide::UpToLastHunk, None)
 }
 
 /// `load_diff_for_view` for a file opened from a list loaded with the whole commit or
@@ -52,16 +52,28 @@ pub fn load_diff_for_view(workdir: &Path, target: &DiffTarget, opts: LoadDiffOpt
 /// its partner. The result is the same as `load_diff_for_view`'s; a row that no longer matches
 /// what git reads (the working tree changed since) makes the whole comparison be read.
 pub fn load_listed_diff(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions, listed: Option<&FileEntry>) -> Result<ViewDiff> {
-    load(workdir, target, opts, true, listed)
+    load(workdir, target, opts, OldSide::UpToLastHunk, listed)
+}
+
+/// How much of the old file a load reads.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(super) enum OldSide {
+    /// Nothing: the hunks alone (and no LFS, gitlink or language lookups).
+    Skip,
+    /// The lines before the last hunk, which colour the hunks in context.
+    UpToLastHunk,
+    /// All of it, for the text of the unchanged runs (`OldText::whole`).
+    Whole,
 }
 
 pub(super) fn load(
     workdir: &Path,
     target: &DiffTarget,
     opts: LoadDiffOptions,
-    with_old: bool,
+    side: OldSide,
     listed: Option<&FileEntry>,
 ) -> Result<ViewDiff> {
+    let with_old = side != OldSide::Skip;
     let pooled = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
     // The diff runs on a handle reading the shown version's gitattributes, so libgit2's binary
     // detection follows them too.
@@ -75,7 +87,8 @@ pub(super) fn load(
     }
     let lfs = with_old.then(|| super::lfs_marks::diff_change(&repo, target, &diff)).flatten();
     let gitlink = with_old.then(|| super::gitlink_move::of_diff(&pooled, workdir, target, &diff)).flatten().map(Box::new);
-    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let mut out =
+        FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     let Some(patch) = file_patch(&diff, path)? else {
         out.binary = true;
         return Ok(ViewDiff { diff: out, old: None, language: None, lfs, gitlink, raw: None });
@@ -94,15 +107,20 @@ pub(super) fn load(
         }
     }
     // `patch` is still the first load's (the whole-file block's is scoped to it).
-    let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks) } else { None };
+    let old = if with_old && !out.binary && out.whole.is_none() { old_text(&repo, &patch, &out.hunks, side) } else { None };
+    out.old_lines = match (&out.whole, &old) {
+        (Some(w), _) if with_old => w.diff.hunks.first().and_then(|h| u32::try_from(old_count(h)).ok()),
+        (_, Some(o)) => u32::try_from(o.total()).ok(),
+        _ => None,
+    };
     let language = if with_old && !out.binary { super::attrs::linguist_language(&repo, path) } else { None };
     Ok(ViewDiff { diff: out, old, language, lfs, gitlink, raw: super::index::shown_raw_id(workdir, target, path, &patch)? })
 }
 
 /// The text of the delta's old side (the index for unstaged changes, HEAD for staged ones, the
 /// first parent or `from` for commits, the commit for a working-tree comparison, at the old
-/// path for renames), checked against `hunks`.
-fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk]) -> Option<Arc<OldText>> {
+/// path for renames), checked against `hunks`, with the lines after them when `side` is `Whole`.
+fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk], side: OldSide) -> Option<Arc<OldText>> {
     let id = patch.delta().old_file().id();
     if id.is_zero() || hunks.is_empty() {
         return None;
@@ -111,5 +129,6 @@ fn old_text(repo: &Repository, patch: &Patch<'_>, hunks: &[Hunk]) -> Option<Arc<
     if blob.is_binary() || blob.size() > highlight::OLD_TEXT_MAX_BYTES {
         return None;
     }
-    OldText::new(blob.content(), hunks).map(Arc::new)
+    let text = if side == OldSide::Whole { OldText::whole(blob.content(), hunks) } else { OldText::new(blob.content(), hunks) };
+    text.map(Arc::new)
 }

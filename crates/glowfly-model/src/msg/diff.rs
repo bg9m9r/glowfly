@@ -33,19 +33,23 @@ pub enum DiffMsg {
     /// Scroll the diff to the next (1) or previous (-1) change; at either end, open the next or
     /// previous changed file of the list the diff came from (on its first or last change).
     JumpToChange(isize),
-    /// A click on a whole-file "N unchanged lines" row, or on a hunk header's gap control in the
-    /// hunk view: show the unchanged lines of the run with this key in place.
+    /// A click on a whole-file "N unchanged lines" row, or in the hunk view on a hunk header's
+    /// control or the row below the last hunk: show the unchanged lines of the run with this key
+    /// in place.
     ExpandUnchanged(u32),
     /// A click on the fold-back control on the first line of an opened run (a whole-file fold or
-    /// a gap between hunks): fold the run with this key back.
+    /// a hunk-view run, above, between or below the hunks): fold the run with this key back.
     CollapseUnchanged(u32),
     /// The keyboard's Show unchanged lines: open the first closed run at or below the top row.
     OpenFoldAtTop,
     /// The keyboard's Fold back unchanged lines: close the opened run at the top.
     CloseFoldAtTop,
-    /// The diff header's Expand all: open every fold of the whole file on screen.
+    /// The diff header's Expand all (and the palette's Show all unchanged lines): open every
+    /// unchanged run on screen, the whole file's folds or the hunk view's runs (one read of
+    /// their text).
     ExpandAllUnchanged,
-    /// The diff header's Collapse all: close every opened fold.
+    /// The diff header's Collapse all (and the palette's Fold all unchanged lines): close every
+    /// opened run, those still waiting for their text included.
     CollapseAllUnchanged,
     /// A click on line `line` of hunk `hunk` in the open diff (line-level staging).
     SelectDiffLine {
@@ -61,7 +65,7 @@ pub enum DiffMsg {
         how: LineClick,
     },
     /// During a line drag, the pointer is over line `line` of hunk `hunk` (0 for a hunk header
-    /// or the gap rows above it). The selection runs from the drag's start to there, within the
+    /// or the unchanged-run rows above or below it). The selection runs from the drag's start to there, within the
     /// drag's hunk.
     DragDiffLine {
         hunk: usize,
@@ -98,8 +102,8 @@ pub enum DiffMsg {
         hunks: Option<DiffHighlight>,
         whole: Option<DiffHighlight>,
     },
-    /// The unchanged lines between the hunks of the diff shown at `generation`, read
-    /// (`DiffEffect::Gaps`).
+    /// The unchanged lines outside the hunks (above the first, between, below the last) of the
+    /// diff shown at `generation`, read (`DiffEffect::Gaps`).
     GapsLoaded {
         target: DiffTarget,
         generation: u64,

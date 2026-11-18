@@ -107,6 +107,7 @@ fn pointer_hunks() -> FileDiff {
         highlight: None,
         intraline: Default::default(),
         whole: None,
+        old_lines: None,
     }
 }
 

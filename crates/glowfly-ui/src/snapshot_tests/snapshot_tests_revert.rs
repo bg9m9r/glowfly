@@ -103,6 +103,7 @@ pub(crate) fn with_line_diff(name: &str, theme: ThemeChoice, layout: DiffLayout,
         highlight: None,
         intraline: Default::default(),
         whole: None,
+        old_lines: None,
     };
     diff.intraline = intraline::intraline(&diff);
     st.session.diff.view = Some((target.clone(), diff.into()));

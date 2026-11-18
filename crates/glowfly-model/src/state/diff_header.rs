@@ -16,7 +16,6 @@ use glowfly_core::preview_image::is_image_path;
 use glowfly_core::preview_svg::is_svg_path;
 use glowfly_core::repo::{DiffTarget, FileDiff, Snapshot, is_empty_tree};
 use glowfly_core::settings::{DiffLayout, DiffMode};
-use glowfly_core::whole_file;
 
 /// The highlight's name for files it found no language for: the syntax set's own id, compared
 /// with and never shown, so it stays as the syntax set spells it.
@@ -95,11 +94,17 @@ pub enum Context {
     FromWorkdir(String),
 }
 
-/// How many folds of the whole file on screen are open and closed.
+/// How many unchanged runs of the diff on screen are open and closed: the whole file's folds,
+/// or the hunk view's runs (above the first hunk, between hunks, below the last).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FoldCounts {
     pub open: usize,
     pub closed: usize,
+    /// The runs are the hunk view's, not the whole file's folds.
+    pub hunks: bool,
+    /// Ignore whitespace is on in the hunk view, so the runs can't be shown (they may hold
+    /// whitespace changes it hides).
+    pub ws_hidden: bool,
 }
 
 /// The View menu's settings.
@@ -112,7 +117,7 @@ pub struct ViewGroup {
     pub ignore_ws: bool,
     /// The wrap setting, with rows only.
     pub wrap: Option<bool>,
-    /// In the whole-file view with folds on screen.
+    /// With unchanged runs on screen (the whole-file view's folds, the hunk view's runs).
     pub folds: Option<FoldCounts>,
 }
 
@@ -280,14 +285,7 @@ fn summary(st: &AppState, oid: Oid) -> Option<String> {
 
 fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {
     let s = &st.settings;
-    let folds = whole_file::shown(diff, s.diff_mode)
-        .filter(|_| rows && s.diff_mode == DiffMode::WholeFile)
-        .map(|w| {
-            let all = whole_file::folds(w);
-            let open = all.iter().filter(|f| st.session.tab_view.diff_expanded.contains(f.key)).count();
-            FoldCounts { open, closed: all.len() - open }
-        })
-        .filter(|c| c.open + c.closed > 0);
+    let folds = if rows { super::diff_runs::counts_of(st, diff) } else { None };
     ViewGroup {
         layout: s.diff_layout,
         mode: s.diff_mode,

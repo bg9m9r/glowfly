@@ -137,7 +137,7 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/`: the diff's file header, one 48 px row built from `state/diff_header.rs`'s model.
 - `diff/header/identity.rs`: the file's icon, a rename's old path with its painted arrow, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
-- `diff/header/view_menu.rs`: the View button and its menu.
+- `diff/header/view_menu.rs`: the View button and its menu, with Expand all and Collapse all for the whole file's folds and the hunk view's runs (tests in `view_menu_tests.rs`).
 - `diff/header/svg_switch.rs`: the Text / Preview switch of an SVG that git diffs as text.
 - `diff/header/actions.rs`: the ⋯ menu of file actions and the diff tool, the small secondary Stage or Unstage, and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
@@ -150,11 +150,11 @@ start with `state/`, `update/` or `ui/`.
 - `diff/hex.rs`: a small binary's hex view (offset, sign, hex bytes, ASCII), changed rows and bytes filled like diff lines and words, inline or split, unchanged rows folded in the hunk view. Snapshots: `snapshot_tests/snapshot_tests_diff_hex.rs`.
 - `conflict_header.rs`: the conflict view's file bar (path and sides, the centred counter and progress meter, Mark resolved, the more-actions menu and ×).
 - `conflict_band.rs`: a conflict's band in the panes: amber mark while unresolved, the side-coloured Take checkboxes, and the order with Swap when both sides are taken.
-- `diff/fold.rs`: the unchanged runs' controls: the whole-file view's "N unchanged lines" row of a folded run, which opens in place when clicked, the hunk view's unfold control on a hunk header, which fills in the unchanged lines above it, and the fold-back control on the first line of an opened run (in either view), which folds it again.
+- `diff/fold.rs`: the unchanged runs' controls: the whole-file view's "N unchanged lines" row of a folded run, which opens in place when clicked, the hunk view's unfold control on a hunk header, which fills in the unchanged lines above it, the same kind of row below the last hunk, and the fold-back control on the first line of an opened run (in either view), which folds it again; a spinner stands in while a run's text is read.
 - `diff/hunk_header.rs`: a hunk header row: the `@@` line with its function context in syntax colors, the hunk's action buttons, and in the hunk view the control that fills in the unchanged lines above it.
 - `diff/inline.rs`: the inline layout: one column of hunks (or of the whole file), each line with its old and new number (unless line numbers are off), and the unchanged lines between hunks once filled in.
 - `diff/line_check.rs`: how a changed line shows that it is selected, or can be: the bar on its left edge (the accent when selected, faint only while its gutter is hovered), and in the sign column a check box that stands in for the `+`/`-`: hollow while the line's gutter is hovered and on every changed line of a hunk that holds selected lines, filled with a check mark when the line is selected.
-- `diff/rows_cache.rs`: the open diff's row list, widest line and gaps between hunks, built when the diff, the layout, the open folds or gaps or the tab width change instead of on every frame: they walk every line of the file.
+- `diff/rows_cache.rs`: the open diff's row list, widest line and unchanged runs outside the hunks, built when the diff, the layout, the open folds or runs or the tab width change instead of on every frame: they walk every line of the file.
 - `diff/split.rs`: the split layout: the old side on the left, the new side on the right, with removed and added lines paired by similarity (see `glowfly_core::line_pairs`) and a divider between the columns.
 - `diff/style.rs`: per-frame drawing metrics of the diff viewer, from Preferences > Diff viewer: the text font, the row height and the gutter positions, which scale with the font size so the default size draws exactly as the fixed layout did.
 - `diff/syntax.rs`: painting diff line text with syntax colors.

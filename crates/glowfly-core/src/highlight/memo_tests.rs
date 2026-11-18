@@ -54,7 +54,7 @@ fn build(old: &[String], edits: &[Edit]) -> (FileDiff, Arc<OldText>) {
     }
     let content = old.join("\n") + "\n";
     let old_text = OldText::new(content.as_bytes(), &hunks).expect("the hunks fit the old text");
-    let diff = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     (diff, Arc::new(old_text))
 }
 

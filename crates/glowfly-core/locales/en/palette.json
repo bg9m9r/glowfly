@@ -1,4 +1,6 @@
 {
+  "palette.diff.collapse_all": "Fold all unchanged lines in the diff",
+  "palette.diff.expand_all": "Show all unchanged lines in the diff",
   "palette.files.failed": "Could not list the repository's files: {why}",
   "palette.getting_started": "Getting started",
   "palette.group.all": "All commands",

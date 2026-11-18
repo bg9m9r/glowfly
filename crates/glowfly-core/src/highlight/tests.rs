@@ -20,7 +20,7 @@ pub(super) fn hunk(lines: &[(char, &str)]) -> Hunk {
 }
 
 pub(super) fn diff(hunks: Vec<Hunk>) -> FileDiff {
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 pub(super) fn kinds(spans: &[Span]) -> HashSet<TokenKind> {

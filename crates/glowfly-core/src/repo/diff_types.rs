@@ -103,6 +103,9 @@ pub struct FileDiff {
     /// With LoadDiffOptions::whole_file: every line of the file and its change blocks. None
     /// otherwise, or when it couldn't be mapped onto the hunks.
     pub whole: Option<Box<crate::whole_file::WholeFile>>,
+    /// The old side's line count, when the load read it: the hunk view's run below the last
+    /// hunk ends there. None when unknown.
+    pub old_lines: Option<u32>,
 }
 
 /// How `load_diff_with` builds a file diff.

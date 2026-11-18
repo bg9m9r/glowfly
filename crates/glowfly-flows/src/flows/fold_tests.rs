@@ -44,8 +44,14 @@ fn late_changes() -> FileDiff {
         (from..=to).flat_map(|n| if [15, 28].contains(&n) { vec![del(n), add(n)] } else { vec![ctx(n)] }).collect()
     };
     let hunk = |from: u32, to: u32| Hunk { header: format!("@@ -{from} +{from} @@"), lines: lines(from, to) };
-    let mut d =
-        FileDiff { binary: false, hunks: vec![hunk(12, 18), hunk(25, 30)], highlight: None, intraline: Default::default(), whole: None };
+    let mut d = FileDiff {
+        binary: false,
+        hunks: vec![hunk(12, 18), hunk(25, 30)],
+        highlight: None,
+        intraline: Default::default(),
+        whole: None,
+        old_lines: None,
+    };
     d.whole = WholeFile::new(&d.hunks, hunk(1, 30)).map(Box::new);
     d
 }
@@ -295,17 +301,24 @@ fn expand_all_and_collapse_all() {
     run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
     assert_eq!(st.session.tab_view.diff_expanded, all);
 
-    for (mode, diff) in [(DiffMode::Hunks, true), (DiffMode::WholeFile, false)] {
+    // In the hunk view they open and close that view's runs (diff_gap_edges_tests.rs).
+    st.settings.diff_mode = DiffMode::Hunks;
+    st.session.tab_view.diff_expanded = all.clone();
+    run(&mut st, Msg::Diff(DiffMsg::CollapseAllUnchanged));
+    assert!(st.session.tab_view.diff_expanded.is_empty(), "the hunk view's runs close");
+    run(&mut st, Msg::Diff(DiffMsg::ExpandAllUnchanged));
+    assert!(!st.session.tab_view.diff_expanded.is_empty(), "and open");
+
+    // With no diff open both are ignored.
+    st.session.diff.view = None;
+    for mode in [DiffMode::Hunks, DiffMode::WholeFile] {
         st.settings.diff_mode = mode;
-        if !diff {
-            st.session.diff.view = None;
-        }
         for (msg, ex) in
             [(Msg::Diff(DiffMsg::CollapseAllUnchanged), all.clone()), (Msg::Diff(DiffMsg::ExpandAllUnchanged), Expanded::default())]
         {
             st.session.tab_view.diff_expanded = ex.clone();
             assert!(run(&mut st, msg).is_empty());
-            assert_eq!(st.session.tab_view.diff_expanded, ex, "{mode:?} diff={diff}: ignored");
+            assert_eq!(st.session.tab_view.diff_expanded, ex, "{mode:?}: no diff, ignored");
         }
     }
     let _ = std::fs::remove_dir_all(&dir);

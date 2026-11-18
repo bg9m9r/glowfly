@@ -14,7 +14,7 @@ pub(crate) fn hunk(lines: &[&str]) -> Hunk {
 }
 
 pub(crate) fn diff(hunks: Vec<Hunk>) -> FileDiff {
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 /// A comment inserted above two edited settings.

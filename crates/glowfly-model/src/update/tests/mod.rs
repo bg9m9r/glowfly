@@ -14,6 +14,7 @@ pub(super) mod commit_box_tests;
 pub(super) mod conflict_picks_tests;
 pub(super) mod conflict_trivial_tests;
 pub(super) mod credentials_tests;
+pub(super) mod diff_gaps_tests;
 pub(super) mod diff_lines_tests;
 pub(super) mod diff_pairs_tests;
 pub(super) mod diff_text_tests;

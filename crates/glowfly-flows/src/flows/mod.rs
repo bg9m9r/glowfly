@@ -81,6 +81,7 @@ mod desktop_notify_tests;
 mod dialog_tests;
 mod diff_copy_tests;
 mod diff_font_tests;
+mod diff_gap_edges_tests;
 mod diff_gaps_tests;
 mod diff_header_tests;
 mod diff_nav_refresh_tests;

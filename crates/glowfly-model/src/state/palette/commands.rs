@@ -14,6 +14,7 @@ mod repos;
 mod submodules;
 pub use repos::RepoListCommand;
 mod conflict;
+mod diff;
 mod gitflow;
 pub(crate) mod issues;
 mod link;
@@ -76,6 +77,8 @@ pub enum PaletteCommand {
     StashDialog(glowfly_core::stash_ops::StashScope),
     StageAll,
     UnstageAll,
+    /// Show (`true`) or fold (`false`) every unchanged run of the open diff.
+    UnchangedLines(bool),
     /// Mark every conflicted file resolved (after the markers check, as the list's button).
     MarkAllResolved,
     /// Take the trivial conflict picks in every conflicted file (resolving those with only trivial ones).
@@ -338,6 +341,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     worktrees::worktree_entries(st, snap, out);
     issues::issue_entries(st, out);
     submodules::submodule_entries(st, snap, out);
+    diff::diff_entries(st, out);
     crate::state::palette::custom::entries(st, snap, out);
     out.push(entry(C::Refresh, "Refresh", "reload rescan reread status update"));
     out.push(entry(C::OpenTerminal, "Open in terminal", "shell console command line prompt cmd"));

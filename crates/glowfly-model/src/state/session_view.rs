@@ -45,6 +45,9 @@ pub struct TabView {
     /// key, with the gaps' text. Changed only by `update`; cleared when a different target's diff
     /// arrives or the diff closes.
     pub diff_expanded: Expanded,
+    /// The `shown_gen` of the diff whose unchanged runs' text is being read (a
+    /// `DiffEffect::Gaps` is on its way): the controls of waiting runs show a spinner.
+    pub diff_gaps_reading: Option<u64>,
     /// The diff view mode and layout when the tab was parked: what `TabViewState::diff_top_row` was counted in
     /// (both settings are shared by all tabs). Set by `update/tabs.rs::park`, taken on return;
     /// None while active.

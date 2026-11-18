@@ -159,6 +159,8 @@ fn recall_keys_are_unique() {
         C::StashDialog(glowfly_core::stash_ops::StashScope::Files),
         C::StageAll,
         C::UnstageAll,
+        C::UnchangedLines(true),
+        C::UnchangedLines(false),
         C::Undo,
         C::Redo,
         C::CreateBranch,

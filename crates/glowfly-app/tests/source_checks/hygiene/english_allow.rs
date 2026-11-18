@@ -50,7 +50,6 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/details_wip_header.rs", 1),
     ("crates/glowfly-ui/src/details_wip_list.rs", 2),
     ("crates/glowfly-ui/src/diff/comment_add.rs", 5),
-    ("crates/glowfly-ui/src/diff/fold.rs", 7),
     ("crates/glowfly-ui/src/diff/preview.rs", 6),
     ("crates/glowfly-ui/src/diff/thread_marks.rs", 3),
     ("crates/glowfly-ui/src/empty_state.rs", 10),

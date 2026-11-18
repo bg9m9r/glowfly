@@ -54,7 +54,7 @@ pub(crate) fn esc(h: &mut Harness<'_, (AppState, Vec<Msg>)>) -> Vec<Msg> {
 #[test]
 fn esc_in_a_text_field_leaves_it_before_closing_the_diff() {
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-typing");
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     st.view.focus_message = true;
     let mut h = app_harness(st);
@@ -155,7 +155,7 @@ fn esc_closes_the_tour_and_leaves_the_welcome_to_itself() {
 }
 
 fn empty_diff() -> FileDiff {
-    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 #[test]
@@ -215,7 +215,7 @@ fn esc_in_file_history_clears_a_line_selection_first() {
 fn esc_with_the_view_menu_open_closes_only_the_menu() {
     use egui_kittest::kittest::Queryable;
     let (mut st, dir) = with_repo(ThemeChoice::Dark, "esc-view-menu");
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     let mut h = app_harness(st);
     h.run();

@@ -24,7 +24,7 @@ type H = Harness<'static, Keys>;
 
 fn diff(target: DiffTarget) -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
-    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((target, empty.into()));
     st
 }

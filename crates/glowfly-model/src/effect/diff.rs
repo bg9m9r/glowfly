@@ -30,8 +30,8 @@ pub enum DiffEffect {
     /// file) for the diff shown at `generation` (DiffSlot::shown_gen). Started by
     /// Runner::run with a cancel ticket: a newer `Highlight` cancels this one.
     Highlight { workdir: PathBuf, target: DiffTarget, generation: u64, diff: Arc<FileDiff> },
-    /// Reads the unchanged lines between `diff`'s hunks for the hunk view, for the diff shown at
-    /// `generation` (DiffSlot::shown_gen).
+    /// Reads the unchanged lines outside `diff`'s hunks (above the first, between, below the
+    /// last) for the hunk view, for the diff shown at `generation` (DiffSlot::shown_gen).
     Gaps { workdir: PathBuf, target: DiffTarget, generation: u64, diff: Arc<FileDiff> },
     /// Reads the sizes and decodes the images of the binary diff shown at `generation`
     /// (DiffSlot::shown_gen), for its header and preview.

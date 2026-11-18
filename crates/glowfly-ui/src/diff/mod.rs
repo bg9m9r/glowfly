@@ -3,9 +3,10 @@
 //! Revert lines on commit and comparison diffs, and next/previous change navigation. In the
 //! whole-file view long unchanged runs are folded into "N unchanged lines" rows that open in
 //! place when clicked; an opened run folds back from a control on its first line, and the header's
-//! View menu can open or close them all. In the hunk view each hunk header after the first has a control
-//! that fills in the unchanged lines between it and the previous hunk (the same runs as the
-//! whole-file view's folds, open in both views), folded back from their first line. The fold
+//! View menu can open or close them all. In the hunk view each hunk header has a control that fills
+//! in the unchanged lines above it (up to the previous hunk or the file's start) and a row after the
+//! last hunk does the same for the lines below (the same runs as the whole-file view's folds, open
+//! in both views), folded back from their first line; a spinner stands in while they are read. The fold
 //! keys (E and Shift+E by default) open the first closed run at or below the top and fold back
 //! the opened one at the top. With wrapping on, long lines continue on the next line and their
 //! rows grow to fit. Changed lines are selected from their gutter (the line numbers and the
@@ -81,10 +82,12 @@ pub(super) struct DiffView<'a> {
     /// The opened folds of the whole-file view, in order; their first lines get the fold-back
     /// control.
     pub opened: Vec<Fold>,
-    /// The hunk view's closed gaps between hunks, in order; their hunk headers get the unfold
-    /// control.
+    /// The hunk view's closed runs, in order: those above a hunk get their hunk header's unfold
+    /// control, the one below the last hunk its own row.
     pub gaps: Vec<GapSpan>,
-    /// The hunk view's opened gaps with their text, in order (`DiffRow::GapLine` rows).
+    /// Keys of the closed runs in `gaps` whose text is being read: their controls show a spinner.
+    pub waiting: Vec<u32>,
+    /// The hunk view's opened runs with their text, in order (`DiffRow::GapLine` rows).
     pub gap_lines: Vec<(GapSpan, &'a GapLines)>,
     /// Syntax spans of the diff the lines come from (`lines()`), `None` to paint plain.
     pub hl: Option<&'a DiffHighlight>,
@@ -213,14 +216,16 @@ fn rows(
     let opened = whole.map(|w| whole_file::opened(w, expanded)).unwrap_or_default();
     let layout = st.settings.diff_layout;
     let generation = (st.session.diff.generation, st.session.diff.shown_gen);
-    // The gaps between hunks fill in only in the hunk view, and never with whitespace hidden.
+    // The runs outside the hunks fill in only in the hunk view, and never with whitespace hidden.
     let fill = whole.is_none() && !st.settings.diff_ignore_whitespace;
     cache.refresh(Source { diff, whole, generation, layout, expanded, gaps: fill, tab: style.tab });
     let gap_lines: Vec<(GapSpan, &GapLines)> = match expanded.gap_text() {
         Some(text) => cache.gaps.iter().filter(|g| expanded.contains(g.key)).filter_map(|g| Some((*g, text.lines_for(g)?))).collect(),
         None => Vec::new(),
     };
-    let gaps = cache.gaps.iter().filter(|g| !gap_lines.iter().any(|(o, _)| o.key == g.key)).copied().collect();
+    let gaps: Vec<GapSpan> = cache.gaps.iter().filter(|g| !gap_lines.iter().any(|(o, _)| o.key == g.key)).copied().collect();
+    let reading = glowfly_model::state::diff_runs::reading(st);
+    let waiting = if reading { gaps.iter().filter(|g| expanded.contains(g.key)).map(|g| g.key).collect() } else { Vec::new() };
     let wrap = wrap::wrap_for(ui, &style, layout);
     let lines: &FileDiff = whole.map_or(diff, |w| &w.diff);
     // The same rows at new heights (a font change, or a resize, number or tab change while
@@ -242,6 +247,7 @@ fn rows(
         whole,
         opened,
         gaps,
+        waiting,
         gap_lines,
         hl,
         header_hl,
