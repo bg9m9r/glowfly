@@ -67,6 +67,7 @@ pub mod journal;
 pub mod lfs;
 pub mod line_pairs;
 pub mod link;
+pub mod lock_errors;
 pub mod lock_file;
 pub mod logs;
 pub mod markdown;

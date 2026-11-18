@@ -1,5 +1,9 @@
 {
+  "lock.again.moved": "Die Änderung wurde nicht erneut vorgenommen: Ihr Tab zeigt jetzt ein anderes Repository.",
+  "lock.again.switch_back": "Die Änderung wurde nicht erneut vorgenommen: Wechsle zuerst zurück zu ihrem Tab.",
+  "lock.again.tab_closed": "Die Änderung wurde nicht erneut vorgenommen: Ihr Tab wurde geschlossen.",
   "lock.delete.body": "Es läuft kein Git-Programm, also stammt {file} wohl von einem, das abgebrochen wurde. Glowfly löscht die Datei und führt {job} dann erneut aus.\n\nFahre nur fort, wenn kein anderes Programm, etwa ein Editor oder ein anderer Git-Client, in diesem Repository arbeitet.\n\n{path}",
+  "lock.delete.body.change": "Es läuft kein Git-Programm, also stammt {file} wohl von einem, das abgebrochen wurde. Glowfly löscht die Datei und nimmt die Änderung dann erneut vor.\n\nFahre nur fort, wenn kein anderes Programm, etwa ein Editor oder ein anderer Git-Client, in diesem Repository arbeitet.\n\n{path}",
   "lock.delete.button": "Sperrdatei löschen",
   "lock.delete.confirm": "Löschen und erneut versuchen",
   "lock.delete.title": "Sperrdatei löschen?",

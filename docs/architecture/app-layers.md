@@ -34,7 +34,7 @@ source file, update its line here. Features that span every layer are in
 - `dialog.rs`: `DialogMsg`, carried by a dialog's backdrop click, Esc or close button and the discard question.
 - `op_preview.rs`: `OpPreviewMsg`, carried by the operation preview's open, result, Preview again and Apply.
 - `notify.rs`: `NotifyMsg`, carried by holding and closing toasts and clicks on desktop notifications.
-- `lock.rs`: `LockMsg`, Delete lock file's check after a failed job, the confirmed delete and its result.
+- `lock.rs`: `LockMsg`, a working-tree op that failed on a lock and its Try again, Delete lock file's check after a failed job or op, the confirmed delete and its result.
 - `tls.rs`: `TlsMsg`, the TLS settings read for a certificate or revocation failure, Relax check confirmed and its result.
 - `repo_groups.rs`: `GroupMsg`, making, renaming, colouring, ordering and removing repository groups, moving favorites between them and adding repositories to one.
 - `msg/edit.rs`: `EditMsg`, a view's edited copy of the model fields update also reads (the commit draft, the welcome's form, a terminal tab's rename field and selection, the blame and File view's find and Line fields, Preferences' settings and own fields, a dialog's form, the danger confirmation's and auto-stash question's boxes, Generate SSH key's fields, the palette's query, the pull request's forms, the issue's comment box, the rebase editor's draft and the conflict output's buffer), and `edits_first`, which the shell runs on a frame's messages so the edits go first.
@@ -65,7 +65,7 @@ source file, update its line here. Features that span every layer are in
 - `selection.rs`: `SelectionEffect`: comparing two commits or a commit and the working tree, and a multi-selection's stacked list (`StackRequest`).
 - `lfs.rs`: `LfsEffect`: whether git-lfs is installed and the LFS page's status.
 - `branch.rs`: `BranchEffect`: counting the commits a branch delete would lose, for the Delete dialog, and the Push to all remotes job.
-- `lock.rs`: `LockEffect`: checking a lock file a failed job named, and deleting it (on the repository's queue).
+- `lock.rs`: `LockEffect`: checking a lock file a failed job or working-tree op named, and deleting it (on the repository's queue) before the job or op runs again.
 - `tls.rs`: `TlsEffect`: reading the TLS settings git used for a failed HTTPS job, and setting `http.schannelCheckRevoke` to best-effort (the repository's write on its queue; the global one dropped by the sandbox).
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
@@ -122,6 +122,7 @@ source file, update its line here. Features that span every layer are in
 - `stash_actions.rs`: the one builder of a listed stash's actions (Apply, Unstash, Rename…, Delete… in menu order, each with its message, why it is blocked and whether it is the danger item) for the STASHES row menu, the palette's stash sub-lists and Unstash the latest stash; `source_checks`' `stash_actions.rs` keeps every other file from building those messages; tests in `stash_actions_tests.rs`.
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.
 - `job_spec.rs`: `JobSpec`, a git job for `start_job`, and `Retry`, Try again's copy of one with the tab it started in.
+- `lock_retry.rs`: `LockRetry`, what Delete lock file and Try again run again: a job's `Retry` or a working-tree op's `LocalRetry` (the op, its tab and repository).
 - `job_spec/labels.rs`: a job's English label shown in the UI language, for the headlines built from it.
 - `palette/nav.rs`: the palette's page and end keys.
 - `palette/cache.rs`: the open palette's command list kept between frames (checkout entries until the refs change, the ranking per query); tests in `palette/cache_tests.rs`.
@@ -301,7 +302,8 @@ source file, update its line here. Features that span every layer are in
 - `job_retry.rs`: Try again: the spec `start_job` kept, offered on lock-file and HTTPS sign-in failures and run again only in its own open, active tab.
 - `conflict_count.rs`: a conflicts toast, its run and View conflicts taking the count and files (names that aren't UTF-8 included, never opened) of the first complete status read after the job; a partial read keeps git's count, saying it may be incomplete; a failed read, another repository or the next job ends the wait.
 - `tls_fix.rs`: a TLS failure's help: Relax check for this repository and for all repositories on a revocation failure (asked first, not for a git older than 2.43), the write's result and the job run again, and the settings read after a certificate or revocation failure.
-- `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run and its toast, the confirmation, the delete's result and the job run again.
+- `lock_file.rs`: Delete lock file: the check after a lock failure, the button put first on the run or note and its toast, the confirmation, the delete's result and the job or working-tree op run again.
+- `lock_local.rs`: a working-tree op (stage, unstage, discard, a hunk or lines) that failed on a lock: a two-line note folded open with Try again, the lock check, and Try again re-sending whole-file ops through their `StageMsg` and a hunk or lines as the same `LocalOp`, only in its own active tab. Tests in `flows/lock_local_tests.rs`.
 - `stage_folder.rs`: Stage folder and Unstage folder from a folder row of the WIP lists' tree (refused while a conflicted file is under it), and staging or unstaging the selected files together.
 - `update/blame_find.rs`: moving within one blame: find in the file, go to line, and the next or previous run.
 - `update/blame_nav.rs`: moving between blames: Blame before this commit and Back, skipping commits, the whitespace, move and wrap toggles, the jump to the file's history, and the header's Diff and File back to the history the blame was opened over.
@@ -319,7 +321,7 @@ source file, update its line here. Features that span every layer are in
 - `update/issue_comment.rs`: posting the issue panel's comment box and quoting a comment into it; the reply appends the posted comment or keeps the draft with the reason, also for a parked tab's panel or the draft kept for a closed one.
 - `update/issue_create.rs`: the Create issue dialog: opening it for the active repository's tracker, loading the labels, people, types and epics it offers (per Jira project), creating the issue, and the reply: logged and toasted with a View action, cached, the ISSUES list refreshed, and the New branch dialog opened when asked.
 - `update/keys.rs`: Preferences > Keyboard: recording a key for an action, checking it (`keymap::check`), settling a clash by swapping or taking the key, removing keys and resetting them.
-- `update/local_done.rs`: a staging, discard or conflict change's result (`StageMsg::LocalOpDone`, `LocalOpFailed`): the failure worded in the user's language for the log, the undo recorded, then the conflict view, the WIP list and the status catch up.
+- `update/local_done.rs`: a staging, discard or conflict change's result (`StageMsg::LocalOpDone`, `LocalOpFailed`): the failure worded in the user's language for the log, the undo recorded, then the conflict view, the WIP list and the status catch up (`settle_failed` for a lock failure update/lock_local.rs logged).
 - `update/logs_copy.rs`: the logs panel's Copy entry (the row menu, the open row's Copy) and Copy log (the header's More menu, the row menu).
 - `update/logs_filter.rs`: the logs panel's filters and keyboard cursor: the Failures only toggle, the search text changing, folding a row (an unfolded match closes into `search_closed`), the activity list's keys (`LogsMsg::RowKey`) and Details revealing a run the filter hid.
 - `update/logs_export.rs`: export logs: ask where to save (a worker thread runs the dialog), then the log worker writes every log as one bundle after the appends queued before it (runner/logs.rs), under a header naming the versions and the platform for a bug report.

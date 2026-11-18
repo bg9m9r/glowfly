@@ -1,6 +1,7 @@
 //! The activity tab: runs with their result marks, summaries, durations and times, a routine
 //! group of auto-fetches, a failed run opened with its cause, fix, Copy and output, a certificate
-//! failure's TLS settings, and notes.
+//! failure's TLS settings, notes, and a working-tree op's lock failure opened with Delete lock file
+//! and Try again.
 
 use super::snapshot_tests::{NOW, harness_sized, settings};
 use crate::snapshot_check::CheckSnapshot;
@@ -146,4 +147,30 @@ fn a_reveal_lets_go_of_the_bottom() {
     h.run();
     h.run();
     assert_eq!(bounds(&h, row).y0, run_top, "and stays there");
+}
+
+/// A hunk stage that met a stale index.lock: its note folded open, with Delete lock file first
+/// and Try again beside it, and libgit2's own words in the output block.
+#[test]
+fn activity_local_lock() {
+    use glowfly_model::effect::LocalOp;
+    use glowfly_model::msg::LockMsg;
+    use glowfly_model::state::lock_retry::LocalRetry;
+    let mut st = AppState::new(settings(ThemeChoice::Dark), Vec::new(), Instant::now());
+    st.view.show_log = true;
+    let sentence = "Another Git program is using this repository (index.lock exists). Wait for it to finish, then try again. If none is running, delete that file.";
+    let lock = note(false, &format!("{sentence}\nthe index is locked; this might be due to a concurrent or crashed process"), 1);
+    let id = lock.id;
+    st.log = vec![note(true, "Checked out main", 3), lock];
+    st.logs.open.insert(id);
+    let retry = LocalRetry { tab: st.tabs[0].id, workdir: "/r".into(), op: LocalOp::StageFile("a.txt".into()) };
+    let again = ToastAction { label: "Try again".into(), msg: Box::new(Msg::Lock(LockMsg::Again(Box::new(retry)))), workdir: None };
+    st.logs.keep_fix(id, again);
+    let delete = ToastAction { label: "Delete lock file".into(), msg: Box::new(Msg::Logs(LogsMsg::Fold(id))), workdir: None };
+    st.logs.offer_first(id, delete).expect("Try again is kept");
+    let mut h = tall(st, true);
+    h.check_snapshot("activity_local_lock");
+    h.get_by_label("Try again").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Logs(LogsMsg::AltFix(i)) if *i == id)), "Try again is the second fix");
 }

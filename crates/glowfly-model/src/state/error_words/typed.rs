@@ -188,9 +188,13 @@ fn not_moved(t: Lang, branches: &[LeftOut]) -> String {
 /// Why a write to the working tree or index, a revert, a restore from a commit, a working-tree
 /// file operation or a stack push failed (`StageMsg::LocalOpDone`, `Reverted`,
 /// `FilesMsg::FileRestored`, `WorkFileMsg::WorkFileDone`, `StackMsg::Pushed`); git's, libgit2's
-/// and the system's words kept as they are.
+/// and the system's words kept as they are, except a lock file in the way, which is the lock
+/// sentence (`error_words::cause`) naming the file.
 pub fn write(t: Lang, e: &WriteFailed) -> String {
     match e {
+        WriteFailed::Locked { lock, .. } => {
+            super::cause(t, &glowfly_core::git_errors::Cause::Locked { file: glowfly_core::lock_errors::file_name(lock).to_owned() })
+        }
         WriteFailed::Said { said } | WriteFailed::Other { said } => said.clone(),
         WriteFailed::MissingContent { path, remote } => t.trf("read_errors.missing_content", &[("path", path), ("remote", remote)]),
         WriteFailed::Panicked { effect, panic } => t.trf("read_errors.panicked", &[("effect", effect), ("panic", panic)]),

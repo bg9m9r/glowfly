@@ -1,5 +1,9 @@
 {
+  "lock.again.moved": "El cambio no se volvió a hacer: su pestaña muestra ahora otro repositorio.",
+  "lock.again.switch_back": "El cambio no se volvió a hacer: vuelve primero a su pestaña.",
+  "lock.again.tab_closed": "El cambio no se volvió a hacer: su pestaña se cerró.",
   "lock.delete.body": "No hay ningún programa de Git en marcha, así que {file} parece haber quedado de uno que se detuvo. Glowfly lo borrará y volverá a ejecutar {job}.\n\nContinúa solo si ningún otro programa, como un editor u otro cliente de Git, está trabajando en este repositorio.\n\n{path}",
+  "lock.delete.body.change": "No hay ningún programa de Git en marcha, así que {file} parece haber quedado de uno que se detuvo. Glowfly lo borrará y volverá a hacer el cambio.\n\nContinúa solo si ningún otro programa, como un editor u otro cliente de Git, está trabajando en este repositorio.\n\n{path}",
   "lock.delete.button": "Borrar archivo de bloqueo",
   "lock.delete.confirm": "Borrar y reintentar",
   "lock.delete.title": "¿Borrar el archivo de bloqueo?",

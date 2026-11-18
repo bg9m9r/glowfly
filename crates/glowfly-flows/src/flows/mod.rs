@@ -159,6 +159,7 @@ mod lines_whole_tests;
 mod load_more_resume_tests;
 mod load_more_retry_tests;
 mod load_more_tests;
+mod lock_local_tests;
 mod lock_retry_tests;
 mod logs_runs_tests;
 mod logs_tabs_tests;

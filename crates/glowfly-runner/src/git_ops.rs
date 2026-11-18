@@ -1,13 +1,15 @@
 //! Local git operations run by the runner: staging and discarding ops, conflict changes such as
-//! Mark resolved and taking the trivial picks in many files, and running a list of git commands (through the trust gate too). Undo and redo
-//! are in `undo_run.rs`.
+//! Mark resolved and taking the trivial picks in many files, and running a list of git commands (through the trust gate too). A stage,
+//! unstage or discard that failed on a lock file reports `LockMsg::LocalLocked` with the op, for
+//! Try again and Delete lock file. Undo and redo are in `undo_run.rs`.
 
 use glowfly_core::error::WriteFailed;
 use glowfly_core::gitcli;
+use glowfly_core::lock_errors::locked_write;
 use glowfly_core::repo;
 use glowfly_core::undo::{self, Action, ConflictChange, ConflictsFailed, Discarded};
 use glowfly_model::effect::LocalOp;
-use glowfly_model::msg::{ConflictMsg, Msg, StageMsg};
+use glowfly_model::msg::{ConflictMsg, LockMsg, Msg, StageMsg};
 use std::path::Path;
 
 /// Runs a local op. Discards, conflict saves and conflict changes (Mark resolved, Mark
@@ -58,24 +60,39 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Resu
 }
 
 /// Runs a local op and says how it went. A conflict change that failed partway carries the
-/// undo action for the files it changed.
+/// undo action for the files it changed. A failure on a lock file is worded as one
+/// (`lock_errors::locked_write`); for an op that may run again it is `LockMsg::LocalLocked`.
 pub(super) fn local_done(workdir: &Path, op: LocalOp) -> Msg {
     if let LocalOp::TakeTrivialPicks(paths) = &op {
         return match take_trivial(workdir, paths) {
             Ok((taken, undo)) => Msg::Conflict(ConflictMsg::TrivialPicksTaken { taken, undo }),
-            Err(ConflictsFailed { error, undo: None }) => Msg::Stage(StageMsg::LocalOpDone(Err(WriteFailed::from(error)))),
+            Err(ConflictsFailed { error, undo: None }) => lock_or_done(workdir, None, locked_write(workdir, error)),
             Err(ConflictsFailed { error, undo: Some(undo) }) => {
                 Msg::Stage(StageMsg::LocalOpFailed { error: WriteFailed::from(error), undo: *undo })
             }
         };
     }
+    let again = op.retryable().then(|| op.clone());
     let conflict = matches!(op, LocalOp::ResolveWithSide { .. } | LocalOp::MarkResolved(_) | LocalOp::MarkConflicted(_));
     let result = if conflict { conflict_change(workdir, op) } else { local_op(workdir, op).map_err(ConflictsFailed::from) };
-    Msg::Stage(match result {
-        Ok(undo) => StageMsg::LocalOpDone(Ok(undo)),
-        Err(ConflictsFailed { error, undo: None }) => StageMsg::LocalOpDone(Err(WriteFailed::from(error))),
-        Err(ConflictsFailed { error, undo: Some(undo) }) => StageMsg::LocalOpFailed { error: WriteFailed::from(error), undo: *undo },
-    })
+    match result {
+        Ok(undo) => Msg::Stage(StageMsg::LocalOpDone(Ok(undo))),
+        Err(ConflictsFailed { error, undo: None }) => lock_or_done(workdir, again, locked_write(workdir, error)),
+        Err(ConflictsFailed { error, undo: Some(undo) }) => {
+            Msg::Stage(StageMsg::LocalOpFailed { error: WriteFailed::from(error), undo: *undo })
+        }
+    }
+}
+
+/// `LockMsg::LocalLocked` for a lock failure of an op that may run `again`, else the plain
+/// failed result.
+fn lock_or_done(workdir: &Path, again: Option<LocalOp>, error: WriteFailed) -> Msg {
+    match (&error, again) {
+        (WriteFailed::Locked { lock, .. }, Some(op)) => {
+            Msg::Lock(LockMsg::LocalLocked { workdir: workdir.to_path_buf(), op: Box::new(op), lock: lock.clone(), error })
+        }
+        _ => Msg::Stage(StageMsg::LocalOpDone(Err(error))),
+    }
 }
 
 /// Mark resolved, Mark conflicted or a whole side taken, recorded for undo.
@@ -272,6 +289,10 @@ pub(super) fn check_passes(cwd: &Path, check: &[String], prompts: bool, output: 
     }
     passed
 }
+
+#[cfg(test)]
+#[path = "git_ops_lock_tests.rs"]
+mod lock_tests;
 
 #[cfg(test)]
 mod tests {

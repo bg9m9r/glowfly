@@ -1,17 +1,20 @@
 //! Delete lock file. A job that failed on a lock file git left behind offers Try again at once
-//! (update/job_retry.rs) and asks the runner whether the lock may go (`check_after`): only when
-//! it is a plain file in the repository's git dir and no git process runs
-//! (`glowfly_core::lock_file`) does Delete lock file come first on the run and its toast
+//! (update/job_retry.rs) and asks the runner whether the lock may go (`check_after`); a
+//! working-tree op that failed on one does the same through update/lock_local.rs. Only when the
+//! lock is a plain file in the repository's git dir and no git process runs
+//! (`glowfly_core::lock_file`) does Delete lock file come first on the entry and its toast
 //! (`checked`). The button asks first, then the runner checks everything again and deletes it
-//! (`delete`), and the job runs again (`deleted`); a refusal says why and still offers Try again.
+//! (`delete`), and the job or op runs again (`deleted`); a refusal says why and still offers
+//! Try again.
 
 use crate::effect::{Effect, LockEffect};
 use crate::msg::{JobMsg, LockMsg, Msg};
-use crate::state::job_spec::Retry;
+use crate::state::lock_retry::LockRetry;
 use crate::state::logs::EntryId;
 use crate::state::{AppState, RunningJob, ToastAction};
 use glowfly_core::git_procs::Unknown;
 use glowfly_core::i18n::Lang;
+use glowfly_core::lock_errors::file_name;
 use glowfly_core::lock_file::{Found, Refusal};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -20,7 +23,9 @@ pub(super) fn handle(st: &mut AppState, msg: LockMsg, now: Instant, fx: &mut Vec
     match msg {
         LockMsg::Checked { entry, workdir, lock, result } => checked(st, entry, workdir, lock, result),
         LockMsg::Delete { workdir, lock, retry } => delete(st, workdir, lock, retry, now, fx),
-        LockMsg::Deleted { lock, retry, result } => deleted(st, &lock, *retry, result, now, fx),
+        LockMsg::Deleted { lock, retry, result } => deleted(st, &lock, retry, result, now, fx),
+        LockMsg::LocalLocked { workdir, op, lock, error } => super::lock_local::failed(st, workdir, *op, lock, error, now, fx),
+        LockMsg::Again(r) => super::lock_local::again(st, *r, now, fx),
     }
 }
 
@@ -31,25 +36,26 @@ pub(super) fn check_after(job: &RunningJob, entry: EntryId, output: &str, fx: &m
     fx.push(Effect::Lock(LockEffect::Check { workdir, lock, entry }));
 }
 
-/// The file name of `lock`, for the texts.
-fn file_name(lock: &str) -> &str {
-    lock.rsplit(['/', '\\']).next().unwrap_or(lock)
-}
-
-/// The check found a stale lock: Delete lock file goes first on run `entry` (and its toast,
+/// The check found a stale lock: Delete lock file goes first on entry `entry` (and its toast,
 /// while that is up), with its Try again beside it. Anything else leaves Try again alone.
 fn checked(st: &mut AppState, entry: EntryId, workdir: PathBuf, lock: String, result: Result<Found, Refusal>) {
     let Ok(Found::Stale(_)) = result else { return };
-    // The run's Try again, while it hasn't run.
-    let Some(Msg::Job(JobMsg::Retry(retry))) = st.logs.fix(entry).map(|f| &*f.msg) else { return };
-    let retry = retry.clone();
+    // The entry's Try again, while it hasn't run: a job's or a working-tree op's.
+    let retry = match st.logs.fix(entry).map(|f| &*f.msg) {
+        Some(Msg::Job(JobMsg::Retry(r))) => LockRetry::Job(r.clone()),
+        Some(Msg::Lock(LockMsg::Again(l))) => LockRetry::Local(l.clone()),
+        _ => return,
+    };
     let t = st.settings.lang();
-    let (file, job) = (file_name(&lock), retry.spec.label.clone());
+    let file = file_name(&lock);
     let path = glowfly_core::native_path::shown(Path::new(&lock));
-    let body = t.trf("lock.delete.body", &[("file", &file), ("job", &job), ("path", &path)]);
-    let then = Msg::Lock(LockMsg::Delete { workdir, lock: lock.clone(), retry: retry.clone() });
+    let (body, at) = match &retry {
+        LockRetry::Job(r) => (t.trf("lock.delete.body", &[("file", &file), ("job", &r.spec.label), ("path", &path)]), r.workdir.clone()),
+        LockRetry::Local(l) => (t.trf("lock.delete.body.change", &[("file", &file), ("path", &path)]), Some(l.workdir.clone())),
+    };
+    let then = Msg::Lock(LockMsg::Delete { workdir, lock: lock.clone(), retry });
     let ask = Msg::confirm_danger(t.tr("lock.delete.title"), body, t.tr("lock.delete.confirm"), then);
-    let action = ToastAction { label: t.tr("lock.delete.button").to_owned(), msg: Box::new(ask), workdir: retry.workdir.clone() };
+    let action = ToastAction { label: t.tr("lock.delete.button").to_owned(), msg: Box::new(ask), workdir: at };
     let Some((main, alt)) = st.logs.offer_first(entry, action) else { return };
     let shown = st.toasts.iter_mut().find(|t| super::logs_runs::is_proxy(t.action.as_ref(), entry));
     if let Some(toast) = shown {
@@ -57,23 +63,23 @@ fn checked(st: &mut AppState, entry: EntryId, workdir: PathBuf, lock: String, re
     }
 }
 
-/// Delete lock file, confirmed: refused while a job runs or once the job's tab is closed or
-/// not active; otherwise the runner checks again and deletes it.
-fn delete(st: &mut AppState, workdir: PathBuf, lock: String, retry: Box<Retry>, now: Instant, fx: &mut Vec<Effect>) {
+/// Delete lock file, confirmed: refused while a job runs or once the tab of the job or op is
+/// closed or not active; otherwise the runner checks again and deletes it.
+fn delete(st: &mut AppState, workdir: PathBuf, lock: String, retry: LockRetry, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let file = file_name(&lock).to_owned();
     if let Some(job) = &st.job {
         let text = t.trf("lock.refused.busy", &[("file", &file), ("job", &job.label)]);
         return refused(st, text, &retry, now);
     }
-    if let Some(why) = super::job_retry::refusal(st, &retry) {
+    if let Some(why) = super::lock_local::refusal(st, &retry) {
         return st.toast(false, why, now);
     }
     fx.push(Effect::Lock(LockEffect::Delete { workdir, lock, retry }));
 }
 
-/// The delete ended: logs it and runs the job again, or says why it wasn't deleted.
-fn deleted(st: &mut AppState, lock: &str, retry: Retry, result: Result<Found, Refusal>, now: Instant, fx: &mut Vec<Effect>) {
+/// The delete ended: logs it and runs the job or op again, or says why it wasn't deleted.
+fn deleted(st: &mut AppState, lock: &str, retry: LockRetry, result: Result<Found, Refusal>, now: Instant, fx: &mut Vec<Effect>) {
     let t = st.settings.lang();
     let file = file_name(lock);
     match result {
@@ -81,7 +87,10 @@ fn deleted(st: &mut AppState, lock: &str, retry: Retry, result: Result<Found, Re
             if matches!(found, Found::Stale(_)) {
                 st.log(true, t.trf("lock.deleted", &[("file", &file)]));
             }
-            super::job_retry::run(st, retry, now, fx);
+            match retry {
+                LockRetry::Job(r) => super::job_retry::run(st, *r, now, fx),
+                LockRetry::Local(l) => super::lock_local::again(st, *l, now, fx),
+            }
         }
         Err(why) => {
             let text = refusal_text(t, file, &why);
@@ -91,8 +100,8 @@ fn deleted(st: &mut AppState, lock: &str, retry: Retry, result: Result<Found, Re
 }
 
 /// A refusal's toast, with Try again.
-fn refused(st: &mut AppState, text: String, retry: &Retry, now: Instant) {
-    let again = super::job_retry::button(st.settings.lang(), retry);
+fn refused(st: &mut AppState, text: String, retry: &LockRetry, now: Instant) {
+    let again = super::lock_local::button(st.settings.lang(), retry);
     st.toast_action(false, text, again, now);
 }
 

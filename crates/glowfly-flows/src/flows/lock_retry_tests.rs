@@ -10,6 +10,7 @@ use glowfly_core::lock_file::{Found, Refusal};
 use glowfly_model::effect::{Effect, LockEffect};
 use glowfly_model::msg::{CommitMsg, JobMsg, LockMsg, Msg, RepoMsg, StageMsg};
 use glowfly_model::state::job_spec::{JobSpec, Retry};
+use glowfly_model::state::lock_retry::LockRetry;
 use glowfly_model::state::tabs::TabId;
 use glowfly_model::state::toasts::Toast;
 use glowfly_model::state::{AppState, Modal};
@@ -120,6 +121,7 @@ fn delete_lock_file_asks_deletes_and_runs_the_job_again() {
         _ => None,
     });
     let (at, named, retry) = delete.expect("the delete");
+    assert!(matches!(&retry, LockRetry::Job(r) if r.spec.label == "Push"), "the job runs again after it");
     assert_eq!((at.as_path(), named.as_str()), (st.workdir().unwrap().as_path(), lock.as_str()), "the lock git named, in its repository");
     assert!(std::path::Path::new(&lock).exists(), "nothing is deleted before the runner checks again");
     // The runner's delete (its refusals are glowfly_core::lock_file's tests and the one below).
@@ -151,7 +153,7 @@ fn delete_lock_file_is_refused_while_git_runs() {
         .stdout(std::process::Stdio::null())
         .spawn()
         .unwrap();
-    let effect = Effect::Lock(LockEffect::Delete { workdir, lock: lock.clone(), retry });
+    let effect = Effect::Lock(LockEffect::Delete { workdir, lock: lock.clone(), retry: LockRetry::Job(retry) });
     let result = glowfly_runner::testing::execute(effect);
     drop(git.stdin.take());
     let _ = git.wait();
@@ -170,7 +172,7 @@ fn delete_lock_file_is_refused_while_git_runs() {
     let again = again.clone();
     up(&mut st, Msg::git("Push", &["push"]));
     let workdir = st.workdir().unwrap();
-    let fx = up(&mut st, Msg::Lock(LockMsg::Delete { workdir, lock: lock.clone(), retry: again }));
+    let fx = up(&mut st, Msg::Lock(LockMsg::Delete { workdir, lock: lock.clone(), retry: LockRetry::Job(again) }));
     assert!(fx.is_empty());
     assert_eq!(last_toast(&st).text, "index.lock wasn't deleted: Push is still running.");
     let _ = std::fs::remove_dir_all(&dir);

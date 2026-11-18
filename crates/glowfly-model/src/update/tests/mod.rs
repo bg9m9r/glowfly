@@ -37,6 +37,7 @@ pub(super) mod keys_tests;
 pub(super) mod layout_tests;
 pub(super) mod layout_window_tests;
 pub(super) mod lfs_tests;
+pub(super) mod lock_local_tests;
 pub(super) mod onboarding_tests;
 pub(super) mod op_steps_tests;
 pub(super) mod open_link_tests;
