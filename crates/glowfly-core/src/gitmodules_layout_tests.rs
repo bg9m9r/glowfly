@@ -158,7 +158,8 @@ fn a_work_tree_named_through_a_relative_include_counts() {
 /// 65 includes in the config at `git_dir`, after a setting that runs a program.
 fn many_includes(git_dir: &Path) {
     let config = std::fs::read_to_string(git_dir.join("config")).unwrap();
-    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    let at = git_dir.to_string_lossy().replace('\\', "/");
+    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = {at}/many{i}.cfg\n")).collect();
     std::fs::write(git_dir.join("config"), format!("{config}[core]\n\tfsmonitor = .git/fsmon.sh\n[include]\n{many}")).unwrap();
 }
 
