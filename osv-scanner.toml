@@ -62,3 +62,8 @@ reason = "zbus_names: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)"
 id = "RUSTSEC-2026-0372"
 ignoreUntil = 2027-04-29
 reason = "zvariant_derive: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)"
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0543"
+ignoreUntil = 2027-05-17
+reason = "chrono: Glowfly's date handling, tracing-subscriber and trash"
