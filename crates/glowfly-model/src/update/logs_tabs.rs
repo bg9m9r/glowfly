@@ -87,7 +87,7 @@ pub(super) fn details(st: &mut AppState, tab: TabId, entry: Option<EntryId>, fx:
 /// after `since` (pushed, or shown again in place) gets a Details button (beside its fix, when it
 /// has one), else a failure toast with Details shows the line's headline (restarting one that
 /// already shows it). Nothing new is shown while the panel already shows that tab's activity
-/// log. Run at the end of `update`, which has the time.
+/// log with the line's row shown (a search can hide it). Run at the end of `update`, which has the time.
 pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     let Some(a) = st.logs.announce.take() else { return };
     let msg = match a.tab {
@@ -99,7 +99,8 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     let action = ToastAction { label, msg: Box::new(Msg::Logs(msg)), workdir: None };
     if !st.toasts.iter().any(|t| t.shown > since && !t.ok) {
         let active = st.tabs.get(st.active_tab).map(|t| t.id);
-        if st.view.show_log && st.logs.tab == LogKind::Activity && a.tab == active {
+        let hidden = a.entry.is_some_and(|e| super::logs_filter::hides(st, e));
+        if st.view.show_log && st.logs.tab == LogKind::Activity && a.tab == active && !hidden {
             return;
         }
         st.toast(false, a.text, now);

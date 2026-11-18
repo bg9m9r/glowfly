@@ -260,3 +260,22 @@ fn clear_forgets_search_closed_rows() {
     update(&mut st, Msg::ClearLog, Instant::now());
     assert!(st.logs.search_closed.is_empty());
 }
+
+#[test]
+fn a_failure_the_search_hides_is_still_announced() {
+    let mut st = panel(vec![run("Pull", true, "fine")]);
+    st.view.logs_search = "push".into();
+    let before = st.toasts.len();
+    st.log(false, "Couldn't sign in");
+    // `update` ends with the announcement; any message reaches it.
+    send(&mut st, LogsMsg::SearchChanged);
+    assert_eq!(st.toasts.len(), before + 1, "no row shows it, so a toast must");
+    assert!(st.toasts.last().is_some_and(|t| !t.ok && t.action.is_some()));
+
+    // With the row shown, the row is the announcement.
+    st.toasts.clear();
+    st.view.logs_search.clear();
+    st.log(false, "Couldn't sign in again");
+    send(&mut st, LogsMsg::SearchChanged);
+    assert!(st.toasts.is_empty());
+}

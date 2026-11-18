@@ -48,10 +48,11 @@ fn group_text(group: &[LogEntry], t: Lang, utc_offset: i32) -> String {
 }
 
 /// What Copy entry copies for `id`: its block, or the whole group when it is a routine group's
-/// first entry. None when it is no longer in `log`.
-pub fn entry_copy(log: &[LogEntry], id: EntryId, t: Lang, utc_offset: i32) -> Option<String> {
+/// first entry and `grouped` (no filter lists the runs one by one). None when it is no longer in
+/// `log`.
+pub fn entry_copy(log: &[LogEntry], id: EntryId, grouped: bool, t: Lang, utc_offset: i32) -> Option<String> {
     let i = log.iter().position(|e| e.id == id)?;
-    if routine_ok(&log[i]) {
+    if grouped && routine_ok(&log[i]) {
         let group = rows(log).into_iter().find_map(|r| match r {
             ActivityRow::Routine { first, last, .. } if first == i => Some(last),
             _ => None,
