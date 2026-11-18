@@ -26,8 +26,8 @@ const STAGE_FILE: &str = "Stage file";
 const UNSTAGE_FILE: &str = "Unstage file";
 const NEXT_NAME: &str = "Next change";
 const PREV_NAME: &str = "Previous change";
-const COLLAPSE_ALL: &str = "Collapse all";
-const EXPAND_ALL: &str = "Expand all";
+pub(super) const COLLAPSE_ALL: &str = "Collapse all";
+pub(super) const EXPAND_ALL: &str = "Expand all";
 const IGNORE_WS: &str = "Ignore whitespace";
 const WRAP: &str = "Wrap long lines";
 
@@ -35,7 +35,7 @@ fn oid() -> Oid {
     Oid::from_bytes(&[7; 20]).unwrap()
 }
 
-fn view() -> ViewGroup {
+pub(super) fn view() -> ViewGroup {
     ViewGroup { layout: DiffLayout::Inline, mode: DiffMode::Hunks, rows: true, ignore_ws: false, wrap: Some(false), folds: None }
 }
 
@@ -237,7 +237,7 @@ fn controls_send_their_messages() {
 }
 
 /// Opens the View popup of `m` and clicks `label` in it.
-fn in_view_menu(m: HeaderModel, label: &str) -> Vec<Msg> {
+pub(super) fn in_view_menu(m: HeaderModel, label: &str) -> Vec<Msg> {
     let mut h = harness(m.clone(), 1400.0);
     let button = m.view.unwrap().label(Lang::En);
     h.get_by_label(&button).click();
@@ -254,7 +254,11 @@ fn the_view_menu_changes_the_settings() {
     assert!(matches!(&in_view_menu(unstaged(), IGNORE_WS)[..], [Msg::Diff(DiffMsg::SetIgnoreWhitespace(true))]));
     assert!(matches!(&in_view_menu(unstaged(), WRAP)[..], [Msg::Diff(DiffMsg::SetWordWrap(true))]));
     let whole = HeaderModel {
-        view: Some(ViewGroup { mode: DiffMode::WholeFile, folds: Some(FoldCounts { open: 1, closed: 1 }), ..view() }),
+        view: Some(ViewGroup {
+            mode: DiffMode::WholeFile,
+            folds: Some(FoldCounts { open: 1, closed: 1, hunks: false, ws_hidden: false }),
+            ..view()
+        }),
         ..unstaged()
     };
     assert!(matches!(&in_view_menu(whole.clone(), EXPAND_ALL)[..], [Msg::Diff(DiffMsg::ExpandAllUnchanged)]));
@@ -345,7 +349,11 @@ fn file_header_snapshots() {
     h.check_snapshot("file_header_narrow");
 
     let whole = HeaderModel {
-        view: Some(ViewGroup { mode: DiffMode::WholeFile, folds: Some(FoldCounts { open: 1, closed: 2 }), ..view() }),
+        view: Some(ViewGroup {
+            mode: DiffMode::WholeFile,
+            folds: Some(FoldCounts { open: 1, closed: 2, hunks: false, ws_hidden: false }),
+            ..view()
+        }),
         ..unstaged()
     };
     let mut h = themed(whole, 900.0, 300.0);

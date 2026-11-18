@@ -9,7 +9,7 @@ fn hunk(lines: &[(char, Option<u32>, Option<u32>, &str)]) -> Hunk {
 }
 
 fn diff(hunks: Vec<Hunk>) -> FileDiff {
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 fn pair(old: Option<usize>, new: Option<usize>) -> SplitRow {

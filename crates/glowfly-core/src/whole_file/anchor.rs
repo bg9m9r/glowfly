@@ -17,7 +17,7 @@ fn starts(w: &WholeFile, layout: DiffLayout, ex: &Expanded) -> Vec<(Option<usize
                 DiffRow::Line { line, .. } => (Some(line), None),
                 DiffRow::Fold(f) => (Some(f.start), Some(f.end)),
                 DiffRow::Block(h) => (block(h), None),
-                DiffRow::Header(_) | DiffRow::GapLine { .. } => (None, None),
+                DiffRow::Header(_) | DiffRow::GapLine { .. } | DiffRow::GapBelow(_) => (None, None),
             })
             .collect(),
         DiffLayout::Split => split_rows(w, ex)
@@ -26,7 +26,7 @@ fn starts(w: &WholeFile, layout: DiffLayout, ex: &Expanded) -> Vec<(Option<usize
                 SplitRow::Pair { old, new, .. } => (old.into_iter().chain(new).min(), None),
                 SplitRow::Fold(f) => (Some(f.start), Some(f.end)),
                 SplitRow::Block(h) => (block(h), None),
-                SplitRow::Header(_) | SplitRow::GapLine { .. } => (None, None),
+                SplitRow::Header(_) | SplitRow::GapLine { .. } | SplitRow::GapBelow(_) => (None, None),
             })
             .collect(),
     }

@@ -119,3 +119,6 @@ mod rename_tests;
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "view_menu_tests.rs"]
+mod view_menu_tests;

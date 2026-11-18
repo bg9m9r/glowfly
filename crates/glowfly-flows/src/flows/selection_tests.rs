@@ -234,7 +234,7 @@ fn plain_select_and_collapse() {
 fn selection_change_closes_views() {
     let (mut st, f) = fixture("multi-closes");
     up(&mut st, Msg::Repo(RepoMsg::SelectCommit(f.c(5))));
-    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Commit(f.c(5), "f.txt".into()), empty.into()));
     st.session.conflict.view = Some(ConflictView::loading("f.txt".into()));
     st.session.history.view = Some(FileHistoryView::loading("f.txt".into(), None));

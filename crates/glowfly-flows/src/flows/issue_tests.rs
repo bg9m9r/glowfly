@@ -125,7 +125,7 @@ fn pr(id: u64) -> PullRequest {
 #[test]
 fn opening_a_listed_issue_loads_it_and_closes_the_other_views() {
     let (mut st, dir) = open_repo("issue-open");
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     st.session.history.view = Some(FileHistoryView::loading("a.txt".into(), None));
     st.session.blame.view = Some(glowfly_model::state::blame::BlameView::loading("a.txt".into(), None));

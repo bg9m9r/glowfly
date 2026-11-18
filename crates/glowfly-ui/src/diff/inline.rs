@@ -1,6 +1,6 @@
 //! The inline layout: one column of hunks (or of the whole file), each line with its old and
-//! new number (unless line numbers are off), and the unchanged lines between hunks once filled
-//! in. Text selected in the code paints under its glyphs (`text_sel`).
+//! new number (unless line numbers are off), and the unchanged lines outside the hunks once
+//! filled in (the closed run below the last hunk is one row). Text selected in the code paints under its glyphs (`text_sel`).
 
 use super::syntax::paint_line_sel;
 use super::text_sel::{self, Hit, TextMut};
@@ -67,7 +67,9 @@ pub(super) fn show(
             // A change block's action row acts on its normal hunk, like that hunk's header.
             DiffRow::Block(h) => hunk_header(ui, rect, v, h, msgs),
             DiffRow::Fold(f) => fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs),
-            // An opened gap's line: drawn like a context line, never selectable or marked.
+            // The closed run below the last hunk: a fold row.
+            DiffRow::GapBelow(g) => fold::gap_below_row(ui, rect, v, g, cols.sign, cols.text, msgs),
+            // An opened run's line: drawn like a context line, never selectable or marked.
             DiffRow::GapLine { hunk, line } => {
                 drag_over(ui, v, rect, hunk, 0, msgs);
                 let Some((g, text)) = v.gap_lines.iter().find(|(g, _)| g.hunk == hunk) else { return };

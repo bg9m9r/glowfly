@@ -120,7 +120,7 @@ pub(super) fn running_job(dir: &Path) -> RunningJob {
 #[test]
 fn opening_requests_the_list_and_closes_other_views() {
     let (mut st, dir, c) = repo("rebase-open");
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Commit(c[0], "c1.txt".into()), diff.into()));
     st.session.history.view = Some(FileHistoryView::loading("c1.txt".into(), None));
     st.session.conflict.view = Some(ConflictView::loading("c1.txt".into()));

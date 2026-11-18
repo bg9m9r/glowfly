@@ -28,7 +28,8 @@ fn reference(dir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> (FileDif
     let path = target.path();
     let diff = target_diff(&repo, target, opts, None).unwrap();
     let lfs = super::super::lfs_marks::diff_change(&repo, target, &diff);
-    let mut out = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let mut out =
+        FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     let Some(patch) = file_patch(&diff, path).unwrap() else {
         out.binary = true;
         return (out, lfs);
@@ -58,7 +59,8 @@ fn same_as_before(dir: &Path, target: &DiffTarget, rows: &[FileEntry]) {
     for whole_file in [false, true] {
         let opts = LoadDiffOptions { whole_file, ..Default::default() };
         let v = load_listed_diff(dir, target, opts, listed).unwrap();
-        let (want, lfs) = reference(dir, target, opts);
+        let (mut want, lfs) = reference(dir, target, opts);
+        want.old_lines = v.diff.old_lines;
         assert_eq!(v.diff, want, "{target:?} (whole file: {whole_file})");
         assert_eq!(v.lfs, lfs, "{target:?}");
     }

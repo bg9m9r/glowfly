@@ -42,7 +42,8 @@ impl WholeFile {
     /// `whole` with the change block of each of `hunks`, or `None` when they can't all be found.
     pub fn new(hunks: &[Hunk], whole: Hunk) -> Option<WholeFile> {
         let blocks = change_blocks(hunks, &whole.lines)?;
-        let diff = FileDiff { binary: false, hunks: vec![whole], highlight: None, intraline: Default::default(), whole: None };
+        let diff =
+            FileDiff { binary: false, hunks: vec![whole], highlight: None, intraline: Default::default(), whole: None, old_lines: None };
         Some(WholeFile { diff, blocks })
     }
 }

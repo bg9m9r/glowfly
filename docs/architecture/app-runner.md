@@ -22,7 +22,7 @@ here.
 - `network.rs`: the `Execute` impl of `NetworkEffect`: a hosting service's calls (`forge_calls.rs`) and avatar downloads.
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
 - `load.rs`: the `Execute` impl of `LoadEffect` (the status reads are in `status.rs`), and a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
-- `diff.rs`: the `Execute` impl of `DiffEffect`: a diff and its highlighting (`highlight.rs`), the unchanged lines between hunks (`diff_gaps.rs`) and a binary diff's sides.
+- `diff.rs`: the `Execute` impl of `DiffEffect`: a diff and its highlighting (`highlight.rs`), the unchanged lines outside the hunks (`diff_gaps.rs`) and a binary diff's sides.
 - `job.rs`: the `Execute` impl of `JobEffect`: a job's git commands, with the expected revision's check, the undo record, the trust gate's re-run, a stop for network commands, the journal note and an auto-stash's saved record (`auto_stash_made.rs`); and undo or redo (`undo_run.rs`).
 - `auto_stash_made.rs`: writes an auto-stash job's saved record as soon as its first command made the stash, before the next command, and sends `AutoStashMsg::Made`; tests in `auto_stash_made_tests.rs`.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.

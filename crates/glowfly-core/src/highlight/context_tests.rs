@@ -362,7 +362,9 @@ fn old_text_per_target() {
     assert!(d.whole.is_some() && text.is_none(), "the whole file is its own context");
 
     let plain = repo::load_diff_with(&dir, &DiffTarget::Unstaged("f.rs".into()), LoadDiffOptions::default()).unwrap();
-    assert_eq!(plain, view(DiffTarget::Unstaged("f.rs".into()), LoadDiffOptions::default()).0);
+    let shown = view(DiffTarget::Unstaged("f.rs".into()), LoadDiffOptions::default()).0;
+    assert_eq!((plain.old_lines, shown.old_lines), (None, Some(20)), "only the view load counts the old file's lines");
+    assert_eq!(plain, FileDiff { old_lines: None, ..shown });
     let _ = std::fs::remove_dir_all(&dir);
 }
 

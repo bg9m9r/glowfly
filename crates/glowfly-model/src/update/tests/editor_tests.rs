@@ -23,7 +23,7 @@ fn tabbed_diff() -> FileDiff {
         header: "@@ -1,3 +1,3 @@".into(),
         lines: vec![line(' ', "fn f() {"), line('-', "\tlet x = 1;"), line('+', "\tlet x = 2;"), line(' ', "}")],
     }];
-    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None };
+    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     d.intraline = intraline::intraline(&d);
     d
 }

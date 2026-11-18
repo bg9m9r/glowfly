@@ -261,7 +261,7 @@ pub fn load_diff(workdir: &Path, target: &DiffTarget) -> Result<FileDiff> {
 /// same edit script as the normal hunks (xdiff's context doesn't change which lines are
 /// changed), which is what lets `WholeFile::new` map each hunk onto it.
 pub fn load_diff_with(workdir: &Path, target: &DiffTarget, opts: LoadDiffOptions) -> Result<FileDiff> {
-    super::diff_view::load(workdir, target, opts, false, None).map(|v| v.diff)
+    super::diff_view::load(workdir, target, opts, super::diff_view::OldSide::Skip, None).map(|v| v.diff)
 }
 
 /// The diff behind `target`, with `context` lines around each change when set (and hunks

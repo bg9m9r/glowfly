@@ -236,7 +236,8 @@ fn header_fold_buttons() {
     h.state_mut().0.settings.diff_mode = DiffMode::Hunks;
     h.run();
     assert!(h.query_by_label("Whole file").is_some(), "the menu is still open");
-    assert!(h.query_by_label("Expand all").is_none() && h.query_by_label("Collapse all").is_none(), "not in the Hunks view");
+    // The hunk view's own runs (this diff has some between its hunks) are opened and closed from it too.
+    assert!(h.query_by_label("Expand all").is_some() && h.query_by_label("Collapse all").is_some(), "in the Hunks view");
     drop(h);
     remove_fixture(&dir);
 }

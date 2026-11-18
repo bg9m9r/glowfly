@@ -33,6 +33,7 @@ pub(crate) mod dialog_kind;
 pub mod diff_header;
 pub mod diff_nav;
 pub mod diff_preview;
+pub mod diff_runs;
 pub mod error_words;
 pub mod files;
 mod forge;

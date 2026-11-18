@@ -122,7 +122,8 @@ mod tests {
         let text: String = (0..=highlight::MAX_LINES).map(|i| format!("let x{i} = {i};\n")).collect();
         let lines = text.lines().map(|t| glowfly_core::repo::DiffLine { origin: '+', old: None, new: None, text: t.into() }).collect();
         let hunk = glowfly_core::repo::Hunk { header: "@@ -0,0 +1 @@".into(), lines };
-        let mut d = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None };
+        let mut d =
+            FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None, old_lines: None };
         decorate("big.rs", &mut d, None);
         assert!(d.highlight.as_ref().is_some_and(DiffHighlight::is_pending));
         let target = DiffTarget::Unstaged("big.rs".into());
@@ -153,7 +154,8 @@ mod tests {
         let hunk = glowfly_core::repo::Hunk { header: format!("@@ -{},0 +{at} @@", at - 1), lines: vec![line] };
         let old = OldText::new(text.as_bytes(), std::slice::from_ref(&hunk)).map(Arc::new);
         assert!(old.is_some());
-        let mut d = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None };
+        let mut d =
+            FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole: None, old_lines: None };
         decorate_in_context("a.rs", None, &mut d, None, old.as_ref());
         assert!(d.highlight.as_ref().is_some_and(DiffHighlight::is_pending));
         let target = DiffTarget::Unstaged("a.rs".into());
@@ -179,7 +181,7 @@ mod tests {
         let hunk = Hunk { header: "@@ -1,4 +1,5 @@".into(), lines };
         let whole = glowfly_core::whole_file::WholeFile::new(std::slice::from_ref(&hunk), hunk.clone()).map(Box::new);
         assert!(whole.is_some());
-        let mut d = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole };
+        let mut d = FileDiff { binary: false, hunks: vec![hunk], highlight: None, intraline: Default::default(), whole, old_lines: None };
         decorate("config.txt", &mut d, None);
         assert_eq!(d.intraline.pairs().hunk(0), [(1, 4), (2, 5)]);
         let w = d.whole.as_deref().expect("whole file");

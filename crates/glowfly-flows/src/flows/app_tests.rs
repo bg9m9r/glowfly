@@ -107,7 +107,7 @@ fn find_commits_closes_the_diff_and_focuses_search() {
     let dir = scratch_repo("menu-find-commits");
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), diff.into()));
     run(&mut st, Msg::Search(SearchMsg::Open));
     assert!(st.session.diff.view.is_none());

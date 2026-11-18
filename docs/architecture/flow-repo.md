@@ -7,7 +7,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Unchanged lines in a diff
 
-- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the gaps between hunks, read once per shown diff (`DiffEffect::Gaps`, `update/diff_gaps.rs`).
+- `TabView::diff_expanded` (in `RepoSession::tab_view`) holds the opened runs by key (a run's first new line, the same in the whole-file view and the hunk view) and, for the hunk view, the text of the runs outside the hunks (above the first, between, below the last), read once per shown diff (`DiffEffect::Gaps`, `update/diff_gaps.rs`; `TabView::diff_gaps_reading` says a read is on its way). Expand all and Collapse all, and the palette's Show all / Fold all unchanged lines, open or close every run.
 - E and Shift+E open the next closed run from the top or fold back the one there (`update/fold_keys.rs`).
 
 ## Next/previous change across files

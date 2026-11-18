@@ -60,7 +60,7 @@ fn select_all_needs_the_graph() {
     assert!(selects_all(&mut h), "the graph is in view");
     assert!(goes_back(&mut h), "and back with Shift");
 
-    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     h.state_mut().st.session.diff.view = Some((DiffTarget::Unstaged("f.txt".into()), empty.into()));
     assert!(!selects_all(&mut h), "a diff covers the graph");
     h.state_mut().st.session.diff.view = None;

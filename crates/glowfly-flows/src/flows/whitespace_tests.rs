@@ -24,7 +24,7 @@ fn run(st: &mut AppState, msg: Msg) -> Vec<Effect> {
 fn one_hunk() -> FileDiff {
     let line = |origin: char, text: &str| DiffLine { origin, old: Some(1), new: Some(1), text: text.into() };
     let hunks = vec![Hunk { header: "@@ -1 +1 @@".into(), lines: vec![line('-', "b"), line('+', "c")] }];
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 /// The scratch repository plus `ws.txt`, committed and then changed only in whitespace

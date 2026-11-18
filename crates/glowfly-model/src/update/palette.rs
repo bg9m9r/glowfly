@@ -172,6 +172,8 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::StashDialog(scope) => Msg::Stash(StashMsg::PushDialog { scope, paths: Vec::new() }),
         C::StageAll => Msg::Stage(StageMsg::StageAll),
         C::UnstageAll => Msg::Stage(StageMsg::UnstageAll),
+        C::UnchangedLines(true) => Msg::Diff(DiffMsg::ExpandAllUnchanged),
+        C::UnchangedLines(false) => Msg::Diff(DiffMsg::CollapseAllUnchanged),
         // The handlers check the paths again.
         C::MarkAllResolved => {
             let Some(snap) = &st.snap else { return };

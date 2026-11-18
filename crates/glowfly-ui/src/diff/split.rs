@@ -102,7 +102,9 @@ pub(super) fn show(
                 let cols = st.split_cols();
                 fold::fold_row(ui, rect, v, f, cols.sign, cols.text, msgs)
             }
-            // An opened gap's line: the same text on both sides, like a context line.
+            // The closed run below the last hunk: spans both columns, with no divider.
+            SplitRow::GapBelow(g) => fold::gap_below_row(ui, rect, v, g, st.split_cols().sign, st.split_cols().text, msgs),
+            // An opened run's line: the same text on both sides, like a context line.
             SplitRow::GapLine { hunk, line } => {
                 drag_over(ui, v, rect, hunk, 0, msgs);
                 let Some((g, text)) = v.gap_lines.iter().find(|(g, _)| g.hunk == hunk) else { return };

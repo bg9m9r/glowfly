@@ -86,6 +86,8 @@ impl PaletteCommand {
             C::StashDialog(StashScope::Files) => "stash-files",
             C::StageAll => "stage-all",
             C::UnstageAll => "unstage-all",
+            C::UnchangedLines(true) => "diff-expand-all",
+            C::UnchangedLines(false) => "diff-collapse-all",
             C::MarkAllResolved => "mark-all-resolved",
             C::TakeTrivialPicks => "take-trivial-picks",
             C::MarkAllConflicted => "mark-all-conflicted",

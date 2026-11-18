@@ -18,7 +18,7 @@ source file, update its line here.
 - `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`: row layout of diffs, the whole-file view and the conflict view, with the conflict chunks safe to pick without asking: `trivial_pick`.
 - `conflict_folds.rs`: the long clean runs of the conflict view folded into one row.
 - `diff_rows/line_row.rs`: the row of a file line.
-- `diff_rows/gaps.rs`: the hunk view's gaps between hunks, keyed like the whole-file folds of the same lines, and their filled-in rows.
+- `diff_rows/gaps.rs`: the hunk view's unchanged runs (above the first hunk, between hunks, below the last), keyed like the whole-file folds of the same lines, and their filled-in rows (a closed run below the last hunk is one `GapBelow` row).
 - `intraline.rs`: word-level changes.
 - `line_pairs.rs`: which removed line sits beside which added line.
 - `tabs.rs`: tab stops.
@@ -35,8 +35,8 @@ source file, update its line here.
 - `memo.rs`: parse checkpoints a reload of the same file resumes from: content-defined chunks with their start and end states.
 - `highlight/syntaxes.rs`: the syntax definitions for detection, loaded once (immutable, see Rules).
 - `highlight/grammars.rs`: the copy of the syntax set parsing runs on, dropped with its compiled regexes after 3 idle minutes (`Holder`).
-- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment).
-- `highlight/gaps.rs`: syntax spans for the unchanged lines between hunks, when the hunk view fills them in: the old file parsed from its first line, so a run inside a block comment opened earlier is colored as one.
+- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment); built with `whole` it also keeps the lines after the last hunk and the file's line count. `highlight/old_text_tests.rs` tests them.
+- `highlight/gaps.rs`: syntax spans for the unchanged runs outside the hunks, when the hunk view fills them in: the old file parsed from its first line (through the lines below the last hunk when the file is within the limits), so a run inside a block comment opened earlier is colored as one.
 - `highlight/header.rs`: the function context in hunk headers: the text git adds after the closing `@@` (the nearest line above the hunk that looks like a definition, e.g. `fn greet(name: &str) {`).
 - `highlight/linguist.rs`: language overrides: names from a `.gitattributes` `linguist-language` value mapped to the bundled syntaxes, and the `SyntaxHint` the highlighter takes.
 - `highlight/reuse.rs`: what a reload can take over from the diff shown before: the exact spans of unchanged hunks, provisional spans for lines whose text appeared before, hunk-header spans by their function context's text, and parse checkpoints (`memo`) to resume an in-context parse from.

@@ -1,12 +1,13 @@
 //! The keyboard's way to the unchanged runs: Show (open the first closed run at or below the top
 //! row) and Fold back (close the opened run at the top). Whole-file folds in the whole-file
-//! view, the gaps between hunks in the hunk view; each acts like a click on that run's control.
+//! view, the runs outside the hunks in the hunk view; each acts like a click on that run's control.
 
 use super::diff::refold;
 use super::diff_gaps;
 use crate::effect::Effect;
 use crate::state::AppState;
-use glowfly_core::diff_rows::{DiffRow, SplitRow, filled, header_rows_filled, inline_rows_filled, split_rows_filled};
+use crate::state::diff_runs::hunk_gaps;
+use glowfly_core::diff_rows::{DiffRow, SplitRow, control_row, filled, inline_rows_filled, split_rows_filled};
 use glowfly_core::settings::DiffLayout;
 use glowfly_core::whole_file::{collapsed, line_at_row, opened, row_of_line, shown};
 
@@ -16,7 +17,7 @@ fn screen(st: &AppState) -> std::ops::Range<usize> {
     top..top + st.view.diff_visible_rows.max(1)
 }
 
-/// The row of line `line` of the gap before hunk `hunk` in the hunk view's rows, once filled in.
+/// The row of line `line` of the run before hunk `hunk` in the hunk view's rows, once filled in.
 fn gap_line_row(st: &AppState, hunk: usize, line: usize) -> Option<usize> {
     let (_, d) = st.session.diff.view.as_ref()?;
     let ex = &st.session.tab_view.diff_expanded;
@@ -43,10 +44,13 @@ pub(super) fn open_at_top(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         return;
     }
-    let Some((_, all)) = diff_gaps::shown_gaps(st) else { return };
+    let Some((_, all)) = hunk_gaps(st) else { return };
     let open: Vec<u32> = filled(&d, ex).iter().map(|(g, _)| g.key).collect();
-    let headers = header_rows_filled(&d, layout, ex);
-    let first = all.into_iter().filter(|g| !open.contains(&g.key)).map(|g| (g, headers[g.hunk])).find(|&(_, row)| row >= below.start);
+    let first = all
+        .into_iter()
+        .filter(|g| !open.contains(&g.key))
+        .filter_map(|g| Some((g, control_row(&d, layout, ex, &g)?)))
+        .find(|&(_, row)| row >= below.start);
     let Some((g, row)) = first else { return };
     diff_gaps::open(st, g.key, fx);
     if row >= below.end {
@@ -71,7 +75,7 @@ pub(super) fn close_at_top(st: &mut AppState) {
         refold(st, |ex, _| ex.remove(key));
         return;
     }
-    if diff_gaps::shown_gaps(st).is_none() {
+    if hunk_gaps(st).is_none() {
         return;
     }
     let open: Vec<_> = filled(&d, ex).into_iter().map(|(g, _)| g).collect();

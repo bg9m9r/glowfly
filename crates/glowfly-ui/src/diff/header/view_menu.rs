@@ -1,6 +1,7 @@
 //! The header's View button and its menu: the layout (Inline or Split) and what is shown (Changes only
 //! or Whole file) as radio groups under their headers, Ignore whitespace and Wrap long lines as
-//! check items, and Expand all / Collapse all for the whole file's folds. The menu stays open
+//! check items, and Expand all / Collapse all for the unchanged runs (the whole file's folds, or the
+//! hunk view's runs, blocked with a reason while Ignore whitespace hides them). The menu stays open
 //! while its settings change and closes on a click outside it or Esc.
 
 use super::controls::{self, ghost_with};
@@ -79,16 +80,19 @@ fn menu(ui: &mut Ui, t: Lang, v: &ViewGroup, msgs: &mut Vec<Msg>) {
             msgs.push(Msg::Diff(DiffMsg::SetWordWrap(!on)));
         }
     }
-    if let Some(c) = v.folds.filter(|_| v.mode == DiffMode::WholeFile) {
+    if let Some(c) = v.folds {
         menu::separator(ui);
-        let none_closed = (c.closed == 0).then(|| t.tr("diff.header.view.expand_all_off.tip"));
+        // Whitespace hidden in the hunk view: the runs may hold whitespace changes it hides.
+        let ws = c.ws_hidden.then(|| t.tr("diff.header.view.unchanged_ws_off.tip"));
+        let none_closed = ws.or((c.closed == 0).then(|| t.tr("diff.header.view.expand_all_off.tip")));
         let r = menu::item(t.tr("diff.header.view.expand_all")).blocked(none_closed).show(ui);
         if r.on_hover_text(t.tr("diff.header.view.expand_all.tip")).clicked() {
             msgs.push(Msg::Diff(DiffMsg::ExpandAllUnchanged));
         }
-        let none_open = (c.open == 0).then(|| t.tr("diff.header.view.collapse_all_off.tip"));
+        let none_open = ws.or((c.open == 0).then(|| t.tr("diff.header.view.collapse_all_off.tip")));
         let r = menu::item(t.tr("diff.header.view.collapse_all")).blocked(none_open).show(ui);
-        if r.on_hover_text(t.tr("diff.header.view.collapse_all.tip")).clicked() {
+        let tip = if c.hunks { t.tr("diff.header.view.collapse_all_hunks.tip") } else { t.tr("diff.header.view.collapse_all.tip") };
+        if r.on_hover_text(tip).clicked() {
             msgs.push(Msg::Diff(DiffMsg::CollapseAllUnchanged));
         }
     }

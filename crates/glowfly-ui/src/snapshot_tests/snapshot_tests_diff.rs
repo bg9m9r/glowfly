@@ -9,6 +9,8 @@ use super::snapshot_tests::{git, render, with_repo};
 mod snapshot_tests_diff_row_menu;
 #[path = "snapshot_tests_empty_state.rs"]
 mod snapshot_tests_empty_state;
+#[path = "snapshot_tests_gap_edges.rs"]
+mod snapshot_tests_gap_edges;
 #[path = "snapshot_tests_gaps.rs"]
 mod snapshot_tests_gaps;
 #[path = "snapshot_tests_lines_drag.rs"]
