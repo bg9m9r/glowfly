@@ -1,10 +1,11 @@
 //! The Git LFS preferences page: reading the status, setting LFS up, tracking and untracking
 //! patterns, and the LFS commands, each run as the active git job. Also whether git-lfs is
-//! installed (checked at startup and by each status read) and the file menu's Track in Git LFS.
+//! installed and new enough (checked at startup and by each status read, and again on window
+//! focus while it is missing or too old: `window_focused`) and the file menu's Track in Git LFS.
 //! A successful auto-fetch in a repository that stores files in LFS is followed by a quiet
 //! download of the checked-out commit's LFS files. Whole status reads bring every attributes
 //! file's patterns again (`patterns_read`), the main window's banner can be dismissed
-//! per repository, and a diff with an LFS side keeps its note (`diff_loaded`, `ShowPointer`).
+//! per repository and form (missing, too old), and a diff with an LFS side keeps its note (`diff_loaded`, `ShowPointer`).
 
 use super::notify::{AUTO_FETCH, AUTO_FETCH_LFS};
 use super::ops::{JobSpec, start_job};
@@ -13,7 +14,7 @@ use crate::effect::LfsEffect;
 use crate::lfs::LfsMsg;
 use crate::msg::Msg;
 use crate::msg::PrefsMsg;
-use crate::state::lfs::{INIT_LABEL, LfsDiffNote, LfsInstall, lfs_remote};
+use crate::state::lfs::{INIT_LABEL, LfsDiffNote, LfsInstall, RECHECK_EVERY, lfs_remote};
 use crate::state::{AppState, PrefPage};
 use glowfly_core::lfs::pointer::LfsChange;
 use glowfly_core::lfs::{self, LfsCommand, LfsPattern, LfsStatus, TrackTarget};
@@ -52,13 +53,15 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
         LfsMsg::Loaded { generation, result } => loaded(st, generation, result, now, fx),
         LfsMsg::Detect => {
             st.lfs.install = LfsInstall::Checking;
+            st.lfs.checked_at = Some(now);
             fx.push(Effect::Lfs(LfsEffect::Detect));
         }
-        LfsMsg::Detected(v) => st.lfs.install = LfsInstall::from_version(v),
+        LfsMsg::Detected(v) => detected(st, v, fx),
         LfsMsg::TrackPath(t) => track_path(st, t, fx),
         LfsMsg::DismissBanner(w) => {
-            if !st.lfs.banner_dismissed.iter().any(|d| same_spelling(d, &w)) {
-                st.lfs.banner_dismissed.push(w);
+            let Some(problem) = st.lfs.install.problem() else { return };
+            if !st.lfs.banner_dismissed.iter().any(|(d, p)| *p == problem && same_spelling(d, &w)) {
+                st.lfs.banner_dismissed.push((w, problem));
             }
         }
         LfsMsg::ShowPointer(on) => {
@@ -71,6 +74,31 @@ pub(super) fn handle(st: &mut AppState, m: LfsMsg, now: Instant, fx: &mut Vec<Ef
             }
         }
     }
+}
+
+/// The answer of a check for git-lfs. When it changes what is known and the Git LFS page is open,
+/// the page reads its status again in place.
+fn detected(st: &mut AppState, version: Option<String>, fx: &mut Vec<Effect>) {
+    let install = LfsInstall::from_version(version);
+    let changed = install != st.lfs.install;
+    st.lfs.install = install;
+    if changed && st.prefs.as_ref().is_some_and(|p| p.page == PrefPage::RepoLfs) {
+        read(st, true, fx);
+    }
+}
+
+/// The window regained focus: while git-lfs is known to be missing or too old, look for it again
+/// in the background, at most once every `RECHECK_EVERY` (a check at startup or after a git
+/// switch counts). The state stays as it is until the answer arrives, so nothing flickers.
+pub(super) fn window_focused(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
+    if st.lfs.install.problem().is_none() {
+        return;
+    }
+    if st.lfs.checked_at.is_some_and(|at| now.saturating_duration_since(at) < RECHECK_EVERY) {
+        return;
+    }
+    st.lfs.checked_at = Some(now);
+    fx.push(Effect::Lfs(LfsEffect::Detect));
 }
 
 /// A whole status read brought every attributes file's LFS patterns (None: a read of some

@@ -5,6 +5,7 @@
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::snapshot_check::CheckSnapshot;
 use egui_kittest::kittest::Queryable;
+use glowfly_core::i18n::Lang;
 use glowfly_core::lfs::LfsPattern;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer};
 use glowfly_core::repo::{self, DiffLine, DiffTarget, FileDiff, FileEntry, Hunk};
@@ -12,7 +13,7 @@ use glowfly_core::settings::ThemeChoice;
 use glowfly_model::lfs::LfsMsg;
 use glowfly_model::msg::{Msg, PrefsMsg};
 use glowfly_model::state::lfs::{LfsDiffNote, LfsInstall};
-use glowfly_model::state::lfs_notes::{BANNER_TEXT, POINTER_BAR};
+use glowfly_model::state::lfs_notes::POINTER_BAR;
 use glowfly_model::state::{AppState, PrefPage, Selection};
 use std::path::PathBuf;
 
@@ -51,7 +52,29 @@ fn lfs_banner_hidden() {
     st.lfs.install = LfsInstall::Installed("3.7.1".into());
     let mut h = harness(st, true);
     h.run();
-    assert!(h.query_by_label_contains(BANNER_TEXT).is_none());
+    assert!(h.query_by_label_contains(Lang::En.tr("lfs.banner.missing.text")).is_none());
+    assert!(h.query_by_label_contains("too old").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn lfs_banner_too_old() {
+    let (mut st, dir) = missing_lfs(ThemeChoice::Dark, "lfs-banner-too-old");
+    st.lfs.install = LfsInstall::Installed("2.3.4".into());
+    let workdir = st.snap.as_ref().unwrap().workdir.clone();
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("lfs_banner_too_old");
+    assert!(h.query_by_label_contains("git-lfs 2.3.4 is too old").is_some());
+    assert!(h.query_by_label_contains("2.9.0").is_some());
+    assert!(h.query_by_label("Get Git LFS").is_none());
+    h.get_by_label("How to update Git LFS").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::OpenUrl(u) if u == "https://git-lfs.com")));
+    h.get_by_label("Dismiss").click();
+    h.run();
+    assert!(pushed(&h, |m| matches!(m, Msg::Lfs(LfsMsg::DismissBanner(w)) if *w == workdir)));
     drop(h);
     remove_fixture(&dir);
 }
