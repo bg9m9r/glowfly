@@ -179,7 +179,8 @@ fn a_worktree_of_a_repository_with_many_includes_is_still_counted() {
     dirty(&wt);
     let config = dir.join(".git/config");
     let text = std::fs::read_to_string(&config).unwrap();
-    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = many{i}.cfg\n")).collect();
+    let at = dir.join(".git").to_string_lossy().replace('\\', "/");
+    let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = {at}/many{i}.cfg\n")).collect();
     std::fs::write(&config, format!("{text}[include]\n{many}")).unwrap();
     let count = count_worktree(&wt, None, COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
