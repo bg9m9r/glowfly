@@ -73,6 +73,18 @@ pub(super) fn row_key(st: &mut AppState, key: ListKey) {
     }
 }
 
+/// Whether the active filter leaves the entry `id` out of the shown rows (false for an entry no
+/// longer in the log).
+pub(super) fn hides(st: &AppState, id: EntryId) -> bool {
+    let f = filter(st);
+    st.log.iter().find(|e| e.id == id).is_some_and(|e| !f.keeps(e))
+}
+
+/// Whether the filter lists routine runs one by one, so no row stands for a group.
+pub(super) fn lists_runs_singly(st: &AppState) -> bool {
+    filter(st).is_active()
+}
+
 /// Before Details reveals run `id`: when the active filter would hide it, empties the search
 /// (and turns Failures only off for an entry that isn't a failure).
 pub(super) fn unhide(st: &mut AppState, id: EntryId) {

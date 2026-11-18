@@ -9,9 +9,10 @@ use crate::state::logs::EntryId;
 use std::time::Instant;
 
 /// Copies the entry `id` (a routine group's first entry: the whole group), without a toast like
-/// the other Copy buttons. Nothing happens for an entry no longer in the log.
+/// the other Copy buttons. While a filter is on, a routine run is a row of its own and copies
+/// alone. Nothing happens for an entry no longer in the log.
 pub(super) fn copy_entry(st: &mut AppState, id: EntryId, fx: &mut Vec<Effect>) {
-    if let Some(text) = entry_copy(&st.log, id, st.settings.lang(), st.cues.utc_offset) {
+    if let Some(text) = entry_copy(&st.log, id, !super::logs_filter::lists_runs_singly(st), st.settings.lang(), st.cues.utc_offset) {
         fx.push(Effect::Ui(UiEffect::CopyText(text)));
     }
 }
