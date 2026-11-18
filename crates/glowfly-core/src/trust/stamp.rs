@@ -17,7 +17,14 @@ use std::path::{Path, PathBuf};
 pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
     let mut h = DefaultHasher::new();
     let mut files: Vec<PathBuf> = vec![repo.path().join("config"), repo.path().join("config.worktree"), repo.commondir().join("config")];
-    files.extend(includes(repo));
+    let included = include_entries(repo);
+    // An included file that isn't listed can't be stamped: no two stamps are then alike, so
+    // every read scans again.
+    if included.iter().any(|i| i.unsure) {
+        static NEVER_ALIKE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        NEVER_ALIKE.fetch_add(1, std::sync::atomic::Ordering::Relaxed).hash(&mut h);
+    }
+    files.extend(included.into_iter().flat_map(|i| i.paths));
     if let Some(w) = repo.workdir() {
         files.push(w.join(".glowfly").join("commands.toml"));
     }
@@ -45,35 +52,32 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
     h.finish()
 }
 
-/// The files the repository's own config includes (`include.path`, `includeIf.*.path`, nested
-/// ones too, which libgit2 lists at the same level), as named: `~` from the home folder, and a
-/// relative one from the git dir, from the common dir (a linked worktree's shared config) and
-/// from beside each file already found (git resolves it from the folder of the file that
-/// includes it). The scan follows those in the working tree (`programs.rs`). Bounded: see
-/// `include_entries`.
-pub(super) fn includes(repo: &Repository) -> Vec<PathBuf> {
-    include_entries(repo).into_iter().flat_map(|e| e.paths).collect()
-}
-
 /// One include setting of the repository's own config, with the files it may name.
 pub(super) struct Include {
     /// The key as libgit2 spells it (`include.path`, `includeif.gitdir:x/.path`).
     pub name: String,
     pub value: String,
     pub paths: Vec<PathBuf>,
-    /// The file may be somewhere `paths` doesn't list: the include came after `MAX_INCLUDES`
-    /// others, or after the folders to look in reached `MAX_FOLDERS`.
+    /// Where the file is isn't listed (`paths` is empty): a relative include after
+    /// `MAX_INCLUDES` others or after the folders to look in reached `MAX_FOLDERS`, or a value
+    /// or folder longer than `MAX_PATH_BYTES`. The scan then follows the whole working tree
+    /// (`programs.rs`) and no two stamps are alike.
     pub unsure: bool,
 }
 
 /// The most folders a relative include is looked up in.
-const MAX_FOLDERS: usize = 64;
-/// The most include settings whose files are listed.
+const MAX_FOLDERS: usize = 32;
+/// The most relative include settings whose files are listed.
 const MAX_INCLUDES: usize = 256;
+/// The longest include value, and folder to look in, that is followed.
+const MAX_PATH_BYTES: usize = 4096;
 
-/// Each include setting, in file order, with the files `includes` takes it to name: a relative
-/// one in each folder a file found so far is in, each folder once. At most `MAX_FOLDERS`
-/// folders and `MAX_INCLUDES` settings are followed; an include past either is `unsure`.
+/// Each include setting of the repository's own config (`include.path`, `includeIf.*.path`,
+/// nested ones too, which libgit2 lists at the same level), in file order, with the files it
+/// may name: `~` from the home folder, and a relative one from the git dir, from the common dir
+/// (a linked worktree's shared config) and from beside each file already found (git resolves
+/// it from the folder of the file that includes it), each folder once. Bounded by
+/// `MAX_FOLDERS`, `MAX_INCLUDES` and `MAX_PATH_BYTES`; an include past one is `unsure`.
 pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
     let mut out: Vec<Include> = Vec::new();
     let Ok(config) = repo.config() else { return out };
@@ -82,7 +86,7 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
     if repo.commondir() != repo.path() {
         folders.push(repo.commondir().to_path_buf());
     }
-    let mut full = false;
+    let (mut full, mut listed) = (false, 0);
     for level in [ConfigLevel::Local, ConfigLevel::Worktree] {
         let Ok(c) = config.open_level(level) else { continue };
         let Ok(mut entries) = c.entries(None) else { continue };
@@ -96,20 +100,24 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
             // A bare key names no file (git refuses one).
             let Some(v) = crate::config_entry::utf8(e) else { continue };
             let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
-            let past = out.len() >= MAX_INCLUDES;
-            let unsure = past || (full && !p.is_absolute());
-            let paths: Vec<PathBuf> = if past {
-                Vec::new()
+            let long = |p: &Path| p.as_os_str().len() > MAX_PATH_BYTES;
+            let paths: Option<Vec<PathBuf>> = if long(&p) {
+                None
             } else if p.is_absolute() {
-                vec![p]
+                Some(vec![p])
+            } else if full || listed >= MAX_INCLUDES {
+                None
             } else {
-                folders.iter().map(|d| d.join(&p)).collect()
+                listed += 1;
+                Some(folders.iter().map(|d| d.join(&p)).collect())
             };
+            let unsure = paths.is_none();
+            let paths = paths.unwrap_or_default();
             for folder in paths.iter().filter_map(|f| f.parent()) {
                 if folders.iter().any(|d| d == folder) {
                     continue;
                 }
-                if folders.len() >= MAX_FOLDERS {
+                if folders.len() >= MAX_FOLDERS || long(folder) {
                     full = true;
                     break;
                 }

@@ -1,6 +1,7 @@
 //! The files a repository's config may include (`stamp::include_entries`): a relative include
-//! is looked up beside the files found before it, and the list stays bounded however many
-//! includes the config holds.
+//! is looked up beside the files found before it, the list stays bounded however many includes
+//! the config holds, and an include past a limit makes the scan follow the whole working tree
+//! and never reuse its stamp.
 
 use super::super::{ConfigCommand, scan_now};
 use super::*;
@@ -14,15 +15,23 @@ fn include(dir: &Path, paths: impl Iterator<Item = String>) {
     std::fs::write(&config, format!("{text}[include]\n{lines}")).unwrap();
 }
 
+fn asks_about(scan: &TrustScan, value: &str) -> bool {
+    scan.config.contains(&ConfigCommand { key: "include.path".into(), value: value.into() })
+}
+
 #[test]
 fn a_relative_include_is_looked_up_beside_the_files_before_it() {
     let dir = scratch_repo("stamp-include-beside");
-    include(&dir, ["sub/a.cfg".to_owned(), "b.cfg".to_owned()].into_iter());
+    let other = git_spelling(&dir.join("other"));
+    include(&dir, ["sub/a.cfg".to_owned(), "b.cfg".to_owned(), format!("{other}/c.cfg"), "d.cfg".to_owned()].into_iter());
     let repo = Repository::open(&dir).unwrap();
     let found = include_entries(&repo);
     let git_dir = repo.path();
     assert_eq!(found[0].paths, [git_dir.join("sub/a.cfg")]);
     assert_eq!(found[1].paths, [git_dir.join("b.cfg"), git_dir.join("sub").join("b.cfg")]);
+    assert_eq!(found[2].paths, [dir.join("other").join("c.cfg")]);
+    // Beside the file named in full too.
+    assert_eq!(found[3].paths, [git_dir.join("d.cfg"), git_dir.join("sub").join("d.cfg"), dir.join("other").join("d.cfg")]);
     assert!(found.iter().all(|i| !i.unsure));
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -35,34 +44,64 @@ fn many_includes_in_one_folder_each_name_one_file() {
     let found = include_entries(&repo);
     assert_eq!(found.len(), 200);
     assert!(found.iter().all(|i| i.paths.len() == 1 && !i.unsure));
+    // None is in the working tree, so none is a reason to ask and the stamp holds.
+    let scan = scan_now(&repo);
+    assert!(scan.is_empty(), "{:?}", scan.config);
+    assert_eq!(stamp(&repo, &scan), stamp(&repo, &scan));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
-fn includes_in_more_folders_than_are_listed_are_a_reason_to_ask() {
+fn includes_in_more_folders_than_are_listed_follow_the_whole_working_tree() {
     let dir = scratch_repo("stamp-include-folders");
     // Each in a folder of its own, so each adds places the next one may be in.
-    include(&dir, (0..40).map(|i| format!("f{i}/x.cfg")));
+    include(&dir, (0..10).map(|i| format!("f{i}/x.cfg")));
     let repo = Repository::open(&dir).unwrap();
     let found = include_entries(&repo);
-    assert_eq!(found.len(), 40);
-    assert!(found.iter().all(|i| i.paths.len() <= MAX_FOLDERS), "{:?}", found.iter().map(|i| i.paths.len()).collect::<Vec<_>>());
-    assert!(!found[0].unsure && found[39].unsure);
-    // None is in the working tree, but where the later ones are can't be told.
+    let listed: Vec<(usize, bool)> = found.iter().map(|i| (i.paths.len(), i.unsure)).collect();
+    // The sixth fills the folders; its own places were all known before it.
+    let sure = [1, 2, 4, 8, 16, 32].map(|n| (n, false));
+    assert_eq!(listed, [&sure[..], &[(0, true); 4]].concat());
     let scan = scan_now(&repo);
-    assert!(scan.config.contains(&ConfigCommand { key: "include.path".into(), value: "f39/x.cfg".into() }), "{:?}", scan.config);
-    assert!(!scan.config.contains(&ConfigCommand { key: "include.path".into(), value: "f0/x.cfg".into() }));
+    assert!(!asks_about(&scan, "f5/x.cfg") && asks_about(&scan, "f6/x.cfg") && asks_about(&scan, "f9/x.cfg"), "{:?}", scan.config);
+    assert_eq!(scan.follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), [""]);
+    assert_ne!(stamp(&repo, &scan), stamp(&repo, &scan));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
-fn includes_past_the_most_listed_are_a_reason_to_ask() {
+fn relative_includes_past_the_most_listed_are_not_listed() {
     let dir = scratch_repo("stamp-include-count");
-    include(&dir, (0..=MAX_INCLUDES).map(|i| format!("many{i}.cfg")));
+    let tracked = git_spelling(&dir.join("tracked.cfg"));
+    include(&dir, (0..=MAX_INCLUDES).map(|i| format!("many{i}.cfg")).chain([tracked.clone()]));
     let repo = Repository::open(&dir).unwrap();
     let found = include_entries(&repo);
-    assert_eq!(found.len(), MAX_INCLUDES + 1);
-    assert!(!found[MAX_INCLUDES - 1].unsure);
+    assert_eq!(found.len(), MAX_INCLUDES + 2);
+    assert!(!found[MAX_INCLUDES - 1].unsure && found[MAX_INCLUDES - 1].paths.len() == 1);
     assert!(found[MAX_INCLUDES].unsure && found[MAX_INCLUDES].paths.is_empty());
+    // One named in full is one place however many came before it.
+    assert_eq!((found[MAX_INCLUDES + 1].paths.as_slice(), found[MAX_INCLUDES + 1].unsure), (&[dir.join("tracked.cfg")][..], false));
+    let scan = scan_now(&repo);
+    assert!(asks_about(&scan, &format!("many{MAX_INCLUDES}.cfg")) && asks_about(&scan, &tracked), "{:?}", scan.config);
+    assert_ne!(stamp(&repo, &scan), stamp(&repo, &scan));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_value_or_folder_past_the_longest_followed_is_not_listed() {
+    let dir = scratch_repo("stamp-include-long");
+    let long = "a".repeat(MAX_PATH_BYTES + 1);
+    // A folder that long ends the folders to look in, as one too many does.
+    let deep = format!("{}/x.cfg", "b/".repeat(MAX_PATH_BYTES / 2));
+    include(&dir, [long, deep, "after.cfg".to_owned()].into_iter());
+    // libgit2 on Windows refuses a config that names a path this long: nothing is scanned then.
+    let Ok(repo) = Repository::open(&dir) else {
+        let _ = std::fs::remove_dir_all(&dir);
+        return;
+    };
+    let found = include_entries(&repo);
+    let listed: Vec<(usize, bool)> = found.iter().map(|i| (i.paths.len(), i.unsure)).collect();
+    assert_eq!(listed, [(0, true), (1, false), (0, true)]);
+    assert_eq!(scan_now(&repo).follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), [""]);
     let _ = std::fs::remove_dir_all(&dir);
 }
