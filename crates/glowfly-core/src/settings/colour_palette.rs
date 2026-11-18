@@ -2,7 +2,9 @@
 //! or colour-blind safe branch, diff and file status colours, one for the whole machine) and the
 //! hues pinned to branches, saved per
 //! repository under `repo_keys` like the graph filters. A pin is keyed by the branch's colour key
-//! (`branch_colour::branch_key`), so a local branch and its remote copies share it. The preset
+//! (`branch_colour::branch_key`), so a local branch and its remote copies share it. Renaming a
+//! branch moves its pin (`rename_branch_pin`); renaming or removing a remote changes no key (the
+//! key has no remote in it), so those leave the pins alone. The preset
 //! is `Settings::colour_palette`, saved as `branch_palette` before it covered diffs and status
 //! (an alias keeps those files loading).
 
@@ -51,6 +53,17 @@ impl Settings {
             repo_keys::set(&mut self.branch_pins, real, (!pins.is_empty()).then_some(pins));
         }
         changed
+    }
+
+    /// Moves the pin of branch key `old` to `new` in the repository at `real`, replacing a pin
+    /// saved under `new`. Returns whether it did; without a pin on `old` (or for equal names)
+    /// nothing changes, a pin under `new` included.
+    pub fn rename_branch_pin(&mut self, real: &Path, old: &str, new: &str) -> bool {
+        let mut pins = self.branch_pins_for(real);
+        let Some(slot) = pins.remove(old).filter(|_| old != new) else { return false };
+        pins.insert(new.to_owned(), slot);
+        repo_keys::set(&mut self.branch_pins, real, Some(pins));
+        true
     }
 
     /// How the repository at `real` colours its branches: the preset's slot count and its pins
@@ -114,6 +127,29 @@ mod tests {
         assert_eq!(s.branch_pins.len(), 1, "one entry whatever the spelling");
         assert!(s.set_branch_pin(&repo, "fix-1", None));
         assert!(s.branch_pins.is_empty(), "the repository's entry goes with its last pin");
+    }
+
+    #[test]
+    fn renaming_a_pinned_branch_moves_its_pin() {
+        let mut s = Settings::default();
+        let repo = PathBuf::from("/w/repo");
+        s.set_branch_pin(&repo, "topic", Some(9));
+        s.set_branch_pin(&repo, "other", Some(2));
+        assert!(s.rename_branch_pin(Path::new("/w/./repo/"), "topic", "topic-2"), "another spelling finds the entry");
+        assert_eq!(s.branch_pins_for(&repo), BTreeMap::from([("topic-2".to_owned(), 9), ("other".to_owned(), 2)]));
+        assert_eq!(s.branch_pins.len(), 1);
+
+        // A pin already under the new name is replaced.
+        s.set_branch_pin(&repo, "topic", Some(4));
+        assert!(s.rename_branch_pin(&repo, "topic", "other"));
+        assert_eq!(s.branch_pins_for(&repo), BTreeMap::from([("topic-2".to_owned(), 9), ("other".to_owned(), 4)]));
+
+        // Without a pin on the old name nothing moves, and the new name's pin stays.
+        assert!(!s.rename_branch_pin(&repo, "unpinned", "other"));
+        assert_eq!(s.branch_pins_for(&repo).get("other"), Some(&4));
+        assert!(!s.rename_branch_pin(&repo, "other", "other"));
+        assert!(!s.rename_branch_pin(Path::new("/w/elsewhere"), "other", "x"));
+        assert_eq!(s.branch_pins_for(&repo).get("other"), Some(&4));
     }
 
     #[test]

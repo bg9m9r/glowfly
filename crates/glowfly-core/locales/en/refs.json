@@ -6,6 +6,8 @@
   "refs.filter.hidden_count.other": "{count} hidden from the graph",
   "refs.filter.hidden_list": "Hidden:\n{names}",
   "refs.filter.hidden_tip": "Hidden from the graph. Click to show it.",
+  "refs.filter.remote_removed.one": "Removed remote {remote}. The hidden or shown-only choice for {count} of its branches went with it.",
+  "refs.filter.remote_removed.other": "Removed remote {remote}. The hidden or shown-only choices for {count} of its branches went with it.",
   "refs.filter.show_all": "Show all",
   "refs.filter.show_name": "Show {name} in graph",
   "refs.filter.show_rest": "Show the rest",

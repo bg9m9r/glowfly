@@ -112,7 +112,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let (checkout, warn) = super::tag_checkout::headline(st, ok).map_or((None, None), |(t, w)| (Some(t), w));
             let rename = super::branch_sync::headline(st, ok, &output);
             let kept = super::undo::stash_headline(st, &undo);
-            let remote_back = super::undo_offers::headline(st, &undo);
+            let remote_back = super::undo_offers::headline(st, &undo).or_else(|| super::ref_renames::headline(st, &undo));
             let inside = super::submodule_inside::headline(st, ok);
             let headline = kept.or(remote_back).or(flow).or(tag).or(patch).or(stash).or(checkout).or(cleanup).or(rename).or(inside);
             let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
@@ -281,6 +281,7 @@ pub fn finish_job(
     }
     let reopen = super::conflict::after_undo(&undo, ok);
     super::stack::job_finished(st, ok && !job.quiet, here, &undo, now);
+    super::ref_renames::job_finished(st, &job, ok, here, &undo, fx);
     super::undo::finished(st, &job, ok, undo, here);
     super::auto_stash::job_finished(st, &job, fx);
     if here && let Some((p, open_closed)) = reopen {

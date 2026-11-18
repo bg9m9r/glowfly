@@ -17,12 +17,12 @@ use glowfly_core::worktree_ops::WorktreeBase;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn send(st: &mut AppState, m: Msg) -> Vec<Effect> {
+pub(super) fn send(st: &mut AppState, m: Msg) -> Vec<Effect> {
     super::update(st, m, Instant::now())
 }
 
 /// A state whose only tab shows `dir`, loaded.
-fn opened(dir: &Path) -> AppState {
+pub(super) fn opened(dir: &Path) -> AppState {
     let mut st = state();
     st.tabs[0] = Tab::unloaded(dir.to_path_buf());
     st.snap = Some(load(dir, &LoadOptions::all(10)).unwrap());
@@ -30,7 +30,7 @@ fn opened(dir: &Path) -> AppState {
 }
 
 /// `scratch_repo` with a bare `origin` next to it that `main` is pushed to with its upstream.
-fn with_origin(name: &str) -> (PathBuf, PathBuf) {
+pub(super) fn with_origin(name: &str) -> (PathBuf, PathBuf) {
     let dir = scratch_repo(name);
     let bare = dir.with_file_name(format!("{}-origin.git", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&bare);
@@ -51,7 +51,7 @@ fn record(fx: &[Effect]) -> Option<UndoKind> {
         .unwrap_or_else(|| panic!("no git job in {fx:?}"))
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }

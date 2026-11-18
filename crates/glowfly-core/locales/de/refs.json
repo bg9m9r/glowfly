@@ -6,6 +6,8 @@
   "refs.filter.hidden_count.other": "{count} im Graphen ausgeblendet",
   "refs.filter.hidden_list": "Ausgeblendet:\n{names}",
   "refs.filter.hidden_tip": "Im Graphen ausgeblendet. Klicke, um es zu zeigen.",
+  "refs.filter.remote_removed.one": "Remote {remote} entfernt. {count} seiner Branches war ausgeblendet oder allein gezeigt; diese Auswahl ist mit ihm weg.",
+  "refs.filter.remote_removed.other": "Remote {remote} entfernt. {count} seiner Branches waren ausgeblendet oder allein gezeigt; diese Auswahl ist mit ihm weg.",
   "refs.filter.show_all": "Alle zeigen",
   "refs.filter.show_name": "{name} im Graphen zeigen",
   "refs.filter.show_rest": "Rest zeigen",

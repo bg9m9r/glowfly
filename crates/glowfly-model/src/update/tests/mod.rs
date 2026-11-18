@@ -48,6 +48,7 @@ pub(super) mod read_errors_tests;
 pub(super) mod read_headlines_tests;
 pub(super) mod rebase_errors_tests;
 pub(super) mod recent_files_tests;
+pub(super) mod ref_renames_tests;
 pub(super) mod repo_colour_tests;
 pub(super) mod repo_groups_tests;
 pub(super) mod repo_read_errors_tests;

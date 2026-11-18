@@ -6,6 +6,8 @@
   "refs.filter.hidden_count.other": "{count} ocultas en el grafo",
   "refs.filter.hidden_list": "Ocultas:\n{names}",
   "refs.filter.hidden_tip": "Oculta en el grafo. Haz clic para mostrarla.",
+  "refs.filter.remote_removed.one": "Remoto {remote} eliminado. {count} de sus ramas estaba oculta o se mostraba sola; esa elección se fue con él.",
+  "refs.filter.remote_removed.other": "Remoto {remote} eliminado. {count} de sus ramas estaban ocultas o se mostraban solas; esa elección se fue con él.",
   "refs.filter.show_all": "Mostrar todo",
   "refs.filter.show_name": "Mostrar {name} en el grafo",
   "refs.filter.show_rest": "Mostrar el resto",
