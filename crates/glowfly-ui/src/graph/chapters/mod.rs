@@ -72,7 +72,10 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, view: &mut
         last
     });
     view.tab.chapters_scroll = (out.state.offset.y, out.inner_rect.height());
-    if list.open_end && super::more::wants_more(st, out.inner, total, false) {
+    // Once per row count (`TabViewState::chapters_asked`): rows, not commits, are what the list
+    // scrolls over, so a load that adds none must not make it ask again by itself.
+    if list.open_end && view.tab.chapters_asked != Some(total) && super::more::wants_more(st, out.inner, total, false) {
+        view.tab.chapters_asked = Some(total);
         msgs.push(Msg::Load(LoadMsg::NearHistoryEnd));
     }
 }

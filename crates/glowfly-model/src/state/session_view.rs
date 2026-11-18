@@ -26,6 +26,11 @@ pub struct TabViewState {
     pub graph_row_h: f32,
     /// The Chapters list's scroll offset and viewport height from the last frame, recorded by the view.
     pub chapters_scroll: (f32, f32),
+    /// How many rows the Chapters list had when it last asked for more history near its end. It
+    /// doesn't ask again at the same count: a load that adds commits but no rows (a long run of
+    /// one author's commits is one chapter) would otherwise leave the end near and chain loads
+    /// down the whole history; the end row's Load more takes over from there.
+    pub chapters_asked: Option<usize>,
     /// First diff row visible in the last frame, recorded by the view (with `TabView::diff_expanded`'s
     /// folds open).
     pub diff_top_row: usize,

@@ -12,7 +12,7 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{HistoryMode, ThemeChoice};
-use glowfly_model::msg::{ChaptersMsg, Msg, RepoMsg};
+use glowfly_model::msg::{ChaptersMsg, LoadMsg, Msg, RepoMsg};
 use glowfly_model::state::chapters::selection_of;
 use glowfly_model::state::{AppState, Selection};
 use std::path::PathBuf;
@@ -189,6 +189,86 @@ fn an_unborn_head_shows_the_empty_state() {
     h.run();
     let text = text_snapshot(&h);
     assert!(text.contains("No chapters") && text.contains("The current branch has no commits yet."), "{text}");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+fn asks_for_more(msgs: &[Msg]) -> bool {
+    msgs.iter().any(|m| matches!(m, Msg::Load(LoadMsg::NearHistoryEnd)))
+}
+
+/// The chapters of a history cut at the commit limit: `truncated`, with the first-parent line going on.
+fn truncated_chapters(name: &str) -> (AppState, PathBuf) {
+    let (mut st, dir) = in_chapters(name);
+    let limit = st.settings.commit_limit();
+    let snap = st.snap.as_mut().unwrap();
+    snap.truncated = true;
+    snap.loaded_with.max_commits = limit;
+    st.session.chapters.list.as_mut().unwrap().open_end = true;
+    (st, dir)
+}
+
+#[test]
+fn the_list_asks_for_more_history_near_its_end_once_per_row_count() {
+    let (st, dir) = truncated_chapters("chapters-near-end");
+    let mut h = harness(st, true);
+    h.run();
+    assert!(asks_for_more(&h.state().1), "every row is visible, so the end is near");
+    // The load finished without adding a row: the list doesn't ask again by itself, the end row's
+    // Load more is what is left.
+    h.state_mut().1.clear();
+    h.run_steps(4);
+    assert!(!asks_for_more(&h.state().1), "a load that adds no rows isn't followed by another");
+    h.get_by_label("Load more").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Load(LoadMsg::LoadMoreCommits))));
+
+    // A load that added rows asks again.
+    h.state_mut().1.clear();
+    let at = "2026-01-15T10:00:00+00:00";
+    git(&dir, &["commit", "-q", "--allow-empty", "-m", "Rename the page"], at);
+    let st = &mut h.state_mut().0;
+    reload(st, &dir, &LoadOptions::all(500));
+    let limit = st.settings.commit_limit();
+    let snap = st.snap.as_mut().unwrap();
+    snap.truncated = true;
+    snap.loaded_with.max_commits = limit;
+    show_chapters(st);
+    st.session.chapters.list.as_mut().unwrap().open_end = true;
+    h.run();
+    assert!(asks_for_more(&h.state().1), "the row count changed");
+    drop(h);
+
+    let (mut st, _) = truncated_chapters("chapters-near-end");
+    st.settings.load_more_on_scroll = false;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(!asks_for_more(&h.state().1), "the preference is off");
+    drop(h);
+    let (mut st, _) = truncated_chapters("chapters-near-end");
+    st.session.chapters.list.as_mut().unwrap().open_end = false;
+    let mut h = harness(st, true);
+    h.run();
+    assert!(!asks_for_more(&h.state().1), "the whole line is shown");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn an_empty_list_with_more_history_below_loads_it_instead_of_saying_no_chapters() {
+    let (mut st, dir) = truncated_chapters("chapters-open-empty");
+    let snap = st.snap.as_mut().unwrap();
+    snap.graph.wip = None;
+    let list = st.session.chapters.list.as_mut().unwrap();
+    list.list.clear();
+    st.session.chapters.rows.clear();
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_by_label("No chapters").is_none(), "the empty state would hide the end row");
+    assert!(asks_for_more(&h.state().1), "the end is near");
+    h.get_by_label("Load more").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Load(LoadMsg::LoadMoreCommits))));
     drop(h);
     remove_fixture(&dir);
 }
