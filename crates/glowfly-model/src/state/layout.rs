@@ -132,6 +132,8 @@ pub enum ToolView {
     RangeDiff,
     Journal,
     GitFlow,
+    /// The Branch map, drawn in place of the graph.
+    BranchMap,
     /// Help > Getting started.
     GettingStarted,
 }
@@ -168,6 +170,8 @@ pub fn tool_view(st: &AppState) -> Option<ToolView> {
         Some(ToolView::Journal)
     } else if st.session.gitflow_panel {
         Some(ToolView::GitFlow)
+    } else if st.session.branch_map.view.is_some() {
+        Some(ToolView::BranchMap)
     } else {
         None
     }

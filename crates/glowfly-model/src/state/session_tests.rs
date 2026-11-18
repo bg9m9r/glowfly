@@ -8,6 +8,7 @@ use crate::state::lfs::LfsDiffNote;
 use crate::state::{ForgeState, Selection};
 use glowfly_core::forge::{Provider, Target};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
+use std::sync::Arc;
 
 /// Every counter, in the order `counters` lists them.
 fn counts(s: &mut RepoSession) -> Vec<u64> {
@@ -49,6 +50,9 @@ fn park_empties_the_views_and_keeps_the_counters() {
     active.pull_request.page_gen = 9;
     active.pull_request.lines_gen = 3;
     active.range_diff.generation = 6;
+    active.branch_map.generation = 5;
+    Arc::make_mut(&mut active.branch_map.known)
+        .insert(glowfly_core::branch_map::pair_key(git2::Oid::zero(), git2::Oid::zero()), glowfly_core::branch_map::Forecast::Clean);
     active.selection = Selection::Wip;
     active.forge = Some(ForgeState::new(None, "origin".into(), None));
     active.undo.record(an_action());
@@ -61,10 +65,12 @@ fn park_empties_the_views_and_keeps_the_counters() {
     assert!(parked.history.view.is_some() && parked.blame.view.is_some() && parked.journal.view.is_some(), "the views go with the tab");
     assert!(parked.gitflow_panel);
     let after = counts(&mut parked);
-    assert_eq!(after[..12], before[..12], "the parked session keeps the views' counters");
-    let reads: Vec<u64> = before[12..].iter().map(|c| c + 1).collect();
-    assert_eq!(after[12..], reads[..], "the reads' counters move past their requests in flight");
+    assert_eq!(after[..13], before[..13], "the parked session keeps the views' counters");
+    let reads: Vec<u64> = before[13..].iter().map(|c| c + 1).collect();
+    assert_eq!(after[13..], reads[..], "the reads' counters move past their requests in flight");
     assert_eq!(parked.history.generation, 4);
+    assert_eq!((parked.branch_map.generation, parked.branch_map.known.len()), (5, 1), "the trial merges go with the tab");
+    assert_eq!(active.branch_map.generation, 5, "the counter stays behind");
     assert_eq!(parked.pull_request.page_gen, 9);
 
     assert!(active.history.view.is_none() && active.blame.view.is_none() && active.journal.view.is_none());
@@ -88,10 +94,11 @@ fn resume_moves_every_counter_past_both() {
     set_all(&mut parked, 3);
     set_all(&mut current, 7);
     parked.resume_after(&mut current);
-    assert_eq!(counts(&mut parked), vec![8; 15]);
+    assert_eq!(counts(&mut parked), vec![8; 16]);
     let pr = &parked.pull_request;
     assert_eq!((pr.generation, pr.page_gen, pr.checks_gen, pr.lines_gen), (8, 8, 8, 8), "the panel's four counters are all in the list");
     assert_eq!((parked.conflict.generation, parked.issue.generation, parked.range_diff.generation), (8, 8, 8));
+    assert_eq!(parked.branch_map.generation, 8, "the Branch map's counter is in the list");
     assert_eq!(parked.diff.generation, 8, "the diff's counter is in the list");
     let reads: Vec<u64> = parked.reads.counters().into_iter().map(|c| *c).collect();
     assert_eq!(reads, vec![8; 3], "the reads' three counters are in the list");
@@ -100,7 +107,7 @@ fn resume_moves_every_counter_past_both() {
     set_all(&mut parked, 10);
     set_all(&mut current, 2);
     parked.resume_after(&mut current);
-    assert_eq!(counts(&mut parked), vec![11; 15]);
+    assert_eq!(counts(&mut parked), vec![11; 16]);
 }
 
 #[test]
@@ -164,7 +171,10 @@ fn forget_repo_clears_reads_and_folds() {
     let host =
         Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
     s.pr_drafts.keep(Some(&host), v);
+    Arc::make_mut(&mut s.branch_map.known)
+        .insert(glowfly_core::branch_map::pair_key(git2::Oid::zero(), git2::Oid::zero()), glowfly_core::branch_map::Forecast::Clean);
     s.forget_repo();
+    assert!(s.branch_map.known.is_empty(), "the Branch map's trial merges are forgotten");
     assert!(s.reads.stats.is_empty(), "the reads are forgotten");
     assert_eq!(s.tab_view.file_folds, FileFolds::default(), "and the folds");
     assert!(s.pr_drafts.is_empty(), "and the pull request text kept for it");

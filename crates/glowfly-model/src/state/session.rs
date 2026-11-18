@@ -138,6 +138,9 @@ pub struct RepoSession {
     /// The Range-diff view, shown in place of the graph (update/range_diff.rs). A comparison
     /// in flight is asked for again on return.
     pub range_diff: Gen<RangeDiffView>,
+    /// The Branch map, shown in place of the graph (update/branch_map.rs), with the trial merges
+    /// made for this repository. A read in flight is asked for again on return.
+    pub branch_map: super::branch_map::BranchMapSlot,
     /// The binary diff on screen's sizes and image previews (update/diff_preview.rs); one still
     /// loading is asked for again on return.
     pub diff_preview: Option<DiffPreview>,
@@ -176,7 +179,7 @@ pub struct RepoSession {
 impl RepoSession {
     /// Every generation counter, in one list: `park` and `resume_after` go through it (add a
     /// new pair here). The last three are the repository reads' (`RepoReads::counters`).
-    fn counters(&mut self) -> [&mut u64; 15] {
+    fn counters(&mut self) -> [&mut u64; 16] {
         let [wip, sigs, checks] = self.reads.counters();
         let pr = &mut self.pull_request;
         [
@@ -191,6 +194,7 @@ impl RepoSession {
             &mut self.rebase.generation,
             &mut self.journal.generation,
             &mut self.range_diff.generation,
+            &mut self.branch_map.generation,
             &mut self.diff.generation,
             wip,
             sigs,
@@ -252,6 +256,7 @@ impl RepoSession {
         self.tab_view.file_folds.clear();
         self.issue_drafts.clear();
         self.pr_drafts.clear();
+        self.branch_map.forget();
     }
 }
 

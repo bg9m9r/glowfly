@@ -167,6 +167,7 @@ fn entries_with_repo() {
         "Open repository in external editor",
         "Open logs folder",
         "Open operation journal",
+        "Open branch map",
         SHOW_REPO_FOLDER,
     ];
     assert_eq!(all.iter().filter(|l| l.starts_with("Open ") && !not_recent.contains(&l.as_str())).count(), 1);

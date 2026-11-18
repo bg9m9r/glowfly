@@ -29,7 +29,7 @@ macro_rules! catalogs {
 }
 
 catalogs! {
-    "about" "access" "auto_stash" "blame" "branch" "branch_push" "branch_sync" "central"
+    "about" "access" "auto_stash" "blame" "branch" "branch_map" "branch_push" "branch_sync" "central"
     "clone" "commands" "commit" "commits" "common" "config_errors" "conflict" "conflict_check"
     "credential_errors" "dashboard" "dates" "deep_link" "details" "dialog" "diff" "files"
     "finder" "forge" "frame_times" "getting_started" "git_banner" "git_errors" "gitflow" "glance"

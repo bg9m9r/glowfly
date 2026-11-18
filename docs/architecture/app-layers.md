@@ -91,7 +91,7 @@ source file, update its line here. Features that span every layer are in
 
 ## Per-area message and effect types
 
-- `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `logs.rs`, `onboarding.rs`, `deep_link.rs`: per-area message and effect types of areas with their own data types (one `Msg` variant each).
+- `lfs.rs`, `git_env.rs`, `themes.rs`, `gitflow.rs`, `terminal.rs`, `submodule.rs`, `remote.rs`, `tag.rs`, `worktree.rs`, `ssh.rs`, `profile.rs`, `file_op.rs`, `patch.rs`, `tools.rs`, `conflict_check.rs`, `pull_request.rs`, `branch_map.rs`, `logs.rs`, `onboarding.rs`, `deep_link.rs`: per-area message and effect types of areas with their own data types (one `Msg` variant each).
 - `keymap.rs`: the keyboard bindings: every key Glowfly answers to and where it works (`table.rs`), their ids (`ids.rs`), chords with their display and settings-file forms (`chord.rs`), the effective keymap (`active.rs`) and the rules for changing a key (`rebind.rs`).
 - `pull_request/line_comment.rs`: messages of a new code comment on lines of a pull request file's diff (the comment button on a diff line, the hunk header's Comment on N lines, and the comment box in the Files changed pane).
 

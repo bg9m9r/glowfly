@@ -11,6 +11,7 @@ pub mod blame;
 pub mod blame_find;
 pub mod blocked;
 pub mod branch_delete;
+pub mod branch_map;
 pub mod branch_sync;
 pub mod branches;
 pub mod build_status;

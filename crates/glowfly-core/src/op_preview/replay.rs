@@ -160,7 +160,7 @@ impl<'r> Replay<'r> {
 }
 
 /// The paths of `index`'s conflicts, in index order, each once, for the screen.
-fn conflict_paths(index: &Index) -> Result<Vec<String>> {
+pub(crate) fn conflict_paths(index: &Index) -> Result<Vec<String>> {
     let mut out: Vec<String> = Vec::new();
     for c in index.conflicts()? {
         let c = c?;

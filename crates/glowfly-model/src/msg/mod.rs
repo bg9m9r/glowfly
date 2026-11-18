@@ -2,7 +2,7 @@
 //!
 //! `Msg` has one variant per area, each carrying that area's own enum (defined in this folder,
 //! or in the area's module for `lfs`, `gitflow`, `worktree`, `remote`, `tag`, `submodule`,
-//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `range_diff`, `pull_request`, `logs`, `onboarding` and `deep_link`;
+//! `terminal`, `ssh`, `profile`, `patch`, `tools`, `custom_commands`, `conflict_check`, `journal`, `range_diff`, `branch_map`, `pull_request`, `logs`, `onboarding` and `deep_link`;
 //! Glowfly's own updates are `UpdateMsg` in `updates.rs`). Each area is one row of the table in
 //! `areas.rs` (variant, enum, short name, handler), which builds `Msg`, `Msg::on_inactive`,
 //! `Msg::area` and `update`'s routing. Each area's enum goes to one handler in `update/`, which

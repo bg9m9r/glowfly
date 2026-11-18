@@ -95,6 +95,7 @@ fn close(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         return;
     }
     super::partial_content::leave(st, fx);
+    super::branch_map::leave(st, fx);
     // An edited form kept under the confirmation goes with its tab.
     st.dialog.drop_under();
     // Discarded with the tab, on a worker (a large history is many allocations).
@@ -146,6 +147,7 @@ fn close_where(st: &mut AppState, keep: impl Fn(usize) -> bool, survivor: usize,
     let new_survivor = survivor - before(survivor);
     if closing.contains(&st.active_tab) {
         super::partial_content::leave(st, fx);
+        super::branch_map::leave(st, fx);
         st.dialog.drop_under();
         park(st); // discarded with the tab
         for &j in closing.iter().rev() {

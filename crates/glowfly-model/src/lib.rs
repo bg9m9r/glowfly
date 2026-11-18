@@ -5,6 +5,7 @@
 //! returns effects) → the runner (glowfly-runner, executes effects on worker threads) → `msg`
 //! results back into `update`; the app's views draw the state and turn input into messages.
 
+pub mod branch_map;
 pub mod conflict_check;
 pub mod custom_commands;
 pub mod deep_link;

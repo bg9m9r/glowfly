@@ -19,6 +19,7 @@ pub use crate::journal::{CommitLine, Count};
 
 mod ops;
 mod replay;
+pub(crate) use replay::conflict_paths;
 mod shape;
 
 #[cfg(test)]

@@ -110,6 +110,16 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - A refresh never reloads it: it compares the fixed tips it was opened with, and Retry asks again.
 - In an untrusted repository it waits in `Phase::Held` and asks for trust, and starts once the repository is trusted (`update/range_diff.rs::trust_released`).
 
+## Branch map
+
+- The view sits in the central order after the Git Flow panel and before the graph, so every other view covers it and Esc closes it after the Git Flow panel.
+- It closes the diff, conflict, history, blame, rebase, pull request, issue, Range-diff and journal views and the Git Flow panel when it opens; selecting a commit closes it.
+- Opening never blocks: the read is a background effect (`Effect::BranchMap`) and arrives as `BranchMapMsg::Loaded`.
+- A refresh while it is open plans again from the new snapshot and reads again only when the plan (the main tip, a branch tip, the branch set or the checked-out branch) changed; the old map stays up meanwhile.
+- Trial merges are cached per tab by the pair of tip ids (`BranchMapSlot::known`, handed to the job as an `Arc`), so a re-read merges only pairs with a new tip. Opening another repository in the tab closes the view and forgets the cache.
+- The running read is asked to stop (`StopGit(StopKey::BranchMap(generation))`) when the view closes, a newer read replaces it, the tab is left or closed, or the tab opens another repository; a result for an older generation or another repository is dropped.
+- It is parked with its tab and asked again when the tab comes back (a new generation).
+
 ## Paced second passes
 
 - Work too slow to wait for rides behind the result that needs it.

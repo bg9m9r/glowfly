@@ -123,6 +123,8 @@ pub enum PaletteCommand {
     OpenGitFlowPanel,
     /// The operation journal (update/journal.rs).
     OpenJournal,
+    /// The Branch map (update/branch_map.rs).
+    OpenBranchMap,
     /// Enter the issue sub-list for starting this kind; choosing an issue runs
     /// `StartGitFlowFromIssue`.
     ChooseGitFlowIssue(glowfly_core::gitflow::FlowKind),
@@ -338,6 +340,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     gitflow::gitflow_entries(st, snap, out);
     let journal = "journal reflog history timeline states restore recover go back time travel undo before";
     out.push(entry(C::OpenJournal, "Open operation journal", journal));
+    crate::state::branch_map::palette_entries(st, out);
     worktrees::worktree_entries(st, snap, out);
     issues::issue_entries(st, out);
     submodules::submodule_entries(st, snap, out);

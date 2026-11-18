@@ -7,6 +7,7 @@ use super::issue_tests::{github, listed};
 use super::tabs_tests::{cleanup, fake_tabs, two_repos};
 use super::tests::said;
 use super::update;
+use glowfly_core::branch_map::Empty;
 use glowfly_core::conflict_check::{MergeTarget, Prediction, TargetKind};
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide};
 use glowfly_core::range_diff::Ends;
@@ -17,6 +18,7 @@ use glowfly_model::effect::Effect;
 use glowfly_model::effect::HistoryEffect;
 use glowfly_model::msg::{CloseRequest, HistoryMsg, Msg, RepoMsg, TabsMsg};
 use glowfly_model::state::blame::BlameView;
+use glowfly_model::state::branch_map::BranchMapView;
 use glowfly_model::state::conflict::ConflictView;
 use glowfly_model::state::diff_preview::DiffPreview;
 use glowfly_model::state::file_folds::FileListId;
@@ -60,7 +62,7 @@ fn still_loading(st: &AppState) -> bool {
 }
 
 /// Every counter of the session, in a fixed order (the pull request panel's four included).
-fn counters(s: &RepoSession) -> [u64; 12] {
+fn counters(s: &RepoSession) -> [u64; 13] {
     let pr = &s.pull_request;
     [
         s.conflict.generation,
@@ -74,6 +76,7 @@ fn counters(s: &RepoSession) -> [u64; 12] {
         s.rebase.generation,
         s.journal.generation,
         s.range_diff.generation,
+        s.branch_map.generation,
         s.diff.generation,
     ]
 }
@@ -144,6 +147,7 @@ fn every_session_view_round_trips_a_switch() {
     s.journal.view = Some(JournalView::default());
     let origin = Origin { ends: Ends::LastRewrite { refname: "refs/heads/topic".into() }, label: Some("topic".into()), at: None };
     s.range_diff.view = Some(RangeDiffView::loading(origin, 0));
+    s.branch_map.view = Some(BranchMapView { generation: 0, loading: false, plan: Err(Empty::OneBranch), result: None, selected: None });
     s.pull_request.view = Some(glowfly_model::state::pull_request::actions::tests::view(None));
     let fs = ForgeState::new(Some(github()), "origin".into(), Some(github()));
     s.issue.view = IssueView::new(listed("12"), &fs);
@@ -165,6 +169,7 @@ fn every_session_view_round_trips_a_switch() {
     let s = &st.session;
     assert!(s.conflict.view.is_none() && s.history.view.is_none() && s.blame.view.is_none());
     assert!(s.rebase.view.is_none() && s.journal.view.is_none() && s.range_diff.view.is_none());
+    assert!(s.branch_map.view.is_none(), "tab b doesn't show a's Branch map");
     assert!(s.pull_request.view.is_none() && s.issue.view.is_none() && s.diff_preview.is_none());
     assert!(!s.gitflow_panel, "tab b doesn't show a's panels");
     assert!(s.diff.view.is_none() && s.diff.lfs.is_none() && s.draft.summary.is_empty(), "nor a's diff or draft");
@@ -179,6 +184,7 @@ fn every_session_view_round_trips_a_switch() {
     assert_eq!(s.history.view.as_ref().map(|h| h.path.as_str()), Some("h.txt"));
     assert_eq!(s.blame.view.as_ref().map(|b| b.path.as_str()), Some("b.txt"));
     assert!(s.rebase.view.is_some() && s.journal.view.is_some() && s.range_diff.view.is_some());
+    assert!(s.branch_map.view.is_some(), "the Branch map comes back with its tab");
     assert_eq!(s.pull_request.view.as_ref().map(|v| v.pr.id), Some(12));
     assert_eq!(s.issue.view.as_ref().map(|v| v.key.as_str()), Some("12"));
     assert!(s.gitflow_panel);

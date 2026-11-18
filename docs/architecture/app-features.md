@@ -72,6 +72,17 @@ source file, update its line here. Each section lists one feature's files in eve
 - `ui/range_diff/`: the header, the pair list and the interdiff pane.
 - Entry points: the local and remote branch menus, the multi-commit menu and the journal preview.
 
+## Branch map view (`BranchMapMsg`, `BranchMapJob`)
+
+- Files: `branch_map.rs`, `state/branch_map.rs`, `update/branch_map.rs`, `runner/branch_map.rs`, `ui/branch_map/`.
+- Shown in place of the graph, as a list of the local branches with a pane of what the selected one shares with the others.
+- `branch_map.rs`: the message, the job and its `EffectMeta` (stoppable by `StopKey::BranchMap(generation)`).
+- `state/branch_map.rs`: the open view (plan, result, selection), the trial merges remembered per tab by their pair of tips, and the words (subtitle, empty states, a row's numbers as a line and as an accessible name, the conflict hint, the badges) and the palette entry.
+- `update/branch_map.rs`: opening, planning from the snapshot, results by generation, the refresh rule, and stopping the running read.
+- `runner/branch_map.rs`: the read, stopped through the effect's stop; no trust check, libgit2 only.
+- `ui/branch_map/`: the header, the list and the detail pane.
+- Entry points: the LOCAL section's menu and the command palette.
+
 ## Profile folder rules (`ProfileMsg` and `ProfileEffect` folder variants)
 
 - Files: `state/repo_identity.rs`, `state/profile_rules.rs`, `update/profile_rules.rs`, `ui/prefs/profile_rules.rs`.

@@ -79,6 +79,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::issue::close(st);
             super::rebase::close(st);
             super::journal::close(st);
+            super::branch_map::repo_opened(st, fx);
             st.session.gitflow_panel = false;
             st.session.gitflow_resume = None;
             st.session.draft = CommitDraft::default();
@@ -139,6 +140,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
     if kind == LoadKind::Refresh {
         super::pull_request::refreshed(st, fx);
         super::journal::refreshed(st, fx);
+        super::branch_map::refreshed(st, fx);
     }
     reload_diff(st, fx);
     super::forge::refresh(st, kind == LoadKind::Open, false, now, fx);

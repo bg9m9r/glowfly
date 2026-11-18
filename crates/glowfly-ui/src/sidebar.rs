@@ -102,7 +102,10 @@ fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &Grap
     let local_rows = &mut view.local_rows;
     let slot = super::build_status::tip_slot(fs);
 
-    let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| action_item(ui, msgs, &actions.local);
+    let local_menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
+        action_item(ui, msgs, &actions.local);
+        super::branch_map::open_item(ui, t, msgs);
+    };
     let local = Header {
         key: "local",
         title: t.tr("sidebar.local.header"),

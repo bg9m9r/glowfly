@@ -1,12 +1,12 @@
 //! The central area: which view fills it (the dashboard, Help > Getting started, welcome, conflict, blame, file history,
 //! the pull request panel or the issue panel, diff, the rebase panel, the Range-diff view, the
-//! operation journal, the Git Flow panel, or the graph), and the Esc chain that closes them.
+//! operation journal, the Git Flow panel, the Branch map, or the graph), and the Esc chain that closes them.
 
 use super::UiCache;
 use super::theme::color;
 use super::{
-    blame, common, conflict, dashboard, diff, getting_started, gitflow_panel, graph, history, issue, journal, pull_request, range_diff,
-    rebase,
+    blame, branch_map, common, conflict, dashboard, diff, getting_started, gitflow_panel, graph, history, issue, journal, pull_request,
+    range_diff, rebase,
 };
 use eframe::egui::{self, Key};
 use glowfly_model::msg::BlameMsg;
@@ -29,7 +29,7 @@ use glowfly_model::state::{AppState, ViewState};
 /// text selected in a diff's code, a pull request's unposted code comment (cancelled, with a confirmation once edited), the
 /// file history (a line selection first), the diff (a line selection first), the pull request panel, the issue panel, the interactive
 /// rebase panel (its message editor first), the Range-diff view, the operation journal, the Git
-/// Flow panel, then a multi-selection or a
+/// Flow panel, the Branch map, then a multi-selection or a
 /// commit compared with the working directory, and
 /// finally the search bar. Dialogs (a credential prompt and the welcome included), the command
 /// palette and an open menu of the menu bar or title bar handle Esc themselves. With the graph
@@ -109,6 +109,8 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &AppState, view: &mut ViewStat
         msgs.push(Msg::Journal(glowfly_model::journal::JournalMsg::Close));
     } else if st.session.gitflow_panel {
         msgs.push(Msg::GitFlow(glowfly_model::gitflow::GitFlowMsg::ClosePanel));
+    } else if st.session.branch_map.view.is_some() {
+        msgs.push(Msg::BranchMap(glowfly_model::branch_map::BranchMapMsg::Close));
     } else if matches!(st.session.selection, glowfly_model::state::Selection::Commits(_) | glowfly_model::state::Selection::VsWorkdir(_)) {
         msgs.push(Msg::Selection(SelectionMsg::CollapseSelection));
     } else {
@@ -118,7 +120,7 @@ pub(crate) fn escape_key(ctx: &egui::Context, st: &AppState, view: &mut ViewStat
 
 /// The central panel: the dashboard while open, else Getting started while open, else the welcome screen without a repository, else the innermost view open
 /// (conflict, blame, file history, pull request panel, issue panel, diff, rebase panel, Range-diff view, operation journal, Git
-/// Flow panel), else
+/// Flow panel, Branch map), else
 /// the graph. Returns where the panel was drawn (the tour outlines it).
 pub(super) fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cache: &mut UiCache, msgs: &mut Vec<Msg>) -> egui::Rect {
     egui::CentralPanel::default()
@@ -158,6 +160,8 @@ pub(super) fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, cac
                 journal::show(ui, st, msgs);
             } else if st.session.gitflow_panel {
                 gitflow_panel::show(ui, st, msgs);
+            } else if st.session.branch_map.view.is_some() {
+                branch_map::show(ui, st, msgs);
             } else {
                 graph::show(ui, st, view, cache, msgs);
             }

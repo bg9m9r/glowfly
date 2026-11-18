@@ -20,6 +20,7 @@ pub(super) mod snapshot_tests_blame_wrap;
 pub(super) mod snapshot_tests_branch;
 pub(super) mod snapshot_tests_branch_colour;
 pub(super) mod snapshot_tests_branch_delete;
+pub(super) mod snapshot_tests_branch_map;
 pub(super) mod snapshot_tests_branch_pin;
 pub(super) mod snapshot_tests_chips;
 pub(super) mod snapshot_tests_clone;

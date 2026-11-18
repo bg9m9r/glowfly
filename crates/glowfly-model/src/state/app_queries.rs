@@ -85,6 +85,7 @@ impl AppState {
             && self.session.range_diff.view.is_none()
             && self.session.journal.view.is_none()
             && !self.session.gitflow_panel
+            && self.session.branch_map.view.is_none()
             && !super::terminal::maximized_shown(self)
     }
 }

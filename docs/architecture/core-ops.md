@@ -145,6 +145,12 @@ source file, update its line here.
 - `parse.rs` reads the pairs and each changed pair's interdiff as a `FileDiff`.
 - Read only: no ref, index or file changes; the app runs it only in a trusted repository.
 
+## Branch map (`branch_map.rs`, `branch_map/`)
+
+- `branch_map.rs`: each local branch's drift from the main branch (`Snapshot::mainline()`) and the pairs of branches that would conflict: the types, the plan made from a loaded snapshot (`request`, no repository read), and the questions the view asks of a finished map.
+- `branch_map/read.rs`: measuring at most 40 branches (the 40 most recently committed, the checked-out one always among them) on its own `Repository` handle: ahead and behind, the merge base, the files changed since it, which pairs share a file, and a trial merge for each such pair no earlier read has made (`Forecasts`, by the pair of tips).
+- `branch_map/forecast.rs`: the trial merges with `Repository::merge_commits` into an in-memory index; the objects they write go to a mempack backend that is reset after each merge, so no ref, index, working-tree file or object file changes. libgit2 only: no git process, no hooks, filters or configured merge drivers.
+
 ## Previews and checks
 
 - `conflict_check.rs`: predicting merge conflicts with `git merge-tree` (nothing in the working tree, index or refs changes), and choosing the branch to compare the checked-out branch with.

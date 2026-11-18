@@ -14,6 +14,7 @@ mod branch_checkout;
 mod branch_colour;
 mod branch_delete;
 mod branch_elsewhere;
+mod branch_map;
 mod branch_push;
 mod branch_sync;
 mod branches;

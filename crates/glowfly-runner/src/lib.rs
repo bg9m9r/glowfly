@@ -24,6 +24,7 @@ mod askpass;
 mod auto_stash_made;
 mod background;
 mod blame;
+mod branch_map;
 mod branches;
 mod clone;
 mod commit;

@@ -5,6 +5,7 @@ use glowfly_core::app_update::UpdateError;
 use glowfly_core::error::{ReadFailed, WriteFailed};
 use glowfly_core::forge::{Account, Target};
 use glowfly_core::rebase::RebaseError;
+use glowfly_model::branch_map::BranchMapMsg;
 use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::JobEffect;
 use glowfly_model::effect::LoadEffect;
@@ -114,6 +115,8 @@ enum Kind {
     Sizing(PathBuf, u64),
     /// A background download of missing contents: its pane shows it until it ends.
     Content(u64),
+    /// A Branch map read (generation): the view shows its spinner until it ends.
+    BranchMap(u64),
     /// Saving a patch to this file: it says the patch wasn't created.
     Patch(PathBuf),
     Log,
@@ -182,6 +185,7 @@ impl Recovery {
             Effect::Stash(StashEffect::PutBack(r)) => Kind::PutBack(r.cwd.clone(), r.oid),
             Effect::Partial(PartialEffect::SizeHistory(r)) => Kind::Sizing(r.workdir.clone(), r.id),
             Effect::Partial(PartialEffect::FetchContent(r)) => Kind::Content(r.id),
+            Effect::BranchMap(j) => Kind::BranchMap(j.generation),
             Effect::Patch(PatchEffect::Export { dest, .. }) => Kind::Patch(dest.clone()),
             _ => Kind::Log,
         };
@@ -257,6 +261,7 @@ impl Recovery {
                 Msg::Partial(PartialMsg::HistorySized { workdir, id, size: glowfly_core::history_size::HistorySize::Unknown })
             }
             Kind::Content(id) => Msg::Partial(PartialMsg::ContentFetched { id, result: Err(ContentFailure::Failed(text)) }),
+            Kind::BranchMap(generation) => Msg::BranchMap(BranchMapMsg::Loaded { generation, result: Err(read) }),
             Kind::Patch(dest) => Msg::Patch(PatchMsg::Exported { dest, result: Err(text) }),
             Kind::Log => Msg::Logged { ok: false, text },
         };

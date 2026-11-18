@@ -171,6 +171,7 @@ pub(super) fn open_elsewhere(st: &mut AppState, snap: &Snapshot, fx: &mut Vec<Ef
     tracing::debug!(path = %snap.workdir.display(), "already open in another tab");
     st.tab_return = None;
     super::partial_content::leave(st, fx);
+    super::branch_map::leave(st, fx);
     park(st); // discarded with the tab
     let carried = std::mem::take(&mut st.log);
     st.tabs.remove(here);
@@ -186,6 +187,7 @@ fn switch(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
     }
     st.tab_return = None;
     super::partial_content::leave(st, fx);
+    super::branch_map::leave(st, fx);
     let parked = park(st);
     st.tabs[st.active_tab].parked = Some(Box::new(parked));
     st.tabs[st.active_tab].log = std::mem::take(&mut st.log);
@@ -231,6 +233,7 @@ pub(super) fn activate(st: &mut AppState, i: usize, fx: &mut Vec<Effect>) {
         super::rebase::reload_pending(st, fx);
         super::journal::reload_pending(st, fx);
         super::range_diff::reload_pending(st, fx);
+        super::branch_map::reload_pending(st, fx);
         super::diff_preview::reload_pending(st, fx);
         super::line_counts::reload_pending(st, fx);
         super::conflict_check::want(st, fx);

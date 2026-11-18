@@ -72,6 +72,8 @@ macro_rules! effect_areas {
             Journal($crate::journal::JournalEffect),
             /// Comparing two versions of a branch with git range-diff (range_diff.rs); reads only.
             RangeDiff($crate::range_diff::RangeDiffJob),
+            /// Each branch's drift from the main branch and the pairs that would conflict (branch_map.rs); reads only, libgit2.
+            BranchMap($crate::branch_map::BranchMapJob),
             /// Fork lists and forking for the REMOTE section (remote.rs); unscoped.
             Remote($crate::remote::RemoteEffect),
             /// A sparse clone, listing the user's repositories and checking the parent folder for the

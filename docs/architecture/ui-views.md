@@ -252,6 +252,12 @@ start with `state/`, `update/` or `ui/`.
 - `range_diff/interdiff.rs`: the selected pair's pane.
 - `range_diff/pairs.rs`: the commit pairs: 56 px painted rows in git's order, laid out only where visible.
 
+## Branch map (`branch_map/`)
+
+- `branch_map/mod.rs`: the header, the states that fill the body (loading, failed, empty), and the list and pane split (stacked under 720 px), and the LOCAL menu's item.
+- `branch_map/rows.rs`: the branches: 56 px painted rows (name, Main and Current badges, a painted warning mark when it would conflict with the main branch, the time since its last commit, its numbers), laid out only where visible, each one button named with the same numbers as text.
+- `branch_map/detail.rs`: the selected branch's name, numbers and where it split from the main branch, then a block per branch it shares a file with: the forecast badge and the shared files, the conflicting ones first with a painted mark and the word for conflict.
+
 ## Interactive rebase panel (`rebase/`)
 
 - `rebase/banner.rs`: the rebase's lines under the WIP panel's step heading (`op_steps`): the stopped commit (its short SHA a link to it in the graph, the summary, and why it stopped), a failed command, and the autostash note.

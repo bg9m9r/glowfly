@@ -97,6 +97,8 @@ macro_rules! msg_areas {
             Journal(crate::journal::JournalMsg) "journal" => journal::handle(now, fx);
             /// Comparing two versions of a branch commit by commit (update/range_diff.rs).
             RangeDiff(crate::range_diff::RangeDiffMsg) "range-diff" => range_diff::handle(now, fx);
+            /// The Branch map: each branch's drift and the pairs that would conflict (update/branch_map.rs).
+            BranchMap(crate::branch_map::BranchMapMsg) "branch-map" => branch_map::handle(fx);
             /// The pull request panel (update/pull_request/).
             PullRequest(crate::pull_request::PullRequestMsg) "pull-request" => pull_request::handle(now, fx);
             /// The issue panel and the Create issue dialog (update/issue.rs, update/issue_create.rs).
@@ -211,7 +213,7 @@ mod tests {
     #[test]
     fn area_names_are_unique_and_kebab_case() {
         let names = Msg::AREAS;
-        assert_eq!(names.len(), 69, "one per area row");
+        assert_eq!(names.len(), 70, "one per area row");
         for (i, name) in names.iter().enumerate() {
             assert!(!name.is_empty() && name.bytes().all(|b| b.is_ascii_lowercase() || b == b'-'), "{name:?}");
             assert!(!name.starts_with('-') && !name.ends_with('-'), "{name:?}");

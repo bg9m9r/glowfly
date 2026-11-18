@@ -40,6 +40,7 @@ mod blame_nav_tests;
 mod blame_tests;
 mod branch_colour_tests;
 mod branch_delete_tests;
+mod branch_map_tests;
 mod branch_sync_tests;
 mod branch_tests;
 mod build_status_tests;

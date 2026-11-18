@@ -115,6 +115,7 @@ impl PaletteCommand {
             C::FinishGitFlow(_) | C::ContinueGitFlowFinish => return None,
             C::OpenGitFlowPanel => "gitflow-panel",
             C::OpenJournal => "journal",
+            C::OpenBranchMap => "branch-map",
             C::ChooseGitFlowIssue(FlowKind::Feature) => "gitflow-issue-feature",
             C::ChooseGitFlowIssue(FlowKind::Release) => "gitflow-issue-release",
             C::ChooseGitFlowIssue(FlowKind::Hotfix) => "gitflow-issue-hotfix",

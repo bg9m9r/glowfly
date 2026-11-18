@@ -10,6 +10,8 @@
 //! - `stash_undo`: stash and pop; undo and redo a commit and a merge.
 //! - `journal_restore`: hard reset a branch, restore it from the operation journal, undo that.
 //! - `range_diff`: compare an amended branch with its version before, from its menu.
+//! - `branch_map`: open the Branch map from the palette, select a branch to see the files it
+//!   shares with another, Esc goes back.
 //! - `graph_keys`: Down still moves the graph's selection after a click on Stage all, and
 //!   each pane key lands the focus in its pane.
 //! - `explore`: seeded random sessions (the generator, case text and checks they share).
@@ -25,6 +27,7 @@ mod find;
 mod fixture;
 mod harness;
 
+mod branch_map;
 mod branches;
 mod clone_commit;
 mod explore;

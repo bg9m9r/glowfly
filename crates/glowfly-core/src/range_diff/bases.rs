@@ -42,7 +42,7 @@ pub(super) enum Cut {
 }
 
 /// The merge base of `a` and `b`; None when they share no history.
-fn merge_base(repo: &Repository, a: Oid, b: Oid) -> Result<Option<Oid>> {
+pub(crate) fn merge_base(repo: &Repository, a: Oid, b: Oid) -> Result<Option<Oid>> {
     match repo.merge_base(a, b) {
         Ok(o) => Ok(Some(o)),
         Err(e) if e.code() == ErrorCode::NotFound => Ok(None),

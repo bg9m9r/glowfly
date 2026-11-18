@@ -191,6 +191,7 @@ pub(super) fn select_commit(st: &mut AppState, oid: Oid, scroll: bool, fx: &mut 
     super::blame::close(st);
     st.session.gitflow_panel = false;
     super::journal::close(st);
+    super::branch_map::close(st, fx);
     super::pull_request::close(st);
     super::issue::close(st);
     fx.push(Effect::Commit(CommitEffect::LoadDetail { workdir, oid }));

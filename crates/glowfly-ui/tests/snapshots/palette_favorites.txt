@@ -3,6 +3,7 @@ Dialog
   Button "Open docs" [selected]
   Button "Open web-app"
   Button "Open dashboard"
+  Button "Open branch map"
   Button "Open api-server"
   Button "Open in terminal"
   Button "Open repository…"

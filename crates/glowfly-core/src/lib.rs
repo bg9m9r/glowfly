@@ -9,6 +9,7 @@ pub mod askpass;
 pub mod auth_failure;
 pub mod avatars;
 pub mod branch_colour;
+pub mod branch_map;
 pub mod branch_ops;
 pub mod branch_ref;
 pub mod bundled_fonts;

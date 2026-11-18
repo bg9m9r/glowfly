@@ -19,6 +19,7 @@ mod branch_colour_menu;
 mod branch_delete_dialog;
 mod branch_dialogs;
 mod branch_dot;
+mod branch_map;
 mod branch_menu;
 pub mod build_status;
 mod central;

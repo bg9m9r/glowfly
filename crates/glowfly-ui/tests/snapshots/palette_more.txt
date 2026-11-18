@@ -9,6 +9,7 @@ Dialog
   Button "Hide toolbar labels"
   Button "Enter full screen"
   Button "Add this repository to favorites"
+  Button "Open branch map"
   Button "Initialize Git LFS"
   Button "Hide commit details panel"
   Button "Hide toolbar"
@@ -41,4 +42,3 @@ painted:
   "F11"
   "Ctrl+Shift+D"
   "Ctrl+Shift+B"
-  "Ctrl+`"

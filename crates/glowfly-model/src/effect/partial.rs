@@ -92,6 +92,8 @@ pub enum StopKey {
     Content(u64),
     /// The download of Glowfly's own update (`UpdateEffect::Download`).
     UpdateDownload,
+    /// A Branch map read, by its generation.
+    BranchMap(u64),
 }
 
 impl Effect {

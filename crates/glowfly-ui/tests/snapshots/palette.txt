@@ -25,6 +25,7 @@ Dialog
   Button "Configure sparse checkout…"
   Button "Configure Git Flow…"
   Button "Open operation journal"
+  Button "Open branch map"
   Button "Create worktree from main…"
   Button "Add submodule…"
   Button "Reload custom commands"
