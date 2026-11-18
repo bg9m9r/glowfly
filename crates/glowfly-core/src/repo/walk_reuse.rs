@@ -6,8 +6,11 @@
 //! commit exists. Two things can change what libgit2 reads for an unchanged oid: a shallow
 //! clone's `shallow` file (fetching deeper gives a former root its parents), so every commit
 //! named in the old or the new list is read again; and `info/grafts`, which turns the reuse off.
+//! The mailmap is a third thing that changes what a loaded commit shows (its author): when its
+//! text differs from the one the prior was read with, the reuse is off for that load too.
 
 use super::{Authors, CommitInfo, Snapshot};
+use crate::mailmap::MailmapText;
 use git2::{Oid, Repository};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -60,6 +63,8 @@ pub struct Prior {
     /// The shallow roots it was loaded with (`Snapshot::shallow_roots`).
     pub shallow_roots: Vec<Oid>,
     pub frontier: Option<Arc<Frontier>>,
+    /// The mailmap its authors were shown with (`Snapshot::mailmap`).
+    pub mailmap: MailmapText,
 }
 
 impl std::fmt::Debug for Prior {
@@ -72,7 +77,12 @@ impl std::fmt::Debug for Prior {
 impl Snapshot {
     /// This snapshot's history, for a later load to build on (the commits shared).
     pub fn prior(&self) -> Prior {
-        Prior { commits: Arc::clone(&self.commits), shallow_roots: self.shallow_roots.clone(), frontier: self.frontier.clone() }
+        Prior {
+            commits: Arc::clone(&self.commits),
+            shallow_roots: self.shallow_roots.clone(),
+            frontier: self.frontier.clone(),
+            mailmap: self.mailmap.clone(),
+        }
     }
 }
 
@@ -84,9 +94,10 @@ pub(super) struct CommitCache {
 
 impl CommitCache {
     /// The commits of `prior` a walk in `repo` (whose shallow roots are now `shallow_now`) may
-    /// take as they are; None when the repository has `info/grafts`.
-    pub(super) fn new(prior: &Prior, repo: &Repository, shallow_now: &[Oid]) -> Option<CommitCache> {
-        if repo.commondir().join("info").join("grafts").exists() {
+    /// take as they are; None when the repository has `info/grafts` or its mailmap (`mailmap`)
+    /// is not the one `prior` was read with.
+    pub(super) fn new(prior: &Prior, repo: &Repository, shallow_now: &[Oid], mailmap: &MailmapText) -> Option<CommitCache> {
+        if prior.mailmap != *mailmap || repo.commondir().join("info").join("grafts").exists() {
             return None;
         }
         let mut rows: HashMap<Oid, u32> = prior.commits.iter().enumerate().map(|(i, c)| (c.oid, i as u32)).collect();

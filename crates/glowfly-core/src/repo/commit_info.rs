@@ -1,18 +1,19 @@
 //! One commit as the graph holds it, kept small: a large history holds hundreds of thousands.
 //!
-//! The author is shared: a walk reads each commit's signature once and looks its (name, email)
-//! up in an [`Authors`] table, so every commit by the same person points at one copy of the
-//! two strings. Texts are shared on clone (a reload that takes commits from the one before
+//! The author is shared: a walk reads each commit's signature once, maps it through the
+//! repository's mailmap (`mailmap`), and looks the (name, email) it shows up in an [`Authors`]
+//! table, so every commit by the same person points at one copy of the two strings. Texts are shared on clone (a reload that takes commits from the one before
 //! points at the same text instead of copying it), with no spare capacity, and the usual single
 //! parent is kept in the commit itself.
 //!
 //! The body is held whole, once, flattened to one line: search matches all of it, and the graph
 //! row and its hover show the start of it (`body_preview`).
 
+use crate::mailmap::Mailmap;
 use git2::Oid;
 use smallvec::SmallVec;
 use std::borrow::Borrow;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, LazyLock};
 
@@ -26,7 +27,8 @@ pub struct CommitInfo {
     /// The whole message body flattened to one line: what search matches. The graph shows its
     /// start (`body_preview`) dimmed after the summary.
     pub body: Text,
-    /// Name and email from the author signature, shared with the other commits by them.
+    /// Name and email from the author signature as the mailmap shows them (as written without
+    /// one), shared with the other commits by that person.
     pub author: Author,
     /// Committer time, in seconds.
     pub time: i64,
@@ -230,6 +232,9 @@ impl std::fmt::Debug for Author {
 #[derive(Default)]
 pub struct Authors {
     known: HashSet<Author>,
+    /// The author shown for a signature as written (key: name, a NUL, email), once a mailmap
+    /// has been asked about it.
+    mapped: HashMap<Box<str>, Author>,
     /// Scratch space for the lookup key.
     key: String,
 }
@@ -246,6 +251,25 @@ impl Authors {
         a
     }
 
+    /// The shared author `map` shows for a commit signed `name` and `email`: the mailmap's answer,
+    /// or the signature as written when it has none. Each distinct signature is resolved once.
+    pub fn shown(&mut self, map: &Mailmap, name: &str, email: &str) -> Author {
+        if map.is_none() {
+            return self.get(name, email);
+        }
+        Author::key_into(&mut self.key, name, email);
+        if let Some(a) = self.mapped.get(self.key.as_str()) {
+            return a.clone();
+        }
+        let written: Box<str> = self.key.as_str().into();
+        let a = match map.resolve(name, email) {
+            Some((n, e)) => self.get(&n, &e),
+            None => self.get(name, email),
+        };
+        self.mapped.insert(written, a.clone());
+        a
+    }
+
     /// Adds `a` itself, so later lookups of that name and email share its copy; an equal author
     /// already held is kept.
     pub fn seed(&mut self, a: &Author) {
@@ -254,7 +278,7 @@ impl Authors {
         }
     }
 
-    /// How many distinct authors it holds.
+    /// How many distinct authors it holds (as shown).
     pub fn len(&self) -> usize {
         self.known.len()
     }

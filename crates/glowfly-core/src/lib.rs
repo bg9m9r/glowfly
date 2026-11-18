@@ -68,6 +68,7 @@ pub mod line_pairs;
 pub mod link;
 pub mod lock_file;
 pub mod logs;
+pub mod mailmap;
 pub mod markdown;
 pub mod matching;
 pub mod names;

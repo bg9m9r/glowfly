@@ -4,6 +4,7 @@
 
 use super::build::{Pace, build_capped, build_paced};
 use super::*;
+use crate::mailmap::Mailmap;
 use crate::repo::{LoadOptions, Snapshot, load};
 use crate::testutil::*;
 use std::collections::HashSet;
@@ -264,6 +265,6 @@ fn index_reads_commit_text_in_its_encoding() {
     let ix = index(&dir, &snap, None);
     assert_eq!(ix.summary_at(0), Some("Café au lait"));
     assert_eq!(ix.person_at(0), Some(("René Müller", "rené@example.com")));
-    assert_eq!(ix.matching(&crate::commit_query::CommitQuery::parse("brûlée"), &|| false), Some(vec![0]));
+    assert_eq!(ix.matching(&crate::commit_query::CommitQuery::parse("brûlée"), &Mailmap::none(), &|| false), Some(vec![0]));
     let _ = std::fs::remove_dir_all(&dir);
 }

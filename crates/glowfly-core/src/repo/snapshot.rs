@@ -67,6 +67,8 @@ pub struct Snapshot {
     /// Where the history walk stopped when it was cut short: what a load for more goes on from
     /// (`repo::load_more`); None for a whole history.
     pub frontier: Option<std::sync::Arc<Frontier>>,
+    /// The mailmap text this load showed authors with (`mailmap`); full loads only.
+    pub mailmap: crate::mailmap::MailmapText,
     /// The commits the history walk starts from, in the order pushed (HEAD, then the visible
     /// tips): with `shallow_roots`, what decides which commits a longer walk would add
     /// (`commit_index::IndexKey`).
@@ -144,6 +146,7 @@ pub struct Snapshot {
     pub loaded_with: LoadOptions,
 }
 
+/// One commit's details. The author and the committer are as the mailmap shows them.
 pub struct CommitDetail {
     pub oid: Oid,
     pub message: String,

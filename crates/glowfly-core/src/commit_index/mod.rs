@@ -7,7 +7,9 @@
 //! The index is built off the UI thread (`build.rs`); after a fetch, a commit or a branch change
 //! it is updated from the previous index, reading only the commits that one lacks. Text and
 //! author terms are matched here exactly as the graph matches loaded commits
-//! (`CommitQuery::text_matches`, `CommitQuery::author_matches`); path terms are not indexed.
+//! (`CommitQuery::text_matches`, `CommitQuery::author_matches`, `matching.rs`); path terms are not
+//! indexed. The index keeps authors as written in the commits: the mailmap is applied when a
+//! query is answered, so a mailmap edit needs no rebuild.
 //!
 //! Memory: about 110 bytes per commit plus its summary and whole body, each held once: about
 //! 600 bytes per commit on git.git's history (485 of them text). Texts live in blocks of about
@@ -16,8 +18,6 @@
 //! A finished index can be saved to the cache folder and read back in a later session
 //! (`store.rs`), as it is for the same history or as the base of an update.
 
-use crate::commit_query::CommitQuery;
-use crate::matching::contains_lower;
 use crate::repo::{Author, CommitInfo, Snapshot};
 use git2::Oid;
 use std::collections::HashMap;
@@ -25,6 +25,7 @@ use std::sync::Arc;
 
 mod build;
 pub mod estimate;
+mod matching;
 pub mod store;
 
 pub use build::{Progress, build};
@@ -44,9 +45,6 @@ pub const MAX_INDEXED: usize = 2_000_000;
 
 /// The size a text block grows to before the next one starts.
 const BLOCK: usize = 1 << 20;
-
-/// How often (in entries) a long match checks whether it should stop.
-const MATCH_CHECK: usize = 8192;
 
 /// What decides which commits an index holds and in which order: the walk's starting commits in
 /// the order pushed (`Snapshot::starts`) and the shallow clone's boundary (`Snapshot::shallow_roots`).
@@ -149,7 +147,7 @@ impl CommitIndex {
         self.entries.get(pos).map(|e| self.texts_of(e).1)
     }
 
-    /// The author (name, email) of the commit at `pos`.
+    /// The author (name, email) of the commit at `pos`, as written in the commit.
     pub fn person_at(&self, pos: usize) -> Option<(&str, &str)> {
         self.entries.get(pos).map(|e| {
             let a = &self.people[e.person as usize];
@@ -171,38 +169,6 @@ impl CommitIndex {
         let at = e.at as usize;
         let mid = at + e.summary_len as usize;
         (&block[at..mid], &block[mid..mid + e.body_len as usize])
-    }
-
-    /// The walk positions of the commits matching `q`'s text and author terms, ascending; empty
-    /// for an empty query. Path terms are not indexed and must not be asked for. `None` when
-    /// `stop` said to stop (it is asked every few thousand commits).
-    pub fn matching(&self, q: &CommitQuery, stop: &dyn Fn() -> bool) -> Option<Vec<u32>> {
-        debug_assert!(!q.has_paths(), "path terms aren't indexed");
-        if q.is_empty() {
-            return Some(Vec::new());
-        }
-        // Each author is tested once, not once per commit.
-        let author_ok: Vec<bool> = self.people.iter().map(|a| q.author_matches(a.name(), a.email())).collect();
-        let name_text: Vec<bool> = self.people.iter().map(|a| contains_lower(a.name(), q.text())).collect();
-        let text = !q.text().is_empty();
-        let mut out = Vec::new();
-        for (i, e) in self.entries.iter().enumerate() {
-            if i.is_multiple_of(MATCH_CHECK) && stop() {
-                return None;
-            }
-            let p = e.person as usize;
-            if !author_ok[p] {
-                continue;
-            }
-            let hit = !text || name_text[p] || {
-                let (summary, body) = self.texts_of(e);
-                q.text_matches(&e.oid, summary, body, "")
-            };
-            if hit {
-                out.push(i as u32);
-            }
-        }
-        Some(out)
     }
 
     /// An index of `commits` taken as given in walk order (the whole history: `complete`). For

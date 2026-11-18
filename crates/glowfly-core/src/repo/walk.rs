@@ -8,13 +8,16 @@
 //!
 //! A walk cut short keeps its queue (`Frontier`), so a load for more goes on from it
 //! (`more_commits`) instead of walking from the tips again; and a reload takes the commits an
-//! earlier load read (`walk_reuse::CommitCache`) instead of reading them again.
+//! earlier load read (`walk_reuse::CommitCache`) instead of reading them again. Authors are read
+//! through the repository's mailmap (`Authors::shown`); a reused commit keeps the author it
+//! was read with.
 
 use super::walk_order::{TimeQueue, walk_parents};
 use super::walk_reuse::{CommitCache, Frontier, authors_of};
 use super::{Authors, CommitInfo};
 use crate::commit_text::Decoder;
 use crate::error::Result;
+use crate::mailmap::Mailmap;
 use git2::{Oid, Repository};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
@@ -29,11 +32,11 @@ pub(super) struct Walked {
 
 /// The newest commits for the graph, read from `tips`: up to `max` commits, children before
 /// parents, whether more were left out and where the walk stopped. Commits in `cache` are taken
-/// from it instead of being read again.
+/// from it instead of being read again; the others show their author as `map` has it.
 ///
 /// The walk is newest first by commit time and stops after `max` commits. libgit2's revwalk
 /// can't do this: any sorting makes it read every reachable commit before returning the first.
-pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize, cache: Option<&CommitCache>) -> Result<Walked> {
+pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize, cache: Option<&CommitCache>, map: &Mailmap) -> Result<Walked> {
     let mut queue = TimeQueue::default();
     for &tip in tips {
         let time = match cache.and_then(|c| c.get(tip)) {
@@ -44,7 +47,7 @@ pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize, cache:
     }
     let mut authors = cache.map(CommitCache::authors).unwrap_or_default();
     let mut out = Vec::new();
-    let reused = walk_into(repo, &mut queue, &mut authors, cache, max, &mut out)?;
+    let reused = walk_into(repo, &mut queue, &mut authors, (cache, map), max, &mut out)?;
     tracing::debug!(reused, read = out.len() - reused, "load.reuse");
     let truncated = !queue.is_empty();
     Ok(Walked { commits: children_first(out), truncated, frontier: truncated.then(|| queue.frontier()) })
@@ -52,12 +55,19 @@ pub(super) fn newest_commits(repo: &Repository, tips: &[Oid], max: usize, cache:
 
 /// The next `count` commits of a walk that stopped at `frontier` after loading `loaded`; None
 /// when one of them is a child of a loaded commit (its clock was behind), which the loaded rows
-/// can't take in below them: a full walk puts it above its parent.
-pub(super) fn more_commits(repo: &Repository, loaded: &[CommitInfo], frontier: &Frontier, count: usize) -> Result<Option<Walked>> {
+/// can't take in below them: a full walk puts it above its parent. The page maps authors with
+/// `map`, which must be the mailmap `loaded` was read with.
+pub(super) fn more_commits(
+    repo: &Repository,
+    loaded: &[CommitInfo],
+    frontier: &Frontier,
+    count: usize,
+    map: &Mailmap,
+) -> Result<Option<Walked>> {
     let mut queue = TimeQueue::resume(frontier, loaded.iter().map(|c| c.oid));
     let mut authors = authors_of(loaded);
     let mut out = Vec::new();
-    walk_into(repo, &mut queue, &mut authors, None, count, &mut out)?;
+    walk_into(repo, &mut queue, &mut authors, (None, map), count, &mut out)?;
     let old: HashSet<Oid> = loaded.iter().map(|c| c.oid).collect();
     if out.iter().any(|c| c.parents.iter().any(|p| old.contains(p))) {
         return Ok(None);
@@ -73,7 +83,7 @@ fn walk_into(
     repo: &Repository,
     queue: &mut TimeQueue,
     authors: &mut Authors,
-    cache: Option<&CommitCache>,
+    (cache, map): (Option<&CommitCache>, &Mailmap),
     max: usize,
     out: &mut Vec<CommitInfo>,
 ) -> Result<usize> {
@@ -103,7 +113,7 @@ fn walk_into(
         // reused buffer; UTF-8 text is borrowed, not copied, on its way in.
         let d = Decoder::of(&c);
         let sig = c.author();
-        let author = authors.get(&d.name(&sig), &d.email(&sig));
+        let author = authors.shown(map, &d.name(&sig), &d.email(&sig));
         body.clear();
         flatten_body_into(&d.body(&c), &mut body);
         out.push(CommitInfo {
