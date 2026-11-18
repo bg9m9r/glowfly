@@ -30,7 +30,7 @@ pub(crate) mod tools;
 pub(crate) mod updates;
 
 pub use commands::{Entry, PaletteCommand, entries};
-pub use kinds::{InputKind, PickKind, StashAction};
+pub use kinds::{InputKind, PickKind};
 
 use super::AppState;
 use super::forge::ForgeState;

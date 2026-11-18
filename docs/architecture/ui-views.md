@@ -189,7 +189,7 @@ start with `state/`, `update/` or `ui/`.
 ## Left panel and dashboard
 
 - `sidebar.rs`: left panel: local and remote branches, pull requests, issues, Git Flow branches, tags, stashes, worktrees and submodules.
-- `stashes.rs`: the STASHES section of the left panel: one row per stash (a click selects its commit) with a menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right.
+- `stashes.rs`: the STASHES section of the left panel: one row per stash (a click selects its commit) with a menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right (the items come from `state/stash_actions.rs`).
 - `submodules.rs`: the SUBMODULES section of the left panel: one row per submodule with a painted status marker (with its own short tooltip), a status word and an explanatory tooltip; double-click opens it, and the row menu opens, initializes, updates or restores it, records its checkout, fetches or pulls inside it, copies its URL, edits it, discards the changes inside it or removes it.
 - `ref_visibility.rs`: hiding branches and tags in the graph, or showing only some, from the left panel: the branch and tag menu items, the markers on hidden and shown-only rows, and the banner above the lists.
 - `forge_filter_menu.rs`: the filter chip in the PULL REQUESTS and ISSUES headers, and its popover: the built-in filters, the repository's saved filters (edit, move, remove) and New filter…, sent as `Msg::ForgeFilter`; the chip sits left of the shared header's + and ⋯.

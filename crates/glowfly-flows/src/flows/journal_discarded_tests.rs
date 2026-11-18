@@ -8,10 +8,10 @@ use git2::Oid;
 use glowfly_core::journal::LostKind;
 use glowfly_core::undo::kept::KeptWhat;
 use glowfly_model::journal::{JournalMsg, LostMsg};
-use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::msg::{Msg, RepoMsg, StageMsg, StashMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::journal_lost::{JournalTab, LostView};
-use glowfly_model::state::palette::StashAction;
+use glowfly_model::state::stash_confirm::StashAction;
 use std::path::{Path, PathBuf};
 
 fn read(dir: &Path, f: &str) -> String {
@@ -119,7 +119,7 @@ fn a_dropped_stash_goes_back_in_the_list_after_a_restart() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     let oid = st.snap.as_ref().unwrap().stashes[0].oid;
-    drive(&mut st, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 0, oid }));
+    drive(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 0, oid }));
     assert!(st.snap.as_ref().unwrap().stashes.is_empty());
     drop(st);
 

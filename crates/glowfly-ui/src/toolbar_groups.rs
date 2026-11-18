@@ -170,7 +170,7 @@ pub(super) fn branch(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, msgs: &m
         }
         let r = tool(ui, st, Icon::Pop, (t.tr("toolbar.pop.button"), t.tr("toolbar.pop.name")), rules::pop_blocked(st).is_none());
         if attach(r, keys, t, || tips::pop(st)).clicked() {
-            msgs.extend(glowfly_model::state::stash_confirm::pop_latest(snap, t));
+            msgs.extend(glowfly_model::state::stash_actions::pop_latest(snap, t));
         }
     });
 }

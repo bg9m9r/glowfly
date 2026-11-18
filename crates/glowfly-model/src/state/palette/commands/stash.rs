@@ -3,7 +3,7 @@
 //! stash and the apply, unstash, delete and rename sub-lists (while there are stashes).
 
 use super::{Entry, PaletteCommand as C, entry, with_detail};
-use crate::state::palette::kinds::StashAction;
+use crate::state::stash_confirm::StashAction;
 use crate::state::stashes::wip_files;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops::StashScope;

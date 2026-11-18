@@ -3,6 +3,7 @@
 //! and footers, and which command opens which step.
 
 use crate::state::palette::commands::PaletteCommand;
+use crate::state::stash_confirm::StashAction;
 use glowfly_core::clone_ops::parse_depth;
 use glowfly_core::gitflow::FlowKind;
 
@@ -29,34 +30,6 @@ impl PaletteCommand {
             PaletteCommand::StashMessage => Some(InputKind::StashMessage),
             PaletteCommand::FetchMoreCommits => Some(InputKind::DeepenBy),
             _ => None,
-        }
-    }
-}
-
-/// What a stash sub-list does with the chosen stash.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum StashAction {
-    Apply,
-    Pop,
-    Drop,
-}
-
-impl StashAction {
-    /// The `git stash` subcommand.
-    pub fn git_verb(self) -> &'static str {
-        match self {
-            StashAction::Apply => "apply",
-            StashAction::Pop => "pop",
-            StashAction::Drop => "drop",
-        }
-    }
-
-    /// The job's label in the activity log, as the sidebar names it.
-    pub fn job_label(self) -> &'static str {
-        match self {
-            StashAction::Apply => "Apply stash",
-            StashAction::Pop => "Unstash",
-            StashAction::Drop => "Delete stash",
         }
     }
 }

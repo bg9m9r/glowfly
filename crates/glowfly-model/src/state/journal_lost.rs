@@ -7,8 +7,7 @@
 //! its path only where nothing is, or as a copy next to it (`undo::kept::restore`).
 
 use super::journal_restore::{self, RestorePlan};
-use super::palette::kinds::StashAction;
-use super::stash_confirm::StashRun;
+use super::stash_confirm::{StashAction, StashRun};
 use crate::msg::{BranchMsg, JobMsg, Msg};
 use git2::Oid;
 use glowfly_core::i18n::Lang;

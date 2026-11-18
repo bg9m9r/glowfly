@@ -2,8 +2,9 @@
 //! selected item (the Pick type is in palette.rs).
 
 use super::profiles::profile_rows;
-use super::{Entry, Hit, IssuePickRow, Items, MAX_PICK_ROWS, PaletteCommand, Pick, PickKind, Ranked, StashAction, issues_to_view};
+use super::{Entry, Hit, IssuePickRow, Items, MAX_PICK_ROWS, PaletteCommand, Pick, PickKind, Ranked, issues_to_view};
 use crate::state::forge::ForgeState;
+use crate::state::stash_confirm::StashAction;
 use glowfly_core::fuzzy;
 use glowfly_core::repo::StashInfo;
 use glowfly_core::settings::Settings;

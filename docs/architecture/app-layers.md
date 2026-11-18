@@ -46,7 +46,8 @@ source file, update its line here. Features that span every layer are in
 - `msg/layout.rs`: messages for the window's zoom, full screen, showing or hiding its panels and how the changed-file lists show their files (update/layout.rs).
 - `msg/recent.rs`: messages for the recent and favorite repository lists (update/recent.rs), and the runner's reports on saving recent.txt and tabs.txt (`StateFile`, `SaveNotes`; update/recent_files.rs).
 - `msg/repos.rs`: messages for finding repositories in project folders, and fetching or pulling many listed repositories at once (update/repos.rs).
-- `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/local_done.rs, update/commit.rs, update/undo.rs, update/stash.rs).
+- `msg/work.rs`: messages for staging, committing and running git jobs (update/ops.rs, update/local_done.rs, update/commit.rs, update/undo.rs).
+- `msg/stash.rs`: `StashMsg`, every action on one stash (apply, pop and drop as `Run`, the Rename stash dialog and the rename), the question before applying on uncommitted changes and the Stash dialog (update/stash.rs, update/stash_push.rs); `AutoStashMsg` (update/auto_stash.rs, update/auto_stash_saved.rs).
 
 ## `effect/`: effects
 
@@ -116,7 +117,8 @@ source file, update its line here. Features that span every layer are in
 - `rebase_merges.rs`: the rebase panel's merge rows, and its header's texts: the subtitle, the order line and the tip row's "Tip of main".
 - `rebase_update_refs.rs`: the rebase panel's update-ref rows, moving a commit with them, the stacked branches an edit leaves on another commit, and the branch aliases that hold Start back.
 - `rebase_onto.rs`: rebasing onto a graph commit.
-- `stash_confirm.rs`: whether applying, popping or deleting a stash asks first or is refused over conflicts, for every entry point, and the files the stash and the working tree both change; tests in `stash_confirm_tests.rs`.
+- `stash_confirm.rs`: `StashAction` (apply, pop, drop: the git verb and job label); whether applying, popping or deleting a stash asks first or is refused over conflicts, for every entry point, and the files the stash and the working tree both change; tests in `stash_confirm_tests.rs`.
+- `stash_actions.rs`: the one builder of a listed stash's actions (Apply, Unstash, Rename…, Delete… in menu order, each with its message, why it is blocked and whether it is the danger item) for the STASHES row menu, the palette's stash sub-lists and Unstash the latest stash; `source_checks`' `stash_actions.rs` keeps every other file from building those messages; tests in `stash_actions_tests.rs`.
 - `auto_stash.rs`: the auto-stash prompt, its texts and the stashes waiting to go back.
 - `job_spec.rs`: `JobSpec`, a git job for `start_job`, and `Retry`, Try again's copy of one with the tab it started in.
 - `job_spec/labels.rs`: a job's English label shown in the UI language, for the headlines built from it.
@@ -341,6 +343,7 @@ source file, update its line here. Features that span every layer are in
 - `update/ssh/service.rs`: Preferences > SSH: adding a key's public half to a connected hosting-service account.
 - `update/ssh/key_use.rs`: Preferences > SSH: the key git uses for SSH remotes (core.sshCommand, globally or for the open, trusted repository), the Use local SSH agent setting, and adding a key to the agent.
 - `update/ssh/windows.rs`: Preferences > SSH on Windows: Use Windows' OpenSSH writes the global core.sshCommand that makes git run Windows' own ssh (which reads keys from the agent service), and Use Git's own ssh unsets it.
+- `update/stash.rs`: apply, pop and drop of a listed stash as a git job that names the entry by position and carries its commit (refused when the list moved), the Rename stash dialog and its job, and the question before applying on top of uncommitted changes once the stash's files are read.
 - `update/stash_push.rs`: the Stash dialog (`Modal::StashPush`): opening it on a choice, and stashing every change, only the staged changes or chosen files, optionally keeping the staged changes staged, as one git job (`stash_ops::push_command`), so hooks, config and Repository trust apply.
 - `update/submodule_add.rs`: the Add submodule dialog: opening it, checking its folder on disk as the user types (the view only reads the answer), and running `git submodule add` as a job.
 - `update/submodule_edit.rs`: the Edit submodule dialog: opening it prefilled with the submodule's .gitmodules URL and branch, and running `git submodule set-url` / `sync` / `set-branch` as one job.

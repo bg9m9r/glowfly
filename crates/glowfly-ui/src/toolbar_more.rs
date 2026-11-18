@@ -90,7 +90,7 @@ fn part_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host: Option<&F
             let why = rules::pop_blocked(st);
             let r = menu::item(t.tr("toolbar.pop.button")).blocked(why.as_deref()).show(ui);
             if r.clicked() {
-                msgs.extend(glowfly_model::state::stash_confirm::pop_latest(snap, t));
+                msgs.extend(glowfly_model::state::stash_actions::pop_latest(snap, t));
             }
         }
         Part::Pr => {

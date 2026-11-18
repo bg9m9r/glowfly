@@ -8,7 +8,8 @@ use crate::flows::{drive, git, state};
 use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::palette::nav::{Jump, PAGE_ROWS};
-use glowfly_model::state::palette::{InputKind, Mode, Palette, PaletteCommand as C, StashAction, row_count};
+use glowfly_model::state::palette::{InputKind, Mode, Palette, PaletteCommand as C, row_count};
+use glowfly_model::state::stash_confirm::StashAction;
 use std::time::Instant;
 
 /// Sends `j` and returns the new selection, checking it asks the list to scroll there.

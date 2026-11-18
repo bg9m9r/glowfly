@@ -91,7 +91,6 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
         JobMsg::Cancel => super::job_stop::cancel(st, fx),
         JobMsg::Stopped { output, undo } => super::job_stop::stopped(st, output, undo, now, fx),
         m @ (JobMsg::Step(_) | JobMsg::Progress(_)) => super::job_stop::live(st, m),
-        JobMsg::Stash { action, index, oid } => super::stash::run(st, action, index, oid, fx),
         JobMsg::Undo => super::undo::run(st, false, now, fx),
         JobMsg::Redo => super::undo::run(st, true, now, fx),
         JobMsg::UndoWith { redo, action, opts } => super::undo::run_with(st, redo, *action, opts, fx),

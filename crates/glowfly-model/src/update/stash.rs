@@ -4,13 +4,13 @@
 //! snapshot shifts every `stash@{N}`: the job names the entry by position for git but carries
 //! the commit the user picked, and the runner refuses it if that position now holds another stash.
 //! The question before applying or popping on top of uncommitted changes opens once the
-//! stash's files are read. The Stash dialog's messages go to update/stash_push.rs.
+//! stash's files are read. The messages come from state/stash_actions.rs; the Stash dialog's
+//! messages go to update/stash_push.rs.
 
 use super::ops::{self, JobSpec, start_job};
 use crate::effect::{Effect, StashEffect};
 use crate::msg::{Msg, StashMsg};
-use crate::state::palette::StashAction;
-use crate::state::stash_confirm::{self, StashAsk};
+use crate::state::stash_confirm::{self, StashAction, StashAsk};
 use crate::state::stashes::RenameStashForm;
 use crate::state::{AppState, Modal};
 use git2::Oid;
@@ -20,7 +20,7 @@ use glowfly_core::stash_ops::edited_message;
 
 const GONE: &str = "That stash no longer exists.";
 
-pub(super) fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid, fx: &mut Vec<Effect>) {
+fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid, fx: &mut Vec<Effect>) {
     let refname = format!("stash@{{{index}}}");
     let cmd = args(&["stash", action.git_verb(), &refname]);
     // A drop is undoable while the tab is open; git's "Dropped stash@{N} (<sha>)" line also
@@ -32,6 +32,7 @@ pub(super) fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid
 
 pub(super) fn handle(st: &mut AppState, msg: StashMsg, fx: &mut Vec<Effect>) {
     match msg {
+        StashMsg::Run { action, index, oid } => run(st, action, index, oid, fx),
         StashMsg::RenameDialog { oid } => match find(st, oid) {
             Some(s) => st.modal = Some(Modal::RenameStash(RenameStashForm::new(&s))),
             None => st.log(false, GONE),

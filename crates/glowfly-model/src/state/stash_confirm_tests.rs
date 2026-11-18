@@ -1,11 +1,10 @@
 //! The stash question's rules: the job on a clean tree, the question on a dirty one, the
-//! refusal over conflicts, Pop naming the newest stash by position and commit, and the files
-//! the stash and the working tree both change.
+//! refusal over conflicts and the files the stash and the working tree both change.
 
 use super::*;
-use glowfly_core::repo::FileEntry;
+use glowfly_core::repo::{FileEntry, StashInfo};
 
-fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
+pub(crate) fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-stash-confirm-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let repo = git2::Repository::init(&dir).unwrap();
@@ -21,22 +20,22 @@ fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
     (dir, snap)
 }
 
-const EN: Lang = Lang::En;
+pub(crate) const EN: Lang = Lang::En;
 
-fn oid() -> Oid {
+pub(crate) fn oid() -> Oid {
     Oid::from_str("1234567890123456789012345678901234567890").unwrap()
 }
 
-fn listed(index: usize) -> StashRun {
+pub(crate) fn listed(index: usize) -> StashRun {
     StashRun::Listed { index }
 }
 
-fn with_stash(mut snap: Snapshot) -> Snapshot {
+pub(crate) fn with_stash(mut snap: Snapshot) -> Snapshot {
     snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: oid() }];
     snap
 }
 
-fn strings(a: &[&str]) -> Vec<String> {
+pub(crate) fn strings(a: &[&str]) -> Vec<String> {
     a.iter().map(|s| s.to_string()).collect()
 }
 
@@ -45,11 +44,11 @@ fn a_clean_tree_runs_the_guarded_job() {
     let (_, clean) = fixture("clean");
     for action in [StashAction::Apply, StashAction::Pop] {
         let m = guarded(&clean, EN, action, oid(), "wip", listed(2));
-        assert!(matches!(m, Msg::Job(JobMsg::Stash { action: a, index: 2, oid: o }) if a == action && o == oid()));
+        assert!(matches!(m, Msg::Stash(StashMsg::Run { action: a, index: 2, oid: o }) if a == action && o == oid()));
     }
     let m = guarded(&clean, EN, StashAction::Drop, oid(), "wip", listed(2));
     assert!(matches!(&m, Msg::ConfirmDanger { title, then, .. }
-        if title == "Delete stash" && matches!(**then, Msg::Job(JobMsg::Stash { action: StashAction::Drop, index: 2, .. }))));
+        if title == "Delete stash" && matches!(**then, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 2, .. }))));
 }
 
 #[test]
@@ -63,7 +62,7 @@ fn a_dirty_tree_asks_after_reading_the_stash() {
     let m = ask_confirm(&dirty, EN, &ask, Some(&paths));
     assert!(matches!(&m, Msg::Confirm { title, button, body, then }
         if title == "Unstash" && button == "Unstash" && body.contains("a.txt") && !body.contains("b.txt")
-        && matches!(**then, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, .. }))));
+        && matches!(**then, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, .. }))));
 }
 
 #[test]
@@ -79,15 +78,6 @@ fn conflicts_refuse_apply_and_pop() {
     assert!(matches!(guarded(&snap, EN, StashAction::Drop, oid(), "wip", listed(0)), Msg::ConfirmDanger { .. }));
     let (_, clean) = fixture("no-conflicts");
     assert!(apply_blocked(&clean, EN).is_none());
-}
-
-#[test]
-fn pop_latest_names_the_newest_stash_by_position_and_commit() {
-    let (_, snap) = fixture("pop-latest");
-    assert!(pop_latest(&snap, EN).is_none(), "no stashes");
-    let snap = with_stash(snap);
-    let m = pop_latest(&snap, EN).unwrap();
-    assert!(matches!(m, Msg::Job(JobMsg::Stash { action: StashAction::Pop, index: 0, oid: o }) if o == oid()));
 }
 
 #[test]

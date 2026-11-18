@@ -13,9 +13,10 @@ use crate::snapshot_check::CheckSnapshot;
 use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
-use glowfly_model::msg::{JobMsg, Msg, StashMsg};
-use glowfly_model::state::palette::StashAction;
+use glowfly_model::msg::{Msg, StashMsg};
 use glowfly_model::state::palette::{Mode, Palette, Pick};
+use glowfly_model::state::stash_actions::{self, StashOption};
+use glowfly_model::state::stash_confirm::StashAction;
 use glowfly_model::state::stashes::RenameStashForm;
 use glowfly_model::state::{AppState, Modal};
 use std::path::PathBuf;
@@ -101,7 +102,7 @@ fn stash_menu_asks_on_a_dirty_tree() {
     open_menu(&mut h, &row);
     h.get_by_label("Apply").click();
     h.run();
-    assert!(pushed(&h, &|m| matches!(m, Msg::Job(JobMsg::Stash { action: StashAction::Apply, index: 0, .. }))));
+    assert!(pushed(&h, &|m| matches!(m, Msg::Stash(StashMsg::Run { action: StashAction::Apply, index: 0, .. }))));
     assert!(!pushed(&h, &|m| matches!(m, Msg::Confirm { .. } | Msg::ConfirmDanger { .. })));
     drop(h);
     remove_fixture(&dir);
@@ -131,7 +132,7 @@ fn stash_apply_confirm_light() {
     let (mut st, dir) = with_stashes(ThemeChoice::Light, "stash-apply-confirm");
     let snap = st.snap.as_ref().unwrap();
     let t = st.settings.lang();
-    let msg = glowfly_model::state::stash_confirm::stash_msg(snap, t, StashAction::Apply, &snap.stashes[0]);
+    let msg = stash_actions::for_commit(snap, t, StashOption::Apply, snap.stashes[0].oid).expect("listed");
     let Msg::Stash(glowfly_model::msg::StashMsg::Ask(ask)) = msg else { panic!("a question on a dirty tree") };
     // The stash changes one of the working tree's files and one it leaves alone.
     let paths = vec![snap.unstaged[0].path.clone(), "untouched.txt".to_owned()];
