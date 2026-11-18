@@ -204,3 +204,23 @@ fn blame_of_an_empty_file() {
     assert!(b.lines.is_empty() && b.runs.is_empty() && b.commits.is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Blames `a.txt` of a repository whose one commit (by Zoë Müller, "Añade café") was made in
+/// UTF-8 before `setting` was added: git re-codes what it prints into the output encoding.
+fn blamed_under(name: &str, setting: &str) -> Blame {
+    let dir = scratch_repo(name);
+    set_config(&dir, &[("user.name", "Zoë Müller")]);
+    commit(&dir, "a.txt", "one\n", "Añade café");
+    set_config(&dir, &[(setting, "latin1")]);
+    let b = blame_file(&dir, "a.txt", None, &BlameOptions::default()).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    b
+}
+
+#[test]
+fn blame_reads_names_and_summaries_under_a_legacy_output_encoding() {
+    for (name, setting) in [("blame-output-encoding", "i18n.logOutputEncoding"), ("blame-commit-encoding", "i18n.commitEncoding")] {
+        let b = blamed_under(name, setting);
+        assert_eq!((b.commits[0].author.as_str(), b.commits[0].summary.as_str()), ("Zoë Müller", "Añade café"), "{setting}");
+    }
+}

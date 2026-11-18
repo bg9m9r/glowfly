@@ -21,8 +21,10 @@ use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
+mod argv;
 mod askpass_vars;
 mod wait;
+pub use argv::{args, subcommand, utf8_args};
 pub use askpass_vars::{askpass_env, askpass_env_in, askpass_vars, askpass_vars_for, askpass_vars_in, display_placeholder};
 pub use wait::Stop;
 
@@ -194,23 +196,6 @@ pub fn output_watching(
     let (mut out, stdout) = raw_with(&program, cwd, args, input, env, None, Some((stop, watch)));
     out.stdout = String::from_utf8_lossy(&stdout).into_owned();
     out
-}
-
-/// The git subcommand `args` runs: the first argument that isn't a global option (`-c k=v` and
-/// `-C dir` take the next argument; `--git-dir=…`, `--no-pager` and any other leading `-…`
-/// are skipped).
-pub fn subcommand(args: &[String]) -> Option<&str> {
-    let mut it = args.iter();
-    while let Some(a) = it.next() {
-        match a.as_str() {
-            "-c" | "-C" => {
-                it.next();
-            }
-            s if s.starts_with('-') => {}
-            s => return Some(s),
-        }
-    }
-    None
 }
 
 /// A stoppable run's stop and the watcher of its stderr (`raw_with`).
@@ -388,11 +373,6 @@ pub fn parse_version(s: &str) -> Option<(u32, u32, u32)> {
         _ => Some(0),
     };
     Some((number(true)?, number(true)?, number(false)?))
-}
-
-/// Converts a list of string slices into an owned argument vector.
-pub fn args(a: &[&str]) -> Vec<String> {
-    a.iter().map(|s| s.to_string()).collect()
 }
 
 #[cfg(test)]

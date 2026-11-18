@@ -40,8 +40,8 @@ pub use error::{
     read_refusal, write_refusal,
 };
 pub use plan::plan;
-pub(crate) use progress::progress_of;
 pub use progress::{RebaseProgress, progress, stopped_at};
+pub(crate) use progress::{list_text, progress_of};
 pub use quick::{QuickEdit, QuickPlan, prepare_edit};
 pub use remaining::{EditTodoRequest, Remaining, edit_todo, remaining};
 pub use run::{Resume, resume, start};

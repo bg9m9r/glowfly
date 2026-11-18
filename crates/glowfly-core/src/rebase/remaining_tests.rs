@@ -201,6 +201,52 @@ fn edit_todo_reorders_drops_and_adds_steps() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A rebase stopped at a `break` whose todo (c2, an exec, c3) holds a subject that isn't UTF-8,
+/// as git writes one under a legacy `i18n.logOutputEncoding`. Returns the todo's path and bytes.
+fn latin1_todo(name: &str) -> (PathBuf, [git2::Oid; 4], PathBuf, Vec<u8>) {
+    let (dir, [c1, c2, c3, c4]) = linear(name);
+    assert!(rebase_i(&dir, &c1.to_string(), &format!("break\npick {c2} c2\nexec echo one\npick {c3} c3\n")));
+    let todo = dir.join(".git").join("rebase-merge").join("git-rebase-todo");
+    let bytes = [format!("pick {c2} Caf").as_bytes(), b"\xE9\nexec echo one\n", format!("pick {c3} c3\n").as_bytes()].concat();
+    std::fs::write(&todo, &bytes).unwrap();
+    (dir, [c1, c2, c3, c4], todo, bytes)
+}
+
+#[test]
+fn lists_a_rebase_whose_todo_is_not_utf8() {
+    let (dir, [_, c2, c3, _], todo, _) = latin1_todo("rebase-remaining-latin1");
+    let r = remaining(&dir).unwrap();
+    assert_eq!(kinds(&r.steps), ["pick c2", "exec echo one", "pick c3"]);
+    let mut steps = r.steps.clone();
+    steps.swap(0, 2);
+    edit_todo(&dir, &edit_request(&r, steps), &SequenceEditor::Copy).unwrap();
+    let text = String::from_utf8_lossy(&std::fs::read(&todo).unwrap()).into_owned();
+    let at = |c: git2::Oid| text.find(&c.to_string()[..7]).unwrap_or_else(|| panic!("{c} in {text}"));
+    assert!(at(c3) < at(c2), "{text}");
+    git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_refused_edit_puts_back_the_exact_bytes() {
+    let (dir, _, todo, bytes) = latin1_todo("rebase-remaining-latin1-refused");
+    let r = remaining(&dir).unwrap();
+    let steps = r.steps.clone();
+    assert!(edit_todo(&dir, &edit_request(&r, steps), &SequenceEditor::Shell("false".into())).is_err());
+    assert_eq!(std::fs::read(&todo).unwrap(), bytes);
+    git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_step_that_is_not_utf8_is_refused() {
+    let (dir, [_, _, c3, _], todo, _) = latin1_todo("rebase-remaining-latin1-exec");
+    std::fs::write(&todo, [&b"exec echo caf\xE9\n"[..], format!("pick {c3} c3\n").as_bytes()].concat()).unwrap();
+    assert_eq!(refused(remaining(&dir)), RebaseError::UnsupportedSteps);
+    git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn edit_todo_refuses_a_stale_or_different_list() {
     let (dir, [_, c2, ..]) = linear("rebase-remaining-stale");

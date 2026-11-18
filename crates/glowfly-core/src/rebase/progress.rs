@@ -46,9 +46,16 @@ fn amends_head(repo: &Repository, amend: &str) -> bool {
     Oid::from_str(amend.trim()).ok().is_some_and(|o| Some(o) == head)
 }
 
+/// A list git wrote for a rebase (`git-rebase-todo`, `done`) as text. git writes each subject in
+/// `i18n.logOutputEncoding`, so bytes that aren't UTF-8 become U+FFFD; the commands and ids the
+/// readers go by are ASCII.
+pub(crate) fn list_text(path: &Path) -> std::io::Result<String> {
+    Ok(String::from_utf8_lossy(&std::fs::read(path)?).into_owned())
+}
+
 pub(crate) fn progress_of(repo: &Repository) -> Option<RebaseProgress> {
     let state = repo.state();
-    let read = |p: &Path| std::fs::read_to_string(p).unwrap_or_default();
+    let read = |p: &Path| list_text(p).unwrap_or_default();
     let mut p = match state {
         RepositoryState::RebaseInteractive | RepositoryState::RebaseMerge => {
             let dir = repo.path().join("rebase-merge");

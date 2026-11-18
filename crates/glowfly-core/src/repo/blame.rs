@@ -175,7 +175,7 @@ pub fn blame_file(workdir: &Path, path: &str, at: Option<Oid>, opts: &BlameOptio
     }
     let language = super::attrs::linguist_language(&attrs, path);
 
-    let mut args: Vec<String> = ["--literal-pathspecs", "blame", "--porcelain", "--no-textconv"].map(String::from).to_vec();
+    let mut args = gitcli::utf8_args(&["--literal-pathspecs", "blame", "--porcelain", "--no-textconv"]);
     args.extend(ignore_revs_args(&repo, workdir));
     if opts.ignore_whitespace {
         args.push("-w".into());

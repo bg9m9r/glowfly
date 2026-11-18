@@ -141,7 +141,7 @@ fn abort_unstarted(workdir: &Path, git_dir: &Path) {
     if !dir.is_dir() {
         return;
     }
-    let done = std::fs::read_to_string(dir.join("done")).unwrap_or_default();
+    let done = super::list_text(&dir.join("done")).unwrap_or_default();
     if done.trim().is_empty() {
         let _ = gitcli::run(workdir, &gitcli::args(&["rebase", "--abort"]));
     }

@@ -3,6 +3,7 @@
 //! the suggested names of file and uncommitted-changes patches.
 
 use super::*;
+use crate::gitcli::args;
 use crate::testutil::{git, scratch_repo, write};
 
 fn head(dir: &Path) -> Oid {

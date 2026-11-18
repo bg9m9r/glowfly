@@ -219,3 +219,13 @@ fn every_git_child_leads_its_own_session() {
         assert_eq!(session, pid, "stoppable: {stoppable}");
     }
 }
+
+#[test]
+fn utf8_args_put_the_output_encoding_first() {
+    assert_eq!(
+        utf8_args(&["--literal-pathspecs", "blame", "x"]),
+        ["-c", "i18n.logOutputEncoding=UTF-8", "--literal-pathspecs", "blame", "x"]
+    );
+    assert_eq!(subcommand(&utf8_args(&["log", "-1"])), Some("log"));
+    assert_eq!(subcommand(&utf8_args(&[])), None);
+}

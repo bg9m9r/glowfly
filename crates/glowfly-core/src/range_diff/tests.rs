@@ -3,7 +3,7 @@
 //! the refusals; reading git's exit; and that nothing in the repository changes.
 
 use super::*;
-use crate::testutil::{git, scratch_repo, with_origin, write};
+use crate::testutil::{git, scratch_repo, set_config, with_origin, write};
 use std::path::{Path, PathBuf};
 
 fn out(code: i32, stderr: &str) -> GitOutput {
@@ -214,9 +214,30 @@ fn the_command_line() {
         Oid::from_bytes(&[4; 20]).unwrap(),
     );
     let args = command(Range { base: a, tip: b }, Range { base: c, tip: d });
-    assert_eq!(args, ["range-diff".to_string(), "--no-color".into(), "--abbrev=40".into(), format!("{a}..{b}"), format!("{c}..{d}")]);
+    let lead = ["-c".to_string(), "i18n.logOutputEncoding=UTF-8".into(), "range-diff".into(), "--no-color".into(), "--abbrev=40".into()];
+    assert_eq!(args, [lead.to_vec(), vec![format!("{a}..{b}"), format!("{c}..{d}")]].concat());
     let shared = command(Range { base: a, tip: a }, Range { base: a, tip: d });
-    assert_eq!(shared, ["range-diff".to_string(), "--no-color".into(), "--abbrev=40".into(), a.to_string(), a.to_string(), d.to_string()]);
+    assert_eq!(shared, [lead.to_vec(), vec![a.to_string(), a.to_string(), d.to_string()]].concat());
+}
+
+#[test]
+fn the_interdiff_reads_right_under_a_legacy_output_encoding() {
+    let dir = scratch_repo("rd-latin1");
+    set_config(&dir, &[("user.name", "Zoë Müller")]);
+    commit(&dir, "base.txt", "base\n", "base");
+    let old = commit(&dir, "f.txt", "a\nb\nc\nd\ne\nf\ng\nh\n", "Añade café");
+    write(&dir, "f.txt", "a\nb\nc\nD changed\ne\nf\ng\nh\n");
+    git(&dir, &["commit", "-q", "-a", "--amend", "-m", "Añade café con leche"]);
+    let new = head(&dir, "HEAD");
+    set_config(&dir, &[("i18n.logOutputEncoding", "latin1")]);
+    let c = compared(compare(&dir, &Ends::Tips { old, new }, None).unwrap());
+    let changed = c.pairs.iter().find(|p| p.status == Status::Changed).expect("a changed pair");
+    let lines: Vec<&str> = changed.interdiff.iter().flat_map(|d| &d.hunks).flat_map(|h| &h.lines).map(|l| l.text.as_str()).collect();
+    assert!(lines.iter().all(|l| !l.contains(char::REPLACEMENT_CHARACTER)), "{lines:?}");
+    assert!(lines.iter().any(|l| l.contains("Añade café con leche")), "{lines:?}");
+    assert_eq!(changed.old.as_ref().map(|s| s.summary.as_str()), Some("Añade café"));
+    assert_eq!(changed.new.as_ref().map(|s| s.summary.as_str()), Some("Añade café con leche"));
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

@@ -205,7 +205,8 @@ fn note(stderr: &str, raw: &str) -> String {
 
 /// Runs git's signature check on `oid` (signed, in `format`): `git log -1 --no-show-signature
 /// LOG_FORMAT <oid> --`, never prompting and stopped after [`gitcli::READ_TIMEOUT`] (gpg can
-/// hang fetching a key).
+/// hang fetching a key). Asked for UTF-8 output ([`gitcli::utf8_args`]), so a signer's name
+/// reads right under a legacy `i18n.logOutputEncoding`.
 pub fn verify_commit(workdir: &Path, oid: Oid, format: SigningFormat) -> Result<SignatureCheck> {
     verify_commit_with(workdir, oid, format, &[])
 }
@@ -214,7 +215,7 @@ pub fn verify_commit(workdir: &Path, oid: Oid, format: SigningFormat) -> Result<
 /// GIT_CONFIG_GLOBAL at an empty file and set GIT_CONFIG_NOSYSTEM=1.
 pub(crate) fn verify_commit_with(workdir: &Path, oid: Oid, format: SigningFormat, env: &[(&str, &str)]) -> Result<SignatureCheck> {
     let oid = oid.to_string();
-    let args = gitcli::args(&["log", "-1", "--no-show-signature", LOG_FORMAT, &oid, "--"]);
+    let args = gitcli::utf8_args(&["log", "-1", "--no-show-signature", LOG_FORMAT, &oid, "--"]);
     let env: Vec<(&str, &str)> = gitcli::NO_PROMPTS.iter().chain(env).copied().collect();
     let out = gitcli::output(workdir, &args, "", &env, Some(gitcli::READ_TIMEOUT));
     if !out.ok {

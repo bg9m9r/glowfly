@@ -3,6 +3,8 @@
 //! exec lines Glowfly adds for a reword or a combined message are folded back into the row they
 //! belong to; the lines finishing a reword whose pick is already done are kept as they are.
 //! `update-ref` lines (`rebase.updateRefs`) become fixed steps and are written back as they are.
+//! The todo is read as bytes, since git writes subjects in its output encoding: only a pick-like
+//! line may hold text that isn't UTF-8, and a failed edit puts back the exact bytes.
 
 use super::error::refusal_file;
 use super::todo::{MSG_DIR, MessageFile, OwnLine, build, editor_command, in_group, listed_oids, own_line, problem_with};
@@ -32,7 +34,8 @@ pub struct Remaining {
     pub steps: Vec<TodoStep>,
     /// The done list has a commit, so the first step may squash or fix up into it.
     pub first_may_combine: bool,
-    /// git's todo file as it was read, to tell whether the rebase moved on since.
+    /// git's todo file as it was read (bytes that aren't UTF-8 replaced), to tell whether the
+    /// rebase moved on since.
     pub todo: String,
 }
 
@@ -67,8 +70,11 @@ fn interactive(workdir: &Path) -> Result<Repository, RebaseError> {
 pub fn remaining(workdir: &Path) -> Result<Remaining, RebaseError> {
     let repo = interactive(workdir)?;
     let dir = repo.path().join("rebase-merge");
-    let read = |name: &str| std::fs::read_to_string(dir.join(name)).unwrap_or_default();
-    let todo = std::fs::read_to_string(dir.join("git-rebase-todo"))?;
+    let read = |name: &str| super::list_text(&dir.join(name)).unwrap_or_default();
+    // git writes subjects in its output encoding: read as bytes, replacing what isn't UTF-8.
+    let raw = std::fs::read(dir.join("git-rebase-todo"))?;
+    let lossy = std::str::from_utf8(&raw).is_err();
+    let todo = String::from_utf8_lossy(&raw).into_owned();
     let done = read("done");
     let branch = read("head-name").trim().strip_prefix("refs/heads/").map(str::to_owned);
     let onto = read("onto");
@@ -85,6 +91,11 @@ pub fn remaining(workdir: &Path) -> Result<Remaining, RebaseError> {
             continue;
         }
         if let Some(p) = parse(&repo, line)? {
+            // A pick-like line's text after the id is only a note to git, so it may be lossy;
+            // every other line's text is shown and written back, and must not be altered.
+            if lossy && line.contains(char::REPLACEMENT_CHARACTER) && !matches!(p, Parsed::Step(TodoStep::Commit(_))) {
+                return Err(RebaseError::UnsupportedSteps);
+            }
             lines.push((raw.trim_end(), p));
         }
     }
@@ -216,7 +227,8 @@ pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor)
     let repo = interactive(workdir)?;
     let git_dir = repo.path().to_path_buf();
     let todo_path = git_dir.join("rebase-merge").join("git-rebase-todo");
-    let current = std::fs::read_to_string(&todo_path)?;
+    let on_disk = std::fs::read(&todo_path)?;
+    let current = String::from_utf8_lossy(&on_disk).into_owned();
     if current != req.todo {
         return Err(RebaseError::TodoMoved);
     }
@@ -266,7 +278,7 @@ pub fn edit_todo(workdir: &Path, req: &EditTodoRequest, editor: &SequenceEditor)
         return Ok(());
     };
     // git leaves the list it handed the editor (short ids, help comments) behind: put back the
-    // text that was read, so the panel's list still matches it.
-    crate::persist::atomic_write(&todo_path, req.todo.as_bytes())?;
+    // bytes that were read, so the panel's list still matches it.
+    crate::persist::atomic_write(&todo_path, &on_disk)?;
     Err(why)
 }

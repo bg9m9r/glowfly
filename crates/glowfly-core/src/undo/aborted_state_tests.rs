@@ -117,6 +117,25 @@ fn rebase_abort_kept_comes_back_at_the_same_step() {
 }
 
 #[test]
+fn a_rebase_whose_list_is_not_utf8_is_still_kept() {
+    let (dir, tip) = stopped("abort-steps-rebase-bytes", &[]);
+    let list = dir.join(".git/rebase-merge/git-rebase-todo");
+    let mut bytes = std::fs::read(&list).unwrap();
+    bytes.extend_from_slice(b"# caf\xE9\n");
+    std::fs::write(&list, bytes).unwrap();
+    let was = state(&dir);
+    let before = folder(&dir, "rebase-merge");
+    let action = abort(&dir);
+    assert_eq!(state(&dir), RepositoryState::Clean);
+    assert_eq!(head_at(&dir), (Some("feature".into()), tip));
+    undo(&dir, &action);
+    assert_eq!(state(&dir), was);
+    assert_eq!(folder(&dir, "rebase-merge"), before, "the state folder byte for byte");
+    ok_git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn rebase_redo_aborts_again() {
     let (dir, tip) = stopped("abort-steps-redo", &[]);
     write(&dir, "a.txt", "resolved\n");
