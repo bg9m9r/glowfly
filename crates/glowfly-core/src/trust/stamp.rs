@@ -59,8 +59,8 @@ pub(super) struct Include {
     pub value: String,
     pub paths: Vec<PathBuf>,
     /// Where the file is isn't listed (`paths` is empty): a relative include after
-    /// `MAX_INCLUDES` others or after the folders to look in reached `MAX_FOLDERS`, or a value
-    /// or folder longer than `MAX_PATH_BYTES`. The scan then follows the whole working tree
+    /// `MAX_INCLUDES` others or after the folders to look in reached `MAX_FOLDERS`, or a path
+    /// longer than `MAX_PATH_BYTES`. The scan then follows the whole working tree
     /// (`programs.rs`) and no two stamps are alike.
     pub unsure: bool,
 }
@@ -69,7 +69,7 @@ pub(super) struct Include {
 const MAX_FOLDERS: usize = 32;
 /// The most relative include settings whose files are listed.
 const MAX_INCLUDES: usize = 256;
-/// The longest include value, and folder to look in, that is followed.
+/// The longest path of an included file that is followed.
 const MAX_PATH_BYTES: usize = 4096;
 
 /// Each include setting of the repository's own config (`include.path`, `includeIf.*.path`,
@@ -109,7 +109,8 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
                 None
             } else {
                 listed += 1;
-                Some(folders.iter().map(|d| d.join(&p)).collect())
+                let joined: Vec<PathBuf> = folders.iter().map(|d| d.join(&p)).collect();
+                (!joined.iter().any(|j| long(j))).then_some(joined)
             };
             let unsure = paths.is_none();
             let paths = paths.unwrap_or_default();
@@ -117,7 +118,7 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
                 if folders.iter().any(|d| d == folder) {
                     continue;
                 }
-                if folders.len() >= MAX_FOLDERS || long(folder) {
+                if folders.len() >= MAX_FOLDERS {
                     full = true;
                     break;
                 }
