@@ -72,6 +72,26 @@ pub(crate) fn fills_at<S>(h: &Harness<'_, S>, at: Pos2) -> Vec<Color32> {
     out
 }
 
+/// The pieces of text `h`'s last frame painted with their top left inside `area`, left to
+/// right, each with whether it was cut short with "…" (a row's path and its note).
+pub(crate) fn texts_inside<S>(h: &Harness<'_, S>, area: Rect) -> Vec<(String, bool)> {
+    fn walk(s: &Shape, clip: Rect, area: Rect, out: &mut Vec<(f32, String, bool)>) {
+        match s {
+            Shape::Vec(v) => v.iter().for_each(|s| walk(s, clip, area, out)),
+            Shape::Text(t) if area.expand(1.0).contains(t.pos) && clip.contains(t.pos) => {
+                out.push((t.pos.x, t.galley.text().to_owned(), t.galley.elided));
+            }
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    for c in &h.output().shapes {
+        walk(&c.shape, c.clip_rect, area, &mut out);
+    }
+    out.sort_by(|a, b| a.0.total_cmp(&b.0));
+    out.into_iter().map(|(_, t, e)| (t, e)).collect()
+}
+
 /// The pieces of text `h`'s last frame painted underlined (a menu title's mnemonic), in paint
 /// order.
 pub(crate) fn underlined<S>(h: &Harness<'_, S>) -> Vec<String> {

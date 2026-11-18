@@ -18,8 +18,8 @@ use glowfly_model::state::tool_compare::OPEN_IN_DIFF_TOOL;
 use glowfly_model::tools::ToolsMsg;
 
 // The English texts, pinned: the header reads them from the catalog.
-const CLOSE_NAME: &str = "Close diff";
-const MORE: &str = "More file actions";
+pub(super) const CLOSE_NAME: &str = "Close diff";
+pub(super) const MORE: &str = "More file actions";
 const OPEN: &str = "Open";
 const RESTORE: &str = "Restore…";
 const STAGE_FILE: &str = "Stage file";
@@ -40,13 +40,14 @@ fn view() -> ViewGroup {
 }
 
 /// An unstaged diff of src/ui/app.txt, with rows and a neighbour on both sides.
-fn unstaged() -> HeaderModel {
+pub(super) fn unstaged() -> HeaderModel {
     let path = "src/ui/app.txt";
     HeaderModel {
         target: DiffTarget::Unstaged(path.into()),
         path: path.into(),
         folder: "src/ui/".into(),
         name: "app.txt".into(),
+        renamed_from: None,
         kind: FileKind::Text,
         status: Some('M'),
         change: ChangeText::Lines { added: 24, removed: 9 },
@@ -63,7 +64,7 @@ fn unstaged() -> HeaderModel {
 }
 
 /// The same file in a commit whose detail lists it.
-fn commit() -> HeaderModel {
+pub(super) fn commit() -> HeaderModel {
     let path = "src/ui/app.txt";
     HeaderModel {
         target: DiffTarget::Commit(oid(), path.into()),
@@ -78,7 +79,7 @@ fn commit() -> HeaderModel {
     }
 }
 
-fn harness(m: HeaderModel, width: f32) -> Harness<'static, Vec<Msg>> {
+pub(super) fn harness(m: HeaderModel, width: f32) -> Harness<'static, Vec<Msg>> {
     harness_in(m, width, Lang::En)
 }
 
@@ -319,7 +320,7 @@ fn primary_tips_follow_the_language_and_keymap() {
 }
 
 /// The header alone, `width` wide, in the dark palette over the app's background, for snapshots.
-fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>> {
+pub(super) fn themed(m: HeaderModel, width: f32, height: f32) -> Harness<'static, Vec<Msg>> {
     use crate::theme::{self, color};
     let keys = Keymap::default();
     let mut h = crate::snapshot_check::builder().with_size(egui::vec2(width, height)).build_ui_state(

@@ -186,6 +186,8 @@ pub struct FileOrder {
     pub place: Option<(usize, usize)>,
     /// Its status letter (M, A, D, R, T, ?), when it is listed.
     pub status: Option<char>,
+    /// The old path of its rename or copy, when its list names one.
+    pub renamed_from: Option<String>,
 }
 
 impl FileOrder {
@@ -213,7 +215,30 @@ pub fn file_order(st: &AppState, target: &DiffTarget) -> FileOrder {
         order.prev = i.checked_sub(1).map(|j| files[j].0.clone());
     }
     order.status = order.status.or_else(|| detail_status(st, target));
+    order.renamed_from = row(st, target).and_then(|f| f.renamed_from.clone());
     order
+}
+
+/// `target`'s row in the list it was opened from, or in the open commit's details when it has no
+/// list. Unstaged rows never name an old path, so none is looked up for them.
+fn row<'a>(st: &'a AppState, target: &DiffTarget) -> Option<&'a FileEntry> {
+    let files: &[FileEntry] = match list_source(st, target) {
+        Some(ListSource::Wip(_, staged, _)) => match target {
+            DiffTarget::Staged(_) => staged,
+            _ => return None,
+        },
+        Some(ListSource::History(_, f) | ListSource::Commit(_, f) | ListSource::PullRequest(_, _, f) | ListSource::Compare(_, _, f)) => f,
+        Some(ListSource::Workdir(_, f)) => f,
+        Some(ListSource::Stacked(stack)) => {
+            let DiffTarget::Commit(oid, _) = target else { return None };
+            &stack.iter().find(|c| c.oid == *oid)?.files
+        }
+        None => {
+            let DiffTarget::Commit(oid, _) = target else { return None };
+            &st.session.detail.as_ref().filter(|d| d.oid == *oid)?.files
+        }
+    };
+    files.iter().find(|f| f.path == target.path())
 }
 
 /// A file history's commit diff isn't in a list but its detail may still name it.

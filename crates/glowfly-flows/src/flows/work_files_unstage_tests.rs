@@ -5,7 +5,7 @@
 
 use super::tests::{drive, git, keys, scratch_repo, state};
 use super::work_files_tests::{confirm, empty_diff, entry, last_log, loaded, run, work_ops};
-use glowfly_core::repo::{DiffTarget, FileEntry};
+use glowfly_core::repo::{Deleted, DiffTarget, FileEntry};
 use glowfly_model::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::Msg;
@@ -40,6 +40,74 @@ fn delete_staged_rename_asks_to_unstage_the_rename() {
     assert_eq!(title, "Delete renamed file");
     // Undo keeps the unstaged edits: they are the bytes it puts back.
     assert!(body.contains("brings back the file and the staged rename.") && body.ends_with("asks again before deleting one."), "{body}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn renamed(path: &str, from: &str) -> FileEntry {
+    FileEntry { renamed_from: Some(from.into()), ..entry(path, 'R') }
+}
+
+#[test]
+fn delete_staged_rename_names_the_old_path() {
+    let (mut st, dir) = loaded("wfu-rename-from");
+    st.settings.delete_to_trash = false;
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = Vec::new();
+    snap.staged = vec![renamed("new.txt", "old.txt")];
+    assert!(run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "new.txt".into(), confirmed: false })).is_empty());
+    let (title, body, button, then) = confirm(&st);
+    assert_eq!((title, button), ("Delete renamed file", "Unstage and delete"));
+    assert!(body.starts_with("new.txt is staged as a rename of old.txt."), "{body}");
+    assert!(body.contains("old.txt stays deleted"), "{body}");
+    assert!(!body.contains("the file it was renamed from"), "{body}");
+    let op = FileOp::UnstageDelete { path: "new.txt".into(), mode: DeleteMode::Permanent };
+    assert!(matches!(then, Msg::WorkFile(WorkFileMsg::DeleteConfirmed(o)) if *o == op));
+
+    // With the working copy gone only the index changes: the same old path is named.
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = vec![entry("new.txt", 'D')];
+    st.modal = None;
+    run(&mut st, Msg::WorkFile(WorkFileMsg::DeleteFile { path: "new.txt".into(), confirmed: false }));
+    let (title, body, button, _) = confirm(&st);
+    assert_eq!((title, button), ("Unstage deleted file", "Unstage"));
+    assert!(body.starts_with("new.txt is staged as a rename of old.txt but is no longer in your working tree."), "{body}");
+    assert!(body.contains("old.txt shows as deleted"), "{body}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_toast_names_the_old_path_of_the_rename_it_unstaged() {
+    let (mut st, dir) = loaded("wfu-toast-from");
+    let snap = st.snap.as_mut().unwrap();
+    snap.unstaged = Vec::new();
+    snap.staged = vec![renamed("new.txt", "old.txt")];
+    let op = FileOp::UnstageDelete { path: "new.txt".into(), mode: DeleteMode::Permanent };
+    let done = |op: FileOp, ok: WorkFileOk| Msg::WorkFile(WorkFileMsg::WorkFileDone { op, result: Ok(ok) });
+    // No undo entry (a file over 64 MB): the active snapshot still says what was unstaged.
+    run(&mut st, done(op.clone(), WorkFileOk::deleted(Deleted::Permanently)));
+    assert_eq!(
+        st.newest_toast().map(|t| t.text.as_str()),
+        Some("Deleted new.txt and removed it from the staging area. The rename from old.txt is unstaged, so old.txt shows as deleted.")
+    );
+
+    st.snap.as_mut().unwrap().staged = vec![renamed("s.txt", "old.txt")];
+    run(&mut st, done(FileOp::UnstageGone("s.txt".into()), WorkFileOk::Unstaged { undo: None }));
+    assert_eq!(
+        st.newest_toast().map(|t| t.text.as_str()),
+        Some("Removed s.txt from the staging area. The rename from old.txt is unstaged, so old.txt shows as deleted.")
+    );
+
+    // A staged new file has no old path.
+    st.snap.as_mut().unwrap().staged = vec![entry("n.txt", 'A')];
+    run(&mut st, done(FileOp::UnstageGone("n.txt".into()), WorkFileOk::Unstaged { undo: None }));
+    assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Removed n.txt from the staging area."));
+
+    // Another tab's result never reads this tab's snapshot.
+    st.snap.as_mut().unwrap().staged = vec![renamed("new.txt", "old.txt")];
+    let elsewhere = glowfly_core::paths::temp_dir().join("glowfly-elsewhere");
+    let msg = done(op, WorkFileOk::deleted(Deleted::Permanently));
+    assert!(run(&mut st, Msg::Scoped { workdir: elsewhere, msg: Box::new(msg) }).is_empty());
+    assert_eq!(st.newest_toast().map(|t| t.text.as_str()), Some("Deleted new.txt and removed it from the staging area."));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -125,6 +193,10 @@ fn end_to_end_delete_staged_rename() {
     assert!(snap.staged.iter().all(|f| f.path != "b.txt" && f.path != "c.txt"), "{:?}", snap.staged);
     assert!(snap.unstaged.contains(&entry("b.txt", 'D')), "{:?}", snap.unstaged);
     assert!(st.toasts.last().is_some_and(|t| t.ok), "{:?}", st.log.last().map(|l| &l.text));
+    // The undo entry core kept names what it dissolved, before the Undo sentence.
+    let text = st.toasts.last().map(|t| t.text.clone()).unwrap_or_default();
+    assert!(text.contains("The rename from b.txt is unstaged, so b.txt shows as deleted."), "{text}");
+    assert!(text.ends_with(&format!(" Undo ({}) puts it back.", keys("Ctrl+Z"))), "{text}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

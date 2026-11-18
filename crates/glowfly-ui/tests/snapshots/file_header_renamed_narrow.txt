@@ -1,0 +1,8 @@
+window 520x48
+Label "app.txt"
+Button "Previous change"
+Button "Next change"
+Button "View"
+Button "More file actions"
+Button "Unstage file"
+Button "Close diff"

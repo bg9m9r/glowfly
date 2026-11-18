@@ -114,3 +114,72 @@ fn a_status_read_merged_in_place_is_a_new_list() {
     assert_eq!(cache.order.prev, None);
     assert_eq!(cache.order.next, Some(DiffTarget::Unstaged("c.txt".into())));
 }
+
+fn renamed(path: &str, from: &str) -> FileEntry {
+    FileEntry { renamed_from: Some(from.to_owned()), ..FileEntry::new(path, 'R') }
+}
+
+#[test]
+fn a_staged_renames_header_names_its_old_path() {
+    let mut st = state("header-cache-renamed");
+    let snap = st.snap.as_mut().unwrap();
+    snap.staged = vec![renamed("new.txt", "old.txt")];
+    snap.unstaged = rows(&[("new.txt", 'M')]);
+    status_set(snap, true, None);
+    st.session.diff.view = Some((DiffTarget::Staged("new.txt".into()), Arc::new(diff())));
+    let mut cache = HeaderCache::default();
+    assert_eq!(frame(&mut cache, &st), (1, 1));
+    assert_eq!(cache.order.renamed_from.as_deref(), Some("old.txt"));
+    assert_eq!(cache.model(&st, &st.view).unwrap().renamed_from.as_deref(), Some("old.txt"));
+    assert_eq!(frame(&mut cache, &st), (1, 1), "kept while the list is");
+
+    // The same path's unstaged change never has an old path.
+    st.session.diff.generation += 1;
+    st.session.diff.view = Some((DiffTarget::Unstaged("new.txt".into()), Arc::new(diff())));
+    assert_eq!(frame(&mut cache, &st), (2, 2));
+    assert_eq!(cache.order.renamed_from, None);
+    assert_eq!(cache.model(&st, &st.view).unwrap().renamed_from, None);
+
+    // A commit's diff reads it from the commit's details.
+    let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
+    st.session.detail = Some(glowfly_core::repo::CommitDetail {
+        oid,
+        message: String::new(),
+        author: String::new(),
+        email: String::new(),
+        committer: String::new(),
+        committer_email: String::new(),
+        time: 0,
+        author_time: 0,
+        parents: Vec::new(),
+        files: vec![renamed("new.txt", "old.txt"), FileEntry::new("other.txt", 'M')],
+        absent: Default::default(),
+        signature: None,
+    });
+    st.session.diff.generation += 1;
+    st.session.diff.view = Some((DiffTarget::Commit(oid, "new.txt".into()), Arc::new(diff())));
+    frame(&mut cache, &st);
+    assert_eq!(cache.order.renamed_from.as_deref(), Some("old.txt"));
+    assert_eq!(cache.model(&st, &st.view).unwrap().renamed_from.as_deref(), Some("old.txt"));
+    st.session.diff.generation += 1;
+    st.session.diff.view = Some((DiffTarget::Commit(oid, "other.txt".into()), Arc::new(diff())));
+    frame(&mut cache, &st);
+    assert_eq!(cache.order.renamed_from, None);
+
+    // Replacing the staged list without the rename clears it, and only then is the list rebuilt.
+    st.session.diff.generation += 1;
+    st.session.diff.view = Some((DiffTarget::Staged("new.txt".into()), Arc::new(diff())));
+    st.session.detail = None;
+    frame(&mut cache, &st);
+    assert_eq!(cache.order.renamed_from.as_deref(), Some("old.txt"));
+    let builds = cache.builds().1;
+    frame(&mut cache, &st);
+    assert_eq!(cache.builds().1, builds, "no rebuild while the list is the same");
+    let snap = st.snap.as_mut().unwrap();
+    snap.staged = rows(&[("new.txt", 'A')]);
+    status_set(snap, true, None);
+    frame(&mut cache, &st);
+    assert_eq!(cache.builds().1, builds + 1, "the new list is read once");
+    assert_eq!(cache.order.renamed_from, None);
+    assert_eq!(cache.model(&st, &st.view).unwrap().renamed_from, None);
+}

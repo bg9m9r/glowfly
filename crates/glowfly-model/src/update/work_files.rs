@@ -10,7 +10,7 @@ use crate::effect::{DeleteMode, Effect, FileOp, WorkFileOk};
 use crate::keymap::BindingId;
 use crate::msg::WorkFileMsg;
 use crate::state::error_words::typed;
-use crate::state::files::{PathForm, listed, tracked};
+use crate::state::files::{PathForm, listed, staged_rename_from, tracked};
 use crate::state::{AppState, Modal};
 use glowfly_core::error::WriteFailed;
 use glowfly_core::i18n::Lang;
@@ -104,7 +104,8 @@ pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, res
     match result {
         // The key hint would name the active tab's Undo, which isn't this one's.
         Ok(ok) => {
-            let text = success_text(st.settings.lang(), &op, &ok, None);
+            // Only the undo entry names the old path: the active snapshot is another repository's.
+            let text = success_text(st.settings.lang(), &op, &ok, None, ok.undo().and_then(|a| a.renamed_from()));
             st.toast(true, text, now);
         }
         Err(e) => {
@@ -124,8 +125,9 @@ fn form_for<'a>(modal: &'a mut Option<Modal>, op: &FileOp) -> Option<&'a mut Pat
 }
 
 /// The toast for `op`'s success. `hint` is the Undo key (" (Ctrl+Z)") when the result is for the
-/// active tab, which a delete that can be undone mentions.
-fn success_text(t: Lang, op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> String {
+/// active tab, which a delete that can be undone mentions. `renamed_from` is the old path of the
+/// staged rename an Unstage and delete or Unstage deleted file dissolved, when known.
+fn success_text(t: Lang, op: &FileOp, ok: &WorkFileOk, hint: Option<&str>, renamed_from: Option<&str>) -> String {
     let (deleted, note) = match ok {
         WorkFileOk::Deleted { how, too_large: true, .. } => (*how, UndoNote::TooLarge),
         WorkFileOk::Deleted { how, undo: Some(_), .. } => (*how, hint.map_or(UndoNote::Undo(""), UndoNote::Undo)),
@@ -140,17 +142,21 @@ fn success_text(t: Lang, op: &FileOp, ok: &WorkFileOk, hint: Option<&str>) -> St
         FileOp::Create(p) => format!("Created {p}."),
         FileOp::Rename { from, to, stage: true } => format!("Renamed {from} to {to} and staged the rename."),
         FileOp::Rename { from, to, stage: false } => format!("Renamed {from} to {to}."),
-        FileOp::Delete { path, mode } => return deleted_text(path, *mode, deleted, false, note),
-        FileOp::UnstageDelete { path, mode } => return deleted_text(path, *mode, deleted, true, note),
+        FileOp::Delete { path, mode } => return deleted_text(t, path, *mode, deleted, false, None, note),
+        FileOp::UnstageDelete { path, mode } => return deleted_text(t, path, *mode, deleted, true, renamed_from, note),
         FileOp::UnstageGone(p) => {
             let mut text = format!("Removed {p} from the staging area.");
+            if let Some(old) = renamed_from {
+                text.push(' ');
+                text.push_str(&t.trf("files.unstage_delete.rename_unstaged", &[("old", &old)]));
+            }
             if ok.undo().is_some() {
                 text.push(' ');
                 text.push_str(&t.trf("files.unstage_gone.undo", &[("hint", &hint.unwrap_or(""))]));
             }
             return text;
         }
-        FileOp::Discard { path, mode, .. } => return deleted_text(path, *mode, deleted, false, note),
+        FileOp::Discard { path, mode, .. } => return deleted_text(t, path, *mode, deleted, false, None, note),
     };
     // A staged rename's new path stays tracked, so it is never "ignored".
     if ignored && !matches!(op, FileOp::Rename { stage: true, .. }) {
@@ -178,7 +184,16 @@ fn succeeded(st: &mut AppState, op: &FileOp, ok: WorkFileOk, now: Instant) {
         st.modal = None;
     }
     let hint = st.keymap.paren(BindingId::Undo);
-    let text = success_text(st.settings.lang(), op, &ok, Some(&hint));
+    // What core dissolved (its undo entry), else what the snapshot says: a file over 64 MB has
+    // no undo entry.
+    let renamed_from = ok.undo().and_then(|a| a.renamed_from()).or_else(|| {
+        let snap = st.snap.as_ref()?;
+        match op {
+            FileOp::UnstageDelete { path, .. } | FileOp::UnstageGone(path) => staged_rename_from(snap, path),
+            _ => None,
+        }
+    });
+    let text = success_text(st.settings.lang(), op, &ok, Some(&hint), renamed_from);
     st.toast(true, text, now);
     if let Some(a) = ok.undo() {
         st.session.undo.record(a.clone());

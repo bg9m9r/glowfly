@@ -7,17 +7,20 @@
 
 use super::common::{status_color, status_label, widget_row_height};
 use super::dialog_frame::{Cx, Dialog, Footer};
+use super::file_old_path::share;
 use super::theme::color;
 use super::widgets::form_message::{self, Message};
 use super::widgets::text_field::{self, TextField};
-use super::widgets::{FieldGroup, buttons};
+use super::widgets::{FieldGroup, buttons, cut_label};
 use crate::theme::controls;
 use crate::theme::sizes::ControlSize;
 use crate::theme::type_scale;
-use eframe::egui::{self, RichText, Sense};
-use glowfly_core::repo::Snapshot;
+use eframe::egui::{self, RichText, Sense, TextStyle, TextWrapMode, WidgetText};
+use glowfly_core::i18n::Lang;
+use glowfly_core::repo::{FileEntry, Snapshot};
 use glowfly_core::stash_ops::StashScope;
 use glowfly_model::msg::{Msg, StashMsg};
+use glowfly_model::state::old_path::OldPath;
 use glowfly_model::state::stashes::{NO_FILES, NOTHING, StashPushForm, push_blocked, stashable, wip_files};
 use glowfly_model::state::touched::Touched;
 
@@ -56,7 +59,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
     }
     if let (StashScope::Files, Some(snap)) = (form.scope, snap) {
         ui.add_space(4.0);
-        checklist(ui, form, snap);
+        checklist(ui, t, form, snap);
     }
     ui.add_space(8.0);
     if form.scope == StashScope::Staged {
@@ -93,8 +96,9 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut StashPushForm, snap: Option<&S
 
 /// Select all / Select none, the ticked count, and one row per working-tree file: its box,
 /// status letter and path (a click on the path also toggles it). A row Glowfly can't stash
-/// safely (`stashable`) has its box off and says why after the path.
-fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
+/// safely (`stashable`) has its box off and says why after the path. A staged rename's row also
+/// has the weak note "from old/path" after its path, cut or dropped before the path is.
+fn checklist(ui: &mut egui::Ui, t: Lang, form: &mut StashPushForm, snap: &Snapshot) {
     let files = wip_files(snap);
     let ticked = files.iter().filter(|f| stashable(f) && form.chosen.contains(&f.path)).count();
     ui.horizontal(|ui| {
@@ -119,7 +123,9 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                     let usable = stashable(f);
                     let mut on = usable && form.chosen.contains(&f.path);
                     let check = ui.add_enabled(usable, controls::Check::without_text(&mut on));
-                    crate::access::name_if_unnamed(&check, &f.path);
+                    let old = OldPath::of(f);
+                    let whole = old.map(|o| o.whole(t, &f.path));
+                    crate::access::name_if_unnamed(&check, whole.as_deref().unwrap_or(&f.path));
                     let boxed = check.changed();
                     ui.label(
                         RichText::new(status_label(f.status).to_string())
@@ -127,7 +133,12 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
                             .color(status_color(f.status)),
                     );
                     let sense = if usable { Sense::click() } else { Sense::hover() };
-                    let clicked = ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(sense)).clicked();
+                    let label = |ui: &mut egui::Ui| ui.add(egui::Label::new(&f.path).truncate().selectable(false).sense(sense));
+                    let clicked = match (old, &whole) {
+                        (Some(o), Some(whole)) => old_path_label(ui, t, f, o, whole, label),
+                        _ => label(ui),
+                    }
+                    .clicked();
                     super::path_warnings::mark(ui, glowfly_core::i18n::Lang::En, f);
                     if clicked {
                         on = !on;
@@ -143,4 +154,30 @@ fn checklist(ui: &mut egui::Ui, form: &mut StashPushForm, snap: &Snapshot) {
             }
         },
     );
+}
+
+/// A row's path label with the weak old-path note after it. The note gets what the path leaves
+/// (`file_old_path::share`); both show the whole "old to new" text on hover.
+fn old_path_label(
+    ui: &mut egui::Ui,
+    t: Lang,
+    f: &FileEntry,
+    old: OldPath,
+    whole: &str,
+    label: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::Response {
+    let note = old.note(t, old.old);
+    let width = |text: &str| WidgetText::from(text).into_galley(ui, Some(TextWrapMode::Extend), f32::INFINITY, TextStyle::Body).size().x;
+    let (path_room, note_room) = share(ui.available_width(), width(&f.path), width(&note));
+    let resp = ui
+        .scope(|ui| {
+            ui.set_max_width(path_room);
+            label(ui)
+        })
+        .inner
+        .on_hover_text(whole);
+    if let Some(room) = note_room {
+        cut_label(ui, RichText::new(note).color(color::weak()), room).0.on_hover_text(whole);
+    }
+    resp
 }

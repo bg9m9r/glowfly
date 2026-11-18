@@ -1,0 +1,18 @@
+window 900x48
+Label "src/core/old_app.txt"
+Label "to"
+Label "src/ui/"
+Label "app.txt"
+Label "R +24 −9"
+Label "Staged"
+Button "Previous change"
+Button "Next change"
+Label "1 / 3"
+Button "View"
+Button "More file actions"
+Button "Unstage file"
+Button "Close diff"
+painted:
+  "R"
+  "+24"
+  "−9"
