@@ -7,7 +7,8 @@
 //! that would reach its shell. Then the keys of custom commands (`custom_keys.rs`), only while
 //! nothing covers the main window, then the menus' Alt+letter mnemonics (`ui/menu_bar/keys.rs`),
 //! which the view drawing the menus opens. Quit works anywhere but under a credential prompt.
-//! A focused file list takes its keys first (`ui/wip_keys.rs`, `ui/file_list_keys.rs`).
+//! A focused file list or the activity list takes its keys first (`ui/wip_keys.rs`,
+//! `ui/file_list_keys.rs`, `ui/activity_keys.rs`).
 //! Presses no binding takes are left for the views; Esc goes on to the Esc chain in
 //! `ui/central.rs`. While a menu is open, its keys (those without Ctrl, Alt or Cmd) are set
 //! aside for it first (`ui/menu_keys`), so no binding or view behind it sees them.
@@ -43,6 +44,7 @@ pub fn input(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mu
     let covered = live.prefs || live.askpass || live.palette || live.dialog || live.sheet;
     crate::wip_keys::input(ctx, covered, msgs);
     crate::file_list_keys::input(ctx, covered, msgs);
+    crate::activity_keys::input(ctx, covered, msgs);
     // Ctrl+C reaches egui as a Copy event: a binding of it (Copy commit IDs) gets it as a key,
     // while the graph takes the keys and no label text (a commit message) is selected.
     if copy_is_the_graphs(ctx) {

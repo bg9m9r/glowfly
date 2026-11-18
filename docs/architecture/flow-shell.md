@@ -206,6 +206,8 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - One ordered log worker (`runner/logs.rs`) owns the activity file and the performance log and stamps times, so `update` reads no clock.
 - `Runner::run` times every effect that doesn't wait on the user (`Effect::timed`) and gitcli's run observer times every git command; those taking `logs::SLOW` or more go to `performance.log`.
 - With extended logging each git command also comes back as `LogsMsg::GitRan` for a quiet activity line.
+- The Failures only toggle (`LogsState::failures_only`) and the search field (`ViewState::logs_search`) are one pair for the panel's three tabs, kept across tab switches and not saved. `state::activity_filter::filtered_rows` is the one place that decides the Activity tab's rows (with either on: only the kept entries, each its own row, no routine groups) and `is_open` whether a row is drawn open: by hand (`LogsState::open`) or unfolded because the search found its text in the output, until the user folds it (`LogsState::search_closed`, emptied by `LogsMsg::SearchChanged`). The list's keyboard cursor is `ViewState::activity_focus`; its keys arrive as `LogsMsg::RowKey` (`update/logs_filter.rs`).
+- The activity file's trim (on open, and on an append past twice the cap) drops successful routine runs first, oldest first, and only then the oldest of the rest (`logs::ActivityFile`).
 - Copy entry and Copy log build plain text in `state/activity_copy.rs`.
 - Export logs picks a file on a worker thread (`LogsEffect::PickExport`), then the log worker writes the bundle in order after the pending appends (`LogsEffect::Export`, answered by `LogsMsg::Exported`).
 

@@ -77,6 +77,7 @@ pub(super) fn details(st: &mut AppState, tab: TabId, entry: Option<EntryId>, fx:
     }
     super::logs::show(st, LogKind::Activity, fx);
     if let Some(e) = entry {
+        super::logs_filter::unhide(st, e);
         st.logs.open.insert(e);
         st.view.activity_reveal = Some(e);
     }

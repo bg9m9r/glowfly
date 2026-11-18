@@ -49,10 +49,12 @@ impl Live {
             sheet,
             // The welcome counts as a dialog, except while Preferences hides it.
             dialog: (st.modal.is_some() && !sheet) || (st.onboarding.welcome.is_some() && st.prefs.is_none()),
-            // A focused list, the graph or a pane's own focus target isn't typing.
+            // A focused list (the activity list too), the graph or a pane's own focus target isn't
+            // typing.
             typing: ctx.wants_keyboard_input()
                 && crate::wip_keys::focused_list(ctx).is_none()
                 && crate::file_list_keys::focused(ctx).is_none()
+                && !crate::activity_keys::focused(ctx)
                 && !crate::pane_focus::target_focused(ctx),
             working_diff: st
                 .cues

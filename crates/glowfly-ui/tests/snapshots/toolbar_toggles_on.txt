@@ -31,6 +31,8 @@ Button "Clear"
 Button "Activity" [on]
 Button "Errors" [off]
 Button "Performance" [off]
+TextInput "Search titles, causes and output"
+CheckBox "Failures only" [off]
 Label "Nothing has happened in this tab yet."
 Unknown "Left panel contents"
 TextInput "Filter branches, pull requests and issues"

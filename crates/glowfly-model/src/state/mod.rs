@@ -1,6 +1,7 @@
 //! Application state: plain data, no egui types. Only `update` changes it; views write `ViewState` and send their edits as `Msg::Edit`.
 
 pub mod activity_copy;
+pub mod activity_filter;
 pub mod activity_rows;
 pub mod am_banner;
 mod app_queries;

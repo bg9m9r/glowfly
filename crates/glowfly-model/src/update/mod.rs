@@ -85,6 +85,7 @@ mod lock_file;
 mod logs;
 mod logs_copy;
 mod logs_export;
+mod logs_filter;
 mod logs_runs;
 mod logs_tabs;
 mod notify;

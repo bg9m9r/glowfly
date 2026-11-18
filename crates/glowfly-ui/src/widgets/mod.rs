@@ -42,6 +42,7 @@ pub mod ghost;
 pub mod hint_row;
 pub mod icon;
 mod icon_snap;
+pub mod marked_text;
 pub mod menu;
 pub mod menu_columns;
 pub mod menu_name;

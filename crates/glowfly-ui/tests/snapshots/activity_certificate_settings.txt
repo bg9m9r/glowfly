@@ -11,6 +11,9 @@ Button "Clear"
 Button "Activity" [on]
 Button "Errors" [off]
 Button "Performance" [off]
+TextInput "Search titles, causes and output"
+CheckBox "Failures only" [off]
+Unknown "Activity log"
 Button "Fetch, failed, Git couldn't verify the security certificate of git.corp.example. If your network uses its own certificate authority, as many company proxies do, add that authority to your system's certificate store (on Windows, also set Git's http.sslBackend to schannel), or set http.sslCAInfo to a file that holds it (with schannel, also set http.schannelUseSSLCAInfo to true)."
 Label "Git couldn't verify the security certificate of git.corp.example. If your network uses its own certificate authority, as many company proxies do, add that authority to your system's certificate store (on Windows, also set Git's http.sslBackend to schannel), or set http.sslCAInfo to a file that holds it (with schannel, also set http.schannelUseSSLCAInfo to true)."
 Label "Settings Git used for this connection"

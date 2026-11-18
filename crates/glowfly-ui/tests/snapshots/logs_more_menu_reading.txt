@@ -13,6 +13,7 @@ Button "Reload"
 Button "Activity" [off]
 Button "Errors" [on]
 Button "Performance" [off]
+TextInput "Search this log"
 ProgressIndicator
 Label "Reading..."
 Image

@@ -84,6 +84,12 @@ pub struct ViewState {
     /// An activity row to scroll into view once (set by update for a toast's Details; the
     /// view clears it).
     pub activity_reveal: Option<crate::state::logs::EntryId>,
+    /// The logs panel's search field, one for its three tabs (session-only).
+    pub logs_search: String,
+    /// The activity list's keyboard cursor: set by the view on a click and by update on a move.
+    pub activity_focus: Option<crate::state::logs::EntryId>,
+    /// Scroll the cursor row into view once (set by update; the view clears it).
+    pub activity_focus_scroll: bool,
     pub show_search: bool,
     /// The author picker's filter field.
     pub author_filter: String,
@@ -179,6 +185,9 @@ impl Default for ViewState {
         Self {
             show_log: false,
             activity_reveal: None,
+            logs_search: String::new(),
+            activity_focus: None,
+            activity_focus_scroll: false,
             show_search: false,
             author_filter: String::new(),
             dashboard_filter: String::new(),

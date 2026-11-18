@@ -90,7 +90,7 @@ start with `state/`, `update/` or `ui/`.
 - `graph/row.rs`: one graph row from what the frame worked out once (`Frame`): which commit, WIP or other worktree it shows, its look, lanes and lantern; this tab's and other worktrees' WIP rows.
 - `graph/commit_row.rs`: a commit row's node, ref chips and New branch… ghost button, cells, tooltips, clicks and menu.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
-- `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
+- `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA): where the query falls in each; drawn inked and on the find fill by `widgets/marked_text.rs`.
 - `graph/lane_colours.rs`: the graph's per-row colours, and each lane line's width (HEAD's branch wider) and dash pattern (`graph/paint.rs`, colour-safe colours only).
 - `graph/more.rs`: the row for a failed load for more history.
 - `graph/ref_menu.rs`: the graph row's right-click menu: a ref chip's own menu or the commit menu.
@@ -222,9 +222,11 @@ start with `state/`, `update/` or `ui/`.
 
 ## Logs panel
 
-- `activity_fold.rs`: the open part of an activity row, under its title: a failure's cause in a full sentence, its fix (once) with any second fix beside it (Try again beside Delete lock file) and Copy (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of line (the last `OUTPUT_LINES` of it); and the sub-rows of an open routine group.
-- `activity_log.rs`: the logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and Performance tabs on the left, quiet icon buttons on the right with the More menu's Copy log and Export logs, a hairline under it), then the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance log, read by the runner.
-- `activity_rows.rs`: the activity tab of the logs panel: one 32 px row per run or note (result mark, title, weak summary, duration and relative time on the right, a chevron when it folds), routine auto-fetches folded into one grey row, and earlier sessions under their headers, drawn dimmer.
+- `activity_fold.rs`: the open part of an activity row, under its title: a failure's cause in a full sentence, its fix (once) with any second fix beside it (Try again beside Delete lock file) and Copy (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of line (the last `OUTPUT_LINES` of it), the text a search found marked in the cause and the output; and the sub-rows of an open routine group.
+- `activity_log.rs`: the logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and Performance tabs and the search field with Failures only on the left, quiet icon buttons on the right with the More menu's Copy log and Export logs, a hairline under it), then the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance log, read by the runner, its lines filtered by the search with the match marked.
+- `activity_rows.rs`: the activity tab of the logs panel: one 32 px row per run or note (result mark, title, weak summary, duration and relative time on the right, a chevron when it folds), routine auto-fetches folded into one grey row, and earlier sessions under their headers, drawn dimmer. The rows come from `state::activity_filter::filtered_rows` (Failures only and the search leave no routine groups) with the matched text marked in the title and summary; the list is one Tab stop with a keyboard cursor row (`activity_keys.rs`).
+- `activity_search.rs`: the logs panel header's search field (a painted clear button while it has text) and Failures only toggle, and the faint line for a filter that left nothing.
+- `activity_keys.rs`: the activity list's keyboard focus on `list_focus.rs`: one focus target over the rows, a click on a row giving it the focus, and Up/Down, Page, Home/End, Enter and Space as `LogsMsg::RowKey` while it has it.
 
 ## Issue panel (`issue/`)
 

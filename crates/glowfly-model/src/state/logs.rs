@@ -133,6 +133,11 @@ pub struct LogsState {
     pub announce: Option<Announce>,
     /// The activity rows folded open (a routine group by its first entry's id).
     pub open: HashSet<EntryId>,
+    /// The Activity tab's Failures only toggle (the search text is `ViewState::logs_search`).
+    pub failures_only: bool,
+    /// Rows the search unfolded that were folded again by hand; emptied when the search text
+    /// changes (state/activity_filter.rs).
+    pub search_closed: HashSet<EntryId>,
     /// The failed runs dismissed from the status bar: no longer a tab's last failure.
     pub dismissed: HashSet<EntryId>,
     /// The fixes failed runs offer, newest last, at most `FIX_LIMIT`. Each runs once, from the

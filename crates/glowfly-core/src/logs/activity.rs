@@ -132,7 +132,8 @@ pub fn parse_activity(text: &str) -> (Vec<ActivityEntry>, usize) {
     (entries, skipped)
 }
 
-/// The activity log file, kept to its newest `cap` entries (up to twice that between trims).
+/// The activity log file, kept to `cap` entries (up to twice that between trims): a trim drops
+/// successful routine runs first, oldest first, then the oldest of the rest.
 pub struct ActivityFile {
     path: PathBuf,
     cap: usize,
@@ -141,8 +142,9 @@ pub struct ActivityFile {
 }
 
 impl ActivityFile {
-    /// Reads the file at `path` (a missing file is empty) and returns its newest `cap` entries.
-    /// The file is rewritten when entries or bad lines were dropped.
+    /// Reads the file at `path` (a missing file is empty) and returns its entries, trimmed to
+    /// `cap` (routine successes first, then the oldest). The file is rewritten when entries or
+    /// bad lines were dropped.
     pub fn open(path: PathBuf, cap: usize) -> io::Result<(Self, Vec<ActivityEntry>)> {
         let (mut entries, skipped) = read(&path)?;
         let dropped = keep_newest(&mut entries, cap);
@@ -152,8 +154,8 @@ impl ActivityFile {
         Ok((Self { path, cap, lines: entries.len() }, entries))
     }
 
-    /// Appends `entries` in one write; trims the file back to `cap` entries once it holds more
-    /// than twice that.
+    /// Appends `entries` in one write; trims the file back to `cap` entries (routine successes
+    /// first, then the oldest) once it holds more than twice that.
     pub fn append(&mut self, entries: &[ActivityEntry]) -> io::Result<()> {
         if entries.is_empty() {
             return Ok(());
@@ -201,11 +203,31 @@ fn read(path: &Path) -> io::Result<(Vec<ActivityEntry>, usize)> {
     }
 }
 
-/// Drops all but the newest `cap` entries; returns how many were dropped.
+/// Whether `e` is a successful background auto-fetch, the first thing a trim drops.
+fn routine_ok(e: &ActivityEntry) -> bool {
+    e.ok && e.run.as_ref().is_some_and(|r| r.routine)
+}
+
+/// Brings `entries` (oldest first) down to `cap`: successful routine runs go first, oldest
+/// first, and only if that leaves the list over the cap are the oldest remaining entries
+/// dropped. The order of the survivors is unchanged. Returns how many were dropped.
 fn keep_newest(entries: &mut Vec<ActivityEntry>, cap: usize) -> usize {
-    let dropped = entries.len().saturating_sub(cap);
-    entries.drain(..dropped);
-    dropped
+    let before = entries.len();
+    let mut excess = before.saturating_sub(cap);
+    if excess == 0 {
+        return 0;
+    }
+    entries.retain(|e| {
+        if excess > 0 && routine_ok(e) {
+            excess -= 1;
+            false
+        } else {
+            true
+        }
+    });
+    let still_over = entries.len().saturating_sub(cap);
+    entries.drain(..still_over);
+    before - entries.len()
 }
 
 fn write_all(path: &Path, entries: &[ActivityEntry]) -> io::Result<()> {

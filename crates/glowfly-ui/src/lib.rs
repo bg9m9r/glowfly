@@ -4,8 +4,10 @@
 
 mod access;
 mod activity_fold;
+pub(crate) mod activity_keys;
 mod activity_log;
 mod activity_rows;
+mod activity_search;
 mod am_banner;
 mod askpass;
 mod askpass_host_key;

@@ -1,7 +1,7 @@
 //! Finished jobs in the activity log: each is logged as a run (its label, a one-line summary
 //! and how long it took), a loud failure opens its row and keeps its fix, which the panel's
-//! button and the failure toast's share (`LogsMsg::Fix`), and the panel's rows fold open and
-//! closed (`LogsMsg::Fold`). A run's text has git's line-ending warnings folded into one line
+//! button and the failure toast's share (`LogsMsg::Fix`); the panel's rows fold open and closed
+//! in update/logs_filter.rs. A run's text has git's line-ending warnings folded into one line
 //! (glowfly_core::crlf_warnings). `stamp` times the active job from the end of the `update` that
 //! started it.
 
@@ -163,11 +163,4 @@ pub(super) fn fix(st: &mut AppState, id: EntryId, alt: bool, now: Instant, fx: &
     let Some(action) = st.logs.take_fix(id, alt) else { return };
     st.toasts.retain(|t| ![&t.action, &t.alt, &t.details].iter().any(|a| is_proxy(a.as_ref(), id)));
     super::notify::run_action(st, action, now, fx);
-}
-
-/// Folds an activity row (a routine group by its first entry) open, or closed again.
-pub(super) fn fold(st: &mut AppState, id: EntryId) {
-    if !st.logs.open.remove(&id) {
-        st.logs.open.insert(id);
-    }
 }
