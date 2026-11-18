@@ -69,6 +69,8 @@ Button "Stage all and commit"
 Button "Commit and push"
 Button "Amend last commit"
 CheckBox "Skip hooks" [off]
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

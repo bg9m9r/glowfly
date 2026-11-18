@@ -95,6 +95,8 @@ Button "Highlight" [on]
 Button "Filter" [off]
 ComboBox "Author"
 Button "Close"
+Button "Commits" [on]
+Button "Chapters" [disabled, off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -166,7 +168,3 @@ painted:
   "Ada Lovelace"
   "b9eb369"
   "Jan 6"
-  "AL"
-  "Ada Lovelace"
-  "dcc73f3"
-  "Jan 5"

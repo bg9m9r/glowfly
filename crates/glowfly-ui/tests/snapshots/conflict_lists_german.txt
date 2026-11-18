@@ -90,6 +90,8 @@ Label "Geändert"
 Button "Zeigen: Merge committen"
 Label "Merge committen"
 Label "Öffnet sich, sobald die Konflikte gelöst sind."
+Button "Commits" [on]
+Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize date column"
 Label "Ausgeblendet, damit alles ins Fenster passt: Autor, Commit"

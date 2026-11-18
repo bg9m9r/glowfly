@@ -24,6 +24,8 @@ pub struct TabViewState {
     /// The graph's row height in the last frame, recorded by the view with `graph_scroll`; 0
     /// until the graph is drawn. Reloads anchor the scroll with it (`state/graph_anchor.rs`).
     pub graph_row_h: f32,
+    /// The Chapters list's scroll offset and viewport height from the last frame, recorded by the view.
+    pub chapters_scroll: (f32, f32),
     /// First diff row visible in the last frame, recorded by the view (with `TabView::diff_expanded`'s
     /// folds open).
     pub diff_top_row: usize,

@@ -12,7 +12,7 @@
 //! `Snapshot::lay_out_graph` runs all three.
 
 mod lanes;
-mod merge_names;
+pub(crate) mod merge_names;
 pub mod owners;
 
 pub(crate) use lanes::LaneTail;

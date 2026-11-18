@@ -75,6 +75,8 @@ TextInput = "pwsh · demo" [focused]
 Button "New terminal tab"
 Button "New terminal with another shell"
 Unknown "Terminal screen"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

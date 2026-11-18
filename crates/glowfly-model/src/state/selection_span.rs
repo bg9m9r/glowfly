@@ -1,6 +1,6 @@
 //! What a multi-selection of commits spans: a pair, one unbroken line of first-parent history
 //! (whose changes combine into one diff, from the empty tree when it reaches the first commit),
-//! or neither.
+//! or neither. A chapter of two commits is a line too (`line_span`).
 
 use git2::Oid;
 use glowfly_core::repo::{self, Snapshot};
@@ -11,7 +11,7 @@ use std::collections::HashSet;
 pub enum Span {
     /// Exactly two commits, adjacent or not: the older (lower row) and the newer.
     Pair { older: Oid, newer: Oid },
-    /// Three or more commits, each the first parent of the one above it: `base` is the oldest
+    /// Three or more commits (two, for a chapter), each the first parent of the one above it: `base` is the oldest
     /// one's first parent (the empty tree when it is the repository's first commit), `newest`
     /// the top commit. Their changes together are base..newest.
     Range { base: Oid, newest: Oid },
@@ -47,14 +47,32 @@ pub fn span_of(oids: &[Oid], snap: &Snapshot) -> Span {
                 let gap = oids[..oids.len() - 1].iter().find(|o| parent(o).is_some_and(|p| !members.contains(&p))).copied();
                 return Span::Gaps { gap };
             }
-            let last = oids[oids.len() - 1];
-            if snap.shallow_roots.binary_search(&last).is_ok() {
-                return Span::ShallowEnd;
-            }
-            match parent(&last) {
-                Some(base) => Span::Range { base, newest: oids[0] },
-                None => Span::Range { base: repo::empty_tree(), newest: oids[0] },
-            }
+            line_end(snap, oids[oids.len() - 1], oids[0])
         }
     }
+}
+
+/// The span of one first-parent line from `oldest` up to `newest`: its combined changes are
+/// `oldest`'s parent (the empty tree for a root) to `newest`, or just the stacked list when
+/// `oldest` is a shallow clone's boundary.
+fn line_end(snap: &Snapshot, oldest: Oid, newest: Oid) -> Span {
+    if snap.shallow_roots.binary_search(&oldest).is_ok() {
+        return Span::ShallowEnd;
+    }
+    match snap.row_of.get(&oldest).and_then(|&r| snap.commits[r].parents.first().copied()) {
+        Some(base) => Span::Range { base, newest },
+        None => Span::Range { base: repo::empty_tree(), newest },
+    }
+}
+
+/// `span_of`, except that exactly two commits where the older is the newer's first parent are a
+/// line (combined from the older one's parent), not a pair to compare: what a chapter of two
+/// commits selects.
+pub fn line_span(oids: &[Oid], snap: &Snapshot) -> Span {
+    if let [newer, older] = oids
+        && snap.row_of.get(newer).and_then(|&r| snap.commits[r].parents.first()) == Some(older)
+    {
+        return line_end(snap, *older, *newer);
+    }
+    span_of(oids, snap)
 }

@@ -79,6 +79,8 @@ Label "Added"
 Button "src/search/index.rs" [off]
 Label "Added"
 Label "+9"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

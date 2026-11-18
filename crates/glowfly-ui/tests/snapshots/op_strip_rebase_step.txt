@@ -67,6 +67,8 @@ Button "More commit options"
 Label "Stage changes to commit, or press Ctrl+Shift+Enter to stage all and commit."
 Button "Continue"
 Button "More ways to go on"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

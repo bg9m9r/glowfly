@@ -82,6 +82,8 @@ Button "Add submodule"
 Button "Submodules actions"
 ProgressIndicator
 Label "Loading…"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

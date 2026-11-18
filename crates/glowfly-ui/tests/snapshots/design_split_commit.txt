@@ -66,6 +66,8 @@ CheckBox "Push after committing" [off]
 Button "Commit 1 file (skip hooks)"
 Button "More commit options"
 Label "More commit options. Hooks are skipped for this commit."
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

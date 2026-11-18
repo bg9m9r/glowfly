@@ -73,6 +73,8 @@ Button "Filter" [off]
 ComboBox "Author"
 Label "3 so far, indexing…"
 Button "Close"
+Button "Commits" [on]
+Button "Chapters" [disabled, off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

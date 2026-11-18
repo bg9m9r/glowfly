@@ -83,6 +83,8 @@ Button "Commit or amend first…"
 Button "Continue" [disabled]
 Button "More ways to go on"
 Button "Skip patch…"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

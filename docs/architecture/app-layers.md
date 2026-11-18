@@ -40,6 +40,7 @@ source file, update its line here. Features that span every layer are in
 - `msg/edit.rs`: `EditMsg`, a view's edited copy of the model fields update also reads (the commit draft, the welcome's form, a terminal tab's rename field and selection, the blame and File view's find and Line fields, Preferences' settings and own fields, a dialog's form, the danger confirmation's and auto-stash question's boxes, Generate SSH key's fields, the palette's query, the pull request's forms, the issue's comment box, the rebase editor's draft and the conflict output's buffer), and `edits_first`, which the shell runs on a frame's messages so the edits go first.
 - A few cross-cutting messages live in `Msg` itself (`Tick`, `Scoped`, `Confirm`, `ToastAction`, `Logged`, …).
 - `msg/app.rs`: window-level actions from the menu bar and a drawn title bar, and the system's accessibility settings the shell read (update/app.rs).
+- `msg/chapters.rs`: `ChaptersMsg`, the Chapters history view's switch and expanding and selecting chapters (update/chapters.rs).
 - `msg/diff.rs`: messages of the diff view, the conflict view (taking the trivial picks in all files too) and the file history (update/diff.rs, update/highlight.rs, update/conflict.rs, update/history.rs).
 - `msg/files.rs`: messages of the file menus: restoring a file from a commit, opening and showing working-tree files, and creating, renaming and deleting them (update/files.rs, update/work_files.rs).
 - `msg/keys.rs`: messages of Preferences > Keyboard (update/keys.rs).
