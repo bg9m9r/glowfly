@@ -1,4 +1,7 @@
 {
+  "lfs.banner.missing.text": "Este repositorio guarda archivos en Git LFS, pero git-lfs no está instalado. Los cambios en esos archivos podrían confirmarse como archivos normales en lugar de punteros de LFS.",
+  "lfs.banner.settings.button": "Ajustes de Git LFS…",
+  "lfs.banner.too_old.text": "Este repositorio guarda archivos en Git LFS, pero git-lfs {version} es demasiado antiguo: Glowfly necesita la {min} o posterior. Las extracciones y los comandos de LFS pueden ser lentos o fallar hasta que lo actualices.",
   "lfs.menu.adds.tip": "Añade {target} a .gitattributes",
   "lfs.menu.adds_folder.tip": "Añade {target} a .gitattributes (con subcarpetas)",
   "lfs.menu.checking": "Comprobando si Git LFS está instalado…",
@@ -46,6 +49,8 @@
   "lfs.page.source.info.tip": "Definido en .git/info/attributes, que solo usa esta copia del repositorio y que no se confirma. Para dejar de seguirlo, edita ese archivo.",
   "lfs.page.source.nested.tip": "Definido en {file}, así que solo se aplica dentro de {folder}/. Para dejar de seguirlo, edita ese archivo.",
   "lfs.page.status.label": "Estado",
+  "lfs.page.too_old.help": "Actualízalo desde git-lfs.com y luego elige Volver a comprobar.",
+  "lfs.page.too_old.warn": "git-lfs {version} es anterior a la {min}, la versión más antigua con la que funciona Glowfly. Las extracciones y los comandos de LFS pueden ser lentos o fallar.",
   "lfs.page.track.button": "Seguir",
   "lfs.page.untrack.button": "Dejar de seguir",
   "lfs.pattern.already_tracked": "{pattern} ya se sigue.",
@@ -53,5 +58,7 @@
   "lfs.pattern.empty": "Escribe un patrón.",
   "lfs.pattern.folder": "Un patrón que termina en / no coincide con nada en .gitattributes. Para seguir una carpeta, usa {pattern}**.",
   "lfs.pattern.git_file": "Los archivos propios de Git (.gitattributes, .gitignore, .lfsconfig) no se pueden guardar en LFS.",
-  "lfs.pattern.negated": "Los patrones que empiezan por ! no se permiten en .gitattributes."
+  "lfs.pattern.negated": "Los patrones que empiezan por ! no se permiten en .gitattributes.",
+  "lfs.update.button": "Cómo actualizar Git LFS",
+  "lfs.update.tip": "Abre {url} en tu navegador"
 }

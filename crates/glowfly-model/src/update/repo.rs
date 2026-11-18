@@ -31,6 +31,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             }
             super::recent::check_folders(st, fx);
             super::profile_rules::want_identity(st, fx);
+            super::lfs::window_focused(st, now, fx);
         }
         RepoMsg::RepoLoaded { generation, kind, result } => {
             let t = st.settings.lang();

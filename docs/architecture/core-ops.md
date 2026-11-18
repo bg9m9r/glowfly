@@ -59,6 +59,7 @@ source file, update its line here.
 - `lfs/sources.rs`: where the LFS patterns come from: the root `.gitattributes` (working tree), tracked nested ones (index blobs) and the common dir's `info/attributes`, each pattern tagged with its file; capped at `MAX_NESTED_FILES` files and `MAX_BYTES` bytes.
 - `lfs/pointer.rs`: pointer files: parsed from bytes, read from a blob without inflating large ones or from a working file, sizes for the screen with `size_text`, and a diff's two sides as `LfsChange`.
 - `gitflow.rs`, `gitflow/`: Git Flow with plain git: config, checks, start and finish plans, continuing a finish stopped at a conflict, the production/development roles, versions, branch groups by kind.
+- `lfs/version.rs`: git-lfs's version: parsed from `git lfs version`'s output, its numbers, and `MIN`, the oldest git-lfs Glowfly works with (`too_old`).
 - `lfs/track.rs`: what a file row can track in Git LFS, and the `.gitattributes` pattern each choice writes.
 - `gitflow/base.rs`: the roles of the configured production and development branches, for warning before one of them is deleted.
 - `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.

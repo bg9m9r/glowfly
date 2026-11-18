@@ -10,11 +10,12 @@ use git2::Oid;
 use glowfly_core::lfs::pointer::{LfsChange, LfsSide, Pointer};
 use glowfly_core::lfs::{LfsPattern, LfsStatus, PatternSource};
 use glowfly_core::repo::DiffTarget;
+use glowfly_model::effect::{Effect, LfsEffect};
 use glowfly_model::lfs::LfsMsg;
 use glowfly_model::msg::{Msg, PrefsMsg, RepoMsg, TabsMsg, WatchMsg};
 use glowfly_model::state::diff_nav::{self, Step};
 use glowfly_model::state::lfs::LfsInstall;
-use glowfly_model::state::lfs_notes::{banner_workdir, pointer_shown, summary};
+use glowfly_model::state::lfs_notes::{banner, pointer_shown, summary};
 use glowfly_model::state::lines::LineClick;
 use glowfly_model::state::{AppState, PrefPage};
 use std::path::{Path, PathBuf};
@@ -30,6 +31,10 @@ fn opened(st: &mut AppState, name: &str) -> PathBuf {
     let snap = st.snap.as_mut().expect("opened");
     snap.lfs_patterns = vec![LfsPattern::root("*.psd", false)];
     dir
+}
+
+fn banner_workdir(st: &AppState) -> Option<&Path> {
+    banner(st).map(|b| b.workdir)
 }
 
 fn workdir(st: &AppState) -> PathBuf {
@@ -135,6 +140,28 @@ fn a_status_with_a_version_turns_the_banner_off() {
     let status = LfsStatus { version: Some("3.7.1".into()), ..Default::default() };
     run(&mut st, Msg::Lfs(LfsMsg::Loaded { generation, result: Ok(status) }));
     assert_eq!(banner_workdir(&st), None);
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn a_detect_result_that_changes_the_install_rereads_an_open_lfs_page() {
+    let mut st = state();
+    st.lfs.install = LfsInstall::Missing;
+    let dir = opened(&mut st, "lfs-notes-page-reread");
+    run(&mut st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)));
+    let generation = st.prefs.as_ref().unwrap().lfs.generation;
+    let status = LfsStatus { version: None, ..Default::default() };
+    run(&mut st, Msg::Lfs(LfsMsg::Loaded { generation, result: Ok(status) }));
+    let loads = |fx: &[Effect]| -> Vec<u64> {
+        fx.iter().filter_map(|e| if let Effect::Lfs(LfsEffect::Load { generation, .. }) = e { Some(*generation) } else { None }).collect()
+    };
+    let fx = update(&mut st, Msg::Lfs(LfsMsg::Detected(Some("3.7.1".into()))), Instant::now());
+    let reads = loads(&fx);
+    assert_eq!(reads.len(), 1, "{fx:?}");
+    assert!(reads[0] > generation);
+    assert!(st.prefs.as_ref().unwrap().lfs.status.is_some(), "the old status stays on screen");
+    let fx = update(&mut st, Msg::Lfs(LfsMsg::Detected(Some("3.7.1".into()))), Instant::now());
+    assert!(loads(&fx).is_empty(), "nothing changed: {fx:?}");
     cleanup(&[&dir]);
 }
 
