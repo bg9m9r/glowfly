@@ -25,6 +25,10 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: zbus 4 and 5 (accesskit_unix, rfd, notify-rust)" },
+    # Unmaintained, with no flaw known. Every Glowfly crate formats and compares dates with it,
+    # and tracing-subscriber (log timestamps) and trash depend on it too, so it stays until
+    # Glowfly's own date handling moves to a maintained crate and those two no longer need it.
+    { id = "RUSTSEC-2026-0543", reason = "chrono: Glowfly's date handling, tracing-subscriber and trash" },
 ]
 # osv-scanner.toml lists the same advisories with the same reasons, for OpenSSF Scorecard's OSV
 # scan, and SECURITY.md's Known advisories table names them; a test keeps the three in step.

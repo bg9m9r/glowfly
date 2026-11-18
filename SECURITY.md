@@ -58,6 +58,7 @@ is reviewed again.
 | RUSTSEC-2024-0436 | paste (unmaintained) | A proc-macro of accesskit_windows (eframe 0.31); runs only at compile time |
 | RUSTSEC-2026-0192 | ttf-parser (unmaintained) | ab_glyph, epaint's font rasterizer (egui 0.31); no flaw is known, only that it is unmaintained |
 | RUSTSEC-2026-0370, RUSTSEC-2026-0371, RUSTSEC-2026-0372 | zvariant, zbus_names, zvariant_derive (merged into zbus 6) | Still required by zbus 4 and 5 (accesskit_unix, rfd, notify-rust) |
+| RUSTSEC-2026-0543 | chrono (unmaintained) | Glowfly's date handling, tracing-subscriber's log timestamps and trash use it; no flaw is known, only that it is unmaintained |
 
 ## Supported versions
 
