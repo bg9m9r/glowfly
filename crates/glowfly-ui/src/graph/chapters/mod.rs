@@ -30,7 +30,8 @@ pub(super) fn show(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, view: &mut
     let row_h = super::row_h(st.settings.graph_density);
     let wip = snap.graph.wip.is_some();
     let total = usize::from(wip) + st.session.chapters.rows.len();
-    if total == 0 {
+    // With the line below the loaded commits (`open_end`) the end row says so and loads more.
+    if total == 0 && !list.open_end {
         empty_state(ui, EmptyIcon::Commits, t.tr("chapters.empty.title"), t.tr("chapters.empty.hint"), &[]);
         return;
     }

@@ -244,6 +244,26 @@ fn an_unborn_branch_has_no_chapters() {
 }
 
 #[test]
+fn a_head_below_the_loaded_commits_leaves_the_line_open() {
+    let dir = linear("chapters-head-below", &[("ada", 0, "old", "")]);
+    git(&dir, &["checkout", "-q", "-b", "newer"]);
+    for i in 1..=5 {
+        put(&dir, "bob", T0 + i * H, &format!("n{i}"), None);
+    }
+    git(&dir, &["checkout", "-q", "main"]);
+    let snap = snap_of(&dir, 3);
+    assert_eq!(snap.commits.len(), 3);
+    let head = snap.head_oid.expect("main has a commit");
+    assert!(snap.commits.iter().all(|c| c.oid != head), "HEAD's commit is not loaded");
+    let c = group(&History::of(&snap));
+    assert!(c.list.is_empty() && c.open_end);
+    let all = snap_of(&dir, 500);
+    let c = group(&History::of(&all));
+    assert_eq!(titles(&c), ["old"]);
+    assert!(!c.open_end);
+}
+
+#[test]
 fn a_detached_head_follows_head() {
     let dir = linear("chapters-detached", &[("ada", 0, "one", ""), ("bob", 60, "two", ""), ("ada", 120, "three", "")]);
     git(&dir, &["checkout", "-q", "--detach", "HEAD~1"]);

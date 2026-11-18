@@ -120,7 +120,11 @@ struct Mark {
 /// Groups HEAD's first-parent history into chapters.
 pub fn group(h: &History) -> Chapters {
     let line = first_parent_line(h);
-    let Some(&last) = line.last() else { return Chapters::default() };
+    let Some(&last) = line.last() else {
+        // HEAD's own commit is not among the loaded ones (other tips hold the newest commits):
+        // its line lies entirely below them. No HEAD at all (an unborn branch) has none.
+        return Chapters { list: Vec::new(), open_end: h.head.is_some() };
+    };
     let open_end = h.commits.get(last).and_then(|c| c.parents.first()).is_some_and(|p| !h.row_of.contains_key(p));
     let releases = release_map(h);
     let marks: Vec<Mark> = line
