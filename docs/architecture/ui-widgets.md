@@ -50,7 +50,7 @@ source file, update its line here.
 - `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…), and a failed hosting service's block (`failure`: the cause, then Sign in).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
 - Added, removed and modified share `common::added_color`, `removed_color` and `modified_color` with the status letters.
-- `date_tip.rs`: date labels with their full date on hover.
+- `date_tip.rs`: date labels with their full date on hover, and `Clock` (the settings, now and zone a view formats dates with).
 
 ## Disabled reasons
 

@@ -100,6 +100,7 @@ painted:
   "1"
   "Stashes"
   "1"
+  "18 days ago"
   "Worktrees"
   "0"
   "Submodules"

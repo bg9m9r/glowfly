@@ -25,7 +25,7 @@ fn pass(mut body: impl FnMut(&mut Ui)) -> Vec<egui::epaint::ClippedShape> {
 #[test]
 fn list_rows_and_section_headers_have_their_heights() {
     pass(|ui| {
-        let r = list_row(ui, ROW_INDENT, "main", Some(("2", Color32::GRAY)), false, true);
+        let r = list_row_cut(ui, ROW_INDENT, "main", Some((&[Part::Text("2")][..], Color32::GRAY)), 0.0, false, true).0;
         assert_eq!(r.rect.height(), LIST_ROW_H);
         let (r, marker, _) = list_row_cut(ui, ROW_INDENT, "feature", None, 18.0, false, false);
         assert_eq!(r.rect.height(), LIST_ROW_H);
@@ -41,7 +41,7 @@ fn list_rows_and_section_headers_have_their_heights() {
 fn right_hand_parts_end_pad_x_from_the_edge() {
     let mut row = Rect::NOTHING;
     let shapes = pass(|ui| {
-        row = list_row(ui, ROW_INDENT, "main", Some(("origin", Color32::GRAY)), false, false).rect;
+        row = list_row_cut(ui, ROW_INDENT, "main", Some((&[Part::Text("origin")][..], Color32::GRAY)), 0.0, false, false).0.rect;
     });
     let ends: Vec<f32> = shapes
         .iter()

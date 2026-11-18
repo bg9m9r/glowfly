@@ -260,6 +260,8 @@ pub struct StashInfo {
     pub index: usize,
     pub message: String,
     pub oid: Oid,
+    /// The stash commit's committer time in Unix seconds; None when the commit can't be read.
+    pub time: Option<i64>,
 }
 
 #[cfg(test)]

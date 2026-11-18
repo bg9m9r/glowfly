@@ -8,7 +8,7 @@ use crate::testutil::{git, scratch_repo, write};
 use std::path::{Path, PathBuf};
 
 fn info(index: usize, message: &str, oid: Oid) -> StashInfo {
-    StashInfo { index, message: message.into(), oid }
+    StashInfo { index, message: message.into(), oid, time: None }
 }
 
 fn oid(n: u8) -> Oid {

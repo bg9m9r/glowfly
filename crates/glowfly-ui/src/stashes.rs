@@ -1,14 +1,19 @@
 //! The STASHES section of the left panel: one row per stash (a click selects its commit) with a
-//! menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right.
+//! menu to apply, pop, rename or delete it; at the right a weak "auto" (an auto-stash) and then
+//! the stash's date, left out under `DATES_FROM_W` px of row so that the dates of all rows end
+//! on one line or none is drawn. Hovering a row shows what was cut, the full date and what
+//! "auto" means.
 //! Without stashes, once expanded, a sentence on what a stash is and Stash changes…. The
 //! header's + opens the Stash dialog, and its menu stashes every change or only the staged ones.
 
 use super::common::{menu_danger, menu_item_if};
 use super::theme::color;
 use super::widgets;
+use super::widgets::Part;
 use super::widgets::empty_state::{self, Action};
 use super::widgets::menu::separator;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
+use crate::date_tip::Clock;
 use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
@@ -22,17 +27,22 @@ use glowfly_model::state::stash_actions::{self, StashOption};
 /// The selection, the left-panel filter, and whether it has text.
 type Filtered<'a> = (&'a Selection, &'a dyn Fn(&str) -> bool, bool);
 
+/// The narrowest row (the panel's width) that still draws the stashes' dates; the default panel
+/// is 260 to 320 px wide. A narrower row has none, so no row is left with a ragged column.
+const DATES_FROM_W: f32 = 240.0;
+
 /// Draws the section under the left-panel filter (and whether it has text); `all` and `staged`
 /// are the header's Stash changes and Stash staged changes.
 pub(super) fn section(
     ui: &mut egui::Ui,
-    t: Lang,
+    clock: Clock<'_>,
     snap: &Snapshot,
     open: &mut bool,
     (sel, shown, filtering): Filtered,
     (all, staged): (&SectionAction, &SectionAction),
     msgs: &mut Vec<Msg>,
 ) {
+    let t = clock.settings.lang();
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
         action_item(ui, msgs, all);
         action_item(ui, msgs, staged);
@@ -54,17 +64,36 @@ pub(super) fn section(
     if snap.stashes.is_empty() && !filtering {
         empty_state::show(ui, t.tr("sidebar.empty.stashes"), vec![Action::of(all)], msgs);
     }
+    let dated = ui.available_width() >= DATES_FROM_W;
     for s in snap.stashes.iter().filter(|s| shown(&s.message)) {
         if widgets::list_row_hidden(ui) {
             continue;
         }
-        // Made before an operation (by Glowfly, or git's own kept autostash): a weak "auto".
+        // Made before an operation (by Glowfly, or git's own kept autostash): a weak "auto", then
+        // the date when the row is wide enough and the stash commit could be read.
         let auto = stash_ops::is_auto_stash(&s.message);
-        let mark = auto.then(|| (t.tr("sidebar.stashes.auto"), color::weak()));
-        let mut r = widgets::list_row(ui, widgets::ROW_INDENT, &s.message, mark, *sel == Selection::Commit(s.oid), false);
+        let date = s.time.map(|secs| clock.day(secs));
+        let mut parts = Vec::new();
         if auto {
-            r = r.on_hover_text(t.tr("sidebar.stashes.auto.tip"));
+            parts.push(Part::Text(t.tr("sidebar.stashes.auto")));
         }
+        if let Some(date) = date.as_deref().filter(|_| dated) {
+            parts.push(Part::Text(date));
+        }
+        let right = (!parts.is_empty()).then_some((&parts[..], color::weak()));
+        let selected = *sel == Selection::Commit(s.oid);
+        let (r, _, cut) = widgets::list_row_cut(ui, widgets::ROW_INDENT, &s.message, right, 0.0, selected, false);
+        let lines =
+            [cut.then(|| s.message.clone()), s.time.map(|secs| clock.tip(secs)), auto.then(|| t.tr("sidebar.stashes.auto.tip").to_owned())];
+        let lines: Vec<String> = lines.into_iter().flatten().collect();
+        let r = if lines.is_empty() {
+            r
+        } else {
+            r.on_hover_text(lines.join(
+                "
+",
+            ))
+        };
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::SelectCommit(s.oid)));
         }

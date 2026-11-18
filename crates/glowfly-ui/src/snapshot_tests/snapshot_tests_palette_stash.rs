@@ -2,7 +2,7 @@
 //! delete sub-list, the stash message step, and the keys and clicks they turn into messages.
 //! Shares the fixture repository and renderer with `snapshot_tests`.
 
-use super::snapshot_tests::{harness, remove_fixture, render, with_repo};
+use super::snapshot_tests::{NOW, harness, remove_fixture, render, with_repo};
 use eframe::egui::{Event, Key};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -24,9 +24,9 @@ pub(crate) fn fixture_stashes(st: &AppState) -> Vec<StashInfo> {
     let snap = st.snap.as_ref().unwrap();
     let oid = |i: usize| snap.commits[i].oid;
     vec![
-        StashInfo { index: 0, message: "On main: login form tweaks".into(), oid: oid(0) },
-        StashInfo { index: 1, message: "WIP on main: 1a2b3c4 Add search".into(), oid: oid(1) },
-        StashInfo { index: 2, message: "On login-page: half-done validation".into(), oid: oid(2) },
+        StashInfo { index: 0, message: "On main: login form tweaks".into(), oid: oid(0), time: Some(NOW - 2 * 3600) },
+        StashInfo { index: 1, message: "WIP on main: 1a2b3c4 Add search".into(), oid: oid(1), time: Some(NOW - 3 * 86_400) },
+        StashInfo { index: 2, message: "On login-page: half-done validation".into(), oid: oid(2), time: Some(NOW - 40 * 86_400) },
     ]
 }
 

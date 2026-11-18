@@ -6,6 +6,6 @@ Dialog
   Button "On login-page: half-done validation"
   Label "Up/Down to choose, Enter to rename, Backspace or Esc to go back"
 painted:
-  "stash@{0}"
-  "stash@{1}"
-  "stash@{2}"
+  "2 hours ago · stash@{0}"
+  "3 days ago · stash@{1}"
+  "1 month ago · stash@{2}"

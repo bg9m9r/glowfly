@@ -190,7 +190,7 @@ start with `state/`, `update/` or `ui/`.
 ## Left panel and dashboard
 
 - `sidebar.rs`: left panel: local and remote branches, pull requests, issues, Git Flow branches, tags, stashes, worktrees and submodules.
-- `stashes.rs`: the STASHES section of the left panel: one row per stash (a click selects its commit) with a menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right (the items come from `state/stash_actions.rs`).
+- `stashes.rs`: the STASHES section of the left panel: one row per stash (a click selects its commit) with a menu to apply, pop, rename or delete it; at the right a weak "auto" (an auto-stash) and then the stash's date, left out under 240 px, the full date on hover (the items come from `state/stash_actions.rs`).
 - `submodules.rs`: the SUBMODULES section of the left panel: one row per submodule with a painted status marker (with its own short tooltip), a status word and an explanatory tooltip; double-click opens it, and the row menu opens, initializes, updates or restores it, records its checkout, fetches or pulls inside it, copies its URL, edits it, discards the changes inside it or removes it.
 - `ref_visibility.rs`: hiding branches and tags in the graph, or showing only some, from the left panel: the branch and tag menu items, the markers on hidden and shown-only rows, and the banner above the lists.
 - `forge_filter_menu.rs`: the filter chip in the PULL REQUESTS and ISSUES headers, and its popover: the built-in filters, the repository's saved filters (edit, move, remove) and New filter…, sent as `Msg::ForgeFilter`; the chip sits left of the shared header's + and ⋯.
@@ -213,7 +213,7 @@ start with `state/`, `update/` or `ui/`.
 
 ## Command palette and shortcuts
 
-- `palette.rs`: the command palette (Ctrl+P): a search field over the commands available now, ranked by a fuzzy match, or over a two-step command's items (tracked files for File history, stashes to apply, pop or delete), or a free-text step (the message for a new stash).
+- `palette.rs`: the command palette (Ctrl+P): a search field over the commands available now, ranked by a fuzzy match, or over a two-step command's items (tracked files for File history, stashes to apply, pop or delete), or a free-text step (the message for a new stash); a stash row's date shows before its ref, the full date on hovering it.
 - `palette/label.rs`: a palette row's label: its matched characters in the accent colour, a file's folder part dimmed, and a ref or repository that doesn't fit cut in its middle with its matches moved along.
 - `shortcuts.rs`: keyboard shortcuts: every changeable key, and Go to tab 1 to 8, matched through the effective keymap (`global.rs`, with presses turned into chords in `chords.rs`); recording a key for Preferences > Keyboard (`record.rs`); the shortcut sheet (`sheet.rs`) and the key caps it and Preferences draw (`caps.rs`).
 - `shortcuts/caps.rs`: keys drawn as key caps: each chord's parts as caps joined by "+", alternatives joined by "or".
@@ -306,6 +306,7 @@ start with `state/`, `update/` or `ui/`.
 - The app's `runner_snapshots/` holds the view snapshot tests that run effects through the runner (the whole-file and wrapped diffs, the conflict markers warning, the path search), on these fixtures and snapshots; glowfly-ui never depends on the runner.
 - `readme_screenshots/` (tests): the README's screenshots in `docs/screenshots/`, rendered at 2x from a made-up demo repository (`demo.rs`, its files in `demo_files.rs`): the main window, a split diff and the conflict resolver (`shots.rs`) and a pull request review (`pull_request.rs`), each in Graphite and Porcelain; `UPDATE_SCREENSHOTS=1` writes them, otherwise the stored sizes are checked.
 - `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices; under `test-support` for the app's tests too, always against glowfly-ui's `tests/snapshots/`.
+- `snapshot_check/mod.rs` also has `text_snapshot`, a frame's text snapshot for a test that looks for painted text.
 - `snapshot_check/text.rs`: a frame's text snapshot: the accessibility tree's roles, labels, values and states, then the painted text no widget carries; only the dialogs when one is open.
 - `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).
 - `snapshot_check/goldens.rs`: the ~125 pixel goldens and their crop (window, dialog, top strip, top-left corner), checked against the PNGs on disk; `IMAGE_ONLY`, the theme variants kept as images only.

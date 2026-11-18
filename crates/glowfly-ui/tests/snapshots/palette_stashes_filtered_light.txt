@@ -5,5 +5,5 @@ Dialog
   Button "On main: login form tweaks"
   Label "Up/Down to choose, Enter to delete, Backspace or Esc to go back"
 painted:
-  "stash@{2}"
-  "stash@{0}"
+  "1 month ago · stash@{2}"
+  "2 hours ago · stash@{0}"

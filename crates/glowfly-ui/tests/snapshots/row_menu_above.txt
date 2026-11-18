@@ -109,6 +109,7 @@ painted:
   "1"
   "Stashes"
   "3"
+  "2 hours ago"
   "M"
   "Summary"
   "Description"

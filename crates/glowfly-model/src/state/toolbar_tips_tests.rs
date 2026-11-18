@@ -161,7 +161,7 @@ fn blocked_rules_give_their_reasons() {
     assert_eq!(fetch_blocked(&st), None, "Fetch all doesn't need a branch");
 
     let snap = st.snap.as_mut().unwrap();
-    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9) }];
+    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9), time: None }];
     snap.unstaged = op_fixture::rows(&[("a.txt", 'M')]);
     assert_eq!((stash_blocked(&st), pop_blocked(&st)), (None, None));
     running(&mut st);
@@ -263,7 +263,7 @@ fn stash_and_pop_previews() {
     assert_eq!((p.heading.as_str(), p.more), ("Stashes", 2));
 
     assert_eq!(pop_preview(Lang::En, snap), None);
-    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9) }];
+    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9), time: None }];
     let p = pop_preview(Lang::En, snap).unwrap();
     assert_eq!((p.heading.as_str(), &p.rows[..]), ("Applies", &[TipRow::Line("On main: wip".into())][..]));
     assert_eq!(p.note.as_deref(), Some("You have local changes: Unstash asks before applying."));
