@@ -32,6 +32,7 @@ the glyph check) are in [app-layers.md](app-layers.md) and [ui-views.md](ui-view
 - `source_checks/architecture_docs.rs`: every non-test source file is named in `docs/architecture/` (a backticked path ending with its path, the `runner/` and `ui/` shorthands, or a `mod.rs`'s folder); `UNDOCUMENTED` lists the exceptions and only shrinks.
 - `source_checks/log_encoding.rs`: command lines for blame, log, show, range-diff, format-patch and their relatives are built with `gitcli::utf8_args`; `ALLOWED` names the calls left alone and only shrinks.
 - `source_checks/config_values.rs`: config entry values are read only through glowfly-core's `config_entry` (no `.value_bytes()`/`.has_value()`, and no `.value()` in a file that reads config entries); `ALLOWED` (push_config.rs until #599 lands) only shrinks.
+- `source_checks/stash_actions.rs`: `StashMsg::Run` and `StashMsg::RenameDialog` are named only in `state/stash_confirm.rs`, `state/stash_actions.rs` and `update/stash.rs` (no `StashMsg::{`, `StashMsg::*` or `StashMsg as` imports); `GUARDED` lists the files.
 
 ## View checks (`crates/glowfly-ui/tests/view_checks/`, one binary)
 
