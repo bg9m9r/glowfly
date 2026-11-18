@@ -227,6 +227,49 @@ fn lists_a_rebase_whose_todo_is_not_utf8() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A rebase started with git's own todo (not hand-written) under `i18n.logOutputEncoding=latin1`,
+/// for commits by a non-ASCII author with non-ASCII subjects: git writes the subjects in Latin-1.
+#[test]
+fn lists_the_todo_git_wrote_under_a_legacy_output_encoding() {
+    let dir = scratch_repo("rebase-remaining-git-latin1");
+    set_config(&dir, &[("user.name", "Zoë Müller")]);
+    let base = commit(
+        &dir, "0.txt", "0
+", "base",
+    );
+    let a = commit(
+        &dir,
+        "a.txt",
+        "a
+",
+        "Añade café",
+    );
+    let b = commit(
+        &dir,
+        "b.txt",
+        "b
+",
+        "Otro café",
+    );
+    set_config(&dir, &[("i18n.logOutputEncoding", "latin1")]);
+    let editor = "f(){ { echo break; cat \"$1\"; } > \"$1.new\" && mv \"$1.new\" \"$1\"; }; f";
+    let (ok, out) = run_with_input(&dir, &args(&["rebase", "-i", &base.to_string()]), "", &[("GIT_SEQUENCE_EDITOR", editor)]);
+    assert!(ok, "{out}");
+    let todo = dir.join(".git").join("rebase-merge").join("git-rebase-todo");
+    let bytes = std::fs::read(&todo).unwrap();
+    assert!(std::str::from_utf8(&bytes).is_err(), "git should have written Latin-1: {bytes:?}");
+    let r = remaining(&dir).unwrap();
+    assert_eq!(kinds(&r.steps), ["pick Añade café", "pick Otro café"]);
+    let mut steps = r.steps.clone();
+    steps.swap(0, 1);
+    edit_todo(&dir, &edit_request(&r, steps), &SequenceEditor::Copy).unwrap();
+    let text = String::from_utf8_lossy(&std::fs::read(&todo).unwrap()).into_owned();
+    let at = |c: git2::Oid| text.find(&c.to_string()[..7]).unwrap_or_else(|| panic!("{c} in {text}"));
+    assert!(at(b) < at(a), "{text}");
+    git(&dir, &["rebase", "--abort"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn a_refused_edit_puts_back_the_exact_bytes() {
     let (dir, _, todo, bytes) = latin1_todo("rebase-remaining-latin1-refused");
