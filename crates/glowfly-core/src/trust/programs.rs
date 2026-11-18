@@ -22,10 +22,11 @@ mod shell;
 const BREAKS: &[char] = &[';', '|', '&', '(', ')', '<', '>', '`', '"', '\'', '=', ','];
 
 /// The files in `repo`'s working tree (absolute paths, maybe missing) that the settings
-/// `config` run, and the files its config includes (`stamp::includes`); `follow::find` keeps
-/// those inside the working tree. An include of a file in the working tree is added to
+/// `config` run, and the files its config includes (`stamp::include_entries`); `follow::find`
+/// keeps those inside the working tree. An include of a file in the working tree is added to
 /// `config` as a setting of its own (`include.path`): the branch then chooses settings, so it
-/// is a reason to ask by itself, like a setting that runs a program.
+/// is a reason to ask by itself, like a setting that runs a program. An include whose file
+/// isn't listed (`Include::unsure`) is added the same way, with the working tree itself.
 pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<PathBuf> {
     let Some(workdir) = repo.workdir() else { return Vec::new() };
     let home = crate::settings::home_dir();
@@ -46,7 +47,7 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<Pa
         }
     }
     for inc in super::stamp::include_entries(repo) {
-        // One whose file may be somewhere that isn't listed counts as in the working tree.
+        // One whose file isn't listed counts as in the working tree.
         let in_tree = inc.unsure || inc.paths.iter().any(|p| !super::follow::inside(repo, workdir, p).is_empty());
         let key = match inc.name.get(..10) {
             Some(head) if head.eq_ignore_ascii_case("includeif.") => format!("includeIf.{}", &inc.name[10..]),
@@ -55,6 +56,10 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<Pa
         let setting = ConfigCommand { key, value: inc.value };
         if in_tree && !config.contains(&setting) {
             config.push(setting);
+        }
+        if inc.unsure {
+            // Where its file is isn't listed: the whole working tree is followed.
+            add(workdir.to_path_buf());
         }
         inc.paths.into_iter().for_each(&mut add);
     }
