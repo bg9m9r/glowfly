@@ -17,13 +17,13 @@ use glowfly_model::state::{AppState, ToastAction};
 use std::path::Path;
 use std::time::Instant;
 
-fn rev(dir: &Path, what: &str) -> String {
+pub(super) fn rev(dir: &Path, what: &str) -> String {
     let (ok, out) = run(dir, &args(&["rev-parse", what]));
     assert!(ok, "{out}");
     out.trim().to_owned()
 }
 
-fn cleanup(dirs: &[&Path]) {
+pub(super) fn cleanup(dirs: &[&Path]) {
     for d in dirs {
         let _ = std::fs::remove_dir_all(d);
     }
@@ -142,12 +142,12 @@ fn diverge_feature(st: &mut AppState, work: &Path) {
     drive(st, Msg::Repo(RepoMsg::Refresh));
 }
 
-fn branch<'a>(st: &'a AppState, name: &str) -> &'a BranchInfo {
+pub(super) fn branch<'a>(st: &'a AppState, name: &str) -> &'a BranchInfo {
     st.snap.as_ref().unwrap().locals.iter().find(|b| b.name == name).expect("the branch")
 }
 
 /// The confirmation the branch row's Force push opens: its body and the message it runs.
-fn confirmation(st: &AppState, name: &str) -> (String, Msg) {
+pub(super) fn confirmation(st: &AppState, name: &str) -> (String, Msg) {
     let t = st.settings.lang();
     match force_confirm(t, st.snap.as_ref().unwrap(), branch(st, name)) {
         Ok(Msg::ConfirmDanger { body, then, .. }) => (body, *then),
@@ -214,7 +214,7 @@ fn force_push_refuses_the_default_branch_and_a_moved_upstream() {
 }
 
 /// The fixes kept for the newest toast's buttons, first then second: label and message.
-fn toast_fixes(st: &AppState) -> Vec<(String, &Msg)> {
+pub(super) fn toast_fixes(st: &AppState) -> Vec<(String, &Msg)> {
     let t = st.toasts.last().expect("a toast");
     let fix = |a: &Option<ToastAction>, alt: bool| {
         let a = a.as_ref()?;
@@ -226,7 +226,7 @@ fn toast_fixes(st: &AppState) -> Vec<(String, &Msg)> {
 }
 
 /// Whether `msg` asks to force push branch `name`.
-fn forces(msg: &Msg, name: &str) -> bool {
+pub(super) fn forces(msg: &Msg, name: &str) -> bool {
     let Msg::ConfirmDanger { then, .. } = msg else { return false };
     matches!(&**then, Msg::Branch(BranchMsg::ForcePush { branch, .. }) if branch == name)
 }
@@ -259,7 +259,7 @@ fn a_push_rejected_as_behind_offers_force_push_for_that_branch() {
 }
 
 /// The labels of the newest toast's fixes.
-fn fix_labels(st: &AppState) -> Vec<String> {
+pub(super) fn fix_labels(st: &AppState) -> Vec<String> {
     toast_fixes(st).into_iter().map(|f| f.0).collect()
 }
 

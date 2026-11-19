@@ -1,10 +1,12 @@
 //! The local branch a push that git rejected as behind was for (`rejected_local`), for the
 //! failure toast's Force push with lease. It is read from the job's own push command and git's
 //! `! [rejected] <src> -> <dst>` line, and found only when the source is a local branch, the
-//! push went to its upstream's remote and `<dst>` is its upstream's name: a push to another
-//! remote, or of another branch to the same name, offers no force push.
+//! push went to where its force push goes (`force_dest`: that remote and name, whose tip the
+//! snapshot knows) and `<dst>` is that name: a push to another remote, or of another branch to
+//! the same name, offers no force push.
 
-use crate::state::branches;
+use super::force_dest;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 
 /// The short name of `r` (`refs/heads/x` is `x`).
@@ -49,9 +51,10 @@ fn printed_remote<'a>(snap: &'a Snapshot, output: &str) -> Option<&'a str> {
 
 /// The local branch the failed push job `cmd` (its one command) was for, when git rejected it
 /// as behind in `output`: the rejection's source is that branch (the command's refspec agrees),
-/// the push went to its upstream's remote (named in the command, or else by the `To` line) and
-/// the rejected destination is its upstream's name. None otherwise.
-pub fn rejected_local<'a>(snap: &'a Snapshot, cmd: &[String], output: &str) -> Option<&'a BranchInfo> {
+/// the push went to the remote its force push goes to (named in the command, or else by the
+/// `To` line), the rejected destination is that force destination and the snapshot knows its
+/// tip (a destination never fetched can't be leased: git just said it exists). None otherwise.
+pub fn rejected_local<'a>(t: Lang, snap: &'a Snapshot, cmd: &[String], output: &str) -> Option<&'a BranchInfo> {
     if glowfly_core::gitcli::subcommand(cmd) != Some("push") {
         return None;
     }
@@ -71,6 +74,6 @@ pub fn rejected_local<'a>(snap: &'a Snapshot, cmd: &[String], output: &str) -> O
         None => printed_remote(snap, output)?,
     };
     let b = snap.locals.iter().find(|b| b.name == *src)?;
-    let up = branches::remote_tracking(b)?;
-    (up.remote == remote && up.merge == *dst).then_some(b)
+    let d = force_dest::of(t, snap, b).ok()?;
+    (d.remote == remote && (d.branch() == Some(*dst) || d.dest_ref == *dst) && d.seen.is_some()).then_some(b)
 }

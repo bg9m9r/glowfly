@@ -3,6 +3,7 @@
 //! refusal.
 
 use super::branch_tests::{remote_commit, with_origin};
+use super::push_target_tests::add_fork;
 use super::tests::{drive, finish, git};
 use super::update;
 use git2::{Oid, RepositoryState};
@@ -10,7 +11,8 @@ use glowfly_core::stack::RestackScope;
 use glowfly_model::effect::{Effect, StackEffect};
 use glowfly_model::msg::{CommitMsg, Msg, RebaseMsg, RepoMsg, StackMsg};
 use glowfly_model::state::AppState;
-use glowfly_model::state::branches::NO_REMOTES;
+use glowfly_model::state::branches::{NO_REMOTES, plain_push};
+use glowfly_model::state::stack_push::push_blocker;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
@@ -204,4 +206,67 @@ fn layer_lines_go_to_the_pushed_repos_tab_after_a_tab_switch() {
     assert_eq!(bare_tip(&bare, "top"), tip(&dir, "top"));
     cleanup(&dir, &bare);
     let _ = std::fs::remove_dir_all(&other);
+}
+
+/// Sets repository config `key` in `dir` and reloads.
+fn set_config(st: &mut AppState, dir: &Path, key: &str, value: &str) {
+    git(dir, &["config", key, value]);
+    refresh(st);
+}
+
+#[test]
+fn a_stack_with_a_push_remote_goes_to_the_fork() {
+    let (mut st, dir, bare) = stacked("stack-push-fork");
+    let fork = add_fork(&dir);
+    git(&dir, &["config", "push.default", "simple"]);
+    set_config(&mut st, &dir, "remote.pushDefault", "");
+    // The first push goes to origin, setting each layer's upstream there.
+    drive(&mut st, push_stack("mid"));
+    git(&dir, &["checkout", "-q", "top"]);
+    commit(&dir, "t2");
+    git(&dir, &["checkout", "-q", "low"]);
+    set_config(&mut st, &dir, "remote.pushDefault", "fork");
+    let origin_top = bare_tip(&bare, "top");
+    st.log.clear();
+    drive(&mut st, push_stack("mid"));
+    for b in ["low", "mid", "top"] {
+        assert_eq!(bare_tip(&fork, b), tip(&dir, b), "{b} is on the fork");
+        assert!(logged(&st, &format!("{b}: pushed as a new branch to fork/{b}")), "{:?}", st.log);
+        assert_eq!(config(&dir, &format!("branch.{b}.remote")).as_deref(), Some("origin"), "the upstream stays");
+    }
+    assert_eq!(bare_tip(&bare, "top"), origin_top, "origin's top stays at its old tip");
+    assert_eq!(last_toast(&st), (true, "Pushed the stack".into()));
+    // Amend low and restack: the fork's versions are replaced with a lease, origin is untouched.
+    let origin: Vec<Oid> = ["low", "mid", "top"].iter().map(|b| bare_tip(&bare, b)).collect();
+    st.session.draft.amend = true;
+    st.session.draft.summary = "l1, amended".into();
+    drive(&mut st, Msg::Commit(CommitMsg::Commit));
+    drive(&mut st, Msg::Rebase(RebaseMsg::Restack { scope: RestackScope::Above("low".into()), autostash: false }));
+    assert_ne!(bare_tip(&fork, "low"), tip(&dir, "low"));
+    st.log.clear();
+    drive(&mut st, push_stack("mid"));
+    for b in ["low", "mid", "top"] {
+        assert_eq!(bare_tip(&fork, b), tip(&dir, b), "{b} was replaced on the fork");
+        assert!(logged(&st, &format!("{b}: replaced its rewritten version on fork/{b} (force with lease)")), "{:?}", st.log);
+    }
+    let after: Vec<Oid> = ["low", "mid", "top"].iter().map(|b| bare_tip(&bare, b)).collect();
+    assert_eq!(after, origin, "origin is unchanged");
+    cleanup(&dir, &bare);
+    let _ = std::fs::remove_dir_all(&fork);
+}
+
+#[test]
+fn a_layer_git_refuses_to_push_blocks_push_stack() {
+    let (mut st, dir, bare) = stacked("stack-push-refused");
+    drive(&mut st, push_stack("mid"));
+    set_config(&mut st, &dir, "push.default", "nothing");
+    let fx = update(&mut st, push_stack("mid"), Instant::now());
+    assert!(!fx.iter().any(|e| matches!(e, Effect::Stack(_))), "{fx:?}");
+    let t = st.settings.lang();
+    let snap = st.snap.as_ref().unwrap();
+    let low = snap.locals.iter().find(|b| b.name == "low").unwrap();
+    let why = plain_push::refused(t, low).expect("git refuses low's plain push");
+    assert_eq!(push_blocker(t, snap, "mid").as_deref(), Some(why.as_str()));
+    assert_eq!(st.log.last().map(|l| l.text.as_str()), Some(why.as_str()));
+    cleanup(&dir, &bare);
 }
