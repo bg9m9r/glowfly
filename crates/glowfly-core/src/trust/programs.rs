@@ -256,14 +256,18 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, un
     let mut out: Vec<PathBuf> = Vec::new();
     for r in readings(&native_spelling(&word.text.replace('\\', "/"), cfg!(windows))) {
         let slashed = r.replace('\\', "/");
-        let shown = shell::literal(&slashed);
+        // A hook's quoted `~` (`"~/x"`) is a folder of that name: sh expands only a bare one.
+        // It counts only when it is there: a message's `'~/.x'` is no path.
+        let tilde = hook && slashed.starts_with(shell::TILDE);
+        let shown = if tilde { format!("./{}", shell::literal(&slashed)) } else { shell::literal(&slashed) };
+        let from_a_place = |shown: &str| !tilde && from_a_place(workdir, shown);
         if !slashed.contains(shell::SUB) {
             // A whole word with shell punctuation in it is a command line (`./a; ./b`): its
             // pieces count. The part before a `:` counts as the word it was cut from.
             let named = word.escaped || ((shown.contains('/') || word.text.contains('/')) && !shown.contains(BREAKS));
             match placed(workdir, home, &shown) {
                 // Bytes that name no file here: unread when they would be followed by name.
-                None if named && (!hook || from_a_place(workdir, &shown)) => note(unread, &shown),
+                None if named && (!hook || from_a_place(&shown)) => note(unread, &shown),
                 None => {}
                 Some(path) => {
                     // A place that may not be followed counts as there without being looked
@@ -271,7 +275,7 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, un
                     let far = super::follow::far(&path, workdir);
                     let exists = far || std::fs::symlink_metadata(&path).is_ok();
                     let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
-                    let placed = exists || !hook || from_a_place(workdir, &shown);
+                    let placed = exists || !hook || from_a_place(&shown);
                     if (named || exists) && placed && !root && !out.contains(&path) {
                         out.push(path);
                     }

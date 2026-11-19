@@ -9,9 +9,13 @@
 /// Private-use code points: never drawn, and never in a setting a person types.
 pub(super) const SUB: char = private(0);
 
-/// Stand-ins for glob and bracket characters that were quoted, so they are no glob.
-const QUOTED: [(char, char); 6] =
-    [('*', private(1)), ('?', private(2)), ('[', private(3)), (']', private(4)), ('{', private(5)), ('}', private(6))];
+/// A quoted `~`: a folder of that name, never a home folder.
+pub(super) const TILDE: char = private(7);
+
+/// Stand-ins for glob and bracket characters that were quoted, so they are no glob, and for a
+/// quoted `~`.
+const QUOTED: [(char, char); 7] =
+    [('*', private(1)), ('?', private(2)), ('[', private(3)), (']', private(4)), ('{', private(5)), ('}', private(6)), ('~', TILDE)];
 
 /// The private-use character `n` places into the BMP's private-use area.
 pub(super) const fn private(n: u32) -> char {

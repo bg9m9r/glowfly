@@ -76,11 +76,19 @@ fn a_package_s_bin_entry_is_followed_the_same_as_a_link_or_a_file() {
     let dir = repo_with("hook-noise-bin", files, "#!/bin/sh\n./node_modules/.bin/lint --fix\n");
     let bin = dir.join("node_modules/.bin/lint");
     std::fs::create_dir_all(bin.parent().unwrap()).unwrap();
+    // A link is followed at its place and, as `follow::find` resolves it, at the file it leads
+    // to; a plain file at its place. Neither is read, nor follows the whole working tree.
     #[cfg(unix)]
-    std::os::unix::fs::symlink("../lint/cli.js", &bin).unwrap();
+    let want = {
+        std::os::unix::fs::symlink("../lint/cli.js", &bin).unwrap();
+        ["node_modules/.bin/lint", "node_modules/lint/cli.js"].as_slice()
+    };
     #[cfg(not(unix))]
-    std::fs::write(&bin, "#!/usr/bin/env node\n").unwrap();
-    assert_eq!(paths(&scan_of(&dir)), ["node_modules/.bin/lint"]);
+    let want = {
+        std::fs::write(&bin, "#!/usr/bin/env node\n").unwrap();
+        ["node_modules/.bin/lint"].as_slice()
+    };
+    assert_eq!(paths(&scan_of(&dir)), want);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
