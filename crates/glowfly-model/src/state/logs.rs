@@ -280,6 +280,13 @@ impl AppState {
         self.log_to(repo, ok, text, Some(run), loud)
     }
 
+    /// The tab showing `repo` when that isn't the active tab: None for the active tab's
+    /// repository, one no tab shows, and with no active tab.
+    pub(crate) fn other_tab(&self, repo: Option<&Path>) -> Option<usize> {
+        let (r, active) = (repo?, self.tabs.get(self.active_tab)?);
+        if active.is(r) { None } else { self.tabs.iter().position(|t| t.is(r)) }
+    }
+
     /// Adds a line to a tab's log, dropping the oldest entries past `LOG_LIMIT` (auto-fetch
     /// adds one a minute for as long as the app runs; a long streak of them is capped first).
     /// The line is also queued for the activity file, tagged with the tab's repository, unless
@@ -292,10 +299,7 @@ impl AppState {
         let active = self.tabs.get(self.active_tab);
         // Another tab showing `repo`. With no active tab (only inside a tab handler,
         // `usize::MAX`) the line stays in `log`.
-        let other = match (repo, active) {
-            (Some(r), Some(t)) if !t.is(r) => self.tabs.iter().position(|t| t.is(r)),
-            _ => None,
-        };
+        let other = self.other_tab(repo);
         let tag = match (other, repo) {
             (Some(i), _) => self.tabs[i].path.clone(),
             (None, Some(r)) if !active.is_some_and(|t| t.is(r)) => Some(r.to_path_buf()),

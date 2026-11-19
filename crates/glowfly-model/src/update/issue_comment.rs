@@ -116,8 +116,8 @@ pub(super) fn commented(
         Some(_) => {}
         // The tracker changed under the open repository: logged only.
         None if here && !active => {}
-        None if ok => st.toast(true, text, now),
-        None => st.toast(false, format!("Couldn't post the comment on {mention}: {}", failure.unwrap_or_default()), now),
+        None if ok => st.toast_in(Some(workdir), true, text, now),
+        None => st.toast_in(Some(workdir), false, format!("Couldn't post the comment on {mention}: {}", failure.unwrap_or_default()), now),
     }
 }
 

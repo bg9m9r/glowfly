@@ -370,18 +370,18 @@ pub(super) fn told(
                 PutBack::RestoredUnstaged => back_unstaged(t, name),
                 _ => gone(t, name),
             };
-            st.toast(true, text.clone(), now);
+            st.toast_in(Some(&workdir), true, text.clone(), now);
             st.log(true, text);
         }
         PutBack::Conflicted { paths } => {
             let text = conflicted(t, name, paths.len());
-            st.toast_action(false, text.clone(), show_action(t, oid, workdir), now);
+            st.toast_action_in(Some(&workdir), false, text.clone(), show_action(t, oid, workdir.clone()), now);
             st.log(false, text);
         }
         PutBack::Failed | PutBack::NotReady => {
             // The toast stays short; git's reason is in the activity log.
             let text = t.trf("auto_stash.log.failed", &[("name", &name), ("reason", &super::job_errors::reason(t, output))]);
-            st.toast_action(false, failed(t, name), show_action(t, oid, workdir), now);
+            st.toast_action_in(Some(&workdir), false, failed(t, name), show_action(t, oid, workdir.clone()), now);
             st.log(false, text);
         }
     }
