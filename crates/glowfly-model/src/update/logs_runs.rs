@@ -12,9 +12,18 @@ use crate::msg::{JobMsg, Msg};
 use crate::state::activity_rows::is_routine_label;
 use crate::state::auto_stash::StashRetry;
 use crate::state::logs::EntryId;
+use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob, ToastAction};
 use glowfly_core::logs::{RunInfo, last_message};
+use std::path::Path;
 use std::time::Instant;
+
+/// The repository a finished job's toast is named for (`AppState::toast_in`): the job's own;
+/// none for a clone or an init, which makes a repository and belongs to no tab.
+fn toast_repo(job: &RunningJob) -> Option<&Path> {
+    let makes = matches!(job.then_open, Some((_, Created::Clone | Created::Init)));
+    job.workdir.as_deref().filter(|_| !makes)
+}
 
 /// Remembers when the active job started: the first `update` that ends with it running. A job
 /// held for the trust prompt isn't running, so it is timed from its release.
@@ -86,7 +95,7 @@ pub(super) fn job_ended(
     };
     super::notify::desktop(st, NoteKind::Job, &headline, repo, fx);
     // Pushed first, so a failure's announcement gives this toast its Details.
-    st.toast(ok, headline, now);
+    st.toast_in(toast_repo(job), ok, headline, now);
     let id = st.log_run_in(repo, ok, text, run(summary), true);
     if !ok {
         st.logs.open.insert(id);
@@ -134,7 +143,7 @@ pub(super) fn job_cancelled(st: &mut AppState, job: &RunningJob, output: &str, h
     let text = format!("{} cancelled\n{}", job.label, folded(st.settings.lang(), output));
     let run = RunInfo { title: job.label.clone(), summary: "Cancelled".to_owned(), took_ms, routine: is_routine_label(&job.label) };
     if !job.quiet {
-        st.toast(true, headline, now);
+        st.toast_in(toast_repo(job), true, headline, now);
         st.logs.recount = None;
     }
     st.log_run_in(job.workdir.as_deref(), true, text, run, false);

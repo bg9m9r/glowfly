@@ -86,7 +86,7 @@ pub(super) fn details(st: &mut AppState, tab: TabId, entry: Option<EntryId>, fx:
 /// Announces the first failure logged loudly in this `update`: the newest failure toast shown
 /// after `since` (pushed, or shown again in place) gets a Details button (beside its fix, when it
 /// has one), else a failure toast with Details shows the line's headline (restarting one that
-/// already shows it). Nothing new is shown while the panel already shows that tab's activity
+/// already shows it), named for the line's tab when that isn't the active one. Nothing new is shown while the panel already shows that tab's activity
 /// log with the line's row shown (a search can hide it). Run at the end of `update`, which has the time.
 pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
     let Some(a) = st.logs.announce.take() else { return };
@@ -103,7 +103,9 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
         if st.view.show_log && st.logs.tab == LogKind::Activity && a.tab == active && !hidden {
             return;
         }
-        st.toast(false, a.text, now);
+        // Named for the line's tab when another tab is in front.
+        let repo = a.tab.and_then(|id| st.tabs.iter().find(|t| t.id == id)).and_then(|t| t.path.clone());
+        st.toast_in(repo.as_deref(), false, a.text, now);
     }
     give_details(st, since, action);
 }

@@ -106,7 +106,7 @@ pub(super) fn inactive_result(st: &mut AppState, workdir: &Path, op: FileOp, res
         Ok(ok) => {
             // Only the undo entry names the old path: the active snapshot is another repository's.
             let text = success_text(st.settings.lang(), &op, &ok, None, ok.undo().and_then(|a| a.renamed_from()));
-            st.toast(true, text, now);
+            st.toast_in(Some(workdir), true, text, now);
         }
         Err(e) => {
             let words = typed::write(st.settings.lang(), &e);

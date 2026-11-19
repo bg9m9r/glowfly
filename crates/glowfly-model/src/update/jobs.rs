@@ -255,8 +255,11 @@ pub(super) fn finish_made(
     fx: &mut Vec<Effect>,
 ) {
     let open = if made && !ok { st.job.as_mut().and_then(|j| j.then_open.take()) } else { None };
+    let mark = st.toast_seq;
     super::ops::finish_job(st, ok, output.clone(), headline, None, now, fx);
     if let Some((p, how)) = open {
+        // The repository it made opens now: its toast is about no other tab.
+        st.toasts.iter_mut().filter(|t| t.shown > mark).for_each(|t| t.tab = None);
         super::trust::created(st, &p, how, &output);
         super::tabs::open(st, p, fx);
     }
