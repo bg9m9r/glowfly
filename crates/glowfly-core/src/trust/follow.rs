@@ -54,7 +54,7 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
     }
     for hook in hooks {
         let is_link = std::fs::symlink_metadata(hook).is_ok_and(|m| m.file_type().is_symlink());
-        if is_link {
+        if is_link && !far(hook, workdir) {
             for rel in inside(repo, workdir, &crate::paths::resolve(hook)) {
                 add_place(rel, false);
             }
@@ -120,9 +120,12 @@ pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<Stri
     let git_dirs = [repo.path(), repo.commondir()];
     let in_git_dir = |p: &Path| git_dirs.iter().filter_map(|g| lexical(g)).any(|g| p.starts_with(g));
     let as_spelled = lexical(path).filter(|p| !in_git_dir(p)).and_then(|p| rel(&p, &lexical(workdir)?));
-    let real = crate::paths::resolve(&workdir.join(path));
-    let resolved_git = git_dirs.iter().any(|g| real.starts_with(crate::paths::resolve(g)));
-    let resolved = if resolved_git { None } else { rel(&real, &crate::paths::resolve(workdir)) };
+    // Resolved only where it may be followed: a place that may not be is never looked at.
+    let joined = workdir.join(path);
+    let real = (!far(&joined, workdir)).then(|| crate::paths::resolve(&joined));
+    let resolved = real
+        .filter(|real| !git_dirs.iter().any(|g| real.starts_with(crate::paths::resolve(g))))
+        .and_then(|real| rel(&real, &crate::paths::resolve(workdir)));
     let mut out: Vec<String> = Vec::new();
     for r in [as_spelled, resolved].into_iter().flatten() {
         // `.git` in any spelling a folding file system takes for it finds the git dir under it.
@@ -132,6 +135,33 @@ pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<Stri
         }
     }
     out
+}
+
+/// Whether `path` is at a place that may not be followed from `home` (`net_path::may_follow`),
+/// so it is never looked at. A path that isn't absolute names no place of its own. On Windows
+/// a part with a character no name has there (a pattern's `*` or `?`) can't be looked up and
+/// nothing is at it, so the folder before that part is what counts.
+pub(super) fn far(path: &Path, home: &Path) -> bool {
+    let text = path.to_string_lossy();
+    // Past a `\\?\` or `\??\` prefix.
+    let from = if text.starts_with(r"\\?\") || text.starts_with(r"\??\") { 4 } else { 0 };
+    let unnamed = text[from..].find(['*', '?', '"', '<', '>', '|']).filter(|_| cfg!(windows));
+    if let Some(at) = unnamed {
+        let before = &text[..from + at];
+        let folder = before.rfind(['\\', '/']).map_or("", |i| &before[..i]);
+        return Path::new(folder).is_absolute() && !crate::net_path::may_follow(Path::new(folder), home);
+    }
+    path.is_absolute() && !crate::net_path::may_follow(path, home)
+}
+
+/// `far`, noting the path in `offsite` (as shown, each once) when so.
+pub(super) fn note_far(path: &Path, home: &Path, offsite: &mut Vec<String>) -> bool {
+    let far = far(path, home);
+    let shown = crate::native_path::shown(path);
+    if far && !offsite.contains(&shown) {
+        offsite.push(shown);
+    }
+    far
 }
 
 /// `path` with `.` parts dropped and `..` parts applied; None when `..` climbs past its start.

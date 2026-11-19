@@ -77,6 +77,27 @@ fn a_hook_that_appears_in_a_clean_repository_holds_the_job() {
 }
 
 #[test]
+fn a_hooks_folder_that_isnt_looked_at_holds_every_job_whatever_was_decided() {
+    let dir = repo("offsite");
+    let place = if cfg!(windows) { "//glowfly-test.invalid/share/hooks" } else { "/net/glowfly-test.invalid/hooks" };
+    glowfly_core::gitcli::run(&dir, &glowfly_core::gitcli::args(&["config", "core.hooksPath", place]));
+    let scan = glowfly_core::trust::scan_at(&dir).unwrap();
+    assert_eq!(scan.offsite.len(), 1, "{scan:?}");
+    let reason = Unchecked::Offsite(scan.offsite.join(", "));
+    // The setting itself asks first; a decision made on this very scan still doesn't cover
+    // what wasn't read.
+    assert!(matches!(verify(&check(&dir, None), &job(&dir)), Verdict::Stale(_)));
+    let saved = Some(SavedTrust::trusted(Some(scan.print())));
+    let Verdict::Unchecked(found) = verify(&check(&dir, saved.clone()), &job(&dir)) else { panic!("held") };
+    assert_eq!(found.1, reason);
+    let accepted = glowfly_model::effect::Accepted { at: None, reason };
+    let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved.clone()) };
+    assert!(matches!(verify(&once, &job(&dir)), Verdict::Pass(_)), "Trust and run passes it for this run");
+    assert!(matches!(verify(&check(&dir, saved), &job(&dir)), Verdict::Unchecked(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn a_rebase_file_that_cant_be_read_holds_every_job_whatever_was_decided() {
     let dir = repo("unread");
     let todo = dir.join(".git/rebase-merge/git-rebase-todo");

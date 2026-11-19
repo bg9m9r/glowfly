@@ -132,7 +132,7 @@ pub struct TrustPrompt {
     /// The label of the job the user started that waits for this decision.
     pub held: Option<String>,
     /// For a repository trusted earlier (`Standing::Changed`): what its scan gained since.
-    pub gained: Option<TrustScan>,
+    pub gained: Option<Box<TrustScan>>,
     /// The built-in terminal's shells wait for this decision: Trust and run / Cancel.
     pub terminal: bool,
     /// What the commit the held job brings in has, where hooks follow the working tree, that
@@ -150,7 +150,7 @@ pub struct TrustPrompt {
 pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
     let standing = standing(s, snap);
     let gained = match (standing, saved_for(s, snap).and_then(|t| t.print)) {
-        (Standing::Changed, Some(print)) => Some(snap.trust_scan.gained_since(&print)),
+        (Standing::Changed, Some(print)) => Some(Box::new(snap.trust_scan.gained_since(&print))),
         _ => None,
     };
     TrustPrompt {
@@ -331,6 +331,7 @@ pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::inco
         Unchecked::Conflicted(p) => t.trf("trust.unchecked.conflicted", &[("path", &printable(p))]),
         Unchecked::Unmodeled(what) => t.trf("trust.unchecked.unmodeled", &[("what", &printable(what))]),
         Unchecked::State(files) => t.trf("trust.unchecked.state", &[("files", &printable(files))]),
+        Unchecked::Offsite(places) => t.trf("trust.unchecked.offsite", &[("places", &printable(places))]),
     }
 }
 

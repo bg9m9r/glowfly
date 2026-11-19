@@ -104,6 +104,9 @@ pub enum Unchecked {
     /// Files of the rebase or pick in progress (their names, `TrustScan::unread`) that couldn't
     /// be read for the commands continuing it runs.
     State(String),
+    /// Places the repository's settings and hooks name (`TrustScan::offsite`) that weren't
+    /// looked at for what git would run from them.
+    Offsite(String),
 }
 
 /// `cmd`'s subcommand (`fetch` in `-c x=y fetch origin`).
