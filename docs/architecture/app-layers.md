@@ -206,7 +206,7 @@ source file, update its line here. Features that span every layer are in
 - `state/palette/commands/link.rs`: the palette's entries for copying a glowfly:// link to the open repository and to the checked-out branch.
 - `state/palette/commands/logs.rs`: the palette's log entries: view the activity, error and performance logs, open the logs folder, export every log as one bundle, and turn extended logging on or off.
 - `state/palette/onboarding.rs`: the palette's onboarding entries: "Show the welcome", the tips' on or off switch (whichever applies), "Show tips again" and Getting started always (even when hidden from the Help menu), and "Take the tour" (or "Resume the tour") while a repository is open.
-- `state/palette/commands/pr.rs`: the palette's pull request entries for the checked-out branch: create one, and push the branch first when the code host lacks it or some of its commits.
+- `state/palette/commands/pr.rs`: the palette's pull request entries for the checked-out branch: show its open pull request in the panel, or create one, and push the branch first when the code host lacks it or some of its commits.
 - `state/palette/profiles.rs`: the palette's profile switching: the "Switch profile…" entry and the rows of its sub-list.
 - `state/palette/recent.rs`: the palette's per-session memory of recently run commands, and the stable key each plain command is remembered by.
 - `state/palette/commands/setup.rs`: the palette's entries that set up or configure a repository feature: Git LFS and sparse checkout (Git Flow has its own file).

@@ -16,6 +16,7 @@ mod more_tests;
 mod nav_tests;
 pub(super) mod palette_tests;
 mod pick_tests;
+mod pr_tests;
 mod rebase_tests;
 mod recent_tests;
 mod repos_tests;

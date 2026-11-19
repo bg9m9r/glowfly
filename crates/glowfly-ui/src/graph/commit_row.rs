@@ -1,6 +1,7 @@
 //! A commit's row in the graph, after its look and lanes (`row.rs`): its node and the lantern's
-//! rim, the ref chips with the New branch… ghost button, the text cells, the tooltips, a click
-//! or a double-click on a branch chip, and the row's context menu.
+//! rim, the ref chips with the New branch… ghost button, the text cells, the pull request chip's
+//! click (it opens the panel), the tooltips, a click or a double-click on a branch chip, and the
+//! row's context menu.
 
 use super::frame_asks::Asks;
 use super::labels::{self, Tip as ChipTip};
@@ -14,12 +15,14 @@ use crate::avatars::Avatars;
 use crate::theme::color;
 use crate::theme::ref_chip::BranchTone;
 use crate::theme::sizes::ControlSize;
+use crate::widgets::chip::{self, ChipSize};
 use crate::widgets::{Icon, ghost, tooltip};
-use eframe::egui::{self, Color32, Painter, Pos2, Rect, Response};
+use eframe::egui::{self, Color32, Painter, Pos2, Rect, Response, Sense};
 use glowfly_core::repo::{CommitInfo, RefKind};
 use glowfly_core::settings::DescriptionMode;
 use glowfly_model::keymap::BindingId;
 use glowfly_model::msg::{BranchMsg, Msg};
+use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::tip::Tip;
 
 /// One row as `row.rs` laid it out: where it is, its painters (`gp` clipped to the GRAPH
@@ -91,6 +94,7 @@ pub(super) fn draw(ui: &mut egui::Ui, f: &Frame, cx: RowCx, c: &CommitInfo, avat
         stats: stat,
     };
     let text = cells::draw(&cx.painter, &cells);
+    let chip = pr_chip(ui, f, &cx, c, text.pr, msgs);
 
     let (pointer, hovered) = (f.pointer, cx.hovered);
     let in_date = f.cols_cfg.date && pointer.is_some_and(|p| cx.cols.rect(cx.cols.cell.date, cx.rect).contains(p));
@@ -115,7 +119,27 @@ pub(super) fn draw(ui: &mut egui::Ui, f: &Frame, cx: RowCx, c: &CommitInfo, avat
         commands: &f.commands,
         keys: &f.st.keymap,
     };
-    ref_menu::context_menu(ui, &resp, menu, msgs);
+    // A right-click on the pull request chip opens the row's menu too.
+    let menu_resp = chip.map_or_else(|| resp.clone(), |r| resp.union(r));
+    ref_menu::context_menu(ui, &menu_resp, menu, msgs);
+}
+
+/// The pull request chip as a button: a click opens its pull request in the panel (and doesn't
+/// select the row); its tooltip and accessible name say so. Its hit area is the chip's width over
+/// the row's height, clipped to the MESSAGE column.
+fn pr_chip(ui: &mut egui::Ui, f: &Frame, cx: &RowCx, c: &CommitInfo, at: Option<Rect>, msgs: &mut Vec<Msg>) -> Option<Response> {
+    let (badge, chip) = (f.pr_at.get(&c.oid)?, at?);
+    let clip = cx.cols.rect(cx.cols.msg, cx.rect);
+    let hit = Rect::from_x_y_ranges(chip.x_range(), cx.rect.y_range()).intersect(clip);
+    if !hit.is_positive() {
+        return None;
+    }
+    let resp = ui.interact(hit, ui.id().with(("pr-chip", c.oid)), Sense::click());
+    let resp = chip::target_over(&cx.painter.with_clip_rect(clip), chip, ChipSize::Badge, resp, &badge.tip).on_hover_text(&badge.tip);
+    if resp.clicked() {
+        msgs.push(Msg::PullRequest(PullRequestMsg::Open(badge.id)));
+    }
+    Some(resp)
 }
 
 /// The row's ref chips (in BRANCH / TAG, or leading the message in a narrow table), with the

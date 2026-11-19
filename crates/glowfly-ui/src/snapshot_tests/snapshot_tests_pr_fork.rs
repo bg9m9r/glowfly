@@ -18,7 +18,7 @@ fn t(url: &str) -> Target {
 }
 
 /// Lists `origin` (o/r) and, with `fork`, `ada` (ada/r, with only `main`) as PR repositories.
-fn with_repos(st: &mut AppState, fork: bool) {
+pub(crate) fn with_repos(st: &mut AppState, fork: bool) {
     let mut repos = vec![PrRepo { remote: "origin".into(), target: t("https://github.com/o/r") }];
     if fork {
         repos.push(PrRepo { remote: "ada".into(), target: t("https://github.com/ada/r") });

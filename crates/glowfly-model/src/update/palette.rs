@@ -211,6 +211,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         }
         C::CreatePr(b) => Msg::Forge(ForgeMsg::CreatePrDialog { source: b, target: None }),
         C::PushAndCreatePr(b) => Msg::Forge(ForgeMsg::PushAndStartPr { branch: b, target: None }),
+        C::ShowPr(id) => Msg::PullRequest(crate::pull_request::PullRequestMsg::Open(id)),
         C::InitializeLfs => Msg::Lfs(crate::lfs::LfsMsg::InitializeWhenReady),
         C::ConfigureLfs => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoLfs)),
         C::ConfigureGitFlow => Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoGitFlow)),
