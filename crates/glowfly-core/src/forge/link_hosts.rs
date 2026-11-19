@@ -65,7 +65,7 @@ fn text_host(text: &str) -> Option<String> {
         None => {
             let end = text.find(['/', '?', '#', ':']).unwrap_or(text.len());
             let www = text.get(..4).is_some_and(|w| w.eq_ignore_ascii_case("www."));
-            if !www && !text[end..].starts_with('/') {
+            if !www && !names_host_after(&text[end..]) {
                 return None;
             }
             (&text[..end], www)
@@ -79,6 +79,20 @@ fn text_host(text: &str) -> Option<String> {
         Some(ascii) => Some(ascii.trim_end_matches('.').to_owned()),
         None if sure || (!host.is_ascii() && dotted(host)) => Some(host.to_lowercase()),
         None => None,
+    }
+}
+
+/// Whether what follows a bare host in link text (`/…`, `?…`, `#…`, or `:` with an all-digit
+/// port and then nothing or one of those) shows the text means a web address.
+fn names_host_after(rest: &str) -> bool {
+    match rest.as_bytes().first() {
+        Some(b'/' | b'?' | b'#') => true,
+        Some(b':') => {
+            let after = &rest[1..];
+            let digits = after.bytes().take_while(u8::is_ascii_digit).count();
+            digits > 0 && matches!(after.as_bytes().get(digits), None | Some(b'/' | b'?' | b'#'))
+        }
+        _ => false,
     }
 }
 
@@ -230,6 +244,22 @@ mod tests {
             ("g\u{456}thub.com", "https://g\u{456}thub.com/"),
         ] {
             assert_eq!(mismatch(t, u), None, "{t} -> {u}");
+        }
+    }
+
+    #[test]
+    fn a_host_with_a_port_query_or_fragment_is_named() {
+        let evil = "https://evil.example/";
+        for text in ["github.com:443/acme", "github.com:443", "github.com?tab=1", "github.com#top", "github.com:8080?x", "github.com:8080#x"] {
+            assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
+        }
+        assert_eq!(mismatch("github.com:443", "https://github.com/"), None);
+    }
+
+    #[test]
+    fn a_non_numeric_port_keeps_the_text_quiet() {
+        for text in ["github.com:abc/acme", "github.com:", "github.com:80a", "github.com:/x", "note.md:fix"] {
+            assert_eq!(mismatch(text, "https://evil.example/"), None, "{text}");
         }
     }
 }
