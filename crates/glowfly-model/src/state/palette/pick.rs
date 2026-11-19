@@ -6,12 +6,22 @@ use super::{Entry, Hit, IssuePickRow, Items, MAX_PICK_ROWS, PaletteCommand, Pick
 use crate::state::forge::ForgeState;
 use crate::state::stash_confirm::StashAction;
 use glowfly_core::fuzzy;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::StashInfo;
 use glowfly_core::settings::Settings;
 
 impl Pick {
     pub fn new(kind: PickKind) -> Self {
-        Self { kind, items: Items::Loading, stashes: Vec::new(), profiles: Vec::new(), issues: Vec::new(), refs: Vec::new(), ranked: None }
+        Self {
+            kind,
+            items: Items::Loading,
+            stashes: Vec::new(),
+            profiles: Vec::new(),
+            issues: Vec::new(),
+            refs: Vec::new(),
+            reasons: Vec::new(),
+            ranked: None,
+        }
     }
 
     /// A stash sub-list over `list`, labelled by the stash messages.
@@ -78,15 +88,41 @@ impl Pick {
         Self { items: Items::Ready(labels), refs, ..Self::new(PickKind::DeleteTag) }
     }
 
+    /// The Delete branch sub-list: one row per local branch of `snap`, with its upstream as its
+    /// detail. The branches that can be deleted come first, then those that can't (checked out
+    /// here, or held by another worktree: `branch_delete::refused`), each in snapshot order; a
+    /// blocked row carries its reason (`blocked`).
+    pub fn branches_to_delete(t: Lang, snap: &glowfly_core::repo::Snapshot) -> Self {
+        use super::commands::{entry, with_detail};
+        let mut rows: Vec<(Entry, Option<String>)> = snap
+            .locals
+            .iter()
+            .map(|b| {
+                let e = with_detail(entry(PaletteCommand::DeleteBranch(b.name.clone()), b.name.clone(), ""), b.upstream.clone());
+                (e, crate::state::branch_delete::refused(t, snap, b))
+            })
+            .collect();
+        rows.sort_by_key(|(_, why)| why.is_some());
+        let labels = rows.iter().map(|(e, _)| e.label.clone()).collect();
+        let (refs, reasons) = rows.into_iter().unzip();
+        Self { items: Items::Ready(labels), refs, reasons, ..Self::new(PickKind::DeleteBranch) }
+    }
+
+    /// Why item `index` cannot be chosen (Delete branch sub-list); None for the others.
+    pub fn blocked(&self, index: usize) -> Option<&str> {
+        self.reasons.get(index).and_then(|r| r.as_deref())
+    }
+
     /// The dim text at the right of item `index`: a stash's ref, a profile's email, or what a
-    /// checkout does. It is also the item's hidden search keyword, so it never holds a date;
+    /// checkout does (a branch's upstream). It is also the item's hidden search keyword, so it
+    /// never holds a date or a reason;
     /// `shown_detail` is what is drawn.
     pub fn detail(&self, index: usize) -> Option<String> {
         match self.kind {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
             PickKind::GitFlowIssue(_) | PickKind::ViewIssue => self.issues.get(index).map(|r| r.detail.clone()),
-            PickKind::SwitchBranch | PickKind::DeleteTag => self.refs.get(index).and_then(|e| e.detail.clone()),
+            PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch => self.refs.get(index).and_then(|e| e.detail.clone()),
             PickKind::FileHistory | PickKind::Blame => None,
         }
     }
@@ -99,9 +135,13 @@ impl Pick {
         }
     }
 
-    /// The detail as drawn: `detail`, and for a stash with a known time "<date> · stash@{n}" (the
-    /// day relative or in the user's Date format, in the app's zone).
+    /// The detail as drawn: the reason of a blocked row (`blocked`), else `detail`, and for a
+    /// stash with a known time "<date> · stash@{n}" (the day relative or in the user's Date
+    /// format, in the app's zone).
     pub fn shown_detail(&self, index: usize, settings: &Settings, now: i64, utc_offset: i32) -> Option<String> {
+        if let Some(why) = self.blocked(index) {
+            return Some(why.to_owned());
+        }
         let detail = self.detail(index)?;
         Some(match self.stash_time(index) {
             Some(time) => format!("{} · {detail}", settings.format_day(time, now, utc_offset)),
@@ -130,7 +170,7 @@ impl Pick {
                 self.issues.get(index).map(|r| PaletteCommand::StartGitFlowFromIssue { kind, name: r.name.clone() })
             }
             PickKind::ViewIssue => self.issues.get(index).map(|r| PaletteCommand::ViewIssue(r.key.clone())),
-            PickKind::SwitchBranch | PickKind::DeleteTag => self.refs.get(index).map(|e| e.command.clone()),
+            PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch => self.refs.get(index).map(|e| e.command.clone()),
         }
     }
 

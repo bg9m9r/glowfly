@@ -138,3 +138,22 @@ fn the_open_palette_keeps_its_list_across_frames_and_modes() {
     assert!(listed_open(&st, &mut cache, "tag").rows.is_empty(), "nothing while closed");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn delete_branch_lists_below_the_checkouts_for_a_word_in_its_label_only() {
+    let (st, dir) = state("demote", 0);
+    let mut cache = CommandCache::default();
+    let position = |rows: &Plain, label: &str| rows.0.iter().position(|r| r.0 == label).unwrap_or_else(|| panic!("{label:?} is listed"));
+    // The same list cached and fresh, also when each query narrows the one before.
+    for query in ["branch", "branch ", "bran", "branch", "delete b", "del", "d"] {
+        check(&mut cache, &st, query);
+    }
+    let rows = check(&mut cache, &st, "branch");
+    let delete = position(&rows, "Delete branch…");
+    for before in ["Create branch at HEAD…", "Switch branch…", "Checkout feature/cache", "Checkout fix/checkout"] {
+        assert!(position(&rows, before) < delete, "{before} is above Delete branch…");
+    }
+    let rows = check(&mut cache, &st, "delete b");
+    assert_eq!(rows.0[0].0, "Delete branch…", "typed by its own name, it isn't demoted");
+    let _ = std::fs::remove_dir_all(&dir);
+}

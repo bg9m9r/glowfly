@@ -13,6 +13,7 @@ pub mod rebase;
 mod repos;
 mod submodules;
 pub use repos::RepoListCommand;
+pub(crate) mod branches;
 mod conflict;
 mod diff;
 mod gitflow;
@@ -178,6 +179,10 @@ pub enum PaletteCommand {
     ChooseTagToDelete,
     /// `TagMsg::OpenDelete` for this tag.
     DeleteTag(String),
+    /// Enter the local branch sub-list; choosing a branch runs `DeleteBranch`.
+    ChooseBranchToDelete,
+    /// `BranchMsg::DeleteDialog` for this local branch.
+    DeleteBranch(String),
     OpenRecent(PathBuf),
     /// Copy a glowfly:// link to the repository or a branch.
     CopyLink(crate::deep_link::LinkTarget),
@@ -321,6 +326,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     if let Some(b) = snap.head_info() {
         out.push(entry(C::RenameBranch(b.name.clone()), format!("Rename branch {}…", b.name), "rename move branch"));
     }
+    branches::branch_entries(snap, out);
     if !snap.commits.is_empty()
         && st.session.conflict.view.is_none()
         && st.session.history.view.is_none()

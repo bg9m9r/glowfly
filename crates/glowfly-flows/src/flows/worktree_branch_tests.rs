@@ -22,7 +22,7 @@ use std::time::Instant;
 
 /// A repository with branch `free` and a linked worktree on branch `side` in
 /// `<repo>-worktrees/side`, opened in `st`. Returns (state, repository, worktree folder).
-fn with_side(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(crate) fn with_side(name: &str) -> (AppState, PathBuf, PathBuf) {
     let dir = scratch_repo(name);
     let root = dir.with_file_name(format!("{}-worktrees", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&root);
@@ -34,7 +34,7 @@ fn with_side(name: &str) -> (AppState, PathBuf, PathBuf) {
     (st, dir, side)
 }
 
-fn cleanup(dir: &Path, side: &Path) {
+pub(crate) fn cleanup(dir: &Path, side: &Path) {
     let _ = std::fs::remove_dir_all(side.parent().unwrap());
     let _ = std::fs::remove_dir_all(dir);
 }

@@ -6,9 +6,8 @@
 
 use super::branches::find;
 use crate::effect::{BranchEffect, Effect};
-use crate::state::branch_delete::{DeleteForm, Lost};
+use crate::state::branch_delete::{DeleteForm, Lost, refused};
 use crate::state::error_words::typed;
-use crate::state::worktree_branches;
 use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::error::ReadFailed;
@@ -19,7 +18,7 @@ use glowfly_core::gitcli::args;
 pub(super) fn open(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
     let Some(b) = find(st, name) else { return };
     let Some(tip) = b.oid else { return };
-    if let Some(why) = refused(st, name, b.is_head) {
+    if let Some(why) = st.snap.as_ref().and_then(|s| refused(st.settings.lang(), s, &b)) {
         st.log(false, why);
         return;
     }
@@ -52,20 +51,11 @@ pub(super) fn delete(st: &mut AppState, name: &str, tip: Oid, force: bool, fx: &
         st.modal = None;
     }
     let Some(b) = find(st, name) else { return };
-    if let Some(why) = refused(st, name, b.is_head) {
+    if let Some(why) = st.snap.as_ref().and_then(|s| refused(st.settings.lang(), s, &b)) {
         st.log(false, why);
         return;
     }
     let cmd = args(&["branch", if force { "-D" } else { "-d" }, "--", name]);
     let expect = Some((format!("refs/heads/{name}"), tip));
     super::git_job::run(st, "Delete branch".into(), vec![cmd], None, expect, fx);
-}
-
-/// Why `name` can't be deleted: it is checked out here or in another worktree.
-fn refused(st: &AppState, name: &str, is_head: bool) -> Option<String> {
-    let t = st.settings.lang();
-    if is_head {
-        return Some(t.trf("branch.delete.checked_out", &[("branch", &name)]));
-    }
-    st.snap.as_ref().and_then(|s| worktree_branches::delete_blocked(st.settings.lang(), s, name))
 }

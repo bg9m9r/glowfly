@@ -5,6 +5,16 @@
 use super::super::theme::color;
 use eframe::egui::{self, Color32, FontId, text::LayoutJob};
 
+/// The share of a row the label keeps before a long detail is cut.
+pub(super) const LABEL_SHARE: f32 = 0.4;
+
+/// The width a row's detail may take: what is left of a `row_w` wide row after the label's 10 px
+/// inset and the 8 px the detail reserves to its left (18), `taken` (the shortcut's width and
+/// the detail's right gap) and the label, which keeps up to `LABEL_SHARE` of the row.
+pub(super) fn detail_room(row_w: f32, taken: f32, label_w: f32) -> f32 {
+    (row_w - 18.0 - taken - label_w.min(row_w * LABEL_SHARE)).max(0.0)
+}
+
 /// `label` cut in its middle at `(head, tail)` (`truncate::middle_cut`'s byte offsets), and its
 /// `matched` character indices moved to the cut text (those in the part cut out are dropped).
 pub(super) fn cut_marks(label: &str, (head, tail): (usize, usize), matched: &[usize]) -> (String, Vec<usize>) {
@@ -55,6 +65,18 @@ pub(super) fn label_job(label: &str, matched: &[usize], dim_before: usize, size:
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_label_keeps_at_most_its_share_of_the_row() {
+        // A short label leaves the detail nearly the whole row.
+        assert_eq!(detail_room(560.0, 0.0, 30.0), 512.0);
+        // A wide label is capped at 40%: 560 - 18 - 224.
+        assert_eq!(detail_room(560.0, 0.0, 400.0), 318.0);
+        // A shortcut's width is subtracted.
+        assert_eq!(detail_room(560.0, 60.0, 400.0), 258.0);
+        // Never negative.
+        assert_eq!(detail_room(100.0, 200.0, 10.0), 0.0);
+    }
 
     #[test]
     fn matched_characters_follow_the_cut() {

@@ -1,0 +1,9 @@
+Dialog
+  Label "Delete branch"
+  TextInput "Find a branch to delete" [focused]
+  Button "login-page" [selected]
+  Button "search"
+  Button "main"
+  Label "Up/Down to choose, Enter to choose, Backspace or Esc to go back"
+painted:
+  "main is checked out. Check out another branch before deleting it."

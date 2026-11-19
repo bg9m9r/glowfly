@@ -28,6 +28,7 @@ Dialog
   Button "Configure Git LFS…"
   Button "Configure Git Flow…"
   Button "Find repositories in folders…"
+  Button "Delete branch…"
   Button "View error log"
   Button "Configure terminal"
   Button "View activity log"
