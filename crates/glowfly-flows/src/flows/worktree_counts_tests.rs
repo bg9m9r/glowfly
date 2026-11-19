@@ -4,7 +4,8 @@
 //! dropped, a too-large worktree isn't retried, the option off counts nothing, a slow count
 //! offers the untracked cache, git reads a worktree only by that worktree's own trust, and a
 //! status-only reload counts the others again, at most once per interval unless the window or
-//! tab is returned to, with a recount kept for later dropped once nothing is left to count.
+//! tab is returned to, with a recount kept for later dropped once nothing is left to count, and
+//! a worktree a count left not counted is counted by the next recount.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -290,6 +291,25 @@ fn a_status_only_reload_counts_other_worktrees_again_at_most_once_per_interval()
     assert_eq!(counts(&fx).len(), 1, "returning to the window counts at once: {fx:?}");
     run_count(&mut st, fx, Instant::now());
     assert_eq!(linked_info(&st).changes, SIDE);
+    cleanup(&[&linked, &dir]);
+}
+
+#[test]
+fn a_worktree_left_not_counted_is_counted_by_the_next_recount() {
+    let (mut st, dir, linked) = opened("wtcount-recount-held");
+    // As a count leaves one whose read was held.
+    let snap = st.snap.as_mut().unwrap();
+    snap.worktrees[1].read = ChangesRead::NotCounted;
+    snap.worktrees[1].changes = ChangeCounts::default();
+    let watched = || Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
+    assert!(counts(&step(&mut st, watched())).is_empty(), "not before the interval");
+    let due = st.refresh.recount.due().expect("kept for the end of the interval");
+    let fx = update(&mut st, Msg::Tick(due), due);
+    let asked = counts(&fx);
+    assert_eq!(asked.len(), 1, "{fx:?}");
+    assert!(glowfly_core::paths::same_folder(&asked[0].targets[0].0, &linked));
+    run_count(&mut st, fx, due);
+    assert_eq!((linked_info(&st).read, linked_info(&st).changes), (ChangesRead::Counted, SIDE));
     cleanup(&[&linked, &dir]);
 }
 
