@@ -92,7 +92,7 @@ source file, update its line here.
 - `Dialog::width` sets the content width; `Dialog::min_body` a least body height.
 - `close_button` places the shared close box.
 - `widgets/text_line.rs`: `paint_text`, the drop-in for egui's `Painter::text` that puts centred text on a whole point at or above the centre, `line_rect`, the one-line rect a label is put in to sit where painted text does, and `put_line`, which puts a label there without moving the parent's cursor.
-- `widgets/text_field.rs`: a dialog's text fields: Large 36 px (or a given `ControlSize`) with single-line text set where `sizes::text_pos` puts it, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, and `entered` for a field's Enter.
+- `widgets/text_field.rs`: a dialog's text fields: Large 36 px (or a given `ControlSize`) with single-line text set where `sizes::text_pos` puts it, tinted with `color::field_fill`, a Browse… button beside one with `with_button`, `entered` for a field's Enter, and `send_key` for a multiline box's Command+Enter that posts it (the pull request and issue comment boxes).
 - `widgets/field_group.rs`: the label-field-help group a text field sits in: the label above, a weak Optional marker, then one line under the field, its message or else its help.
 - `confirm_dialog.rs`: the confirmation dialog and its danger form.
 - `dialog_guard.rs`: the "Discard your changes?" question (see Dialogs in [flow-shell.md](flow-shell.md)).

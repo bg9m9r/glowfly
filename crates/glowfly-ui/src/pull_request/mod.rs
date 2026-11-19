@@ -141,12 +141,6 @@ fn tabs(ui: &mut Ui, v: &PrView, msgs: &mut Vec<Msg>) {
     });
 }
 
-/// Whether Command+Enter (Ctrl on Windows and Linux) was pressed in the focused box `field`:
-/// it posts the box's text (`BindingId::SendPrText`), and is consumed so nothing else sees it.
-pub(super) fn send_key(ui: &mut Ui, field: &egui::Response) -> bool {
-    field.has_focus() && ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter))
-}
-
 /// The color of a tone.
 pub(super) fn tone_color(t: Tone) -> Color32 {
     match t {

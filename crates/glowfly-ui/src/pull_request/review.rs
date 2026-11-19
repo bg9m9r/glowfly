@@ -5,8 +5,9 @@
 //! unavailable says why in place of its help line.
 
 use super::super::theme::color;
-use super::{heading, note, send_key};
+use super::{heading, note};
 use crate::theme::controls;
+use crate::widgets::text_field::send_key;
 use crate::widgets::{buttons, reason};
 use eframe::egui::{self, Ui};
 use glowfly_model::keymap::{BindingId, Keymap};

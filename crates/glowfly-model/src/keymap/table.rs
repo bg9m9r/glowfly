@@ -82,7 +82,7 @@ pub enum When {
     Graph,
     /// The interactive rebase panel is the central view.
     RebasePanel,
-    /// A pull request's comment, reply or review box has focus.
+    /// A pull request's or issue's comment box, or a pull request's reply or review box, has focus.
     PrText,
     /// Preferences is open (even while typing in one of its fields).
     Prefs,
@@ -109,7 +109,7 @@ impl When {
             When::Blame => Some("in the blame view"),
             When::Graph => Some("in the commit graph"),
             When::RebasePanel => Some("in the interactive rebase panel"),
-            When::PrText => Some("in a pull request's comment, reply or review box"),
+            When::PrText => Some("in a pull request's or issue's comment, reply or review box"),
             When::Prefs => Some("in Preferences"),
         }
     }
@@ -117,7 +117,7 @@ impl When {
     /// Whether a key could reach bindings of both places at once, so they can't share it.
     /// The places that need no text field (`NotTyping`, the diff, the lists, the graph, blame)
     /// overlap one another; each place with its own text field (the commit message, the search
-    /// field, the palette, a dialog, a pull request's text boxes) overlaps only itself, and the palette's two lists overlap.
+    /// field, the palette, a dialog, the pull request and issue text boxes) overlaps only itself, and the palette's two lists overlap.
     /// The rebase panel is drawn only when no diff, list, graph or blame view is, so it
     /// overlaps only itself, `Anywhere` and `NotTyping`; so do the file lists' keys (the WIP
     /// lists' and the others'), which a focused list takes before any other binding sees them.
@@ -384,7 +384,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::PrefsSave, G::General, "Save the Preferences page", &[C::cmd(K::Letter('S'))], W::Prefs),
     fixed(I::PrefsRevert, G::General, "Revert the page's unsaved changes (from the Save / Revert bar)", &[C::plain(K::Escape)], W::Prefs),
     fixed(I::DialogSubmit, G::General, "Confirm a dialog's name field", &[C::plain(K::Enter)], W::Dialog),
-    fixed(I::SendPrText, G::General, "Post the comment, reply or review", &[C::cmd(K::Enter)], W::PrText),
+    fixed(I::SendPrText, G::General, "Post a comment, reply or review on a pull request or issue", &[C::cmd(K::Enter)], W::PrText),
 ];
 
 /// Whether `id` is a Repository commands row, which runs a palette command.
