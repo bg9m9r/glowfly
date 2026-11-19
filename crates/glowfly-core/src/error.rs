@@ -61,6 +61,13 @@ pub enum Error {
         "{0} is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it."
     )]
     LinkedFile(String),
+    /// The opened folder's git files (a `.git` file, `commondir`, a config include, an
+    /// alternates line: the place named, as shown) lead to a network place other than the
+    /// folder's own, so it isn't opened (`git_file::opened`).
+    #[error(
+        "This folder's Git data points to a network place ({0}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer."
+    )]
+    NetworkPointer(String),
     #[error("{0}")]
     Other(String),
 }
