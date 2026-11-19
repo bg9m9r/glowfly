@@ -4,6 +4,7 @@
   "read_errors.internal": "In Glowfly ist ein interner Fehler aufgetreten ({effect})",
   "read_errors.linked_file": "{path} ist eine Verknüpfung zu einem Netzwerkort außerhalb dieses Repositorys, daher kann das Arbeitsverzeichnis nicht gelesen werden. Ersetze sie durch eine normale Datei oder entferne sie.",
   "read_errors.missing_content": "der Inhalt von {path} wurde noch nicht von {remote} heruntergeladen",
+  "read_errors.network_pointer": "Die Git-Daten dieses Ordners verweisen auf einen Netzwerkort ({place}), daher öffnet Glowfly ihn nicht. Öffne das Repository dort, wo es wirklich liegt, oder entferne diesen Verweis.",
   "read_errors.no_folder": "Ein Ordnerverlauf braucht einen Ordner",
   "read_errors.no_thread": "konnte keinen Thread starten: {said}",
   "read_errors.not_a_repository": "{path} ist kein Git-Repository",
@@ -12,5 +13,6 @@
   "read_errors.old_file_unreadable": "die alte Datei kann nicht gelesen werden",
   "read_errors.open_failed": "{path} konnte nicht geöffnet werden: {why}",
   "read_errors.panicked": "In Glowfly ist ein interner Fehler aufgetreten ({effect}): {panic}",
-  "read_errors.stopped": "angehalten"
+  "read_errors.stopped": "angehalten",
+  "read_errors.unchecked_git_data": "Die Git-Daten dieses Ordners lassen sich nicht prüfen ({what}), daher öffnet Glowfly ihn nicht."
 }

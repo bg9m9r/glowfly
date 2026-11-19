@@ -6,9 +6,11 @@
 //! `core.excludesFile` and `core.attributesFile`, and its object store with the alternates it
 //! names (up to libgit2's depth of 5, `alternates.rs`). The linked worktrees under a common dir
 //! are listed here too (`admin.rs`), as libgit2's own list follows links in their admin dirs.
+//! The folder the user opens gets the same checks (`opened.rs`).
 
 mod admin;
 mod alternates;
+pub(crate) mod opened;
 
 pub(crate) use admin::{admin_locked, worktree_admins};
 

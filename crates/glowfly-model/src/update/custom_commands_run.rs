@@ -128,7 +128,7 @@ fn repo_commands_prompt(st: &AppState) -> Option<TrustPrompt> {
     prompt.scan.commands = st.custom_commands.repo_digest.clone();
     let saved = st.saved_trust_for(&snap.real_workdir).or_else(|| st.saved_trust_for(&snap.workdir));
     if let Some(print) = saved.filter(|t| t.is_trusted()).and_then(|t| t.print) {
-        prompt.gained = Some(prompt.scan.gained_since(&print));
+        prompt.gained = Some(Box::new(prompt.scan.gained_since(&print)));
     }
     Some(prompt)
 }

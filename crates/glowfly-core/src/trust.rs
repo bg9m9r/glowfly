@@ -79,6 +79,11 @@ pub struct TrustScan {
     /// their steps (`steps.rs`), by name in the git dir. Never part of the print, and no
     /// decision covers them: the runner asks each time a job would run (`Unchecked::State`).
     pub unread: Vec<String>,
+    /// The places its settings and hooks name (as shown; a submodule's after its path) that
+    /// weren't looked at, as `net_path::may_follow` refuses them from the work tree: a hooks
+    /// folder, a hook that is a link, a file a setting runs. Like `unread`, never part of the
+    /// print: the runner asks each time a job would run (`Unchecked::Offsite`).
+    pub offsite: Vec<String>,
 }
 
 /// What `scan` found in one submodule.
@@ -138,6 +143,8 @@ const MAX_SUBMODULE_DEPTH: usize = 8;
 pub fn scan(repo: &Repository) -> TrustScan {
     let mut out = scan_top_reading(repo, Reading::Whole);
     scan_submodules(repo, "", 0, &mut out.submodules);
+    let inner: Vec<String> = out.submodules.iter().flat_map(|s| s.scan.offsite.iter().map(|p| format!("{}: {p}", s.path))).collect();
+    out.offsite.extend(inner);
     out
 }
 
@@ -169,6 +176,9 @@ fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
 /// in its place (which the reader refuses) gets the unreadable digest.
 fn commands_digest(workdir: &Path) -> Option<String> {
     let path = crate::custom_commands::repo_file(workdir);
+    if follow::far(&path, workdir) {
+        return Some(digest::UNREADABLE.to_owned());
+    }
     let meta = std::fs::symlink_metadata(&path).ok()?;
     Some(if meta.is_file() { digest::of_file(&path, Reading::Whole) } else { digest::UNREADABLE.to_owned() })
 }
@@ -202,10 +212,17 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             }
         });
     }
-    out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path);
+    let home = repo.workdir().unwrap_or_else(|| repo.path());
+    // A hooks folder that may not be followed from the work tree is never listed.
+    out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path).filter(|dir| !follow::note_far(dir, home, &mut out.offsite));
     let mut paths = Vec::new();
     if let Some(dir) = &out.hooks_dir {
         for (name, path) in active_hooks(dir) {
+            // A hook that is a link leading there is listed by name alone, never read.
+            if follow::note_far(&path, dir, &mut out.offsite) {
+                out.hooks.push(name);
+                continue;
+            }
             let (digest, bytes) = digest::of_file_keeping(&path, reading, known::MAX_HOOK_BYTES);
             out.hook_digests.insert(name.clone(), digest);
             if let Some(k) = bytes.and_then(|b| known::hook(&name, &b)) {
@@ -215,7 +232,7 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             paths.push(path);
         }
     }
-    let programs = programs::scan(repo, &mut out.config);
+    let programs = programs::scan(repo, &mut out.config, &mut out.offsite);
     out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths, &programs);
     out
 }
@@ -267,7 +284,7 @@ fn gitlink_folder(workdir: &Path, rel: &str) -> Option<PathBuf> {
 
 /// `scan` of the repository at `path`.
 pub fn scan_at(path: &Path) -> crate::error::Result<TrustScan> {
-    Ok(scan(&Repository::open(path)?))
+    Ok(scan(&crate::safe_directory::open(path)?))
 }
 
 /// Whether `git init` output says it made a new repository (not "Reinitialized existing").
@@ -299,14 +316,20 @@ fn hooks_dir(repo: &Repository, config: Option<&Config>, local: Option<String>) 
 /// any case rule a file system might use (see [`is_hook_name`]), and each hook name is also
 /// looked up directly, so a file system that matches names in some other way (a Linux FAT or
 /// casefold mount, a Windows short name) can't hide one.
+///
+/// A link is followed (a link to a script runs the script) only where `net_path::may_follow`
+/// allows from `dir`; one that leads elsewhere counts as run without being looked at.
 fn active_hooks(dir: &Path) -> Vec<(String, PathBuf)> {
     let Ok(read) = std::fs::read_dir(dir) else { return Vec::new() };
-    let runs = |p: &Path| std::fs::metadata(p).is_ok_and(|m| m.is_file() && runnable(&m));
+    let runs = |p: &Path| match std::fs::symlink_metadata(p) {
+        Ok(m) if m.file_type().is_symlink() => follow::far(p, dir) || std::fs::metadata(p).is_ok_and(|m| m.is_file() && runnable(&m)),
+        Ok(m) => m.is_file() && runnable(&m),
+        Err(_) => false,
+    };
     let mut hooks: Vec<(String, PathBuf)> = read
         .flatten()
         .filter_map(|e| {
             let name = e.file_name().to_str()?.to_owned();
-            // Follows links: a link to a script runs the script.
             (is_hook_name(&name) && runs(&e.path())).then(|| (name, e.path()))
         })
         .collect();
@@ -356,6 +379,8 @@ fn runnable(_meta: &std::fs::Metadata) -> bool {
     true
 }
 
+#[cfg(test)]
+mod offsite_tests;
 #[cfg(test)]
 mod reask_tests;
 #[cfg(test)]

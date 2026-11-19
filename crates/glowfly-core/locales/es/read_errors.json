@@ -4,6 +4,7 @@
   "read_errors.internal": "Glowfly tuvo un error interno ({effect})",
   "read_errors.linked_file": "{path} es un enlace a una ubicación de red fuera de este repositorio, así que no se puede leer el árbol de trabajo. Sustitúyelo por un archivo normal o elimínalo.",
   "read_errors.missing_content": "el contenido de {path} aún no se ha descargado de {remote}",
+  "read_errors.network_pointer": "Los datos de Git de esta carpeta apuntan a una ubicación de red ({place}), así que Glowfly no la abre. Abre el repositorio desde donde está realmente o elimina esa referencia.",
   "read_errors.no_folder": "Un historial de carpeta necesita una carpeta",
   "read_errors.no_thread": "no se pudo iniciar un hilo: {said}",
   "read_errors.not_a_repository": "{path} no es un repositorio git",
@@ -12,5 +13,6 @@
   "read_errors.old_file_unreadable": "no se puede leer el archivo anterior",
   "read_errors.open_failed": "No se pudo abrir {path}: {why}",
   "read_errors.panicked": "Glowfly tuvo un error interno ({effect}): {panic}",
-  "read_errors.stopped": "detenido"
+  "read_errors.stopped": "detenido",
+  "read_errors.unchecked_git_data": "Los datos de Git de esta carpeta no se pueden comprobar ({what}), así que Glowfly no la abre."
 }

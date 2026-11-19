@@ -132,6 +132,7 @@ fn effects_reaching_outside_the_test_are_refused() {
             sealed: glowfly_model::effect::Sealed::Read,
             accepted: None,
             lang: Default::default(),
+            places: Vec::new(),
         };
         Effect::Checked(Box::new(Checked { effect, check }))
     };
