@@ -3,7 +3,8 @@
 //! changes what the hook does without changing the hook. `scan` reads each hook's text with the
 //! word scanner the config programs use (`programs.rs`), with its rules and `follow::far` guard,
 //! so the trust scan follows those files as it follows a config program's. A bare word
-//! (`npx lint-staged`, `git diff`, `npm test`) is no path here (`path_of`'s `hook`), and
+//! (`npx lint-staged`, `git diff`, `npm test`) is no path here (`path_of`'s `hook`) unless an
+//! interpreter, `.`, `source` or `exec` runs it (`sh check.sh`: `programs_hooks_runs.rs`), and
 //! `$(dirname "$0")` is read as the folder of the script it is in (husky's
 //! `. "$(dirname "$0")/h"`).
 //!
@@ -17,6 +18,9 @@
 //! large to keep its text (`MAX_TEXT_BYTES`) or one whose text can't be read, and for one with a
 //! NUL byte in it (a compiled program, whose words can't be read), the whole working tree is
 //! followed.
+
+#[path = "programs_hooks_runs.rs"]
+mod runs;
 
 use super::{candidates, path_of};
 use std::collections::VecDeque;
@@ -164,6 +168,10 @@ impl Run<'_> {
                     }
                 }
                 paths.extend(path_of(self.workdir, self.home.as_deref(), &word, true, self.unread));
+            }
+            let here = in_tree(self.workdir, &script.folder).then_some(script.folder.as_path());
+            for word in runs::run_words(line) {
+                paths.extend(runs::bare_files(self.workdir, here, &word));
             }
             for p in paths {
                 if !self.found(p, script.depth + 1) {
