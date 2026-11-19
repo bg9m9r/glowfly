@@ -184,7 +184,7 @@ fn current_items(ui: &mut egui::Ui, c: &RemoteMenu, (remote, name): (&str, &str)
     let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(theirs));
     menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &on)), check);
     let compare = Msg::Selection(SelectionMsg::CompareWithHead { oid, name: full.clone() });
-    let blocked = remote_branch::compare_blocked(snap, oid, &full);
+    let blocked = remote_branch::compare_blocked(t, snap, oid, &full);
     menu_row(msgs, ui, item_named(named(t.tr("remote_branch.menu.compare_with"), &on)).blocked(blocked.as_deref()), compare);
     if !remote_branch::is_upstream_of_head(snap, remote, name) {
         let set = BranchMsg::SetUpstream { branch: current.to_owned(), remote: remote.to_owned(), name: name.to_owned() };

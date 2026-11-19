@@ -1,14 +1,15 @@
 //! The TAGS section of the left panel: one row per tag (a click jumps to its commit) and the row
-//! menu, headed by the tag's name: checkout, annotate a lightweight tag, push to a remote or all
+//! menu, headed by the tag's name: checkout, annotate a lightweight tag, compare with the
+//! checked-out branch, push to a remote or all
 //! of them, hide or solo it in the graph, copy its name or a link, delete (here and, ticked in
 //! its dialog, on remotes), and delete from a remote or all of them (asked first). The header's
 //! + makes a tag on HEAD's commit, and its menu a lightweight or an annotated one.
 
-use super::common::{menu_danger, menu_header, menu_item, menu_item_if};
+use super::common::{menu_danger, menu_header, menu_item, menu_item_if, menu_row};
 use super::ref_visibility;
 use super::widgets;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
-use crate::widgets::menu::{danger_submenu, separator, submenu};
+use crate::widgets::menu::{danger_submenu, item, item_named, named, separator, submenu};
 use crate::widgets::row_menu::RowMenuExt;
 use eframe::egui;
 use glowfly_core::i18n::Lang;
@@ -17,8 +18,10 @@ use glowfly_core::settings::GraphFilter;
 use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::RepoMsg;
+use glowfly_model::msg::SelectionMsg;
 use glowfly_model::state::Selection;
 use glowfly_model::state::rebase::JOB_RUNNING;
+use glowfly_model::state::remote_branch;
 use glowfly_model::state::section_actions::SectionAction;
 use glowfly_model::state::tags::delete_remote_confirm;
 use glowfly_model::tag::TagMsg;
@@ -63,7 +66,8 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
     }
 }
 
-/// A tag's menu (also on its label in the graph).
+/// A tag's menu (also on its label in the graph): checkout, annotate, compare with the
+/// checked-out branch, push, visibility, copy and delete.
 pub(crate) fn tag_menu(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot, graph: &GraphFilter, idle: bool, msgs: &mut Vec<Msg>) {
     let remotes: Vec<String> = snap.remotes.iter().map(|(r, _)| r.clone()).collect();
     let blocked = (!idle).then_some(JOB_RUNNING);
@@ -75,6 +79,7 @@ pub(crate) fn tag_menu(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot, 
         msgs.push(Msg::Tag(TagMsg::OpenAnnotate { tag: tag() }));
         ui.close_menu();
     }
+    compare_item(ui, t, name, snap, msgs);
     if !remotes.is_empty() {
         separator(ui);
         push_menu(ui, t, name, &remotes, blocked, msgs);
@@ -91,6 +96,19 @@ pub(crate) fn tag_menu(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot, 
     if !remotes.is_empty() {
         delete_remote_menu(ui, t, name, &remotes, blocked, msgs);
     }
+}
+
+/// Compare with the checked-out branch: the tag's commit and HEAD's as a pair, greyed with
+/// `remote_branch::compare_blocked`'s reason (also on a detached HEAD, named "the current branch" then).
+fn compare_item(ui: &mut egui::Ui, t: Lang, name: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let Some(oid) = snap.tags.iter().find(|(n, _)| n == name).map(|(_, o)| *o) else { return };
+    let row = match snap.head_branch.as_deref() {
+        Some(current) => item_named(named(t.tr("remote_branch.menu.compare_with"), &[("branch", current)])),
+        None => item(t.tr("remote_branch.menu.compare_with_current")),
+    };
+    let blocked = remote_branch::compare_blocked(t, snap, oid, name);
+    let compare = Msg::Selection(SelectionMsg::CompareWithHead { oid, name: name.to_owned() });
+    menu_row(msgs, ui, row.blocked(blocked.as_deref()), compare);
 }
 
 /// "Push to": one entry per remote and, with more than one, all of them.
