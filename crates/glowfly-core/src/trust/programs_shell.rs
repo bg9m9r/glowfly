@@ -14,7 +14,7 @@ const QUOTED: [(char, char); 6] =
     [('*', private(1)), ('?', private(2)), ('[', private(3)), (']', private(4)), ('{', private(5)), ('}', private(6))];
 
 /// The private-use character `n` places into the BMP's private-use area.
-const fn private(n: u32) -> char {
+pub(super) const fn private(n: u32) -> char {
     match char::from_u32(0xE000 + n) {
         Some(c) => c,
         None => '\0',
