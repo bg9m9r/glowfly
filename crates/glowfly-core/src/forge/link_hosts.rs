@@ -99,7 +99,8 @@ fn names_host_after(rest: &str) -> bool {
 /// Characters that read as a dot but that some tables class as letters or punctuation IDNA
 /// refuses: the Lisu tone marks, middle dots, leaders, Syriac and full-width or ideographic stops.
 const DOT_LIKE: [char; 15] = [
-    '\u{A78F}', '\u{1427}', '\u{0971}', '\u{02D1}', '\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}', '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}',
+    '\u{A78F}', '\u{1427}', '\u{0971}', '\u{02D1}', '\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}', '\u{0702}',
+    '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}',
 ];
 
 /// Whether a non-ASCII host candidate from path-only text (`xxx/…`) has something in it that
@@ -250,7 +251,9 @@ mod tests {
     #[test]
     fn a_host_with_a_port_query_or_fragment_is_named() {
         let evil = "https://evil.example/";
-        for text in ["github.com:443/acme", "github.com:443", "github.com?tab=1", "github.com#top", "github.com:8080?x", "github.com:8080#x"] {
+        for text in
+            ["github.com:443/acme", "github.com:443", "github.com?tab=1", "github.com#top", "github.com:8080?x", "github.com:8080#x"]
+        {
             assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
         }
         assert_eq!(mismatch("github.com:443", "https://github.com/"), None);
