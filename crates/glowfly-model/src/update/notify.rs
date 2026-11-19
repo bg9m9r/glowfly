@@ -96,9 +96,19 @@ pub(super) enum ToastButton {
 }
 
 /// A toast's button was clicked: removes the toast and runs that button's message, unless it
-/// is for a repository whose tab is no longer active.
+/// is for a repository whose tab is no longer active. A run's fix that asks first leaves the
+/// toast up while it asks (update/logs_runs.rs).
 pub(super) fn toast_action(st: &mut AppState, id: u64, button: ToastButton, now: Instant, fx: &mut Vec<Effect>) {
     let Some(i) = st.toasts.iter().position(|t| t.id == id) else { return };
+    let t = &st.toasts[i];
+    let clicked = match button {
+        ToastButton::Action => t.action.as_ref(),
+        ToastButton::Alt => t.alt.as_ref(),
+        ToastButton::Details => t.details.as_ref(),
+    };
+    if let Some((run, alt)) = super::logs_runs::asking_proxy(st, clicked) {
+        return super::logs_runs::fix(st, run, alt, now, fx);
+    }
     let t = st.toasts.remove(i);
     let action = match button {
         ToastButton::Action => t.action,

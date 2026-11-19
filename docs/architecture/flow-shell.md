@@ -201,7 +201,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - An entry is a note or a run: a job that ends in `ops::finish_job` is logged by `update/logs_runs.rs` (`job_ended`) with a `RunInfo`, persisted as the line's optional `run` object.
 - A run's text has git's line-ending warnings folded into one line that says how many (`glowfly_core::crlf_warnings`).
 - A `RunInfo` holds the job's label, a one-line summary from `logs::last_message` or git's explained cause, and its duration from `LogsState::job_started`, which `logs_runs::stamp` sets at the end of `update`.
-- A loud failure's row starts open (`LogsState::open`), and its fix is kept once in `LogsState::fixes`: the failure toast's button is a `LogsMsg::Fix(id)` proxy, so the panel and the toast run it once.
+- A loud failure's row starts open (`LogsState::open`), and its fix is kept once in `LogsState::fixes`: the failure toast's button is a `LogsMsg::Fix(id)` proxy, so the panel and the toast run it once. A fix whose message is a confirmation is taken only when the confirmation's button runs (`LogsMsg::RunFix`); Cancel or Esc leaves it, its second fix and its toast.
 - `state::activity_rows::rows` groups the view's rows (session headers, runs and notes, consecutive successful auto-fetches as one routine row); `cap_routine` keeps such a streak to `ROUTINE_KEEP` entries, the first counting the rest.
 - One ordered log worker (`runner/logs.rs`) owns the activity file and the performance log and stamps times, so `update` reads no clock.
 - `Runner::run` times every effect that doesn't wait on the user (`Effect::timed`) and gitcli's run observer times every git command; those taking `logs::SLOW` or more go to `performance.log`.

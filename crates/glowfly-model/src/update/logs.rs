@@ -63,6 +63,7 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
         LogsMsg::RowKey(key) => super::logs_filter::row_key(st, key),
         LogsMsg::Fix(id) => super::logs_runs::fix(st, id, false, now, fx),
         LogsMsg::AltFix(id) => super::logs_runs::fix(st, id, true, now, fx),
+        LogsMsg::RunFix { id, alt } => super::logs_runs::confirmed(st, id, alt, now, fx),
         LogsMsg::CopyEntry(id) => super::logs_copy::copy_entry(st, id, fx),
         LogsMsg::CopyLog => super::logs_copy::copy_log(st, now, fx),
         LogsMsg::Export => super::logs_export::export(st, fx),

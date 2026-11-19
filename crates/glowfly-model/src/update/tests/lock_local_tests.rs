@@ -216,3 +216,49 @@ fn conflict_changes_are_never_tried_again() {
     }
     assert!(retryable().iter().all(LocalOp::retryable));
 }
+
+#[test]
+fn cancelling_delete_lock_file_keeps_both_fixes_and_the_toast() {
+    use crate::msg::{DialogMsg, Dismiss};
+    let op = hunk_op(HunkOp::Stage, false);
+    let mut st = clean("ll-cancel");
+    let msg = locked(&st, op.clone());
+    let entry = check_entry(&update(&mut st, msg, Instant::now()));
+    let (workdir, lock) = (st.workdir().unwrap(), lock_of(&st));
+    let stale = Ok(Found::Stale(PathBuf::from(&lock)));
+    update(&mut st, Msg::Lock(LockMsg::Checked { entry, workdir, lock, result: stale }), Instant::now());
+    let kept = |st: &AppState| {
+        assert_eq!(st.logs.fix(entry).map(|f| f.label.as_str()), Some("Delete lock file"));
+        assert_eq!(st.logs.alt_fix(entry).map(|f| f.label.as_str()), Some("Try again"));
+        assert_eq!(buttons(st), ["Delete lock file", "Try again", "Details"]);
+    };
+
+    // The panel's button, then Cancel.
+    update(&mut st, Msg::Logs(LogsMsg::Fix(entry)), Instant::now());
+    let Some(Modal::ConfirmDanger { title, .. }) = &st.modal else { panic!("it asks first") };
+    assert_eq!(title, "Delete the lock file?");
+    update(&mut st, Msg::CloseModal, Instant::now());
+    assert!(st.modal.is_none());
+    kept(&st);
+
+    // The toast's button, then Esc: the toast keeps its id.
+    let id = st.toasts.last().unwrap().id;
+    update(&mut st, Msg::ToastAction(id), Instant::now());
+    assert!(matches!(st.modal, Some(Modal::ConfirmDanger { .. })));
+    assert!(st.toasts.iter().any(|t| t.id == id), "the toast stays while it asks");
+    update(&mut st, Msg::Dialog(DialogMsg::Dismiss(Dismiss::Escape)), Instant::now());
+    assert!(st.modal.is_none());
+    assert_eq!(st.toasts.last().unwrap().id, id);
+    kept(&st);
+
+    // Confirming takes both fixes and the toast, and deletes.
+    update(&mut st, Msg::ToastAction(id), Instant::now());
+    let fx = update(&mut st, Msg::ConfirmAccepted, Instant::now());
+    let retry = fx.into_iter().find_map(|e| match e {
+        Effect::Lock(LockEffect::Delete { retry, .. }) => Some(retry),
+        _ => None,
+    });
+    assert!(matches!(retry, Some(LockRetry::Local(l)) if l.op == op), "the delete carries the op");
+    assert!(st.logs.fix(entry).is_none() && st.logs.alt_fix(entry).is_none());
+    assert!(st.toasts.iter().all(|t| t.id != id));
+}
