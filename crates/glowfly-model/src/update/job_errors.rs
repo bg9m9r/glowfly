@@ -85,7 +85,8 @@ pub(super) fn explain(
             // Force push with lease of the branch git rejected, read from the job's own push
             // command; its confirmation first.
             let cmd = again.and_then(|r| r.spec.cmds.first().filter(|_| r.spec.cmds.len() == 1));
-            let rejected = snap.zip(cmd).and_then(|(s, c)| Some((s, crate::state::branches::rejected_push::rejected_local(s, c, output)?)));
+            let rejected =
+                snap.zip(cmd).and_then(|(s, c)| Some((s, crate::state::branches::rejected_push::rejected_local(t, s, c, output)?)));
             let force = rejected.and_then(|(s, b)| crate::state::branches::push::force_confirm(t, s, b).ok());
             let force = force.and_then(|m| fix(t.tr("git_errors.force_push.button"), m));
             let pulled = if is_head(&branch) { pull() } else { None };

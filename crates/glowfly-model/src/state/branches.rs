@@ -1,7 +1,7 @@
 //! Branch actions: why one is blocked and where a push goes. The menu shows these reasons on
 //! disabled items and `update` logs the same text when it refuses a late message. Force push
-//! and Push to all remotes are in `push.rs`, where a plain push goes (and why git refuses it)
-//! in `plain_push.rs`, the branch a rejected push was for in `rejected_push.rs`.
+//! and Push to all remotes are in `push.rs` (where they go: `force_dest.rs`), where a plain push
+//! goes (and why git refuses it) in `plain_push.rs`, the branch a rejected push was for in `rejected_push.rs`.
 
 use git2::RepositoryState;
 use glowfly_core::branch_ops::{FastForward, fast_forward_state};
@@ -9,6 +9,7 @@ use glowfly_core::gitcli::args;
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot, Tracking};
 
+pub mod force_dest;
 pub mod plain_push;
 pub mod push;
 pub(crate) mod rejected_push;
