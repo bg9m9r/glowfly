@@ -106,8 +106,8 @@ pub(super) fn load_status_with(
     {
         let lost = super::index_ext::should_record(repo, records);
         let lists = match &lost {
-            Some(_) => super::status_cli::status_recording(workdir),
-            None => super::status_cli::status(workdir),
+            Some(_) => super::status_cli::status_recording(repo, workdir),
+            None => super::status_cli::status(repo, workdir),
         };
         if let Some(l) = &lost {
             super::index_ext::record_after(records, l);

@@ -75,7 +75,7 @@ pub(super) fn read_paths(
         // git matches pathspecs case-sensitively even under core.ignorecase, while the watcher
         // reports the name on disk: the index's spelling is asked for too.
         let asked = if collide::ignorecase(&repo) { with_index_spellings(&index, &covered) } else { covered.clone() };
-        match status_cli::status_of(workdir, &asked) {
+        match status_cli::status_of(&repo, workdir, &asked) {
             Some(lists) => lists,
             None => return Ok(None),
         }

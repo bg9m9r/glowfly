@@ -26,7 +26,7 @@ fn files_a_sparse_checkout_leaves_out_are_not_deleted() {
 
     let (u2, s2, _) = status_at(&dir, true).unwrap();
     assert_eq!((u2.clone(), s2.clone()), (unstaged.clone(), staged.clone()));
-    let (u3, s3) = status_cli::status(&dir).expect("git's own status");
+    let (u3, s3) = status_cli::status(&git2::Repository::open(&dir).unwrap(), &dir).expect("git's own status");
     assert_eq!((u3, s3), (unstaged, staged), "git's status agrees");
     let _ = std::fs::remove_dir_all(&dir);
 }
