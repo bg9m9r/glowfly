@@ -171,7 +171,7 @@ pub fn count_worktree(path: &Path, home: &Path, decision: Option<&SavedTrust>, t
         Plan::Git => {
             let workdir = repo.workdir().map(Path::to_path_buf).unwrap_or_else(|| path.to_path_buf());
             let started = Instant::now();
-            match super::status_cli::status_within(&workdir, timeout) {
+            match super::status_cli::status_within(&repo, &workdir, timeout) {
                 Ok((unstaged, staged)) => {
                     let slow = super::status_speed::slow(started.elapsed(), &workdir);
                     done(ChangesRead::Counted, ChangeCounts::of(&staged, &unstaged), slow)

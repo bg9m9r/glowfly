@@ -1,36 +1,48 @@
 //! The working-tree status as git reads it (`git status --porcelain=v2 -z`), for repositories
 //! set up so that git is much faster than libgit2: fsmonitor and the untracked cache only help
-//! git itself.
+//! git itself. Where libgit2 is kept from the submodules (`git_file::submodules_unread`), git
+//! leaves them out too, as libgit2's status does: the trust scan didn't read their settings.
 
 use super::{FileEntry, rpath};
 use crate::gitcli::{NO_PROMPTS, READ_TIMEOUT, args, output_bytes};
+use git2::Repository;
 use std::path::Path;
 use std::time::Duration;
 
 /// (unstaged, staged) as `status::libgit2_status` reports them, or None when git failed.
-pub(super) fn status(workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
-    status_within(workdir, READ_TIMEOUT).ok()
+pub(super) fn status(repo: &Repository, workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
+    status_within(repo, workdir, READ_TIMEOUT).ok()
 }
 
 /// `status`, letting git write the index: it records the untracked cache and the file system
 /// monitor's token there again after an index write that dropped them (`index_ext.rs`).
-pub(super) fn status_recording(workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
-    read(workdir, READ_TIMEOUT, true).ok()
+pub(super) fn status_recording(repo: &Repository, workdir: &Path) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
+    read(repo, workdir, READ_TIMEOUT, true).ok()
 }
 
 /// `status`, given up after `timeout`. Err(true) when git ran out of time, Err(false) when it
 /// failed otherwise.
-pub(super) fn status_within(workdir: &Path, timeout: Duration) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
-    read(workdir, timeout, false)
+pub(super) fn status_within(repo: &Repository, workdir: &Path, timeout: Duration) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
+    read(repo, workdir, timeout, false)
 }
 
-fn read(workdir: &Path, timeout: Duration, record: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
+/// git's status options: every untracked file, and no submodule where libgit2 is kept from them.
+fn options(repo: &Repository) -> Vec<String> {
+    let mut out = args(&["--porcelain=v2", "-z", "--untracked-files=all"]);
+    if crate::git_file::submodules_unread(repo) {
+        out.push("--ignore-submodules=all".to_owned());
+    }
+    out
+}
+
+fn read(repo: &Repository, workdir: &Path, timeout: Duration, record: bool) -> Result<(Vec<FileEntry>, Vec<FileEntry>), bool> {
     // Without optional locks git doesn't rewrite the index, which the file watcher would report
     // as a change, reading the status again.
-    let mut cmd = args(&["--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all"]);
+    let mut cmd = args(&["--no-optional-locks", "status"]);
     if record {
         cmd.remove(0);
     }
+    cmd.extend(options(repo));
     // Paths are git's bytes, which needn't be UTF-8: kept undecoded until `rpath` reads them.
     let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(timeout));
     if !out.ok {
@@ -42,12 +54,14 @@ fn read(workdir: &Path, timeout: Duration, record: bool) -> Result<(Vec<FileEntr
 /// `status` of only the work-tree paths `paths` (each taken literally, a folder covering
 /// everything below it), or None when their command line would be too long
 /// (`status_paths::CLI_PATH_BYTES`) or git failed.
-pub(super) fn status_of(workdir: &Path, paths: &[String]) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
+pub(super) fn status_of(repo: &Repository, workdir: &Path, paths: &[String]) -> Option<(Vec<FileEntry>, Vec<FileEntry>)> {
     if paths.iter().map(|p| p.len() + 1).sum::<usize>() > super::status_paths::CLI_PATH_BYTES {
         return None;
     }
     // Literal pathspecs, so a name like `[ab].txt` isn't a pattern matching `a.txt`.
-    let mut cmd = args(&["--no-optional-locks", "--literal-pathspecs", "status", "--porcelain=v2", "-z", "--untracked-files=all", "--"]);
+    let mut cmd = args(&["--no-optional-locks", "--literal-pathspecs", "status"]);
+    cmd.extend(options(repo));
+    cmd.push("--".to_owned());
     cmd.extend(paths.iter().cloned());
     let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(READ_TIMEOUT));
     out.ok.then(|| parse(&stdout))

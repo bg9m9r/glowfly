@@ -126,7 +126,7 @@ fn status_lists_a_staged_rename_to_a_name_that_is_not_utf8() {
     let (_, staged, _) = status_at(&dir, false).unwrap();
     assert!(staged.iter().any(|f| not_utf8(f) && f.status == 'R'), "{staged:?}");
     // git's own status read reports it the same way.
-    let (_, staged_git) = super::status_cli::status(&dir).expect("git ran");
+    let (_, staged_git) = super::status_cli::status(&git2::Repository::open(&dir).unwrap(), &dir).expect("git ran");
     assert!(staged_git.iter().any(|f| not_utf8(f) && f.status == 'R'), "{staged_git:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -155,7 +155,7 @@ fn an_untracked_file_named_with_bytes_that_are_not_utf8() {
     std::fs::write(dir.join(std::ffi::OsStr::from_bytes(CAFE)), "x\n").unwrap();
     let (unstaged, _, _) = status_at(&dir, false).unwrap();
     assert!(unstaged.iter().any(|f| not_utf8(f) && f.status == '?'), "{unstaged:?}");
-    let (by_git, _) = super::status_cli::status(&dir).expect("git ran");
+    let (by_git, _) = super::status_cli::status(&git2::Repository::open(&dir).unwrap(), &dir).expect("git ran");
     assert_eq!(by_git, unstaged);
     // The shown name is no file: acting on it reaches nothing else.
     assert!(discard_untracked(&dir, CAFE_SHOWN, Removal::Permanent).is_err());

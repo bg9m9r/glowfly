@@ -35,7 +35,7 @@ source file, update its line here.
 - `repo/collide_scan.rs`: finding the index's collisions (`collide.rs`) cheaply, since every status read asks, the watcher's path-limited reads after each save included.
 - `repo/entry.rs`: a row of a file list (status, a commit's or a comparison's files), and why Glowfly may refuse to act on it.
 - `repo/refs_key.rs`: a cheap fingerprint of everything a full load reads besides the working-tree status: refs, HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked worktrees and every worktree's HEAD and the branch it is rebasing or bisecting, a shallow clone's `shallow` file, the sources of the mailmap (the `.mailmap` file, `mailmap.blob`, `mailmap.file`) and the trust print of the repository's own settings, hooks and commands file (`trust::scan_top`).
-- `repo/status_cli.rs`: the working-tree status as git reads it (`git status --porcelain=v2 -z`), for repositories set up so that git is much faster than libgit2: fsmonitor and the untracked cache only help git itself.
+- `repo/status_cli.rs`: the working-tree status as git reads it (`git status --porcelain=v2 -z`), for repositories set up so that git is much faster than libgit2: fsmonitor and the untracked cache only help git itself. Submodules libgit2 is kept from (`git_file::submodules_unread`) are left out (`--ignore-submodules=all`), as libgit2's status leaves them out.
 
 ## Diffs
 

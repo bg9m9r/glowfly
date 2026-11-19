@@ -32,9 +32,9 @@ fn git_and_libgit2_read_the_same_status() {
 
     let repo = Repository::open(&dir).unwrap();
     let ours = libgit2_status(&repo).unwrap();
-    let git_read = status(&dir).expect("git ran");
+    let git_read = status(&repo, &dir).expect("git ran");
     assert_eq!(git_read, ours);
-    assert_eq!(super::status_cli::status_within(&dir, crate::gitcli::READ_TIMEOUT), Ok(git_read.clone()), "the same read");
+    assert_eq!(super::status_cli::status_within(&repo, &dir, crate::gitcli::READ_TIMEOUT), Ok(git_read.clone()), "the same read");
     for new in ["renamed.txt", "edited.txt"] {
         assert!(ours.1.iter().any(|f| f.path == new && f.status == 'R'), "{new}: {:?}", ours.1);
     }
@@ -167,6 +167,46 @@ fn a_submodule_s_fsmonitor_hook_never_runs_untrusted() {
     assert!(!marker.exists(), "an untrusted load doesn't let git step into the submodule");
     status_at(&top, true).unwrap();
     assert!(marker.exists(), "git's status ran the submodule's hook");
+    let _ = std::fs::remove_dir_all(&top);
+    let _ = std::fs::remove_dir_all(&sub);
+}
+
+#[test]
+fn git_s_status_leaves_out_submodules_libgit2_is_kept_from() {
+    let (top, sub) = (scratch_repo("status-sub-unread"), scratch_repo("status-sub-unread-lib"));
+    write(
+        &sub, "lib.txt", "lib
+",
+    );
+    git(&sub, &["add", "."]);
+    git(&sub, &["commit", "-q", "-m", "lib"]);
+    git(&top, &["-c", "protocol.file.allow=always", "submodule", "add", "-q", &sub.display().to_string(), "lib"]);
+    git(&top, &["commit", "-q", "-m", "add lib"]);
+    let marker = top.join("ran.txt");
+    let hook = marker_script(&top.join(".git/modules/lib/fsmon.sh"), &marker);
+    git(&top.join("lib"), &["config", "core.fsmonitor", &hook]);
+    write(
+        &top.join("lib"),
+        "lib.txt",
+        "changed
+",
+    );
+    // A .gitmodules libgit2 would read differently from git: the trust scan reads no submodule.
+    let mut text = std::fs::read_to_string(top.join(".gitmodules")).unwrap();
+    text.push_str(
+        "[include]
+	path = more.cfg
+",
+    );
+    write(&top, ".gitmodules", &text);
+    let repo = Repository::open(&top).unwrap();
+    assert!(crate::git_file::submodules_unread(&repo));
+    let (unstaged, _) = status(&repo, &top).expect("git ran");
+    assert!(!marker.exists(), "git didn't step into the submodule");
+    assert_eq!(unstaged.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), [".gitmodules"], "the submodule is left out");
+    let paths = vec!["lib".to_owned()];
+    assert_eq!(super::status_cli::status_of(&repo, &top, &paths).map(|(u, _)| u.len()), Some(0));
+    assert!(!marker.exists());
     let _ = std::fs::remove_dir_all(&top);
     let _ = std::fs::remove_dir_all(&sub);
 }
