@@ -34,7 +34,7 @@ source file, update its line here.
 
 ## Issues
 
-- `refs.rs`: issue key detection in text and branch names (a year-like leading number, `2024-cleanup`, names an issue only when the repository turns it on).
+- `refs.rs`: issue key detection in text and branch names (a year-like or date-like leading number, `2024-cleanup` or `20241016-release`, names an issue only when the repository turns it on).
 - `issue_details.rs`, `issue_comments.rs`: issue details, creating issues and posting comments.
 - `github_issues.rs`, `gitlab_issues.rs`, `bitbucket_issues.rs`, `trello_issues.rs`: each service's issues.
 - `jira_issues.rs`, with `jira_adf.rs` for Jira's rich text.
