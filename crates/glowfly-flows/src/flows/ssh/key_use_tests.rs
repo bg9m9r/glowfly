@@ -87,7 +87,7 @@ fn a_failed_write_is_shown_and_logged() {
 fn replacing_a_foreign_command_asks_first() {
     let mut st = chosen(other("ssh -v"), None);
     assert!(ssh(&mut st, use_key(false)).is_empty());
-    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("a confirmation") };
+    let Some(Modal::Confirm { title, body, button, then, .. }) = &st.modal else { panic!("a confirmation") };
     assert_eq!((title.as_str(), button.as_str()), ("Replace SSH command", "Replace"));
     assert!(body.contains("all repositories") && body.contains("ssh -v"), "{body}");
     assert!(matches!(**then, Msg::Ssh(SshMsg::UseKey { repo: false, confirmed: true, .. })));

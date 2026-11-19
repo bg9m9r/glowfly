@@ -58,6 +58,7 @@ pub(super) fn prompt(t: Lang, path: PathBuf, n: NetworkPlaces) -> Modal {
         body,
         button: t.tr("safe_dir.network.open").into(),
         then: Box::new(Msg::Repo(RepoMsg::OpenAnyway { path, folder: n.folder, places: n.places })),
+        cancel_default: true,
     }
 }
 

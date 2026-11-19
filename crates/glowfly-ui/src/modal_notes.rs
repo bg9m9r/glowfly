@@ -18,18 +18,18 @@ use glowfly_model::state::{Modal, ViewState};
 pub(super) fn draw(ui: &mut egui::Ui, cx: Cx, shown: &Modal, env: &DialogEnv, view: &mut ViewState, msgs: &mut Vec<Msg>) -> bool {
     let (snap, idle) = (env.snap, env.idle);
     match shown {
-        Modal::Confirm { title, body, button, .. } => {
-            let texts = confirm_dialog::Texts { title, body, button, details: None };
+        Modal::Confirm { title, body, button, cancel_default, .. } => {
+            let texts = confirm_dialog::Texts { title, body, button, details: None, cancel_default: *cancel_default };
             confirm_dialog::show(ui, cx, texts, Tone::Normal, None, None, msgs)
         }
         Modal::ConfirmDetails { title, body, details, button, .. } => {
-            let texts = confirm_dialog::Texts { title, body, button, details: Some(details) };
+            let texts = confirm_dialog::Texts { title, body, button, details: Some(details), cancel_default: false };
             confirm_dialog::show(ui, cx, texts, Tone::Normal, None, None, msgs)
         }
         Modal::ConfirmDanger { title, body, button, ack, acked, .. } => {
             let mut ticked = *acked;
             let ack = ack.as_deref().map(|label| (label, &mut ticked));
-            let texts = confirm_dialog::Texts { title, body, button, details: None };
+            let texts = confirm_dialog::Texts { title, body, button, details: None, cancel_default: false };
             let close = confirm_dialog::show(ui, cx, texts, Tone::Danger, ack, None, msgs);
             if ticked != *acked {
                 msgs.push(Msg::Edit(EditMsg::ConfirmAck(ticked)));
@@ -37,7 +37,7 @@ pub(super) fn draw(ui: &mut egui::Ui, cx: Cx, shown: &Modal, env: &DialogEnv, vi
             close
         }
         Modal::ConfirmChoice { title, body, button, alt, .. } => {
-            let texts = confirm_dialog::Texts { title, body, button, details: None };
+            let texts = confirm_dialog::Texts { title, body, button, details: None, cancel_default: false };
             confirm_dialog::show(ui, cx, texts, Tone::Normal, None, Some(alt), msgs)
         }
         Modal::DeleteBranch(form) => crate::branch_delete_dialog::show(ui, cx, form, msgs),

@@ -136,7 +136,7 @@ pub(super) fn unstage_confirm(t: Lang, path: String, staged: Staged, gone: bool,
             Staged::New => t.trf("files.unstage_gone.body", &[("path", &path), ("hint", &hint)]),
         };
         let then = Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(FileOp::UnstageGone(path))));
-        return Modal::Confirm { title: "Unstage deleted file".into(), body, button: "Unstage".into(), then };
+        return Modal::Confirm { title: "Unstage deleted file".into(), body, button: "Unstage".into(), then, cancel_default: false };
     }
     let trash = mode == DeleteMode::Trash;
     let mut body = match (staged, trash) {
@@ -182,6 +182,7 @@ pub(super) fn trash_refused(st: &mut AppState, op: FileOp, refusal: TrashRefusal
         body,
         button: "Retry".into(),
         then: Box::new(Msg::WorkFile(WorkFileMsg::DeleteConfirmed(op.clone()))),
+        cancel_default: false,
     };
     // Delete, Unstage and delete and Discard keep a copy for Undo, but only of files up to 64 MB.
     let hint = st.keymap.paren(BindingId::Undo);

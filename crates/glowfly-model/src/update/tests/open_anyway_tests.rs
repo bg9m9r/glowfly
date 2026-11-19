@@ -51,7 +51,8 @@ fn a_refused_open_asks_and_open_anyway_approves_those_places_and_opens_again() {
     send(&mut st, Msg::Repo(RepoMsg::Open(repo.clone())));
     refused(&mut st, &repo, &places);
     assert!(!has_tab(&st, &repo), "it fails as any open does");
-    let Some(Modal::Confirm { title, body, button, .. }) = &st.modal else { panic!("asks: {:?}", st.modal.is_some()) };
+    let Some(Modal::Confirm { title, body, button, cancel_default, .. }) = &st.modal else { panic!("asks: {:?}", st.modal.is_some()) };
+    assert!(*cancel_default, "Cancel is the default: Enter never opens anyway");
     assert_eq!(title, "Open a folder that points to a network place?");
     assert!(body.starts_with(r"This folder's Git data points to \\nas\team, Z:\. Opening it connects to that server"), "{body}");
     assert_eq!(cfg!(windows), body.contains("Windows may send your sign-in"), "{body}");
@@ -122,8 +123,13 @@ fn a_refresh_and_another_open_in_progress_dont_ask() {
     assert!(st.modal.is_none(), "a refresh only logs");
     // Something else is asking: the open fails without stacking a second question.
     send(&mut st, Msg::Repo(RepoMsg::Open(repo.clone())));
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     refused(&mut st, &repo, &[r"\\nas\team"]);
     assert!(matches!(&st.modal, Some(Modal::Confirm { title, .. }) if title == "t"));
 }

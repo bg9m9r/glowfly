@@ -238,7 +238,7 @@ fn journal_confirm() {
     let dirty = glowfly_model::state::auto_stash::blocks(snap);
     let msg = glowfly_model::state::journal_restore::confirm(t, &plan, view.preview_of(&r.key()), dirty, snap.head_branch.as_deref());
     let Msg::Confirm { title, body, button, then } = msg else { panic!("a confirmation") };
-    st.modal = Some(glowfly_model::state::Modal::Confirm { title, body, button, then });
+    st.modal = Some(glowfly_model::state::Modal::Confirm { title, body, button, then, cancel_default: false });
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("journal_confirm");

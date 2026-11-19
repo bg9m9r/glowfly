@@ -100,8 +100,13 @@ fn r_reverts_on_a_commit_or_comparison_diff() {
     let mut h = harness(commit(), true);
     assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [], "not while typing");
     let mut st = commit();
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, Modifiers::NONE, Key::R), [], "not under a dialog");
 }
@@ -109,8 +114,13 @@ fn r_reverts_on_a_commit_or_comparison_diff() {
 #[test]
 fn nothing_under_dialogs_or_the_palette() {
     let mut st = unstaged();
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, Modifiers::NONE, Key::S), []);
     assert_eq!(press(&mut h, CMD_SHIFT, Key::S), []);

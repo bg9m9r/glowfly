@@ -43,7 +43,7 @@ fn a_large_history_asks_first() {
 
     let answer = sized(&st, id, big());
     assert!(run(&mut st, answer).is_empty());
-    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("asks first") };
+    let Some(Modal::Confirm { title, body, button, then, .. }) = &st.modal else { panic!("asks first") };
     assert_eq!((title.as_str(), button.as_str()), ("Fetch full history?", "Fetch full history"));
     assert!(body.starts_with("GitHub reports this repository's size as about 3.0 GB. This clone has 1 commit so far;"), "{body}");
     assert!(matches!(**then, Msg::Job(JobMsg::DeepenNow(Deepen::Full))));

@@ -102,7 +102,13 @@ fn notes_without_this_version_are_not_shown() {
 #[test]
 fn notes_wait_for_an_open_dialog() {
     let mut st = upgraded(Some("0.1.0"));
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::ClearLog),
+        cancel_default: false,
+    });
     let t = Instant::now();
     send(&mut st, U::Startup, t);
     assert!(matches!(st.modal, Some(Modal::Confirm { .. })), "not replaced");

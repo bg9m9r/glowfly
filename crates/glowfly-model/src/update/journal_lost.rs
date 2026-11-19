@@ -98,7 +98,9 @@ fn stash(st: &AppState, oid: Oid) -> Option<LostCommit> {
 /// Runs an action's message: a confirmation opens, a job starts.
 fn dispatch(st: &mut AppState, msg: Msg, now: Instant, fx: &mut Vec<Effect>) {
     match msg {
-        Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
+        Msg::Confirm { title, body, button, then } => {
+            st.modal = Some(crate::state::Modal::Confirm { title, body, button, then, cancel_default: false })
+        }
         Msg::Job(job) => super::ops::job(st, job, now, fx),
         // Apply on top of uncommitted changes reads the stash's files before it asks.
         Msg::Stash(m) => super::stash::handle(st, m, fx),
@@ -171,7 +173,7 @@ fn restore(st: &mut AppState, oid: Oid, now: Instant) {
         Ok(plan) => {
             let msg = rules::restore_confirm(t, &plan, snap);
             if let Msg::Confirm { title, body, button, then } = msg {
-                st.modal = Some(crate::state::Modal::Confirm { title, body, button, then });
+                st.modal = Some(crate::state::Modal::Confirm { title, body, button, then, cancel_default: false });
             }
         }
     }

@@ -122,6 +122,6 @@ fn folders_checked(st: &mut AppState, checks: Vec<FolderCheck>) {
         let t = st.settings.lang();
         let (title, body) = forget_confirm(t, st, &p);
         let then = Box::new(Msg::Recent(RecentMsg::Forget(p)));
-        st.modal = Some(Modal::Confirm { title, body, button: t.tr("repos.remove.button").into(), then });
+        st.modal = Some(Modal::Confirm { title, body, button: t.tr("repos.remove.button").into(), then, cancel_default: false });
     }
 }

@@ -145,7 +145,7 @@ fn ask_restore(st: &mut AppState, oid: Oid, path: String, deleted: bool) {
     st.modal = Some(if dirty {
         Modal::danger("Restore file", body, "Restore", then)
     } else {
-        Modal::Confirm { title: "Restore file".into(), body, button: "Restore".into(), then: Box::new(then) }
+        Modal::Confirm { title: "Restore file".into(), body, button: "Restore".into(), then: Box::new(then), cancel_default: false }
     });
 }
 
@@ -180,6 +180,7 @@ fn ask_open(st: &mut AppState, path: String, kind: &'static str) {
                 ),
                 button: "Run".into(),
                 then: Box::new(Msg::Files(FilesMsg::OpenConfirmed(path))),
+                cancel_default: false,
             });
         }
     }

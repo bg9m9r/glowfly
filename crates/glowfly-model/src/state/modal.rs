@@ -40,6 +40,9 @@ pub enum Modal {
         body: String,
         button: String,
         then: Box<Msg>,
+        /// Cancel is the default button (focused, run by Enter) instead of `button`: for a question
+        /// whose yes reaches somewhere the user may not know.
+        cancel_default: bool,
     },
     /// `Confirm` with a collapsed Details under the body (the values behind a plain-words question).
     ConfirmDetails {

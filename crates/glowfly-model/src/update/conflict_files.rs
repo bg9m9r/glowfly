@@ -130,6 +130,7 @@ pub(super) fn read_done(
                     body: markers_warning(&left),
                     button: "Mark resolved".into(),
                     then: Box::new(Msg::Conflict(ConflictMsg::MarkResolvedConfirmed(paths))),
+                    cancel_default: false,
                 });
             }
         },

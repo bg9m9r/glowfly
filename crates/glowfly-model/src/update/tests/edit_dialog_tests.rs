@@ -63,7 +63,8 @@ fn forms_copy_and_compare_but_questions_and_notes_do_not() {
     assert!(Modal::danger("Drop?", "Gone.", "Drop", Msg::ClearLog).form_copy().is_none());
     let ask = AutoStashAsk { op: AutoStashFor::Pull { branch: "main".into() }, files: 1, always: false, retry: Box::new(Msg::ClearLog) };
     assert!(Modal::AutoStash(ask).form_copy().is_none());
-    let confirm = Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) };
+    let confirm =
+        Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog), cancel_default: false };
     assert!(confirm.form_copy().is_none());
 
     let shown = new_branch();
@@ -157,7 +158,13 @@ fn the_ack_and_always_boxes_land_on_their_own_question() {
     assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { acked: true, .. })));
     assert!(st.modal.as_ref().is_some_and(Modal::confirm_ready));
 
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::ClearLog),
+        cancel_default: false,
+    });
     edit(&mut st, EditMsg::ConfirmAck(true));
     edit(&mut st, EditMsg::AutoStashAlways(true));
     assert!(matches!(&st.modal, Some(Modal::Confirm { .. })), "a plain confirmation has neither box");

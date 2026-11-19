@@ -31,13 +31,15 @@ pub(super) struct Laid {
     pub primary_on: bool,
     pub tone: Tone,
     pub submit: bool,
+    /// The dismiss button is the default though there is a primary.
+    pub dismiss_default: bool,
 }
 
 /// Draws `footer`'s row (and its reason line), in `t`. `exact` (a dialog with a set width) leaves
 /// out the empty space after a lone dismiss button, which would reach past the content's right
 /// edge and widen the dialog by the item spacing.
 pub(super) fn lay_out(ui: &mut Ui, footer: Footer<'_>, t: Lang, exact: bool) -> Laid {
-    let Footer { primary, alts, extras, note, dismiss, tone, submit } = footer;
+    let Footer { primary, alts, extras, note, dismiss, tone, submit, dismiss_default } = footer;
     let spacing = ui.spacing().item_spacing.x;
     let mut out = Outcome::default();
     // 24 px between the body and the buttons.
@@ -104,7 +106,7 @@ pub(super) fn lay_out(ui: &mut Ui, footer: Footer<'_>, t: Lang, exact: bool) -> 
             primary_r = Some(r);
         }
     });
-    Laid { out, dismiss: dismiss_r, primary: primary_r, primary_on, tone, submit }
+    Laid { out, dismiss: dismiss_r, primary: primary_r, primary_on, tone, submit, dismiss_default }
 }
 
 /// The dismiss button's label.
@@ -134,6 +136,7 @@ pub struct Footer<'a> {
     dismiss: Option<Dismiss<'a>>,
     tone: Tone,
     submit: bool,
+    dismiss_default: bool,
 }
 
 impl<'a> Footer<'a> {
@@ -192,6 +195,13 @@ impl<'a> Footer<'a> {
     /// Whether a single-line field reported Enter this frame (runs the default button).
     pub fn submit(mut self, submit: bool) -> Self {
         self.submit = submit;
+        self
+    }
+
+    /// Makes the dismiss button the default (focused first, run by Enter) when `on`, for a question
+    /// whose primary should take a deliberate click; the primary keeps its look.
+    pub fn dismiss_default(mut self, on: bool) -> Self {
+        self.dismiss_default = on;
         self
     }
 }

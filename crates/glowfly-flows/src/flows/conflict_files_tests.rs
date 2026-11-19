@@ -47,7 +47,7 @@ fn mark_resolved_with_markers_left_asks_first() {
     let fx = send(&mut st, ConflictMsg::MarkResolved(owned(&["a.txt"])));
     assert!(checks_markers(&fx, &["a.txt"]), "{fx:?}");
     drive(&mut st, Msg::Conflict(ConflictMsg::MarkResolved(owned(&["a.txt"]))));
-    let Some(Modal::Confirm { title, body, button, then }) = st.modal.take() else { panic!("expected the markers warning") };
+    let Some(Modal::Confirm { title, body, button, then, .. }) = st.modal.take() else { panic!("expected the markers warning") };
     assert_eq!((title.as_str(), button.as_str()), ("Conflict markers left", "Mark resolved"));
     assert!(body.starts_with("a.txt still has 1 conflict marker region."), "{body}");
     assert!(matches!(*then, Msg::Conflict(ConflictMsg::MarkResolvedConfirmed(ref p)) if *p == owned(&["a.txt"])));
