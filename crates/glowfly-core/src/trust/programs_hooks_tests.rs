@@ -146,8 +146,8 @@ fn past_the_limits_the_whole_working_tree_follows() {
     let big = format!("#!/bin/sh\n{}\nsh ./late.sh\n", "#".repeat(MAX_TEXT_BYTES));
     hook_with(&dir.join(".git/hooks"), "pre-commit", &big);
     assert!(scan_of(&dir).follows.iter().any(|f| f.path.is_empty()), "too large to read");
-    // A compiled hook has no words.
+    // A compiled hook's words can't be read: a NUL byte follows the whole working tree.
     hook_with(&dir.join(".git/hooks"), "pre-commit", "\x7fELF\0\0./bin/x");
-    assert!(scan_of(&dir).follows.is_empty());
+    assert_eq!(paths(&scan_of(&dir)), [""], "a NUL byte");
     let _ = std::fs::remove_dir_all(&dir);
 }
