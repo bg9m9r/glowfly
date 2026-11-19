@@ -33,7 +33,7 @@ Dialog
   Label "Open the first or last file"
   Label "in the Unstaged and Staged Files lists"
   Label "Home or End"
-  Label "Stage or unstage the file or the selected files"
+  Label "Stage or unstage the file, or the selected lines or files"
   Label "in the Unstaged and Staged Files lists"
   Label "Space"
   Label "Open the list's current file"

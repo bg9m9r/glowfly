@@ -15,7 +15,7 @@ use crate::state::{AppState, Modal};
 use glowfly_core::repo::{DiffTarget, Hazard};
 use glowfly_core::undo::{Action, BatchOp, Discarded};
 
-fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
+pub(super) fn local_op(fx: &[Effect]) -> Option<&LocalOp> {
     fx.iter().find_map(|e| match e {
         Effect::Files(FilesEffect::LocalOp { op, .. }) => Some(op),
         _ => None,
@@ -26,19 +26,19 @@ fn paths(ps: &[&str]) -> Vec<String> {
     ps.iter().map(|p| (*p).to_owned()).collect()
 }
 
-fn wip_key(st: &mut AppState, staged: bool, key: ListKey) -> Vec<Effect> {
+pub(super) fn wip_key(st: &mut AppState, staged: bool, key: ListKey) -> Vec<Effect> {
     send(st, Msg::Shortcut(KeyAction::WipList { staged, key }))
 }
 
 /// a.txt and c.txt (untracked) picked in Unstaged Files, b.txt left out; c.txt open.
-fn a_and_c(name: &str) -> AppState {
+pub(super) fn a_and_c(name: &str) -> AppState {
     let mut st = lists(name);
     pick(&mut st, false, "c.txt", PickHow::Toggle);
     st
 }
 
 /// x.txt and z.txt picked in Staged Files, y.txt left out.
-fn x_and_z(name: &str) -> AppState {
+pub(super) fn x_and_z(name: &str) -> AppState {
     let mut st = lists(name);
     send(&mut st, Msg::Repo(crate::msg::RepoMsg::OpenDiff(DiffTarget::Staged("x.txt".into()))));
     pick(&mut st, true, "z.txt", PickHow::Toggle);

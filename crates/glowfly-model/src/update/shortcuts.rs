@@ -4,7 +4,7 @@
 //! list, or its selected lines when a selection is visible), R reverts the selected lines or the current hunk of a commit or comparison diff,
 //! Ctrl+Shift+S/U stage or unstage everything, Ctrl+Shift+M goes to the commit message, and
 //! Ctrl+/ opens or closes the shortcut sheet (the default keys). The keys of a focused Unstaged
-//! or Staged Files list go to `wip_keys.rs`, the moves of the other file lists to
+//! or Staged Files list go to `wip_keys.rs` (its Space is answered by the same rule as S and U), the moves of the other file lists to
 //! `file_list_keys.rs`; after the whole open file was staged or unstaged the view moves on to
 //! its neighbour (`wip_list.rs`). The pane keys, F6 and Enter in the graph ask the view to
 //! move the keyboard focus to a pane (`focus_pane`), showing its panel first.
@@ -66,8 +66,10 @@ pub(super) fn handle(st: &mut AppState, action: KeyAction, now: Instant, fx: &mu
 /// What S (`stage`) or U does on the open diff (or the working-tree file still opening): every
 /// picked file of its list when it is one of them, else the selected lines when the selection
 /// is visible on it, else the whole file. Nothing on a diff of the other side, a commit or comparison
-/// diff, a conflicted file, or under the conflict view or the file history.
-fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
+/// diff, a conflicted file, or under the conflict view or the file history. It is also what Space
+/// does in the focused list of that side (`wip_keys.rs`: Unstaged Files asks with `stage: true`,
+/// Staged Files with `false`).
+pub(super) fn stage_msg(st: &AppState, stage: bool) -> Option<Msg> {
     if st.session.conflict.view.is_some() || st.session.history.view.is_some() {
         return None;
     }
