@@ -218,7 +218,7 @@ pub const BINDINGS: &[Binding] = &[
     ),
     fixed(I::WipPageFile, G::Staging, "Open the file a page up or down", &[C::plain(K::PageUp), C::plain(K::PageDown)], W::WipLists),
     fixed(I::WipEdgeFile, G::Staging, "Open the first or last file", &[C::plain(K::Home), C::plain(K::End)], W::WipLists),
-    fixed(I::WipToggleFiles, G::Staging, "Stage or unstage the file or the selected files", &[C::plain(K::Space)], W::WipLists),
+    fixed(I::WipToggleFiles, G::Staging, "Stage or unstage the file, or the selected lines or files", &[C::plain(K::Space)], W::WipLists),
     fixed(I::WipOpenFile, G::Staging, "Open the list's current file", &[C::plain(K::Enter)], W::WipLists),
     fixed(
         I::WipDiscardFile,

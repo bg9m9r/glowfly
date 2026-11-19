@@ -1,7 +1,8 @@
 //! Headless tests for the keys of a focused Unstaged or Staged Files list: Page Up/Page Down and
 //! Home/End, Shift moves selecting files that Space then stages or unstages together, Space on
 //! one file, Enter, Delete through the discard confirmation (and its undo), Left/Right to the
-//! other list keeping the place, and the Stage and Unstage buttons moving on from the open file.
+//! other list keeping the place, Space on selected lines, and the Stage and Unstage buttons
+//! moving on from the open file.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -10,7 +11,8 @@ use glowfly_core::undo::Action;
 use glowfly_model::effect::FilesEffect;
 use glowfly_model::effect::{Effect, LocalOp};
 use glowfly_model::keymap::KeyAction;
-use glowfly_model::msg::{JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::msg::{DiffMsg, JobMsg, Msg, RepoMsg, StageMsg};
+use glowfly_model::state::lines::LineClick;
 use glowfly_model::state::list_keys::{ListKey, ListMove};
 use glowfly_model::state::wip_lists::picked_paths;
 use glowfly_model::state::{AppState, Modal};
@@ -244,5 +246,78 @@ fn going_to_an_empty_list_only_moves_the_keyboard() {
     let fx = key(&mut st, false, ListKey::Across { right: true });
     assert!(fx.is_empty(), "{fx:?}");
     assert_eq!(st.view.wip_focus, Some(true));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The changed lines (`+two`, `-old`) of the diff on screen.
+fn changed(st: &AppState) -> Vec<String> {
+    let (_, d) = st.session.diff.view.as_ref().expect("a diff on screen");
+    d.hunks.iter().flat_map(|h| &h.lines).filter(|l| l.origin != ' ').map(|l| format!("{}{}", l.origin, l.text)).collect()
+}
+
+/// Picks the added line `text` of the open diff from the gutter, alone.
+fn select_added(st: &mut AppState, text: &str) {
+    let (_, d) = st.session.diff.view.as_ref().expect("a diff on screen");
+    let line = d.hunks[0].lines.iter().position(|l| l.origin == '+' && l.text == text).unwrap();
+    drive(st, Msg::Diff(DiffMsg::SelectDiffLine { hunk: 0, line, how: LineClick::Only }));
+}
+
+#[test]
+fn space_with_selected_lines_stages_only_those_lines() {
+    let dir = scratch_repo("wip-keys-space-lines");
+    std::fs::write(
+        dir.join("a.txt"),
+        "one
+two
+three
+",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("b.txt"),
+        "b
+",
+    )
+    .unwrap();
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("a.txt"))));
+    select_added(&mut st, "two");
+    press(&mut st, false, ListKey::Toggle);
+    assert!(st.cues.diff_lines.is_empty());
+    let snap = st.snap.as_ref().unwrap();
+    assert!(snap.staged.iter().any(|f| f.path == "a.txt"), "a.txt is partly staged");
+    assert!(snap.unstaged.iter().any(|f| f.path == "a.txt"), "and still has unstaged changes");
+    assert_eq!(shown(&st), Some(&un("a.txt")), "the file stays open, no move on to b.txt");
+    assert_eq!(changed(&st), ["+three"]);
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(sd("a.txt"))));
+    assert_eq!(changed(&st), ["+two"]);
+    assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn space_in_staged_files_unstages_only_the_selected_lines() {
+    let dir = scratch_repo("wip-keys-space-lines-staged");
+    std::fs::write(
+        dir.join("a.txt"),
+        "one
+two
+three
+",
+    )
+    .unwrap();
+    git(&dir, &["add", "a.txt"]);
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(sd("a.txt"))));
+    select_added(&mut st, "three");
+    press(&mut st, true, ListKey::Toggle);
+    assert_eq!(shown(&st), Some(&sd("a.txt")));
+    assert_eq!(changed(&st), ["+two"]);
+    assert!(st.snap.as_ref().unwrap().unstaged.iter().any(|f| f.path == "a.txt"));
+    drive(&mut st, Msg::Repo(RepoMsg::OpenDiff(un("a.txt"))));
+    assert_eq!(changed(&st), ["+three"]);
+    assert!(st.log.iter().all(|l| l.ok), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
     let _ = std::fs::remove_dir_all(&dir);
 }

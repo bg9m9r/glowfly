@@ -1,14 +1,14 @@
 //! The keys of a focused Unstaged or Staged Files list (`ui/wip_keys.rs` reads them): Up/Down,
 //! Page Up/Page Down and Home/End open the file they land on, with Shift they also pick every
-//! file from the selection's anchor (as Shift+click does, `wip_picks.rs`); Space stages or
-//! unstages the file or the picked files, Enter opens the list's current file, Delete discards
-//! the current unstaged file (or every picked one) through the menu's confirmation (Undo puts
-//! it back), and Left/Right go to the Unstaged or Staged list keeping the place. Each sends the
-//! message its button or menu item sends.
+//! file from the selection's anchor (as Shift+click does, `wip_picks.rs`); Space does what S
+//! (Unstaged Files) or U (Staged Files) does: it stages or unstages the picked files, else the
+//! lines selected in the current file's open diff, else the file; Enter opens the list's current
+//! file, Delete discards the current unstaged file (or every picked one) through the menu's
+//! confirmation (Undo puts it back), and Left/Right go to the Unstaged or Staged list keeping
+//! the place. Each sends the message its button or menu item sends.
 
 use super::wip_list::{cursor, landing, open, still_listed};
 use crate::effect::Effect;
-use crate::msg::{Msg, StageMsg};
 use crate::state::AppState;
 use crate::state::list_keys::{ListKey, ListMove};
 use crate::state::wip_lists::{self, WipPicks, files, path_in, target};
@@ -55,19 +55,12 @@ fn extend(st: &mut AppState, staged: bool, m: ListMove, fx: &mut Vec<Effect>) {
     st.cues.conflict_picks = None;
 }
 
-/// Space: stages (Unstaged Files) or unstages the picked files, or the current file alone.
+/// Space: what S does in Unstaged Files and U in Staged Files (`shortcuts::stage_msg`): the
+/// picked files, else the lines selected in the current file's open diff, else that file.
 fn toggle(st: &mut AppState, staged: bool, now: Instant, fx: &mut Vec<Effect>) {
-    let picked = wip_lists::picked_paths(st, staged);
-    let msg = match (picked.len() > 1, staged) {
-        (true, false) => StageMsg::StagePaths(picked),
-        (true, true) => StageMsg::UnstagePaths(picked),
-        (false, _) => {
-            let Some(p) = current(st, staged) else { return };
-            if staged { StageMsg::UnstageFile(p) } else { StageMsg::StageFile(p) }
-        }
-    };
+    let Some(msg) = super::shortcuts::stage_msg(st, !staged) else { return };
     st.cues.wip_picks = None;
-    fx.extend(super::update_sealed(st, Msg::Stage(msg), now));
+    fx.extend(super::update_sealed(st, msg, now));
 }
 
 /// Enter: opens the list's current file when another one (or none) is open: where the list
