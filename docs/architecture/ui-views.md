@@ -77,7 +77,7 @@ start with `state/`, `update/` or `ui/`.
 
 - `graph/layout.rs`: the history table's column layout: each column a cell, divider to divider, whose stored width is the whole cell, with its content 12 px in from a divider and 16 px in from the table's edges.
 - `graph/fit.rs`: how the columns give way in a narrow graph (CHANGES, COMMIT, AUTHOR, DATE hide, then BRANCH / TAG narrows and its chips move inline, MESSAGE keeping 240 px), never saved.
-- `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit.
+- `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit, each with the pull request it opens.
 - `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips.
 - `graph/wip_row.rs`: this tab's WIP row with its label (`weak` until the row is chosen), change chips and line total, spanning the columns it leaves empty; short of room the total hides, then the label is cut to 6 characters, then the chips hide.
 - `graph/branch_chip.rs`: a branch's ref chip drawn outside the graph, as the Branch / tag column draws it (the rebase panel's tip row).
@@ -89,7 +89,7 @@ start with `state/`, `update/` or `ui/`.
 - `graph/marks.rs`: the painted remote (in sync) and tag marks.
 - `graph/row_look.rs`: the row's background: the lane band (none on a WIP row) and the highlight (`surfaces::band_color`, `highlight_color`) and a search match's accent bar; the selection and hover come from `widgets/row_fill.rs`. Also a search-dimmed row's inks and opacity.
 - `graph/row.rs`: one graph row from what the frame worked out once (`Frame`): which commit, WIP or other worktree it shows, its look, lanes and lantern; this tab's and other worktrees' WIP rows.
-- `graph/commit_row.rs`: a commit row's node, ref chips and New branch… ghost button, cells, tooltips, clicks and menu.
+- `graph/commit_row.rs`: a commit row's node, ref chips and New branch… ghost button, cells, the pull request chip's click (it opens the panel), tooltips, clicks and menu.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
 - `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA): where the query falls in each; drawn inked and on the find fill by `widgets/marked_text.rs`.
 - `graph/lane_colours.rs`: the graph's per-row colours, and each lane line's width (HEAD's branch wider) and dash pattern (`graph/paint.rs`, colour-safe colours only).
@@ -186,7 +186,7 @@ start with `state/`, `update/` or `ui/`.
 - `repo_row.rs`: one repository row, shared by those menus and the start page: name, parent path, status, and the star and × on hover or focus (on the start page also the grip, a status pill, the key cap and ⋯); in a menu Up and Down step between the rows, Right and Tab reach the star and ×, typeahead by name.
 - `file_menu.rs`: file actions in file rows' context menus: history and blame, restore from a commit or revert a change, open in the default program, the external editor or diff tool (or resolve in the merge tool; `editor_item` is the editor entry the diff's menus share), show in the file manager, new file in its folder, rename or delete (working-tree rows), then the custom commands (`custom_menu.rs`); the LFS, stash and patch items are in `file_menu_extra.rs`.
 - `file_menu_extra.rs`: the file row menus' Track in Git LFS submenu, the Stash dialog's entries (the Staged Files header's menu, Stash this file… on working-tree rows, Stash N selected files… for picks) and the Create patch entries of working-tree rows (`file_menu.rs` holds the rest).
-- `pull_request/menu_items.rs`: pull request items shared by the branch row menus and the toolbar: create one (into the branch selected before the menu opened, or from the checked-out branch into a remote one), and push the branch first when the code host lacks it or some of its commits.
+- `pull_request/menu_items.rs`: pull request items shared by the branch row menus and the toolbar: show a branch's open pull request in the panel or open it in the browser, create one (into the branch selected before the menu opened, or from the checked-out branch into a remote one), and push the branch first when the code host lacks it or some of its commits.
 - `repo_menu.rs`: the toolbar repository menu's workspace commands, after Dashboard: finding repositories in project folders, opening every favorite in a tab, and fetching or pulling the listed repositories.
 
 ## Left panel and dashboard

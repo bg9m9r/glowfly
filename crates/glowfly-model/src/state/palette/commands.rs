@@ -52,6 +52,8 @@ pub enum PaletteCommand {
     CreatePr(String),
     /// Push this (checked-out) branch to the code host, then open the create dialog.
     PushAndCreatePr(String),
+    /// Open the pull request panel for this listed pull request (the checked-out branch's open one).
+    ShowPr(u64),
     /// Stash every change, untracked files included.
     Stash,
     /// Pop the most recent stash.

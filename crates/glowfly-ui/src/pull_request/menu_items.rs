@@ -1,4 +1,5 @@
-//! Pull request items shared by the branch row menus and the toolbar: create one (into the
+//! Pull request items shared by the branch row menus and the toolbar: show a branch's open one in
+//! the panel or open it in the browser, create one (into the
 //! branch selected before the menu opened, or from the checked-out branch into a remote one),
 //! and push the branch first when the code host lacks it or some of its commits. A branch that
 //! can't be pushed plainly gets a disabled item saying why; nothing is ever force-pushed.
@@ -15,6 +16,7 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Snapshot};
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::{BranchMsg, ForgeMsg};
+use glowfly_model::pull_request::PullRequestMsg;
 use glowfly_model::state::blocked::BUSY;
 use glowfly_model::state::push_pr::{self, HostBranch};
 use glowfly_model::state::{ForgeState, Selection};
@@ -73,11 +75,20 @@ fn push(branch: &str, target: Option<&str>) -> Msg {
     Msg::Forge(ForgeMsg::PushAndStartPr { branch: branch.to_owned(), target: target.map(str::to_owned) })
 }
 
-/// A LOCAL row: open the branch's pull request, or create one, pushing first when needed.
+/// A branch's open pull request: Show {noun} {pr} (the panel), then Open {noun} {pr} in browser.
+pub(crate) fn open_items(ui: &mut egui::Ui, t: Lang, fs: &ForgeState, pr: &PullRequest, msgs: &mut Vec<Msg>) {
+    let (noun, label) = (fs.pr_word(t), fs.pr_label(pr.id));
+    let args: [(&str, &dyn std::fmt::Display); 2] = [("noun", &noun), ("pr", &label)];
+    menu_item(msgs, ui, t.trf("pr.menu.show", &args), Msg::PullRequest(PullRequestMsg::Open(pr.id)));
+    menu_item(msgs, ui, t.trf("pr.menu.open_in_browser", &args), Msg::OpenUrl(pr.url.clone()));
+}
+
+/// A LOCAL row: show the branch's pull request in the panel or open it in the browser, or create
+/// one, pushing first when needed.
 pub(crate) fn local(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, fs: &ForgeState, sel: &Selection, msgs: &mut Vec<Msg>) {
     let (name, noun) = (b.name.as_str(), fs.pr_word(t));
     if let Some(pr) = push_pr::open_pr(snap, fs, name) {
-        menu_item(msgs, ui, t.trf("pr.menu.open", &[("noun", &noun), ("pr", &fs.pr_label(pr.id))]), Msg::OpenUrl(pr.url.clone()));
+        open_items(ui, t, fs, pr, msgs);
         return;
     }
     let into = push_pr::chosen_target(sel, b, snap, fs);
@@ -158,13 +169,13 @@ pub(crate) fn remote_no_host(ui: &mut egui::Ui, t: Lang, remote: &str, name: &st
     }
 }
 
-/// The PR tool button's menu: Create (or Open, once the checked-out branch has an open pull
-/// request), and Push and create.
+/// The PR tool button's menu: Create (or, once the checked-out branch has an open pull request,
+/// show it in the panel or open it in the browser), and Push and create.
 pub(crate) fn pr_menu(ui: &mut egui::Ui, t: Lang, snap: &Snapshot, fs: &ForgeState, idle: bool, msgs: &mut Vec<Msg>) {
     let head = snap.head_info();
     let noun = fs.pr_word(t);
     if let Some(pr) = head.and_then(|b| push_pr::open_pr(snap, fs, &b.name)) {
-        menu_item(msgs, ui, t.trf("pr.menu.open", &[("noun", &noun), ("pr", &fs.pr_label(pr.id))]), Msg::OpenUrl(pr.url.clone()));
+        open_items(ui, t, fs, pr, msgs);
         push_pr_item(ui, t, snap, fs, idle, msgs);
         return;
     }
