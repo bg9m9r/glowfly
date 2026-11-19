@@ -1,11 +1,14 @@
 //! `.gitattributes` and `.gitignore` in the work tree: a regular file is read as before, a link
 //! reads as absent, a large one isn't read, and a link naming `testutil::net_place()` (never
-//! touched) holds the reads of the working tree. Link tests skip where links can't be made.
+//! touched) holds the reads of the working tree, and keeps libgit2 from a submodule that has
+//! one. Link tests skip only on Windows where the account may not make links.
 
 use super::*;
 use crate::lfs::root_patterns;
-use crate::repo::{LoadOptions, load, status_at, status_of_paths, wip_line_counts};
-use crate::testutil::{git, link_to, net_place, scratch_repo, write};
+use crate::repo::{
+    DiffTarget, LoadOptions, compare_from_workdir, compare_workdir, load, load_diff, status_at, status_of_paths, wip_line_counts,
+};
+use crate::testutil::{git, link_to, net_place, scratch_repo, with_submodule, write};
 use git2::{IndexEntry, IndexTime};
 
 const LFS: &str = "*.psd filter=lfs diff=lfs merge=lfs -text\n";
@@ -113,10 +116,18 @@ fn a_linked_gitattributes_reads_as_absent() {
 #[test]
 fn a_root_gitattributes_linked_to_a_network_place_holds_the_load() {
     let dir = repo("tree-files-root-away");
+    let head = Repository::open(&dir).unwrap().head().unwrap().target().unwrap();
+    let unstaged = DiffTarget::Unstaged("a.txt".into());
+    assert!(compare_workdir(&dir, head).is_ok() && compare_from_workdir(&dir, head).is_ok() && load_diff(&dir, &unstaged).is_ok());
     // Not tracked: the root's two are looked at as they are on disk.
     if !link_to(&net_place().join("attributes"), &dir.join(".gitattributes"), false) {
         return;
     }
+    // The diffs that reach the working tree: from a commit, to a commit, and the unstaged one.
+    assert!(names(compare_workdir(&dir, head), ".gitattributes"));
+    assert!(names(compare_from_workdir(&dir, head), ".gitattributes"));
+    assert!(names(load_diff(&dir, &unstaged), ".gitattributes"));
+    assert!(load_diff(&dir, &DiffTarget::Staged("a.txt".into())).is_ok(), "the index's diff reads no work tree");
     assert!(root_patterns(&dir).is_empty());
     assert_eq!(held(&dir).as_deref(), Some(".gitattributes"));
     assert!(names(load(&dir, &LoadOptions::default()), ".gitattributes"));
@@ -174,4 +185,56 @@ fn a_tracked_link_under_another_spelling_has_its_folder_looked_at() {
     assert_eq!(folder_of(&root, b""), Some(root.clone()));
     assert_eq!(folder_of(&root, b"a/b"), Some(root.join("a").join("b")));
     assert_eq!(folder_of(&root, b"../a"), None);
+}
+
+#[test]
+fn a_tracked_gitignore_in_a_linked_folder_holds_without_looking_inside() {
+    let dir = repo("tree-files-folder-away");
+    track_link(&dir, "A/.gitignore", "rules");
+    // No folder there: nothing to read.
+    assert_eq!(held(&dir), None);
+    assert!(status_at(&dir, false).is_ok());
+    // The folder itself leads away: the file inside is never asked for.
+    if !link_to(&net_place().join("A"), &dir.join("A"), true) {
+        return;
+    }
+    assert_eq!(held(&dir).as_deref(), Some("A/.gitignore"));
+    assert!(names(status_at(&dir, false), "A/.gitignore"));
+    assert!(names(load(&dir, &LoadOptions::default()), "A/.gitignore"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The paths of `dir`'s unstaged rows, read by libgit2 alone.
+fn unstaged(dir: &Path) -> Vec<String> {
+    status_at(dir, false).unwrap().0.into_iter().map(|f| f.path).collect()
+}
+
+#[test]
+fn a_submodule_whose_gitignore_is_linked_away_is_left_out_of_the_status() {
+    let (parent, sub) = with_submodule("tree-files-sub");
+    write(&sub, "lib.txt", "changed\n");
+    let unread = || crate::git_file::submodules_unread(&Repository::open(&parent).unwrap());
+    // Tracked as a link there, checked out as a plain file: the submodule is read.
+    std::fs::create_dir_all(sub.join("d")).unwrap();
+    track_link(&sub, "d/.gitignore", "rules");
+    write(&sub, "d/.gitignore", "rules");
+    assert!(!unread());
+    assert_eq!(unstaged(&parent), ["libs/lib"]);
+    // Its root file, as it is on disk.
+    if !link_to(&net_place().join("ignore"), &sub.join(".gitignore"), false) {
+        return;
+    }
+    assert!(unread());
+    assert!(unstaged(&parent).is_empty(), "the submodule's work tree isn't compared");
+    assert_eq!(held(&parent), None, "the opened repository's own files are plain");
+    std::fs::remove_file(sub.join(".gitignore")).unwrap();
+    assert!(!unread());
+    // One its index tracks as a link.
+    std::fs::remove_file(sub.join("d/.gitignore")).unwrap();
+    assert!(link_to(&net_place().join("ignore"), &sub.join("d/.gitignore"), false));
+    assert!(unread());
+    assert!(unstaged(&parent).is_empty());
+    for dir in [&parent, &parent.with_file_name(format!("{}-lib", parent.file_name().unwrap().to_string_lossy()))] {
+        let _ = std::fs::remove_dir_all(dir);
+    }
 }

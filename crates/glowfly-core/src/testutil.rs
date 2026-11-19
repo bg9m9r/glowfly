@@ -78,13 +78,15 @@ pub(crate) fn git_spelling(p: &Path) -> String {
     p.display().to_string().replace('\\', "/")
 }
 
-/// Makes `link` a symbolic link to `target` (a folder link on Windows when `dir`); false where
-/// the system doesn't allow it, with a note. The target is never touched.
+/// Makes `link` a symbolic link to `target` (a folder link on Windows when `dir`); false, with
+/// a note, only on Windows where the account may not make one (elsewhere it must succeed, so a
+/// link test never passes by skipping). The target is never touched.
 pub(crate) fn link_to(target: &Path, link: &Path, dir: bool) -> bool {
     #[cfg(unix)]
     let made = {
         let _ = dir;
-        std::os::unix::fs::symlink(target, link).is_ok()
+        std::os::unix::fs::symlink(target, link).expect("a symbolic link can be made here");
+        true
     };
     #[cfg(windows)]
     let made = if dir {

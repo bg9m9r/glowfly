@@ -116,7 +116,7 @@ pub(super) fn load_status_with(
             return Ok(mark_rows(repo, lists, found));
         }
     }
-    libgit2_status(repo).map(|lists| mark_rows(repo, lists, found))
+    libgit2_status_checked(repo).map(|lists| mark_rows(repo, lists, found))
 }
 
 /// Marks a whole read's rows: twins, then LFS pointers.
@@ -152,7 +152,14 @@ pub(super) fn wants_git(repo: &Repository) -> bool {
 }
 
 /// (unstaged, staged) read by libgit2 alone: no fsmonitor hook, filter or other program runs.
+/// `repo`'s own work tree is checked first (`tree_files::check`), whichever worktree it is.
 pub(super) fn libgit2_status(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
+    crate::tree_files::check(repo)?;
+    libgit2_status_checked(repo)
+}
+
+/// `libgit2_status` once `tree_files::check` has passed for `repo`.
+fn libgit2_status_checked(repo: &Repository) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
     let mut opts = StatusOptions::new();
     opts.include_untracked(true).recurse_untracked_dirs(true).renames_head_to_index(true).include_ignored(false);
     let (mut unstaged, mut staged) = libgit2_lists(repo, &mut opts)?;

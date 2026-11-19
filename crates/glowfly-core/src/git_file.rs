@@ -333,7 +333,8 @@ pub(crate) fn offsite_gitlinks(repo: &Repository) -> Vec<Offsite> {
 /// Whether libgit2 is kept from `repo`'s submodules: one of its gitlinks names a place that may
 /// not be followed (`offsite_gitlinks`), or its `.gitmodules` or that of a checked-out submodule
 /// at any depth is one libgit2 would read differently from git (`gitmodules::unread_anywhere`;
-/// libgit2's submodule code reads those files itself).
+/// libgit2's submodule code reads those files itself), as is a checked-out submodule's
+/// `.gitattributes` or `.gitignore` (`tree_files::linked_away_at`).
 pub(crate) fn submodules_unread(repo: &Repository) -> bool {
     !offsite_gitlinks(repo).is_empty() || crate::gitmodules::unread_anywhere(repo)
 }
