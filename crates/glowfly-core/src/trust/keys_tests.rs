@@ -1,5 +1,5 @@
-//! Which settings `command_key` lists: git-lfs's programs, and TLS, proxy and cookie-file
-//! settings whatever their value.
+//! Which settings `command_key` lists: git-lfs's programs, and TLS, header, redirect, proxy and
+//! cookie-file settings whatever their value.
 
 use super::super::{ConfigCommand, scan_at};
 use super::*;
@@ -50,18 +50,40 @@ fn tls_and_proxy_settings_are_listed_whatever_their_value() {
         ("http.savecookies", "false", "http.saveCookies"),
         ("http.https://example.com/.cookiefile", "jar", "http.https://example.com/.cookieFile"),
         ("http.https://example.com/.savecookies", "true", "http.https://example.com/.saveCookies"),
+        // The client certificate and key, the TLS library, its versions, ciphers and pinned
+        // key, and schannel's revocation check.
+        ("http.sslcert", "certs/me.pem", "http.sslCert"),
+        ("http.sslkey", "certs/me.key", "http.sslKey"),
+        ("http.sslbackend", "openssl", "http.sslBackend"),
+        ("http.sslversion", "tlsv1.0", "http.sslVersion"),
+        ("http.sslcipherlist", "NULL", "http.sslCipherList"),
+        ("http.pinnedpubkey", "sha256//x", "http.pinnedPubkey"),
+        ("http.schannelcheckrevoke", "false", "http.schannelCheckRevoke"),
+        // Where a host resolves, which redirects git follows, and headers sent with every request.
+        ("http.curloptresolve", "example.com:443:203.0.113.5", "http.curloptResolve"),
+        ("http.followredirects", "true", "http.followRedirects"),
+        ("http.extraheader", "X-Extra: 1", "http.extraHeader"),
+        // An empty extraHeader resets the list; it is still the repository's choice.
+        ("http.extraheader", "", "http.extraHeader"),
+        ("http.https://example.com/.sslcert", "me.pem", "http.https://example.com/.sslCert"),
+        ("http.https://example.com/.extraheader", "X-Extra: 1", "http.https://example.com/.extraHeader"),
+        ("http.https://example.com/.curloptresolve", "example.com:443:203.0.113.5", "http.https://example.com/.curloptResolve"),
+        ("http.https://example.com/.followredirects", "false", "http.https://example.com/.followRedirects"),
     ];
     for (name, value, shown) in cases {
         assert_eq!(listed(name, value).as_deref(), Some(shown), "{name} = {value}");
         assert!(is_network_setting(shown), "{shown}");
     }
     // Other connection settings, and a proxy key elsewhere, aren't.
-    for name in ["http.postbuffer", "http.https://example.com/.useragent", "remote.origin.fetch", "core.proxy", "http.sslverifyx"] {
+    for name in
+        ["http.postbuffer", "http.https://example.com/.useragent", "remote.origin.fetch", "core.proxy", "http.sslverifyx", "http.sslcertx"]
+    {
         assert_eq!(listed(name, "x"), None, "{name}");
     }
     assert!(!is_network_setting("core.sshCommand"));
     assert!(!is_network_setting("lfs.customtransfer.x.path"));
     assert!(is_network_setting("HTTP.SSLVERIFY"), "any letter case of the display key");
+    assert!(is_network_setting("http.https://Example.com/.ExtraHeader"));
 }
 
 #[test]
@@ -71,7 +93,8 @@ fn a_repositorys_own_tls_proxy_and_lfs_settings_are_scanned() {
     let mut text = std::fs::read_to_string(&config).unwrap();
     text.push_str(
         "[http]\n\tsslVerify\n\tproxy = proxy.example\n\tcookieFile = ../jar\n\tsaveCookies\n\
-         [http \"https://example.com/\"]\n\tsslVerify = false\n\
+         [http \"https://example.com/\"]\n\tsslVerify = false\n\textraHeader = X-Extra: 1\n\tcurloptResolve = example.com:443:203.0.113.5\n\
+         [http]\n\tsslCert = certs/me.pem\n\tfollowRedirects = true\n\tpostBuffer = 1048576\n\
          [remote \"origin\"]\n\tproxy = socks5://p\n\
          [lfs \"customtransfer.agent\"]\n\tpath = ./bin/agent\n\tconcurrent = true\n[lfs]\n\tstandalonetransferagent = agent\n\
          [lfs \"extension.foo\"]\n\tclean = foo %f\n\tpriority = 0\n",
@@ -88,6 +111,10 @@ fn a_repositorys_own_tls_proxy_and_lfs_settings_are_scanned() {
             ("http.cookieFile", "../jar"),
             ("http.saveCookies", ""),
             ("http.https://example.com/.sslVerify", "false"),
+            ("http.https://example.com/.extraHeader", "X-Extra: 1"),
+            ("http.https://example.com/.curloptResolve", "example.com:443:203.0.113.5"),
+            ("http.sslCert", "certs/me.pem"),
+            ("http.followRedirects", "true"),
             ("remote.origin.proxy", "socks5://p"),
             ("lfs.customtransfer.agent.path", "./bin/agent"),
             ("lfs.standaloneTransferAgent", "agent"),

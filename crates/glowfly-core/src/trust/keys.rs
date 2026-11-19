@@ -1,7 +1,7 @@
 //! Which config settings are a reason to ask before git runs in a repository (`command_key`):
 //! those that make git or git-lfs run a program, and those that change how git connects to a
-//! server (TLS checks, proxies and the cookie file, `network_key`), which a repository from
-//! elsewhere shouldn't steer unasked since its sign-ins travel over them.
+//! server (TLS settings, headers, redirects, proxies and the cookie file, `network_key`), which
+//! a repository from elsewhere shouldn't steer unasked since its sign-ins travel over them.
 
 use git2::Config;
 use std::borrow::Cow;
@@ -28,13 +28,25 @@ const COMMAND_KEYS: &[(&str, &str)] = &[
     ("lfs.standalonetransferagent", "lfs.standaloneTransferAgent"),
 ];
 
-/// The `http.*` and `http.<url>.*` keys that weaken TLS checks, send traffic through a proxy,
-/// or name the file git reads cookies from and (with `saveCookies`) writes them to, as libgit2
-/// returns them, with their usual spelling.
+/// The `http.*` and `http.<url>.*` keys that change TLS checks, the client certificate, the
+/// TLS library and its versions and ciphers, where a host resolves, which redirects git follows,
+/// the headers sent with every request, send traffic through a proxy, or name the file git
+/// reads cookies from and (with `saveCookies`) writes them to, as libgit2 returns them, with
+/// their usual spelling.
 const HTTP_KEYS: &[(&str, &str)] = &[
     ("sslverify", "sslVerify"),
     ("sslcainfo", "sslCAInfo"),
     ("sslcapath", "sslCAPath"),
+    ("sslcert", "sslCert"),
+    ("sslkey", "sslKey"),
+    ("sslbackend", "sslBackend"),
+    ("sslversion", "sslVersion"),
+    ("sslcipherlist", "sslCipherList"),
+    ("pinnedpubkey", "pinnedPubkey"),
+    ("schannelcheckrevoke", "schannelCheckRevoke"),
+    ("curloptresolve", "curloptResolve"),
+    ("followredirects", "followRedirects"),
+    ("extraheader", "extraHeader"),
     ("proxy", "proxy"),
     ("cookiefile", "cookieFile"),
     ("savecookies", "saveCookies"),
@@ -118,7 +130,8 @@ pub(super) fn command_key(name: &str, value: &str) -> Option<String> {
 }
 
 /// The display key when `name` (as libgit2 returns it: section and key lowercase) changes how
-/// git connects: TLS checks, proxies and the cookie file, for every URL (`http.sslVerify`) or
+/// git connects (`HTTP_KEYS`: TLS checks, the client certificate, headers, redirects, name
+/// resolution, proxies and the cookie file), for every URL (`http.sslVerify`) or
 /// one (`http.<url>.sslVerify`), and a remote's proxy. Any value counts, `true` and a bare host
 /// too: the repository shouldn't pick where sign-ins go or which certificates vouch for them.
 pub(super) fn network_key(name: &str) -> Option<String> {
