@@ -23,13 +23,25 @@ fn the_word_an_interpreter_or_source_runs_is_picked() {
         ("bash -ec 'echo hi'", &[]),
         ("node -e 'process.exit(0)'", &[]),
         ("python3 -m black .", &[]),
+        ("python -W ignore -X dev x.py", &["x.py"]),
+        ("bash -o pipefail run.sh", &["run.sh"]),
+        ("perl -I lib -M strict tool.pl", &["tool.pl"]),
+        ("node -r ts-node/register --import ./hooks.mjs app.js", &["app.js"]),
+        ("ruby -I lib -r json x.rb", &["x.rb"]),
         ("npx lint-staged", &[]),
         ("npm test", &[]),
         ("git diff --quiet", &[]),
     ];
     for (line, want) in cases {
-        assert_eq!(run_words(line), *want, "{line}");
+        let words: Vec<String> = run_words(line).into_iter().map(|w| w.text).collect();
+        assert_eq!(words, *want, "{line}");
     }
+}
+
+#[test]
+fn only_dot_and_source_count_as_sourcing() {
+    let sourced: Vec<bool> = run_words(". a.sh; source b; exec c; sh d").into_iter().map(|w| w.sourced).collect();
+    assert_eq!(sourced, [true, true, false, false]);
 }
 
 #[test]

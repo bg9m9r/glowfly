@@ -168,7 +168,7 @@ fn a_hook_names_its_own_folder_whatever_the_folder_is_called() {
 }
 
 /// lefthook 1.x's pre-commit hook, as `lefthook install` writes it.
-const LEFTHOOK: &str = r#"#!/bin/sh
+pub(super) const LEFTHOOK: &str = r#"#!/bin/sh
 
 if [ "$LEFTHOOK_VERBOSE" = "1" -o "$LEFTHOOK_VERBOSE" = "true" ]; then
   set -x

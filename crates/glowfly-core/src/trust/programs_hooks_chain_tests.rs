@@ -61,6 +61,10 @@ exit $c
 "#;
 const HUSKY_9_0_HOOK: &str = "#!/usr/bin/env sh\n. \"${0%/*}/h\"";
 
+/// What a husky 9 repository from `husky_repo` follows.
+const HUSKY_FOLLOWS: [&str; 7] =
+    [".husky", ".husky/_", ".husky/pre-commit", ".husky/pre-push", "scripts/check.sh", "scripts/lib.sh", "scripts/more.sh"];
+
 /// A repository set up as husky 9 sets one up, whose tracked `.husky/pre-commit` runs
 /// `scripts/check.sh`, which sources `scripts/lib.sh`.
 fn husky_repo(name: &str) -> PathBuf {
@@ -74,7 +78,8 @@ fn husky_repo_with(name: &str, hook: &str, h: &str) -> PathBuf {
     }
     write(&dir, ".husky/pre-commit", "npm test\nsh scripts/check.sh\n");
     write(&dir, "scripts/check.sh", "#!/bin/sh\nset -e\n. \"$(dirname \"$0\")/lib.sh\"\ncheck_all\n");
-    write(&dir, "scripts/lib.sh", "check_all() { exit 0; }\n");
+    write(&dir, "scripts/lib.sh", ". scripts/more.sh\ncheck_all() { exit 0; }\n");
+    write(&dir, "scripts/more.sh", "more() { :; }\n");
     git(&dir, &["add", "."]);
     git(&dir, &["commit", "-q", "-m", "husky"]);
     let hooks = dir.join(".husky/_");
@@ -90,13 +95,13 @@ fn husky_repo_with(name: &str, hook: &str, h: &str) -> PathBuf {
 #[test]
 fn husky_9_s_hooks_follow_the_tracked_scripts_their_hook_files_run() {
     let dir = husky_repo("hook-chain-husky");
+    // Three scripts below the user's `.husky/pre-commit`; nothing from a home folder.
     let s = scan_of(&dir);
-    for p in [".husky/_", ".husky/pre-commit", ".husky/pre-push", "scripts/check.sh", "scripts/lib.sh"] {
-        assert!(paths(&s).contains(&p), "{p}: {:?}", s.follows);
-    }
-    assert!(!paths(&s).contains(&""), "{:?}", s.follows);
+    assert_eq!(paths(&s), HUSKY_FOLLOWS, "{:?}", s.follows);
     // A commit that changes any script down the chain asks again.
-    for (file, text) in [("scripts/lib.sh", "check_all() { echo two; }\n"), (".husky/pre-commit", "sh scripts/check.sh\n")] {
+    for (file, text) in
+        [("scripts/lib.sh", ". scripts/more.sh\ncheck_all() { echo two; }\n"), (".husky/pre-commit", "sh scripts/check.sh\n")]
+    {
         let saved = SavedTrust::trusted(Some(scan_of(&dir).print()));
         write(&dir, file, text);
         git(&dir, &["-c", "core.hooksPath=", "commit", "-q", "-am", file]);
@@ -109,10 +114,7 @@ fn husky_9_s_hooks_follow_the_tracked_scripts_their_hook_files_run() {
 fn husky_9_0_s_spelling_of_its_folders_is_read_too() {
     let dir = husky_repo_with("hook-chain-husky-9-0", HUSKY_9_0_HOOK, HUSKY_9_0_H);
     let s = scan_of(&dir);
-    assert!(!paths(&s).contains(&""), "{:?}", s.follows);
-    for p in ["scripts/check.sh", "scripts/lib.sh"] {
-        assert!(paths(&s).contains(&p), "{p}: {:?}", s.follows);
-    }
+    assert_eq!(paths(&s), HUSKY_FOLLOWS, "{:?}", s.follows);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

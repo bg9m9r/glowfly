@@ -4,27 +4,32 @@
 //! word scanner the config programs use (`programs.rs`), with its rules and `follow::far` guard,
 //! so the trust scan follows those files as it follows a config program's. A bare word
 //! (`npx lint-staged`, `git diff`, `npm test`) is no path here (`path_of`'s `hook`) unless an
-//! interpreter, `.`, `source` or `exec` runs it (`sh check.sh`: `programs_hooks_runs.rs`), and
+//! interpreter, `.`, `source` or `exec` runs it (`sh check.sh`: `programs_hooks_runs.rs`).
 //! `$(dirname "$0")` is read as the folder of the script it is in (husky's
-//! `. "$(dirname "$0")/h"`).
+//! `. "$(dirname "$0")/h"`), and a word from a home folder (`$HOME/x`, `~/x`) names nothing the
+//! branch carries.
 //!
-//! A file a hook runs is read the same way, and so on up to `MAX_DEPTH` scripts down (a hook,
-//! `.husky/pre-commit`, `scripts/check.sh`, a `lib.sh` it sources). A hooks folder called `_`
-//! in the working tree also runs the files beside it named as its hooks (`parent_scripts`):
-//! husky 9's `.husky/_/h` runs `.husky/<hook>` by a path it builds at run time.
+//! A shell script a hook runs (`programs_hooks_files.rs`'s `is_shell`, or one run by `.` or
+//! `source`) is read the same way, and so on up to `MAX_DEPTH` scripts below the hook. Any
+//! other file (a JavaScript or Python file, a program, data) is followed by its bytes without
+//! being read, and so is anything under `node_modules`. A hooks folder called `_` in the
+//! working tree also runs the files beside it named as its hooks (`parent_scripts`): husky 9's
+//! `.husky/_/h` runs `.husky/<hook>` by a path it builds at run time; those count as hooks.
 //!
 //! Bounded: at most `MAX_WORDS` words and `MAX_FILES` files in all, lines up to
-//! `MAX_LINE_BYTES`, and `MAX_DEPTH` scripts down. Past any of them, for a hook or script too
-//! large to keep its text (`MAX_TEXT_BYTES`) or one whose text can't be read, and for one with a
-//! NUL byte in it (a compiled program, whose words can't be read), the whole working tree is
-//! followed.
+//! `MAX_LINE_BYTES`, and `MAX_DEPTH` scripts down. Past any of them, and for a hook or shell
+//! script too large to keep its text (`MAX_TEXT_BYTES`), one that can't be read, one with a NUL
+//! byte in it (a compiled program, whose words can't be read) or one reached through a link,
+//! the whole working tree is followed.
 
+#[path = "programs_hooks_files.rs"]
+mod files;
 #[path = "programs_hooks_runs.rs"]
 mod runs;
 
-use super::{candidates, path_of};
+use super::{candidates, path_of, shell};
+use files::{LinkEnd, in_packages, in_tree, is_shell, link_end, text_of_file};
 use std::collections::VecDeque;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// The most bytes of a hook or script whose text is read for the files it runs.
@@ -39,15 +44,21 @@ const MAX_LINE_BYTES: usize = 4096;
 /// The most files followed for what hooks run.
 const MAX_FILES: usize = 64;
 
-/// How many scripts down from a hook are read: a hook's own text is at 0.
+/// The bytes read of a file to tell whether it is a shell script (its `#!` line).
+const HEAD_BYTES: usize = 256;
+
+/// How many scripts below a hook are read: a hook's own text is at 0.
 const MAX_DEPTH: usize = 3;
 
 /// Where a script's text named its own folder: put in before the text is split into words, so
 /// a folder with spaces or shell characters in its name stays one part of one word.
-const OWN: &str = "\u{E020}";
+const OWN: char = shell::private(32);
 
 /// Where it named its folder's parent, as `OWN` does.
-const PARENT: &str = "\u{E021}";
+const PARENT: char = shell::private(33);
+
+/// Where it named a home folder (`$HOME`, `${XDG_CONFIG_HOME:-$HOME/.config}`).
+const HOME: char = shell::private(34);
 
 /// The ways a script names the folder above its own (husky 9's `h` builds `../<hook>` so).
 /// Replaced before `OWN_FOLDER`, whose forms these hold.
@@ -69,7 +80,8 @@ const OWN_FOLDER: &[&str] = &[
 /// The files in the working tree (absolute paths, maybe missing) that the hooks in `hooks_dir`
 /// called `names` run, read from these `texts`: each hook's bytes, or None for one read but too
 /// large to keep. A file at a place `net_path::may_follow` refuses is left out and noted in
-/// `offsite`; one whose bytes name no file here is named in `unread`.
+/// `offsite`; one whose bytes name no file here, or a link that leads out of the working tree,
+/// is named in `unread`.
 pub(in crate::trust) fn scan(
     workdir: &Path,
     hooks_dir: &Path,
@@ -90,7 +102,7 @@ pub(in crate::trust) fn scan(
         unread,
     };
     for path in parent_scripts(workdir, hooks_dir, names) {
-        run.found(path, 1);
+        run.found(path, 0, Ran::AsHook);
     }
     while let Some(script) = run.queue.pop_front() {
         if run.full {
@@ -105,13 +117,24 @@ pub(in crate::trust) fn scan(
     out
 }
 
-/// A text to read for the files it runs: a hook's (`depth` 0) or a script's a hook runs.
+/// A text to read for the files it runs: a hook's (`depth` 0) or a shell script's a hook runs.
 struct Script {
     /// Its bytes; None for one that couldn't be read whole.
     bytes: Option<Vec<u8>>,
     /// The folder its `$(dirname "$0")` names.
     folder: PathBuf,
     depth: usize,
+}
+
+/// How a script runs a file.
+#[derive(Clone, Copy, PartialEq)]
+enum Ran {
+    /// As a hook (husky's `.husky/<hook>`): read as shell.
+    AsHook,
+    /// By `.` or `source`: read as shell whatever its name.
+    Sourced,
+    /// Any other way: read as shell only when it is a shell script.
+    Run,
 }
 
 /// One scan's state: what is found, what is left to read, and the limits reached.
@@ -142,19 +165,31 @@ impl Run<'_> {
         }
         let folder = folder_text(self.workdir, &script.folder);
         let parent = script.folder.parent().and_then(|p| folder_text(self.workdir, p));
-        let mut text = super::super::keys::text_of(bytes).into_owned();
         // A folder whose name isn't UTF-8 stays a substitution.
-        let marks = [(PARENT_FOLDER, PARENT, &parent), (OWN_FOLDER, OWN, &folder)];
+        let marks = [(PARENT_FOLDER, PARENT, parent), (OWN_FOLDER, OWN, folder)];
+        let mut text = home_marked(&super::super::keys::text_of(bytes));
         for (forms, mark, _) in marks.iter().filter(|(_, _, text)| text.is_some()) {
             for form in *forms {
-                text = text.replace(form, mark);
+                text = text.replace(form, &mark.to_string());
             }
         }
+        let unmarked = |text: &str| {
+            let mut text = text.replace(HOME, &shell::SUB.to_string());
+            for (_, mark, folder) in marks.iter() {
+                if let Some(folder) = folder {
+                    text = text.replace(*mark, folder);
+                }
+            }
+            text
+        };
+        let here = in_tree(self.workdir, &script.folder).then_some(script.folder.as_path());
         for line in text.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('#')) {
             if line.len() > MAX_LINE_BYTES {
                 self.whole = true;
                 return;
             }
+            let runs: Vec<(String, bool)> = runs::run_words(line).into_iter().map(|w| (unmarked(&w.text), w.sourced)).collect();
+            let sourced = |text: &str| if runs.iter().any(|(w, s)| *s && w == text) { Ran::Sourced } else { Ran::Run };
             let mut paths = Vec::new();
             for mut word in candidates(line) {
                 self.words += 1;
@@ -162,28 +197,31 @@ impl Run<'_> {
                     self.whole = true;
                     return;
                 }
-                for (_, mark, folder) in &marks {
-                    if let Some(folder) = folder {
-                        word.text = word.text.replace(mark, folder);
-                    }
+                // A home folder's files are no part of the branch: a word or an assigned value
+                // (`i=$HOME/x`, `PATH=~/bin:$HOME/bin`) that starts at one names nothing here.
+                let from_home = |t: &str| t.starts_with([HOME, '~']);
+                if from_home(&word.text) || word.text.split(['=', ':']).skip(1).any(from_home) {
+                    continue;
                 }
-                paths.extend(path_of(self.workdir, self.home.as_deref(), &word, true, self.unread));
+                word.text = unmarked(&word.text);
+                let ran = sourced(&word.text);
+                paths.extend(path_of(self.workdir, self.home.as_deref(), &word, true, self.unread).into_iter().map(|p| (p, ran)));
             }
-            let here = in_tree(self.workdir, &script.folder).then_some(script.folder.as_path());
-            for word in runs::run_words(line) {
-                paths.extend(runs::bare_files(self.workdir, here, &word));
+            for (word, s) in &runs {
+                let ran = if *s { Ran::Sourced } else { Ran::Run };
+                paths.extend(runs::bare_files(self.workdir, here, word).into_iter().map(|p| (p, ran)));
             }
-            for p in paths {
-                if !self.found(p, script.depth + 1) {
+            for (p, ran) in paths {
+                if !self.found(p, script.depth + 1, ran) {
                     return;
                 }
             }
         }
     }
 
-    /// Follows `path`, run from a script `depth - 1` down, and reads it in turn when it is a
-    /// file in the working tree. False once `MAX_FILES` is reached.
-    fn found(&mut self, path: PathBuf, depth: usize) -> bool {
+    /// Follows `path`, run as `ran` by a script `depth - 1` below a hook, and reads it in turn
+    /// when it is a shell script in the working tree. False once `MAX_FILES` is reached.
+    fn found(&mut self, path: PathBuf, depth: usize, ran: Ran) -> bool {
         if super::super::follow::note_far(&path, self.workdir, self.offsite) || self.out.contains(&path) {
             return true;
         }
@@ -191,46 +229,78 @@ impl Run<'_> {
             (self.whole, self.full) = (true, true);
             return false;
         }
-        self.out.push(path.clone());
         let Some(folder) = in_tree(self.workdir, &path).then(|| path.parent().map(Path::to_path_buf)).flatten() else {
+            self.out.push(path);
             return true;
         };
-        match std::fs::symlink_metadata(&path) {
-            // A link may lead anywhere: what it runs isn't read through it.
-            Ok(m) if m.file_type().is_symlink() => self.whole = true,
-            Ok(m) if m.is_file() && depth > MAX_DEPTH => self.whole = true,
-            Ok(m) if m.is_file() => self.queue.push_back(Script { bytes: text_of_file(&path), folder, depth }),
-            // A folder is followed whole; a missing file has no text yet.
-            _ => {}
+        let packages = in_packages(self.workdir, &path);
+        let meta = std::fs::symlink_metadata(&path);
+        if meta.as_ref().is_ok_and(|m| m.file_type().is_symlink()) {
+            self.link(path, ran, packages);
+            return true;
+        }
+        self.out.push(path.clone());
+        if packages || !meta.is_ok_and(|m| m.is_file()) {
+            // Installed packages, a folder (followed whole) or a file not there yet.
+            return true;
+        }
+        if ran == Ran::Run && !is_shell(&path, text_of_file(&path, HEAD_BYTES).map(|(b, _)| b).as_deref()) {
+            return true;
+        }
+        match text_of_file(&path, MAX_TEXT_BYTES) {
+            Some((bytes, true)) if depth <= MAX_DEPTH => self.queue.push_back(Script { bytes: Some(bytes), folder, depth }),
+            _ => self.whole = true,
         }
         true
     }
-}
 
-/// The bytes of the file at `path`, or None when it can't be read or is over `MAX_TEXT_BYTES`.
-fn text_of_file(path: &Path) -> Option<Vec<u8>> {
-    let mut bytes = Vec::new();
-    let file = std::fs::File::open(path).ok()?;
-    file.take(MAX_TEXT_BYTES as u64 + 1).read_to_end(&mut bytes).ok()?;
-    (bytes.len() <= MAX_TEXT_BYTES).then_some(bytes)
-}
-
-/// Whether `path` is in the working tree and not in a `.git` folder at its top: a file there is
-/// one the branch may carry.
-fn in_tree(workdir: &Path, path: &Path) -> bool {
-    use std::path::Component;
-    let Ok(rel) = path.strip_prefix(workdir) else { return false };
-    // `..` parts applied as written (`.husky/_/../check.sh`); one that climbs out is outside.
-    let mut parts: Vec<&std::ffi::OsStr> = Vec::new();
-    for c in rel.components() {
-        match c {
-            Component::Normal(name) => parts.push(name),
-            Component::ParentDir if parts.pop().is_some() => {}
-            Component::CurDir => {}
-            _ => return false,
+    /// Follows the link at `path`, run as `ran`, by the file it leads to: one in the working
+    /// tree is followed by the link's place (whose bytes are the file's), unless it is a script
+    /// to read (`packages`: never), which a link may change without a change here, so the whole
+    /// working tree follows. One that leads elsewhere is noted, never read.
+    fn link(&mut self, path: PathBuf, ran: Ran, packages: bool) {
+        match link_end(self.workdir, &path) {
+            LinkEnd::File(real) => {
+                let head = text_of_file(&real, HEAD_BYTES).map(|(b, _)| b);
+                if !packages && (ran != Ran::Run || is_shell(&path, None) || is_shell(&real, head.as_deref())) {
+                    self.whole = true;
+                }
+                self.out.push(path);
+            }
+            LinkEnd::Far(real) => _ = super::super::follow::note_far(&real, self.workdir, self.offsite),
+            LinkEnd::Elsewhere => super::note(self.unread, &crate::native_path::shown(&path)),
         }
     }
-    parts.first().is_none_or(|first| !first.to_str().is_some_and(|s| s.eq_ignore_ascii_case(".git")))
+}
+
+/// `text` with each expansion of a home folder's variable (`$HOME`, `${HOME}`,
+/// `${XDG_CONFIG_HOME:-$HOME/.config}`: a name ending in `HOME`) as one `HOME` mark.
+fn home_marked(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find('$') {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + 1..];
+        let braced = after.strip_prefix('{');
+        let body = braced.unwrap_or(after);
+        let name_len = body.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).unwrap_or(body.len());
+        let end = match braced {
+            Some(b) => b.find('}').map(|i| 1 + 1 + i + 1),
+            None => Some(1 + name_len),
+        };
+        match end.filter(|_| body[..name_len].ends_with("HOME")) {
+            Some(end) => {
+                out.push(HOME);
+                rest = &rest[at + end..];
+            }
+            None => {
+                out.push('$');
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The files a hooks folder called `_` in the working tree runs beside it: its parent's files
@@ -254,7 +324,7 @@ fn folder_text(workdir: &Path, folder: &Path) -> Option<String> {
     let text = rel.unwrap_or(folder).to_str()?.replace('\\', "/");
     // A relative `~x` names a folder here, never a home folder.
     let text = if rel.is_some() && text.starts_with('~') { format!("./{text}") } else { text };
-    Some(super::shell::quoted(&text))
+    Some(shell::quoted(&text))
 }
 
 #[cfg(test)]
@@ -264,3 +334,7 @@ mod tests;
 #[cfg(test)]
 #[path = "programs_hooks_chain_tests.rs"]
 mod chain_tests;
+
+#[cfg(test)]
+#[path = "programs_hooks_noise_tests.rs"]
+mod noise_tests;
