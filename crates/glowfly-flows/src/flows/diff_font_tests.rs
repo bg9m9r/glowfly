@@ -13,9 +13,17 @@ use glowfly_model::state::AppState;
 use glowfly_model::state::diff_header::{self, ChangeText, FileKind};
 use glowfly_model::state::diff_preview;
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard};
 use std::time::Instant;
 
 const PATH: &str = "fonts/brand.ttf";
+
+/// One test at a time at the font worker: its single slot keeps only the newest request, so two
+/// tests asking at once would leave one of them with a side that was never drawn.
+fn font_worker_turn() -> MutexGuard<'static, ()> {
+    static TURN: Mutex<()> = Mutex::new(());
+    TURN.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 /// A repository with fonts/brand.ttf (Noto Sans Regular) committed, changed to `new` in the
 /// working tree, and a.txt added; opened, no diff shown.
@@ -58,6 +66,7 @@ fn cleanup(dir: &Path) {
 
 #[test]
 fn a_changed_font_is_drawn_on_both_sides_with_a_binary_header() {
+    let _turn = font_worker_turn();
     let (mut st, dir) = repo("font-changed", NOTO_SANS_SEMIBOLD);
     assert_eq!(open(&mut st, DiffTarget::Unstaged(PATH.into())), 1, "asked once");
     let s = diff_preview::shown(&st).expect("loaded");
@@ -75,6 +84,7 @@ fn a_changed_font_is_drawn_on_both_sides_with_a_binary_header() {
 
 #[test]
 fn an_added_font_and_a_truncated_one() {
+    let _turn = font_worker_turn();
     let (mut st, dir) = repo("font-added", &NOTO_SANS[..1024]);
     std::fs::write(dir.join("fonts/new.ttf"), NOTO_SANS).unwrap();
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
