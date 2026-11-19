@@ -40,7 +40,7 @@ fn as_read(text: &str) -> String {
         .filter(|&c| !(c.is_control() || is_bidi_control(c) || is_invisible(c)))
         .map(|c| match c {
             '\u{FF0E}' | '\u{3002}' | '\u{FF61}' => '.',
-            '\u{FF0F}' => '/',
+            '\u{FF0F}' | '\u{2215}' | '\u{2044}' => '/',
             '\u{FF1A}' => ':',
             c => c,
         })
@@ -65,7 +65,7 @@ fn text_host(text: &str) -> Option<String> {
         None => {
             let end = text.find(['/', '?', '#', ':']).unwrap_or(text.len());
             let www = text.get(..4).is_some_and(|w| w.eq_ignore_ascii_case("www."));
-            if !www && !text[end..].starts_with('/') {
+            if !www && !names_host_after(&text[end..]) {
                 return None;
             }
             (&text[..end], www)
@@ -82,10 +82,26 @@ fn text_host(text: &str) -> Option<String> {
     }
 }
 
+/// Whether what follows a bare host in link text (`/…`, `?…`, or `:` with an all-digit
+/// port and then `/`, `?` or `#`) shows the text means a web address.
+fn names_host_after(rest: &str) -> bool {
+    match rest.as_bytes().first() {
+        Some(b'/' | b'?') => true,
+        Some(b':') => {
+            let after = &rest[1..];
+            let digits = after.bytes().take_while(u8::is_ascii_digit).count();
+            digits > 0 && matches!(after.as_bytes().get(digits), Some(b'/' | b'?' | b'#'))
+        }
+        _ => false,
+    }
+}
+
 /// Characters that read as a dot but that some tables class as letters or punctuation IDNA
 /// refuses: the Lisu tone marks, middle dots, leaders, Syriac and full-width or ideographic stops.
-const DOT_LIKE: [char; 11] =
-    ['\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}', '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}'];
+const DOT_LIKE: [char; 16] = [
+    '\u{18DF}', '\u{A78F}', '\u{1427}', '\u{0971}', '\u{02D1}', '\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}',
+    '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}',
+];
 
 /// Whether a non-ASCII host candidate from path-only text (`xxx/…`) has something in it that
 /// could pass for a separator: a look-alike dot, a combining mark on an ASCII letter or digit
@@ -156,7 +172,14 @@ mod tests {
             let text = format!("https://github{c}.com/acme/app");
             assert_eq!(mismatch(&text, evil), Some(("github.com".into(), "evil.example".into())), "{:04X}", c as u32);
         }
-        for text in ["github\u{FF0E}com/acme", "github\u{3002}com/acme", "https://github\u{FF61}com/x", "\u{FF47}ithub.com/acme"] {
+        for text in [
+            "github\u{FF0E}com/acme",
+            "github\u{3002}com/acme",
+            "https://github\u{FF61}com/x",
+            "\u{FF47}ithub.com/acme",
+            "github.com\u{2215}acme",
+            "github.com\u{2044}acme",
+        ] {
             assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
         }
     }
@@ -175,6 +198,11 @@ mod tests {
             ("github\u{2027}com/acme", "github\u{2027}com"),
             ("github\u{30FB}com/acme", "github\u{30fb}com"),
             ("github\u{0323}com/acme", "github\u{0323}com"),
+            ("github\u{A78F}com/acme", "github\u{a78f}com"),
+            ("github\u{1427}com/acme", "github\u{1427}com"),
+            ("github\u{0971}com/acme", "github\u{0971}com"),
+            ("github\u{02D1}com/acme", "github\u{02d1}com"),
+            ("github\u{18DF}com/acme", "github\u{18df}com"),
         ] {
             let (got, real) = mismatch(text, evil).unwrap_or_else(|| panic!("{text:?} opened without asking"));
             assert_eq!((got.as_str(), real.as_str()), (shown, "evil.example"), "{text:?}");
@@ -225,6 +253,34 @@ mod tests {
             ("g\u{456}thub.com", "https://g\u{456}thub.com/"),
         ] {
             assert_eq!(mismatch(t, u), None, "{t} -> {u}");
+        }
+    }
+
+    #[test]
+    fn a_host_with_a_port_query_or_fragment_is_named() {
+        let evil = "https://evil.example/";
+        for text in ["github.com:443/acme", "github.com?tab=1", "github.com:8080?x", "github.com:8080#x"] {
+            assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
+        }
+        assert_eq!(mismatch("github.com:443/", "https://github.com/"), None);
+    }
+
+    #[test]
+    fn a_non_numeric_port_keeps_the_text_quiet() {
+        for text in [
+            "github.com:443",
+            "README.md#install",
+            "lib.rs#L10",
+            "github.com#top",
+            "README.md:12",
+            "main.rs:40",
+            "github.com:abc/acme",
+            "github.com:",
+            "github.com:80a",
+            "github.com:/x",
+            "note.md:fix",
+        ] {
+            assert_eq!(mismatch(text, "https://evil.example/"), None, "{text}");
         }
     }
 }

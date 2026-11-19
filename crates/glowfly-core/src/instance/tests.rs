@@ -185,3 +185,32 @@ fn no_window_means_not_running() {
     assert!(start.elapsed() < CONNECT_TIMEOUT * 3, "gave up in {:?}", start.elapsed());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_slow_connection_is_dropped_at_the_deadline_and_others_are_served() {
+    let dir = scratch("slow");
+    let path = dir.join(FILE_NAME);
+    let (listener, rx) = listen(&path);
+    let addr = file::read(&path).unwrap().addr;
+    let started = Instant::now();
+    // One byte every 500 ms never ends the line; each read alone would stay within the timeout.
+    let slow = std::thread::spawn(move || {
+        let mut s = TcpStream::connect(addr.as_str()).unwrap();
+        for _ in 0..20 {
+            if s.write_all(b" ").and_then(|()| s.flush()).is_err() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        started.elapsed()
+    });
+    std::thread::sleep(std::time::Duration::from_millis(700));
+    hand_off_via(&path, &link("glowfly://repo?root=abc")).unwrap();
+    assert_eq!(rx.recv_timeout(REQUEST_TIMEOUT).unwrap(), link("glowfly://repo?root=abc"));
+    assert!(started.elapsed() < REQUEST_TIMEOUT, "answered while the slow one was still connected");
+    let writer_ended = slow.join().unwrap();
+    assert!(writer_ended < REQUEST_TIMEOUT + std::time::Duration::from_secs(2), "dropped in {writer_ended:?}");
+    assert!(writer_ended >= REQUEST_TIMEOUT - std::time::Duration::from_millis(500), "dropped early, in {writer_ended:?}");
+    drop(listener);
+    let _ = std::fs::remove_dir_all(&dir);
+}

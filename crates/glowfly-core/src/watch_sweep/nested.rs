@@ -103,8 +103,13 @@ pub(super) fn refs_of(abs: &Path, home: &Path) -> Option<u64> {
     Some(h.finish())
 }
 
-/// Whether a symbolic ref's target names a ref inside the git dir: `refs/` and below, no `..`
-/// part, no backslash or NUL (so it can't name a file elsewhere).
+/// Whether a symbolic ref's target names a ref inside the git dir: `refs/` and below, with
+/// git's own limits on a ref name: no backslash, NUL or `:`, no path part that starts with `.`
+/// (so no `..`), and no name that ends with `.`. On Windows, where the file system trims them,
+/// no path part may end with `.` or a space either.
 pub(super) fn ref_name_ok(target: &[u8]) -> bool {
-    target.starts_with(b"refs/") && !target.iter().any(|&b| b == b'\\' || b == 0) && !target.split(|&b| b == b'/').any(|p| p == b"..")
+    target.starts_with(b"refs/")
+        && !target.ends_with(b".")
+        && !target.iter().any(|&b| b == b'\\' || b == 0 || b == b':')
+        && !target.split(|&b| b == b'/').any(|p| p.starts_with(b".") || (cfg!(windows) && (p.ends_with(b".") || p.ends_with(b" "))))
 }

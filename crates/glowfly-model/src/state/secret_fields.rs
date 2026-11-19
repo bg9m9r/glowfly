@@ -46,3 +46,23 @@ impl SecretFields {
         self.ssh_passphrase != self.ssh_confirm
     }
 }
+
+/// Runs [`SecretFields::clear`], so the text is overwritten whenever the fields go away.
+impl Drop for SecretFields {
+    fn drop(&mut self) {
+        self.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clear_wipes_every_field() {
+        let mut f =
+            SecretFields { int_token: "t".into(), signing_passphrase: "p".into(), ssh_passphrase: "s".into(), ssh_confirm: "s".into() };
+        f.clear();
+        assert!(f.int_token.is_empty() && f.signing_passphrase.is_empty() && f.ssh_passphrase.is_empty() && f.ssh_confirm.is_empty());
+    }
+}

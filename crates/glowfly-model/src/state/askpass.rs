@@ -106,3 +106,10 @@ impl PromptFields {
         self.focus_pending = true;
     }
 }
+
+/// Runs [`PromptFields::clear`], so the text is overwritten whenever the fields go away.
+impl Drop for PromptFields {
+    fn drop(&mut self) {
+        self.clear();
+    }
+}

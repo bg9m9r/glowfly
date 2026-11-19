@@ -275,7 +275,8 @@ fn page_rules() {
 
     let en = Lang::En;
     let mut p = SshPage { generating: true, ..Default::default() };
-    let mut secrets = SecretFields { ssh_passphrase: "a".into(), ..Default::default() };
+    let mut secrets = SecretFields::default();
+    secrets.ssh_passphrase.push('a');
     assert_eq!(p.blocked(en, &secrets), Some("A key is being generated."));
     p.generating = false;
     assert!(p.blocked(en, &secrets).is_some_and(|b| b.contains(".ssh folder")), "listing first");

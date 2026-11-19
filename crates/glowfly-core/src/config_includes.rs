@@ -218,15 +218,20 @@ fn read_small(file: &Path) -> Option<Vec<u8>> {
 }
 
 /// `file`'s bytes when it is a regular file (links followed) of at most `limit` bytes, whatever
-/// size it reports. On Unix it is opened without waiting (a FIFO put in its place since it was
-/// looked at can't block the read), and the opened file itself is checked.
+/// size it reports. The path is checked before it is opened, and on Unix it is opened without
+/// waiting and without taking a terminal (a FIFO put in its place since it was looked at can't
+/// block the read), and the opened file itself is checked again.
 pub(crate) fn read_file_bounded(file: &Path, limit: u64) -> Option<Vec<u8>> {
+    // Anything but a regular file (a FIFO, a device, a folder) is refused before it is opened.
+    if !std::fs::metadata(file).ok()?.is_file() {
+        return None;
+    }
     let mut open = std::fs::OpenOptions::new();
     open.read(true);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        open.custom_flags(libc::O_NONBLOCK);
+        open.custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY);
     }
     let f = open.open(file).ok()?;
     let meta = f.metadata().ok()?;

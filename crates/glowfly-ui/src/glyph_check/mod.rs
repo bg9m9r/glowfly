@@ -47,6 +47,9 @@ const NEVER_DRAWN: &[(char, &str)] = &[
     ('\u{0701}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
     ('\u{0702}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
     ('\u{30FB}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{18DF}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{1427}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
+    ('\u{0971}', "link_hosts.rs DOT_LIKE matches it as a look-alike dot when judging a link's host; never drawn"),
 ];
 
 /// A context with the fonts the app draws with: the bundled ones, installed as the app does.
