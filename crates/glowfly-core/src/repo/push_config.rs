@@ -102,7 +102,11 @@ pub fn push_remotes(repo: &Repository) -> PushRemotes {
             }
             let (Some(name), true) = (e.name(), e.has_value()) else { continue };
             let value = String::from_utf8_lossy(e.value_bytes()).trim().to_owned();
-            let set = usable_remote(&value).then_some(value);
+            let usable = usable_remote(&value);
+            if !usable && !value.is_empty() {
+                tracing::debug!("ignoring {name}: its value can't name a remote");
+            }
+            let set = usable.then_some(value);
             if name.eq_ignore_ascii_case("remote.pushdefault") {
                 out.default = set;
                 continue;
