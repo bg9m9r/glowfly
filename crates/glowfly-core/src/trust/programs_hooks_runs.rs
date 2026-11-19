@@ -142,11 +142,13 @@ pub(super) fn run_words(line: &str) -> Vec<RunWord> {
 pub(super) fn bare_files(workdir: &Path, folder: Option<&Path>, word: &str) -> Vec<PathBuf> {
     let word = word.trim_end_matches([';', '&', '|', ')']);
     let plain = !word.is_empty() && !word.starts_with(['-', '~']) && !word.contains(['/', '\\']);
-    let marked = word.chars().any(|c| (shell::private(0)..=shell::private(0x18FF)).contains(&c));
+    // A quoted `~` (`sh "~x.sh"`) is part of a name; any other mark is no plain word.
+    let marked = word.chars().any(|c| c != shell::TILDE && (shell::private(0)..=shell::private(0x18FF)).contains(&c));
     if !plain || marked || word.contains(['*', '?', '[', '{', '$', '`']) {
         return Vec::new();
     }
     let text = shell::literal(word);
+    let text = if word.starts_with(shell::TILDE) { format!("./{text}") } else { text };
     let mut out: Vec<PathBuf> = Vec::new();
     for base in std::iter::once(workdir).chain(folder) {
         let Some(p) = placed(base, None, &text) else { continue };

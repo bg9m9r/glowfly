@@ -49,6 +49,9 @@ const MAX_LINE_BYTES: usize = 4096;
 /// The most files followed for what hooks run.
 const MAX_FILES: usize = 64;
 
+/// The bytes of a file read to tell whether it is read as shell (its `#!` line, a NUL byte).
+const HEAD_BYTES: usize = 256;
+
 /// How many scripts below a hook are read: a hook's own text is at 0.
 const MAX_DEPTH: usize = 3;
 
@@ -250,11 +253,12 @@ impl Run<'_> {
             // Installed packages, a folder (followed whole) or a file not there yet.
             return true;
         }
-        let text = text_of_file(&path, MAX_TEXT_BYTES);
-        if !reads_as_shell(ran, &path, text.as_ref().map(|(b, _)| b.as_slice())) {
+        // The first bytes tell; only a script to read is read whole (up to `MAX_TEXT_BYTES`).
+        let head = text_of_file(&path, HEAD_BYTES).map(|(b, _)| b);
+        if !reads_as_shell(ran, &path, head.as_deref()) {
             return true;
         }
-        match text {
+        match text_of_file(&path, MAX_TEXT_BYTES) {
             Some((bytes, true)) if depth <= MAX_DEPTH => self.queue.push_back(Script { bytes: Some(bytes), folder, depth }),
             _ => self.whole = true,
         }
@@ -275,8 +279,8 @@ impl Run<'_> {
     fn link(&mut self, path: PathBuf, ran: Ran, packages: bool) {
         match link_end(self.workdir, &path) {
             LinkEnd::File(real) => {
-                let text = text_of_file(&real, MAX_TEXT_BYTES).map(|(b, _)| b);
-                if !packages && (is_shell(&path, None) || reads_as_shell(ran, &real, text.as_deref())) {
+                let head = text_of_file(&real, HEAD_BYTES).map(|(b, _)| b);
+                if !packages && (is_shell(&path, None) || reads_as_shell(ran, &real, head.as_deref())) {
                     self.whole = true;
                 }
                 self.out.push(path);
@@ -287,9 +291,10 @@ impl Run<'_> {
     }
 }
 
-/// Whether a file run as `ran`, whose bytes are `text` (None: can't be read), is read as shell:
-/// always by a shell or as a hook; as a command when its `#!` line runs a shell, or when it has
-/// none and no NUL byte (sh runs a text file it can't execute itself); otherwise when it is a
+/// Whether a file run as `ran`, whose first bytes are `text` (None: can't be read), is read as
+/// shell: always by a shell or as a hook; as a command when its `#!` line runs a shell, or when
+/// it has none and no NUL byte there (sh runs a text file it can't execute itself; a NUL byte
+/// further on makes the whole working tree follow when it is read); otherwise when it is a
 /// shell script by its name or `#!` line.
 fn reads_as_shell(ran: Ran, path: &Path, text: Option<&[u8]>) -> bool {
     match ran {
