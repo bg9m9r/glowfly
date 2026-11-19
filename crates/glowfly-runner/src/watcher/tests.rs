@@ -389,3 +389,20 @@ fn links_out_of_the_repository_are_not_followed() {
     let _ = std::fs::remove_dir_all(&outside);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_gitattributes_event_asks_the_ignore_rules_again() {
+    use glowfly_core::watch::Touch;
+    use notify::event::CreateKind;
+    let dir: PathBuf = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-watch-attrs-{}", std::process::id()));
+    init_repo(&dir);
+    let paths = WatchPaths::new(&dir, &dir.join(".git"));
+    let mut ignores = Ignores::open(&dir);
+    assert!(ignores.is_ignored("target/x.o", Touch::Other));
+    std::fs::write(dir.join(".gitignore"), "").unwrap();
+    assert!(ignores.is_ignored("target/x.o", Touch::Other), "remembered until an event says otherwise");
+    let attrs = Event::new(EventKind::Create(CreateKind::Any)).add_path(dir.join(".gitattributes"));
+    classify(&attrs, &paths, &mut ignores);
+    assert!(!ignores.is_ignored("target/x.o", Touch::Other));
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -137,5 +137,12 @@ fn dirty_counts() {
     git(&linked, &["add", "staged.txt"]);
     write(&linked, "untracked.txt", "u\n");
     assert_eq!(dirty_count(&linked).unwrap(), 3);
+    // Its own `.gitignore` leading to a network place: not read, as any failed read.
+    std::fs::remove_file(linked.join(".gitignore")).unwrap();
+    assert_eq!(dirty_count(&linked).unwrap(), 5, "the rule file is gone, so the log counts too");
+    if crate::testutil::link_to(&crate::testutil::net_place().join("ignore"), &linked.join(".gitignore"), false) {
+        assert!(matches!(dirty_count(&linked), Err(crate::error::Error::LinkedFile(f)) if f == ".gitignore"));
+        assert!(dirty_count(&dir).is_ok(), "the other worktree's files are its own");
+    }
     cleanup(&dir, &linked);
 }

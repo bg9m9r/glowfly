@@ -116,6 +116,11 @@ fn a_linked_gitattributes_reads_as_absent() {
 #[test]
 fn a_root_gitattributes_linked_to_a_network_place_holds_the_load() {
     let dir = repo("tree-files-root-away");
+    // A staged change, made before the link so git never sees it.
+    write(&dir, "b.txt", "b\n");
+    git(&dir, &["add", "b.txt"]);
+    let staged = DiffTarget::Staged("b.txt".into());
+    assert!(load_diff(&dir, &staged).is_ok());
     let head = Repository::open(&dir).unwrap().head().unwrap().target().unwrap();
     let unstaged = DiffTarget::Unstaged("a.txt".into());
     assert!(compare_workdir(&dir, head).is_ok() && compare_from_workdir(&dir, head).is_ok() && load_diff(&dir, &unstaged).is_ok());
@@ -127,7 +132,7 @@ fn a_root_gitattributes_linked_to_a_network_place_holds_the_load() {
     assert!(names(compare_workdir(&dir, head), ".gitattributes"));
     assert!(names(compare_from_workdir(&dir, head), ".gitattributes"));
     assert!(names(load_diff(&dir, &unstaged), ".gitattributes"));
-    assert!(load_diff(&dir, &DiffTarget::Staged("a.txt".into())).is_ok(), "the index's diff reads no work tree");
+    assert!(load_diff(&dir, &staged).is_ok(), "the index's diff reads no work tree");
     assert!(root_patterns(&dir).is_empty());
     assert_eq!(held(&dir).as_deref(), Some(".gitattributes"));
     assert!(names(load(&dir, &LoadOptions::default()), ".gitattributes"));
@@ -167,6 +172,12 @@ fn a_linked_gitignore_in_a_subfolder_holds_the_status() {
     assert!(link_to(Path::new("../../rules"), &dir.join("sub/deep/.gitignore"), false));
     assert_eq!(held(&dir), None);
     assert!(status_at(&dir, false).is_ok());
+    // A plain file again: the watcher asks once told the file changed.
+    std::fs::remove_file(dir.join("sub/deep/.gitignore")).unwrap();
+    write(&dir, "sub/deep/.gitignore", "*.log\n");
+    assert!(!ignores.is_ignored("sub/deep/x.log", crate::watch::Touch::Other), "still as it was asked");
+    ignores.clear();
+    assert!(ignores.is_ignored("sub/deep/x.log", crate::watch::Touch::Other));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -181,6 +192,7 @@ fn a_tracked_link_under_another_spelling_has_its_folder_looked_at() {
     for name in ["link", "gitignore", ".gitmodules", ".git", "ignore.txt"] {
         assert!(!may_name(name.as_bytes()), "{name:?}");
     }
+    assert_eq!((named(b".GitAttributes"), named(b".gitignore."), named(b"GITIGN~1")), (Some(0), Some(1), None));
     let root = crate::paths::temp_dir();
     assert_eq!(folder_of(&root, b""), Some(root.clone()));
     assert_eq!(folder_of(&root, b"a/b"), Some(root.join("a").join("b")));
@@ -237,4 +249,47 @@ fn a_submodule_whose_gitignore_is_linked_away_is_left_out_of_the_status() {
     for dir in [&parent, &parent.with_file_name(format!("{}-lib", parent.file_name().unwrap().to_string_lossy()))] {
         let _ = std::fs::remove_dir_all(dir);
     }
+}
+
+#[test]
+fn an_index_is_read_again_only_when_its_size_or_time_changed() {
+    use std::time::Duration;
+    let dir = repo("tree-files-memo");
+    track_link(&dir, "sub/.gitignore", "rules");
+    track_link(&dir, "sub/.GitAttributes", "rules");
+    track_link(&dir, "other/link", "rules");
+    let index = dir.join(".git").join("index");
+    let dated = |secs: u64| {
+        let at = SystemTime::now() - Duration::from_secs(secs);
+        std::fs::File::options().write(true).open(&index).unwrap().set_modified(at).unwrap();
+    };
+    let want = Some(vec![(b"sub".to_vec(), Some(0)), (b"sub".to_vec(), Some(1))]);
+    let real = std::fs::read(&index).unwrap();
+    let other = vec![0u8; real.len()];
+
+    // Just written: read every time, so bytes that are no index show at once.
+    assert_eq!(link_folders(&index), want);
+    std::fs::write(&index, &other).unwrap();
+    assert_eq!(link_folders(&index), None);
+
+    // Old enough to tell by: the same size and time are not read again.
+    std::fs::write(&index, &real).unwrap();
+    dated(60);
+    let time = std::fs::metadata(&index).unwrap().modified().unwrap();
+    assert_eq!(link_folders(&index), want);
+    std::fs::write(&index, &other).unwrap();
+    std::fs::File::options().write(true).open(&index).unwrap().set_modified(time).unwrap();
+    assert_eq!(link_folders(&index), want, "remembered");
+
+    // Another time, or another size, is read again.
+    dated(30);
+    assert_eq!(link_folders(&index), None, "another time");
+    std::fs::write(&index, &real).unwrap();
+    dated(30);
+    assert_eq!(link_folders(&index), want);
+    std::fs::write(&index, [&other[..], &[0u8][..]].concat()).unwrap();
+    dated(30);
+    assert_eq!(link_folders(&index), None, "another size");
+    assert_eq!(link_folders(&dir.join("no-index")), Some(Vec::new()));
+    let _ = std::fs::remove_dir_all(&dir);
 }

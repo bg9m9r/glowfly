@@ -199,7 +199,7 @@ fn a_worktree_whose_gitattributes_is_linked_away_is_not_read() {
         let held = super::super::status::libgit2_status(&Repository::open(&wt).unwrap());
         assert!(matches!(held, Err(crate::error::Error::LinkedFile(f)) if f == ".gitattributes"));
         let count = count_worktree(&wt, Some(&untrusted), COUNT_TIMEOUT);
-        assert_eq!((count.read, count.changes), (ChangesRead::Counted, ChangeCounts::default()));
+        assert_eq!((count.read, count.changes), (ChangesRead::NotCounted, ChangeCounts::default()));
         assert!(super::super::status::libgit2_status(&Repository::open(&dir).unwrap()).is_ok());
     }
     cleanup(&[&wt, &dir]);

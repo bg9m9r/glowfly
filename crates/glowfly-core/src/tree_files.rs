@@ -65,12 +65,16 @@ pub(crate) fn linked_away(repo: &Repository) -> Option<String> {
 /// those in each folder where the index file `index` holds a link a volume could take for one of
 /// them (`may_name`). The folder is asked for the two names, so the volume itself decides which
 /// entry answers to them. `may_follow` looks at each part without following it, so nothing past
-/// a refused link is touched. Per folder: the stats of the two walks.
+/// a refused link is touched. The root's two are asked in `NAMES` order; a tracked folder's with
+/// the name its index entry spells first, so that is the file named when the folder itself
+/// leads away. Per folder: the stats of the two walks.
 pub(crate) fn linked_away_at(workdir: &Path, home: &Path, index: &Path) -> Option<String> {
     let tracked = link_folders(index).unwrap_or_default();
-    for dir in std::iter::once(&Vec::new()).chain(tracked.iter().filter(|d| !d.is_empty())) {
+    let root: Tracked = (Vec::new(), None);
+    for (dir, spelled) in std::iter::once(&root).chain(tracked.iter().filter(|(d, _)| !d.is_empty())) {
         let Some(folder) = folder_of(workdir, dir) else { continue };
-        for name in NAMES {
+        let order = if *spelled == Some(1) { [1, 0] } else { [0, 1] };
+        for name in order.map(|i| NAMES[i]) {
             if !crate::net_path::may_follow(&folder.join(name), home) {
                 let shown = crate::repo::shown_path(dir);
                 return Some(if shown.is_empty() { name.to_owned() } else { format!("{shown}/{name}") });
@@ -80,16 +84,20 @@ pub(crate) fn linked_away_at(workdir: &Path, home: &Path, index: &Path) -> Optio
     None
 }
 
-/// An index file's size and time when it was read, and its link folders.
-type Seen = (u64, SystemTime, Vec<Vec<u8>>);
+/// A folder ('/'-separated bytes; empty for the root) in which an index holds a link a volume
+/// could take for one of the two files, and which of `NAMES` that entry spells (`named`).
+type Tracked = (Vec<u8>, Option<usize>);
 
-/// The folders ('/'-separated bytes, sorted; empty for the root) in which the index file `file`
+/// An index file's size and time when it was read, and its link folders.
+type Seen = (u64, SystemTime, Vec<Tracked>);
+
+/// The folders (sorted) in which the index file `file`
 /// holds a link a volume could take for one of the two files (`may_name`). Read from the file on
 /// its own, so a repository's shared index stays as its caller left it, and remembered until the
 /// file's size or time changes; a file modified too recently for those to tell
 /// (`repo::stamp_trustworthy`) is read every time. Empty without an index file; None for one
 /// that can't be read (libgit2's own read of the work tree then fails by itself).
-fn link_folders(file: &Path) -> Option<Vec<Vec<u8>>> {
+fn link_folders(file: &Path) -> Option<Vec<Tracked>> {
     static SEEN: Mutex<Option<HashMap<PathBuf, Seen>>> = Mutex::new(None);
     let meta = match std::fs::metadata(file) {
         Ok(m) => m,
@@ -105,17 +113,17 @@ fn link_folders(file: &Path) -> Option<Vec<Vec<u8>>> {
         return Some(folders.clone());
     }
     let index = git2::Index::open(file).ok()?;
-    let mut folders: BTreeSet<Vec<u8>> = BTreeSet::new();
+    let mut folders: BTreeSet<Tracked> = BTreeSet::new();
     for e in index.iter().filter(|e| e.mode == LINK) {
         let (dir, name) = match e.path.iter().rposition(|b| *b == b'/') {
             Some(at) => (&e.path[..at], &e.path[at + 1..]),
             None => (&e.path[..0], &e.path[..]),
         };
-        if may_name(name) && !folders.contains(dir) {
-            folders.insert(dir.to_vec());
+        if may_name(name) {
+            folders.insert((dir.to_vec(), named(name)));
         }
     }
-    let folders: Vec<Vec<u8>> = folders.into_iter().collect();
+    let folders: Vec<Tracked> = folders.into_iter().collect();
     if let Some(time) = settled
         && let Ok(mut seen) = SEEN.lock()
     {
@@ -133,8 +141,14 @@ fn link_folders(file: &Path) -> Option<Vec<Vec<u8>>> {
 /// in any letter case with anything after it (trailing dots and spaces, a stream name), a short
 /// 8.3 name (`~`), and any name with a byte outside ASCII (characters a volume ignores or folds).
 fn may_name(name: &[u8]) -> bool {
+    !name.is_ascii() || name.contains(&b'~') || named(name).is_some()
+}
+
+/// Which of `NAMES` the index name `name` spells: the name in any letter case, with anything
+/// after it. None for the other names a volume could take for one (`may_name`).
+fn named(name: &[u8]) -> Option<usize> {
     let lower = name.to_ascii_lowercase();
-    !name.is_ascii() || name.contains(&b'~') || NAMES.iter().any(|n| lower.starts_with(n.as_bytes()))
+    NAMES.iter().position(|n| lower.starts_with(n.as_bytes()))
 }
 
 /// The folder the index names `dir` ('/'-separated bytes; empty for the root) in `workdir`.

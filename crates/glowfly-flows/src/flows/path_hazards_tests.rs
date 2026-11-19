@@ -154,6 +154,11 @@ fn the_banner_says_when_submodules_are_not_shown() {
     std::fs::write(dir.join(".gitmodules"), "[submodule \"a\"]\n\tpath = a\n\turl = ./a\n[include]\n\tpath = x\n").unwrap();
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     let w = warnings(Lang::En, st.snap.as_ref().unwrap());
-    assert_eq!(w, ["Submodules aren't shown: a .gitmodules file here or in a submodule isn't a plain file Glowfly can read."]);
+    assert_eq!(
+        w,
+        [
+            "Submodules aren't shown: a .gitmodules file here or in a submodule, or a submodule's .gitattributes or .gitignore, isn't a plain file Glowfly can read."
+        ]
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
