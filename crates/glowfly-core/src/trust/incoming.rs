@@ -105,8 +105,9 @@ pub enum Unchecked {
     /// be read for the commands continuing it runs.
     State(String),
     /// Places the repository's settings and hooks name (`TrustScan::offsite`) that weren't
-    /// looked at for what git would run from them.
-    Offsite(String),
+    /// looked at for what git would run or read from them; with the files of `State` when
+    /// there are those too, so one prompt names both.
+    Offsite { places: String, files: Option<String> },
 }
 
 /// `cmd`'s subcommand (`fetch` in `-c x=y fetch origin`).

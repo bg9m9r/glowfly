@@ -34,7 +34,7 @@ use std::sync::Arc;
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     // Files of its own that couldn't be read aren't about what a commit brings in, nor about
     // what changed since: the plain question.
-    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_) | Unchecked::Offsite(_)));
+    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_) | Unchecked::Offsite { .. }));
     let title = match (&p.incoming, &p.gained) {
         _ if p.unchecked.is_some() && !unread => cx.t.tr("trust.incoming.title"),
         (Some(_), _) if !unread => cx.t.tr("trust.incoming.title"),

@@ -68,6 +68,11 @@ pub enum Error {
         "This folder's Git data points to a network place ({0}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer."
     )]
     NetworkPointer(String),
+    /// The opened folder's git files can't be checked for where they lead (the file or place,
+    /// as shown): an oversized or many-lined `.git` or `commondir`, a value libgit2 would read
+    /// from the process's own folder, a name the system won't look up, too many object stores.
+    #[error("This folder's Git data can't be checked ({0}), so Glowfly won't open it.")]
+    UncheckedGitData(String),
     #[error("{0}")]
     Other(String),
 }

@@ -6,8 +6,9 @@
 //!
 //! A reload that keeps the snapshot (the watcher's, a status-only one, returning to the tab or
 //! the window) counts the counted ones again through the same effect (`recount`), throttled by
-//! `RefreshState::recount` so many worktrees aren't read on every file event. One a count left
-//! NotCounted is asked again the same way, so it is counted once what held its read is gone.
+//! `RefreshState::recount` so many worktrees aren't read on every file event. One whose read a
+//! count found Held is asked again the same way, so it is counted once what held it is gone;
+//! a NotCounted one (its files name another network place) is never asked for.
 
 use crate::effect::Effect;
 use crate::effect::WorktreeEffect;
@@ -50,10 +51,11 @@ fn ask(st: &mut AppState, pick: impl Fn(&WorktreeInfo) -> bool, fx: &mut Vec<Eff
     true
 }
 
-/// Other worktrees counted before, or left NotCounted by a count (not the current one, a
-/// missing one, or one too large to count in the background): what a recount reads again.
+/// Other worktrees counted before, or whose read a count found Held (not the current one, a
+/// missing one, one too large to count in the background, or a NotCounted one): what a recount
+/// reads again.
 fn recountable(w: &WorktreeInfo) -> bool {
-    !w.current && !w.missing && matches!(w.read, ChangesRead::Counted | ChangesRead::NotCounted)
+    !w.current && !w.missing && matches!(w.read, ChangesRead::Counted | ChangesRead::Held)
 }
 
 /// Counts the other worktrees again after a reload that kept the snapshot, at `now`: at once
@@ -93,7 +95,7 @@ pub(super) fn counted(st: &mut AppState, refs_key: u64, counts: Vec<WorktreeCoun
         let rows_before = worktree_wip_heads(&snap.worktrees);
         for wt in snap.worktrees.iter_mut().filter(|w| !w.current) {
             match (counts.iter().find(|c| same_spelling(&c.path, &wt.path)), wt.read) {
-                (Some(c), ChangesRead::Pending | ChangesRead::Counted | ChangesRead::NotCounted) => {
+                (Some(c), ChangesRead::Pending | ChangesRead::Counted | ChangesRead::Held) => {
                     wt.read = c.read;
                     wt.changes = c.changes;
                 }

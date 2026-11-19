@@ -142,6 +142,11 @@ pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<Stri
 /// a part with a character no name has there (a pattern's `*` or `?`) can't be looked up and
 /// nothing is at it, so the folder before that part is what counts.
 pub(super) fn far(path: &Path, home: &Path) -> bool {
+    use crate::net_path::{may_follow_for, root_of};
+    // The whole spelling first: a `?` in a `//?/UNC/` prefix is no pattern.
+    if !may_follow_for(root_of(path).as_ref(), root_of(home).as_ref()) {
+        return true;
+    }
     let text = path.to_string_lossy();
     // Past a `\\?\` or `\??\` prefix.
     let from = if text.starts_with(r"\\?\") || text.starts_with(r"\??\") { 4 } else { 0 };

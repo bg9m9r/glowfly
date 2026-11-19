@@ -13,5 +13,6 @@
   "read_errors.old_file_unreadable": "no se puede leer el archivo anterior",
   "read_errors.open_failed": "No se pudo abrir {path}: {why}",
   "read_errors.panicked": "Glowfly tuvo un error interno ({effect}): {panic}",
-  "read_errors.stopped": "detenido"
+  "read_errors.stopped": "detenido",
+  "read_errors.unchecked_git_data": "Los datos de Git de esta carpeta no se pueden comprobar ({what}), así que Glowfly no la abre."
 }

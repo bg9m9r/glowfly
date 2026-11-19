@@ -2,7 +2,8 @@
 //! `core.hooksPath`, a program a setting runs and a hook link at `testutil::net_place()` (never
 //! touched) are listed in `TrustScan::offsite` and nothing is read from them, in the repository
 //! and in a submodule; the same on this computer is read as before. Only the hook link needs a
-//! link, and skips on Windows where the account may not make one.
+//! link, and skips on Windows where the account may not make one. The Windows spellings of a
+//! share with a `?` in them are read as the share they name, never as a pattern.
 
 use super::tests::hook;
 use super::*;
@@ -90,4 +91,34 @@ fn a_hook_linked_to_a_network_place_is_listed_by_name_alone() {
     assert_eq!(s.hook_digests.keys().collect::<Vec<_>>(), ["pre-commit"], "the linked one is never read");
     assert_eq!(s.offsite, [shown(&hooks.join("pre-push"))]);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_share_spelled_with_a_question_mark_is_not_looked_at() {
+    if !cfg!(windows) {
+        // These name local folders elsewhere.
+        return;
+    }
+    let host = "glowfly-test.invalid";
+    let spellings = [
+        format!("//?/UNC/{host}/share/h/x"),
+        format!(r"\\?\UNC\{host}\share\h\x"),
+        format!("//./UNC/{host}/share/h/x"),
+        format!(r"\\?\UNC/{host}/share\h/x"),
+        format!("//{host}/share/h?oks/x"),
+    ];
+    for (i, place) in spellings.iter().enumerate() {
+        for key in ["core.hooksPath", "core.fsmonitor", "http.sslCAInfo"] {
+            let dir = scratch_repo(&format!("trust-offsite-spelled-{i}-{}", key.len()));
+            git(&dir, &["config", key, place]);
+            let s = scan_at(&dir).unwrap();
+            assert_eq!(s.config.len(), 1, "{key} = {place}: {:?}", s.config);
+            assert!(!s.offsite.is_empty(), "{key} = {place}: noted");
+            assert!(s.offsite.iter().all(|p| on_net_place(Path::new(p))), "{key} = {place}: {:?}", s.offsite);
+            // The hooks folder is the repository's own unless the setting names one.
+            assert_eq!((s.hooks_dir.is_none(), s.hooks.len()), (key == "core.hooksPath", 0), "{key} = {place}");
+            assert!(s.follows.iter().all(|f| !f.path.contains(host)), "{key} = {place}: {:?}", s.follows);
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
 }

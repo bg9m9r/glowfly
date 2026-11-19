@@ -24,6 +24,9 @@ pub enum ChangesRead {
     Pending,
     /// Too large to count in the background; open it in a tab to see its changes.
     TooLarge,
+    /// A count's read was held by the worktree's own files (`tree_files::check`): asked again
+    /// with the counted ones, so it is counted once they are plain.
+    Held,
 }
 
 /// Indexes with more entries than this are left for the background count.
@@ -84,7 +87,7 @@ pub(super) fn count_in_load(list: &mut [WorktreeInfo], home: &Path, limits: &Loa
 /// `.gitignore` held the read (`tree_files::check`).
 fn counted(lists: Option<crate::error::Result<(Vec<super::FileEntry>, Vec<super::FileEntry>)>>) -> (ChangesRead, ChangeCounts) {
     match lists {
-        Some(Err(crate::error::Error::LinkedFile(_))) => (ChangesRead::NotCounted, ChangeCounts::default()),
+        Some(Err(crate::error::Error::LinkedFile(_))) => (ChangesRead::Held, ChangeCounts::default()),
         Some(Ok((unstaged, staged))) => (ChangesRead::Counted, ChangeCounts::of(&staged, &unstaged)),
         _ => (ChangesRead::Counted, ChangeCounts::default()),
     }
@@ -132,12 +135,15 @@ fn plan(entries: u32, git_ok: bool, wants_git: bool) -> Plan {
 /// saved `decision` trusts it and its print covers what the worktree runs now, or when there is
 /// none and nothing in it would run a program, as opening it in a tab would allow
 /// (`trust::allows`); otherwise libgit2 does, up to `NO_GIT_COUNT_INDEX` entries. One that
-/// can't be opened counts as clean, as does one whose files name another network place than
-/// its own folder's (never opened).
-pub fn count_worktree(path: &Path, decision: Option<&SavedTrust>, timeout: Duration) -> WorktreeCount {
+/// can't be opened counts as clean. One whose folder, or a file libgit2 would follow in opening
+/// it, is on another network place than `home` (the work tree it is listed from) is never
+/// opened and is NotCounted, as the load leaves it.
+pub fn count_worktree(path: &Path, home: &Path, decision: Option<&SavedTrust>, timeout: Duration) -> WorktreeCount {
     let done = |read, changes, slow| WorktreeCount { path: path.to_path_buf(), read, changes, slow };
-    let repo = if openable(path, path) { Repository::open(path).ok() } else { None };
-    let Some(repo) = repo else { return done(ChangesRead::Counted, ChangeCounts::default(), None) };
+    if !openable(path, home) {
+        return done(ChangesRead::NotCounted, ChangeCounts::default(), None);
+    }
+    let Some(repo) = Repository::open(path).ok() else { return done(ChangesRead::Counted, ChangeCounts::default(), None) };
     let entries = index_entries(&repo.path().join("index")).unwrap_or(0);
     let git_ok = match decision {
         Some(d) if d.trust == RepoTrust::NotTrusted => false,

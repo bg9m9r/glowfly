@@ -5,7 +5,8 @@
 //! offers the untracked cache, git reads a worktree only by that worktree's own trust, and a
 //! status-only reload counts the others again, at most once per interval unless the window or
 //! tab is returned to, with a recount kept for later dropped once nothing is left to count, and
-//! a worktree a count left not counted is counted by the next recount.
+//! a worktree whose read a count found held is counted by the next recount, while one whose
+//! record names another network place is never asked for.
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
@@ -295,11 +296,11 @@ fn a_status_only_reload_counts_other_worktrees_again_at_most_once_per_interval()
 }
 
 #[test]
-fn a_worktree_left_not_counted_is_counted_by_the_next_recount() {
+fn a_worktree_whose_read_was_held_is_counted_by_the_next_recount() {
     let (mut st, dir, linked) = opened("wtcount-recount-held");
-    // As a count leaves one whose read was held.
+    // As a count leaves one whose own files held its read; they are plain again now.
     let snap = st.snap.as_mut().unwrap();
-    snap.worktrees[1].read = ChangesRead::NotCounted;
+    snap.worktrees[1].read = ChangesRead::Held;
     snap.worktrees[1].changes = ChangeCounts::default();
     let watched = || Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
     assert!(counts(&step(&mut st, watched())).is_empty(), "not before the interval");
@@ -310,6 +311,34 @@ fn a_worktree_left_not_counted_is_counted_by_the_next_recount() {
     assert!(glowfly_core::paths::same_folder(&asked[0].targets[0].0, &linked));
     run_count(&mut st, fx, due);
     assert_eq!((linked_info(&st).read, linked_info(&st).changes), (ChangesRead::Counted, SIDE));
+    cleanup(&[&linked, &dir]);
+}
+
+#[test]
+fn a_worktree_whose_record_names_a_network_place_is_never_asked_for() {
+    let dir = scratch_repo("wtcount-far");
+    let linked = dir.with_file_name(format!("{}-side", dir.file_name().unwrap().to_string_lossy()));
+    let _ = std::fs::remove_dir_all(&linked);
+    git(&dir, &["worktree", "add", "-q", "-b", "side", &linked.display().to_string()]);
+    let place = if cfg!(windows) { "//glowfly-test.invalid/share/side/.git" } else { "/net/glowfly-test.invalid/side/.git" };
+    std::fs::write(dir.join(".git/worktrees").join(linked.file_name().unwrap()).join("gitdir"), format!("{place}\n")).unwrap();
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    let far = |st: &AppState| {
+        let wt = linked_info(st);
+        assert!(wt.path.to_string_lossy().contains("glowfly-test.invalid"), "listed: {:?}", wt.path);
+        (wt.read, wt.changes)
+    };
+    assert_eq!(far(&st), (ChangesRead::NotCounted, ChangeCounts::default()));
+    assert_eq!(st.refresh.counting, None, "the load asked for no count");
+    // A reload that keeps the snapshot, then every tick past the interval: still not asked.
+    let watched = Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
+    assert!(counts(&step(&mut st, watched)).is_empty());
+    let later = Instant::now() + RECOUNT_EVERY * 2;
+    assert!(counts(&update(&mut st, Msg::Tick(later), later)).is_empty());
+    assert!(counts(&step(&mut st, Msg::Repo(RepoMsg::WindowFocused))).is_empty());
+    assert_eq!(st.refresh.recount.due(), None, "nothing stays due");
+    assert_eq!(far(&st), (ChangesRead::NotCounted, ChangeCounts::default()));
     cleanup(&[&linked, &dir]);
 }
 

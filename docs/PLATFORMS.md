@@ -195,13 +195,20 @@ trust scan all run for untrusted repositories too.
    git dir, the files its config includes and its alternates are followed only where
    `may_follow` allows from the folder itself, so a repository that lives on a share opens as
    before. Otherwise the open fails with `Error::NetworkPointer` naming the place
-   (`read_errors.network_pointer`), shown where any failed open is. These read only through
+   (`read_errors.network_pointer`), or with `Error::UncheckedGitData` where what a file names
+   can't be told (`read_errors.unchecked_git_data`: a `.git` or `commondir` of several lines or
+   too large, a relative `commondir` value libgit2 reads from the process's folder, a name the
+   system won't look up, too many object stores), shown where any failed open is. The folders
+   are tried in libgit2's order (`.git`, then the folder as a git dir, where alone its
+   `commondir` file is read), above the resolved path on Unix. These read only through
    libgit2's `commondir()` of the opened repository, which was checked, so they reach nothing
    new: `lfs/sources.rs`, `stop_cleanup.rs`, `lock_file.rs` and `repo_identity.rs`;
    `repo_scan.rs` reads only the first bytes of a `.git` and never follows it. The trust scan
    looks at a config-named path (`core.hooksPath`, a hook link, a program path, an include)
    only where `may_follow` allows from the work tree; one it doesn't look at is listed in
-   `TrustScan::offsite`, and a job asks first (`Unchecked::Offsite`).
+   `TrustScan::offsite`, and a job asks first (`Unchecked::Offsite`, which names the files
+   that couldn't be read too when there are both). A value is read by its whole spelling
+   before any part of it is taken for a pattern.
 7. **What a refusal looks like** (logged once at debug level, no toast): a nested repository in
    the sweep is walked as a plain folder by the outer rules (one tracked before is named once as
    `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,
