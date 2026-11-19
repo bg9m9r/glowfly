@@ -13,12 +13,18 @@
 //! restarts that toast's timer instead (`push_toast`), so clicking a refusal twice leaves one.
 //! A toast carrying a fix is its own, though: two fixes with the same words may be for different
 //! things (a message can't be compared), so both stay.
+//!
+//! A toast raised for a repository whose tab is open but not the active one says that tab first
+//! (`Toast::tab`, `toast_in`): the name the tab strip showed when it was raised, fixed from then
+//! on and never part of `Toast::text`. It is part of what makes two toasts the same.
 
 use super::AppState;
 use crate::logs::LogsMsg;
 use crate::msg::Msg;
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ToastTime;
-use std::path::PathBuf;
+use std::borrow::Cow;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 /// The most toasts shown at once; a new one drops the oldest that isn't held.
@@ -33,6 +39,9 @@ const BRIEF: Duration = Duration::from_secs(3);
 pub struct Toast {
     pub ok: bool,
     pub text: String,
+    /// The tab it is about, by the name the tab strip showed when it was raised; None for the
+    /// active tab's and for one about no repository. Never changes.
+    pub tab: Option<String>,
     /// When its clock last started: shown, updated, or let go by the pointer.
     pub at: Instant,
     /// Time already counted before `at`; zero unless it was held.
@@ -67,6 +76,20 @@ pub struct ToastAction {
 }
 
 impl Toast {
+    /// The sentence a toast for another tab says: `text` with that tab's `name` (whole, or cut to
+    /// fit) first.
+    pub fn in_tab(t: Lang, name: &str, text: &str) -> String {
+        t.trf("logs.toast.in_tab", &[("tab", &name), ("text", &text)])
+    }
+
+    /// What the toast says: its `text`, with its tab's name first when it has one.
+    pub fn said(&self, t: Lang) -> Cow<'_, str> {
+        match &self.tab {
+            Some(tab) => Cow::Owned(Self::in_tab(t, tab, &self.text)),
+            None => Cow::Borrowed(&self.text),
+        }
+    }
+
     /// It carries a fix: an action other than the activity log's Details, or a second fix.
     fn has_fix(&self) -> bool {
         let details = |a: &ToastAction| matches!(*a.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_)));
@@ -103,12 +126,24 @@ impl Toast {
 
 impl AppState {
     pub fn toast(&mut self, ok: bool, text: impl Into<String>, now: Instant) {
-        self.push_toast(ok, text.into(), None, now);
+        self.push_toast(ok, text.into(), None, None, now);
+    }
+
+    /// `toast`, for the repository `repo`: when another tab than the active one shows it, the
+    /// toast says that tab's name first (`Toast::tab`).
+    pub fn toast_in(&mut self, repo: Option<&Path>, ok: bool, text: impl Into<String>, now: Instant) {
+        let tab = self.toast_tab(repo);
+        self.push_toast(ok, text.into(), None, tab, now);
+    }
+
+    /// The name the tab strip shows for the tab showing `repo`, when that isn't the active tab.
+    fn toast_tab(&self, repo: Option<&Path>) -> Option<String> {
+        self.other_tab(repo).map(|i| super::menu_bar::tab_name(self, i).to_owned()).filter(|n| !n.is_empty())
     }
 
     /// A brief success toast (`Toast::brief`): a push or pull saying what it did.
     pub fn toast_brief(&mut self, text: impl Into<String>, now: Instant) {
-        let id = self.push_toast(true, text.into(), None, now);
+        let id = self.push_toast(true, text.into(), None, None, now);
         if let Some(t) = self.toasts.iter_mut().find(|t| t.id == id) {
             t.brief = true;
         }
@@ -116,7 +151,13 @@ impl AppState {
 
     /// A toast with an action button. Returns its id.
     pub fn toast_action(&mut self, ok: bool, text: impl Into<String>, action: ToastAction, now: Instant) -> u64 {
-        self.push_toast(ok, text.into(), Some(action), now)
+        self.push_toast(ok, text.into(), Some(action), None, now)
+    }
+
+    /// `toast_action` for the repository `repo`, named as `toast_in` does. Returns its id.
+    pub fn toast_action_in(&mut self, repo: Option<&Path>, ok: bool, text: impl Into<String>, action: ToastAction, now: Instant) -> u64 {
+        let tab = self.toast_tab(repo);
+        self.push_toast(ok, text.into(), Some(action), tab, now)
     }
 
     /// Gives the newest toast (one just pushed or shown again, such as a finished job's) the
@@ -137,13 +178,13 @@ impl AppState {
         self.toasts.iter_mut().max_by_key(|t| t.shown)
     }
 
-    /// `toast_action`, unless a toast with the same words is up: that one is shown again in its
+    /// `toast_action`, unless an unnamed toast with the same words is up: that one is shown again in its
     /// place (a new id, its timer restarted, this action), so a refusal clicked again doesn't
     /// stack copies. Returns its id.
     pub fn toast_action_once(&mut self, ok: bool, text: impl Into<String>, action: ToastAction, now: Instant) -> u64 {
         let text = super::logs::redacted(text.into());
-        let Some(at) = self.toasts.iter().position(|t| t.ok == ok && t.text == text) else {
-            return self.push_toast(ok, text, Some(action), now);
+        let Some(at) = self.toasts.iter().position(|t| t.ok == ok && t.text == text && t.tab.is_none()) else {
+            return self.push_toast(ok, text, Some(action), None, now);
         };
         self.toast_seq += 1;
         let t = &mut self.toasts[at];
@@ -161,20 +202,20 @@ impl AppState {
             (t.text, t.ok, t.at, t.counted) = (text, ok, now, Duration::ZERO);
             return t.id;
         }
-        self.push_toast(ok, text, None, now)
+        self.push_toast(ok, text, None, None, now)
     }
 
-    /// Shows a toast, unless one with the same words and kind is up and neither carries a fix
+    /// Shows a toast, unless one with the same words, kind and tab is up and neither carries a fix
     /// (`Toast::has_fix`; a fix's target can't be compared, so two with the same words both
     /// stay): that one is shown again in place, its timer restarted (a held one stays held) and
     /// its Details dropped, for the new announcement to give again. It keeps its id and its one
     /// activity line; a screen reader reads a failure shown again (`shown`), not a success.
     /// Returns its id.
-    fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, now: Instant) -> u64 {
+    fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, tab: Option<String>, now: Instant) -> u64 {
         self.toast_seq += 1;
         let text = super::logs::redacted(text);
         let fix = action.as_ref().is_some_and(|a| !matches!(*a.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_))));
-        if !fix && let Some(t) = self.toasts.iter_mut().find(|t| t.ok == ok && t.text == text && !t.has_fix()) {
+        if !fix && let Some(t) = self.toasts.iter_mut().find(|t| t.ok == ok && t.text == text && t.tab == tab && !t.has_fix()) {
             (t.shown, t.at, t.counted) = (self.toast_seq, now, Duration::ZERO);
             (t.action, t.details) = (action, None);
             return t.id;
@@ -182,6 +223,7 @@ impl AppState {
         let t = Toast {
             ok,
             text,
+            tab,
             at: now,
             counted: Duration::ZERO,
             held: false,

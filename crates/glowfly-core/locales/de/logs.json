@@ -51,5 +51,6 @@
   "logs.tab.errors.tip": "Das Ende des Fehlerprotokolls: Warnungen, Fehler und Abstürze.",
   "logs.tab.performance": "Leistung",
   "logs.tab.performance.tip": "Das Ende des Leistungsprotokolls: Vorgänge und git-Befehle, die eine halbe Sekunde oder länger gedauert haben, und Bilder, die 50 ms oder länger gedauert haben.",
-  "logs.toast.details.button": "Details"
+  "logs.toast.details.button": "Details",
+  "logs.toast.in_tab": "In {tab}: {text}"
 }

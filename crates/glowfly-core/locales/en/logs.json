@@ -51,5 +51,6 @@
   "logs.tab.errors.tip": "The end of the error log: warnings, errors and crashes.",
   "logs.tab.performance": "Performance",
   "logs.tab.performance.tip": "The end of the performance log: operations and Git commands that took half a second or longer, and frames that took 50 ms or longer.",
-  "logs.toast.details.button": "Details"
+  "logs.toast.details.button": "Details",
+  "logs.toast.in_tab": "In {tab}: {text}"
 }

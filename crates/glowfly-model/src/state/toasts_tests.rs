@@ -175,3 +175,64 @@ fn replacing_a_held_toast_keeps_it_held() {
     let t = &st.toasts[0];
     assert_eq!((t.text.as_str(), t.held, t.counted, t.at), ("Zoom 120%", true, Duration::ZERO, later));
 }
+
+/// A repository path no tab needs to exist at.
+fn repo(name: &str) -> PathBuf {
+    glowfly_core::paths::temp_dir().join(format!("glowfly-toast-state-{name}"))
+}
+
+/// A state with two tabs, the first (`a`) active.
+fn two_tabs() -> (AppState, Instant, PathBuf, PathBuf) {
+    let (mut st, t0) = state();
+    let (a, b) = (repo("a"), repo("b"));
+    st.tabs = vec![super::super::Tab::unloaded(a.clone()), super::super::Tab::unloaded(b.clone())];
+    st.active_tab = 0;
+    (st, t0, a, b)
+}
+
+#[test]
+fn toasts_for_different_tabs_never_merge() {
+    let (mut st, t0, a, b) = two_tabs();
+    st.toast(false, "Push failed", t0);
+    st.toast_in(Some(&b), false, "Push failed", t0);
+    let tabs: Vec<Option<&str>> = st.toasts.iter().map(|t| t.tab.as_deref()).collect();
+    assert_eq!(tabs, [None, Some(super::super::menu_bar::tab_name(&st, 1))]);
+
+    let named = st.toasts[1].id;
+    let later = t0 + secs(3.0);
+    st.toast_in(Some(&b), false, "Push failed", later);
+    assert_eq!(st.toasts.len(), 2);
+    assert_eq!((st.toasts[1].id, st.toasts[1].at), (named, later), "the named toast restarts");
+    assert_eq!(st.toasts[0].at, t0);
+
+    st.toast_in(Some(&a), false, "Push failed", later);
+    assert_eq!(st.toasts.len(), 2);
+    assert_eq!(st.toasts[0].at, later, "the active tab's repository has no name: the unnamed toast restarts");
+
+    let action = || ToastAction { label: "Fix".into(), msg: Box::new(Msg::Tick(t0)), workdir: None };
+    st.toast_action_once(false, "Push failed", action(), t0 + secs(4.0));
+    assert_eq!(st.toasts.len(), 2);
+    assert!(st.toasts[0].action.is_some() && st.toasts[1].action.is_none(), "only the unnamed toast takes the action");
+}
+
+#[test]
+fn said_puts_the_tab_first() {
+    let (mut st, t0, a, b) = two_tabs();
+    st.settings.language = "en".into();
+    let lang = st.settings.lang();
+    st.toast_in(Some(&b), false, "Push failed", t0);
+    st.toast_in(Some(&a), false, "Fetch failed", t0);
+    let name = super::super::menu_bar::tab_name(&st, 1).to_owned();
+    let named = &st.toasts[0];
+    assert_eq!(named.said(lang), lang.trf("logs.toast.in_tab", &[("tab", &name), ("text", &"Push failed")]));
+    assert_eq!(named.said(lang), format!("In {name}: Push failed"));
+    assert_eq!(named.text, "Push failed", "the text itself has no name");
+    assert_eq!(st.toasts[1].said(lang), "Fetch failed");
+
+    let (mut st, t0, _, _) = two_tabs();
+    st.toast_in(Some(&repo("elsewhere")), true, "One", t0);
+    st.toast_in(None, true, "Two", t0);
+    st.active_tab = usize::MAX;
+    st.toast_in(Some(&repo("b")), true, "Three", t0);
+    assert!(st.toasts.iter().all(|t| t.tab.is_none()), "no tab shows it, no repository, no active tab");
+}

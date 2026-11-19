@@ -1,16 +1,20 @@
 //! Toasts: a plain one stacked with a behind alert whose Pull button sends `Msg::ToastAction`,
 //! in the top and bottom corners, all one width and 12 px inside the chrome (under the toolbar,
 //! or the tabs when it is hidden). Each has its x top right, and the pointer over one holds it.
-//! A failure's two fixes and Details wrap inside the toast in German at every zoom.
+//! A failure's two fixes and Details wrap inside the toast in German at every zoom. A toast
+//! raised for another tab says its tab first, a name too wide for the toast is cut in its middle,
+//! and the whole sentence stays the accessible name.
 
 use super::snapshot_tests::{harness, remove_fixture, with_repo};
 use crate::snapshot_check::CheckSnapshot;
+use crate::toasts;
+use eframe::egui::accesskit::{Live, NodeId};
 use eframe::egui::{self, containers::panel::PanelState};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::{Corner, ThemeChoice};
 use glowfly_model::msg::{Msg, NotifyMsg};
-use glowfly_model::state::{AppState, ToastAction};
+use glowfly_model::state::{AppState, Tab, ToastAction};
 use std::path::Path;
 use std::time::Instant;
 
@@ -233,5 +237,39 @@ fn toast_hover_holds() {
     h.get_by_label("Pull the current branch").hover();
     h.run();
     assert!(holds(&h).contains(&None), "off the toast: let go");
+    remove_fixture(&dir);
+}
+
+/// A toast for another tab says its tab first in the one wrapped label; a name too wide is cut in
+/// its middle with "…" while the label's accessible name keeps the whole sentence, which a screen
+/// reader reads at once for a failure. A toast for the active tab has no prefix.
+#[test]
+fn toast_names_its_tab() {
+    const LONG_NAME: &str = "customer-portal-frontend-redesign-2026";
+    const FETCH: &str = "Fetch failed: could not resolve host example.com";
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "toast-tab");
+    st.settings.notification_location = Corner::TopRight;
+    let api = st.tabs[1].path.clone().unwrap();
+    let long = glowfly_core::paths::temp_dir().join("glowfly-toast-long");
+    st.tabs.push(Tab { label: Some(LONG_NAME.into()), ..Tab::unloaded(long.clone()) });
+    let now = Instant::now();
+    st.toast_in(Some(&api), false, FETCH, now);
+    st.toast_in(Some(&long), true, "Push succeeded", now);
+    st.toast(true, PLAIN, now);
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("toast_names_its_tab");
+    let named = format!("In api-server: {FETCH}");
+    let whole = format!("In {LONG_NAME}: Push succeeded");
+    let x0 = top_left(&h, &named).1;
+    for label in [named.as_str(), whole.as_str(), PLAIN] {
+        let b = h.get_by_label(label).bounding_box().expect("bounds");
+        assert_eq!(b.x0, x0, "{label} starts where the others do");
+        assert!(b.x1 <= x0 + f64::from(toasts::TOAST_W), "{label} stays inside the toast");
+    }
+    let failure = toasts::text_key(&h.state().0.toasts[0]);
+    assert_eq!(h.get_by_label(&named).live(), Live::Assertive);
+    assert_eq!(h.get_by_label(&named).id(), NodeId(failure.value()), "its live node is the toast's own");
+    assert_eq!(h.get_by_label(&whole).live(), Live::Polite);
     remove_fixture(&dir);
 }

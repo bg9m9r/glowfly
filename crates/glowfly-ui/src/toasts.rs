@@ -6,6 +6,10 @@
 //! (`NotifyMsg::HoldToast`): it neither fades nor expires. With Announcements on (Preferences >
 //! Accessibility) each toast's text is a live region screen readers read as it appears: politely,
 //! or at once for a failure, and again when a failure is shown again (`text_key`).
+//!
+//! A toast raised for another tab says its tab first, in the same wrapped label ("In web-app:
+//! Push failed"). A tab name wider than `TAB_NAME_W` is cut in its middle, as the tab strip cuts
+//! it; the whole sentence is then the label's accessible name (the live text) and its hover text.
 
 use super::access::{self, Live};
 use super::theme::color;
@@ -14,9 +18,11 @@ use super::theme::tokens::{self, Elevation, radius};
 use super::widgets::{self, buttons};
 use crate::theme::sizes::ControlSize;
 use eframe::egui::{self, Align, Align2, Layout, Rect, RichText, Stroke, Vec2, vec2};
+use glowfly_core::i18n::Lang;
 use glowfly_core::settings::Corner;
 use glowfly_model::msg::{Msg, NotifyMsg};
 use glowfly_model::state::{AppState, Toast};
+use std::borrow::Cow;
 
 /// Where the window's chrome ends: the bottom of the last top panel and the top of the status
 /// bar, in screen points.
@@ -36,6 +42,22 @@ const TOAST_GAP: f32 = 6.0;
 const PAD_X: i8 = 12;
 /// What the x takes beside the text: its 20 px box and a 4 px gap.
 const CLOSE_SLOT: f32 = 24.0;
+
+/// The widest a tab's name is drawn in a toast's sentence: what the widest tab shows of one. A
+/// longer name is cut in its middle, as the tab strip cuts it.
+const TAB_NAME_W: f32 = 140.0;
+
+/// What toast `t` shows and, when its tab's name had to be cut, what it says in whole (its
+/// accessible name and hover text).
+fn words<'a>(ui: &egui::Ui, lang: Lang, t: &'a Toast) -> (Cow<'a, str>, Option<String>) {
+    let Some(tab) = &t.tab else { return (Cow::Borrowed(&t.text), None) };
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let cut = widgets::truncate::middle(ui.painter(), tab, &font, TAB_NAME_W);
+    if cut == *tab {
+        return (t.said(lang), None);
+    }
+    (Cow::Owned(Toast::in_tab(lang, &cut, &t.text)), Some(t.said(lang).into_owned()))
+}
 
 /// The toast area's anchor in `corner`, `TOAST_MARGIN` inside the chrome `b` and the `screen`'s
 /// edges.
@@ -92,7 +114,13 @@ pub(super) fn show(ctx: &egui::Context, st: &AppState, bounds: ToastBounds, msgs
                         ui.spacing_mut().item_spacing.x = CLOSE_SLOT - 20.0;
                         ui.vertical(|ui| {
                             ui.set_width(TOAST_W - 2.0 * f32::from(PAD_X) - CLOSE_SLOT);
-                            let text = ui.add(egui::Label::new(RichText::new(&t.text).color(color::text().gamma_multiply(fade))).wrap());
+                            let (shown, whole) = words(ui, lang, t);
+                            let mut text =
+                                ui.add(egui::Label::new(RichText::new(shown.as_ref()).color(color::text().gamma_multiply(fade))).wrap());
+                            if let Some(w) = whole {
+                                text.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &w));
+                                text = text.on_hover_text(w);
+                            }
                             if announce {
                                 access::announce(&text, text_key(t), if t.ok { Live::Polite } else { Live::Assertive });
                             }
