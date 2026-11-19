@@ -33,7 +33,7 @@ fn a_script_a_shell_runs_or_a_command_without_a_hash_bang_line_is_read() {
         // A commit that changes what `x` runs asks again.
         let saved = SavedTrust::trusted(Some(s.print()));
         write(&dir, "scripts/y", "echo two\n");
-        git(&dir, &["commit", "-q", "-am", "y"]);
+        git(&dir, &["commit", "-q", "--no-verify", "-am", "y"]);
         assert!(!allows(Some(&saved), &scan_of(&dir)), "{name}");
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -113,4 +113,16 @@ fn git_as_a_folding_file_system_names_it_is_never_in_the_tree() {
     for name in [".github", ".gitx", "git"] {
         assert!(in_tree(top, &top.join(name).join("x")), "{name:?}");
     }
+}
+
+#[test]
+fn a_quoted_tilde_before_a_glob_or_in_a_bare_word_is_a_name_here() {
+    let dir = scratch_repo("hook-shell-tilde-glob");
+    std::fs::create_dir_all(dir.join("~/tools")).unwrap();
+    write(&dir, "~/tools/a.sh", "exit 0\n");
+    write(&dir, "~x.sh", "exit 0\n");
+    hook_with(&dir.join(".git/hooks"), "pre-commit", "#!/bin/sh\nfor f in \"~/tools/\"*.sh; do sh \"$f\"; done\nsh \"~x.sh\"\n");
+    let s = scan_of(&dir);
+    assert_eq!(paths(&s), ["~/tools", "~x.sh"], "{:?}", s.unread);
+    let _ = std::fs::remove_dir_all(&dir);
 }

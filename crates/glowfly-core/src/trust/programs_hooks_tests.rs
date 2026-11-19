@@ -52,7 +52,7 @@ fn the_scripts_a_hook_runs_are_followed_and_in_the_print() {
     // Another committed version of the script is another print: it asks again.
     let saved = SavedTrust::trusted(Some(s.print()));
     write(&dir, "scripts/check.sh", "#!/bin/sh\necho two\n");
-    git(&dir, &["-c", "core.hooksPath=", "commit", "-q", "-am", "edit"]);
+    git(&dir, &["-c", "core.hooksPath=", "commit", "-q", "--no-verify", "-am", "edit"]);
     let after = scan_of(&dir);
     assert!(!super::super::super::allows(Some(&saved), &after));
     assert_eq!(after.gained_since(saved.print.as_ref().unwrap()).follows.len(), 1);

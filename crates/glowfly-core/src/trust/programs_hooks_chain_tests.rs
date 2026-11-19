@@ -104,7 +104,7 @@ fn husky_9_s_hooks_follow_the_tracked_scripts_their_hook_files_run() {
     {
         let saved = SavedTrust::trusted(Some(scan_of(&dir).print()));
         write(&dir, file, text);
-        git(&dir, &["-c", "core.hooksPath=", "commit", "-q", "-am", file]);
+        git(&dir, &["-c", "core.hooksPath=", "commit", "-q", "--no-verify", "-am", file]);
         assert!(!allows(Some(&saved), &scan_of(&dir)), "{file}");
     }
     let _ = std::fs::remove_dir_all(&dir);

@@ -285,6 +285,8 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, un
         if is_pattern(&slashed) {
             // The literal part before the first glob, up to its last folder.
             let fixed = shell::literal(slashed.split(GLOBS).next().unwrap_or_default());
+            // A quoted `~` stays a folder of that name here too (`"~/tools/"*.sh`).
+            let fixed = if tilde { format!("./{fixed}") } else { fixed };
             let dir = fixed.rfind('/').map_or("", |i| &fixed[..i]);
             // A hook's pattern into installed packages (lefthook's
             // `$dir/node_modules/lefthook-${os}-${cpu}/bin/lefthook`) names no file the branch
