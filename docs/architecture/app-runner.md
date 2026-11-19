@@ -60,7 +60,7 @@ here.
 - `runner/saves.rs`: the `Execute` impl of `SaveEffect` and its own thread per save: saving Glowfly's own files (settings, recent repositories, open tabs), each file's saves in order; `save_in` writes one into a folder (the config folder, or the sandbox's), and what a save of recent.txt or tabs.txt did besides writing, or why it was refused, comes back as `RecentMsg::StateFileSaved` / `StateFileBlocked`; tests in `saves_tests.rs`.
 - `runner/session.rs`: the `Execute` impl of `SessionEffect`: checking the recent repositories' folders and reading the restored tabs' groups.
 - `runner/signatures.rs`: checking a commit's signature with git (`CommitEffect::VerifySignature`).
-- `runner/commit.rs`: the `Execute` impl of `CommitEffect`: a commit's detail and its signature check (`signatures.rs`).
+- `runner/commit.rs`: the `Execute` impl of `CommitEffect`: a commit's detail, its signature check (`signatures.rs`) and its whole message for Copy > Message.
 - `runner/stashes.rs`: stash list jobs (`Effect::Stash`): renaming an entry, putting an auto-stash back, reading and writing the auto-stashes waiting to go back across restarts, reading the files a stash changes for the question before applying it, and the abort that keeps an operation's work (also run by redoing one).
 - `runner/stats.rs`: line counts for the graph's CHANGES column.
 - `runner/svg_worker.rs` (tests in `svg_worker_tests.rs`): the generic preview `Worker` (one named thread per preview kind) and the one that draws SVG previews for `DiffEffect::BinarySides`: one drawing at a time, a newer request replacing the queued one, callers giving up after 3 s (the side shows "Can't preview this SVG") while the drawing runs on.
