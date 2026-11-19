@@ -8,8 +8,8 @@
 //!
 //! Bounded: at most `MAX_WORDS` words of one hook, lines up to `MAX_LINE_BYTES`, and
 //! `MAX_FILES` files in all. Past any of them, or for a hook too large to keep its text
-//! (`MAX_TEXT_BYTES`), the whole working tree is followed.
-//! A hook with a NUL byte in it is a compiled program: it has no words to read.
+//! (`MAX_TEXT_BYTES`), the whole working tree is followed, and so it is for a hook with a NUL
+//! byte in it: a compiled program, whose words can't be read.
 
 use super::{candidates, path_of};
 use std::path::{Path, PathBuf};
@@ -58,6 +58,7 @@ pub(in crate::trust) fn scan(
             continue;
         };
         if bytes.contains(&0) {
+            whole = true;
             continue;
         }
         let mut text = super::super::keys::text_of(bytes).into_owned();
