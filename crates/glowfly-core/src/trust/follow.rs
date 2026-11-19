@@ -9,8 +9,10 @@
 //! tree (`programs.rs`), or that a hook's script runs (`programs_hooks.rs`), is followed the
 //! same way.
 
+use super::digest::{self, Reading};
 use super::{TrustScan, is_hook_name};
 use git2::{ObjectType, Oid, Repository, Tree};
+use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
 /// A place inside the working tree that hooks run from.
@@ -82,6 +84,43 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
         }
     }
     out
+}
+
+/// The most followed files whose bytes `disk_digests` reads; past it, a file's size and
+/// modification time stand in for its bytes.
+const MAX_DIGESTS: usize = 256;
+
+/// The digests of the files `follows` names in `workdir` (not a hooks folder, whose hooks are
+/// read one by one, nor the whole tree), as they are on disk, read as `reading` says
+/// (`TrustScan::follow_digests`): so an uncommitted change asks again. A file that is there
+/// but can't be read gets the unreadable digest (`digest::UNREADABLE`), which no decision made
+/// on a read covers; a folder or a file not there has none. A file at a place that may not be
+/// followed (a link leading to a network place) is never read: it is noted in `offsite`.
+pub(super) fn disk_digests(workdir: &Path, follows: &[Follow], reading: Reading, offsite: &mut Vec<String>) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for f in follows.iter().filter(|f| !f.hooks && !f.path.is_empty()) {
+        let path = on_disk(workdir, &f.path);
+        if note_far(&path, workdir, offsite) {
+            continue;
+        }
+        let Ok(meta) = std::fs::metadata(&path) else { continue };
+        if meta.is_dir() {
+            continue;
+        }
+        let digest = if out.len() < MAX_DIGESTS {
+            digest::of_file(&path, reading)
+        } else {
+            let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_nanos());
+            format!("size {} at {modified:?}", meta.len())
+        };
+        out.insert(f.path.clone(), digest);
+    }
+    out
+}
+
+/// The place on disk of the `/`-separated `rel` (a `Follow::path`) in `workdir`.
+pub(super) fn on_disk(workdir: &Path, rel: &str) -> PathBuf {
+    rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c))
 }
 
 /// Whether a part of the `/`-separated `rel` names a place only the file system can resolve:
@@ -267,13 +306,23 @@ pub fn versions(repo: &Repository, follows: &[Follow], oid: Oid) -> Result<Vec<F
 pub fn incoming(repo: &Repository, follows: &[Follow], oid: Oid) -> Result<TrustScan, git2::Error> {
     let mut out = TrustScan { follows: versions(repo, follows, oid)?, ..TrustScan::default() };
     let odb = repo.odb().ok();
+    let small = |id: Oid| {
+        odb.as_ref().and_then(|o| o.read_header(id).ok()).is_some_and(|(size, kind)| kind == ObjectType::Blob && size <= MAX_HOOK_READ)
+    };
+    // A followed file's bytes as that commit has them, as `disk_digests` reads them once it is
+    // checked out (line-ending changes aside).
+    for f in out.follows.iter().filter(|f| !f.hooks && !f.path.is_empty()) {
+        let Some((path, id)) = &f.tracked else { continue };
+        if let Some(blob) = (path.eq_ignore_ascii_case(&f.path) && small(*id)).then(|| repo.find_blob(*id).ok()).flatten() {
+            out.follow_digests.insert(f.path.clone(), super::content_digest(blob.content()));
+        }
+    }
     for f in out.follows.iter().filter(|f| f.hooks) {
         let Some((path, id)) = &f.tracked else { continue };
         let Some(dir) = path.eq_ignore_ascii_case(&f.path).then(|| repo.find_tree(*id).ok()).flatten() else { continue };
         for e in dir.iter().filter(|e| e.kind() == Some(ObjectType::Blob)) {
             let Some(name) = e.name().filter(|n| is_hook_name(n)) else { continue };
-            let small = odb.as_ref().and_then(|o| o.read_header(e.id()).ok()).is_some_and(|(size, _)| size <= MAX_HOOK_READ);
-            if let Some(blob) = small.then(|| repo.find_blob(e.id()).ok()).flatten() {
+            if let Some(blob) = small(e.id()).then(|| repo.find_blob(e.id()).ok()).flatten() {
                 out.hook_digests.insert(name.to_owned(), super::content_digest(blob.content()));
             }
             out.hooks.push(name.to_owned());

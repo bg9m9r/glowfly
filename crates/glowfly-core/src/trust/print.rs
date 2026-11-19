@@ -6,17 +6,19 @@
 use super::{ConfigCommand, TrustScan, hook_base};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The hashed items of a scan: one per setting (key and value), one per hook (its name in any
 /// letter case, with its script's digest), one for the repository's commands file (its
 /// digest), one per place in the working tree hooks run from (with the version tracked
-/// there) and one per step of a rebase or pick in progress that runs a program, and the same
-/// for each checked-out submodule under its path.
+/// there), one per followed file with its bytes on disk (`TrustScan::follow_digests`) and one
+/// per step of a rebase or pick in progress that runs a program, and the same for each
+/// checked-out submodule under its path.
 ///
-/// Prints saved before hook contents and the commands file were part of it hold hooks by name
-/// alone: those items never match now, so a repository trusted with hooks or a commands file
-/// asks once more, listing them, rather than being trusted on what nobody saw.
+/// Prints saved before hook contents, the commands file or followed files' bytes were part of
+/// it lack those items: they never match now, so a repository trusted with hooks, a commands
+/// file or followed files asks once more, listing them, rather than being trusted on what
+/// nobody saw.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct TrustPrint(pub BTreeSet<String>);
@@ -72,6 +74,11 @@ pub(crate) fn follow_item(prefix: &str, f: &super::Follow) -> String {
     }
 }
 
+/// A followed file's bytes on disk, by their digest.
+fn disk_item(prefix: &str, path: &str, digest: &str) -> String {
+    format!("{prefix}d\0{path}\0{digest}")
+}
+
 fn commands_item(prefix: &str, digest: &str) -> String {
     format!("{prefix}x\0{digest}")
 }
@@ -119,6 +126,7 @@ fn own_items(scan: &TrustScan, prefix: &str, out: &mut BTreeSet<String>) {
     out.extend(scan.hooks.iter().map(|h| hash(&hook_item(prefix, scan, h))));
     out.extend(scan.commands.iter().map(|d| hash(&commands_item(prefix, d))));
     out.extend(scan.follows.iter().map(|f| hash(&follow_item(prefix, f))));
+    out.extend(scan.follow_digests.iter().map(|(path, d)| hash(&disk_item(prefix, path, d))));
     out.extend(scan.steps.iter().map(|s| hash(&step_item(prefix, s))));
 }
 
@@ -130,7 +138,14 @@ fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
     let known_hooks = hooks.iter().filter_map(|h| Some((h.clone(), *scan.known_hooks.get(h)?))).collect();
     let hooks_dir = if hooks.is_empty() { None } else { scan.hooks_dir.clone() };
     let commands = scan.commands.clone().filter(|d| !p.0.contains(&hash(&commands_item(prefix, d))));
-    let follows = scan.follows.iter().filter(|f| !p.0.contains(&hash(&follow_item(prefix, f)))).cloned().collect();
+    let follow_digests: BTreeMap<String, String> = scan
+        .follow_digests
+        .iter()
+        .filter(|(path, d)| !p.0.contains(&hash(&disk_item(prefix, path, d))))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let gained = |f: &&super::Follow| !p.0.contains(&hash(&follow_item(prefix, f))) || follow_digests.contains_key(&f.path);
+    let follows = scan.follows.iter().filter(gained).cloned().collect();
     let steps = scan.steps.iter().filter(|s| !p.0.contains(&hash(&step_item(prefix, s)))).cloned().collect();
     TrustScan {
         config,
@@ -141,6 +156,7 @@ fn gained_own(scan: &TrustScan, prefix: &str, p: &TrustPrint) -> TrustScan {
         submodules: Vec::new(),
         commands,
         follows,
+        follow_digests,
         steps,
         unread: Vec::new(),
         offsite: Vec::new(),
