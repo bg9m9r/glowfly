@@ -107,13 +107,15 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let tag = super::tags::headline(st, ok, &output);
             let patch = super::patch::headline(st, ok, &output);
             let stash = super::stash_push::headline(st, ok, &output);
+            let unstaged = super::stash::headline(st, ok, &output);
             let cleanup = super::pull_request::cleanup::headline(st, ok, &output);
             let (checkout, warn) = super::tag_checkout::headline(st, ok).map_or((None, None), |(t, w)| (Some(t), w));
             let rename = super::branch_sync::headline(st, ok, &output);
             let kept = super::undo::stash_headline(st, &undo);
             let remote_back = super::undo_offers::headline(st, &undo).or_else(|| super::ref_renames::headline(st, &undo));
             let inside = super::submodule_inside::headline(st, ok);
-            let headline = kept.or(remote_back).or(flow).or(tag).or(patch).or(stash).or(checkout).or(cleanup).or(rename).or(inside);
+            let headline =
+                kept.or(remote_back).or(flow).or(tag).or(patch).or(stash).or(unstaged).or(checkout).or(cleanup).or(rename).or(inside);
             let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
             if let Some(reason) = refused {

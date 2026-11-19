@@ -19,7 +19,7 @@ fn the_job_names_the_position_and_expects_the_commit() {
     let fx = update(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 1, oid }), Instant::now());
     match &fx[..] {
         [Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, .. })] => {
-            assert_eq!(cmds[..], [args(&["stash", "pop", "stash@{1}"])]);
+            assert_eq!(cmds[..], [args(&["stash", "pop", "--index", "stash@{1}"])]);
             assert_eq!(expect, &Some(("stash@{1}".to_owned(), oid)));
         }
         other => panic!("expected one RunGit, got {} effects", other.len()),

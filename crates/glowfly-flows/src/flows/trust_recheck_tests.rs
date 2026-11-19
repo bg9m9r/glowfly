@@ -163,6 +163,7 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
+            without_index: None,
             auto_stash: None,
         })
     };

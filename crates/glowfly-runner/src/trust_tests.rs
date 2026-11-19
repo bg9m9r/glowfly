@@ -43,6 +43,7 @@ fn job(dir: &Path) -> Effect {
         expect: None,
         stoppable: false,
         on_fail_check: None,
+        without_index: None,
         auto_stash: None,
     })
 }

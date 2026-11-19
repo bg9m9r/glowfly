@@ -89,6 +89,7 @@ pub fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Star
     // A job with a network command can be cancelled while that command runs (update/job_stop.rs).
     let stoppable = spec.write_file.is_none() && crate::state::job_stop::Step::any_network(&spec.cmds);
     let (cmds, write_file, expect, pick, on_fail_check) = (spec.cmds, spec.write_file, spec.expect, spec.pick, spec.on_fail_check);
+    let without_index = spec.without_index;
     let made_note = auto_stash.clone();
     let effect = move |cwd| match pick {
         Some(PickPlan { picking, oids, can_skip }) => {
@@ -104,7 +105,8 @@ pub fn start_job(st: &mut AppState, spec: JobSpec, fx: &mut Vec<Effect>) -> Star
             expect,
             stoppable,
             on_fail_check,
-            auto_stash: made_note,
+            without_index,
+            auto_stash: made_note.map(Box::new),
         }),
     };
     let started = launch(st, job, spec.cwd, effect, fx);

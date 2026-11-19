@@ -1,4 +1,6 @@
-//! Apply, pop and drop of one stash (sidebar STASHES menu and palette), and renaming one. A drop
+//! Apply, pop and drop of one stash (sidebar STASHES menu and palette), and renaming one. Apply
+//! and pop ask git for the staged state too (`--index`, with a plain form for when something is
+//! staged or git can't restore it); a stash that came back unstaged says so (`headline`). A drop
 //! is recorded for undo, which stores the dropped commit back in the list. The
 //! stash list is numbered from the newest entry, so a stash made or dropped elsewhere since the
 //! snapshot shifts every `stash@{N}`: the job names the entry by position for git but carries
@@ -16,17 +18,31 @@ use crate::state::{AppState, Modal};
 use git2::Oid;
 use glowfly_core::gitcli::args;
 use glowfly_core::repo::StashInfo;
-use glowfly_core::stash_ops::edited_message;
+use glowfly_core::stash_ops::{self, edited_message};
 
 const GONE: &str = "That stash no longer exists.";
 
+/// The headline of a job that brought a stash back unstaged because git couldn't restore what
+/// was staged (the runner's note ends the output, `BACK_UNSTAGED`).
+pub(super) fn headline(st: &AppState, ok: bool, output: &str) -> Option<String> {
+    (ok && stash_ops::came_back_unstaged(output)).then(|| st.settings.lang().tr("stash.back_unstaged.toast").to_owned())
+}
+
 fn run(st: &mut AppState, action: StashAction, index: usize, oid: Oid, fx: &mut Vec<Effect>) {
     let refname = format!("stash@{{{index}}}");
-    let cmd = args(&["stash", action.git_verb(), &refname]);
+    // Apply and Unstash ask for the staged state too; the runner drops `--index` when something
+    // is staged and when git refuses to restore it (`without_index`).
+    let (cmd, without_index) = match action {
+        StashAction::Drop => (args(&["stash", "drop", &refname]), None),
+        StashAction::Apply | StashAction::Pop => {
+            let pop = action == StashAction::Pop;
+            (stash_ops::apply_command(pop, index, true), Some(stash_ops::apply_command(pop, index, false)))
+        }
+    };
     // A drop is undoable while the tab is open; git's "Dropped stash@{N} (<sha>)" line also
     // lands in the log, so a dropped stash can be found again (`git stash apply <sha>`) until it
     // is garbage-collected.
-    let spec = JobSpec { expect: Some((refname, oid)), ..JobSpec::new(action.job_label().into(), vec![cmd]) };
+    let spec = JobSpec { expect: Some((refname, oid)), without_index, ..JobSpec::new(action.job_label().into(), vec![cmd]) };
     start_job(st, spec, fx);
 }
 

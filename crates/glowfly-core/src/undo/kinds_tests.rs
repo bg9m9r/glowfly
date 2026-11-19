@@ -110,7 +110,6 @@ fn classify_recognises_glowfly_commands() {
         (&["stash", "pop"], Some(UndoKind::StashApply { pop: true, rev: None })),
         (&["stash", "pop", "stash@{2}"], Some(UndoKind::StashApply { pop: true, rev: Some("stash@{2}".into()) })),
         (&["stash", "apply", "stash@{0}"], Some(UndoKind::StashApply { pop: false, rev: Some("stash@{0}".into()) })),
-        (&["stash", "pop", "--index"], None),
         (&["stash", "drop"], Some(UndoKind::StashDrop { rev: None })),
         (&["stash", "drop", "stash@{1}"], Some(UndoKind::StashDrop { rev: Some("stash@{1}".into()) })),
         (&["stash", "drop", "-q", "stash@{1}"], None),
@@ -132,5 +131,21 @@ fn rewrite_is_never_classified() {
     for argv in [&["rebase", "-i", "main"][..], &["rebase", "main"], &["rebase", "--continue"], &["rebase", "--edit-todo"]] {
         let kind = UndoKind::classify(&args(argv));
         assert!(!matches!(kind, Some(UndoKind::Move { op: MoveOp::Rewrite, .. })), "{argv:?}");
+    }
+}
+
+/// `--index` straight after the verb is the same pop or apply; anywhere else it isn't recognised.
+#[test]
+fn classify_recognises_stash_index_forms() {
+    let apply = |pop, rev: Option<&str>| Some(UndoKind::StashApply { pop, rev: rev.map(Into::into) });
+    let table: &[(&[&str], Option<UndoKind>)] = &[
+        (&["stash", "pop", "--index"], apply(true, None)),
+        (&["stash", "pop", "--index", "stash@{2}"], apply(true, Some("stash@{2}"))),
+        (&["stash", "apply", "--index", "stash@{0}"], apply(false, Some("stash@{0}"))),
+        (&["stash", "pop", "stash@{0}", "--index"], None),
+        (&["stash", "pop", "--index", "-q"], None),
+    ];
+    for (argv, want) in table {
+        assert_eq!(&UndoKind::classify(&args(argv)), want, "{argv:?}");
     }
 }

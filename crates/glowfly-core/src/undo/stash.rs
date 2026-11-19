@@ -2,7 +2,8 @@
 //! as none of the paths it holds has changed since (staged files a push of selected files left as
 //! they were don't count). A pop or apply onto a clean working tree is
 //! undone by putting the stash back in the list (when it was dropped) and clearing what it
-//! applied, as long as the working tree is exactly as the pop left it: `changes` fingerprints it.
+//! applied (the index too), as long as the working tree is exactly as the pop left it: `changes`
+//! fingerprints it. Redoing it applies the stash again with its staged state (`Plan::ApplyStash`).
 //! A drop is undone by storing the dropped commit back at the top of the list.
 //!
 //! Putting a stash back stores it with its list text (`git stash store -m`), so one whose
@@ -161,7 +162,7 @@ pub(super) fn plan_apply(workdir: &Path, repo: &Repository, action: &Action, hea
         if let Some(refused) = super::in_the_way::check_stash(workdir, repo, *stash, *head, action, redo)? {
             return Ok(refused);
         }
-        return Ok(Plan::Run(vec![args(&["stash", if *pop { "pop" } else { "apply" }, &stash_ref(n)])]));
+        return Ok(Plan::ApplyStash { pop: *pop, index: n, stash: *stash });
     }
     if head_oid != Some(*head) {
         return Ok(stale(format!("HEAD has moved since the {}", action.describe())));
