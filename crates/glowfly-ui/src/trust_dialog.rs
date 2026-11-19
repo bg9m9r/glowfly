@@ -7,7 +7,8 @@
 //! settings or hooks since (or whose hook scripts or commands file changed), it asks again and
 //! lists only what is new. Hooks that come from the working tree are said to change with the
 //! branch, and a job held because the commit it brings in has other versions of them lists
-//! those versions.
+//! those versions. A job held for places Glowfly doesn't read offers not to be asked about
+//! those places again.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
@@ -73,6 +74,12 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt, msgs: &mut Vec<Msg>) {
             )
             .wrap(),
         );
+    }
+    if p.offsite_places().is_some() {
+        let mut on = p.remember;
+        if crate::theme::controls::checkbox(ui, &mut on, t.tr("trust.unchecked.remember")).changed() {
+            msgs.push(Msg::Trust(TrustMsg::RememberPlaces(on)));
+        }
     }
     if p.terminal {
         let what =

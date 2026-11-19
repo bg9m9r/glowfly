@@ -15,7 +15,9 @@ use std::time::{Duration, Instant};
 /// How a worktree's `changes` were read.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum ChangesRead {
-    /// Not read: the current worktree, a missing one, with the option off, or from `worktrees_at`.
+    /// Not read, and never asked for by a recount: the current worktree, a missing one, with
+    /// the option off, from `worktrees_at`, or one whose folder or git files are on another
+    /// network place than the repository it is listed from.
     #[default]
     NotCounted,
     /// `changes` holds its counts.
@@ -24,8 +26,9 @@ pub enum ChangesRead {
     Pending,
     /// Too large to count in the background; open it in a tab to see its changes.
     TooLarge,
-    /// A count's read was held by the worktree's own files (`tree_files::check`): asked again
-    /// with the counted ones, so it is counted once they are plain.
+    /// A count couldn't read it for now: the worktree's own files held the read
+    /// (`tree_files::check`), or its folder isn't a repository at the moment. Asked again with
+    /// the counted ones, so it is counted once it can be read.
     Held,
 }
 
@@ -135,13 +138,20 @@ fn plan(entries: u32, git_ok: bool, wants_git: bool) -> Plan {
 /// saved `decision` trusts it and its print covers what the worktree runs now, or when there is
 /// none and nothing in it would run a program, as opening it in a tab would allow
 /// (`trust::allows`); otherwise libgit2 does, up to `NO_GIT_COUNT_INDEX` entries. One that
-/// can't be opened counts as clean. One whose folder, or a file libgit2 would follow in opening
-/// it, is on another network place than `home` (the work tree it is listed from) is never
-/// opened and is NotCounted, as the load leaves it.
+/// libgit2 can't open counts as clean, and one whose folder holds no repository for now is
+/// Held (counted by a later recount). One whose folder, or a file libgit2 would follow in
+/// opening it, is on another network place than `home` (the work tree it is listed from) is
+/// never opened and is NotCounted, as the load leaves it.
 pub fn count_worktree(path: &Path, home: &Path, decision: Option<&SavedTrust>, timeout: Duration) -> WorktreeCount {
     let done = |read, changes, slow| WorktreeCount { path: path.to_path_buf(), read, changes, slow };
-    if !openable(path, home) {
+    if !crate::net_path::may_follow(path, home) {
         return done(ChangesRead::NotCounted, ChangeCounts::default(), None);
+    }
+    match crate::git_file::other_repo(path, home) {
+        crate::git_file::Found::Repo(_) => {}
+        crate::git_file::Found::Refused(_) => return done(ChangesRead::NotCounted, ChangeCounts::default(), None),
+        // No repository there for now (being made again, say): asked for again.
+        crate::git_file::Found::None => return done(ChangesRead::Held, ChangeCounts::default(), None),
     }
     let Some(repo) = Repository::open(path).ok() else { return done(ChangesRead::Counted, ChangeCounts::default(), None) };
     let entries = index_entries(&repo.path().join("index")).unwrap_or(0);

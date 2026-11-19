@@ -34,6 +34,7 @@ pub(super) fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, h
         incoming: None,
         unchecked: None,
         open_step: None,
+        remember: false,
     }));
     st
 }

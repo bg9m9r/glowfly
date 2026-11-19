@@ -104,3 +104,40 @@ fn old_files_load_without_times_or_sources() {
     let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
     assert_eq!((back.repo_trust_times, back.repo_trust_from), (s.repo_trust_times, s.repo_trust_from));
 }
+
+#[test]
+fn remembered_places_live_and_end_with_the_trusted_decision() {
+    let (repo, tree) = (PathBuf::from("/work/app"), PathBuf::from("/work/app-tree"));
+    let places = |s: &Settings, p: &PathBuf| s.remembered_places(p);
+    let (a, b) = ("//nas/team/hooks".to_owned(), "//nas/team/ca.pem".to_owned());
+    let mut s = Settings::default();
+    // Nothing is kept without a Trusted decision.
+    s.remember_places(&repo, std::slice::from_ref(&a));
+    assert!(places(&s, &repo).is_empty() && s.repo_trust_places.is_empty());
+    s.set_trust(&repo, Some(SavedTrust { trust: RepoTrust::NotTrusted, print: None }));
+    s.remember_places(&repo, std::slice::from_ref(&a));
+    assert!(s.repo_trust_places.is_empty());
+
+    s.set_trust(&repo, Some(SavedTrust::trusted(None)));
+    s.remember_places(&repo, std::slice::from_ref(&a));
+    s.remember_places(&repo, &[b.clone(), a.clone()]);
+    assert_eq!(places(&s, &repo), [b.clone(), a.clone()], "each once, sorted");
+    assert!(places(&s, &tree).is_empty(), "another repository has its own");
+    // Trusting again (a new print) keeps them; they survive a save and load.
+    s.set_trust(&repo, Some(SavedTrust::trusted(None)));
+    assert_eq!(places(&s, &repo).len(), 2);
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    assert_eq!(back.repo_trust_places, s.repo_trust_places);
+
+    // Don't trust, and removing the decision, each end them.
+    s.set_trust(&repo, Some(SavedTrust { trust: RepoTrust::NotTrusted, print: None }));
+    assert!(s.repo_trust_places.is_empty());
+    s.set_trust(&repo, Some(SavedTrust::trusted(None)));
+    assert!(places(&s, &repo).is_empty(), "trusted afresh: nothing remembered");
+    s.remember_places(&repo, std::slice::from_ref(&a));
+    s.set_trust(&tree, Some(SavedTrust::trusted(None)));
+    s.stamp_trust(&tree, Some(1), Some(&repo));
+    s.remember_places(&tree, std::slice::from_ref(&b));
+    assert_eq!(s.revoke_trust(&repo).len(), 2);
+    assert!(s.repo_trust_places.is_empty(), "revoking clears its own and its heirs'");
+}

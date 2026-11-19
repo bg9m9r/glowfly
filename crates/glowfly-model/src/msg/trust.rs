@@ -32,6 +32,8 @@ pub enum TrustMsg {
     FoldersChecked(Vec<crate::msg::FolderCheck>),
     /// The open prompt's Show all or Show less on the cut step row at this index.
     ToggleStep(usize),
+    /// The open prompt's "Don't ask again for these places in this repository" was set so.
+    RememberPlaces(bool),
 }
 
 /// A checked effect that didn't start (`TrustMsg::Stale`).
@@ -71,7 +73,8 @@ impl TrustMsg {
             | Self::Revoke { .. }
             | Self::ForgetMissing
             | Self::FoldersChecked(_)
-            | Self::ToggleStep(_) => None,
+            | Self::ToggleStep(_)
+            | Self::RememberPlaces(_) => None,
         }
     }
 }
