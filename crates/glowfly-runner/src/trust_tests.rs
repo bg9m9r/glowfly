@@ -241,6 +241,54 @@ fn a_status_read_that_fails_its_check_reads_without_git() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `checked` with the tests' stand-ins, failing as the runner does (`guard::Recovery`), without
+/// `execute_checked`'s refusal of the network: these effects must never get past the check.
+fn checked_here(c: TrustCheck, effect: Effect) -> Option<Msg> {
+    let graph_cache = glowfly_core::repo::GraphCache::default();
+    let cx = Cx { cancelled: &|| false, graph_cache: &graph_cache, stop: None, gate: None, send: &|_| {}, seams: crate::testing::SEAMS };
+    let fail = crate::guard::Recovery::of(&effect, effect.name());
+    checked(c, effect, |text| fail.failed(text), &cx)
+}
+
+#[test]
+fn a_service_call_or_size_check_in_a_repository_not_trusted_asks_none_of_its_helpers() {
+    use glowfly_core::forge::{Provider, Target};
+    use glowfly_model::effect::partial::SizeService;
+    use glowfly_model::effect::{ForgeCall, ForgeResult, NetworkEffect};
+    use glowfly_model::msg::{ForgeMsg, PartialMsg};
+    let dir = repo("service");
+    glowfly_core::testkit::git(&dir, &["config", "credential.helper", "!echo ran >ran.txt"]);
+    let ran = dir.join("ran.txt");
+    let target =
+        || Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+    let sealed = TrustCheck { sealed: Sealed::Read, ..check(&dir, None) };
+    let call = ForgeCall::Refresh { need_default: false, with_issues: false };
+    let forge =
+        Effect::Network(NetworkEffect::Forge { target: target(), cwd: dir.clone(), auth: None, interactive: false, connected: true, call });
+    let unscoped = |m: Option<Msg>| match m {
+        Some(Msg::Scoped { msg, .. }) => Some(*msg),
+        m => m,
+    };
+    match unscoped(checked_here(sealed.clone(), forge)) {
+        Some(Msg::Forge(ForgeMsg::ForgeReplied(r))) => {
+            assert!(matches!(&r.results[..], [ForgeResult::AuthFailed(m)] if m.contains("didn't run git")), "{r:?}");
+        }
+        _ => panic!("the call fails without signing in"),
+    }
+    // The size check measures on disk only, without signing in to the service.
+    let service = Some(SizeService { target: target(), auth: None, connected: true });
+    let url = Some("https://github.com/o/r".to_owned());
+    let size = Effect::Partial(PartialEffect::SizeHistory(HistorySizeRequest { workdir: dir.clone(), id: 3, url, service }));
+    match unscoped(checked_here(sealed, size)) {
+        Some(Msg::Partial(PartialMsg::HistorySized { id: 3, size, .. })) => {
+            assert_eq!(size, glowfly_core::history_size::HistorySize::Unknown);
+        }
+        _ => panic!("the size check ends"),
+    }
+    assert!(!ran.exists(), "the repository's credential helper never ran");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn checking_decided_folders_reports_which_are_there() {
     let present = glowfly_core::paths::temp_dir().join(format!("glowfly-runner-trust-present-{}", std::process::id()));

@@ -22,6 +22,7 @@ use glowfly_core::trust::incoming::Unchecked;
 use glowfly_core::trust::{self, TrustScan};
 use glowfly_model::effect::JobEffect;
 use glowfly_model::effect::LoadEffect;
+use glowfly_model::effect::partial::{HistorySizeRequest, PartialEffect};
 use glowfly_model::effect::{Accepted, Checked, Effect, Sealed, StashEffect, TrustCheck, TrustEffect};
 use glowfly_model::msg::{InheritedRepo, Msg, Stale, TrustMsg};
 use std::collections::HashMap;
@@ -194,9 +195,13 @@ pub(super) fn checked(c: TrustCheck, effect: Effect, fail: impl FnOnce(String) -
     }
 }
 
-/// The read `effect` without git, when it has such a form (a status read by libgit2).
+/// The read `effect` without git, when it has such a form (a status read by libgit2, a history
+/// size measured only on disk, without signing in to the hosting service).
 fn without_git(effect: Effect) -> Option<Effect> {
     match effect {
+        Effect::Partial(PartialEffect::SizeHistory(r)) => {
+            Some(Effect::Partial(PartialEffect::SizeHistory(HistorySizeRequest { service: None, ..r })))
+        }
         Effect::Load(LoadEffect::Status { workdir, generation, submodules, open, paths, .. }) => {
             Some(Effect::Load(LoadEffect::Status { workdir, generation, submodules, open, git_status: false, paths }))
         }
