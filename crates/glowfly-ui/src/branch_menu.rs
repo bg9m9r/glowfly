@@ -96,18 +96,19 @@ pub fn local_branch_menu(
     if tracked.is_some() || !b.is_head {
         separator(ui);
     }
-    if let Some(tr) = tracked {
-        force_push_item(ui, t, b, &tr.display(), snap, msgs);
+    if tracked.is_some() {
+        force_push_item(ui, t, b, snap, msgs);
     }
     if !b.is_head {
         delete_items(ui, t, b, snap, msgs);
     }
 }
 
-/// Force push with lease to `upstream`, asking first; refused (with the reason on hover) for
-/// the remote's default branch and Git Flow's bases.
-fn force_push_item(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, upstream: &str, snap: &Snapshot, msgs: &mut Vec<Msg>) {
-    let label = named(t.tr("branch.menu.force_push"), &[("upstream", upstream)]);
+/// Force push with lease to where it goes (a plain push's destination, else the upstream),
+/// asking first; refused (with the reason on hover) for the destination's default branch, Git
+/// Flow's bases, and a push git refuses.
+fn force_push_item(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, msgs: &mut Vec<Msg>) {
+    let label = named(t.tr("branch.menu.force_push"), &[("upstream", &branch_push::force_label(t, snap, b))]);
     match branch_push::force_confirm(t, snap, b) {
         Ok(ask) => menu_row(msgs, ui, item_named(label).state(ItemState::danger_unless(None)), ask),
         Err(why) => {

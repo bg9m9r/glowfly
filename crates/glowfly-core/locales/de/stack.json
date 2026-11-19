@@ -1,4 +1,5 @@
 {
+  "stack.blocked.layer_dest": "Ein einfacher Push schickt {branch} nach {dest}, was kein Branch auf einem Remote dieses Repositorys ist, daher kann Stapel pushen ihn nicht pushen. Pushe {branch} einzeln oder ändere, wohin er gepusht wird.",
   "stack.blocked.needs_restack": "{branch} muss zuerst auf {lower} neu gestapelt werden.",
   "stack.blocked.prs_open": "Jeder Branch im Stapel hat schon einen offenen {noun}.",
   "stack.blocked.pushed": "Alle Branches im Stapel sind schon gepusht.",

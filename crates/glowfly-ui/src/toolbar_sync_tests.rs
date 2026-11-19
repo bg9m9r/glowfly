@@ -8,8 +8,10 @@ use super::tests::{settle, tracking};
 use crate::snapshot_check::CheckSnapshot;
 use crate::snapshot_tests::{harness, remove_fixture};
 use egui_kittest::kittest::Queryable;
+use glowfly_core::repo::PushRefusal;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::msg::{JobMsg, Msg};
+use glowfly_model::state::toolbar_tips::tests::push_to;
 
 const UPSTREAM: &str = "Add app skeleton";
 
@@ -97,6 +99,23 @@ fn the_picker_names_counts_it_has_no_room_to_show() {
     let mut h = harness(st, true);
     h.run();
     assert!(h.query_by_label("Branch: main, 12 ahead, 13 behind").is_some());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+#[test]
+fn force_push_says_why_when_git_refuses_the_plain_push() {
+    let (mut st, dir) = tracking(ThemeChoice::Dark, "toolbar-sync-force-refused", UPSTREAM, 2, 0);
+    let t = glowfly_core::i18n::Lang::En;
+    push_to(st.snap.as_mut().unwrap(), "origin", Err(PushRefusal::Nothing), None, (0, 0));
+    let why = glowfly_model::state::branches::push::head_force_blocked(t, st.snap.as_ref().unwrap()).expect("refused");
+    let mut h = harness(st, true);
+    h.run();
+    h.get_by_label("More push actions").click();
+    settle(&mut h);
+    let item = h.get_by_label("Force push (with lease)…");
+    assert!(item.is_disabled());
+    assert_eq!(item.description().as_deref(), Some(why.as_str()));
     drop(h);
     remove_fixture(&dir);
 }

@@ -101,6 +101,7 @@ mod files_tests;
 mod files_undo_tests;
 mod fold_key_tests;
 mod fold_tests;
+mod force_push_fork_tests;
 mod force_push_tests;
 mod forge_filter_edit_tests;
 mod forge_filters_account_tests;

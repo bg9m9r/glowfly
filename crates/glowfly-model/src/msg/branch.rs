@@ -82,9 +82,9 @@ pub enum BranchMsg {
         branch: String,
         remote: Option<String>,
     },
-    /// Force push local `branch` to its upstream with lease, as its confirmation said: the
-    /// upstream `dest` on `remote`, expected at `seen` (None: not on the remote). Refused when
-    /// the upstream or its tip changed since (update/branch_push.rs).
+    /// Force push local `branch` with lease where its confirmation said: `dest` on `remote`
+    /// (a full ref; a name without `refs/` is a branch), expected at `seen` (None: not on the
+    /// remote). Refused when that destination or its tip changed since (update/branch_push.rs).
     ForcePush {
         branch: String,
         remote: String,
