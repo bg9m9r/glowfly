@@ -102,6 +102,7 @@ pub fn commit_line_counts(workdir: &Path, oid: Oid) -> Result<FileLineCounts> {
 /// The counts of the working tree's staged and unstaged files. Ignored files are left out.
 pub fn wip_line_counts(workdir: &Path) -> Result<WipLineCounts> {
     let repo = Repository::open(workdir)?;
+    crate::tree_files::check(&repo)?;
     // Staged files by the index's gitattributes, unstaged ones by the working tree's.
     let index = attr_repo(&repo, AttrSource::Index, &[]);
     let mut o = opts();

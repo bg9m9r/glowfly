@@ -9,7 +9,8 @@
 //! The work is bounded for huge repositories: at most [`MAX_NESTED_FILES`] nested files are
 //! read, and the nested files and `info/attributes` together at most [`MAX_BYTES`] bytes. A file
 //! that would pass the byte budget is skipped (its size is read from the object header first),
-//! and the rest are ignored once either cap is reached. The root file is always read.
+//! and the rest are ignored once either cap is reached. The root file is read when it is a
+//! regular file (never through a link, as git reads it) of at most `tree_files::MAX_BYTES` (8 MiB).
 
 use super::{LfsPattern, parse_attributes};
 use git2::{Index, ObjectType, Repository};
@@ -47,9 +48,10 @@ impl PatternSource {
     }
 }
 
-/// The LFS patterns of the root `.gitattributes`; empty without one. Only reads the file.
+/// The LFS patterns of the root `.gitattributes`; empty without one, and for one that is a link,
+/// not a regular file or over `tree_files::MAX_BYTES`. Only reads the file.
 pub fn root_patterns(workdir: &Path) -> Vec<LfsPattern> {
-    std::fs::read(workdir.join(".gitattributes")).map(|b| parse_attributes(&String::from_utf8_lossy(&b))).unwrap_or_default()
+    crate::tree_files::read(&workdir.join(".gitattributes")).map(|b| parse_attributes(&String::from_utf8_lossy(&b))).unwrap_or_default()
 }
 
 /// Every LFS pattern of the repository at `workdir`: the root file's, then the nested files' in

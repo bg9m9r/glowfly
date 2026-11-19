@@ -55,6 +55,12 @@ pub enum Error {
     /// A partial clone hasn't downloaded file contents the read needs (see `partial`).
     #[error("the contents of {} haven't been downloaded from {} yet", .0.path, .0.remote)]
     MissingContent(crate::partial::MissingContent),
+    /// A `.gitattributes` or `.gitignore` in the work tree (named as shown) is a link to a
+    /// network place outside the repository, so the working tree isn't read (`tree_files`).
+    #[error(
+        "{0} is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it."
+    )]
+    LinkedFile(String),
     #[error("{0}")]
     Other(String),
 }

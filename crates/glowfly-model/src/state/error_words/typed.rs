@@ -74,6 +74,7 @@ pub fn read(t: Lang, e: &ReadFailed) -> String {
         R::OpenFailed { path, why } => t.trf("read_errors.open_failed", &[("path", path), ("why", &read(t, why))]),
         R::Panicked { effect, panic } => t.trf("read_errors.panicked", &[("effect", effect), ("panic", panic)]),
         R::MissingContent { path, remote } => t.trf("read_errors.missing_content", &[("path", path), ("remote", remote)]),
+        R::LinkedFile { path } => t.trf("read_errors.linked_file", &[("path", path)]),
         R::DiffChanged => t.tr("read_errors.diff_changed").to_owned(),
         R::FileChanged => t.tr("read_errors.file_changed").to_owned(),
         R::OldFileUnreadable => t.tr("read_errors.old_file_unreadable").to_owned(),

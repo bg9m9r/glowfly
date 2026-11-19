@@ -76,6 +76,7 @@ fn plan_undo(repo: &Repository, listed: &[WorktreeInfo], path: &Path, created: &
     if let Some(op) = op {
         return Ok(Plan::Refuse(Refusal::Busy(format!("Finish or abort the {op} in {folder} first."))));
     }
+    crate::tree_files::check(&there)?;
     let mut opts = StatusOptions::new();
     // Submodules are left out only where libgit2 is kept from them (`git_file::submodules_unread`).
     let unread = crate::git_file::submodules_unread(&there);

@@ -186,3 +186,21 @@ fn a_worktree_of_a_repository_with_many_includes_is_still_counted() {
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     cleanup(&[&wt, &dir]);
 }
+
+#[test]
+fn a_worktree_whose_gitattributes_is_linked_away_is_not_read() {
+    let dir = two_files("wtcount-linked-away");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let untrusted = SavedTrust { trust: RepoTrust::NotTrusted, print: None };
+    assert_eq!(count_worktree(&wt, Some(&untrusted), COUNT_TIMEOUT).changes, DIRTY);
+    // In the other worktree's own folder; the opened repository's files are plain.
+    if link_to(&net_place().join("attributes"), &wt.join(".gitattributes"), false) {
+        let held = super::super::status::libgit2_status(&Repository::open(&wt).unwrap());
+        assert!(matches!(held, Err(crate::error::Error::LinkedFile(f)) if f == ".gitattributes"));
+        let count = count_worktree(&wt, Some(&untrusted), COUNT_TIMEOUT);
+        assert_eq!((count.read, count.changes), (ChangesRead::NotCounted, ChangeCounts::default()));
+        assert!(super::super::status::libgit2_status(&Repository::open(&dir).unwrap()).is_ok());
+    }
+    cleanup(&[&wt, &dir]);
+}
