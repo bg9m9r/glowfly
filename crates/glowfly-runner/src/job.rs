@@ -1,7 +1,8 @@
 //! The `Execute` impl of `JobEffect`: a job's git commands (`RunGit`), with the expected
 //! revision's check (expect.rs), the undo record, the trust gate's re-run (trust.rs), a stop for
 //! network commands (job_steps.rs), the journal note (journal.rs) and the saved record of an
-//! auto-stash, written once its first command made the stash (auto_stash_made.rs); and undoing or
+//! auto-stash, written once its first command made the stash (auto_stash_made.rs), a failed job's
+//! check through the gate too (none after the gate stopped the job); and undoing or
 //! redoing an action (undo_run.rs). Apply and Unstash of a stash run `--index` unless something is
 //! staged, and once more without it after git refuses to restore the staged state
 //! (`stash_ops::retry_unstaged`).
@@ -61,6 +62,8 @@ impl Execute for JobEffect {
                     (job, check.clone())
                 });
                 // The journal note sees the refs before git runs and after the undo record is read.
+                // The gate stopped a command after others ran: nothing more runs, its check neither.
+                let mut halted = false;
                 Some(journal::around(&cwd, journal, || {
                     let mut starting = auto_stash_made::starting(&cwd, auto_stash.as_deref(), cx.send);
                     // A job with a network command has a stop, and it writes no file (job_steps.rs).
@@ -99,6 +102,7 @@ impl Execute for JobEffect {
                                     };
                                 }
                                 git_ops::Gated::Halted { output, halt, .. } => {
+                                    halted = true;
                                     (false, format!("{output}\n{}", halt.describe(gate.lang)), None, false)
                                 }
                             }
@@ -127,8 +131,10 @@ impl Execute for JobEffect {
                         return Msg::Job(JobMsg::Stopped { output, undo });
                     }
                     let mut output = output;
-                    match on_fail_check.filter(|_| !ok) {
-                        Some(check) if git_ops::check_passes(&cwd, &check, prompts, &mut output) => {
+                    // Through the gate like the job's own commands, as the one after them.
+                    let gate = cx.gate.map(|(g, _)| (g, cmds.len()));
+                    match on_fail_check.filter(|_| !ok && !halted) {
+                        Some(check) if git_ops::check_passes(&cwd, &check, prompts, gate, &mut output) => {
                             Msg::Job(JobMsg::FailCheckPassed { output, undo })
                         }
                         _ => Msg::Job(JobMsg::JobDone { ok, output, undo }),

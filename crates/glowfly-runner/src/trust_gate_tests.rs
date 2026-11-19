@@ -1,5 +1,5 @@
 //! The per-command trust gate: a command after a fetch in the same job is compared with what
-//! that fetch brought, and a job stopped part way says why.
+//! that fetch brought, a job stopped part way says why, and a failed job's check is gated too.
 
 use super::*;
 use glowfly_core::testkit::git;
@@ -157,6 +157,47 @@ fn a_command_after_one_that_changed_the_settings_is_held() {
     let (ok, output) = done(crate::testing::execute_checked(trusted(&work), fx)).expect("the job ends");
     assert!(!ok && output.contains("changed the repository's settings or hooks"), "{output}");
     assert!(!output.contains("$ git status"), "status never ran: {output}");
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+/// `job`, with `check` run after it fails (`on_fail_check`).
+fn job_checking(dir: &Path, cmds: &[&[&str]], check: &[&str]) -> Effect {
+    let mut fx = job(dir, cmds);
+    if let Effect::Job(glowfly_model::effect::JobEffect::RunGit { on_fail_check, .. }) = &mut fx {
+        *on_fail_check = Some(glowfly_core::gitcli::args(check));
+    }
+    fx
+}
+
+#[test]
+fn a_job_the_gate_stopped_part_way_runs_no_check_after_it() {
+    let (work, _bare, _other) = following("check-halted");
+    let fx = job_checking(&work, &[&["config", "core.fsmonitor", "evil"], &["status"]], &["tag", "checked"]);
+    let (ok, output) = done(crate::testing::execute_checked(trusted(&work), fx)).expect("the job ends");
+    assert!(!ok && output.contains("changed the repository's settings or hooks"), "{output}");
+    assert!(!output.contains("$ git tag"), "the check never ran: {output}");
+    assert!(git2::Repository::open(&work).unwrap().find_reference("refs/tags/checked").is_err());
+    let _ = std::fs::remove_dir_all(work.parent().unwrap());
+}
+
+#[test]
+fn a_failed_job_s_check_goes_through_the_gate() {
+    let (work, _bare, _other) = following("check-gated");
+    let c = trusted(&work);
+    let gate = || Gate::new(work.clone(), Vec::new(), c.saved.clone(), None, c.lang);
+    let check = glowfly_core::gitcli::args(&["tag", "checked"]);
+    // Nothing changed since the decision: it runs.
+    let mut output = String::new();
+    assert!(crate::git_ops::check_passes(&work, &check, false, Some((&gate(), 1)), &mut output), "{output}");
+    git(&work, &["tag", "-d", "checked"]);
+    // A command of the job changed the settings: the check is held, and fails saying why.
+    git(&work, &["config", "core.fsmonitor", "evil"]);
+    let moved = gate();
+    moved.moved.set(true);
+    let mut output = String::new();
+    assert!(!crate::git_ops::check_passes(&work, &check, false, Some((&moved, 1)), &mut output));
+    assert!(output.contains("changed the repository's settings or hooks"), "{output}");
+    assert!(git2::Repository::open(&work).unwrap().find_reference("refs/tags/checked").is_err(), "the check never ran");
     let _ = std::fs::remove_dir_all(work.parent().unwrap());
 }
 
