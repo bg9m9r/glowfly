@@ -1,7 +1,7 @@
 //! Config programs that run files from the working tree. A setting such as
 //! `core.fsmonitor=./tools/fsm.sh`, `filter.x.smudge=python tools/smudge.py`,
 //! `credential.helper=!./bin/creds`, `lfs.customtransfer.x.path=./bin/agent`,
-//! `http.sslCAInfo=certs/ca.pem` or `include.path=../shared.cfg` names a file the branch
+//! `http.sslCAInfo=certs/ca.pem`, `http.sslCert=certs/me.pem` or `include.path=../shared.cfg` names a file the branch
 //! carries: a checkout or pull that changes it changes what git runs (or which settings it
 //! reads) without changing the setting's text. `scan` lists the files such settings name, so
 //! the scan follows them as it follows a hooks folder in the working tree (`follow.rs`): the
@@ -50,7 +50,7 @@ pub(super) fn scan(
         }
     };
     for c in config.iter() {
-        if let Some(path) = ca_file(workdir, home.as_deref(), c, unread) {
+        if let Some(path) = tls_file(workdir, home.as_deref(), c, unread) {
             add(path);
             continue;
         }
@@ -79,12 +79,16 @@ pub(super) fn scan(
     out
 }
 
-/// The CA file or folder a TLS setting reads (`http.sslCAInfo`, `http.sslCAPath`): its whole
+/// The file or folder a TLS setting reads: the CA bundle or folder (`http.sslCAInfo`,
+/// `http.sslCAPath`), the client certificate and key (`http.sslCert`, `http.sslKey`) and the
+/// pinned public key's file (`http.pinnedPubkey`, unless it gives `sha256//` hashes). Its whole
 /// value is one path, as git reads it (a `~` expanded), relative to the working tree. One whose
 /// bytes name no file here is named in `unread`, and None.
-fn ca_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand, unread: &mut Vec<String>) -> Option<PathBuf> {
+fn tls_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand, unread: &mut Vec<String>) -> Option<PathBuf> {
+    const FILES: [&str; 5] = [".sslcainfo", ".sslcapath", ".sslcert", ".sslkey", ".pinnedpubkey"];
     let key = c.key.to_ascii_lowercase();
-    let reads = super::is_network_setting(&c.key) && (key.ends_with(".sslcainfo") || key.ends_with(".sslcapath"));
+    let hashes = key.ends_with(".pinnedpubkey") && c.value.starts_with("sha256//");
+    let reads = super::is_network_setting(&c.key) && FILES.iter().any(|f| key.ends_with(f)) && !hashes;
     if !reads || c.value.is_empty() {
         return None;
     }
@@ -119,7 +123,7 @@ fn placed(workdir: &Path, home: Option<&Path>, text: &str) -> Option<PathBuf> {
 
 /// The command a setting runs, as written; None for one that names no command (core.hooksPath,
 /// whose hooks `follow.rs` follows itself; protocol.allow; an include; git-lfs's choice of
-/// transfer agent, a name; a connection setting, whose CA files `ca_file` reads).
+/// transfer agent, a name; a connection setting, whose files `tls_file` reads).
 fn command_text(c: &ConfigCommand) -> Option<&str> {
     let key = c.key.to_ascii_lowercase();
     if key == "core.hookspath" || key.starts_with("protocol.") || key.starts_with("includeif.") || key == "lfs.standalonetransferagent" {
