@@ -231,3 +231,18 @@ fn remote_base_records_the_tracking_branch() {
     );
     cleanup(&[&folder, &work, &bare]);
 }
+
+#[test]
+fn a_worktree_whose_gitignore_is_linked_away_is_not_read() {
+    let dir = scratch_repo("undo-add-wt-linked");
+    commit(&dir, "a.txt", "one\n", "c1");
+    let folder = wt_folder(&dir);
+    let action = add_wt(&dir, &folder);
+    assert!(matches!(plan(&dir, &action, false).unwrap(), Plan::Run(_)));
+    if link_to(&net_place().join("ignore"), &folder.join(".gitignore"), false) {
+        assert!(matches!(plan(&dir, &action, false), Err(crate::error::Error::LinkedFile(f)) if f == ".gitignore"));
+        std::fs::remove_file(folder.join(".gitignore")).unwrap();
+        assert!(matches!(plan(&dir, &action, false).unwrap(), Plan::Run(_)));
+    }
+    cleanup(&[&dir]);
+}

@@ -73,9 +73,20 @@ pub(super) fn count_in_load(list: &mut [WorktreeInfo], home: &Path, limits: &Loa
             wt.changes = ChangeCounts::default();
             continue;
         }
-        let lists = repo.and_then(|r| super::status::libgit2_status(&r).ok());
-        wt.changes = lists.map(|(unstaged, staged)| ChangeCounts::of(&staged, &unstaged)).unwrap_or_default();
-        wt.read = ChangesRead::Counted;
+        let (read, changes) = counted(repo.map(|r| super::status::libgit2_status(&r)));
+        wt.changes = changes;
+        wt.read = read;
+    }
+}
+
+/// What a libgit2 status read (`lists`; None for a worktree that can't be opened) counts as: its
+/// counts, clean when it failed, and not counted when the worktree's own `.gitattributes` or
+/// `.gitignore` held the read (`tree_files::check`).
+fn counted(lists: Option<crate::error::Result<(Vec<super::FileEntry>, Vec<super::FileEntry>)>>) -> (ChangesRead, ChangeCounts) {
+    match lists {
+        Some(Err(crate::error::Error::LinkedFile(_))) => (ChangesRead::NotCounted, ChangeCounts::default()),
+        Some(Ok((unstaged, staged))) => (ChangesRead::Counted, ChangeCounts::of(&staged, &unstaged)),
+        _ => (ChangesRead::Counted, ChangeCounts::default()),
     }
 }
 
@@ -89,7 +100,8 @@ fn openable(path: &Path, home: &Path) -> bool {
 #[derive(Clone, Debug, PartialEq)]
 pub struct WorktreeCount {
     pub path: PathBuf,
-    /// Counted or TooLarge.
+    /// Counted, TooLarge, or NotCounted when the worktree's own `.gitattributes` or `.gitignore`
+    /// held the read.
     pub read: ChangesRead,
     pub changes: ChangeCounts,
     /// Some when git's read was slow enough to suggest a speed-up.
@@ -134,8 +146,8 @@ pub fn count_worktree(path: &Path, decision: Option<&SavedTrust>, timeout: Durat
     // From the config alone: `status::wants_git` would read the whole index to count it.
     let wants_git = repo.config().map(|c| super::status_speed::speedups_of(&c)).is_ok_and(|s| s.fsmonitor || s.untracked_cache);
     let libgit2 = |repo: &Repository| {
-        let lists = super::status::libgit2_status(repo).ok();
-        done(ChangesRead::Counted, lists.map(|(u, s)| ChangeCounts::of(&s, &u)).unwrap_or_default(), None)
+        let (read, changes) = counted(Some(super::status::libgit2_status(repo)));
+        done(read, changes, None)
     };
     match plan(entries, git_ok, wants_git) {
         Plan::TooLarge => done(ChangesRead::TooLarge, ChangeCounts::default(), None),
