@@ -15,10 +15,15 @@ use std::time::Instant;
 
 /// Presses E with `m` and returns the paths of the `OpenFile` messages (all with no line).
 fn press(h: &mut Harness<'static, Keys>, m: Modifiers) -> Vec<String> {
+    press_as(h, m, false)
+}
+
+/// Like `press`, with the event marked as a repeat of a held key when `repeat`.
+fn press_as(h: &mut Harness<'static, Keys>, m: Modifiers, repeat: bool) -> Vec<String> {
     h.state_mut().msgs.clear();
     let input = h.input_mut();
     input.modifiers = m;
-    input.events.push(Event::Key { key: Key::E, physical_key: None, pressed: true, repeat: false, modifiers: m });
+    input.events.push(Event::Key { key: Key::E, physical_key: None, pressed: true, repeat, modifiers: m });
     h.step();
     h.input_mut().modifiers = Modifiers::NONE;
     std::mem::take(&mut h.state_mut().msgs)
@@ -36,6 +41,14 @@ fn the_key_opens_the_shown_file() {
     assert_eq!(press(&mut h, Modifiers::COMMAND | Modifiers::SHIFT), ["f.txt"]);
     assert!(press(&mut h, Modifiers::NONE).is_empty(), "E alone folds, it opens nothing");
     assert!(press(&mut h, Modifiers::COMMAND).is_empty(), "without Shift it is another key");
+}
+
+#[test]
+fn a_held_key_opens_the_editor_once() {
+    let mut h = harness(with_diff(), false);
+    let chord = Modifiers::COMMAND | Modifiers::SHIFT;
+    assert_eq!(press_as(&mut h, chord, false), ["f.txt"]);
+    assert!(press_as(&mut h, chord, true).is_empty(), "a repeat starts no second editor");
 }
 
 #[test]
