@@ -183,15 +183,31 @@ pub(super) fn open_items(
     tool: Option<ToolItem>,
 ) {
     menu_item_if(msgs, ui, t.tr("files.menu.open_default"), missing, Msg::Files(FilesMsg::OpenWorkingFile(path.to_owned())));
-    let editor = Msg::Tools(ToolsMsg::OpenFile { path: path.to_owned(), line: None });
-    match missing {
-        Some(_) => menu_item_if(msgs, ui, open_in_editor(t), missing, editor),
-        None => menu_item_setup(msgs, ui, t, open_in_editor(t), editor_setup, editor),
-    }
+    editor_item(ui, t, msgs, path, missing, editor_setup, None);
     if let Some(item) = tool {
         tool_item(ui, t, msgs, item);
     }
     menu_item_if(msgs, ui, show_in_folder(t), missing, Msg::Files(FilesMsg::ShowWorkingFile(path.to_owned())));
+}
+
+/// Open in external editor for the working file `path`, at `line` when the menu knows it (None:
+/// the line of the view showing the file, else 1): disabled with `missing` as the reason, else
+/// with the "Set up…" note `setup` while no editor is set. Shared by the file menus and the
+/// diff's header and row menus.
+pub(super) fn editor_item(
+    ui: &mut egui::Ui,
+    t: Lang,
+    msgs: &mut Vec<Msg>,
+    path: &str,
+    missing: Option<&str>,
+    setup: Option<&'static str>,
+    line: Option<u32>,
+) {
+    let editor = Msg::Tools(ToolsMsg::OpenFile { path: path.to_owned(), line });
+    match missing {
+        Some(_) => menu_item_if(msgs, ui, open_in_editor(t), missing, editor),
+        None => menu_item_setup(msgs, ui, t, open_in_editor(t), setup, editor),
+    }
 }
 
 /// Opens the New file dialog prefilled with `path`'s folder. Always enabled: a sibling never

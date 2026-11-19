@@ -114,6 +114,9 @@ fn leading_tools(ui: &mut Ui, m: &HeaderModel, w: &Widths, plan: &fit::Plan, key
 }
 
 #[cfg(test)]
+#[path = "editor_tests.rs"]
+mod editor_tests;
+#[cfg(test)]
 #[path = "rename_tests.rs"]
 mod rename_tests;
 #[cfg(test)]

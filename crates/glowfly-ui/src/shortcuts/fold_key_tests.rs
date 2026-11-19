@@ -11,13 +11,13 @@ use glowfly_model::state::conflict::ConflictView;
 use glowfly_model::state::{AppState, Modal};
 use std::time::Instant;
 
-struct Keys {
-    st: AppState,
-    msgs: Vec<Msg>,
+pub(super) struct Keys {
+    pub(super) st: AppState,
+    pub(super) msgs: Vec<Msg>,
     field: Option<(String, bool)>,
 }
 
-fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
+pub(super) fn harness(st: AppState, field: bool) -> Harness<'static, Keys> {
     let keys = Keys { st, msgs: Vec::new(), field: field.then(|| (String::new(), true)) };
     let mut h = crate::snapshot_check::builder().build_state(
         |ctx, k: &mut Keys| {
@@ -55,7 +55,7 @@ fn press(h: &mut Harness<'static, Keys>, m: Modifiers) -> Vec<&'static str> {
         .collect()
 }
 
-fn with_diff() -> AppState {
+pub(super) fn with_diff() -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
     let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), empty.into()));

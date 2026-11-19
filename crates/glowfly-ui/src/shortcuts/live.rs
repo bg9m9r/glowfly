@@ -110,7 +110,7 @@ pub(super) fn allowed(id: BindingId, shell: bool, l: &Live) -> bool {
         }
         I::Undo | I::Redo => !covered && !l.sheet && !l.typing,
         I::NextChange | I::PrevChange => !covered && !l.sheet && !l.typing && l.stepping,
-        I::OpenFold | I::CloseFold => !covered && !l.sheet && !l.typing && l.diff,
+        I::OpenFold | I::CloseFold | I::OpenInEditor => !covered && !l.sheet && !l.typing && l.diff,
         I::BlameNextRun | I::BlamePrevRun => !covered && !l.sheet && !l.typing && l.blame,
         I::SelectAllCommits | I::SelectFocusedCommit => !covered && !l.sheet && !l.typing && l.graph && !l.terminal,
         // The pane keys work from a text field too. A focused terminal keeps them on every

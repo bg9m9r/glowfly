@@ -91,6 +91,7 @@ mod diff_preview_tests;
 mod diff_reveal_tests;
 mod diff_svg_tests;
 mod diff_tests;
+mod editor_line_tests;
 mod failure_headline_tests;
 mod fetch_time_tests;
 mod file_list_keys_tests;

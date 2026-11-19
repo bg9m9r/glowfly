@@ -16,6 +16,8 @@ mod sheet_menus;
 #[cfg(test)]
 mod command_keys_tests;
 #[cfg(test)]
+mod editor_key_tests;
+#[cfg(test)]
 mod fold_key_tests;
 #[cfg(test)]
 mod history_tests;

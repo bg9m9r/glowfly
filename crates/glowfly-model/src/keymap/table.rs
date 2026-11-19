@@ -271,6 +271,7 @@ pub const BINDINGS: &[Binding] = &[
     b(I::RevertHunk, G::Diff, "Revert the hunk or the selected lines", &[C::plain(K::Letter('R'))], W::CommitDiff),
     b(I::OpenFold, G::Diff, "Show the folded unchanged lines at or below the top", &[C::plain(K::Letter('E'))], W::Diff),
     b(I::CloseFold, G::Diff, "Fold back the opened unchanged lines at the top", &[C::shift(K::Letter('E'))], W::Diff),
+    b(I::OpenInEditor, G::Diff, "Open the file in the external editor", &[C::cmd_shift(K::Letter('E'))], W::Diff),
     b(I::ConflictTakeOurs, G::Diff, "Take ours for the current conflict", &[C::plain(K::Letter('O'))], W::Conflict),
     b(I::ConflictTakeTheirs, G::Diff, "Take theirs for the current conflict", &[C::plain(K::Letter('T'))], W::Conflict),
     b(I::ConflictTakeBoth, G::Diff, "Take both for the current conflict, ours first", &[C::plain(K::Letter('B'))], W::Conflict),
