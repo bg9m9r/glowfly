@@ -29,6 +29,7 @@ mod conflict_count;
 pub mod conflict_files;
 mod conflict_picks;
 mod conflict_trivial;
+mod copy_message;
 mod custom_commands;
 mod custom_commands_run;
 mod dashboard;

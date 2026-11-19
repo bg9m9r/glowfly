@@ -3,7 +3,7 @@
 
 use super::layout::{Panel, shown};
 use super::menu_bar::{
-    ISSUES, ShaCopy, WEBSITE, copy_branch, copy_message, copy_sha, shas_text, tab_binding, tab_chord, tab_name, zoom_blocked,
+    ISSUES, ShaCopy, WEBSITE, copy_branch, copy_message_target, copy_sha, shas_text, tab_binding, tab_chord, tab_name, zoom_blocked,
 };
 use super::menu_model::{Entry, Item, Mark, MenuAction, Role, Submenu, SubmenuKind};
 use super::repo_lists::{clear_recent_msg, favorites, has_entries, recent_rows};
@@ -128,13 +128,15 @@ pub(super) fn edit(st: &AppState) -> Vec<Entry> {
         }
         Err(why) => send(keys, t.tr("menu.edit.copy_sha"), None, Some(why), Msg::Copy(String::new())),
     });
-    for (label, text) in [(t.tr("menu.edit.copy_message"), copy_message(st)), (t.tr("menu.edit.copy_branch"), copy_branch(st))] {
-        let (text, why) = match text {
-            Ok(text) => (text, None),
-            Err(why) => (String::new(), Some(why)),
-        };
-        out.push(send(keys, label, None, why, Msg::Copy(text)));
-    }
+    // The whole message is read from the repository, as the commit menu's Copy > Message does.
+    out.push(match copy_message_target(st) {
+        Ok(oid) => send(keys, t.tr("menu.edit.copy_message"), None, None, Msg::Repo(RepoMsg::CopyMessage(oid))),
+        Err(why) => send(keys, t.tr("menu.edit.copy_message"), None, Some(why), Msg::Copy(String::new())),
+    });
+    out.push(match copy_branch(st) {
+        Ok(name) => send(keys, t.tr("menu.edit.copy_branch"), None, None, Msg::Copy(name)),
+        Err(why) => send(keys, t.tr("menu.edit.copy_branch"), None, Some(why), Msg::Copy(String::new())),
+    });
     out
 }
 

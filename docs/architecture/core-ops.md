@@ -63,9 +63,10 @@ source file, update its line here.
 - `lfs/version.rs`: git-lfs's version: parsed from `git lfs version`'s output, its numbers, and `MIN`, the oldest git-lfs Glowfly works with (`too_old`).
 - `lfs/track.rs`: what a file row can track in Git LFS, and the `.gitattributes` pattern each choice writes.
 - `gitflow/base.rs`: the roles of the configured production and development branches, for warning before one of them is deleted.
-- `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.
+- `gitflow/groups.rs`: the local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section (releases and hotfixes in version order).
 - `gitflow/resume.rs`: continuing a Finish that stopped at a merge conflict: the steps still to run once the merge is committed, whether a snapshot shows that commit (or shows the remaining steps can no longer apply), and the checks before the remaining steps run.
 - `gitflow/start.rs`: starting a feature, release or hotfix branch: the checks and the command line.
+- `gitflow/version_order.rs`: the order of release and hotfix branches: digit runs compared as numbers without parsing them, a leading `v` ignored, a suffixed version before the bare one, names without digits first; used by the branch groups and the Finish list.
 
 ## Interactive rebase (`rebase/`)
 

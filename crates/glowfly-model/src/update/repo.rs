@@ -85,6 +85,8 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         RepoMsg::WantSignature(oid) => super::signatures::want(st, oid, fx),
         RepoMsg::CheckSignatureAgain(oid) => super::signatures::again(st, oid, fx),
         RepoMsg::SignatureChecked { oid, generation, result } => super::signatures::checked(st, oid, generation, result),
+        RepoMsg::CopyMessage(oid) => super::copy_message::read(st, oid, fx),
+        RepoMsg::MessageRead(result) => super::copy_message::copied(st, result, now, fx),
     }
 }
 

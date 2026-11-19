@@ -30,9 +30,11 @@ pub fn short_name<'a>(s: &GitFlowSettings, kind: FlowKind, branch: &'a str) -> &
     branch.strip_prefix(s.prefix(kind)).unwrap_or(branch)
 }
 
-/// Every local flow branch with its kind: HEAD's first, then snapshot order.
+/// Every local flow branch with its kind: HEAD's first, then snapshot order, with the releases
+/// and the hotfixes each in version order within the places their kind holds.
 pub fn flow_branches<'b>(s: &GitFlowSettings, b: &Branches<'b>) -> Vec<(FlowKind, &'b str)> {
     let mut out: Vec<(FlowKind, &'b str)> = b.locals.iter().filter_map(|l| flow_kind(s, l).map(|k| (k, *l))).collect();
+    super::version_order::order_versioned(s, &mut out);
     if let Some(i) = out.iter().position(|(_, l)| Some(*l) == b.head) {
         let head = out.remove(i);
         out.insert(0, head);

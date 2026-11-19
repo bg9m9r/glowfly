@@ -64,6 +64,7 @@ mod conflict_picks_tests;
 mod conflict_tests;
 mod conflict_trivial_tests;
 mod conflict_undo_tests;
+mod copy_message_tests;
 mod current_hunk_tests;
 mod custom_commands_palette_tests;
 mod custom_commands_run_tests;

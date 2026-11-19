@@ -120,7 +120,7 @@ fn find_commits_closes_the_diff_and_focuses_search() {
 fn edit_menu_copy_items_follow_the_selection() {
     use glowfly_core::i18n::Lang;
     use glowfly_model::state::Selection;
-    use glowfly_model::state::menu_bar::{ShaCopy, copy_branch, copy_message, copy_sha};
+    use glowfly_model::state::menu_bar::{ShaCopy, copy_branch, copy_message_target, copy_sha};
     const NO_COMMIT: &str = "Select a commit in the graph first";
     const NO_BRANCH: &str = "No branch is checked out";
     use glowfly_core::repo::{self, LoadOptions};
@@ -128,25 +128,51 @@ fn edit_menu_copy_items_follow_the_selection() {
 
     let mut st = state();
     assert_eq!(copy_sha(&st), Err(NO_COMMIT));
-    assert_eq!(copy_message(&st), Err(NO_COMMIT));
+    assert_eq!(copy_message_target(&st), Err(NO_COMMIT));
     assert_eq!(copy_branch(&st), Err(NO_BRANCH), "no repository open");
     st.settings.language = "es".into();
     assert_eq!(copy_sha(&st), Err(Lang::Es.tr("menu.edit.no_commit")));
     assert_ne!(copy_sha(&st), Err(NO_COMMIT));
     st.settings.language = "system".into();
 
+    const MULTI_LINE: &str = "Add the second line
+
+Why:
+- one
+- two
+";
     let dir = scratch_repo("menu-copy");
+    std::fs::write(dir.join(".git").join("COPY_MSG"), MULTI_LINE).unwrap();
+    crate::flows::git(&dir, &["commit", "-q", "--allow-empty", "-F", ".git/COPY_MSG"]);
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());
     st.session.selection = Selection::Wip;
     assert_eq!(copy_sha(&st), Err(NO_COMMIT));
-    assert_eq!(copy_message(&st), Err(NO_COMMIT));
+    assert_eq!(copy_message_target(&st), Err(NO_COMMIT));
     assert_eq!(copy_branch(&st), Ok("main".to_owned()));
 
     let head = st.snap.as_ref().and_then(|s| s.head_oid).unwrap();
     st.session.selection = Selection::Commit(head);
     assert_eq!(copy_sha(&st), Ok(ShaCopy::One(head.to_string())));
     assert_eq!(copy_sha(&st).unwrap().label(Lang::En), "Copy commit SHA");
-    assert_eq!(copy_message(&st), Ok("first".to_owned()));
+    assert_eq!(copy_message_target(&st), Ok(head));
+    let item = |st: &AppState| {
+        let edit = glowfly_model::state::menu_model::entries(st, &st.view, glowfly_model::state::menu_keys::TopMenu::Edit);
+        edit.into_iter()
+            .find_map(|e| match e {
+                glowfly_model::state::menu_model::Entry::Item(i) if i.label == "Copy commit message" => Some(i),
+                _ => None,
+            })
+            .expect("the Edit menu's Copy commit message")
+    };
+    let item_head = item(&st);
+    assert!(item_head.blocked.is_none());
+    let glowfly_model::state::menu_model::MenuAction::Send(msg) = item_head.action else { panic!("sends a message") };
+    assert!(matches!(&*msg, Msg::Repo(RepoMsg::CopyMessage(o)) if *o == head), "the whole message is read");
+    let fx = update(&mut st, *msg, Instant::now());
+    let copied = crate::flows::helpers::finish_keeping(&mut st, fx)
+        .into_iter()
+        .find_map(|e| if let Effect::Ui(UiEffect::CopyText(t)) = e { Some(t) } else { None });
+    assert_eq!(copied.as_deref(), Some(MULTI_LINE.trim_end()), "the whole message, not the first line");
 
     let other = git2::Oid::from_str("1234567890123456789012345678901234567890").unwrap();
     st.session.selection = Selection::Commits(MultiSelection {
@@ -163,7 +189,7 @@ fn edit_menu_copy_items_follow_the_selection() {
     });
     assert_eq!(copy_sha(&st), Ok(ShaCopy::Many(2)));
     assert_eq!(copy_sha(&st).unwrap().label(Lang::En), "Copy 2 commit SHAs");
-    assert_eq!(copy_message(&st), Err(NO_COMMIT), "one commit only");
+    assert_eq!(copy_message_target(&st), Err(NO_COMMIT), "one commit only");
 
     crate::flows::git(&dir, &["checkout", "-q", "--detach"]);
     st.snap = Some(repo::load(&dir, &LoadOptions::all(100)).unwrap());

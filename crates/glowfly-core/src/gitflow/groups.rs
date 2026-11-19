@@ -1,5 +1,6 @@
 //! The local flow branches by kind, for the Git Flow panel and the left panel's GIT FLOW section.
 
+use super::version_order::version_key;
 use super::{Branches, FlowKind, GitFlowSettings, flow_kind, short_name};
 
 /// One local flow branch.
@@ -31,15 +32,21 @@ impl FlowGroup<'_> {
 }
 
 /// Feature, release and hotfix groups, always all three in `FlowKind::ALL` order (possibly
-/// empty). Each group's branches keep snapshot (`b.locals`) order. A branch's kind comes from
-/// `flow_kind` (longest prefix wins; production, development and prefix-only names are left
-/// out), so the panel, the section and Finish agree.
+/// empty). The feature group keeps snapshot (`b.locals`) order; the release and hotfix groups
+/// are in version order (digit runs as numbers, a leading `v` ignored, a suffixed version before
+/// the bare one, names without digits first in snapshot order, equal names in snapshot order;
+/// see `version_order.rs`). A branch's kind comes from `flow_kind` (longest prefix wins;
+/// production, development and prefix-only names are left out), so the panel, the section and
+/// Finish agree.
 pub fn grouped<'b>(s: &GitFlowSettings, b: &Branches<'b>) -> Vec<FlowGroup<'b>> {
     let mut groups: Vec<FlowGroup<'b>> = FlowKind::ALL.into_iter().map(|kind| FlowGroup { kind, branches: Vec::new() }).collect();
     for name in b.locals.iter().copied() {
         let Some(kind) = flow_kind(s, name) else { continue };
         let Some(g) = groups.iter_mut().find(|g| g.kind == kind) else { continue };
         g.branches.push(FlowBranch { name, short: short_name(s, kind, name), head: Some(name) == b.head });
+    }
+    for g in groups.iter_mut().filter(|g| g.kind.versioned()) {
+        g.branches.sort_by_cached_key(|b| version_key(b.short));
     }
     groups
 }
@@ -116,6 +123,64 @@ mod tests {
         assert_eq!(shorts(&groups)[0], (FlowKind::Feature, vec!["zeta", "alpha"]));
         let heads: Vec<bool> = groups[0].branches.iter().map(|b| b.head).collect();
         assert_eq!(heads, [false, true]);
+    }
+
+    fn release_shorts<'a>(groups: &'a [FlowGroup]) -> Vec<&'a str> {
+        groups[1].branches.iter().map(|b| b.short).collect()
+    }
+
+    #[test]
+    fn releases_and_hotfixes_in_version_order() {
+        let locals = ["release/1.10.1", "release/1.10.0", "release/1.9.0", "hotfix/1.10.0", "hotfix/1.9.1", "feature/10", "feature/9"];
+        let groups = grouped(&defaults(), &branches(&locals, None));
+        assert_eq!(
+            shorts(&groups),
+            [
+                (FlowKind::Feature, vec!["10", "9"]),
+                (FlowKind::Release, vec!["1.9.0", "1.10.0", "1.10.1"]),
+                (FlowKind::Hotfix, vec!["1.9.1", "1.10.0"])
+            ]
+        );
+    }
+
+    #[test]
+    fn a_v_prefix_keeps_the_version_order() {
+        let locals = ["release/v1.10.0", "release/1.9.0", "release/v1.2.0", "release/1.2.0"];
+        let groups = grouped(&defaults(), &branches(&locals, None));
+        assert_eq!(release_shorts(&groups), ["v1.2.0", "1.2.0", "1.9.0", "v1.10.0"]);
+    }
+
+    #[test]
+    fn a_suffixed_version_comes_before_the_bare_one() {
+        let locals = ["release/1.2.0", "release/1.2.0-rc.10", "release/1.2.1", "release/1.2.0-rc.2"];
+        let groups = grouped(&defaults(), &branches(&locals, None));
+        assert_eq!(release_shorts(&groups), ["1.2.0-rc.2", "1.2.0-rc.10", "1.2.0", "1.2.1"]);
+    }
+
+    #[test]
+    fn names_without_digits_come_first_in_snapshot_order() {
+        let locals = ["release/next", "release/1.0.0", "release/candidate", "release/0.9.0"];
+        let groups = grouped(&defaults(), &branches(&locals, None));
+        assert_eq!(release_shorts(&groups), ["next", "candidate", "0.9.0", "1.0.0"]);
+    }
+
+    #[test]
+    fn very_long_digit_runs_sort_without_overflow() {
+        let big = format!("release/1{}", "0".repeat(40));
+        let nines = format!("release/{}", "9".repeat(40));
+        let locals = [big.as_str(), nines.as_str(), "release/18446744073709551616"];
+        let groups = grouped(&defaults(), &branches(&locals, None));
+        assert_eq!(release_shorts(&groups), ["18446744073709551616", &nines["release/".len()..], &big["release/".len()..]]);
+    }
+
+    #[test]
+    fn the_head_mark_follows_its_branch() {
+        let locals = ["release/1.10.0", "release/1.9.0"];
+        let groups = grouped(&defaults(), &branches(&locals, Some("release/1.10.0")));
+        assert_eq!(release_shorts(&groups), ["1.9.0", "1.10.0"]);
+        let heads: Vec<bool> = groups[1].branches.iter().map(|b| b.head).collect();
+        assert_eq!(heads, [false, true]);
+        assert_eq!(groups[1].branches[0].name, "release/1.9.0");
     }
 
     #[test]

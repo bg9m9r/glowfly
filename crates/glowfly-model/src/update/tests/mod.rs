@@ -13,6 +13,7 @@ pub(super) mod branch_checkout_tests;
 pub(super) mod commit_box_tests;
 pub(super) mod conflict_picks_tests;
 pub(super) mod conflict_trivial_tests;
+pub(super) mod copy_message_tests;
 pub(super) mod credentials_tests;
 pub(super) mod diff_gaps_tests;
 pub(super) mod diff_lines_tests;

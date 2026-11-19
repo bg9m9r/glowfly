@@ -69,7 +69,7 @@ source file, update its line here. Features that span every layer are in
 - `sparse.rs`: `SparseEffect`: the Sparse Checkout page's state and `git sparse-checkout`.
 - `conflict.rs`: `ConflictEffect`: loading a conflicted file and counting the markers in working files.
 - `files.rs`: `FilesEffect`: restoring a file from a commit, creating, renaming, deleting and discarding working-tree files, staging and conflict edits (`LocalOp`) and reverting part of a diff (all on the repository's queue), and listing the tracked files.
-- `commit.rs`: `CommitEffect`: the details panel's reads of one commit, its detail and its signature check.
+- `commit.rs`: `CommitEffect`: reads of one commit: its detail and signature check for the details panel, and (unscoped) its whole message for Copy > Message.
 - `load.rs`: `LoadEffect`: loading the repository, reading its status, and an index change's rows.
 - `diff.rs`: `DiffEffect`: the open diff, finishing its highlighting (with `Runner::run`'s cancel ticket), the unchanged lines between its hunks and a binary diff's sides.
 - `history.rs`: `HistoryEffect`: a file's or folder's history, the path search and the graph's line counts (the last two on `Runner::run`'s workers); and `FileTextRequest`, the File view's read.
@@ -269,6 +269,7 @@ source file, update its line here. Features that span every layer are in
 - `open_anyway.rs`: an open refused for network places its Git data names: the failed open, then the question (the active tab's open only); Open anyway approves those places for that folder and opens it again; Preferences forgets them (tests in `update/tests/open_anyway_tests.rs`).
 - `open_link.rs`: a clicked Markdown link (`Msg::OpenLink`) opened, or first a confirmation naming the real host when its text names another (tests in `update/tests/open_link_tests.rs`).
 - `diff_copy.rs`: Copy hunk as patch: the hunk read again from the repository (`Effect::CopyHunkPatch`) and copied when it is UTF-8 text, else a toast. Tests in `flows/diff_copy_tests.rs`.
+- `copy_message.rs`: Copy > Message (the commit menu's and the Edit menu's): the commit's whole message read from the repository (`CommitEffect::CopyMessage`) and copied, else a toast. Tests in `update/tests/copy_message_tests.rs` and `flows/copy_message_tests.rs`.
 - `terminal/schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
 - `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.

@@ -79,6 +79,11 @@ pub enum RepoMsg {
         generation: u64,
         result: Result<SignatureCheck, ReadFailed>,
     },
+    /// Copy > Message in a commit's menu: commit `oid`'s whole message, read from the repository
+    /// (`CommitEffect::CopyMessage`; update/copy_message.rs).
+    CopyMessage(Oid),
+    /// The message read for Copy > Message, or why the commit couldn't be read.
+    MessageRead(Result<String, ReadFailed>),
     /// Commit `oid`'s per-file line counts (update/line_counts.rs).
     CommitLineCountsLoaded {
         oid: Oid,
@@ -118,6 +123,9 @@ impl RepoMsg {
             | Self::WantSignature(..)
             | Self::CheckSignatureAgain(..)
             | Self::SignatureChecked { .. }
+            | Self::CopyMessage(..)
+            // Never scoped (its effect isn't): the copy lands whichever tab is active.
+            | Self::MessageRead(..)
             // Dropped: parking forgot the pending request, and the return asks again.
             | Self::CommitLineCountsLoaded { .. }
             | Self::WipLineCountsLoaded { .. } => None,

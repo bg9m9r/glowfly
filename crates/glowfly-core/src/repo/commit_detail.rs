@@ -1,5 +1,6 @@
 //! A commit's details for the details panel: its message and people, decoded (commit_text) and
-//! shown as the mailmap has them, and its files against the first parent.
+//! shown as the mailmap has them, and its files against the first parent; and a commit's whole
+//! message alone, for Copy > Message.
 
 use super::CommitDetail;
 use super::diff::{absent_paths, commit_diff, file_entries};
@@ -20,7 +21,7 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let (author, committer) = (map.person(commit_text::author(&c)), map.person(commit_text::committer(&c)));
     Ok(CommitDetail {
         oid,
-        message: commit_text::message(&c).trim_end().to_owned(),
+        message: shown_message(&c),
         author: author.name,
         email: author.email,
         committer: committer.name,
@@ -33,3 +34,20 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
         signature: crate::signature_check::signature_format(&repo, oid),
     })
 }
+
+/// The message as the details panel shows it: decoded, without trailing whitespace.
+fn shown_message(c: &git2::Commit<'_>) -> String {
+    commit_text::message(c).trim_end().to_owned()
+}
+
+/// Commit `oid`'s whole message as the details panel shows it (decoded, no trailing line break),
+/// for Copy > Message.
+pub fn commit_message(workdir: &Path, oid: Oid) -> Result<String> {
+    let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
+    let c = repo.find_commit(oid)?;
+    Ok(shown_message(&c))
+}
+
+#[cfg(test)]
+#[path = "commit_detail_tests.rs"]
+mod tests;
