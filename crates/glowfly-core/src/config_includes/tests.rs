@@ -233,3 +233,26 @@ fn an_include_naming_a_link_that_leads_nowhere_is_a_missing_file() {
     assert!(included(&[dir.join("root.cfg")], &Context::default()).cut_short);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_fifo_is_refused_without_blocking() {
+    use std::os::unix::ffi::OsStrExt;
+    let dir = crate::paths::temp_dir().join(format!("glowfly-test-fifo-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let fifo = dir.join("pipe");
+    let c = std::ffi::CString::new(fifo.as_os_str().as_bytes()).unwrap();
+    // SAFETY: `c` is a valid NUL-terminated path.
+    assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0);
+    std::os::unix::fs::symlink(&fifo, dir.join("link")).unwrap();
+    let started = std::time::Instant::now();
+    assert_eq!(read_file_bounded(&fifo, 1024), None);
+    assert_eq!(read_file_bounded(&dir.join("link"), 1024), None);
+    assert_eq!(read_file_bounded(&dir, 1024), None, "a folder is no file");
+    assert!(started.elapsed() < std::time::Duration::from_secs(2));
+    std::fs::write(dir.join("plain"), "x").unwrap();
+    std::os::unix::fs::symlink(dir.join("plain"), dir.join("plain-link")).unwrap();
+    assert_eq!(read_file_bounded(&dir.join("plain-link"), 1024), Some(b"x".to_vec()));
+    let _ = std::fs::remove_dir_all(&dir);
+}
