@@ -100,6 +100,11 @@ pub enum LogsMsg {
     /// Run a failed run's second fix (`LogsState::alt_fixes`): the panel's and the toast's
     /// second button.
     AltFix(EntryId),
+    /// The confirmation's button of a run's fix that asks first (Delete lock file, Force push
+    /// with lease…, Relax check): takes run `id`'s fixes and the toast offering them, then runs
+    /// the step the confirmation of its fix (`alt`: its second fix) holds (update/logs_runs.rs
+    /// `confirmed`). Cancel never sends it, so both fixes stay.
+    RunFix { id: EntryId, alt: bool },
     /// Copy an activity entry: the row menu's Copy entry and the open row's Copy button. A
     /// routine group's first entry copies the whole group.
     CopyEntry(EntryId),
@@ -135,6 +140,7 @@ impl LogsMsg {
             | Self::RowKey(_)
             | Self::Fix(_)
             | Self::AltFix(_)
+            | Self::RunFix { .. }
             | Self::CopyEntry(_)
             | Self::CopyLog
             | Self::Export

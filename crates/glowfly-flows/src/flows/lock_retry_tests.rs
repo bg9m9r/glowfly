@@ -284,3 +284,29 @@ fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     assert_eq!(last_toast(&st).text, "Write a summary to commit.");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn cancelling_delete_lock_file_leaves_try_again() {
+    let (mut st, dir, lock) = pushing("lr-cancel");
+    let fx = fail(&mut st, &locked_output(&lock));
+    let (entry, _) = check_of(&fx);
+    let workdir = st.workdir().unwrap();
+    let stale = Ok(Found::Stale(PathBuf::from(&lock)));
+    up(&mut st, Msg::Lock(LockMsg::Checked { entry, workdir, lock: lock.clone(), result: stale }));
+    let id = last_toast(&st).id;
+    up(&mut st, Msg::ToastAction(id));
+    assert!(matches!(&st.modal, Some(Modal::ConfirmDanger { title, .. }) if title == "Delete the lock file?"), "it asks first");
+    up(&mut st, Msg::CloseModal);
+    assert!(st.modal.is_none());
+    assert_eq!(last_toast(&st).id, id);
+    assert_eq!(buttons(last_toast(&st)), ["Delete lock file", "Try again", "Details"]);
+    assert!(std::path::Path::new(&lock).exists(), "nothing was deleted");
+
+    // Try again still works from the same toast.
+    let fx = up(&mut st, Msg::ToastAlt(id));
+    assert_eq!(git_cmds(&fx), vec![args(&["push"])]);
+    assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some("Push"));
+    assert!(st.logs.fix(entry).is_none() && st.logs.alt_fix(entry).is_none());
+    assert!(st.toasts.iter().all(|t| t.id != id));
+    let _ = std::fs::remove_dir_all(&dir);
+}
