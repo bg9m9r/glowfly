@@ -23,7 +23,7 @@
   "trust.incoming.title": "¿Confiar en los hooks y scripts entrantes?",
   "trust.known.lfs": "Git LFS",
   "trust.known.lfs.tip": "La configuración estándar de Git LFS: ejecuta el git-lfs instalado en este equipo, no un archivo del repositorio.",
-  "trust.network.note": "Pueden desactivar la comprobación de certificados, enviar el tráfico de Git, credenciales incluidas, a través de otro servidor o indicar un archivo del que Git lee cookies y en el que las escribe.",
+  "trust.network.note": "Pueden desactivar o cambiar la comprobación de certificados, añadir cabeceras a cada petición, enviar el tráfico de Git, credenciales incluidas, a través de otro servidor o a otra dirección, o indicar un archivo del que Git lee cookies y en el que las escribe.",
   "trust.network.title": "Ajustes que cambian cómo se conecta Git",
   "trust.network_forgot": "Se olvidaron las ubicaciones de red permitidas para {name}. Glowfly vuelve a preguntar antes de abrirla.",
   "trust.revoked": "Se revocó la confianza en {name}. Glowfly vuelve a preguntar antes de que Git ejecute su configuración o sus hooks.",
