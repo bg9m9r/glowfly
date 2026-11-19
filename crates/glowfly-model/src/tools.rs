@@ -49,8 +49,9 @@ pub enum MergeEnd {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ToolsMsg {
-    /// From file menus: open this working-tree file (repo-relative) in the editor, at `line`
-    /// (None = 1).
+    /// From file menus: open this working-tree file (repo-relative) in the editor, at `line`.
+    /// `line` None: the line the view showing this file gives (update works it out,
+    /// `state/editor_line.rs`), else 1.
     OpenFile { path: String, line: Option<u32> },
     /// From the palette: open the repository folder in the editor.
     OpenRepo,

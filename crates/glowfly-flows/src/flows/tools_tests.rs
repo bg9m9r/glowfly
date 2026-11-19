@@ -19,7 +19,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-fn run(st: &mut AppState, m: ToolsMsg) -> Vec<Effect> {
+pub(super) fn run(st: &mut AppState, m: ToolsMsg) -> Vec<Effect> {
     update(st, Msg::Tools(m), Instant::now())
 }
 
@@ -33,12 +33,12 @@ fn open(name: &str, editor: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn open_file(path: &str, line: Option<u32>) -> ToolsMsg {
+pub(super) fn open_file(path: &str, line: Option<u32>) -> ToolsMsg {
     ToolsMsg::OpenFile { path: path.into(), line }
 }
 
 /// The launch of the only effect, which must be a Launch of `kind`; also returns its check.
-fn launch(fx: Vec<Effect>, kind: ToolKind) -> (Launch, Option<PathBuf>) {
+pub(super) fn launch(fx: Vec<Effect>, kind: ToolKind) -> (Launch, Option<PathBuf>) {
     match <[Effect; 1]>::try_from(fx) {
         Ok([Effect::Tool(ToolEffect::Launch { kind: k, launch, check, .. })]) if k == kind => (launch, check),
         Ok(other) => panic!("expected one {kind:?} launch, got {other:?}"),

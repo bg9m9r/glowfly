@@ -39,11 +39,11 @@ fn command_ids_are_stable() {
         assert_eq!(BindingId::from_key(id.key()), Some(id));
     }
     // Cherry-pick and Revert came later, then Switch branch and Open dashboard, before the six
-    // conflict keys: the last ids.
+    // conflict keys and Open in external editor: the last ids.
     let later = [I::CherryPick, I::RevertCommit, I::SwitchBranch, I::OpenDashboard];
     assert_eq!(COMMAND_BINDINGS[..FROZEN.len()], *commands);
     assert_eq!(COMMAND_BINDINGS[FROZEN.len()..], later);
-    let n = BindingId::ALL.len() - 6;
+    let n = BindingId::ALL.len() - 7;
     assert_eq!(BindingId::ALL[n - later.len()..n], later);
     let names: Vec<&str> = later.iter().map(|id| id.key()).collect();
     assert_eq!(names, ["cherry-pick", "revert-commit", "switch-branch", "open-dashboard"]);

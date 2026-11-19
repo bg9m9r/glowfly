@@ -131,12 +131,13 @@ pub enum BindingId {
     ConflictTakeBothTheirsFirst,
     ConflictClear,
     ConflictMarkResolved,
+    OpenInEditor,
 }
 
 use BindingId as I;
 
 /// How many ids there are.
-const COUNT: usize = 129;
+const COUNT: usize = 130;
 
 /// Every id with its stable name in the settings file. Renaming one loses users' changes to it.
 const KEYS: [(BindingId, &str); COUNT] = [
@@ -269,6 +270,7 @@ const KEYS: [(BindingId, &str); COUNT] = [
     (I::ConflictTakeBothTheirsFirst, "conflict-take-both-theirs-first"),
     (I::ConflictClear, "conflict-clear-picks"),
     (I::ConflictMarkResolved, "conflict-mark-resolved"),
+    (I::OpenInEditor, "open-in-editor"),
 ];
 
 /// Open favorite repository 1 to 9, in favorite order.
