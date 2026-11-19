@@ -1,5 +1,5 @@
-//! A commit's details for the details panel: its message and people, decoded (commit_text), and
-//! its files against the first parent.
+//! A commit's details for the details panel: its message and people, decoded (commit_text) and
+//! shown as the mailmap has them, and its files against the first parent.
 
 use super::CommitDetail;
 use super::diff::{absent_paths, commit_diff, file_entries};
@@ -16,7 +16,8 @@ pub fn commit_detail(workdir: &Path, oid: Oid) -> Result<CommitDetail> {
     let mut files = file_entries(&diff, false);
     super::lfs_marks::mark_delta_files(&repo, &diff, &mut files, false);
     let absent = absent_paths(&repo, &files);
-    let (author, committer) = (commit_text::author(&c), commit_text::committer(&c));
+    let map = crate::mailmap::MailmapText::read(&repo).open();
+    let (author, committer) = (map.person(commit_text::author(&c)), map.person(commit_text::committer(&c)));
     Ok(CommitDetail {
         oid,
         message: commit_text::message(&c).trim_end().to_owned(),

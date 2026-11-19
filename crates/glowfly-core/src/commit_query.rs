@@ -1,6 +1,7 @@
 //! Commit search queries for the graph: free text plus `author:` and `path:` terms, the loaded
 //! commits that match, the history's distinct authors (for the author picker) and rewriting a
-//! query's author term.
+//! query's author term. Names and emails are the ones a loaded commit shows, as the mailmap has
+//! them (`CommitInfo::author`).
 //!
 //! Syntax: whitespace-separated words. A word starting with `author:` (any case) is an author
 //! term, and one starting with `path:` or `file:` a path term ([`PathTerm`]); a term's value may
@@ -238,8 +239,8 @@ pub struct AuthorCount {
     pub commits: usize,
 }
 
-/// The distinct authors of `commits` (newest first), grouped by email ignoring case, most
-/// commits first, then by name.
+/// The distinct authors of `commits` (newest first, as the mailmap shows them), grouped by email
+/// ignoring case, most commits first, then by name.
 pub fn authors(commits: &[CommitInfo]) -> Vec<AuthorCount> {
     let mut out: Vec<AuthorCount> = Vec::new();
     let mut index: HashMap<String, usize> = HashMap::new();

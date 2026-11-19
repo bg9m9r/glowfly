@@ -93,8 +93,8 @@ impl IndexWorker {
                 }
             }
             IndexEffect::Forget { workdir } => self.builds().forget(&workdir),
-            IndexEffect::Query { workdir, request, index, query } => {
-                self.query.submit(QueryRequest { workdir, request, haystack: Haystack::Index(index), query }, tx, waker);
+            IndexEffect::Query { workdir, request, index, query, mailmap } => {
+                self.query.submit(QueryRequest { workdir, request, haystack: Haystack::Index(index, mailmap), query }, tx, waker);
             }
             IndexEffect::MatchLoaded { workdir, request, commits, query } => {
                 self.loaded.submit(QueryRequest { workdir, request, haystack: Haystack::Loaded(commits.0), query }, tx, waker);
@@ -165,7 +165,7 @@ pub(super) fn once(e: IndexEffect) -> Option<Msg> {
                 .and_then(|i| i.map(Arc::new).ok_or(ReadFailed::Stopped));
             SearchMsg::IndexBuilt { build, result }
         }
-        IndexEffect::Query { request, index, query, .. } => Haystack::Index(index).answer(&query, request, &|| false)?,
+        IndexEffect::Query { request, index, query, mailmap, .. } => Haystack::Index(index, mailmap).answer(&query, request, &|| false)?,
         IndexEffect::MatchLoaded { request, commits, query, .. } => Haystack::Loaded(commits.0).answer(&query, request, &|| false)?,
         IndexEffect::Forget { .. } => return None,
     };

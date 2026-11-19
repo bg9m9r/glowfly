@@ -80,8 +80,9 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let fetched_remotes = super::fetch_time::fetched_remotes(&git_dir, &common.dir, &remote_info, &remote_urls);
 
     let head = (head_oid, head_branch.as_deref());
+    let mailmap = crate::mailmap::MailmapText::read(&repo);
     let load_walk::History { starts, commits, row_of, truncated, frontier } =
-        load_walk::history(&repo, (opts, max_commits), (cache, prior), head, &shallow_roots, &mut refs, &mut locals)?;
+        load_walk::history(&repo, (opts, max_commits), (cache, prior, &mailmap), head, &shallow_roots, &mut refs, &mut locals)?;
     let head_ahead = head_ahead::first_parent(&repo, head_oid, &locals);
 
     let mut snap = Snapshot {
@@ -108,6 +109,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
         row_of,
         truncated,
         frontier: frontier.map(std::sync::Arc::new),
+        mailmap,
         starts,
         refs,
         locals,

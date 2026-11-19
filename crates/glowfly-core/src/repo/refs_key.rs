@@ -1,7 +1,7 @@
 //! A cheap fingerprint of everything a full load reads besides the working-tree status: refs,
 //! HEAD, stashes, the repository state, config (the shared one and the worktree's own), linked
 //! worktrees and every worktree's HEAD and the branch it is rebasing or bisecting, a shallow
-//! clone's `shallow` file and the trust print of the repository's own
+//! clone's `shallow` file, the sources of the mailmap and the trust print of the repository's own
 //! settings, hooks and commands file (`trust::scan_top`). When it hasn't changed since the last
 //! load, re-reading the status is enough and the history needn't be walked again.
 
@@ -50,6 +50,12 @@ pub(super) fn key_of(repo: &Repository) -> Result<u64> {
     // The worktree's own config (`extensions.worktreeConfig`) can set remotes and the commands
     // git runs too. The main worktree's sits in the common dir, a linked one's in its git dir.
     file_stamp(&repo.path().join("config.worktree")).hash(&mut h);
+    // The mailmap decides which names the loaded commits show: an edit loads in full. Only plain
+    // files are stamped (`Sources::of`), so this can't block; the blob moves with the refs.
+    let mm = crate::mailmap::Sources::of(repo);
+    mm.tree_file.as_deref().map(file_stamp).hash(&mut h);
+    mm.blob.hash(&mut h);
+    mm.file.as_deref().map(|p| (p, file_stamp(p))).hash(&mut h);
     // A shallow clone deepened or completed: `fetch --unshallow` may leave every ref as it was.
     file_stamp(&common.join("shallow")).hash(&mut h);
     // `git am --skip` stopping at the next patch moves no ref.

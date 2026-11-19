@@ -6,6 +6,7 @@ use super::EffectMeta;
 use super::SandboxRule;
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::commit_query::CommitQuery;
+use glowfly_core::mailmap::MailmapText;
 use glowfly_core::repo::CommitInfo;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -23,8 +24,9 @@ pub enum IndexEffect {
     /// after it is reported.
     Build { workdir: PathBuf, build: u64, key: IndexKey, base: Option<Arc<CommitIndex>> },
     /// The walk positions of `index`'s commits matching `query` (no path terms), reported as
-    /// `SearchMsg::IndexQueried` with `request`; a newer query replaces one still waiting.
-    Query { workdir: PathBuf, request: u64, index: Arc<CommitIndex>, query: CommitQuery },
+    /// `SearchMsg::IndexQueried` with `request`; a newer query replaces one still waiting. The
+    /// index's stored signatures are mapped through `mailmap` when answering.
+    Query { workdir: PathBuf, request: u64, index: Arc<CommitIndex>, query: CommitQuery, mailmap: MailmapText },
     /// The rows of the loaded `commits` matching `query` (no path terms), for a history too
     /// large to match on the UI thread; reported as `SearchMsg::LoadedMatched` with `request`. A
     /// newer one replaces one still waiting, as for Query (on a worker of its own).

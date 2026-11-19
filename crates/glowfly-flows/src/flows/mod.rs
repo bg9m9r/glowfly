@@ -234,6 +234,7 @@ mod revert_workdir_tests;
 mod search_deeper_tests;
 mod search_index_tests;
 mod search_loaded_tests;
+mod search_mailmap_tests;
 mod search_paths_tests;
 mod search_tests;
 mod section_actions_tests;

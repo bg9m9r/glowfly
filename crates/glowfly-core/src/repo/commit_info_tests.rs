@@ -1,7 +1,7 @@
 //! A loaded commit's shared author and texts: interning and lookup keys, the body preview, texts
 //! shared on clone and by a reload, and a walk over a fixture history (many authors, unicode
-//! names, an empty email, a `.mailmap`) reading exactly what git holds, with one shared copy per
-//! author.
+//! names, an empty email) reading exactly what git holds, with one shared copy per author; and
+//! how a mailmap shows authors (`Authors::shown`).
 
 use super::*;
 use crate::commit_query::{CommitQuery, authors};
@@ -23,6 +23,33 @@ fn authors_are_interned_by_name_and_email() {
     assert_eq!(table.len(), 5);
     assert_eq!(Author::new("Zoë", "z@example.org"), table.get("Zoë", "z@example.org"), "equal across tables");
     assert_eq!(format!("{ann:?}"), "Ann <ann@example.com>");
+}
+
+#[test]
+fn authors_shown_resolves_each_signature_once() {
+    use crate::mailmap::{Mailmap, MailmapText};
+    let map = MailmapText::from_text(
+        "Grace Hopper <grace@example.com> <ghopper@navy.example>
+Ada <ada@new.example> Ada Old <ada@old.example>
+",
+    )
+    .open();
+    let mut table = Authors::default();
+    let grace = table.shown(&map, "Grace Hopper", "grace@example.com");
+    let mapped = table.shown(&map, "G. Hopper", "ghopper@navy.example");
+    assert_eq!((mapped.name(), mapped.email()), ("Grace Hopper", "grace@example.com"));
+    assert!(grace.ptr_eq(&mapped), "two written identities mapped to one share a copy");
+    assert!(mapped.ptr_eq(&table.shown(&map, "G. Hopper", "ghopper@navy.example")), "asked again");
+    let kept = table.shown(&map, "Ada Old", "ada@old.example");
+    assert_eq!((kept.name(), kept.email()), ("Ada", "ada@new.example"), "both by name and email");
+    let plain = table.shown(&map, "Nobody", "nobody@example.com");
+    assert_eq!((plain.name(), plain.email()), ("Nobody", "nobody@example.com"), "unmatched: as written");
+    assert_eq!(table.len(), 3, "counts the authors shown");
+
+    let mut none = Authors::default();
+    let a = none.shown(&Mailmap::none(), "G. Hopper", "ghopper@navy.example");
+    assert!(a.ptr_eq(&none.get("G. Hopper", "ghopper@navy.example")), "no mailmap: the same as get");
+    assert_eq!(none.len(), 1);
 }
 
 #[test]
@@ -55,8 +82,6 @@ fn a_walk_reads_what_git_holds_and_shares_each_author() {
     }
     let no_email = raw_commit(&repo, tree.id(), Some(parent.unwrap().id()), b"Nobody <>", None, b"no email\n");
     repo.reference("refs/heads/main", no_email, true, "test").unwrap();
-    // The graph shows signatures as written; a .mailmap doesn't change them.
-    write(&dir, ".mailmap", "Mapped Name <mapped@example.com> Person 0 <p0@example.com>\n");
 
     let snap = load(&dir, &LoadOptions::all(1000)).unwrap();
     assert_eq!(snap.commits.len(), 61);

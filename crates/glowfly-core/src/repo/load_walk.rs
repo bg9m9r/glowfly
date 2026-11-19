@@ -4,6 +4,7 @@
 //! into `repo` are spelled in full.
 
 use crate::error::Result;
+use crate::mailmap::MailmapText;
 use crate::repo::graph_cache::GraphCache;
 use crate::repo::{BranchInfo, CommitInfo, Frontier, LoadOptions, Prior, RefKind, RefLabel};
 use git2::{Oid, Repository};
@@ -24,11 +25,11 @@ pub(super) type Head<'a> = (Option<Oid>, Option<&'a str>);
 
 /// Walks at most `max_commits` of the history from HEAD and the tips `opts` shows, keeping only
 /// the labels (`refs`) of the refs walked, reading again only the commits `prior` lacks, then
-/// marks which of `locals` are merged into HEAD.
+/// marks which of `locals` are merged into HEAD. Authors are shown as `mailmap` has them.
 pub(super) fn history(
     repo: &Repository,
     (opts, max_commits): (&LoadOptions, usize),
-    (cache, prior): (&GraphCache, Option<&Prior>),
+    (cache, prior, mailmap): (&GraphCache, Option<&Prior>, &MailmapText),
     (head_oid, head_branch): Head,
     shallow_roots: &[Oid],
     refs: &mut HashMap<Oid, Vec<RefLabel>>,
@@ -38,9 +39,10 @@ pub(super) fn history(
     let starts = walk_starts(repo, opts, head_oid, tips.as_deref())?;
     // Labels follow the same visibility as the history.
     keep_visible_labels(refs, tips.as_deref());
-    let reuse = prior.and_then(|p| crate::repo::walk_reuse::CommitCache::new(p, repo, shallow_roots));
-    let walked =
-        tracing::debug_span!("load.walk").in_scope(|| crate::repo::walk::newest_commits(repo, &starts, max_commits, reuse.as_ref()))?;
+    let reuse = prior.and_then(|p| crate::repo::walk_reuse::CommitCache::new(p, repo, shallow_roots, mailmap));
+    let map = mailmap.open();
+    let walked = tracing::debug_span!("load.walk")
+        .in_scope(|| crate::repo::walk::newest_commits(repo, &starts, max_commits, reuse.as_ref(), &map))?;
     drop(reuse);
     let (commits, truncated) = (walked.commits, walked.truncated);
     let row_of = commits.iter().enumerate().map(|(i, c)| (c.oid, i)).collect();

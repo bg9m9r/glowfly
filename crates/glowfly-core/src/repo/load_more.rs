@@ -1,7 +1,8 @@
 //! Loading more of a history cut short without reading the rest again: the walk goes on from
 //! where it stopped (`Snapshot::frontier`) for the next commits only, and the snapshot takes
 //! them in below its rows (`Snapshot::extend_history`), laid out from where its lanes stood. The
-//! result is what a full load of the larger count gives, as long as the refs are as they were
+//! result is what a full load of the larger count gives (a page maps authors with the mailmap the
+//! rows above it were shown with), as long as the refs are as they were
 //! (the caller checks `refs_key`) and no new commit is a child of a loaded one.
 
 use super::walk_reuse::{Frontier, Prior};
@@ -53,8 +54,9 @@ pub fn load_more(path: &Path, prior: &Prior, max_commits: usize) -> Result<MoreL
         return Ok(MoreLoaded::NeedsFullLoad);
     }
     let repo = repo_pool::lend(path, Use::Refs)?;
+    let map = prior.mailmap.open();
     let walked = tracing::debug_span!("load_more.walk")
-        .in_scope(|| super::walk::more_commits(&repo, &prior.commits, frontier, max_commits - prior.commits.len()))?;
+        .in_scope(|| super::walk::more_commits(&repo, &prior.commits, frontier, max_commits - prior.commits.len(), &map))?;
     drop(repo);
     let Some(walked) = walked else { return Ok(MoreLoaded::NeedsFullLoad) };
     let commits: Arc<[CommitInfo]> =
