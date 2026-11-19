@@ -1,7 +1,8 @@
 //! Git Flow config, defaults, checks and command lines for setting up, starting and finishing
 //! (`finish.rs`) feature, release and hotfix branches, implemented natively with plain git,
 //! continuing a Finish stopped at a merge conflict (`resume.rs`), the roles of the production and
-//! development branches (`base.rs`), and the local flow branches grouped by kind (`groups.rs`).
+//! development branches (`base.rs`), the local flow branches grouped by kind (`groups.rs`), and the version order of release and
+//! hotfix branches (`version_order.rs`).
 //! The settings live in the repository's git config under the `gitflow.*` keys the git-flow
 //! command-line tool also uses, so either can work in the same repository. Only `read_config`
 //! touches a repository; everything else is pure.
@@ -23,6 +24,7 @@ mod start;
 #[cfg(test)]
 mod tests;
 mod version;
+mod version_order;
 
 pub use base::FlowBase;
 pub use checks::{SettingsProblem, check_settings};

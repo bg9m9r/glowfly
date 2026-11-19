@@ -11,7 +11,7 @@ use glowfly_core::gitflow::{Branches, FlowKind, flow_branches, short_name, targe
 use glowfly_core::repo::Snapshot;
 
 /// Configure Git Flow, then (once set up) Open Git Flow panel, Start per kind, Start from issue
-/// per kind, Finish per open flow branch (the checked-out one first), and Continue finishing
+/// per kind, Finish per open flow branch (the checked-out one first; releases and hotfixes in version order), and Continue finishing
 /// while a stopped Finish's merge is committed and no job runs.
 pub(super) fn gitflow_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
     out.push(entry(

@@ -54,6 +54,26 @@ fn classify() {
 }
 
 #[test]
+fn branch_list_in_version_order() {
+    let s = defaults();
+    let locals = ["main", "develop", "feature/b", "feature/a", "hotfix/1.10.0", "hotfix/1.9.0", "release/1.10.0", "release/1.9.0"];
+    let mut b = branches(&locals);
+    let ordered = [
+        (FlowKind::Feature, "feature/b"),
+        (FlowKind::Feature, "feature/a"),
+        (FlowKind::Hotfix, "hotfix/1.9.0"),
+        (FlowKind::Hotfix, "hotfix/1.10.0"),
+        (FlowKind::Release, "release/1.9.0"),
+        (FlowKind::Release, "release/1.10.0"),
+    ];
+    assert_eq!(flow_branches(&s, &b), ordered);
+    b.head = Some("release/1.10.0");
+    let with_head = flow_branches(&s, &b);
+    assert_eq!(with_head[0], (FlowKind::Release, "release/1.10.0"));
+    assert_eq!(with_head[1..], ordered[..5]);
+}
+
+#[test]
 fn branch_list_and_defaults() {
     let s = defaults();
     let mut b = branches(&["main", "develop", "feature/a", "other", "release/1.2.0", "hotfix/1.0.1"]);

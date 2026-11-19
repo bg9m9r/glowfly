@@ -1,7 +1,7 @@
 //! Git Flow snapshots: Preferences > Git Flow not set up yet, set up (with the Start buttons and
 //! the Finish row), edited with overlapping prefixes, the Start dialog for a release, the Finish
 //! dialog for a release and for a feature blocked by uncommitted changes; the left panel's GIT
-//! FLOW section (also filtered, and its header menu), the Git Flow panel (also not set up) and
+//! FLOW section (also filtered, with its releases in version order, and its header menu), the Git Flow panel (also not set up) and
 //! the issue menu's Start Git Flow items.
 
 use super::snapshot_tests::{git, harness, reload, remove_fixture, render, with_repo};
@@ -212,6 +212,22 @@ fn gitflow_section_filtered() {
     h.check_snapshot("gitflow_section_filtered");
     assert!(h.query_by_label("Features").is_some());
     assert!(h.query_by_label("Releases").is_none() && h.query_by_label("Hotfixes").is_none());
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// Releases are listed by version, not by name: 1.9.0 above 1.10.0.
+#[test]
+fn gitflow_section_versions() {
+    let (mut st, dir) = initialized(ThemeChoice::Dark, "gitflow-section-versions");
+    let d = "2026-01-05T10:00:00+00:00";
+    git(&dir, &["branch", "release/1.9.0"], d);
+    git(&dir, &["branch", "release/1.10.0"], d);
+    reload(&mut st, &dir, &LoadOptions::all(500));
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("gitflow_section_versions");
+    assert!(center(&h, "1.9.0").y < center(&h, "1.10.0").y);
     drop(h);
     remove_fixture(&dir);
 }
