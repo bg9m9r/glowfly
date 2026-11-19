@@ -207,7 +207,7 @@ pub fn inspect_folder(text: &str, home: Option<&Path>) -> Option<FolderFacts> {
             exists: true,
             repo: p.join(".git").exists(),
             has_files: !names.is_empty(),
-            gitignore: p.join(".gitignore").exists(),
+            gitignore: p.join(".gitignore").symlink_metadata().is_ok(),
             license,
         });
     }

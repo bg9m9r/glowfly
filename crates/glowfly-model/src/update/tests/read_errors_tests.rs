@@ -70,6 +70,14 @@ pub(super) fn variants() -> Vec<(R, [&'static str; 3])> {
         ),
         (R::Stopped, ["stopped", "angehalten", "detenido"]),
         (
+            R::LinkedFile { path: "sub/.gitignore".into() },
+            [
+                "sub/.gitignore is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it.",
+                "sub/.gitignore ist eine Verknüpfung zu einem Netzwerkort außerhalb dieses Repositorys, daher kann das Arbeitsverzeichnis nicht gelesen werden. Ersetze sie durch eine normale Datei oder entferne sie.",
+                "sub/.gitignore es un enlace a una ubicación de red fuera de este repositorio, así que no se puede leer el árbol de trabajo. Sustitúyelo por un archivo normal o elimínalo.",
+            ],
+        ),
+        (
             R::NotARepository { path: "/r".into() },
             ["/r is not a git repository", "/r ist kein Git-Repository", "/r no es un repositorio git"],
         ),
@@ -124,7 +132,7 @@ fn paths_remotes_and_said_text_are_kept_in_every_language() {
             R::MissingContent { path, remote } => vec![path, remote],
             R::NotConflicted { path } => vec![path],
             R::Internal { effect } => vec![effect],
-            R::NotARepository { path } => vec![path],
+            R::NotARepository { path } | R::LinkedFile { path } => vec![path],
             R::NotOwned { root } => vec![root],
             R::OpenFailed { path, why } => match why.as_ref() {
                 R::NotARepository { path: inner } => vec![path, inner],

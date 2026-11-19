@@ -193,7 +193,7 @@ pub fn parse_attributes(text: &str) -> Vec<LfsPattern> {
 /// The repository's Git LFS status. Writes nothing and runs no git-lfs command except
 /// `git lfs version`.
 pub fn status(workdir: &Path) -> Result<LfsStatus> {
-    let has_gitattributes = match std::fs::metadata(workdir.join(".gitattributes")) {
+    let has_gitattributes = match std::fs::symlink_metadata(workdir.join(".gitattributes")) {
         Ok(_) => true,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
         Err(e) => return Err(Error::Io(e)),

@@ -99,6 +99,7 @@ pub(super) fn load_status_with(
     found: &[super::Collision],
     records: Option<&super::RecordMemo>,
 ) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
+    crate::tree_files::check(repo)?;
     if let Some(workdir) = repo.workdir()
         && git_status
         && wants_git(repo)

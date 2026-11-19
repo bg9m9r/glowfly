@@ -51,6 +51,7 @@ pub(super) fn read_paths(
         return Ok(None);
     }
     let repo = crate::repo_pool::lend(workdir, crate::repo_pool::Use::Workdir)?;
+    crate::tree_files::check(&repo)?;
     let mut index = repo.index()?;
     // Git composes the paths it is given on such a system; so does this read.
     let precompose = repo.config().and_then(|c| c.get_bool("core.precomposeunicode")).unwrap_or(false);

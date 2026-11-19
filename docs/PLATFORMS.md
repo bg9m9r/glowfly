@@ -249,6 +249,13 @@ trust scan all run for untrusted repositories too.
    one. Per checked-out submodule the walk costs what `git_file::other_repo` looks at, one read
    of its config, one stat and small read of `.gitmodules` and one stat of its index on each
    status read; a submodule's index is parsed again only when its size or time changed.
+   `.gitattributes` and `.gitignore` are read the same way (`tree_files.rs`): Glowfly's own read
+   of the root `.gitattributes` takes only a regular file of at most 1 MiB, never a link (git
+   takes a linked one as absent). libgit2 reads both files itself and follows a link, so where
+   one of them is a link leading where `may_follow` refuses from the work tree (the root's two
+   as they are on disk, and those in a folder where the index tracks a link by such a name), the
+   load, the status, the diffs to the working tree and the line counts are not read and say which
+   file it is (`read_errors.linked_file`), and the watcher takes nothing as ignored.
 9. **A name from a tree, the index, a diff, a status row or `.gitmodules` is joined to the work
    tree only through `repo::work_path`** (the `contained` rules: no leading `/`, no empty, `.`
    or `..` part, no `.git` part; on Windows no `\` or `:` and no part ending in a dot or space).
