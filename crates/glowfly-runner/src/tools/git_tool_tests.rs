@@ -122,6 +122,11 @@ fn git_diff_tools_report_only_failures() {
         let (program, target, f) = failure(open(command("exit 5", false)));
         assert_eq!((program.as_str(), target.as_str()), ("t", "a.txt"));
         assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("code 5")), "{f:?}");
+        assert!(open(command("exit 1", false)).is_none(), "an exit with 1 and nothing on stderr says the files differ");
+        let (_, _, f) = failure(open(command("echo oops >&2; exit 1", false)));
+        assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("code 1: oops")), "{f:?}");
+        let (_, _, f) = failure(open(command("exit 2", false)));
+        assert!(matches!(&f, LaunchFailure::Other(t) if t.contains("code 2")), "{f:?}");
     }
     // Watched until git ends rather than for its usual window, so a failure a loaded machine
     // slows down still counts as quick.
@@ -162,6 +167,56 @@ fn a_git_difftool_failure_after_the_watch_is_reported_when_it_comes() {
         }
         Some(Msg::Tools(other)) => panic!("expected a late diff tool failure, got {other:?}"),
         _ => panic!("expected a late diff tool failure"),
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_quiet_exit_1_through_git_difftool_is_no_failure_early_or_late() {
+    let dir = conflicted("git-diff-tool-exit");
+    git(&dir, &["checkout", "-q", "--theirs", "--", "a.txt"]);
+    git(&dir, &["add", "a.txt"]);
+    std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
+    // git runs the command with its own sh, so no sh of Glowfly's own is needed.
+    let run = |cmd: &str, window: Duration| {
+        git(&dir, &["config", "difftool.t.cmd", cmd]);
+        let req = GitDiffRequest { tool: builtin("t"), workdir: dir.clone(), target: DiffTarget::Unstaged("a.txt".into()), filters: false };
+        open_diff_watching(req, window)
+    };
+    let late = |m: Option<Msg>| match m {
+        Some(Msg::Tools(ToolsMsg::DiffToolFailedLater { program, target, code, said })) => {
+            assert_eq!((program.as_str(), target.as_str()), ("t", "a.txt"));
+            (code, said)
+        }
+        _ => panic!("expected a late diff tool failure"),
+    };
+    // git itself exits with 1 because the files differ, whatever the tool says.
+    assert!(run("exit 0", Duration::ZERO).is_none());
+    assert!(run("exit 1", Duration::ZERO).is_none());
+    let (code, said) = late(run("echo oops >&2; exit 1", Duration::ZERO));
+    assert_eq!((code, said.as_str()), (Some(1), "oops"));
+
+    git(&dir, &["config", "difftool.trustExitCode", "true"]);
+    let (code, said) = late(run("exit 2", Duration::ZERO));
+    assert!(matches!(code, Some(c) if c != 0 && c != 1), "{code:?}");
+    assert!(said.contains("external diff died"), "{said}");
+    let quiet = run("exit 1", Duration::ZERO);
+    if glowfly_core::gitcli::version(&dir) >= Some((2, 46, 0)) {
+        assert!(quiet.is_none());
+    } else {
+        eprintln!("this git doesn't read GIT_EXTERNAL_DIFF_TRUST_EXIT_CODE: a trusted exit 1 is still reported");
+        late(quiet);
+    }
+
+    // Early: a window long enough that a slow machine still counts as early.
+    git(&dir, &["config", "--unset", "difftool.trustExitCode"]);
+    let long = Duration::from_secs(600);
+    assert!(run("exit 1", long).is_none());
+    match run("echo oops >&2; exit 1", long) {
+        Some(Msg::Tools(ToolsMsg::LaunchFailed { kind: ToolKind::DiffTool, failure: LaunchFailure::Other(t), .. })) => {
+            assert!(t.contains("code 1") && t.contains("oops"), "{t}");
+        }
+        _ => panic!("expected a quick diff tool failure"),
     }
     let _ = std::fs::remove_dir_all(&dir);
 }

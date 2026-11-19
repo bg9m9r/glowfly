@@ -90,6 +90,11 @@ pub const NO_PROMPTS: &[(&str, &str)] = &[("GIT_ASKPASS", ""), ("SSH_ASKPASS", "
 pub const BACKGROUND: &[(&str, &str)] =
     &[("GIT_ASKPASS", ""), ("SSH_ASKPASS", ""), ("SSH_ASKPASS_REQUIRE", "never"), ("GCM_INTERACTIVE", "never")];
 
+/// Lets a diff tool's exit with 1 under difftool.trustExitCode reach the caller as git's own exit 1
+/// ("the files differ") rather than a fatal "external diff died"; git 2.46 and later read it,
+/// older ones ignore it. Pass it beside [`NO_PROMPTS`] to `git difftool`.
+pub const TRUST_DIFF_EXIT: (&str, &str) = ("GIT_EXTERNAL_DIFF_TRUST_EXIT_CODE", "true");
+
 /// What a finished git command printed. `stdout` and `stderr` are kept apart so a caller that
 /// parses output reads stdout only; job logs show [`GitOutput::combined`].
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

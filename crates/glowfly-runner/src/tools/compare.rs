@@ -5,6 +5,7 @@
 
 use glowfly_core::error::Error;
 use glowfly_core::external_tools::compare::{diff_files, fingerprint, merge_files};
+use glowfly_core::external_tools::diff_exit::spawn_diff;
 use glowfly_core::external_tools::{self, DiffVars, Launch, MergeVars, temp};
 use glowfly_core::repo;
 use glowfly_model::msg::Msg;
@@ -32,7 +33,8 @@ fn shown_path(workdir: &Path, name: &str, remote: &Path) -> PathBuf {
     repo::work_path(workdir, name).unwrap_or_else(|_| remote.to_path_buf())
 }
 
-/// Writes the diff's versions and starts the diff tool on them. Only a failure is reported.
+/// Writes the diff's versions and starts the diff tool on them. Only a failure is reported; an
+/// exit with 1 and nothing on stderr is how diff tools say the files differ.
 pub(super) fn open_diff(req: DiffToolRequest) -> Option<Msg> {
     let failed = |failure| {
         let (program, target) = (req.program.display().to_string(), req.target.path().to_owned());
@@ -44,9 +46,10 @@ pub(super) fn open_diff(req: DiffToolRequest) -> Option<Msg> {
     };
     let path = shown_path(&req.workdir, req.target.path(), &files.remote);
     let vars = DiffVars { local: &files.local, remote: &files.remote, path: &path, repo: &req.workdir };
-    let started = vars.expand(&req.template).map_err(|e| Error::Other(e.to_string())).and_then(|args| {
-        external_tools::spawn(&Launch { program: req.program.clone(), args, cwd: req.workdir.clone(), own_console: false })
-    });
+    let started = vars
+        .expand(&req.template)
+        .map_err(|e| Error::Other(e.to_string()))
+        .and_then(|args| spawn_diff(&Launch { program: req.program.clone(), args, cwd: req.workdir.clone(), own_console: false }));
     match started {
         Ok(()) => None,
         Err(e) => {
@@ -158,6 +161,39 @@ mod tests {
         assert_eq!(failure(open_diff(req(&missing))), ("a.txt".to_owned(), LaunchFailure::NotFound));
         let nothing = DiffToolRequest { target: DiffTarget::Staged("missing.txt".into()), ..req("git") };
         assert_eq!(failure(open_diff(nothing)), ("missing.txt".to_owned(), LaunchFailure::Files("no changes in missing.txt".into())));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn preferences_diff_tool_takes_a_quiet_exit_1_as_a_difference() {
+        let dir = conflicted("diff-tool-exit-1");
+        git(&dir, &["checkout", "-q", "--theirs", "--", "a.txt"]);
+        git(&dir, &["add", "a.txt"]);
+        std::fs::write(dir.join("a.txt"), "edited\n").unwrap();
+        let req = |program: &str, template: &str| DiffToolRequest {
+            program: program.into(),
+            template: template.into(),
+            workdir: dir.clone(),
+            target: DiffTarget::Unstaged("a.txt".into()),
+            filters: false,
+        };
+        // A real diff-style program: it exits 1, silently, because the copies differ.
+        assert!(open_diff(req("git", "diff --no-index --quiet {local} {remote}")).is_none());
+        match glowfly_core::custom_commands::find_sh() {
+            Err(e) => eprintln!("skipping the sh cases: {e}"),
+            Ok(sh) => {
+                let sh = sh.display().to_string();
+                assert!(open_diff(req(&sh, "-c \"exit 1\"")).is_none());
+                let said = |m: Option<Msg>| match m {
+                    Some(Msg::Tools(ToolsMsg::LaunchFailed { kind: ToolKind::DiffTool, failure: LaunchFailure::Other(t), .. })) => t,
+                    _ => panic!("expected a diff tool failure"),
+                };
+                let t = said(open_diff(req(&sh, "-c \"echo oops >&2; exit 1\"")));
+                assert!(t.contains("code 1: oops"), "{t}");
+                let t = said(open_diff(req(&sh, "-c \"exit 2\"")));
+                assert!(t.contains("code 2"), "{t}");
+            }
+        }
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
