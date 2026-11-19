@@ -1,5 +1,5 @@
 //! The copy items of the commit, multi-commit, tag, local branch and remote branch menus (a
-//! Copy submenu for the commit's four, in the menu for the others' two): what each copies, and
+//! Copy submenu for the commit's five, in the menu for the others' two): what each copies, and
 //! the patch entry disabled for a merge. Shares the fixture repository and renderer with
 //! `snapshot_tests`.
 
@@ -13,7 +13,7 @@ use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::deep_link::{DeepLinkMsg, LinkTarget};
-use glowfly_model::msg::Msg;
+use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::state::selection::MultiSelection;
 use glowfly_model::state::{AppState, Selection};
 
@@ -71,6 +71,9 @@ fn graph_commit_menu_copy_submenu() {
     h.run();
     assert!(copied(&h, &fix.to_string()), "the full SHA");
     copy(&mut h, &open, "Message");
+    assert!(pushed(&h, &|m| matches!(m, Msg::Repo(RepoMsg::CopyMessage(o)) if *o == fix)), "the whole message is read");
+    assert!(!copied(&h, "Fix build on Windows"), "not just the summary");
+    copy(&mut h, &open, "Summary");
     assert!(copied(&h, "Fix build on Windows"));
     copy(&mut h, &open, "Link");
     assert!(linked(&h, LinkTarget::Commit(fix)));

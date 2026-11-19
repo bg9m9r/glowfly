@@ -23,6 +23,7 @@ use glowfly_model::msg::BranchMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::OpPreviewMsg;
 use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::RepoMsg;
 use glowfly_model::msg::SelectionMsg;
 use glowfly_model::patch::PatchMsg;
 use glowfly_model::state::commit_menu::menu_trim::head_contains;
@@ -66,7 +67,8 @@ pub fn commit_menu(ui: &mut egui::Ui, t: Lang, c: &CommitInfo, snap: &Snapshot, 
     menu_item_state(msgs, ui, t.tr("commits.menu.create_patch"), patch_state, Msg::Patch(PatchMsg::Export(vec![oid])));
     submenu(ui, t.tr("commits.menu.copy"), |ui| {
         menu_item(msgs, ui, t.tr("commits.menu.copy_sha"), Msg::Copy(sha.clone()));
-        menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Copy(c.summary.to_string()));
+        menu_item(msgs, ui, t.tr("commits.menu.copy_message"), Msg::Repo(RepoMsg::CopyMessage(oid)));
+        menu_item(msgs, ui, t.tr("commits.menu.copy_summary"), Msg::Copy(c.summary.to_string()));
         menu_item(msgs, ui, t.tr("refs.copy.link"), Msg::DeepLink(DeepLinkMsg::Copy(LinkTarget::Commit(oid))));
         let blocked = merge.then(|| CommitBlock::PatchMerge.text(t));
         menu_item_if(msgs, ui, t.tr("commits.menu.copy_patch"), blocked, Msg::Patch(PatchMsg::Copy(vec![oid])));
