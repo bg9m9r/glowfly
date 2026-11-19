@@ -53,6 +53,11 @@ Label "{base} is the common ancestor (an empty file when…"
 Link "Learn more"
 Label "Arguments"
 Button "Restore default arguments"
+Label "Conflict view"
+Label "Trivial conflicts"
+CheckBox "Pick trivial conflicts when a file opens" [on]
+Label "A conflict is trivial when one side left the lines…"
+Link "Learn more"
 painted:
   "Program name on your PATH, or a full path"
   "The program Glowfly starts to open files and repositories. Leave\nit empty for none."

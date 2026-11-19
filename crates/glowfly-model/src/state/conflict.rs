@@ -82,14 +82,19 @@ impl ConflictView {
     #[cfg(any(test, feature = "test-support"))]
     #[doc(hidden)]
     pub fn set_file(&mut self, f: ConflictFile) {
-        self.set_file_saved(f, None);
+        self.set_file_saved(f, None, true);
     }
 
     /// Shows `f`, with the chunks that are safe to decide picked already (nothing is written
     /// until Save) and what `saved` holds brought back over them, on the first chunk still to
     /// pick. A pick brought back that is the chunk's automatic one keeps its tag. Folds close.
-    pub fn set_file_saved(&mut self, f: ConflictFile, saved: Option<SavedPicks>) {
-        let trivial = trivial_picks(&f);
+    /// With `auto` false (Preferences > External tools) nothing is picked or tagged
+    /// automatically, though picks brought back from the file still are.
+    pub fn set_file_saved(&mut self, f: ConflictFile, saved: Option<SavedPicks>, auto: bool) {
+        let mut trivial = trivial_picks(&f);
+        if !auto {
+            trivial.iter_mut().for_each(|p| *p = None);
+        }
         self.picks = trivial.iter().map(|p| p.map(|p| ChunkPick::Sides(p.0)).unwrap_or_default()).collect();
         self.auto = trivial.iter().map(|p| p.map(|p| p.1)).collect();
         self.baseline = (vec![ChunkPick::default(); self.picks.len()], CleanEdits::new());

@@ -68,7 +68,7 @@ fn whole_file_view_maps_blocks_to_hunks() {
 fn no_changes() {
     let mut st = state();
     assert_eq!(current_hunk(&st), None, "no diff");
-    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Commit(git2::Oid::zero(), "f.txt".into()), empty.into()));
     assert_eq!(current_hunk(&st), None);
 }

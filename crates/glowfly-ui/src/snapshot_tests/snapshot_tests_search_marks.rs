@@ -18,7 +18,7 @@ use glowfly_model::state::{AppState, Selection};
 type H = Harness<'static, (AppState, Vec<Msg>)>;
 
 /// The text shapes `h`'s last frame painted, as (text, shape).
-fn texts(h: &H) -> Vec<TextShape> {
+pub(crate) fn texts<S>(h: &Harness<'_, S>) -> Vec<TextShape> {
     fn walk(s: &Shape, out: &mut Vec<TextShape>) {
         match s {
             Shape::Vec(v) => v.iter().for_each(|s| walk(s, out)),

@@ -6,12 +6,13 @@
 //! pure function of the lines shown: no line numbers or signs, tabs kept, `\n` between lines.
 //! The row menu's Copy lines is `copy_lines`, and Ctrl+A's selection `select_all`.
 
+use glowfly_core::diff_rows;
 use glowfly_core::repo::{DiffTarget, FileDiff};
 use glowfly_core::whole_file::{self, Expanded, WholeFile};
 
 /// A line of the diff as the view shows it: line `line` of hunk `hunk`, an unchanged line
-/// filled in between hunks in the hunk view (`line` of the gap above hunk `hunk`), or line
-/// `line` of the whole-file view.
+/// filled in outside the hunks in the hunk view (`line` of the run above hunk `hunk`; hunk
+/// `hunks.len()` is the run below the last), or line `line` of the whole-file view.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum LineRef {
     Hunk { hunk: usize, line: usize },
@@ -212,8 +213,10 @@ pub fn copy_lines(shown: &[ShownLine], sel: Option<&TextSel>, at: Option<LineRef
 
 /// Every line `side` shows of `diff`, selected (Ctrl+A): from the start of its first to the end
 /// of its last. In the whole-file view (`whole`) lines come from its one hunk and the folds `ex`
-/// leaves closed hide theirs; the hunk view's gaps lie between hunks, never at either end. Notes
-/// such as "No newline at end of file" aren't lines. `None` when the side shows none.
+/// leaves closed hide theirs. In the hunk view the opened run above the first hunk and the one
+/// below the last (`ex`'s, with their text read) are the first and the last lines; those between
+/// hunks never are. Notes such as "No newline at end of file" aren't lines. `None` when the side
+/// shows none.
 pub fn select_all(diff: &FileDiff, whole: Option<&WholeFile>, ex: &Expanded, side: TextSide, key: (DiffTarget, u64)) -> Option<TextSel> {
     let on_side = |o: char| match side {
         TextSide::Inline => !matches!(o, '<' | '>' | '='),
@@ -241,6 +244,19 @@ pub fn select_all(diff: &FileDiff, whole: Option<&WholeFile>, ex: &Expanded, sid
             .collect(),
     };
     let (&(first, _), &(last, text)) = (lines.first()?, lines.last()?);
+    let (mut first, mut last, mut text) = (first, last, text);
+    if whole.is_none() {
+        let n = diff.hunks.len();
+        for (g, t) in diff_rows::filled(diff, ex) {
+            if g.hunk == 0 {
+                first = LineRef::Gap { hunk: 0, line: 0 };
+            } else if g.hunk == n
+                && let Some(line) = t.lines.last()
+            {
+                (last, text) = (LineRef::Gap { hunk: n, line: g.len - 1 }, line.as_str());
+            }
+        }
+    }
     let head = TextPos { line: last, col: text.chars().count() };
     Some(TextSel { head, ..TextSel::at(TextPos { line: first, col: 0 }, Unit::Char, side, key) })
 }

@@ -10,12 +10,12 @@ use super::super::pane_status::{self, Failure};
 use super::super::pull_request::note;
 use super::super::theme::color;
 use super::comment_box;
+use crate::date_tip::Clock;
 use crate::theme::sizes::ControlSize;
 use crate::theme::type_scale;
 use crate::widgets::buttons;
 use eframe::egui::{self, Frame, Margin, RichText, Ui};
 use glowfly_core::forge::Entry;
-use glowfly_core::settings::Settings;
 use glowfly_core::text::printable;
 use glowfly_model::msg::{EditMsg, IssueMsg, Msg};
 use glowfly_model::state::issue::{Details, IssueView};
@@ -51,21 +51,13 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, md: &mut Ma
             let retry = Some(Msg::Issue(IssueMsg::Reload));
             pane_status::failed(ui, st.settings.lang(), Failure { title: &title, error: e, retry }, msgs);
         }
-        Details::Loaded(_) => conversation(ui, v, Clock { settings: &st.settings, now: st.cues.now, offset: st.cues.utc_offset }, md, msgs),
+        Details::Loaded(_) => conversation(ui, v, Clock::of(st), md, msgs),
     });
 }
 
 fn capital(s: &str) -> String {
     let mut c = s.chars();
     c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
-}
-
-/// What the comments' times are shown with.
-#[derive(Clone, Copy)]
-struct Clock<'a> {
-    settings: &'a Settings,
-    now: i64,
-    offset: i32,
 }
 
 /// "<author> opened this issue", the description, then the comments.

@@ -17,7 +17,7 @@ use std::time::Instant;
 fn diff() -> FileDiff {
     let line = |origin: char, n: u32| DiffLine { origin, old: Some(n), new: Some(n), text: format!("line {n}") };
     let hunk = |n: u32| Hunk { header: format!("@@ -{n} +{n} @@"), lines: vec![line(' ', n), line('-', n + 1), line('+', n + 1)] };
-    FileDiff { binary: false, hunks: vec![hunk(1), hunk(40)], highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: vec![hunk(1), hunk(40)], highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 /// The WIP lists with b/two.txt open between a.txt and z.txt (List mode), and its diff;

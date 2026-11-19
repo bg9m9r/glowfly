@@ -24,6 +24,13 @@ pub struct TabViewState {
     /// The graph's row height in the last frame, recorded by the view with `graph_scroll`; 0
     /// until the graph is drawn. Reloads anchor the scroll with it (`state/graph_anchor.rs`).
     pub graph_row_h: f32,
+    /// The Chapters list's scroll offset and viewport height from the last frame, recorded by the view.
+    pub chapters_scroll: (f32, f32),
+    /// How many rows the Chapters list had when it last asked for more history near its end. It
+    /// doesn't ask again at the same count: a load that adds commits but no rows (a long run of
+    /// one author's commits is one chapter) would otherwise leave the end near and chain loads
+    /// down the whole history; the end row's Load more takes over from there.
+    pub chapters_asked: Option<usize>,
     /// First diff row visible in the last frame, recorded by the view (with `TabView::diff_expanded`'s
     /// folds open).
     pub diff_top_row: usize,
@@ -45,6 +52,9 @@ pub struct TabView {
     /// key, with the gaps' text. Changed only by `update`; cleared when a different target's diff
     /// arrives or the diff closes.
     pub diff_expanded: Expanded,
+    /// The `shown_gen` of the diff whose unchanged runs' text is being read (a
+    /// `DiffEffect::Gaps` is on its way): the controls of waiting runs show a spinner.
+    pub diff_gaps_reading: Option<u64>,
     /// The diff view mode and layout when the tab was parked: what `TabViewState::diff_top_row` was counted in
     /// (both settings are shared by all tabs). Set by `update/tabs.rs::park`, taken on return;
     /// None while active.

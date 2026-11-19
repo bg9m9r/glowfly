@@ -36,7 +36,7 @@ fn with_gaps(layout: DiffLayout, theme: ThemeChoice, open: bool) -> (AppState, P
     assert_eq!(spans.iter().map(|g| g.len).collect::<Vec<_>>(), [3, 3]);
     if open {
         let syntax = diff.highlight.as_ref().map(|h| h.syntax.as_str());
-        let text = repo::load_gap_text(&dir, &target, &diff.hunks, syntax).unwrap();
+        let text = repo::load_gap_text(&dir, &target, &diff, syntax).unwrap();
         for g in &spans {
             st.session.tab_view.diff_expanded.insert(g.key);
         }

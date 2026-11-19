@@ -87,3 +87,20 @@ fn copy_log_activity_and_file_tabs() {
     assert!(logs(&mut st, LogsMsg::CopyLog).is_empty(), "still being read");
     assert_eq!(st.toasts.len(), toasts);
 }
+
+#[test]
+fn copy_entry_under_a_filter_copies_one_routine_run() {
+    let mut st = state();
+    let fetch = |at: i64| {
+        let run = RunInfo { title: "Auto-fetch".into(), routine: true, ..RunInfo::default() };
+        LogEntry { at, run: Some(run), ..LogEntry::new(true, "Auto-fetch done") }
+    };
+    st.log = vec![fetch(1_772_600_000), fetch(1_772_600_060), fetch(1_772_600_120)];
+    let first = st.log[0].id;
+    let all = logs(&mut st, LogsMsg::CopyEntry(first));
+    assert_eq!(copied(&all)[0].matches("Auto-fetch · done").count(), 3, "the group");
+    st.view.logs_search = "fetch".into();
+    let one = logs(&mut st, LogsMsg::CopyEntry(first));
+    let want = entry_text(&st.log[0], Lang::En, st.cues.utc_offset);
+    assert_eq!(copied(&one), [want.as_str()], "its own row copies only itself");
+}

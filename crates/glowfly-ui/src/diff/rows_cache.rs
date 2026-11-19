@@ -1,5 +1,5 @@
-//! The open diff's row list, widest line and gaps between hunks, built when the diff, the layout,
-//! the open folds or gaps or the tab width change instead of on every frame: they walk every line
+//! The open diff's row list, widest line and unchanged runs outside the hunks, built when the diff,
+//! the layout, the open folds or runs or the tab width change instead of on every frame: they walk every line
 //! of the file. Also the rows' heights (hunk headers are taller than lines, and long lines grow
 //! when wrapped), rebuilt when the rows, the wrap width or the font change. With the rows, which
 //! lines each row shows and the row each line is on (`LineIndex`), for the text selection.
@@ -57,7 +57,8 @@ pub struct DiffRowsCache {
     pub split: Vec<SplitRow>,
     /// The widest drawn line, in columns.
     pub widest: usize,
-    /// The hunk view's gaps between hunks, open or not (empty when they can't be filled in).
+    /// The hunk view's unchanged runs (above, between and below the hunks), open or not (empty
+    /// when they can't be filled in).
     pub gaps: Vec<GapSpan>,
     /// How many times the rows were built (for tests).
     pub builds: usize,
@@ -130,7 +131,7 @@ pub struct Source<'a> {
     pub generation: (u64, u64),
     pub layout: DiffLayout,
     pub expanded: &'a Expanded,
-    /// The hunk view fills in the gaps `expanded` opened (not with whitespace hidden).
+    /// The hunk view fills in the runs `expanded` opened (not with whitespace hidden).
     pub gaps: bool,
     pub tab: usize,
 }
@@ -152,12 +153,13 @@ impl DiffRowsCache {
         if same {
             return;
         }
-        let none = Expanded::default();
-        let filled = if s.gaps { s.expanded } else { &none };
+        // Without runs (whitespace hidden) the rows are the hunks' own: no row below the last hunk.
         let (inline, split) = match (s.layout, s.whole) {
-            (DiffLayout::Inline, None) => (diff_rows::inline_rows_filled(s.diff, filled), Vec::new()),
+            (DiffLayout::Inline, None) if s.gaps => (diff_rows::inline_rows_filled(s.diff, s.expanded), Vec::new()),
+            (DiffLayout::Inline, None) => (diff_rows::inline_rows(s.diff), Vec::new()),
             (DiffLayout::Inline, Some(w)) => (whole_file::inline_rows(w, s.expanded), Vec::new()),
-            (DiffLayout::Split, None) => (Vec::new(), diff_rows::split_rows_filled(s.diff, filled)),
+            (DiffLayout::Split, None) if s.gaps => (Vec::new(), diff_rows::split_rows_filled(s.diff, s.expanded)),
+            (DiffLayout::Split, None) => (Vec::new(), diff_rows::split_rows(s.diff)),
             (DiffLayout::Split, Some(w)) => (Vec::new(), whole_file::split_rows(w, s.expanded)),
         };
         self.gaps = if s.whole.is_none() && s.gaps { diff_rows::gaps(s.diff) } else { Vec::new() };
@@ -265,6 +267,7 @@ mod tests {
             highlight: None,
             intraline: Default::default(),
             whole: None,
+            old_lines: None,
         }
     }
 
@@ -313,6 +316,40 @@ mod tests {
         assert_eq!(cache.index.row(at(1)), cache.index.row(at(2)));
         assert_eq!(cache.index.lines(TextSide::Old).collect::<Vec<_>>(), [at(0), at(1)]);
         assert_eq!(cache.index.lines(TextSide::New).collect::<Vec<_>>(), [at(0), at(2)]);
+    }
+
+    #[test]
+    fn the_run_below_the_last_hunk_is_a_row_only_with_runs() {
+        let mut cache = DiffRowsCache::default();
+        let expanded = Expanded::default();
+        // One hunk at lines 3-5 of a 12-line file: runs of 2 lines above and 7 below.
+        let line = |origin, old, new: Option<u32>, text: &str| DiffLine { origin, old, new, text: text.into() };
+        let lines = vec![
+            line(' ', Some(3), Some(3), "a"),
+            line('-', Some(4), None, "b"),
+            line('+', None, Some(4), "c"),
+            line(' ', Some(5), Some(5), "d"),
+        ];
+        let hunks = vec![Hunk { header: "@@ -3,3 +3,3 @@".into(), lines }];
+        let d = FileDiff { hunks, old_lines: Some(12), ..diff(&[]) };
+        let below = diff_rows::gaps(&d).into_iter().find(|g| g.hunk == 1).expect("a run below");
+        // Without runs (whitespace hidden): the hunks' own rows, even with the old line count.
+        let off = Source { gaps: false, ..src(&d, (1, 1), DiffLayout::Inline, 4, &expanded) };
+        cache.refresh(off);
+        assert_eq!(cache.inline, diff_rows::inline_rows(&d));
+        assert!(cache.gaps.is_empty());
+        let off = Source { gaps: false, ..src(&d, (1, 1), DiffLayout::Split, 4, &expanded) };
+        cache.refresh(off);
+        assert_eq!(cache.split, diff_rows::split_rows(&d));
+
+        cache.refresh(src(&d, (1, 1), DiffLayout::Inline, 4, &expanded));
+        assert_eq!(cache.inline.last(), Some(&DiffRow::GapBelow(below)));
+        assert!(!cache.refresh_heights(&d, &[], H, 4, None));
+        let m = cache.row_metrics(19.0);
+        assert_eq!(m.height(cache.inline.len() - 1), 19.0, "a line row's height");
+        cache.refresh(src(&d, (1, 1), DiffLayout::Split, 4, &expanded));
+        assert_eq!(cache.split.last(), Some(&SplitRow::GapBelow(below)));
+        assert_eq!(cache.index.lines(TextSide::Old).count(), 3, "the row below holds no line");
     }
 
     /// Default-font heights: 19 px lines under a 32 px header.

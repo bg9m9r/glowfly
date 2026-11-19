@@ -4,10 +4,12 @@
 //! nodes, ref chips (double-click a branch chip to check it out), ghost refs, branch highlighting, this tab's WIP
 //! row (`wip_row`: its label, change chips and line total), other worktrees' WIP rows, the New
 //! branch… ghost button on the checked-out commit, and the end row below the last commit
-//! (`more`).
+//! (`more`). A bar above it holds the Commits | Chapters switch (`view_switch`); the Chapters
+//! list (`chapters/`) is drawn in the graph's place when it is chosen.
 
 pub(crate) mod branch_chip;
 mod cells;
+mod chapters;
 mod commit_row;
 mod find_marks;
 mod fit;
@@ -30,6 +32,7 @@ mod row;
 mod row_look;
 mod search_bar;
 mod select;
+mod view_switch;
 mod wip_row;
 mod worktree_wip;
 
@@ -38,6 +41,8 @@ pub(crate) use lantern::peak as lantern_peak;
 pub use paint::draw_avatar;
 #[cfg(test)]
 pub(crate) use row_look::dim_inks;
+#[cfg(test)]
+pub(crate) use view_switch::BAR_H as VIEW_BAR_H;
 
 use super::UiCache;
 use crate::theme::sizes::ControlSize;
@@ -82,6 +87,12 @@ pub fn show(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, cache: &mut 
     }
     if snap.commits.is_empty() && snap.graph.wip.is_none() {
         return super::graph_empty::no_commits(ui);
+    }
+    // The switch between the graph and the chapters; the chapters list takes the graph's place.
+    let listed = chapters::shown(st, view);
+    view_switch::show(ui, st, view.show_search, listed, msgs);
+    if listed {
+        return chapters::show(ui, st, snap, view, want_focus, msgs);
     }
     table(ui, st, snap, view, cache, want_focus, msgs);
 }

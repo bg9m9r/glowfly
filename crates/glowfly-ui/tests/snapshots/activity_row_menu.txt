@@ -11,6 +11,9 @@ Button "Clear"
 Button "Activity" [on]
 Button "Errors" [off]
 Button "Performance" [off]
+TextInput "Search titles, causes and output"
+CheckBox "Failures only" [off]
+Unknown "Activity log"
 Button "Push, done, Everything up-to-date"
 Button "Copy entry"
 Button "Copy log"

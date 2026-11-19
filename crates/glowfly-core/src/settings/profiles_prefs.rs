@@ -131,12 +131,15 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_submodule_updates",
     "repo_year_branches",
     "repo_merge_methods",
+    "repo_history_modes",
     "favorite_repos",
     "repo_groups",
     // Goes with the groups, which are global.
     "new_group_colour",
     "project_folders",
     "external_tools",
+    // Beside the merge tool it is set with: a way of working at this machine.
+    "conflict_auto_picks",
     "profiles",
     "active_profile",
     "use_ssh_agent",

@@ -24,7 +24,7 @@ use glowfly_model::state::{AppState, ForgeState, Modal, Selection};
 use std::time::Instant;
 
 fn empty_diff() -> FileDiff {
-    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 fn head(st: &AppState) -> git2::Oid {

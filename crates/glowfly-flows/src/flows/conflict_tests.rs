@@ -116,7 +116,7 @@ fn open_conflict_closes_the_diff_and_open_diff_closes_the_conflict() {
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     st.session.diff.view = Some((
         DiffTarget::Unstaged("a.txt".into()),
-        FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }.into(),
+        FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None }.into(),
     ));
     let fx = update(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("a.txt".into())), Instant::now());
     match &fx[..] {

@@ -207,7 +207,7 @@ fn tip_pop() {
         let (mut st, dir) = plain(ThemeChoice::Dark, name);
         if stashed {
             let oid = st.snap.as_ref().unwrap().head_oid.unwrap();
-            st.snap.as_mut().unwrap().stashes = vec![StashInfo { index: 0, message: "On main: half-done README".into(), oid }];
+            st.snap.as_mut().unwrap().stashes = vec![StashInfo { index: 0, message: "On main: half-done README".into(), oid, time: None }];
         }
         let mut h = harness(st, true);
         h.run();

@@ -17,14 +17,14 @@ use std::time::Instant;
 const PULL_OUTPUT: &str = "$ git pull --ff\nerror: Your local changes to the following files would be overwritten by merge:\n\tf.txt\nhint: Commit or stash them first.\nPlease commit your changes or stash them before you merge.\nAborting";
 
 /// A run that ended `minutes` ago.
-fn run(ok: bool, title: &str, summary: &str, took_ms: Option<u64>, minutes: i64, output: &str) -> LogEntry {
+pub(crate) fn run(ok: bool, title: &str, summary: &str, took_ms: Option<u64>, minutes: i64, output: &str) -> LogEntry {
     let status = if ok { "done" } else { "FAILED" };
     let routine = glowfly_model::state::activity_rows::is_routine_label(title);
     let info = RunInfo { title: title.into(), summary: summary.into(), took_ms, routine };
     LogEntry { at: NOW - minutes * 60, run: Some(info), ..LogEntry::new(ok, format!("{title} {status}\n{output}")) }
 }
 
-fn note(ok: bool, text: &str, minutes: i64) -> LogEntry {
+pub(crate) fn note(ok: bool, text: &str, minutes: i64) -> LogEntry {
     LogEntry { at: NOW - minutes * 60, ..LogEntry::new(ok, text) }
 }
 

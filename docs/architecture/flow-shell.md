@@ -155,7 +155,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 
 - Files: `state/lfs.rs`'s `LfsSession`, `state/lfs_notes.rs`, `state/session.rs` (the open diff's note), `ui/lfs_banner.rs`, `ui/lfs_badge.rs`, `ui/diff/lfs_note.rs`.
 - The LFS patterns of every attributes file (`lfs::repo_patterns`: root, nested, info/attributes) ride on every whole status read (`LoadMsg::StatusLoaded` and `RepoUnchanged` carry them; `update::lfs::patterns_read` applies them), so hand edits reach the Track in Git LFS entries, the banner and the auto-fetch LFS download without a full reload.
-- The banner shows while git-lfs is known missing (the startup `LfsEffect::Detect`) in a repository with patterns, until dismissed for that workdir this session.
+- The banner (`lfs_notes::banner`, with an `LfsProblem`) shows while git-lfs is known missing or older than `lfs::MIN` in a repository with patterns, in two forms, each dismissed for that workdir on its own this session. The look for git-lfs (`LfsEffect::Detect`) runs at startup and after a git switch (state Checking), and on a window focus regain while there is a problem (`update::lfs::window_focused`, at most once per `RECHECK_EVERY`, no Checking flip so nothing flickers); an answer that changes the install state makes an open Git LFS page read its status again in place (`detected`).
 - File rows marked `lfs` get a badge.
 - A diff whose `RepoMsg::DiffLoaded` brings an `LfsChange` shows a summary instead of the pointer text (`LfsDiffNote`, keyed by target, in `RepoSession::diff.lfs`, parked with its tab) until "Show pointer text".
 
@@ -206,6 +206,8 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - One ordered log worker (`runner/logs.rs`) owns the activity file and the performance log and stamps times, so `update` reads no clock.
 - `Runner::run` times every effect that doesn't wait on the user (`Effect::timed`) and gitcli's run observer times every git command; those taking `logs::SLOW` or more go to `performance.log`.
 - With extended logging each git command also comes back as `LogsMsg::GitRan` for a quiet activity line.
+- The Failures only toggle (`LogsState::failures_only`) and the search field (`ViewState::logs_search`) are one pair for the panel's three tabs, kept across tab switches and not saved. `state::activity_filter::filtered_rows` is the one place that decides the Activity tab's rows (with either on: only the kept entries, each its own row, no routine groups) and `is_open` whether a row is drawn open: by hand (`LogsState::open`) or unfolded because the search found its text in the output, until the user folds it (`LogsState::search_closed`, emptied by `LogsMsg::SearchChanged`). The list's keyboard cursor is `ViewState::activity_focus`; its keys arrive as `LogsMsg::RowKey` (`update/logs_filter.rs`).
+- The activity file's trim (on open, and on an append past twice the cap) drops successful routine runs first, oldest first, and only then the oldest of the rest (`logs::ActivityFile`).
 - Copy entry and Copy log build plain text in `state/activity_copy.rs`.
 - Export logs picks a file on a worker thread (`LogsEffect::PickExport`), then the log worker writes the bundle in order after the pending appends (`LogsEffect::Export`, answered by `LogsMsg::Exported`).
 

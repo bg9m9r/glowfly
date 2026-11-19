@@ -1,0 +1,41 @@
+window 1400x1000
+TabList
+  Tab "New tab" [selected]
+Button "Close tab New tab"
+Button "New tab"
+Button "Repository: Open…"
+Button "Hide panel"
+Button "More"
+Button "Open folder"
+Button "Clear"
+Button "Activity" [on]
+Button "Errors" [off]
+Button "Performance" [off]
+TextInput "Search titles, causes and output"
+CheckBox "Failures only" [on]
+Unknown "Activity log"
+Button "Pull, failed, Your changes to 1 file would be overwritten."
+Label "Your changes to 1 file would be overwritten."
+Button "Stash and pull"
+Button "Copy"
+Label "$ git pull --ff\nerror: Your local changes to the following files would be overwritten by merge:\n\tf.txt\nhint: Commit or stash them first.\nPlease commit your changes or stash them before you merge.\nAborting"
+Label "Couldn't reach github.com, failed"
+Image
+Label "Glowfly"
+Label "See your history clearly."
+Button "Open repository…"
+Label "A folder on this computer that already holds a Git repository."
+Button "Clone repository…"
+Label "Copy a repository from a hosting service or a URL into a new folder."
+Button "New repository…"
+Label "Make an empty repository in a new or existing folder."
+Button "Find repositories in folders…"
+Label "Look through the folders you keep projects in for repositories."
+painted:
+  "Repository"
+  "Open…"
+  "3 minutes ago"
+  "850 ms"
+  "Pull"
+  "2 minutes ago"
+  "Couldn't reach github.com"

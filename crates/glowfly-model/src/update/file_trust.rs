@@ -84,7 +84,8 @@ fn label(t: glowfly_core::i18n::Lang, effect: &FilesEffect) -> &'static str {
                 LocalOp::ResolveConflict { .. }
                 | LocalOp::SavePartialResolution { .. }
                 | LocalOp::ResolveWithSide { .. }
-                | LocalOp::MarkResolved(_),
+                | LocalOp::MarkResolved(_)
+                | LocalOp::TakeTrivialPicks(_),
             ..
         } => t.tr("trust.files.conflict"),
         // The rest starts no git, so it is never held.

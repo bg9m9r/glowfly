@@ -31,7 +31,7 @@ pub(crate) fn listed(index: usize) -> StashRun {
 }
 
 pub(crate) fn with_stash(mut snap: Snapshot) -> Snapshot {
-    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: oid() }];
+    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: oid(), time: None }];
     snap
 }
 

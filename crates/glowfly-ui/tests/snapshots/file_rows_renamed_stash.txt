@@ -61,6 +61,8 @@ Button "README.md" [off]
 Label "Modified"
 Button "login.txt to authentication/sign_in.txt" [off]
 Label "Renamed"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
@@ -100,6 +102,7 @@ painted:
   "1"
   "Stashes"
   "1"
+  "18 days ago"
   "Worktrees"
   "0"
   "Submodules"

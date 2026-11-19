@@ -296,7 +296,7 @@ fn create_result_closes_or_shows_the_error() {
 }
 
 pub(super) fn empty_diff() -> FileDiff {
-    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 #[test]

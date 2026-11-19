@@ -251,6 +251,8 @@ mod test_bin;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
+mod trivial_tests;
+#[cfg(test)]
 mod undo_file_actions_tests;
 #[cfg(test)]
 mod worktree_added_tests;

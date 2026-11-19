@@ -7,11 +7,28 @@ use crate::repo::Hunk;
 use std::fmt;
 
 /// The old side of a file diff up to its last hunk: the state each hunk's parses start from.
-#[derive(Clone, PartialEq, Eq)]
+/// Two texts are equal when their `lines` are: what follows the last hunk plays no part in how
+/// the hunks are colored.
+#[derive(Clone)]
 pub struct OldText {
     /// Old lines 1.. up to (not including) the last hunk's first old line, without terminators.
     lines: Vec<String>,
+    /// How many lines the whole old file has.
+    total: usize,
+    /// Old lines from the last hunk's first old line to the end of the file; empty unless the
+    /// text was built with `whole`.
+    rest: Vec<String>,
+    /// Whether `rest` was asked for (it is empty for a last hunk that ends the file).
+    has_rest: bool,
 }
+
+impl PartialEq for OldText {
+    fn eq(&self, other: &OldText) -> bool {
+        self.lines == other.lines
+    }
+}
+
+impl Eq for OldText {}
 
 impl fmt::Debug for OldText {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -26,6 +43,16 @@ impl OldText {
     /// the hunks can't be placed. Only the lines before the last hunk are kept: nothing after it
     /// is parsed.
     pub fn new(content: &[u8], hunks: &[Hunk]) -> Option<OldText> {
+        OldText::build(content, hunks, false)
+    }
+
+    /// `new`, also keeping the lines from the last hunk to the end of the file (`tail`), for
+    /// the run of unchanged lines below the last hunk.
+    pub fn whole(content: &[u8], hunks: &[Hunk]) -> Option<OldText> {
+        OldText::build(content, hunks, true)
+    }
+
+    fn build(content: &[u8], hunks: &[Hunk], keep_rest: bool) -> Option<OldText> {
         let starts = starts(hunks)?;
         let mut raw: Vec<&[u8]> = content.split(|&b| b == b'\n').collect();
         if content.is_empty() || content.ends_with(b"\n") {
@@ -43,7 +70,29 @@ impl OldText {
         if keep > raw.len() {
             return None;
         }
-        Some(OldText { lines: (0..keep).filter_map(line).collect() })
+        let rest = if keep_rest { (keep..raw.len()).filter_map(line).collect() } else { Vec::new() };
+        Some(OldText { lines: (0..keep).filter_map(line).collect(), total: raw.len(), rest, has_rest: keep_rest })
+    }
+
+    /// How many lines the old file has (a final line without a newline counts; an empty file
+    /// has none).
+    pub fn total(&self) -> usize {
+        self.total
+    }
+
+    /// The old lines from the last hunk's first line to the end (empty unless built with
+    /// `whole`).
+    pub(crate) fn rest(&self) -> &[String] {
+        &self.rest
+    }
+
+    /// The old lines after the last of `hunks`: the run of unchanged lines below it. `None`
+    /// when the text wasn't built with `whole`, or `hunks` don't fit it.
+    pub(crate) fn tail(&self, hunks: &[Hunk]) -> Option<&[String]> {
+        if !self.has_rest || starts(hunks)?.last().copied() != Some(self.lines.len()) {
+            return None;
+        }
+        self.rest.get(old_count(hunks.last()?)..)
     }
 
     /// The lines kept (old lines 1.. up to the last hunk).

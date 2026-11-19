@@ -4,7 +4,7 @@
 
 use super::tests::{listed, rev};
 use super::*;
-use crate::testkit::git_cli;
+use crate::testkit::{git_cli, git_env};
 use crate::testutil::{git, rewrite_reflog, scratch_repo, write};
 use git2::Repository;
 
@@ -46,10 +46,69 @@ fn lists_what_git_stash_list_shows() {
         assert_eq!(s.oid, oid_of(&dir, &format!("stash@{{{n}}}")));
         assert_eq!(s.oid.to_string(), *sha);
         assert_eq!(s.message, *text);
+        let committed_at = git_cli(&dir, &["log", "-1", "--format=%ct", &format!("stash@{{{n}}}")]);
+        assert_eq!(s.time.map(|t| t.to_string()), Some(committed_at.trim().to_owned()), "stash@{{{n}}}");
     }
     assert_eq!(ours[0].message, "On main: three");
     assert!(ours[1].message.starts_with("WIP on main: "), "{}", ours[1].message);
     assert_eq!(triples(&list_in(&Repository::open(&dir).unwrap()).unwrap()), triples(&ours));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_time_is_the_stash_commits_and_a_rename_keeps_it() {
+    let dir = committed("stash-list-time");
+    let old = [("GIT_AUTHOR_DATE", "@1700000000 +0000"), ("GIT_COMMITTER_DATE", "@1700000000 +0000")];
+    write(
+        &dir, "a.txt", "old
+",
+    );
+    git_env(&dir, &["stash", "push", "-q", "-m", "old"], &old);
+    write(
+        &dir, "a.txt", "new
+",
+    );
+    git(&dir, &["stash", "push", "-q", "-m", "new"]);
+
+    let before = list(&dir).unwrap();
+    assert_eq!(before[1].time, Some(1_700_000_000));
+    let committed_at = git_cli(&dir, &["log", "-1", "--format=%ct", "stash@{1}"]);
+    assert_eq!(committed_at.trim(), "1700000000");
+    let reflog = || git_cli(&dir, &["log", "-g", "--format=%gd", "--date=unix", "refs/stash"]);
+    assert!(reflog().contains("1700000000"), "the reflog entry was made then: {}", reflog());
+
+    let r = rename(&dir, 1, before[1].oid, "On main: renamed");
+    assert!(r.ok, "{}", r.output);
+    let after = list(&dir).unwrap();
+    assert_eq!(after[1].message, "On main: renamed");
+    assert_eq!(after.iter().map(|s| s.time).collect::<Vec<_>>(), before.iter().map(|s| s.time).collect::<Vec<_>>());
+    assert!(!reflog().contains("1700000000"), "the reflog time moved to the rename: {}", reflog());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_stash_whose_commit_is_gone_lists_without_a_time() {
+    let dir = committed("stash-list-gone");
+    write(
+        &dir, "a.txt", "first
+",
+    );
+    git(&dir, &["stash", "push", "-q", "-m", "first"]);
+    write(
+        &dir, "a.txt", "second
+",
+    );
+    git(&dir, &["stash", "push", "-q", "-m", "second"]);
+    let first = rev(&dir, "stash@{1}");
+    let gone = "1111111111111111111111111111111111111111";
+    rewrite_reflog(&dir, "refs/stash", first.as_bytes(), gone.as_bytes());
+
+    let entries = list(&dir).unwrap();
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[1].oid, Oid::from_str(gone).unwrap());
+    assert_eq!(entries[1].message, "On main: first");
+    assert_eq!(entries[1].time, None);
+    assert!(entries[0].time.is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

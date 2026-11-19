@@ -3,9 +3,10 @@
 //! config apply. Only the reflog message changes; the stash commit and its position stay.
 //!
 //! Three limits follow from that: the stash commit's own message (what the commit details show)
-//! keeps the old text, the reflog dates of `stash@{0..N}` become the time of the rename, and the
-//! entries above the renamed one are stored again with their listed text, so one whose message
-//! wasn't UTF-8 comes back with U+FFFD in place of the bad bytes.
+//! keeps the old text, the reflog dates of `stash@{0..N}` become the time of the rename (the list's
+//! dates are read from the stash commits and so survive it), and the entries above the renamed one
+//! are stored again with their listed text, so one whose message wasn't UTF-8 comes back with
+//! U+FFFD in place of the bad bytes.
 //!
 //! `push` builds the Stash dialog's `git stash push` command lines (every change, only the
 //! staged changes, or chosen paths, optionally keeping the staged changes with `--keep-index`).
@@ -21,7 +22,7 @@
 //! soon as its stash exists (`add_saved`). `paths` lists the files a stash changes.
 //!
 //! `list` reads the stash list from the `refs/stash` reflog, a message that isn't UTF-8 decoded
-//! lossily.
+//! lossily, each entry with its stash commit's time.
 
 use crate::gitcli::{self, args};
 use crate::repo::StashInfo;

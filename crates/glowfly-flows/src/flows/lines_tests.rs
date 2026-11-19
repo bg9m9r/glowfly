@@ -28,7 +28,7 @@ pub(super) fn two_hunks() -> FileDiff {
         },
         Hunk { header: "@@ -20,1 +20,3 @@".into(), lines: vec![line(' ', "x"), line('+', "y"), line('+', "z")] },
     ];
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 pub(super) fn unstaged() -> DiffTarget {

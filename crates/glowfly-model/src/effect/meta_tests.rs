@@ -154,8 +154,14 @@ fn load_diff_and_job_effects_keep_their_metadata() {
     let scoped = Some(w.as_path());
     let target = || glowfly_core::repo::DiffTarget::Unstaged("a.txt".into());
     let diff = || {
-        let d =
-            glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+        let d = glowfly_core::repo::FileDiff {
+            binary: false,
+            hunks: Vec::new(),
+            highlight: None,
+            intraline: Default::default(),
+            whole: None,
+            old_lines: None,
+        };
         std::sync::Arc::new(d)
     };
     let memo = std::sync::Arc::new(glowfly_core::repo::IndexMemo::of(&git2::Index::new().unwrap()).unwrap());

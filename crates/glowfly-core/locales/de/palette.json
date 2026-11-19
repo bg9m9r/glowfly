@@ -1,4 +1,6 @@
 {
+  "palette.diff.collapse_all": "Alle unveränderten Zeilen im Diff falten",
+  "palette.diff.expand_all": "Alle unveränderten Zeilen im Diff anzeigen",
   "palette.files.failed": "Die Dateien des Repositorys konnten nicht aufgelistet werden: {why}",
   "palette.getting_started": "Erste Schritte",
   "palette.group.all": "Alle Befehle",

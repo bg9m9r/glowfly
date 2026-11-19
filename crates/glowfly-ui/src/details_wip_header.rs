@@ -271,7 +271,13 @@ fn more_button(ui: &mut Ui, moved: &[HeaderAction], ctx: RowContext, msgs: &mut 
 
 /// A header's more-actions button (a Small icon-only ⋯) opening a menu of `items` below it.
 pub(crate) fn more_menu(ui: &mut Ui, t: Lang, items: impl FnOnce(&mut Ui)) {
-    let r = ui.add(buttons::icon_only(Icon::More, t.tr("details.wip.more.tip")).size(SIZE));
+    more_menu_named(ui, t.tr("details.wip.more.tip"), items);
+}
+
+/// `more_menu` with its own accessible name, for a header whose menu must be told apart from
+/// another's.
+pub(crate) fn more_menu_named(ui: &mut Ui, name: &str, items: impl FnOnce(&mut Ui)) {
+    let r = ui.add(buttons::icon_only(Icon::More, name).size(SIZE));
     menu::below(ui, &r, items);
 }
 

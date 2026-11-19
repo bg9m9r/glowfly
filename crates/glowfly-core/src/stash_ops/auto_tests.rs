@@ -124,6 +124,7 @@ fn made_in_finds_the_newest_new_entry_with_the_message() {
         index,
         message: message.to_owned(),
         oid: Oid::from_bytes(&[byte; 20]).unwrap(),
+        time: None,
     };
     let oid = |byte: u8| Oid::from_bytes(&[byte; 20]).unwrap();
     let list = [

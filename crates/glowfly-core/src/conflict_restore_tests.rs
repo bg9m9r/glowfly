@@ -200,3 +200,14 @@ fn saved_picks_round_trip() {
         }
     }
 }
+
+#[test]
+fn read_back_tells_untouched_saved_and_unmatched_apart() {
+    assert_eq!(read_back(&two(), &text(GIT0, GIT1)), ReadBack::Untouched);
+    let ReadBack::Saved(s) = read_back(&two(), &text("o1\no2\n", GIT1)) else { panic!("saved") };
+    assert_eq!(s.picks, [Ours.into(), ChunkPick::default()]);
+    assert_eq!(read_back(&two(), &text(GIT0, "<<<<<<< stray\nx\n")), ReadBack::Unmatched);
+    let mut binary = two();
+    binary.content = ConflictContent::Binary;
+    assert_eq!(read_back(&binary, "anything\n"), ReadBack::Unmatched);
+}

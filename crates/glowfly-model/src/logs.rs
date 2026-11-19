@@ -1,7 +1,8 @@
 //! Messages and effects of the logs: the activity log kept across sessions, the error and
 //! performance log tabs, the logs folder, extended logging, copying an entry or a whole log and
 //! exporting every log as one bundle (state/logs.rs, state/activity_copy.rs, update/logs.rs,
-//! update/logs_copy.rs, update/logs_export.rs, runner/logs.rs, logging.rs, ui/activity_log.rs).
+//! update/logs_copy.rs, update/logs_export.rs, update/logs_filter.rs, state/activity_filter.rs,
+//! runner/logs.rs, logging.rs, ui/activity_log.rs).
 
 use crate::effect::EffectMeta;
 use crate::effect::SandboxRule;
@@ -88,6 +89,12 @@ pub enum LogsMsg {
     DismissFailure(EntryId),
     /// Fold an activity row (a routine group by its first entry) open, or closed again.
     Fold(EntryId),
+    /// The Failures only toggle in the panel's header.
+    SetFailuresOnly(bool),
+    /// The search text (`ViewState::logs_search`) changed or was cleared.
+    SearchChanged,
+    /// A key of the focused activity list: moves the keyboard cursor, or folds its row.
+    RowKey(crate::state::list_keys::ListKey),
     /// Run a failed run's fix: the panel's button, and the failure toast's.
     Fix(EntryId),
     /// Run a failed run's second fix (`LogsState::alt_fixes`): the panel's and the toast's
@@ -123,6 +130,9 @@ impl LogsMsg {
             | Self::Details { .. }
             | Self::DismissFailure(_)
             | Self::Fold(_)
+            | Self::SetFailuresOnly(_)
+            | Self::SearchChanged
+            | Self::RowKey(_)
             | Self::Fix(_)
             | Self::AltFix(_)
             | Self::CopyEntry(_)

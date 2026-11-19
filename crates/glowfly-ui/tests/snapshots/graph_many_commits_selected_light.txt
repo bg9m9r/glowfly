@@ -76,6 +76,8 @@ Label "1 file"
 Label "7e24110"
 Button "login.txt" [off]
 Label "Added"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

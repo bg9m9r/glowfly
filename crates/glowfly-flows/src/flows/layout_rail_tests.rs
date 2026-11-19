@@ -96,7 +96,7 @@ fn tool_view_follows_the_central_order() {
     assert_eq!(tool_view(&st), None);
     st.dashboard.open = false;
     st.session.issue.view = None;
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), Arc::new(diff)));
     st.session.rebase.view = Some(RebasePanel::loading(RebaseBase::FromCommit(head(&st))));
     assert_eq!(tool_view(&st), None, "a diff covers the rebase editor, beside the full panel");

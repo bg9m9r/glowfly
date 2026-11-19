@@ -189,7 +189,7 @@ fn enter_clicks_the_focused_item() {
 #[test]
 fn esc_closes_the_menu_and_nothing_else() {
     let (mut st, dir) = fixture("menu-keys-esc");
-    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let diff = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Unstaged("README.md".into()), diff.into()));
     let mut h = keys_harness(st, SIZE);
     press(&mut h, Modifiers::ALT, Key::F);

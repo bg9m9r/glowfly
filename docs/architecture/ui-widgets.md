@@ -35,6 +35,7 @@ source file, update its line here.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: an edge-to-edge list row in each state (`RowState`): the selection fill with a left accent bar, the lifted hover, a flat pressed fill and the inset focus ring; shared by the graph, sidebar rows and headers, file rows, the file history list, the dashboard and the Preferences page list.
+- `widgets/marked_text.rs`: matched text in the row's full ink on the find fill: where a needle falls in a line (`runs`), a cut line painted with those runs marked (`paint_cut_marked`: the graph's rows and the activity rows) and a wrapped label built from marked pieces (`append_marked`: open activity rows, the Errors and Performance tabs).
 - `widgets/menu.rs`: the one menu style (row metrics from `theme/spacing.rs`'s `menu` tokens, transparent rows, `SM` pills) and the only ways to open a menu: `context_menu` (and `context_menu_at`, for a view drawing its rows under one response), `submenu`, `popup_below`, `custom_button`, `below`, plus `separator` (never first or doubled), `group_header` (the one group-header style, in place of its separator), `inset` for plain lines at the label column, and `danger_style` / `danger_submenu` for destructive items; `tests/view_checks/menus.rs` checks.
 - `widgets/menu_columns.rs`: a menu's shared columns (state, icon, label, reason slot, shortcut, end slot for a chevron or a trailing button), learned from its rows each pass so every row lines up.
 - `widgets/menu_row.rs`: the menu row (`menu::item`): a ✓, radio dot or current-choice ✓ in the state column, a dot or swatch in the icon column, the label, the info mark and the shortcut on the menu's columns; `item_named` for a label with cut names, `trailing_button` + `show_split` for a split row.
@@ -49,7 +50,7 @@ source file, update its line here.
 - `widgets/empty_state.rs`: the block under an expanded empty section: a sentence on what the feature is for and its action buttons (Add worktree…, Publish… and Add remote…, Connect…), and a failed hosting service's block (`failure`: the cause, then Sign in).
 - `line_counts.rs`: line counts drawn one way everywhere: a file row's `+N −M` and proportional bar, a total, the WIP row's chips.
 - Added, removed and modified share `common::added_color`, `removed_color` and `modified_color` with the status letters.
-- `date_tip.rs`: date labels with their full date on hover.
+- `date_tip.rs`: date labels with their full date on hover, and `Clock` (the settings, now and zone a view formats dates with).
 
 ## Disabled reasons
 

@@ -7,6 +7,9 @@ source file, update its line here.
 
 - `graph.rs`, `graph/`: lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes.
 - `graph/lanes.rs`: the lane layout itself (`layout`), kept with where the lanes stand below the last row so `Layout::extend` lays more commits out under it.
+- `chapters.rs`: the Chapters view's grouping (`group`): HEAD's first-parent history as chapters (a merge with what it brought in, a squash landing, a run of neighbouring commits by one author), a pure computation over the loaded commits; each chapter's id, title, commits, authors, dates and release tags.
+- `chapters/words.rs`: the grouping's text rules: squash numbers (`(#n)`), closing lines (Closes / Fixes), merge titles from git's default messages and pull request titles, and who counts as the same author.
+- `chapters/release.rs`: which tag names look like a release (`v1.2.3`, `1.0.0-rc.1`, `release/1.4`; not `v2` or `nightly`).
 - `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty; `Snapshot::layout_job` hands the same work to a worker (`LayoutJob`, `LayoutFit`) for a large history.
 - `branch_colour.rs`: branch colours: a branch's key (its name, without the remote), its hue slot from an FNV-1a hash of the key (main takes the trunk unless pinned), and a person's initials tone from their email (`person_tone`, one of eight).
@@ -18,14 +21,14 @@ source file, update its line here.
 - `diff_rows.rs`, `whole_file.rs`, `whole_file/`, `conflict_rows.rs`: row layout of diffs, the whole-file view and the conflict view, with the conflict chunks safe to pick without asking: `trivial_pick`.
 - `conflict_folds.rs`: the long clean runs of the conflict view folded into one row.
 - `diff_rows/line_row.rs`: the row of a file line.
-- `diff_rows/gaps.rs`: the hunk view's gaps between hunks, keyed like the whole-file folds of the same lines, and their filled-in rows.
+- `diff_rows/gaps.rs`: the hunk view's unchanged runs (above the first hunk, between hunks, below the last), keyed like the whole-file folds of the same lines, and their filled-in rows (a closed run below the last hunk is one `GapBelow` row).
 - `intraline.rs`: word-level changes.
 - `line_pairs.rs`: which removed line sits beside which added line.
 - `tabs.rs`: tab stops.
 - `wrap.rs`: where wrapped lines break.
 - `conflict_pick.rs`: what each conflict chunk resolves to (whole sides, single lines in tick order, or text typed by hand) and the file that makes, with conflict markers left for the chunks not picked yet and the clean runs between them as edited (`render`, `render_picks`).
 - `conflict_edit.rs`: the conflict view's output as editable text with each chunk's and clean run's range, and which one an edit of it falls in (`locate_edit`).
-- `conflict_restore.rs`: the picks a saved file holds, read back against the stages.
+- `conflict_restore.rs`: the picks a saved file holds, read back against the stages (`read_back` tells a file as git wrote it from one with picks saved and one that can't be matched).
 - `whole_file/anchor.rs`: rows of the whole-file view mapped to the file lines they show and back, so a change to the open folds, which adds or removes rows, can keep the same line at the top of the viewport.
 - `whole_file/folds.rs`: folds of the whole-file view: long runs of unchanged lines away from every change, drawn as one "N unchanged lines" row until the user opens them.
 
@@ -35,8 +38,8 @@ source file, update its line here.
 - `memo.rs`: parse checkpoints a reload of the same file resumes from: content-defined chunks with their start and end states.
 - `highlight/syntaxes.rs`: the syntax definitions for detection, loaded once (immutable, see Rules).
 - `highlight/grammars.rs`: the copy of the syntax set parsing runs on, dropped with its compiled regexes after 3 idle minutes (`Holder`).
-- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment).
-- `highlight/gaps.rs`: syntax spans for the unchanged lines between hunks, when the hunk view fills them in: the old file parsed from its first line, so a run inside a block comment opened earlier is colored as one.
+- `highlight/context.rs`: the old file's lines before a diff's hunks, so each hunk can be parsed from the state those lines leave (a hunk that starts inside a block comment is then colored as a comment); built with `whole` it also keeps the lines after the last hunk and the file's line count. `highlight/old_text_tests.rs` tests them.
+- `highlight/gaps.rs`: syntax spans for the unchanged runs outside the hunks, when the hunk view fills them in: the old file parsed from its first line (through the lines below the last hunk when the file is within the limits), so a run inside a block comment opened earlier is colored as one.
 - `highlight/header.rs`: the function context in hunk headers: the text git adds after the closing `@@` (the nearest line above the hunk that looks like a definition, e.g. `fn greet(name: &str) {`).
 - `highlight/linguist.rs`: language overrides: names from a `.gitattributes` `linguist-language` value mapped to the bundled syntaxes, and the `SyntaxHint` the highlighter takes.
 - `highlight/reuse.rs`: what a reload can take over from the diff shown before: the exact spans of unchanged hunks, provisional spans for lines whose text appeared before, hunk-header spans by their function context's text, and parse checkpoints (`memo`) to resume an in-context parse from.

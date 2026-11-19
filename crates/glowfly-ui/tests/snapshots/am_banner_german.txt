@@ -56,6 +56,7 @@ Label "Löse die Dateien mit Konflikten, dann Fortsetzen."
 Button "Ausblenden: Konflikte lösen"
 Label "Konflikte lösen"
 Label "noch 1"
+Button "Weitere Aktionen für Dateien mit Konflikten"
 Button "Alle als gelöst markieren"
 Label "Dateien mit Konflikten (1)"
 Unknown "Dateien mit Konflikten (1)"
@@ -81,6 +82,8 @@ Label "Fortsetzen, sobald die Konflikte gelöst sind."
 Button "Erst committen oder nachbessern…"
 Button "Fortsetzen" [disabled]
 Button "Weitere Möglichkeiten"
+Button "Commits" [on]
+Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

@@ -6,6 +6,7 @@ mod blame_tests;
 mod checkout_tests;
 mod compare_tests;
 mod conflict_tests;
+mod diff_tests;
 mod folder_tests;
 mod groups_tests;
 mod issue_tests;

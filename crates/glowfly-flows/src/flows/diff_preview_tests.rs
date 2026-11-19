@@ -45,7 +45,7 @@ fn open(st: &mut AppState, target: DiffTarget) -> Vec<Effect> {
 }
 
 /// Runs the `DiffEffect::Load` among `fx` and applies its result, returning the effects that raised.
-fn deliver_diff(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
+pub(super) fn deliver_diff(st: &mut AppState, fx: Vec<Effect>) -> Vec<Effect> {
     let load = fx.into_iter().find(|e| matches!(e, Effect::Diff(glowfly_model::effect::DiffEffect::Load { .. }))).expect("a diff load");
     let msg = glowfly_runner::testing::execute(load).expect("a result");
     run(st, msg)

@@ -63,6 +63,8 @@ Label "Continue applying · patch 2 of 3"
 Button "Commit or amend first…"
 Button "Continue"
 Button "More ways to go on"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

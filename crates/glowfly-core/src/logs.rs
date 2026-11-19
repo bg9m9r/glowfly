@@ -4,8 +4,9 @@
 //!   (`{"v":1,"session":…,"at":…,"ok":…,"text":…,"repo":…,"run":{…}}`, times in Unix seconds,
 //!   `session` the start of the session that wrote it, `repo` the repository of the tab it was
 //!   logged in, left out for a tab without one, `run` the finished operation it records
-//!   ([`RunInfo`]), left out for a plain line). Kept to the newest entries: trimmed when it is opened, and
-//!   whenever appends take it past twice that many ([`ActivityFile`]).
+//!   ([`RunInfo`]), left out for a plain line). Kept to a cap of entries: trimmed when it is opened, and
+//!   whenever appends take it past twice that many ([`ActivityFile`]); a trim drops successful
+//!   routine runs (auto-fetches) first, oldest first, then the oldest of the rest.
 //! - `errors.log`: warnings, errors and panics, as text lines from the app's tracing setup,
 //!   rotated by size ([`RotatingFile`], [`ERROR_LOG_BYTES`]).
 //! - `performance.log`: effects and git commands that took [`SLOW`] or longer, one tab-separated

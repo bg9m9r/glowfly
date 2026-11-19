@@ -66,6 +66,7 @@ Button "Restore this version…"
 Button "Open with default app" [disabled]
 Button "Show in Explorer" [disabled]
 Button "Open in external diff tool"
+Button "Show the 6 unchanged lines above"
 Button "Revert hunk"
 Document "Diff of src/app.txt"
 painted:

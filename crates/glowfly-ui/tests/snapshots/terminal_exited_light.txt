@@ -78,6 +78,8 @@ Button "New terminal with another shell"
 Label "Process exited with code 0"
 Button "Restart"
 Unknown "Terminal screen" [focused]
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

@@ -1,0 +1,31 @@
+window 1400x820
+TabList
+  Tab "New tab" [selected]
+Button "Close tab New tab"
+Button "New tab"
+Button "Repository: Open…"
+Button "Hide panel"
+Button "More"
+Button "Open folder"
+Button "Reload"
+Button "Activity" [off]
+Button "Errors" [on]
+Button "Performance" [off]
+TextInput "Search this log" = "theme"
+Button "Clear search"
+Label "Showing the end of the file. Open the logs folder for all of it."
+Label "2026-10-16 09:30:04.481 +00:00  WARN main glowfly::themes: theme file sand-dark.json: unknown color \"glow\""
+Image
+Label "Glowfly"
+Label "See your history clearly."
+Button "Open repository…"
+Label "A folder on this computer that already holds a Git repository."
+Button "Clone repository…"
+Label "Copy a repository from a hosting service or a URL into a new folder."
+Button "New repository…"
+Label "Make an empty repository in a new or existing folder."
+Button "Find repositories in folders…"
+Label "Look through the folders you keep projects in for repositories."
+painted:
+  "Repository"
+  "Open…"

@@ -179,8 +179,14 @@ fn prefs_change_refreshes_repo_and_keeps_diff_row() {
     st.settings.profile_mut(PERSONAL).unwrap().connections = None;
     let dir = scratch_repo("profile-prefs-refresh");
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    let file =
-        glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let file = glowfly_core::repo::FileDiff {
+        binary: false,
+        hunks: Vec::new(),
+        highlight: None,
+        intraline: Default::default(),
+        whole: None,
+        old_lines: None,
+    };
     st.session.diff.view = Some((DiffTarget::Unstaged("a.txt".into()), file.into()));
     st.view.tab.diff_top_row = 6;
     st.view.diff_scroll_to_row = None;

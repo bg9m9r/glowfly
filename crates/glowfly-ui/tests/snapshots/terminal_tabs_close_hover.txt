@@ -82,6 +82,8 @@ Button "pwsh · demo (3)"
 Button "New terminal tab"
 Button "New terminal with another shell"
 Unknown "Terminal screen" [focused]
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

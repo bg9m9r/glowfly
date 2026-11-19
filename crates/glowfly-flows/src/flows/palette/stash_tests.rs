@@ -134,6 +134,10 @@ fn choose_stash_enters_sub_list() {
     assert_eq!(pick(&st).items, Items::Ready(msgs));
     assert_eq!(pick(&st).detail(0).as_deref(), Some("stash@{0}"));
     assert_eq!(pick(&st).detail(1).as_deref(), Some("stash@{1}"));
+    // The load read each stash commit's time; the drawn detail has the date, the keyword does not.
+    assert!(st.snap.as_ref().unwrap().stashes.iter().all(|s| s.time.is_some()));
+    let shown = pick(&st).shown_detail(0, &st.settings, st.cues.now, st.cues.utc_offset).unwrap();
+    assert!(shown.ends_with(" · stash@{0}"), "{shown}");
 
     let texts = |a| (PickKind::Stash(a).title(), PickKind::Stash(a).prompt());
     assert_eq!(texts(StashAction::Apply), ("Apply stash", "Find a stash to apply"));

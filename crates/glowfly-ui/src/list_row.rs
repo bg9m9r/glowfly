@@ -35,31 +35,11 @@ pub enum Part<'a> {
     Behind(usize),
 }
 
-/// One sidebar list row. Returns the click response; `right` is optional dim text at the right.
-/// A row whose text is cut short shows the whole text on hover.
-pub fn list_row(ui: &mut Ui, indent: f32, text: &str, right: Option<(&str, Color32)>, selected: bool, strong: bool) -> Response {
-    let parts = right.map(|(r, _)| [Part::Text(r)]);
-    let right = right.zip(parts.as_ref()).map(|((_, c), p)| (&p[..], c));
-    list_row_slot(ui, indent, text, right, 0.0, selected, strong).0
-}
-
-/// `list_row` with `slot` px kept free at the right edge (right of the dim right-hand parts), for
-/// a painted marker; returns the row's response and the slot's rect (zero-width when slot is 0).
-fn list_row_slot(
-    ui: &mut Ui,
-    indent: f32,
-    text: &str,
-    right: Option<(&[Part<'_>], Color32)>,
-    slot: f32,
-    selected: bool,
-    strong: bool,
-) -> (Response, Rect) {
-    let (r, marker, cut) = list_row_cut(ui, indent, text, right, slot, selected, strong);
-    (if cut { r.on_hover_text(text) } else { r }, marker)
-}
-
-/// `list_row_slot` without a hover of its own: also returns whether the text was cut (ending in
-/// "…"), for a caller whose tooltip holds the whole text or gets it as its first line.
+/// One sidebar list row: `text` from `indent`, cut with "…" when it doesn't fit, `right` optional
+/// dim parts at the right and `slot` px kept free at the right edge (right of the parts), for a
+/// painted marker. Returns the click response, the slot's rect (zero-width when slot is 0) and
+/// whether the text was cut. It has no hover of its own: the caller's tooltip holds the whole
+/// text or gets it as its first line.
 pub fn list_row_cut(
     ui: &mut Ui,
     indent: f32,
@@ -86,7 +66,7 @@ pub fn name_row_cut(
     row_cut(ui, (indent, name, true), right, slot, selected, strong)
 }
 
-/// `list_row` for a name, cut in its middle (`name_row_cut`), whole on hover when cut.
+/// A row for a name, cut in its middle (`name_row_cut`), whole on hover when cut.
 pub fn name_row(ui: &mut Ui, indent: f32, name: &str, selected: bool) -> Response {
     let (r, _, cut) = name_row_cut(ui, indent, name, None, 0.0, selected, false);
     if cut { r.on_hover_text(name) } else { r }
@@ -199,7 +179,7 @@ pub(crate) fn paint_arrow(p: &Painter, c: Pos2, up: bool, col: Color32) {
     p.line_segment([pos2(c.x + 2.6, tip + back), pos2(c.x, tip)], s);
 }
 
-/// The height of a `list_row`, and of a file list's rows (`file_row`).
+/// The height of a `list_row_cut`, and of a file list's rows (`file_row`).
 pub const LIST_ROW_H: f32 = 36.0;
 /// The height of a sidebar section header (`widgets::section_header`).
 pub const SECTION_H: f32 = 36.0;
@@ -219,7 +199,7 @@ pub const GUTTER_X: f32 = 24.0;
 /// The same for a nested row.
 pub const NESTED_GUTTER_X: f32 = 32.0;
 
-/// For a `list_row` about to be drawn: when it would be scrolled out of view, takes its space
+/// For a `list_row_cut` about to be drawn: when it would be scrolled out of view, takes its space
 /// (and one widget id, as the row does) and returns true, so the caller skips it. Long sections
 /// of the left panel then cost little more than their visible rows.
 pub fn list_row_hidden(ui: &mut Ui) -> bool {

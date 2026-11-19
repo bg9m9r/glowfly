@@ -55,14 +55,15 @@ fn entry_copy_of_a_routine_group() {
     let mut log = vec![note(true, "Checked out main"), auto(AT + 60), auto(AT + 120), run("Push", true, "", None, "$ git push")];
     let one = |at: i64| entry_text(&auto(at), EN, 0);
     let both = format!("{}\n\n{}", one(AT + 60), one(AT + 120));
-    assert_eq!(entry_copy(&log, log[1].id, EN, 0).as_deref(), Some(both.as_str()), "the group's first id copies all of it");
-    assert_eq!(entry_copy(&log, log[3].id, EN, 0), Some(entry_text(&log[3], EN, 0)));
-    assert_eq!(entry_copy(&log, crate::state::logs::EntryId::next(), EN, 0), None);
+    assert_eq!(entry_copy(&log, log[1].id, true, EN, 0).as_deref(), Some(both.as_str()), "the group's first id copies all of it");
+    assert_eq!(entry_copy(&log, log[3].id, true, EN, 0), Some(entry_text(&log[3], EN, 0)));
+    assert_eq!(entry_copy(&log, crate::state::logs::EntryId::next(), true, EN, 0), None);
     log[1].folded = 3;
-    let text = entry_copy(&log, log[1].id, EN, 0).unwrap();
+    let text = entry_copy(&log, log[1].id, true, EN, 0).unwrap();
     assert!(text.ends_with(&format!("{}\n(and 3 earlier runs not kept)", one(AT + 120))), "{text}");
     log[1].folded = 1;
-    assert!(entry_copy(&log, log[1].id, EN, 0).unwrap().ends_with("\n(and 1 earlier run not kept)"));
+    assert!(entry_copy(&log, log[1].id, true, EN, 0).unwrap().ends_with("\n(and 1 earlier run not kept)"));
+    assert_eq!(entry_copy(&log, log[1].id, false, EN, 0), Some(one(AT + 60)), "a filtered row copies only its own run");
 }
 
 #[test]

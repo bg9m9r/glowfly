@@ -4,11 +4,11 @@
 //! `snapshot_tests`.
 
 use super::menu_testing::{open_submenu, submenu_item};
-use super::snapshot_tests::{harness, remove_fixture, with_repo};
+use super::snapshot_tests::{harness, harness_sized, remove_fixture, with_repo};
 use super::snapshot_tests_select::{click, row_y};
 use super::snapshot_tests_worktrees::{H, pushed};
 use crate::snapshot_check::CheckSnapshot;
-use eframe::egui::{PointerButton, Pos2, pos2};
+use eframe::egui::{PointerButton, Pos2, pos2, vec2};
 use egui_kittest::kittest::Queryable;
 use git2::Oid;
 use glowfly_core::settings::ThemeChoice;
@@ -84,7 +84,9 @@ fn graph_commit_menu_copy_submenu() {
 fn graph_commit_menu_copy_flipped() {
     let (st, dir) = with_repo(ThemeChoice::Dark, "commit-menu-copy-flipped");
     let fix = commit(&st, "Fix build on Windows");
-    let mut h = harness(st, true);
+    // The window is as much taller as the view bar above the graph, so the rows sit as low as they did.
+    let height = 820.0 + crate::graph::VIEW_BAR_H;
+    let mut h = harness_sized(st, true, vec2(1400.0, height));
     h.run();
     let y = row_y(row(&h.state().0, fix));
     // The graph pane ends near x = 1000; its menu at the right end has no room for Copy's.
@@ -95,7 +97,10 @@ fn graph_commit_menu_copy_flipped() {
     // Copy sits low, but the submenu still fits level with it, inside the bottom's 8 px (the
     // shift up when it doesn't is `menu_submenu`'s tests).
     let last = submenu_item(&h, "Copy", "Patch").bounding_box().unwrap();
-    assert!((sha.y0 - parent.y0).abs() < 0.5 && last.y1 <= 820.0 - 8.0, "level and inside: {sha:?} to {last:?} beside {parent:?}");
+    assert!(
+        (sha.y0 - parent.y0).abs() < 0.5 && last.y1 <= f64::from(height - 8.0),
+        "level and inside: {sha:?} to {last:?} beside {parent:?}"
+    );
     h.check_snapshot("graph_commit_menu_copy_flipped");
     drop(h);
     remove_fixture(&dir);

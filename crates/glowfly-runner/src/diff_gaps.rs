@@ -1,13 +1,13 @@
-//! Reading the unchanged lines between a diff's hunks, for the hunk view (`DiffEffect::Gaps`).
+//! Reading the unchanged lines outside a diff's hunks, for the hunk view (`DiffEffect::Gaps`).
 
 use glowfly_core::repo::{self, DiffTarget, FileDiff};
 use glowfly_model::msg::{DiffMsg, Msg};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-/// The text of every unchanged run between `diff`'s hunks, colored in its highlight's syntax.
+/// The text of every unchanged run of `diff` (above, between and below its hunks), colored in its highlight's syntax.
 pub(super) fn load_job(workdir: PathBuf, target: DiffTarget, generation: u64, diff: Arc<FileDiff>) -> Msg {
     let syntax = diff.highlight.as_ref().map(|h| h.syntax.as_str());
-    let result = repo::load_gap_text(&workdir, &target, &diff.hunks, syntax).map(Arc::new);
+    let result = repo::load_gap_text(&workdir, &target, &diff, syntax).map(Arc::new);
     Msg::Diff(DiffMsg::GapsLoaded { target, generation, result })
 }

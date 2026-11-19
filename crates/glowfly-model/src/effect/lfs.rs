@@ -8,7 +8,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug)]
 pub enum LfsEffect {
     /// Whether git-lfs is installed (`git lfs version`, always run outside every repository, so
-    /// no repository's alias.lfs answers). Unscoped: the answer is global.
+    /// no repository's alias.lfs answers). Unscoped: the answer is global. Also sent on a window
+    /// focus regain while git-lfs is missing or too old.
     Detect,
     /// Git LFS status for the preferences page: installed version, set up or not, tracked patterns.
     Load { workdir: PathBuf, generation: u64 },

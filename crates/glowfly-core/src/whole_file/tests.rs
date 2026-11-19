@@ -14,7 +14,7 @@ pub(super) fn hunk(lines: Vec<DiffLine>) -> Hunk {
 }
 
 pub(crate) fn diff(hunks: Vec<Hunk>) -> FileDiff {
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 pub(super) const EOFNL: &str = "\\ No newline at end of file";

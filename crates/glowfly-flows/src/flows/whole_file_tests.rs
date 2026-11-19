@@ -37,7 +37,7 @@ pub(super) fn three_changes(whole: bool) -> FileDiff {
     };
     let hunk = |from: u32, to: u32| Hunk { header: format!("@@ -{from} +{from} @@"), lines: lines(from, to) };
     let hunks = vec![hunk(1, 5), hunk(12, 18), hunk(25, 30)];
-    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None };
+    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     if whole {
         d.whole = WholeFile::new(&d.hunks, hunk(1, 30)).map(Box::new);
         assert_eq!(d.whole.as_ref().map(|w| w.blocks.len()), Some(3));

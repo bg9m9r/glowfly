@@ -55,6 +55,7 @@ Label "Cherry-pick in progress"
 Button "Hide: Resolve conflicts"
 Label "Resolve conflicts"
 Label "1 left"
+Button "More actions for conflicted files"
 Button "Mark all resolved"
 Label "Conflicted files (1)"
 Unknown "Conflicted files (1)"
@@ -80,6 +81,8 @@ Label "Continue once the conflicts are resolved."
 Button "Commit or amend first…"
 Button "Continue" [disabled]
 Button "More ways to go on"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize date column"

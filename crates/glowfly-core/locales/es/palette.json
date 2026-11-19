@@ -1,4 +1,6 @@
 {
+  "palette.diff.collapse_all": "Plegar todas las líneas sin cambios del diff",
+  "palette.diff.expand_all": "Mostrar todas las líneas sin cambios del diff",
   "palette.files.failed": "No se pudieron listar los archivos del repositorio: {why}",
   "palette.getting_started": "Primeros pasos",
   "palette.group.all": "Todos los comandos",

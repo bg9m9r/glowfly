@@ -22,7 +22,7 @@ here.
 - `network.rs`: the `Execute` impl of `NetworkEffect`: a hosting service's calls (`forge_calls.rs`) and avatar downloads.
 - `ui.rs`: the `Execute` impl of `UiEffect`, which only warns: the UI shell carries those out.
 - `load.rs`: the `Execute` impl of `LoadEffect` (the status reads are in `status.rs`), and a repository load: only the status while the refs are unchanged, the next commits of the walk for a load for more, else everything, reusing the commits on screen.
-- `diff.rs`: the `Execute` impl of `DiffEffect`: a diff and its highlighting (`highlight.rs`), the unchanged lines between hunks (`diff_gaps.rs`) and a binary diff's sides.
+- `diff.rs`: the `Execute` impl of `DiffEffect`: a diff and its highlighting (`highlight.rs`), the unchanged lines outside the hunks (`diff_gaps.rs`) and a binary diff's sides.
 - `job.rs`: the `Execute` impl of `JobEffect`: a job's git commands, with the expected revision's check, the undo record, the trust gate's re-run, a stop for network commands, the journal note and an auto-stash's saved record (`auto_stash_made.rs`); and undo or redo (`undo_run.rs`).
 - `auto_stash_made.rs`: writes an auto-stash job's saved record as soon as its first command made the stash, before the next command, and sends `AutoStashMsg::Made`; tests in `auto_stash_made_tests.rs`.
 - `op_preview.rs`: works out an operation preview with `glowfly_core::op_preview`.
@@ -48,7 +48,7 @@ here.
 - `runner/forks.rs`: the fork dialogs' hosting-service calls (`Effect::Remote`): listing a repository's forks, finding the user's own fork and forking into the user's account.
 - `runner/delete_paths.rs`: a multi-file delete: each working copy through the single delete's core calls (staged-new ones also leave the index), in order, stopping at the first failure, with one undo entry for every file that went.
 - `runner/discard_paths.rs`: a multi-file discard: tracked files through the single discard's `LocalOp::DiscardFile`, untracked ones deleted as the confirmation said, in order, stopping at the first failure, with one undo entry for every file discarded.
-- `runner/git_ops.rs`: local git operations run by the runner: staging and discarding ops, conflict changes such as Mark resolved, and running a list of git commands (through the trust gate too).
+- `runner/git_ops.rs`: local git operations run by the runner: staging and discarding ops, conflict changes such as Mark resolved and taking the trivial picks in many files (one undo entry), and running a list of git commands (through the trust gate too).
 - `runner/instance.rs`: what reaches this window from outside once it runs: the links and folders a second Glowfly process hands to it (`glowfly_core::instance`), reported as `DeepLinkMsg::Open` and `DeepLinkMsg::OpenFolder`, and what the OS hands over as events (`platform::open_events`), reported as their command-line form would be.
 - `runner/issues.rs`: the issue panel's and the Create issue dialog's calls to the tracker (`Effect::Issue`): an issue's details, the dialog's choices, creating an issue and posting a comment.
 - `runner/keys.rs`: signing keys for the Preferences signing page: listing, generating and exporting them.

@@ -55,6 +55,7 @@ Label "Merge in progress"
 Button "Hide: Resolve conflicts"
 Label "Resolve conflicts"
 Label "2 left"
+Button "More actions for conflicted files"
 Button "Mark all resolved"
 Label "Conflicted files (2)"
 Unknown "Conflicted files (2)" [focused]
@@ -89,6 +90,8 @@ Label "Modified"
 Button "Show: Commit the merge"
 Label "Commit the merge"
 Label "Opens once the conflicts are resolved."
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

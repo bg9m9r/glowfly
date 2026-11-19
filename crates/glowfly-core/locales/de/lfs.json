@@ -1,4 +1,7 @@
 {
+  "lfs.banner.missing.text": "Dieses Repository speichert Dateien in Git LFS, aber git-lfs ist nicht installiert. Änderungen an diesen Dateien werden womöglich als normale Dateien statt als LFS-Zeiger committet.",
+  "lfs.banner.settings.button": "Git-LFS-Einstellungen…",
+  "lfs.banner.too_old.text": "Dieses Repository speichert Dateien in Git LFS, aber git-lfs {version} ist zu alt: Glowfly braucht {min} oder neuer. Checkouts und LFS-Befehle können langsam sein oder fehlschlagen, bis du es aktualisierst.",
   "lfs.menu.adds.tip": "Fügt {target} zu .gitattributes hinzu",
   "lfs.menu.adds_folder.tip": "Fügt {target} zu .gitattributes hinzu (mit Unterordnern)",
   "lfs.menu.checking": "Prüfe, ob Git LFS installiert ist…",
@@ -46,6 +49,8 @@
   "lfs.page.source.info.tip": "Festgelegt in .git/info/attributes. Diese Datei gilt nur für diese Kopie des Repositorys und wird nicht committet. Um das Muster nicht mehr zu verfolgen, bearbeite diese Datei.",
   "lfs.page.source.nested.tip": "Festgelegt in {file}, gilt also nur innerhalb von {folder}/. Um das Muster nicht mehr zu verfolgen, bearbeite diese Datei.",
   "lfs.page.status.label": "Status",
+  "lfs.page.too_old.help": "Aktualisiere es von git-lfs.com und wähle dann Erneut prüfen.",
+  "lfs.page.too_old.warn": "git-lfs {version} ist älter als {min}, die älteste Version, mit der Glowfly arbeitet. Checkouts und LFS-Befehle können langsam sein oder fehlschlagen.",
   "lfs.page.track.button": "Verfolgen",
   "lfs.page.untrack.button": "Nicht mehr verfolgen",
   "lfs.pattern.already_tracked": "{pattern} wird bereits verfolgt.",
@@ -53,5 +58,7 @@
   "lfs.pattern.empty": "Gib ein Muster ein.",
   "lfs.pattern.folder": "Ein Muster, das auf / endet, passt in .gitattributes auf nichts. Um einen Ordner zu verfolgen, nutze {pattern}**.",
   "lfs.pattern.git_file": "Gits eigene Dateien (.gitattributes, .gitignore, .lfsconfig) können nicht in LFS gespeichert werden.",
-  "lfs.pattern.negated": "Muster, die mit ! beginnen, sind in .gitattributes nicht erlaubt."
+  "lfs.pattern.negated": "Muster, die mit ! beginnen, sind in .gitattributes nicht erlaubt.",
+  "lfs.update.button": "So aktualisierst du Git LFS",
+  "lfs.update.tip": "Öffnet {url} in deinem Browser"
 }

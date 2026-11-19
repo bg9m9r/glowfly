@@ -126,7 +126,7 @@ fn swap_direction_reverses_the_comparison() {
     up(&mut st, Msg::Selection(SelectionMsg::ToggleCommit(f.c(4))));
     let c = Comparison { files: vec![FileEntry::new("f.txt", 'M')], absent: Default::default() };
     up(&mut st, Msg::Selection(SelectionMsg::CompareLoaded { from: f.c(4), to: f.c(5), result: Ok(c.clone()) }));
-    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None };
+    let empty = FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     st.session.diff.view = Some((DiffTarget::Between(f.c(4), f.c(5), "f.txt".into()), empty.into()));
 
     let fx = up(&mut st, Msg::Selection(SelectionMsg::SwapCompare));

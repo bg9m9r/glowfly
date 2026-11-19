@@ -1,5 +1,5 @@
 //! Diff viewer layout, view mode (hunks or the whole file), navigation and whole-file folds (the
-//! hunk view's gaps between hunks are in `diff_gaps`, the fold keys in `fold_keys`).
+//! hunk view's unchanged runs are in `diff_gaps`, the fold keys in `fold_keys`).
 
 use crate::effect::DiffEffect;
 use crate::effect::Effect;
@@ -128,7 +128,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
             }
             st.settings.diff_ignore_whitespace = on;
             st.cues.diff_lines.clear();
-            // The gaps between the hunks shown now may sit where others did: read them again.
+            // The runs outside the hunks shown now may sit where others did: read them again.
             st.session.tab_view.diff_expanded.drop_gap_text();
             fx.extend(super::prefs::save_settings(st));
             // Hunk rows change, so the diff reopens at the top; hunk operations wait for it, and
@@ -176,7 +176,7 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
                 Step::End => {}
             }
         }
-        // A fold of the whole-file view, or in the hunk view the gap between hunks.
+        // A fold of the whole-file view, or in the hunk view the runs outside the hunks.
         DiffMsg::ExpandUnchanged(key) if !whole_shown(st) => super::diff_gaps::open(st, key, fx),
         DiffMsg::CollapseUnchanged(key) if !whole_shown(st) => super::diff_gaps::close(st, key),
         DiffMsg::ExpandUnchanged(key) => refold(st, |ex, w| is_fold(w, key) && ex.insert(key)),
@@ -185,6 +185,8 @@ pub(super) fn handle(st: &mut AppState, msg: DiffMsg, now: std::time::Instant, f
         DiffMsg::CloseFoldAtTop => super::fold_keys::close_at_top(st),
         DiffMsg::GapsLoaded { target, generation, result } => super::diff_gaps::loaded(st, target, generation, result),
         DiffMsg::BinarySidesLoaded { target, generation, result } => super::diff_preview::loaded(st, target, generation, result),
+        DiffMsg::ExpandAllUnchanged if !whole_shown(st) => super::diff_gaps::open_all(st, fx),
+        DiffMsg::CollapseAllUnchanged if !whole_shown(st) => super::diff_gaps::close_all(st),
         DiffMsg::ExpandAllUnchanged => refold(st, |ex, w| {
             // Replacing the set also drops keys of folds that are gone (the gaps' text stays).
             let all = Expanded::all(w).with_gap_text_of(ex);
@@ -320,5 +322,8 @@ fn select_all_text(st: &mut AppState, side: TextSide) {
     }
     let whole = shown(d, st.settings.diff_mode);
     let key = (target.clone(), st.session.diff.shown_gen);
-    st.view.diff_text = diff_text::select_all(d, whole, &st.session.tab_view.diff_expanded, side, key);
+    // The hunk view's opened runs count, unless whitespace is hidden and they aren't drawn.
+    let none = Expanded::default();
+    let ex = if whole.is_none() && crate::state::diff_runs::hunk_gaps(st).is_none() { &none } else { &st.session.tab_view.diff_expanded };
+    st.view.diff_text = diff_text::select_all(d, whole, ex, side, key);
 }

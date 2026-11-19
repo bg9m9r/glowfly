@@ -617,6 +617,18 @@ trust scan all run for untrusted repositories too.
     (`<main>/.git/worktrees/<name>`, `<super>/.git/modules/<name>`), so Use for this repository
     adds the common git dir. Which identity applies, and from where, comes from git
     (`repo_identity::read`, `--show-origin`), not from Glowfly's own matching.
+14. **git-lfs must be 2.9.0 or newer** (`lfs/version.rs`, `MIN`). It is looked for with
+    `git lfs version` outside every repository (`lfs::installed`). The floor is the newest
+    requirement among the commands Glowfly runs: `git lfs track --filename` (2.9.0, Track in Git
+    LFS > Only this file); the filter protocol the installed config uses came with 1.5.0 and
+    the escaping of `#` and spaces in patterns with 2.0.2. The version line is
+    `git-lfs/<version> (<vendor>; <os> <arch>; go <version>[; git <commit>])`, possibly with a
+    packager's suffix (`2.3.0-pre`, `3.0.2-1ubuntu1`, `2.13.2+dfsg`): only the leading numbers of
+    its first three parts are compared, and a version that can't be read as numbers is never too
+    old. An older git-lfs gets the banner and the Preferences > Git LFS note; nothing is turned
+    off. It is looked for at startup, after a git switch, whenever Preferences > Git LFS reads
+    its status, and on window focus while it is missing or too old, at most once a minute
+    (`RECHECK_EVERY`).
 
 ### Key labels
 
@@ -985,6 +997,9 @@ Gaps that are accepted for now:
   settings portal isn't asked yet). Other desktops than GNOME (KDE Plasma) aren't read either.
 - **Windows with the system title bar sees a settings change only when the window regains the
   focus:** `WM_SETTINGCHANGE` reaches Glowfly only through the drawn frame's window procedure.
+- **A git-lfs installed into a folder that joined PATH after Glowfly started is found only after
+  a restart:** children get the PATH Glowfly had at start. The look on window focus finds one
+  that landed in a folder already on that PATH or in git's own program folder.
 - **Names that aren't UTF-8 are refused, not carried.** Action APIs still take `&str`, so such
   rows are shown with `\xHH` and every action on them is refused, rather than passing their bytes
   through to git.

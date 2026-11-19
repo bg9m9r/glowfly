@@ -1,5 +1,5 @@
 //! Local git operations run by the runner: staging and discarding ops, conflict changes such as
-//! Mark resolved, and running a list of git commands (through the trust gate too). Undo and redo
+//! Mark resolved and taking the trivial picks in many files, and running a list of git commands (through the trust gate too). Undo and redo
 //! are in `undo_run.rs`.
 
 use glowfly_core::error::WriteFailed;
@@ -7,7 +7,7 @@ use glowfly_core::gitcli;
 use glowfly_core::repo;
 use glowfly_core::undo::{self, Action, ConflictChange, ConflictsFailed, Discarded};
 use glowfly_model::effect::LocalOp;
-use glowfly_model::msg::{Msg, StageMsg};
+use glowfly_model::msg::{ConflictMsg, Msg, StageMsg};
 use std::path::Path;
 
 /// Runs a local op. Discards, conflict saves and conflict changes (Mark resolved, Mark
@@ -53,12 +53,22 @@ pub(super) fn local_op(workdir: &Path, op: LocalOp) -> glowfly_core::error::Resu
         LocalOp::ResolveWithSide { .. } | LocalOp::MarkResolved(_) | LocalOp::MarkConflicted(_) => {
             conflict_change(workdir, op).map_err(|f| f.error)
         }
+        LocalOp::TakeTrivialPicks(paths) => take_trivial(workdir, &paths).map(|(_, undo)| undo).map_err(|f| f.error),
     }
 }
 
 /// Runs a local op and says how it went. A conflict change that failed partway carries the
 /// undo action for the files it changed.
 pub(super) fn local_done(workdir: &Path, op: LocalOp) -> Msg {
+    if let LocalOp::TakeTrivialPicks(paths) = &op {
+        return match take_trivial(workdir, paths) {
+            Ok((taken, undo)) => Msg::Conflict(ConflictMsg::TrivialPicksTaken { taken, undo }),
+            Err(ConflictsFailed { error, undo: None }) => Msg::Stage(StageMsg::LocalOpDone(Err(WriteFailed::from(error)))),
+            Err(ConflictsFailed { error, undo: Some(undo) }) => {
+                Msg::Stage(StageMsg::LocalOpFailed { error: WriteFailed::from(error), undo: *undo })
+            }
+        };
+    }
     let conflict = matches!(op, LocalOp::ResolveWithSide { .. } | LocalOp::MarkResolved(_) | LocalOp::MarkConflicted(_));
     let result = if conflict { conflict_change(workdir, op) } else { local_op(workdir, op).map_err(ConflictsFailed::from) };
     Msg::Stage(match result {
@@ -85,6 +95,19 @@ fn conflict_change(workdir: &Path, op: LocalOp) -> Result<Option<Action>, Confli
         }
         other => unreachable!("not a conflict change: {other:?}"),
     }
+}
+
+/// Takes the trivial picks in the conflicted `paths` (`repo::trivial_plan`): the files it
+/// resolves are one undo entry, and the files it left or skipped come back by name.
+fn take_trivial(workdir: &Path, paths: &[String]) -> Result<(repo::TrivialTaken, Option<Action>), ConflictsFailed> {
+    let plan = repo::trivial_plan(workdir, paths);
+    let resolve = plan.paths();
+    let undo = if resolve.is_empty() {
+        None
+    } else {
+        undo::conflicts_saving(workdir, ConflictChange::TrivialPicks, &resolve, || plan.apply(workdir))?
+    };
+    Ok((plan.into_taken(), undo))
 }
 
 /// The caller environment for a job's git commands: none for one that may prompt, else

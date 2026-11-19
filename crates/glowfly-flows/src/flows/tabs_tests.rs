@@ -49,8 +49,15 @@ fn each_tab_keeps_its_own_repository_and_draft() {
     // A's open diff, scrolled down a few rows.
     st.session.diff.view = Some((
         DiffTarget::Unstaged("a.txt".into()),
-        glowfly_core::repo::FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
-            .into(),
+        glowfly_core::repo::FileDiff {
+            binary: false,
+            hunks: Vec::new(),
+            highlight: None,
+            intraline: Default::default(),
+            whole: None,
+            old_lines: None,
+        }
+        .into(),
     ));
     st.view.tab.diff_top_row = 6;
 

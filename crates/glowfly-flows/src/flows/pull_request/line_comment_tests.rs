@@ -31,7 +31,7 @@ fn diff() -> FileDiff {
         ],
     };
     let two = Hunk { header: "@@ -20,1 +20,2 @@".into(), lines: vec![dl(' ', Some(20), Some(20), "t"), dl('+', None, Some(21), "u")] };
-    FileDiff { binary: false, hunks: vec![one, two], highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: vec![one, two], highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 /// The opened panel with its page loaded (as `f` changes it) and f.txt's diff open.

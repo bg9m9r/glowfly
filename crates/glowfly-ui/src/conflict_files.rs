@@ -1,6 +1,7 @@
 //! The WIP panel's Conflicted Files and Resolved Files lists, in step 1 of an operation in
 //! progress (`op_steps`): conflicted files with their marker counts and Mark resolved at the
-//! row's end (Mark all resolved in the header), and resolved files with Mark conflicted (one
+//! row's end (Mark all resolved in the header, with Take the trivial picks in all files in the
+//! header's more-actions menu), and resolved files with Mark conflicted (one
 //! or all). Each list takes the keyboard focus as a whole (`file_list_keys.rs`): its keys open
 //! the file they land on, and Mark resolved of the open file moves on to the next conflicted one.
 //! Shift+click and Ctrl/Cmd+click pick several files of a list (gaps allowed) without opening
@@ -55,31 +56,58 @@ struct Action<'a> {
     msg: Msg,
 }
 
+/// An item only in a list header's more-actions menu: its label, why it is off, and what it sends.
+struct MenuItem<'a> {
+    label: &'a str,
+    why: Option<String>,
+    msg: Msg,
+}
+
 /// A list header like Unstaged Files': the title with its count, and `action` at the right as a
 /// quiet Small button. Short of room it gives way as Unstaged Files' does (`header::fit`): it
 /// becomes an icon-only square, then the title is cut before its count, and last it moves into
-/// a more-actions menu.
-fn header(ui: &mut egui::Ui, t: Lang, title: String, action: Action, msgs: &mut Vec<Msg>) {
+/// a more-actions menu. With a `menu` (its button's name and item) the more-actions button is always
+/// there at the right edge, and `action` joins the item in its menu only when it doesn't fit.
+fn header(ui: &mut egui::Ui, t: Lang, title: String, action: Action, menu: Option<(&str, MenuItem)>, msgs: &mut Vec<Msg>) {
     use super::details_wip::header;
     header::frame(ui, |ui| {
         let labelled = buttons::quiet(action.label).size(ControlSize::Small);
-        let fit = header::fit(header::room(ui, &title), &[labelled.desired_width(ui)], 1);
-        if fit.icons && fit.shown == 1 {
-            // The rows' actions are Regular squares at the same right edge: centre this Small one
-            // on their column.
+        let widths = [
+            labelled.desired_width(ui),
+            menu.as_ref().map_or(0.0, |(_, i)| buttons::quiet(i.label).size(ControlSize::Small).desired_width(ui)),
+        ];
+        let labels = if menu.is_some() { &widths[..] } else { &widths[..1] };
+        let fit = header::fit(header::room(ui, &title), labels, 1);
+        // The rows' actions are Regular squares at the same right edge: centre this Small
+        // rightmost square on their column.
+        if menu.is_some() || (fit.icons && fit.shown == 1) {
             ui.add_space((ControlSize::Regular.metrics().h - ControlSize::Small.metrics().h) / 2.0);
         }
-        let b = if fit.icons { header::square(action.icon, action.label) } else { labelled };
-        let b = b.enabled(action.why.is_none());
-        let b = if action.why.is_some() { b.why(action.why.as_deref()) } else { b.tip(action.tip) };
-        if fit.shown == 1 {
+        let moved = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>, action: Action| {
+            super::common::menu_item_if(msgs, ui, action.label, action.why.as_deref(), action.msg);
+        };
+        let mut action = Some(action);
+        if let Some((name, item)) = menu {
+            header::more_menu_named(ui, name, |ui| {
+                if fit.shown == 0
+                    && let Some(a) = action.take()
+                {
+                    moved(ui, msgs, a);
+                }
+                super::common::menu_item_if(msgs, ui, item.label, item.why.as_deref(), item.msg);
+            });
+        } else if fit.shown == 0
+            && let Some(a) = action.take()
+        {
+            header::more_menu(ui, t, |ui| moved(ui, msgs, a));
+        }
+        if let Some(action) = action.filter(|_| fit.shown == 1) {
+            let b = if fit.icons { header::square(action.icon, action.label) } else { labelled };
+            let b = b.enabled(action.why.is_none());
+            let b = if action.why.is_some() { b.why(action.why.as_deref()) } else { b.tip(action.tip) };
             if ui.add(b).clicked() {
                 msgs.push(action.msg);
             }
-        } else {
-            header::more_menu(ui, t, |ui| {
-                super::common::menu_item_if(msgs, ui, action.label, action.why.as_deref(), action.msg);
-            });
         }
         header::title(ui, &title);
     });
@@ -95,7 +123,13 @@ fn conflicted(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, 
         why: usable.is_empty().then(|| rows.iter().find_map(|f| f.hazard.as_ref()).map(|h| h.reason(t))).flatten(),
         msg: Msg::Conflict(ConflictMsg::MarkResolved(usable.clone())),
     };
-    header(ui, t, t.trf("conflict.files.conflicted.header", &[("count", &rows.len())]), action, msgs);
+    let trivial = MenuItem {
+        label: t.tr("conflict.files.take_trivial.item"),
+        why: glowfly_model::state::conflict_files::trivial::blocked(st, t),
+        msg: Msg::Conflict(ConflictMsg::TakeTrivialPicks),
+    };
+    let title = t.trf("conflict.files.conflicted.header", &[("count", &rows.len())]);
+    header(ui, t, title, action, Some((t.tr("conflict.files.more.tip"), trivial)), msgs);
     let name = t.trf("conflict.files.conflicted.header", &[("count", &rows.len())]);
     let current = open.conflict.and_then(|p| rows.iter().position(|f| f.path == p));
     let focus = file_list_keys::target(ui, FileList::Conflicted, rows.len(), lists.height, &name);
@@ -128,7 +162,7 @@ fn resolved(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, lists: &Lists, op
         why: all.is_empty().then_some(why),
         msg: Msg::confirm(title, mark_conflicted_body(t, &all), button, then),
     };
-    header(ui, t, t.trf("conflict.files.resolved.header", &[("count", &rows.len())]), action, msgs);
+    header(ui, t, t.trf("conflict.files.resolved.header", &[("count", &rows.len())]), action, None, msgs);
     let name = t.trf("conflict.files.resolved.header", &[("count", &rows.len())]);
     let opens = |r: &ResolvedFile| matches!(open.diff, Some(DiffTarget::Staged(p)) if *p == r.entry.path);
     let current = rows.iter().position(|r| opens(r));

@@ -25,6 +25,8 @@ Button "Show or hide the activity log"
 Button "Refresh the repository"
 Button "Show left panel"
 Button "Show commit details panel"
+Button "Commits" [on]
+Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

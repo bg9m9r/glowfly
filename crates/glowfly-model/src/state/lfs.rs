@@ -1,6 +1,7 @@
 //! The Git LFS preferences page: the status read in the background, the new-pattern buffer and
 //! what to do once the status arrives; the remote LFS commands use. Also whether git-lfs is
-//! installed and the session's banner dismissals (`LfsSession`), the open diff's LFS summary
+//! installed and recent enough (checked at startup, after a git switch, by the page, and on window
+//! focus while there is a problem) and the session's banner dismissals (`LfsSession`), the open diff's LFS summary
 //! (`LfsDiffNote`, kept in `session::DiffSlot::lfs`; what they show is in `lfs_notes`), and the
 //! Track in Git LFS entries of file rows' context menus.
 
@@ -10,6 +11,7 @@ use glowfly_core::lfs::pointer::LfsChange;
 use glowfly_core::lfs::{self, LfsPattern, LfsStatus, TrackTarget};
 use glowfly_core::repo::{DiffTarget, Snapshot, SubmoduleInfo};
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 /// The job label of `git lfs install --local`; a successful one may offer to pull.
 pub const INIT_LABEL: &str = "Initialize LFS";
@@ -17,15 +19,30 @@ pub const INIT_LABEL: &str = "Initialize LFS";
 /// Where git-lfs's installation help is (the page's link, the banner's Get Git LFS).
 pub const INSTALL_URL: &str = "https://git-lfs.com";
 
+/// The shortest time between two looks for git-lfs on window focus.
+pub const RECHECK_EVERY: Duration = Duration::from_secs(60);
+
+/// What is wrong with the git-lfs found.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LfsProblem {
+    Missing,
+    /// Older than `lfs::MIN`.
+    TooOld,
+}
+
 /// Git LFS across the session: global. The open diff's note is `session::DiffSlot::lfs`, parked
 /// with its tab.
 #[derive(Default)]
 pub struct LfsSession {
-    /// Whether git-lfs is installed: checked at startup and whenever Preferences > Git LFS reads
-    /// its status.
+    /// Whether git-lfs is installed and new enough: checked at startup, after a git switch,
+    /// whenever Preferences > Git LFS reads its status, and on window focus while there is a
+    /// problem.
     pub install: LfsInstall,
-    /// Workdirs whose "git-lfs missing" banner was dismissed, until Glowfly restarts.
-    pub banner_dismissed: Vec<PathBuf>,
+    /// Workdirs whose banner was dismissed, per form, until Glowfly restarts.
+    pub banner_dismissed: Vec<(PathBuf, LfsProblem)>,
+    /// When git-lfs was last looked for with `LfsEffect::Detect`: the look on focus waits
+    /// `RECHECK_EVERY` after it.
+    pub checked_at: Option<Instant>,
 }
 
 /// The open diff's LFS sides, shown as a summary instead of the pointer text.
@@ -79,6 +96,23 @@ impl LfsInstall {
     /// From git-lfs's version, None when it isn't installed.
     pub fn from_version(v: Option<String>) -> Self {
         v.map_or(Self::Missing, Self::Installed)
+    }
+
+    /// The version of an installed git-lfs that is older than `lfs::MIN`.
+    pub fn too_old(&self) -> Option<&str> {
+        match self {
+            Self::Installed(v) if lfs::too_old(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// What is wrong, if it is known: not installed, or too old. Unknown and Checking have no
+    /// problem yet.
+    pub fn problem(&self) -> Option<LfsProblem> {
+        match self {
+            Self::Missing => Some(LfsProblem::Missing),
+            _ => self.too_old().map(|_| LfsProblem::TooOld),
+        }
     }
 }
 

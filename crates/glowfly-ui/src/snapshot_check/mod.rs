@@ -110,6 +110,13 @@ impl TestRenderer for Pooled {
     }
 }
 
+/// The text snapshot of `h`'s last frame (what `check_snapshot` compares), for a test that looks for
+/// painted text no widget names.
+#[cfg(test)]
+pub(crate) fn text_snapshot<S>(h: &Harness<'_, S>) -> String {
+    text::of(h)
+}
+
 pub trait CheckSnapshot {
     /// Compares the last frame's text snapshot (unless it is an image-only golden), and for a
     /// golden its image (no more than `TOLERATED_PIXELS` may differ), unless snapshots are skipped.

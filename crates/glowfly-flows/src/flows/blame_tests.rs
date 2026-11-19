@@ -23,7 +23,7 @@ fn oid(n: u8) -> Oid {
 }
 
 fn empty_diff() -> FileDiff {
-    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks: Vec::new(), highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 fn opened(name: &str) -> (AppState, PathBuf) {

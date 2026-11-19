@@ -62,6 +62,8 @@ Label "f0d635c"
 Button "Richtung tauschen"
 ProgressIndicator
 Label "Wird geladen…"
+Button "Commits" [on]
+Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

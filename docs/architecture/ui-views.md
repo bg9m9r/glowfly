@@ -90,9 +90,13 @@ start with `state/`, `update/` or `ui/`.
 - `graph/row.rs`: one graph row from what the frame worked out once (`Frame`): which commit, WIP or other worktree it shows, its look, lanes and lantern; this tab's and other worktrees' WIP rows.
 - `graph/commit_row.rs`: a commit row's node, ref chips and New branch… ghost button, cells, tooltips, clicks and menu.
 - `graph/frame_asks.rs`: what the rows ask for while they draw (change counts, the next chip tip, the build tips seen), applied once they are done.
-- `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA), inked and on the find fill.
+- `graph/find_marks.rs`: a search's matched text on a matching row (summary, body preview, author, short SHA): where the query falls in each; drawn inked and on the find fill by `widgets/marked_text.rs`.
 - `graph/lane_colours.rs`: the graph's per-row colours, and each lane line's width (HEAD's branch wider) and dash pattern (`graph/paint.rs`, colour-safe colours only).
 - `graph/more.rs`: the row for a failed load for more history.
+- `graph/view_switch.rs`: the bar above the history with the Commits | Chapters switch (the choice is saved per repository; an open search shows the commits).
+- `graph/chapters/`: the Chapters list drawn in the graph's place (`mod.rs`: the scroll area, the keyboard focus target and near-end loading).
+- `graph/chapters/rows.rs`: the list's rows at the graph's row height: the work tree's row, release headings, chapters (chevron, title, count, authors, dates) and the commits of an expanded chapter, with the graph's end row.
+- `graph/chapters/keys.rs`: the list's keys: moves select the row they land on, Right and Left expand and collapse.
 - `graph/ref_menu.rs`: the graph row's right-click menu: a ref chip's own menu or the commit menu.
 - `graph/ref_checkout.rs`: what a double-click on a branch chip checks out (a remote label split into remote and branch by `state/remote_branch.rs`).
 - `branch_dot.rs`: the branch dots (in menus, in the row's icon column).
@@ -110,7 +114,7 @@ start with `state/`, `update/` or `ui/`.
 - `details_commit.rs`: the selected commit's details, title first: the title as git splits it, the author's row, the body block, the files.
 - `details_chips.rs`: the details' row of quiet chips for the SHA, parents and committer, drawn by `widgets/chip.rs`.
 - `file_status.rs`: the changed-file rows' status badge (an 18 px circle).
-- `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`.
+- `details_wip_header.rs` (tests in `details_wip_header_tests.rs`): the WIP lists' headers with their more-actions menu, and their fit order (icon-only buttons, then the title cut before its count, then the menu), shared with `conflict_files.rs`, whose Conflicted Files header always has a more-actions menu holding Take the trivial picks in all files (Mark all resolved joins it when it doesn't fit).
 - `details_wip_list.rs`: the Unstaged and Staged Files lists, in List or Tree mode; the picked files are drawn selected.
 - `details_wip_picks.rs`: a picked row's menu while several files of its list are picked: Stage or Unstage, Stash, Discard changes and Delete, each naming the count and off with the reason a pick blocks it (`PickBlocks`); for Conflicted Files Mark N files resolved, for Resolved Files Mark N files conflicted (`conflict_files.rs` draws those lists' picks). Tests in `snapshot_tests/snapshot_tests_wip_picks.rs` and `snapshot_tests_conflict_picks.rs`.
 - `commit_box.rs`: the commit box, top to bottom: header with the identity, summary with its length inside, description, the Amend and Push options, the button and its caption; `commit_button.rs`: its split button and caret menu (Stage all and commit, Commit and push, Amend last commit, Skip hooks).
@@ -137,7 +141,7 @@ start with `state/`, `update/` or `ui/`.
 - `diff/header/`: the diff's file header, one 48 px row built from `state/diff_header.rs`'s model.
 - `diff/header/identity.rs`: the file's icon, a rename's old path with its painted arrow, folder, name and chips.
 - `diff/header/nav.rs`: hunk and file steps with the counter.
-- `diff/header/view_menu.rs`: the View button and its menu.
+- `diff/header/view_menu.rs`: the View button and its menu, with Expand all and Collapse all for the whole file's folds and the hunk view's runs (tests in `view_menu_tests.rs`).
 - `diff/header/svg_switch.rs`: the Text / Preview switch of an SVG that git diffs as text.
 - `diff/header/actions.rs`: the ⋯ menu of file actions and the diff tool, the small secondary Stage or Unstage, and Close.
 - `diff/header/controls.rs`: the ghost buttons and dividers, re-exported from `widgets/ghost.rs`, which the terminal panel's header shares.
@@ -150,11 +154,11 @@ start with `state/`, `update/` or `ui/`.
 - `diff/hex.rs`: a small binary's hex view (offset, sign, hex bytes, ASCII), changed rows and bytes filled like diff lines and words, inline or split, unchanged rows folded in the hunk view. Snapshots: `snapshot_tests/snapshot_tests_diff_hex.rs`.
 - `conflict_header.rs`: the conflict view's file bar (path and sides, the centred counter and progress meter, Mark resolved, the more-actions menu and ×).
 - `conflict_band.rs`: a conflict's band in the panes: amber mark while unresolved, the side-coloured Take checkboxes, and the order with Swap when both sides are taken.
-- `diff/fold.rs`: the unchanged runs' controls: the whole-file view's "N unchanged lines" row of a folded run, which opens in place when clicked, the hunk view's unfold control on a hunk header, which fills in the unchanged lines above it, and the fold-back control on the first line of an opened run (in either view), which folds it again.
+- `diff/fold.rs`: the unchanged runs' controls: the whole-file view's "N unchanged lines" row of a folded run, which opens in place when clicked, the hunk view's unfold control on a hunk header, which fills in the unchanged lines above it, the same kind of row below the last hunk, and the fold-back control on the first line of an opened run (in either view), which folds it again; a spinner stands in while a run's text is read.
 - `diff/hunk_header.rs`: a hunk header row: the `@@` line with its function context in syntax colors, the hunk's action buttons, and in the hunk view the control that fills in the unchanged lines above it.
 - `diff/inline.rs`: the inline layout: one column of hunks (or of the whole file), each line with its old and new number (unless line numbers are off), and the unchanged lines between hunks once filled in.
 - `diff/line_check.rs`: how a changed line shows that it is selected, or can be: the bar on its left edge (the accent when selected, faint only while its gutter is hovered), and in the sign column a check box that stands in for the `+`/`-`: hollow while the line's gutter is hovered and on every changed line of a hunk that holds selected lines, filled with a check mark when the line is selected.
-- `diff/rows_cache.rs`: the open diff's row list, widest line and gaps between hunks, built when the diff, the layout, the open folds or gaps or the tab width change instead of on every frame: they walk every line of the file.
+- `diff/rows_cache.rs`: the open diff's row list, widest line and unchanged runs outside the hunks, built when the diff, the layout, the open folds or runs or the tab width change instead of on every frame: they walk every line of the file.
 - `diff/split.rs`: the split layout: the old side on the left, the new side on the right, with removed and added lines paired by similarity (see `glowfly_core::line_pairs`) and a divider between the columns.
 - `diff/style.rs`: per-frame drawing metrics of the diff viewer, from Preferences > Diff viewer: the text font, the row height and the gutter positions, which scale with the font size so the default size draws exactly as the fixed layout did.
 - `diff/syntax.rs`: painting diff line text with syntax colors.
@@ -190,7 +194,7 @@ start with `state/`, `update/` or `ui/`.
 ## Left panel and dashboard
 
 - `sidebar.rs`: left panel: local and remote branches, pull requests, issues, Git Flow branches, tags, stashes, worktrees and submodules.
-- `stashes.rs`: the STASHES section of the left panel: one row per stash (a click selects its commit) with a menu to apply, pop, rename or delete it; an auto-stash shows a weak "auto" on the right (the items come from `state/stash_actions.rs`).
+- `stashes.rs`: the STASHES section of the left panel: one row per stash (a click selects its commit) with a menu to apply, pop, rename or delete it; at the right a weak "auto" (an auto-stash) and then the stash's date, left out under 240 px, the full date on hover (the items come from `state/stash_actions.rs`).
 - `submodules.rs`: the SUBMODULES section of the left panel: one row per submodule with a painted status marker (with its own short tooltip), a status word and an explanatory tooltip; double-click opens it, and the row menu opens, initializes, updates or restores it, records its checkout, fetches or pulls inside it, copies its URL, edits it, discards the changes inside it or removes it.
 - `ref_visibility.rs`: hiding branches and tags in the graph, or showing only some, from the left panel: the branch and tag menu items, the markers on hidden and shown-only rows, and the banner above the lists.
 - `forge_filter_menu.rs`: the filter chip in the PULL REQUESTS and ISSUES headers, and its popover: the built-in filters, the repository's saved filters (edit, move, remove) and New filter…, sent as `Msg::ForgeFilter`; the chip sits left of the shared header's + and ⋯.
@@ -213,7 +217,7 @@ start with `state/`, `update/` or `ui/`.
 
 ## Command palette and shortcuts
 
-- `palette.rs`: the command palette (Ctrl+P): a search field over the commands available now, ranked by a fuzzy match, or over a two-step command's items (tracked files for File history, stashes to apply, pop or delete), or a free-text step (the message for a new stash).
+- `palette.rs`: the command palette (Ctrl+P): a search field over the commands available now, ranked by a fuzzy match, or over a two-step command's items (tracked files for File history, stashes to apply, pop or delete), or a free-text step (the message for a new stash); a stash row's date shows before its ref, the full date on hovering it.
 - `palette/label.rs`: a palette row's label: its matched characters in the accent colour, a file's folder part dimmed, and a ref or repository that doesn't fit cut in its middle with its matches moved along.
 - `shortcuts.rs`: keyboard shortcuts: every changeable key, and Go to tab 1 to 8, matched through the effective keymap (`global.rs`, with presses turned into chords in `chords.rs`); recording a key for Preferences > Keyboard (`record.rs`); the shortcut sheet (`sheet.rs`) and the key caps it and Preferences draw (`caps.rs`).
 - `shortcuts/caps.rs`: keys drawn as key caps: each chord's parts as caps joined by "+", alternatives joined by "or".
@@ -222,9 +226,11 @@ start with `state/`, `update/` or `ui/`.
 
 ## Logs panel
 
-- `activity_fold.rs`: the open part of an activity row, under its title: a failure's cause in a full sentence, its fix (once) with any second fix beside it (Try again beside Delete lock file) and Copy (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of line (the last `OUTPUT_LINES` of it); and the sub-rows of an open routine group.
-- `activity_log.rs`: the logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and Performance tabs on the left, quiet icon buttons on the right with the More menu's Copy log and Export logs, a hairline under it), then the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance log, read by the runner.
-- `activity_rows.rs`: the activity tab of the logs panel: one 32 px row per run or note (result mark, title, weak summary, duration and relative time on the right, a chevron when it folds), routine auto-fetches folded into one grey row, and earlier sessions under their headers, drawn dimmer.
+- `activity_fold.rs`: the open part of an activity row, under its title: a failure's cause in a full sentence, its fix (once) with any second fix beside it (Try again beside Delete lock file) and Copy (the row menu's Copy entry), then the output in a quiet monospace block coloured by kind of line (the last `OUTPUT_LINES` of it), the text a search found marked in the cause and the output; and the sub-rows of an open routine group.
+- `activity_log.rs`: the logs panel at the bottom, on the panel surface: a 40 px header (the Activity, Errors and Performance tabs and the search field with Failures only on the left, quiet icon buttons on the right with the More menu's Copy log and Export logs, a hairline under it), then the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance log, read by the runner, its lines filtered by the search with the match marked.
+- `activity_rows.rs`: the activity tab of the logs panel: one 32 px row per run or note (result mark, title, weak summary, duration and relative time on the right, a chevron when it folds), routine auto-fetches folded into one grey row, and earlier sessions under their headers, drawn dimmer. The rows come from `state::activity_filter::filtered_rows` (Failures only and the search leave no routine groups) with the matched text marked in the title and summary; the list is one Tab stop with a keyboard cursor row (`activity_keys.rs`).
+- `activity_search.rs`: the logs panel header's search field (a painted clear button while it has text) and Failures only toggle, and the faint line for a filter that left nothing.
+- `activity_keys.rs`: the activity list's keyboard focus on `list_focus.rs`: one focus target over the rows, a click on a row giving it the focus, and Up/Down, Page, Home/End, Enter and Space as `LogsMsg::RowKey` while it has it.
 
 ## Issue panel (`issue/`)
 
@@ -291,6 +297,7 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/ssh/service.rs`: Preferences > SSH: the inline Add to service form under a key's card.
 - `prefs/ssh/sources.rs`: Preferences > SSH, under the key cards: the `~/.ssh/config` IdentityFile entries that can't be listed as cards (each with where it is and why), and the keys only the agent holds, as compact cards that can only copy their public key.
 - `prefs/ssh/windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
+- `prefs/tools.rs`: Preferences > External tools: the editor, diff tool and merge tool with their arguments, then the Conflict view section with its one switch, Pick trivial conflicts when a file opens.
 - `prefs/trusted_repos.rs`: Preferences > Trusted repositories: the intro, the filter (from eight decisions on) and Forget missing folders, then the list or why it is empty.
 - `prefs/trusted_repos_row.rs`: Preferences > Trusted repositories: one decision's row: name, decision chip and Revoke or Forget; under it the path, date, source, heir count and a painted Not found mark.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
@@ -303,6 +310,7 @@ start with `state/`, `update/` or `ui/`.
 - The app's `runner_snapshots/` holds the view snapshot tests that run effects through the runner (the whole-file and wrapped diffs, the conflict markers warning, the path search), on these fixtures and snapshots; glowfly-ui never depends on the runner.
 - `readme_screenshots/` (tests): the README's screenshots in `docs/screenshots/`, rendered at 2x from a made-up demo repository (`demo.rs`, its files in `demo_files.rs`): the main window, a split diff and the conflict resolver (`shots.rs`) and a pull request review (`pull_request.rs`), each in Graphite and Porcelain; `UPDATE_SCREENSHOTS=1` writes them, otherwise the stored sizes are checked.
 - `snapshot_check/mod.rs`: `check_snapshot` (the text snapshot, plus the image for a golden, cropped as listed; skipped with `GLOWFLY_SKIP_SNAPSHOTS`), and `builder()`, which every test harness starts from so harnesses render on pooled wgpu devices; under `test-support` for the app's tests too, always against glowfly-ui's `tests/snapshots/`.
+- `snapshot_check/mod.rs` also has `text_snapshot`, a frame's text snapshot for a test that looks for painted text.
 - `snapshot_check/text.rs`: a frame's text snapshot: the accessibility tree's roles, labels, values and states, then the painted text no widget carries; only the dialogs when one is open.
 - `snapshot_check/compare.rs`: comparing a text snapshot with `tests/snapshots/<name>.txt` (`.new.txt` always, `.diff.txt` on a mismatch, `UPDATE_SNAPSHOTS=1` accepts).
 - `snapshot_check/goldens.rs`: the ~125 pixel goldens and their crop (window, dialog, top strip, top-left corner), checked against the PNGs on disk; `IMAGE_ONLY`, the theme variants kept as images only.

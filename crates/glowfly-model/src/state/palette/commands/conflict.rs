@@ -1,5 +1,5 @@
 //! The palette's conflict entries, while files are conflicted or resolved during an operation:
-//! Mark all resolved, Mark <path> conflicted for each resolved file git can restore, and Mark
+//! Mark all resolved, Take the trivial picks in all files, Mark <path> conflicted for each resolved file git can restore, and Mark
 //! all conflicted when there are several.
 
 use super::{Entry, PaletteCommand as C, entry, with_detail};
@@ -15,6 +15,9 @@ pub(super) fn conflict_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Ent
     let conflicted = conflicted_paths(snap);
     if !conflicted.is_empty() {
         let e = entry(C::MarkAllResolved, "Mark all resolved", "conflict conflicted resolve stage add done merge rebase");
+        out.push(with_detail(e, Some(files(conflicted.len()))));
+        let words = "conflict conflicted resolve trivial automatic whitespace picks all files merge rebase";
+        let e = entry(C::TakeTrivialPicks, st.settings.lang().tr("conflict.files.take_trivial.item"), words);
         out.push(with_detail(e, Some(files(conflicted.len()))));
     }
     let restorable = restorable_paths(st);

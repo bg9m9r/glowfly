@@ -25,7 +25,7 @@ pub(super) fn three_hunks() -> FileDiff {
         Hunk { header: "@@ -9,3 +9,2 @@".into(), lines: vec![line('-', "d"), line('-', "e"), line('-', "f"), line('+', "g")] },
         Hunk { header: "@@ -20 +19,2 @@".into(), lines: vec![line('+', "h"), line('+', "i")] },
     ];
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 fn with_diff() -> AppState {

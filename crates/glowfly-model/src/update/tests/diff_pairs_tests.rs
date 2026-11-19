@@ -28,7 +28,7 @@ fn paired() -> FileDiff {
         },
         Hunk { header: "@@ -9 +9 @@".into(), lines: vec![line('-', "d"), line('+', "e")] },
     ];
-    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None };
+    let mut d = FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None };
     d.intraline = intraline::intraline(&d);
     d
 }

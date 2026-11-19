@@ -98,7 +98,7 @@ fn body_line(hunks: &mut Vec<Hunk>, rest: &str) {
 }
 
 fn interdiff(hunks: Vec<Hunk>) -> FileDiff {
-    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None }
+    FileDiff { binary: false, hunks, highlight: None, intraline: Default::default(), whole: None, old_lines: None }
 }
 
 /// The pairs in git's order. Empty output (both ranges empty) is no pairs.
