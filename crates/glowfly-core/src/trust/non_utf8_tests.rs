@@ -1,8 +1,8 @@
 //! Names and paths that aren't UTF-8: a hooks folder, a program's path, an include and a
 //! submodule's folder are read by their bytes where a path may hold any (Unix), and where they
 //! can't name a file (Windows) they are named in `TrustScan::unread` or follow the whole
-//! working tree, never dropped. The tests that make such names on disk are Unix-only; what holds
-//! on every system is checked apart.
+//! working tree, never dropped. The tests that make such names on disk run on Linux only (APFS
+//! and HFS+ refuse a name that isn't UTF-8); what holds on every system is checked apart.
 
 use super::*;
 use crate::testutil::*;
@@ -50,6 +50,7 @@ fn a_submodule_whose_folder_names_no_folder_here_is_named_unread() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+#[cfg(any(not(unix), target_os = "linux"))]
 /// Adds a gitlink at `path` (bytes) to `repo`'s index, pointing at the commit `head`.
 fn add_gitlink(repo: &Repository, path: &[u8], head: git2::Oid) {
     let entry = git2::IndexEntry {
@@ -71,7 +72,7 @@ fn add_gitlink(repo: &Repository, path: &[u8], head: git2::Oid) {
     index.write().unwrap();
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod unix {
     use super::*;
     use std::ffi::OsStr;
