@@ -5,6 +5,7 @@
   "stash.ask.overlap.other": "It changes {count} files you have changed too, so Git may stop with conflicts or refuse to apply:",
   "stash.ask.pop_kept": "If it conflicts, the stash is kept.",
   "stash.ask.unknown": "If they change the same files, Git may stop with conflicts or refuse to apply.",
+  "stash.back_unstaged.toast": "The stashed changes are back, but unstaged: what was staged no longer fit the index.",
   "stash.blocked.conflicted": "Resolve the conflicted files before stashing.",
   "stash.blocked.conflicts": "Resolve the conflicted files first: Git can't apply a stash while files are conflicted.",
   "stash.blocked.no_files": "Choose at least one file to stash.",

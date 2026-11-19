@@ -250,7 +250,7 @@ pub fn prepare_put_back(workdir: &Path, oid: Oid) -> Result<usize, (PutBack, Str
 pub fn pop_put_back(workdir: &Path, index: usize, oid: Oid) -> (PutBack, String) {
     let (ok, mut output, listed) = pop(workdir, &args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]), oid);
     let paths = conflicted_paths(workdir);
-    if !ok && listed && paths.is_empty() && output.to_lowercase().contains("without --index") {
+    if !ok && listed && paths.is_empty() && super::apply::index_refusal(&output) {
         let Some(again) = list(workdir).ok().and_then(|l| l.iter().find(|s| s.oid == oid).map(|s| s.index)) else {
             return (PutBack::Failed, output);
         };
@@ -294,7 +294,7 @@ fn pop(workdir: &Path, cmd: &[String], oid: Oid) -> (bool, String, bool) {
 }
 
 /// Runs `cmd`: whether it worked, and the command with its output.
-fn logged(workdir: &Path, cmd: &[String]) -> (bool, String) {
+pub(super) fn logged(workdir: &Path, cmd: &[String]) -> (bool, String) {
     let (ok, text) = gitcli::run(workdir, cmd);
     let mut output = format!("$ git {}", cmd.join(" "));
     if !text.is_empty() {
@@ -319,7 +319,7 @@ fn classify_with(ok: bool, listed: bool, paths: Vec<String>) -> PutBack {
 }
 
 /// The conflicted paths in the index, sorted.
-fn conflicted_paths(workdir: &Path) -> Vec<String> {
+pub(super) fn conflicted_paths(workdir: &Path) -> Vec<String> {
     let Ok(index) = git2::Repository::open(workdir).and_then(|r| r.index()) else { return Vec::new() };
     let Ok(conflicts) = index.conflicts() else { return Vec::new() };
     let mut paths: Vec<String> = conflicts

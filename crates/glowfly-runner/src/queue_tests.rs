@@ -129,6 +129,7 @@ fn which_effects_queue() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
+            without_index: None,
             auto_stash: None,
         })
     };
@@ -256,6 +257,7 @@ fn every_effect_that_changes_a_repository_queues() {
             expect: None,
             stoppable: false,
             on_fail_check: None,
+            without_index: None,
             auto_stash: None,
         }),
         Effect::Job(glowfly_model::effect::JobEffect::UndoRedo {

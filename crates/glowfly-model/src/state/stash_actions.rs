@@ -1,6 +1,7 @@
 //! The one builder of a listed stash's actions: the STASHES row menu, the palette's stash
 //! sub-lists, and Unstash in the toolbar and the palette (the latest stash) all take their
-//! messages, order and blocked reasons from here. Pure.
+//! messages, order and blocked reasons from here. Pure. Apply and Unstash bring back the staged
+//! state too (update/stash.rs).
 
 use super::stash_confirm::{StashAction, StashRun, apply_blocked, guarded};
 use crate::msg::{Msg, StashMsg};

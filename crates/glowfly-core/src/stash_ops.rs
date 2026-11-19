@@ -21,6 +21,10 @@
 //! progress. `saved` keeps the ones still waiting to go back across restarts, each written as
 //! soon as its stash exists (`add_saved`). `paths` lists the files a stash changes.
 //!
+//! `apply` applies or pops a listed stash with `--index`, so what was staged comes back staged:
+//! the plain form when something is staged already, and once more after git refuses the staged
+//! state (`BACK_UNSTAGED` ends the log then).
+//!
 //! `list` reads the stash list from the `refs/stash` reflog, a message that isn't UTF-8 decoded
 //! lossily, each entry with its stash commit's time.
 
@@ -29,12 +33,14 @@ use crate::repo::StashInfo;
 use git2::Oid;
 use std::path::Path;
 
+mod apply;
 mod auto;
 mod list;
 mod paths;
 mod push;
 mod renames;
 mod saved;
+pub use apply::{BACK_UNSTAGED, StashBack, anything_staged, apply, apply_command, apply_with, came_back_unstaged, retry_unstaged};
 pub use auto::{
     AUTO_STASH_PREFIX, AutoStashFor, GIT_AUTOSTASH, PutBack, is_auto_stash, made_in, pop_index, pop_index_with, pop_put_back,
     prepare_put_back,
@@ -182,7 +188,7 @@ mod auto_tests;
 
 #[cfg(test)]
 #[path = "stash_ops/auto_put_back_tests.rs"]
-mod auto_put_back_tests;
+pub(crate) mod auto_put_back_tests;
 
 #[cfg(test)]
 #[path = "stash_ops/saved_tests.rs"]
@@ -195,3 +201,7 @@ mod paths_tests;
 #[cfg(test)]
 #[path = "stash_ops/list_tests.rs"]
 mod list_tests;
+
+#[cfg(test)]
+#[path = "stash_ops/apply_tests.rs"]
+pub(crate) mod apply_tests;

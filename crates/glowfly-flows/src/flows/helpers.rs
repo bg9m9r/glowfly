@@ -390,6 +390,7 @@ fn job_output_hides_credentials_in_urls() {
         expect: None,
         stoppable: false,
         on_fail_check: None,
+        without_index: None,
         auto_stash: None,
     });
     let Some(Msg::Job(JobMsg::JobDone { ok, output, .. })) = glowfly_runner::testing::execute(effect) else { panic!("expected JobDone") };

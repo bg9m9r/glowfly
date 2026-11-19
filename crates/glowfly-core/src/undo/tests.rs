@@ -15,6 +15,11 @@ pub(super) fn record(dir: &Path, a: &[&str]) -> Option<Action> {
 }
 
 pub(super) fn run_plan(dir: &Path, plan: Plan) {
+    if let Plan::ApplyStash { pop, index, stash } = plan {
+        let (back, out) = crate::stash_ops::apply(dir, pop, index, stash);
+        assert!(back.is_back(), "{back:?}: {out}");
+        return;
+    }
     let Plan::Run(cmds) = plan else { panic!("expected commands, got {plan:?}") };
     for c in cmds {
         let (ok, out) = run(dir, &c);

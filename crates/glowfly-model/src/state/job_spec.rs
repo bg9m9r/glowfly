@@ -48,6 +48,10 @@ pub struct JobSpec {
     pub pick: Option<PickPlan>,
     /// The check to run when the job fails (`JobEffect::RunGit::on_fail_check`).
     pub on_fail_check: Option<Vec<String>>,
+    /// The job's one command without `--index`, for Apply and Unstash of a stash: the runner runs
+    /// it instead when something is staged, and once more after git refuses to restore the staged
+    /// state (`JobEffect::RunGit::without_index`).
+    pub without_index: Option<Vec<String>>,
 }
 
 /// What a cherry-pick or revert job's last command takes (`JobSpec::pick`).
@@ -80,6 +84,7 @@ impl JobSpec {
             auto_stash: None,
             pick: None,
             on_fail_check: None,
+            without_index: None,
         }
     }
 }
