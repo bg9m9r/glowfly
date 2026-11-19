@@ -121,7 +121,7 @@ macro_rules! effect_areas {
             /// Restoring a file from a commit, changing working-tree files and listing the tracked
             /// ones (files.rs, runner/files.rs).
             Files($crate::effect::FilesEffect),
-            /// The details panel's reads of one commit: its detail and its signature (commit.rs); reads only.
+            /// Reads of one commit: its detail and signature, and its message to copy (commit.rs); reads only.
             Commit($crate::effect::CommitEffect),
             /// Loading the repository and reading its status (load.rs, runner/load.rs); reads only.
             Load($crate::effect::LoadEffect),

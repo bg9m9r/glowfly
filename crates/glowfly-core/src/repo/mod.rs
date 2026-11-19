@@ -120,7 +120,7 @@ pub use binary_sides::{
 };
 pub use blame::{BLAME_MAX_BYTES, Blame, BlameCommit, BlameOptions, BlameOrigin, BlameRun, blame_file};
 pub use collide::{Collision, Folding, name_key, probe};
-pub use commit_detail::commit_detail;
+pub use commit_detail::{commit_detail, commit_message};
 pub use common_dir::{CommonDir, repo_name_of};
 pub use conflict::{
     Chunk, ConflictContent, ConflictFile, ConflictIds, Operation, Segment, Side, SideLabels, Unmergeable, load_conflict, marker_size,
