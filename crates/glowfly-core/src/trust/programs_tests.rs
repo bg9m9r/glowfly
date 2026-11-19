@@ -24,7 +24,7 @@ fn followed(dir: &Path, key: &str, value: &str) -> Vec<String> {
     let workdir = repo.workdir().unwrap().to_path_buf();
     let mut config = vec![ConfigCommand { key: key.into(), value: value.into() }];
     let mut out: Vec<String> = Vec::new();
-    for p in scan(&repo, &mut config) {
+    for p in scan(&repo, &mut config, &mut Vec::new()) {
         // "" is the whole working tree.
         for rel in follow::inside(&repo, &workdir, &p) {
             if !out.contains(&rel) {

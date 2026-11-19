@@ -27,7 +27,7 @@ pub fn value_parts(shown: &str) -> Option<Range<usize>> {
 /// shown and of the whole scan both, since a gained or incoming scan lists only what is new
 /// and a `git-lfs` file found earlier still makes Git LFS's settings run it.
 pub fn row_follows(p: &TrustPrompt, sub: Option<&str>) -> Vec<Follow> {
-    let shown = p.incoming.as_deref().or(p.gained.as_ref()).unwrap_or(&p.scan);
+    let shown = p.incoming.as_deref().or(p.gained.as_deref()).unwrap_or(&p.scan);
     let of = |s: &TrustScan| -> Vec<Follow> {
         match sub {
             None => s.follows.clone(),
@@ -111,7 +111,7 @@ mod tests {
             scan,
             refused: false,
             held: None,
-            gained: Some(gained),
+            gained: Some(Box::new(gained)),
             terminal: false,
             incoming: None,
             unchecked: None,

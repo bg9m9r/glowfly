@@ -114,11 +114,14 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     let accept = c.accepted.as_ref().filter(|a| a.at.is_none()).map(|a| &a.reason);
     // A rebase's or pick's files that couldn't be read for the commands it runs: no saved
     // decision covers them, so a job waits for Trust and run each time.
-    if matches!(c.sealed, Sealed::Job { .. }) && !now.unread.is_empty() {
-        let reason = Unchecked::State(now.unread.join(", "));
-        if accept != Some(&reason) {
-            return Verdict::Unchecked(Box::new((now, reason)));
-        }
+    // The same for the places its settings and hooks name that weren't looked at.
+    let unread = (!now.unread.is_empty()).then(|| Unchecked::State(now.unread.join(", ")));
+    let offsite = (!now.offsite.is_empty()).then(|| Unchecked::Offsite(now.offsite.join(", ")));
+    if matches!(c.sealed, Sealed::Job { .. })
+        && let Some(reason) = unread.or(offsite)
+        && accept != Some(&reason)
+    {
+        return Verdict::Unchecked(Box::new((now, reason)));
     }
     if now.follows.is_empty() {
         return Verdict::Pass(None);

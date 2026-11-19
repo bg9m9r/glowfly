@@ -159,7 +159,7 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
                 Some(s) => (s.name.clone(), s.workdir.clone()),
                 None => (folder_name(&check.workdir), check.workdir.clone()),
             };
-            let gained = print.filter(|_| incoming.is_none()).map(|p| now.gained_since(p));
+            let gained = print.filter(|_| incoming.is_none()).map(|p| Box::new(now.gained_since(p)));
             let incoming = incoming.map(|i| print.map_or_else(|| i.clone(), |p| i.gained_since(p)));
             let prompt = TrustPrompt {
                 name,

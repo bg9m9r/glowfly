@@ -34,7 +34,7 @@ use std::sync::Arc;
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     // Files of its own that couldn't be read aren't about what a commit brings in, nor about
     // what changed since: the plain question.
-    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_)));
+    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_) | Unchecked::Offsite(_)));
     let title = match (&p.incoming, &p.gained) {
         _ if p.unchecked.is_some() && !unread => cx.t.tr("trust.incoming.title"),
         (Some(_), _) if !unread => cx.t.tr("trust.incoming.title"),
@@ -83,7 +83,7 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
     }
     ui.add_space(8.0);
-    let shown = p.incoming.as_deref().or(p.gained.as_ref()).unwrap_or(&p.scan);
+    let shown = p.incoming.as_deref().or(p.gained.as_deref()).unwrap_or(&p.scan);
     // A commands file alone runs nothing by itself: listed below, after "nothing runs", unless
     // it is what changed since the repository was trusted.
     if shown.is_empty() && p.incoming.is_none() && (p.gained.is_none() || shown.commands.is_none()) {

@@ -27,12 +27,15 @@ const BREAKS: &[char] = &[';', '|', '&', '(', ')', '<', '>', '`', '"', '\'', '='
 /// `config` as a setting of its own (`include.path`): the branch then chooses settings, so it
 /// is a reason to ask by itself, like a setting that runs a program. An include whose file
 /// isn't listed (`Include::unsure`) is added the same way, with the working tree itself.
-pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>) -> Vec<PathBuf> {
+///
+/// A file at a place `net_path::may_follow` refuses from the working tree is never looked at:
+/// it is left out and noted in `offsite` (as shown, each once).
+pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: &mut Vec<String>) -> Vec<PathBuf> {
     let Some(workdir) = repo.workdir() else { return Vec::new() };
     let home = crate::settings::home_dir();
     let mut out: Vec<PathBuf> = Vec::new();
     let mut add = |p: PathBuf| {
-        if !out.contains(&p) {
+        if !super::follow::note_far(&p, workdir, offsite) && !out.contains(&p) {
             out.push(p);
         }
     };
@@ -208,8 +211,11 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf
             // A whole word with shell punctuation in it is a command line (`./a; ./b`): its
             // pieces count. The part before a `:` counts as the word it was cut from.
             let named = word.escaped || ((shown.contains('/') || word.text.contains('/')) && !shown.contains(BREAKS));
-            let exists = std::fs::symlink_metadata(&path).is_ok();
-            let root = crate::paths::resolve(&path) == crate::paths::resolve(workdir);
+            // A place that may not be followed counts as there without being looked at: `scan`
+            // notes it and leaves it out.
+            let far = super::follow::far(&path, workdir);
+            let exists = far || std::fs::symlink_metadata(&path).is_ok();
+            let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
             if (named || exists) && !root && !out.contains(&path) {
                 out.push(path);
             }
@@ -219,7 +225,7 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf
             let fixed = shell::literal(slashed.split(GLOBS).next().unwrap_or_default());
             let dir = fixed.rfind('/').map_or("", |i| &fixed[..i]);
             let mut p = if dir.is_empty() { workdir.to_path_buf() } else { at(dir) };
-            while std::fs::symlink_metadata(&p).is_err() {
+            while !super::follow::far(&p, workdir) && std::fs::symlink_metadata(&p).is_err() {
                 if !p.pop() {
                     break;
                 }
