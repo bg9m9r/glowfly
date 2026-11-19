@@ -92,4 +92,20 @@ mod tests {
         record(&mut st, toasts, entries);
         assert_eq!(texts(&st), [(true, "Refused")]);
     }
+
+    #[test]
+    fn a_named_toast_is_logged_without_its_tab() {
+        use crate::state::Tab;
+        let (mut st, now) = (state(), Instant::now());
+        let dir = |n: &str| glowfly_core::paths::temp_dir().join(n);
+        let b = dir("glowfly-toast-log-b");
+        st.tabs = vec![Tab::unloaded(dir("glowfly-toast-log-a")), Tab::unloaded(b.clone())];
+        st.active_tab = 0;
+        st.log.clear();
+        let (toasts, entries) = (st.toast_seq, EntryId::next());
+        st.toast_in(Some(&b), true, "Saved", now);
+        assert!(st.toasts[0].tab.is_some());
+        record(&mut st, toasts, entries);
+        assert_eq!(texts(&st), [(true, "Saved")]);
+    }
 }

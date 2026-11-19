@@ -286,8 +286,8 @@ pub(super) fn replied(
             let settled = result.as_ref().map(|_| ()).map_err(|e| e.message.clone());
             super::kept::settle(st, workdir, target, active, id, PrAction::LineComment, settled);
             match &result {
-                Ok(_) => st.toast(true, text, now),
-                Err(e) => st.toast(false, format!("Couldn't post the comment on {label}: {}", e.message), now),
+                Ok(_) => st.toast_in(Some(workdir), true, text, now),
+                Err(e) => st.toast_in(Some(workdir), false, format!("Couldn't post the comment on {label}: {}", e.message), now),
             }
         }
     }
