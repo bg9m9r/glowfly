@@ -127,6 +127,7 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_trust_prints",
     "repo_trust_times",
     "repo_trust_from",
+    "repo_trust_places",
     "status_tip_shown",
     "repo_submodule_updates",
     "repo_year_branches",

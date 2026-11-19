@@ -7,7 +7,8 @@
 //! settings or hooks since (or whose hook scripts or commands file changed), it asks again and
 //! lists only what is new. Hooks that come from the working tree are said to change with the
 //! branch, and a job held because the commit it brings in has other versions of them lists
-//! those versions.
+//! those versions. A job held for places Glowfly doesn't read offers not to be asked about
+//! those places again.
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::theme::color;
@@ -34,7 +35,7 @@ use std::sync::Arc;
 pub fn show(ui: &mut Ui, cx: Cx, p: &TrustPrompt, msgs: &mut Vec<Msg>) -> bool {
     // Files of its own that couldn't be read aren't about what a commit brings in, nor about
     // what changed since: the plain question.
-    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_)));
+    let unread = p.unchecked.as_ref().is_some_and(|u| matches!(u.reason, Unchecked::State(_) | Unchecked::Offsite { .. }));
     let title = match (&p.incoming, &p.gained) {
         _ if p.unchecked.is_some() && !unread => cx.t.tr("trust.incoming.title"),
         (Some(_), _) if !unread => cx.t.tr("trust.incoming.title"),
@@ -74,6 +75,12 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt, msgs: &mut Vec<Msg>) {
             .wrap(),
         );
     }
+    if p.offsite_places().is_some() {
+        let mut on = p.remember;
+        if crate::theme::controls::checkbox(ui, &mut on, t.tr("trust.unchecked.remember")).changed() {
+            msgs.push(Msg::Trust(TrustMsg::RememberPlaces(on)));
+        }
+    }
     if p.terminal {
         let what =
             "The terminal waits for this decision: shell prompts often run git, which runs what this repository's settings and hooks name.";
@@ -83,7 +90,7 @@ fn body(ui: &mut Ui, t: Lang, p: &TrustPrompt, msgs: &mut Vec<Msg>) {
         ui.label(RichText::new("You chose not to trust it before.").color(color::weak()));
     }
     ui.add_space(8.0);
-    let shown = p.incoming.as_deref().or(p.gained.as_ref()).unwrap_or(&p.scan);
+    let shown = p.incoming.as_deref().or(p.gained.as_deref()).unwrap_or(&p.scan);
     // A commands file alone runs nothing by itself: listed below, after "nothing runs", unless
     // it is what changed since the repository was trusted.
     if shown.is_empty() && p.incoming.is_none() && (p.gained.is_none() || shown.commands.is_none()) {

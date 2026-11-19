@@ -26,6 +26,10 @@ pub struct TrustCheck {
     pub accepted: Option<Accepted>,
     /// The language of the texts the runner writes for it (a job stopped part way).
     pub lang: glowfly_core::i18n::Lang,
+    /// The places the repository's settings and hooks name that the user chose not to be
+    /// asked about again (`Settings::remembered_places`): while it is trusted, a job isn't
+    /// held for places that are all among these.
+    pub places: Vec<String>,
 }
 
 /// What couldn't be compared that the user chose to run anyway: the reason, and where. `at`

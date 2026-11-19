@@ -4,6 +4,7 @@
   "read_errors.internal": "Glowfly hit an internal error ({effect})",
   "read_errors.linked_file": "{path} is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it.",
   "read_errors.missing_content": "the contents of {path} haven't been downloaded from {remote} yet",
+  "read_errors.network_pointer": "This folder's Git data points to a network place ({place}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer.",
   "read_errors.no_folder": "A folder history needs a folder",
   "read_errors.no_thread": "could not start a thread: {said}",
   "read_errors.not_a_repository": "{path} is not a git repository",
@@ -12,5 +13,6 @@
   "read_errors.old_file_unreadable": "the old file can't be read",
   "read_errors.open_failed": "Could not open {path}: {why}",
   "read_errors.panicked": "Glowfly hit an internal error ({effect}): {panic}",
-  "read_errors.stopped": "stopped"
+  "read_errors.stopped": "stopped",
+  "read_errors.unchecked_git_data": "This folder's Git data can't be checked ({what}), so Glowfly won't open it."
 }

@@ -132,7 +132,7 @@ pub struct TrustPrompt {
     /// The label of the job the user started that waits for this decision.
     pub held: Option<String>,
     /// For a repository trusted earlier (`Standing::Changed`): what its scan gained since.
-    pub gained: Option<TrustScan>,
+    pub gained: Option<Box<TrustScan>>,
     /// The built-in terminal's shells wait for this decision: Trust and run / Cancel.
     pub terminal: bool,
     /// What the commit the held job brings in has, where hooks follow the working tree, that
@@ -144,13 +144,26 @@ pub struct TrustPrompt {
     /// The step row (its index in the steps shown) whose whole text is open (Show all); a
     /// step too long for its row is cut otherwise (`rows::step_rows`).
     pub open_step: Option<usize>,
+    /// "Don't ask again for these places in this repository" is ticked (offered when
+    /// `unchecked` names places Glowfly doesn't read): Trust and run remembers them.
+    pub remember: bool,
+}
+
+impl TrustPrompt {
+    /// The places the prompt says Glowfly doesn't read, when that is why the job is held.
+    pub fn offsite_places(&self) -> Option<&[String]> {
+        match self.unchecked.as_deref().map(|u| &u.reason) {
+            Some(glowfly_core::trust::incoming::Unchecked::Offsite { places, .. }) if self.held.is_some() => Some(places),
+            _ => None,
+        }
+    }
 }
 
 /// The prompt for the loaded repository `snap`.
 pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
     let standing = standing(s, snap);
     let gained = match (standing, saved_for(s, snap).and_then(|t| t.print)) {
-        (Standing::Changed, Some(print)) => Some(snap.trust_scan.gained_since(&print)),
+        (Standing::Changed, Some(print)) => Some(Box::new(snap.trust_scan.gained_since(&print))),
         _ => None,
     };
     TrustPrompt {
@@ -165,6 +178,7 @@ pub fn prompt_for(s: &Settings, snap: &Snapshot) -> TrustPrompt {
         incoming: None,
         unchecked: None,
         open_step: None,
+        remember: false,
     }
 }
 
@@ -331,6 +345,13 @@ pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::inco
         Unchecked::Conflicted(p) => t.trf("trust.unchecked.conflicted", &[("path", &printable(p))]),
         Unchecked::Unmodeled(what) => t.trf("trust.unchecked.unmodeled", &[("what", &printable(what))]),
         Unchecked::State(files) => t.trf("trust.unchecked.state", &[("files", &printable(files))]),
+        Unchecked::Offsite { places, files } => {
+            let offsite = t.trf("trust.unchecked.offsite", &[("places", &printable(&places.join(", ")))]);
+            match files {
+                Some(files) => format!("{} {offsite}", t.trf("trust.unchecked.state", &[("files", &printable(files))])),
+                None => offsite,
+            }
+        }
     }
 }
 

@@ -75,6 +75,8 @@ pub fn read(t: Lang, e: &ReadFailed) -> String {
         R::Panicked { effect, panic } => t.trf("read_errors.panicked", &[("effect", effect), ("panic", panic)]),
         R::MissingContent { path, remote } => t.trf("read_errors.missing_content", &[("path", path), ("remote", remote)]),
         R::LinkedFile { path } => t.trf("read_errors.linked_file", &[("path", path)]),
+        R::NetworkPointer { place } => t.trf("read_errors.network_pointer", &[("place", place)]),
+        R::UncheckedGitData { what } => t.trf("read_errors.unchecked_git_data", &[("what", what)]),
         R::DiffChanged => t.tr("read_errors.diff_changed").to_owned(),
         R::FileChanged => t.tr("read_errors.file_changed").to_owned(),
         R::OldFileUnreadable => t.tr("read_errors.old_file_unreadable").to_owned(),

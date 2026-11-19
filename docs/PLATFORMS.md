@@ -189,15 +189,34 @@ trust scan all run for untrusted repositories too.
    `\\wsl$\Ubuntu\…` is refused.
 5. **This holds before trust.** Once a repository is trusted, git itself (`git status` recursing
    into submodules) follows what git follows.
-6. **The opened repository's own `.git` file, `commondir`, config and alternates are followed by
-   libgit2 at open,** as git does; the user chose that folder. The guard covers what Glowfly follows on its
-   own beyond it. These read only through libgit2's `commondir()` of the opened repository, which
-   libgit2 already followed, so they reach nothing new: `lfs/sources.rs`, `link/find.rs` (it
-   opens a folder the user or the link named), `history_size.rs`, `stop_cleanup.rs`,
-   `lock_file.rs`, `repo_pool`,
-   `trust/stamp.rs` and `repo_identity.rs`; `repo_scan.rs` reads only the first bytes of a
-   `.git` and never follows it. `trust/follow.rs` resolves config-named paths (`core.hooksPath`,
-   hook links, program paths), like the opened repository's include files: a follow-up.
+6. **The folder the user opens gets the same checks a submodule gets** (owner decision
+   2026-11-19; `git_file/opened.rs`, run by `safe_directory::check` before every open of a
+   folder that hasn't loaded): its `.git` file, `commondir`, worktree record, the links in its
+   git dir, the files its config includes and its alternates are followed only where
+   `may_follow` allows from the folder itself, so a repository that lives on a share opens as
+   before. Otherwise the open fails with `Error::NetworkPointer` naming the place
+   (`read_errors.network_pointer`), or with `Error::UncheckedGitData` where what a file names
+   can't be told (`read_errors.unchecked_git_data`: a `.git` or `commondir` of several lines or
+   too large, a relative `commondir` value libgit2 reads from the process's folder, a name the
+   system won't look up, too many object stores), shown where any failed open is. The folders
+   are tried in libgit2's order (`.git`, then the folder as a git dir, where alone its
+   `commondir` file is read), above the resolved path on Unix. There, a link in the opened
+   path that leads to another network place than the path is spelled on is refused too
+   (`~/work -> /net/nas/work` must be opened by its real path, `/net/nas/work`), since what
+   libgit2 would find past it can't be looked at first. These read only through
+   libgit2's `commondir()` of the opened repository, which was checked, so they reach nothing
+   new: `lfs/sources.rs`, `stop_cleanup.rs`, `lock_file.rs` and `repo_identity.rs`;
+   `repo_scan.rs` reads only the first bytes of a `.git` and never follows it. The trust scan
+   looks at a config-named path (`core.hooksPath`, a hook link, a program path, an include)
+   only where `may_follow` allows from the work tree; one it doesn't look at is listed in
+   `TrustScan::offsite`, and a job asks first (`Unchecked::Offsite`, which names the files
+   that couldn't be read too when there are both). The prompt offers "Don't ask again for
+   these places in this repository": the places are kept beside the Trusted decision
+   (`Settings::repo_trust_places`, removed with it or by Don't trust or Revoke), and a job
+   isn't held while every place found is among them; a new place asks again, and unread files
+   always ask. They are no part of the trust print: a changed setting still asks as any
+   change does. A value is read by its whole spelling
+   before any part of it is taken for a pattern.
 7. **What a refusal looks like** (logged once at debug level, no toast): a nested repository in
    the sweep is walked as a plain folder by the outer rules (one tracked before is named once as
    `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,

@@ -29,16 +29,18 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
         files.push(w.join(".glowfly").join("commands.toml"));
     }
     files.extend(super::steps::FILES.iter().map(|f| repo.path().join(f)));
+    // A file at a place that may not be followed from the work tree is never looked at.
+    let home = repo.workdir().unwrap_or_else(|| repo.path());
     for f in &files {
-        meta(f, &mut h);
+        meta_near(f, home, &mut h);
     }
     if let Some(dir) = &scan.hooks_dir {
-        meta(dir, &mut h);
+        meta_near(dir, home, &mut h);
         let mut entries: Vec<PathBuf> = std::fs::read_dir(dir).map(|r| r.flatten().map(|e| e.path()).collect()).unwrap_or_default();
         entries.sort();
         for e in &entries {
             e.hash(&mut h);
-            meta(e, &mut h);
+            meta_near(e, dir, &mut h);
         }
     }
     repo.head().ok().and_then(|r| r.target()).hash(&mut h);
@@ -128,6 +130,12 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
         }
     }
     out
+}
+
+/// `meta` of `path` where it may be followed from `home` (`follow::far`); otherwise only that
+/// it may not be.
+fn meta_near(path: &Path, home: &Path, h: &mut DefaultHasher) {
+    if super::follow::far(path, home) { 1u8.hash(h) } else { meta(path, h) }
 }
 
 /// The size and times of `path`, and of what it links to (a hook linked elsewhere): its

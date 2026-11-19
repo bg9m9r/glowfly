@@ -57,6 +57,7 @@ fn local_path(workdir: &Path, url: &str) -> Option<PathBuf> {
 /// the folder isn't a repository. A huge store is counted up to `MAX_ENTRIES` entries.
 pub fn local_store_bytes(workdir: &Path, url: &str) -> Option<u64> {
     let path = local_path(workdir, url)?;
+    crate::safe_directory::check(&path, false).ok()?;
     let repo = git2::Repository::open_ext(&path, git2::RepositoryOpenFlags::NO_SEARCH, std::iter::empty::<&std::ffi::OsStr>()).ok()?;
     let objects = repo.commondir().join("objects");
     let mut budget = MAX_ENTRIES;
