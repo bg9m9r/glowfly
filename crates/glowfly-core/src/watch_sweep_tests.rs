@@ -336,8 +336,13 @@ fn a_nested_head_naming_a_file_outside_its_refs_is_not_read() {
         assert!(!nested::ref_name_ok(target.as_bytes()), "{target}");
     }
     assert!(nested::ref_name_ok(b"refs/heads/feature/x"));
-    for target in ["refs/heads/a:b", "refs/heads/.hidden", "refs/.x/y", "refs/heads/a.", "refs/heads/a /b", "refs/heads/a "] {
+    for target in ["refs/heads/a:b", "refs/heads/.hidden", "refs/.x/y", "refs/heads/a."] {
         assert!(!nested::ref_name_ok(target.as_bytes()), "{target}");
+    }
+    // Where the file system trims a trailing dot or space from a part, such a part is refused;
+    // elsewhere only the end of the whole name counts for the dot, and git has no space rule.
+    for target in ["refs/heads/a./b", "refs/heads/a /b", "refs/heads/a "] {
+        assert_eq!(nested::ref_name_ok(target.as_bytes()), !cfg!(windows), "{target}");
     }
     assert!(nested::ref_name_ok(b"refs/heads/a.b/c-d_e"));
     write(&inner, ".git/HEAD", "ref: ../../big.txt\n");
