@@ -194,6 +194,13 @@ impl ConflictView {
         !self.saving && self.is_text() && self.unresolved() == 0
     }
 
+    /// Whether the header's Mark resolved (and Ctrl+Enter, `keys::conflict_key`) is enabled:
+    /// every chunk resolved, or none to resolve, and the merge tool doesn't have the file open
+    /// (`in_tool`, from `tool_compare::merging`).
+    pub fn mark_resolved_enabled(&self, in_tool: bool) -> bool {
+        self.can_save() && !in_tool
+    }
+
     /// Some chunks aren't resolved yet, and something is decided: a chunk picked or edited, or
     /// a clean run edited. Save with markers.
     pub fn can_save_partial(&self) -> bool {

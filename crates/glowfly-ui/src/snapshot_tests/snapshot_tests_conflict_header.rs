@@ -10,7 +10,9 @@ use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::repo::Choice;
+use glowfly_model::keymap::BindingId;
 use glowfly_model::state::AppState;
+use glowfly_model::state::conflict::keys::conflict_key;
 use std::path::PathBuf;
 
 const MERGE_TOOL_BUTTON: &str = "Open in merge tool";
@@ -50,6 +52,7 @@ fn conflict_header_progress() {
     h.check_snapshot("conflict_header_progress");
     assert_eq!(h.query_all_by_label("1 of 2 resolved").count(), 1, "the bar's only: the output's strip says no more");
     assert!(save(&h).is_disabled(), "a conflict is left");
+    assert!(conflict_key(&h.state().0, BindingId::ConflictMarkResolved).is_none(), "and so is Ctrl+Enter");
     for gone in ["Save with markers", "Reset picks…", MERGE_TOOL_BUTTON, "Save and mark resolved"] {
         assert!(h.query_by_label(gone).is_none(), "{gone} is in the menu now, or gone");
     }
@@ -72,6 +75,7 @@ fn conflict_header_progress() {
     }
     h.run();
     assert!(!save(&h).is_disabled());
+    assert!(conflict_key(&h.state().0, BindingId::ConflictMarkResolved).is_some(), "Ctrl+Enter agrees with the button");
     assert!(h.query_by_label("2 of 2 resolved").is_some());
     drop(h);
     let _ = std::fs::remove_dir_all(dir.parent().unwrap());
