@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 /// A bare `fork` next to `work`, added as a remote, with main pushed there (and fetched).
-fn add_fork(work: &Path) -> PathBuf {
+pub(super) fn add_fork(work: &Path) -> PathBuf {
     let fork = work.with_file_name(format!("{}-fork.git", work.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&fork);
     std::fs::create_dir_all(&fork).unwrap();
@@ -30,14 +30,14 @@ fn add_fork(work: &Path) -> PathBuf {
 }
 
 /// `with_origin(name)` plus `add_fork`, with push.default `mode` and remote.pushDefault blank.
-fn setup(name: &str, mode: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
+pub(super) fn setup(name: &str, mode: &str) -> (AppState, PathBuf, PathBuf, PathBuf) {
     let (mut st, work, bare) = with_origin(name);
     let fork = add_fork(&work);
     config(&mut st, &work, &[("push.default", mode), ("remote.pushDefault", "")]);
     (st, work, bare, fork)
 }
 
-fn config(st: &mut AppState, work: &Path, entries: &[(&str, &str)]) {
+pub(super) fn config(st: &mut AppState, work: &Path, entries: &[(&str, &str)]) {
     for (key, value) in entries {
         git(work, &["config", key, value]);
     }

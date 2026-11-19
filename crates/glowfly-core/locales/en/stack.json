@@ -1,4 +1,5 @@
 {
+  "stack.blocked.layer_dest": "A plain push sends {branch} to {dest}, which isn't a branch on one of this repository's remotes, so Push stack can't push it. Push {branch} on its own, or change where it pushes.",
   "stack.blocked.needs_restack": "{branch} needs a restack onto {lower} first.",
   "stack.blocked.prs_open": "Every branch in the stack already has an open {noun}.",
   "stack.blocked.pushed": "Every branch in the stack is already pushed.",

@@ -210,7 +210,13 @@ fn another_dialog_is_not_replaced() {
     let dir = untrusted_repo("trust-other-dialog");
     let mut st = state();
     let fx = run(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::ClearLog),
+        cancel_default: false,
+    });
     finish(&mut st, fx);
     assert!(matches!(st.modal, Some(Modal::Confirm { .. })));
     drive(&mut st, Msg::CloseModal);
@@ -314,7 +320,13 @@ fn ask_is_ignored_for_another_repository_a_clean_one_or_over_a_dialog() {
     ask(&mut st, Path::new("C:/elsewhere"));
     assert!(st.modal.is_none(), "not the active repository");
 
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::ClearLog),
+        cancel_default: false,
+    });
     let here = real(&st);
     ask(&mut st, &here);
     assert!(matches!(st.modal, Some(Modal::Confirm { .. })), "another dialog stays");

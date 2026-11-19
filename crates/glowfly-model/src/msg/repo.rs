@@ -18,6 +18,13 @@ use std::time::Instant;
 pub enum RepoMsg {
     PickRepo,
     Open(PathBuf),
+    /// The confirmation's Open anyway (update/open_anyway.rs): approve `places` for `folder`
+    /// (the folder whose Git data names them) and open `path` again.
+    OpenAnyway {
+        path: PathBuf,
+        folder: PathBuf,
+        places: Vec<String>,
+    },
     Refresh,
     WindowFocused,
     SelectWip,
@@ -98,6 +105,7 @@ impl RepoMsg {
             | Self::Open(..)
             | Self::Refresh
             | Self::WindowFocused
+            | Self::OpenAnyway { .. }
             | Self::SelectWip
             | Self::ShowInProgress
             | Self::SelectCommit(..)

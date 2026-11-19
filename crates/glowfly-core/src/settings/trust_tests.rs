@@ -141,3 +141,22 @@ fn remembered_places_live_and_end_with_the_trusted_decision() {
     assert_eq!(s.revoke_trust(&repo).len(), 2);
     assert!(s.repo_trust_places.is_empty(), "revoking clears its own and its heirs'");
 }
+
+#[test]
+fn approved_network_places_are_kept_per_folder_until_forgotten() {
+    let (repo, inside) = (PathBuf::from("/work/app"), PathBuf::from("/work/app/sub"));
+    let (a, b) = ("Z:\\".to_owned(), r"\\nas\team".to_owned());
+    let mut s = Settings::default();
+    s.approve_network_places(&repo, std::slice::from_ref(&b));
+    s.approve_network_places(&repo, &[b.clone(), a.clone()]);
+    assert_eq!(s.network_places_for(&repo), [a.clone(), b.clone()], "each once, sorted");
+    assert!(s.network_places_for(&inside).is_empty(), "a folder inside has its own");
+    assert_eq!(s.approved_network_places().places_for(&repo), [a.clone(), b.clone()]);
+    // Saved and loaded, and never part of a profile.
+    let back: Settings = serde_json::from_str(&serde_json::to_string(&s).unwrap()).unwrap();
+    assert_eq!(back.repo_network_places, s.repo_network_places);
+    assert!(crate::settings::profiles_prefs::GLOBAL_FIELDS.contains(&"repo_network_places"));
+    assert_eq!(s.network_approvals(), vec![(repo.clone(), vec![a, b])]);
+    assert!(s.forget_network_places(&repo) && !s.forget_network_places(&repo));
+    assert!(s.repo_network_places.is_empty() && s.approved_network_places().places_for(&repo).is_empty());
+}

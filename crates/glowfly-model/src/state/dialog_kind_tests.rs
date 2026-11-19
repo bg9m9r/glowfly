@@ -120,7 +120,7 @@ fn forms_info_and_confirms_are_told_apart() {
         then_pr: None,
     };
     let confirms = [
-        Modal::Confirm { title: "T".into(), body: "B".into(), button: "Go".into(), then: Box::new(Msg::ClearLog) },
+        Modal::Confirm { title: "T".into(), body: "B".into(), button: "Go".into(), then: Box::new(Msg::ClearLog), cancel_default: false },
         Modal::danger("T", "B", "Go", Msg::ClearLog),
         Modal::Trust(trust),
         Modal::RemoveWorktree(RemoveForm::new(&worktree())),

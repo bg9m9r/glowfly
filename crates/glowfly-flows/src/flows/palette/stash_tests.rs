@@ -151,8 +151,13 @@ fn choose_stash_enters_sub_list() {
 
     // Not under a dialog.
     st.palette = None;
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     assert!(choose(&mut st, StashAction::Apply).is_empty());
     assert!(st.palette.is_none());
     let _ = std::fs::remove_dir_all(&dir);

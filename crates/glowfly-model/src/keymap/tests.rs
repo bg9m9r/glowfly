@@ -106,14 +106,15 @@ fn ids_are_stable() {
     assert_eq!(BindingId::from_key("New-Tab"), None);
     assert_eq!(BindingId::from_key("send-pull-request-text"), Some(BindingId::SendPrText));
     assert_eq!(
-        BindingId::ALL[BindingId::ALL.len() - 39..BindingId::ALL.len() - 35],
+        BindingId::ALL[BindingId::ALL.len() - 40..BindingId::ALL.len() - 36],
         [BindingId::SendPrText, BindingId::Quit, BindingId::PrefsSave, BindingId::PrefsRevert]
     );
     assert_eq!(BindingId::from_key("wip-other-list"), Some(BindingId::WipOtherList));
     assert_eq!(BindingId::from_key("file-list-step-file"), Some(BindingId::FileStepFile));
     assert_eq!(BindingId::from_key("focus-sidebar"), Some(BindingId::FocusSidebar));
     assert_eq!(BindingId::from_key("copy-commit-ids"), Some(BindingId::CopyCommitIds));
-    assert_eq!(BindingId::ALL.last(), Some(&BindingId::ConflictMarkResolved));
+    assert_eq!(BindingId::ALL.last(), Some(&BindingId::OpenInEditor));
+    assert_eq!(BindingId::ALL[BindingId::ALL.len() - 2], BindingId::ConflictMarkResolved);
     assert_eq!(BindingId::from_key("conflict-clear-picks"), Some(BindingId::ConflictClear));
     assert_eq!(BindingId::from_key("save-preferences-page"), Some(BindingId::PrefsSave));
 }
@@ -193,6 +194,7 @@ fn rebindable_set() {
         I::ConflictTakeBothTheirsFirst,
         I::ConflictClear,
         I::ConflictMarkResolved,
+        I::OpenInEditor,
     ];
     assert_eq!(rebindable, want);
 }
@@ -223,6 +225,7 @@ fn chord_text() {
     assert_eq!(keys.hint(I::RevertHunk), Some("R"));
     assert_eq!(keys.keys_text(I::OpenFold), "E");
     assert_eq!(keys.keys_text(I::CloseFold), "Shift+E");
+    assert_eq!(keys.hint(I::OpenInEditor), Some("Ctrl+Shift+E"));
     assert_eq!(keys.hint(I::PrevChange), Some("Shift+F7"));
     assert_eq!(keys.hint(I::Sheet), Some("Ctrl+/"));
     assert_eq!(keys.hint(I::Prefs), Some("Ctrl+,"));

@@ -73,7 +73,8 @@ pub(super) fn push_items(ui: &mut egui::Ui, st: &AppState, snap: &Snapshot, host
         crate::pull_request::menu_items::push_pr_item(ui, t, snap, fs, st.job.is_none(), msgs);
     }
     separator(ui);
-    let force = ItemState::danger_unless(busy.as_deref());
+    let force_why = busy.clone().or_else(|| glowfly_model::state::branches::push::head_force_blocked(t, snap));
+    let force = ItemState::danger_unless(force_why.as_deref());
     // Its confirmation warns plainly before overwriting the default branch or a Git Flow base.
     if reason::menu_button(ui, t.tr("toolbar.force_push"), "", force).clicked() {
         msgs.push(glowfly_model::state::branches::push::head_force_confirm(t, snap));

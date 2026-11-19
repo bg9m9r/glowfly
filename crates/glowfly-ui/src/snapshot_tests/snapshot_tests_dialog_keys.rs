@@ -16,7 +16,13 @@ use glowfly_model::state::Modal;
 const BODY: &str = "Delete local branch feature/login? Commits only on it can be found again in the reflog for a while.";
 
 fn normal() -> Modal {
-    Modal::Confirm { title: "Delete branch".into(), body: BODY.into(), button: "Delete".into(), then: Box::new(Msg::ClearLog) }
+    Modal::Confirm {
+        title: "Delete branch".into(),
+        body: BODY.into(),
+        button: "Delete".into(),
+        then: Box::new(Msg::ClearLog),
+        cancel_default: false,
+    }
 }
 
 fn danger() -> Modal {

@@ -28,9 +28,9 @@ pub enum ReadFailed {
     /// A `.gitattributes` or `.gitignore` in the work tree (`path`, as shown) is a link to a
     /// network place outside the repository (`Error::LinkedFile`).
     LinkedFile { path: String },
-    /// The opened folder's git files name `place` (as shown), a network place other than the
-    /// folder's own (`Error::NetworkPointer`).
-    NetworkPointer { place: String },
+    /// The opened folder's git files name network places other than the folder's own that
+    /// aren't approved for it (`Error::NetworkPointer`): Open anyway can approve them.
+    NetworkPointer(super::NetworkPlaces),
     /// The opened folder's git files can't be checked for where they lead; `what` is the file
     /// or place, as shown (`Error::UncheckedGitData`).
     UncheckedGitData { what: String },
@@ -63,7 +63,7 @@ impl From<Error> for ReadFailed {
             Error::NotOwned(r) => ReadFailed::NotOwned { root: crate::native_path::shown(&r.root) },
             Error::MissingContent(m) => ReadFailed::MissingContent { path: m.path, remote: m.remote },
             Error::LinkedFile(path) => ReadFailed::LinkedFile { path },
-            Error::NetworkPointer(place) => ReadFailed::NetworkPointer { place },
+            Error::NetworkPointer(n) => ReadFailed::NetworkPointer(n),
             Error::UncheckedGitData(what) => ReadFailed::UncheckedGitData { what },
             other => ReadFailed::Other { said: other.to_string() },
         }
@@ -99,9 +99,10 @@ impl fmt::Display for ReadFailed {
                 f,
                 "{path} is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it."
             ),
-            ReadFailed::NetworkPointer { place } => write!(
+            ReadFailed::NetworkPointer(n) => write!(
                 f,
-                "This folder's Git data points to a network place ({place}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer."
+                "This folder's Git data points to a network place ({}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer.",
+                n.places.join(", ")
             ),
             ReadFailed::UncheckedGitData { what } => {
                 write!(f, "This folder's Git data can't be checked ({what}), so Glowfly won't open it.")
@@ -193,7 +194,10 @@ mod tests {
             Error::Other("could not parse the merged file".into()),
             Error::MissingContent(missing),
             Error::LinkedFile("sub/.gitignore".into()),
-            Error::NetworkPointer("//host/share/x".into()),
+            Error::NetworkPointer(crate::error::NetworkPlaces {
+                folder: "/r".into(),
+                places: vec!["//host/share".into(), "/net/b".into()],
+            }),
             Error::UncheckedGitData("/r/.git".into()),
         ] {
             let shown = e.to_string();

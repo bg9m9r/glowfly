@@ -271,8 +271,13 @@ fn file_history_when_closed_opens_palette() {
     assert!(matches!(&fx[..], [Effect::Files(glowfly_model::effect::FilesEffect::LoadTracked { .. })]));
 
     st.palette = None;
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     assert!(enter(&mut st).is_empty());
     assert!(st.palette.is_none());
 

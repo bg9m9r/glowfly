@@ -4,6 +4,7 @@
 use crate::effect::FilesEffect;
 use crate::effect::{Effect, LocalOp, SeenLines, UndoResult};
 use crate::msg::{JobMsg, StageMsg};
+use crate::state::branches::force_dest::ForceDest;
 use crate::state::branches::plain_push;
 use crate::state::trust::Created;
 use crate::state::{AppState, CommitDraft};
@@ -218,24 +219,22 @@ pub(super) fn push(st: &mut AppState, force: bool, fx: &mut Vec<Effect>) {
     start_job(st, JobSpec::new("Push".into(), vec![cmd]), fx);
 }
 
-/// A force push of `b` that only replaces the remote branch if it still is where the snapshot
-/// last saw it (or still doesn't exist): bare `--force-with-lease` compares against the
-/// remote-tracking ref, which background fetches keep moving, so it would overwrite commits
-/// the user never saw. With `if_includes` (git 2.30 or newer), `--force-if-includes` also
-/// requires that tip to be in `b`'s reflog.
-pub(super) fn force_push_cmd(b: &glowfly_core::repo::BranchInfo, snap: &Snapshot, if_includes: bool) -> Option<Vec<String>> {
-    let (remote, dest, set_upstream) = crate::state::branches::push_target(b, snap, None)?;
-    let seen = snap.remotes.iter().find(|(r, _)| *r == remote).and_then(|(_, bs)| bs.iter().find(|(n, _)| *n == dest)).map(|(_, o)| *o);
-    let expect = seen.map(|o| o.to_string()).unwrap_or_default();
-    let mut cmd = args(&["push", &format!("--force-with-lease=refs/heads/{dest}:{expect}")]);
+/// A force push of `branch` to `d` (`state/branches/force_dest.rs`) that only replaces that
+/// ref if it still is where the snapshot last saw it (or still doesn't exist): bare
+/// `--force-with-lease` compares against the remote-tracking ref, which background fetches keep
+/// moving, so it would overwrite commits the user never saw. With `if_includes` (git 2.30 or
+/// newer), `--force-if-includes` also requires that tip to be in `branch`'s reflog.
+pub(super) fn force_push_cmd(branch: &str, d: &ForceDest, if_includes: bool) -> Vec<String> {
+    let expect = d.seen.map(|o| o.to_string()).unwrap_or_default();
+    let mut cmd = args(&["push", &format!("--force-with-lease={}:{expect}", d.dest_ref)]);
     if if_includes {
         cmd.push("--force-if-includes".into());
     }
-    if set_upstream {
+    if d.set_upstream {
         cmd.push("-u".into());
     }
-    cmd.extend(["--".to_owned(), remote, format!("refs/heads/{}:refs/heads/{dest}", b.name)]);
-    Some(cmd)
+    cmd.extend(["--".to_owned(), d.remote.clone(), format!("refs/heads/{branch}:{}", d.dest_ref)]);
+    cmd
 }
 
 /// The active job ended: logs it as a run and toasts it (update/logs_runs.rs), closes the credential prompts it left, updates the undo history of the

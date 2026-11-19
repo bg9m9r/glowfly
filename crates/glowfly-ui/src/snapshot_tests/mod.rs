@@ -116,6 +116,7 @@ pub(super) mod snapshot_tests_narrow;
 pub(super) mod snapshot_tests_onboarding;
 pub(super) mod snapshot_tests_op_preview;
 pub(super) mod snapshot_tests_op_steps;
+pub(super) mod snapshot_tests_open_anyway;
 pub(super) mod snapshot_tests_painted;
 pub(super) mod snapshot_tests_palette;
 mod snapshot_tests_palette_branch_delete;

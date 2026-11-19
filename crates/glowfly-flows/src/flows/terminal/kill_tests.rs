@@ -83,7 +83,13 @@ fn an_unnamed_program_gets_the_generic_question() {
 fn another_dialog_drops_the_click() {
     let (mut st, dir, id) = open_with_panel("term-kill-modal");
     started(&mut st, id);
-    let other = Modal::Confirm { title: "Other".into(), body: String::new(), button: "OK".into(), then: Box::new(Msg::Terminal(T::Hide)) };
+    let other = Modal::Confirm {
+        title: "Other".into(),
+        body: String::new(),
+        button: "OK".into(),
+        then: Box::new(Msg::Terminal(T::Hide)),
+        cancel_default: false,
+    };
     st.modal = Some(other);
     assert!(answer(&mut st, id, running(Some("npm"))).is_empty());
     assert!(matches!(&st.modal, Some(Modal::Confirm { title, .. }) if title == "Other"));

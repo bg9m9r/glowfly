@@ -46,7 +46,7 @@ fn drive(st: &mut AppState, msg: Msg) {
 /// src/app.txt (20 lines), gone.txt, staged.txt and logo.png committed twice (so HEAD has a
 /// parent); then src/app.txt edited at two places, gone.txt deleted, staged.txt changed and
 /// staged, new.txt untracked.
-fn fixture(name: &str) -> (AppState, PathBuf) {
+pub(super) fn fixture(name: &str) -> (AppState, PathBuf) {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-app-test-header-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
@@ -81,7 +81,7 @@ fn head(st: &AppState) -> Oid {
     st.snap.as_ref().unwrap().head_oid.unwrap()
 }
 
-fn open(st: &mut AppState, t: DiffTarget) -> HeaderModel {
+pub(super) fn open(st: &mut AppState, t: DiffTarget) -> HeaderModel {
     drive(st, Msg::Repo(RepoMsg::OpenDiff(t)));
     model(st).expect("a diff is open")
 }

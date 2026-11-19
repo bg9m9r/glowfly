@@ -78,7 +78,7 @@ pub(super) fn variants() -> Vec<(R, [&'static str; 3])> {
             ],
         ),
         (
-            R::NetworkPointer { place: "//host/share/x".into() },
+            R::NetworkPointer(glowfly_core::error::NetworkPlaces { folder: "/r".into(), places: vec!["//host/share/x".into()] }),
             [
                 "This folder's Git data points to a network place (//host/share/x), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer.",
                 "Die Git-Daten dieses Ordners verweisen auf einen Netzwerkort (//host/share/x), daher öffnet Glowfly ihn nicht. Öffne das Repository dort, wo es wirklich liegt, oder entferne diesen Verweis.",
@@ -149,7 +149,7 @@ fn paths_remotes_and_said_text_are_kept_in_every_language() {
             R::NotConflicted { path } => vec![path],
             R::Internal { effect } => vec![effect],
             R::NotARepository { path } | R::LinkedFile { path } => vec![path],
-            R::NetworkPointer { place } => vec![place],
+            R::NetworkPointer(n) => n.places.iter().map(String::as_str).collect(),
             R::UncheckedGitData { what } => vec![what],
             R::NotOwned { root } => vec![root],
             R::OpenFailed { path, why } => match why.as_ref() {

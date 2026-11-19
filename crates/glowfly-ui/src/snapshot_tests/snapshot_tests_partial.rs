@@ -207,7 +207,7 @@ fn shallow_fetch_full_confirm() {
     let size = HistorySize::Known { bytes: 2_400_000_000, source: SizeSource::Service("GitHub".into()) };
     let (title, body, button) = glowfly_model::state::partial_confirm::confirm(&size, "origin", 1, false).unwrap();
     let then = Box::new(Msg::Job(JobMsg::DeepenNow(glowfly_core::shallow_ops::Deepen::Full)));
-    st.modal = Some(Modal::Confirm { title, body, button, then });
+    st.modal = Some(Modal::Confirm { title, body, button, then, cancel_default: false });
     let mut h = harness(st, true);
     h.run_steps(4);
     h.check_snapshot("shallow_fetch_full_confirm");

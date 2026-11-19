@@ -81,7 +81,7 @@ fn unchanged_failed(generation: u64, result: R) -> Msg {
 }
 
 #[test]
-fn a_folder_whose_git_data_names_a_network_place_fails_to_open_like_any_other() {
+fn a_folder_whose_git_data_names_a_network_place_fails_to_open_like_any_other_then_asks() {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-test-open-pointer-{}", std::process::id()));
     let wants = [
         "Could not open /r: This folder's Git data points to a network place (//host/share/x), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer.",
@@ -104,7 +104,12 @@ fn a_folder_whose_git_data_names_a_network_place_fails_to_open_like_any_other() 
         assert_eq!(last_failure(&st), want, "{code}");
         assert!(st.tabs.iter().all(|t| t.path.as_deref() != Some(dir.as_path())), "{code}: its tab closes");
     }
-    for ((code, _), want) in NOT_A_REPO.into_iter().zip(wants) {
+    let asking = [
+        "{path}: its Git data points to //host/share/x. Asking before opening it.",
+        "{path}: Seine Git-Daten verweisen auf //host/share/x. Vor dem Öffnen wird nachgefragt.",
+        "{path}: sus datos de Git apuntan a //host/share/x. Se pregunta antes de abrirla.",
+    ];
+    for (i, ((code, _), want)) in NOT_A_REPO.into_iter().zip(wants).enumerate() {
         // What a failed open of a folder that is no repository leaves, to compare with.
         let mut plain = state();
         plain.settings.language = code.into();
@@ -116,14 +121,30 @@ fn a_folder_whose_git_data_names_a_network_place_fails_to_open_like_any_other() 
         let mut st = state();
         st.settings.language = code.into();
         send(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
-        let why = Box::new(R::NetworkPointer { place: "//host/share/x".into() });
+        let places = vec!["//host/share/x".to_owned()];
+        let why = Box::new(R::NetworkPointer(glowfly_core::error::NetworkPlaces { folder: dir.clone(), places }));
         let result = Err(R::OpenFailed { path: "/r".into(), why });
         let g = st.load_gen;
         send(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation: g, kind: LoadKind::Open, result }));
-        assert_eq!(last_failure(&st), want, "{code}");
+        // An open that asks logs a neutral line, not that it won't open.
+        let shown = glowfly_core::native_path::shown(&dir);
+        assert_eq!(last_failure(&st), asking[i].replace("{path}", &shown), "{code}");
         assert!(st.tabs.iter().all(|t| t.path.as_deref() != Some(dir.as_path())), "{code}: its tab closes");
-        let shape = |s: &AppState| (s.tabs.len(), s.active_tab, s.snap.is_some(), s.loading, s.toasts.len());
+        let shape = |s: &AppState| (s.tabs.len(), s.active_tab, s.snap.is_some(), s.loading);
         assert_eq!(shape(&st), shape(&plain), "{code}: as any failed open leaves it");
+        // Then it asks, and the question says it all: no toast repeats the failure.
+        assert!(matches!(st.modal, Some(crate::state::Modal::Confirm { .. })), "{code}: asks");
+        assert!(st.toasts.is_empty(), "{code}: no toast");
+        // An open that can't ask (something else is) keeps the failure's own words.
+        send(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+        let places = vec!["//host/share/x".to_owned()];
+        let why = Box::new(R::NetworkPointer(glowfly_core::error::NetworkPlaces { folder: dir.clone(), places }));
+        let g = st.load_gen;
+        send(
+            &mut st,
+            Msg::Repo(RepoMsg::RepoLoaded { generation: g, kind: LoadKind::Open, result: Err(R::OpenFailed { path: "/r".into(), why }) }),
+        );
+        assert_eq!(last_failure(&st), want, "{code}: not asked");
     }
 }
 

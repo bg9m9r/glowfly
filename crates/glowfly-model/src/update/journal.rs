@@ -127,7 +127,7 @@ fn restore(st: &mut AppState, key: &RowKey, now: Instant) {
             let dirty = crate::state::auto_stash::blocks(snap);
             let msg = journal_restore::confirm(t, &plan, view.preview_of(key), dirty, snap.head_branch.as_deref());
             if let Msg::Confirm { title, body, button, then } = msg {
-                st.modal = Some(crate::state::Modal::Confirm { title, body, button, then });
+                st.modal = Some(crate::state::Modal::Confirm { title, body, button, then, cancel_default: false });
             }
         }
     }

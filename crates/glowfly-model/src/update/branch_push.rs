@@ -1,9 +1,10 @@
-//! Force push with lease of any local branch with an upstream, from its row's menu or a
-//! rejected push's toast, the toolbar's Force push of the checked-out branch, and Push to all
-//! remotes (state/branches/push.rs). A row's or toast's force push re-checks the refusals
-//! against the current snapshot (never the remote's default branch or a Git Flow base; the
-//! toolbar's confirmation only warns about those), refuses when the upstream or its tip changed
-//! since the confirmation counted its commits, and runs `force_push_cmd` with that lease. Push to all
+//! Force push with lease of any local branch, from its row's menu or a rejected push's toast,
+//! the toolbar's Force push of the checked-out branch, and Push to all remotes
+//! (state/branches/push.rs). Where a force push goes is `force_dest`'s one rule. A row's or
+//! toast's force push re-checks the refusals against the current snapshot (never the
+//! destination's default branch or a Git Flow base; the toolbar's confirmation only warns about
+//! those), refuses when its destination or that destination's tip changed since the
+//! confirmation counted its commits, and runs `force_push_cmd` with that lease. Push to all
 //! remotes runs one job (`BranchEffect::PushAll`) that pushes to each remote in turn, never
 //! forced, and names the remotes that failed. Neither moves a local branch, so the undo history
 //! stays.
@@ -12,7 +13,9 @@ use super::ops::{JobSpec, finish_job, start_job};
 use crate::effect::{BranchEffect, Effect};
 use crate::state::AppState;
 use crate::state::branches::NO_REMOTES;
-use crate::state::branches::push::{force_blocked, pushed_all_headline, seen_tip};
+use crate::state::branches::force_dest;
+use crate::state::branches::push::{changed, force_blocked, pushed_all_headline};
+use crate::state::worktree_branches::held_blocked;
 use git2::Oid;
 use glowfly_core::push_all::{self, PushedAll};
 use std::time::Instant;
@@ -26,23 +29,29 @@ pub(super) fn force_push(st: &mut AppState, name: &str, (remote, dest): (&str, &
     let Some(b) = super::branches::find(st, name) else { return };
     let Some(snap) = st.snap.as_ref() else { return };
     let t = st.settings.lang();
-    if let Some(why) = force_blocked(t, snap, &b) {
+    let now = force_dest::of(t, snap, &b);
+    // Held by another worktree, or a destination that is a default or base branch. A
+    // destination that is gone or refused is told below, as what changed since the confirmation.
+    let refused = if now.is_ok() { force_blocked(t, snap, &b) } else { held_blocked(t, snap, name) };
+    if let Some(why) = refused {
         st.log(false, why);
         return;
     }
-    // The upstream was set to another branch since the confirmation.
-    if crate::state::branches::remote_tracking(&b).is_none_or(|up| up.remote != remote || up.merge != dest) {
-        st.log(false, t.trf("branch_push.force.upstream_changed", &[("branch", &name), ("upstream", &format!("{remote}/{dest}"))]));
-        return;
-    }
-    // A fetch since the confirmation moved the upstream: its count no longer holds.
-    if seen_tip(snap, &b) != Some(seen) {
-        let upstream = crate::state::branches::upstream_label(&b).unwrap_or_default();
-        st.log(false, t.trf("branch_push.force.moved", &[("upstream", &upstream), ("branch", &name)]));
+    // Its destination isn't the one the confirmation named.
+    let d = match now {
+        Ok(d) if d.is(remote, dest) => d,
+        other => {
+            st.log(false, changed(t, &b, (remote, dest), other));
+            return;
+        }
+    };
+    // A fetch since the confirmation moved it: its count no longer holds.
+    if d.seen != seen {
+        st.log(false, t.trf("branch_push.force.moved", &[("upstream", &d.label), ("branch", &name)]));
         return;
     }
     let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
-    let Some(cmd) = super::ops::force_push_cmd(&b, snap, if_includes) else { return };
+    let cmd = super::ops::force_push_cmd(name, &d, if_includes);
     start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
 }
 
@@ -52,12 +61,17 @@ pub(super) fn force_push(st: &mut AppState, name: &str, (remote, dest): (&str, &
 pub(super) fn force_head(st: &mut AppState, fx: &mut Vec<Effect>) {
     let Some(b) = st.snap.as_ref().and_then(|s| s.head_info()).cloned() else { return };
     let Some(snap) = st.snap.as_ref() else { return };
-    let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
-    let Some(cmd) = super::ops::force_push_cmd(&b, snap, if_includes) else {
+    let t = st.settings.lang();
+    match force_dest::of_head(t, snap, &b) {
+        Err(why) => st.log(false, why),
         // No remote to push to: offer to create the repository on GitHub.
-        return super::publish::open(st, fx);
-    };
-    start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
+        Ok(None) => super::publish::open(st, fx),
+        Ok(Some(d)) => {
+            let if_includes = st.git.has(glowfly_core::git_version::Feature::ForceIfIncludes);
+            let cmd = super::ops::force_push_cmd(&b.name, &d, if_includes);
+            start_job(st, JobSpec::new("Force push".into(), vec![cmd]), fx);
+        }
+    }
 }
 
 /// Pushes `name` to every remote as one job.

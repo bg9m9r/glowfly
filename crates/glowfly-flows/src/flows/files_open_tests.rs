@@ -43,7 +43,7 @@ fn trust(st: &mut AppState, t: RepoTrust) {
 
 fn confirm(st: &AppState) -> (&str, &str, &str, &Msg) {
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, then }) => (title, body, button, then),
+        Some(Modal::Confirm { title, body, button, then, .. }) => (title, body, button, then),
         _ => panic!("expected the confirmation"),
     }
 }

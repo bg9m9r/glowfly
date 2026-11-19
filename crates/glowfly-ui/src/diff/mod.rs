@@ -22,6 +22,7 @@
 //! a code comment on it (`comment_add`), and the unposted one is marked.
 
 mod comment_add;
+mod editor_item;
 pub(crate) mod fold;
 mod gitlink_card;
 mod header;
@@ -56,6 +57,7 @@ use glowfly_model::state::diff_text::LineRef;
 use glowfly_model::state::lines::{LineClick, LineSelection};
 use glowfly_model::state::pull_request::line_comment::{self, DiffComments};
 use glowfly_model::state::pull_request::threads::{self, Marks};
+use glowfly_model::state::tools::editor_line::EditorFile;
 use glowfly_model::state::{AppState, ViewState};
 use hunk_header::hunk_header;
 pub(super) use line_check::{gutter_sign, paint_mark};
@@ -112,6 +114,8 @@ pub(super) struct DiffView<'a> {
     pub t: Lang,
     /// The text selected in the code, as the rows paint it.
     pub text: text_sel::TextView<'a>,
+    /// The working file the row menu's Open in external editor opens, worked out while it is open.
+    pub working_file: &'a dyn Fn() -> Option<EditorFile>,
 }
 
 impl DiffView<'_> {
@@ -241,6 +245,7 @@ fn rows(
     let hunk_gen = st.hunk_ops_gen();
     let t = st.settings.lang();
     let text_view = text_sel::TextView { index: &cache.index, shown_gen, span: None, focused: text_sel::focused(ui.ctx()) };
+    let working_file = || glowfly_model::state::tools::editor_line::working_file(st);
     let mut view = DiffView {
         target,
         diff,
@@ -259,6 +264,7 @@ fn rows(
         comments,
         t,
         text: text_view,
+        working_file: &working_file,
     };
     view.text.span = text.sel.as_ref().and_then(|s| text_sel::span(&view, s));
     Some(match layout {

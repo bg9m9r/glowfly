@@ -322,3 +322,34 @@ fn delete_remote_branch_dialog_tracked() {
     drop(h);
     remove_fixture(&dir);
 }
+
+#[test]
+fn branch_menu_force_push_goes_to_the_push_remote() {
+    use glowfly_core::repo::{PushDest, PushRule, PushTarget};
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "branch-menu-force-fork");
+    tracked(&mut st, 0, 2);
+    let search = tip(&st, "search");
+    st.snap.as_mut().unwrap().remotes.push(("fork".into(), vec![("search".into(), search)]));
+    let dest = PushDest {
+        dest_ref: "refs/heads/search".into(),
+        tracking_ref: Some("refs/remotes/fork/search".into()),
+        tip: Some(search),
+        ahead: 0,
+        behind: 2,
+        rule: PushRule::Default,
+    };
+    branch(&mut st, "search").push = Some(PushTarget { remote: "fork".into(), key: None, missing: None, dest: Ok(dest) });
+    let mut h = harness(st, true);
+    h.run();
+    open_menu(&mut h);
+    assert!(h.query_by_label("Force push to origin/search (with lease)…").is_none());
+    h.get_by_label("Force push to fork/search (with lease)…").click();
+    h.run();
+    let forces = |m: &Msg| {
+        let Msg::ConfirmDanger { then, .. } = m else { return false };
+        matches!(&**then, Msg::Branch(BranchMsg::ForcePush { branch, remote, .. }) if branch == "search" && remote == "fork")
+    };
+    assert!(h.state().1.iter().any(forces), "Force push asks first, toward the fork");
+    drop(h);
+    remove_fixture(&dir);
+}

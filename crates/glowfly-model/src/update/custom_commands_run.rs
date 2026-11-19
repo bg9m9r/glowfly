@@ -72,7 +72,7 @@ pub(super) fn run(st: &mut AppState, r: CommandRef, at: Target, confirmed: bool,
         };
         let then = Box::new(Msg::CustomCommand(CustomCommandMsg::Run { command: r, at, confirmed: true }));
         let button = t.tr("commands.confirm.button").to_owned();
-        st.modal = Some(Modal::Confirm { title: cmd.name.clone(), body, button, then });
+        st.modal = Some(Modal::Confirm { title: cmd.name.clone(), body, button, then, cancel_default: false });
         return;
     }
     if busy(st, false) {

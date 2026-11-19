@@ -63,8 +63,13 @@ fn toggle_opens_and_closes() {
 #[test]
 fn toggle_ignored_under_dialogs() {
     let mut st = state();
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     run(&mut st, Msg::Palette(PaletteMsg::TogglePalette));
     assert!(st.palette.is_none());
 

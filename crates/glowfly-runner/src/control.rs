@@ -1,6 +1,7 @@
 //! `ControlEffect`s, which `Runner::run` carries out itself on the calling thread: setting and
 //! sweeping the file watcher it owns, answering a credential prompt through its listener, and
-//! asking a running git command to stop. None is queued or handed to a worker, so a stop or an
+//! asking a running git command to stop, and giving every later open the network places the
+//! user approved (`safe_directory::network_places::set`). None is queued or handed to a worker, so a stop or an
 //! answer reaches the job it is for while that job is still running (or waiting in its queue).
 
 use super::Runner;
@@ -20,6 +21,7 @@ impl Runner {
                 let asked = self.stops.stop(key);
                 tracing::debug!(?key, asked, "stop git");
             }
+            ControlEffect::NetworkPlaces(approved) => glowfly_core::safe_directory::network_places::set(approved),
         }
     }
 
@@ -42,6 +44,11 @@ impl Execute for ControlEffect {
         match self {
             // There is nothing running here to stop.
             ControlEffect::StopGit(_) => None,
+            // Run at once by the tests' runner, as `Runner::run` does.
+            ControlEffect::NetworkPlaces(approved) => {
+                glowfly_core::safe_directory::network_places::set(approved);
+                None
+            }
             ControlEffect::Watch(_) | ControlEffect::SweepWatch { .. } | ControlEffect::AnswerPrompt { .. } => {
                 tracing::warn!("watch or prompt effect reached a worker; it is handled by Runner::run");
                 None

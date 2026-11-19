@@ -146,8 +146,13 @@ fn refresh_prefs_search_and_palette() {
     assert_eq!(press(&mut h, CMD, Key::P), ["palette"], "closes it");
 
     let mut st = state();
-    st.modal =
-        Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::Repo(RepoMsg::Refresh)) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::Repo(RepoMsg::Refresh)),
+        cancel_default: false,
+    });
     let mut h = harness(st, false);
     assert_eq!(press(&mut h, CMD, Key::P), quiet(), "not under a dialog");
 }

@@ -13,7 +13,12 @@
 //! `/net/<host>` and `/Network/Servers/<host>` (with their `/System/Volumes/Data/` forms), where a
 //! lookup mounts the host, matched in any case (macOS's root volume ignores case by default);
 //! `//server/share` is a local name there.
+//!
+//! While the folder the user opened is checked (`git_file::opened`), the network places the
+//! user agreed its Git data may lead to (`allowing`, by `place_text`) count as near too, on
+//! that thread only and for that check only.
 
+use std::cell::RefCell;
 use std::path::{Component, Path, PathBuf};
 
 /// The network place a path is on.
@@ -33,6 +38,43 @@ pub(crate) enum NetRoot {
 const MAX_LINKS: usize = 32;
 /// The most path parts one check processes before refusing.
 const MAX_PARTS: usize = 4096;
+
+thread_local! {
+    /// The places `allowing` lets this thread follow, as `place_text` writes them.
+    static ALLOWED: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+}
+
+/// While alive, the network places `places` (as `place_text` writes them) are followed on this
+/// thread as if they were the place in use; dropping it restores what was allowed before.
+pub(crate) struct Allowing(Vec<String>);
+
+/// Lets this thread follow `places` until the guard is dropped.
+pub(crate) fn allowing(places: &[String]) -> Allowing {
+    Allowing(ALLOWED.with(|a| std::mem::replace(&mut *a.borrow_mut(), places.to_vec())))
+}
+
+impl Drop for Allowing {
+    fn drop(&mut self) {
+        ALLOWED.with(|a| *a.borrow_mut() = std::mem::take(&mut self.0));
+    }
+}
+
+/// How a network place is named to the user and remembered: a share as `\\server\share`
+/// (lowercase, as `NetRoot` keeps it), a mapped drive as `Z:\`, an automounted host as
+/// `/net/<host>`. None for a device path, which is never followed.
+pub(crate) fn place_text(r: &NetRoot) -> Option<String> {
+    match r {
+        NetRoot::Share { server, share } => Some(format!(r"\\{server}\{share}")),
+        NetRoot::MappedDrive(letter) => Some(format!(r"{letter}:\")),
+        NetRoot::Automount(host) => Some(format!("/net/{host}")),
+        NetRoot::Device => None,
+    }
+}
+
+/// Whether `allowing` lets this thread follow `r`.
+fn allowed_here(r: &NetRoot) -> bool {
+    place_text(r).is_some_and(|t| ALLOWED.with(|a| a.borrow().contains(&t)))
+}
 
 /// The network root `text` names by its spelling alone (a drive letter is never mapped).
 pub(crate) fn spelled_root_for(text: &str, windows: bool) -> Option<NetRoot> {
@@ -133,12 +175,12 @@ fn unix_root(text: &str) -> Option<NetRoot> {
 }
 
 /// What following a path would lead to (`leads_to`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Leads {
-    /// A local place, or one on `home`'s network root.
+    /// A local place, or one on `home`'s network root (or one `allowing` allows).
     Near,
-    /// Another network place, by its spelling or a link's.
-    Network,
+    /// Another network place, by its spelling or a link's: the first one reached.
+    Network(NetRoot),
     /// It can't be told: a device path, a name the OS won't look up, too many links or parts.
     Unknown,
 }
@@ -167,12 +209,13 @@ pub(crate) fn leads_to(named: &Path, home: &Path) -> Leads {
     }
 }
 
-/// `may_follow_for` as a `Leads`.
+/// `may_follow_for` as a `Leads`, with the places `allowing` allows counted as near.
 fn spelled(named: Option<&NetRoot>, home: Option<&NetRoot>) -> Leads {
     match named {
         _ if may_follow_for(named, home) => Leads::Near,
-        Some(NetRoot::Device) => Leads::Unknown,
-        _ => Leads::Network,
+        Some(NetRoot::Device) | None => Leads::Unknown,
+        Some(r) if allowed_here(r) => Leads::Near,
+        Some(r) => Leads::Network(r.clone()),
     }
 }
 
@@ -250,6 +293,8 @@ fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> Leads {
             Ok(meta) => meta,
             // Nothing further exists to be reached.
             Err(e) if matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory) => return Leads::Near,
+            // On a place the user approved, libgit2 fails the same way there: nothing is reached.
+            Err(_) if root_of(&next).as_ref().is_some_and(allowed_here) => return Leads::Near,
             // Any other failure (a name the OS won't look up, no permission) can't be checked.
             Err(_) => return Leads::Unknown,
         };

@@ -24,9 +24,9 @@
 //! presses it), when nothing has focus, or when a single-line field gave up the focus on it or
 //! reported it (the form's `submit`); Ctrl/Cmd+Enter runs it from anywhere, a multiline field
 //! included. A field's Enter runs only a primary, never Cancel or Close. The default is the
-//! primary, or the dismiss button when there is none or the dialog's tone is Danger, so Enter
-//! never presses a danger button. On the first frame a dialog shows, its default button gets the
-//! focus unless the body gave it to a field. Esc stays with `dialog_guard::dismissal`.
+//! primary, or the dismiss button when there is none, the dialog's tone is Danger or the footer
+//! asks for it (`Footer::dismiss_default`), so Enter never presses a danger button. On the first
+//! frame a dialog shows, its default button gets the focus unless the body gave it to a field. Esc stays with `dialog_guard::dismissal`.
 
 use super::theme::{DIALOG_PAD, color, controls};
 use super::widgets::{Icon, scroll_cue};
@@ -321,9 +321,9 @@ impl Open {
                 ui.add_space(extra);
             }
         }
-        let footer::Laid { mut out, dismiss: dismiss_r, primary: primary_r, primary_on, tone, submit } =
+        let footer::Laid { mut out, dismiss: dismiss_r, primary: primary_r, primary_on, tone, submit, dismiss_default } =
             footer::lay_out(ui, footer, self.cx.t, self.exact);
-        let default_is_primary = tone == Tone::Normal && primary_r.is_some();
+        let default_is_primary = tone == Tone::Normal && primary_r.is_some() && !dismiss_default;
         let default_r = if default_is_primary { primary_r.as_ref() } else { dismiss_r.as_ref() };
         // A single-line field gives up the focus on Enter, and nothing else in a dialog does:
         // that Enter runs the primary as if the form reported it.

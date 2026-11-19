@@ -158,9 +158,9 @@ pub(super) fn tick(st: &mut AppState) {
 
 pub(super) fn confirm(st: &AppState) -> (&str, &str, &str, &Msg) {
     match &st.modal {
-        Some(Modal::Confirm { title, body, button, then } | Modal::ConfirmDanger { title, body, button, then, .. }) => {
-            (title, body, button, then)
-        }
+        Some(
+            Modal::Confirm { title, body, button, then, cancel_default: false } | Modal::ConfirmDanger { title, body, button, then, .. },
+        ) => (title, body, button, then),
         _ => panic!("expected the confirmation"),
     }
 }

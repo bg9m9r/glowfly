@@ -104,6 +104,7 @@ pub(in crate::update) fn use_key(st: &mut AppState, key: PathBuf, repo: bool, co
             body: replace_command_body(&level, value),
             button: "Replace".into(),
             then: Box::new(Msg::Ssh(SshMsg::UseKey { key, repo, confirmed: true })),
+            cancel_default: false,
         });
         return;
     }
@@ -122,6 +123,7 @@ pub(in crate::update) fn stop_using(st: &mut AppState, repo: bool, confirmed: bo
                 body: remove_command_body(&level, value),
                 button: "Remove".into(),
                 then: Box::new(Msg::Ssh(SshMsg::StopUsing { repo, confirmed: true })),
+                cancel_default: false,
             });
         }
         _ => write(st, repo, None, fx),

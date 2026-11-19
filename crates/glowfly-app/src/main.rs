@@ -95,6 +95,8 @@ fn main() -> eframe::Result {
     platform::claim_app_id();
     // Read before the window is made: it picks the Windows frame (Preferences > UI).
     let loaded = glowfly_core::settings::Settings::load();
+    // Before any open: the network places the user approved for each folder (Open anyway).
+    glowfly_core::safe_directory::network_places::set(loaded.0.approved_network_places());
     let chrome = glowfly_model::state::window_chrome::Chrome::chosen(glowfly_core::opens::Os::current(), loaded.0.system_title_bar);
     // Mica behind the drawn Windows frame needs a transparent window, made only where it shows.
     let mica = chrome == glowfly_model::state::window_chrome::Chrome::Windows && platform::native_window::mica_capable();

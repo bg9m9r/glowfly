@@ -1,4 +1,5 @@
 {
+  "stack.blocked.layer_dest": "Un envío simple manda {branch} a {dest}, que no es una rama en uno de los remotos de este repositorio, así que Enviar la pila no puede enviarla. Envía {branch} por separado o cambia adónde se envía.",
   "stack.blocked.needs_restack": "Primero hay que reapilar {branch} sobre {lower}.",
   "stack.blocked.prs_open": "Todas las ramas de la pila ya tienen una {noun} abierta.",
   "stack.blocked.pushed": "Todas las ramas de la pila ya están enviadas.",
