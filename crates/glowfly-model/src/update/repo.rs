@@ -16,6 +16,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         }
         RepoMsg::InitRepo => super::init::open(st, fx),
         RepoMsg::Open(path) => super::tabs::open(st, path, fx),
+        RepoMsg::OpenAnyway { path, folder, places } => super::open_anyway::open(st, path, &folder, &places, now, fx),
         RepoMsg::Refresh => {
             // Keys or allowed signers may have changed outside Glowfly.
             st.session.reads.signatures.clear();
@@ -35,6 +36,10 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
         }
         RepoMsg::RepoLoaded { generation, kind, result } => {
             let t = st.settings.lang();
+            if let Some(places) = super::open_anyway::askable(kind, &result) {
+                let text = result.err().map(|e| typed::read(t, &e)).unwrap_or_default();
+                return super::open_anyway::refused(st, generation, places, text, now, fx);
+            }
             super::repo_loaded::finished(st, generation, kind, result.map_err(|e| typed::read(t, &e)), now, fx)
         }
         RepoMsg::SelectWip => select_wip(st, fx),

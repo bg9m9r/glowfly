@@ -1,6 +1,7 @@
 //! Effects `Runner::run` carries out itself on the calling thread, never on a worker
 //! (`Effect::Control`, runner/control.rs): the file watcher it owns, the credential-prompt
-//! listener the helper waits on, and the stops of running git commands. None queues behind
+//! listener the helper waits on, the stops of running git commands, and the network places the
+//! user approved for each folder's opens (`safe_directory::network_places`). None queues behind
 //! another effect, so a stop or an answer reaches the job it is for while that job runs.
 
 use super::partial::StopKey;
@@ -19,6 +20,9 @@ pub enum ControlEffect {
     AnswerPrompt { id: u64, reply: Reply },
     /// Stops the running git command registered under this key, if any.
     StopGit(StopKey),
+    /// From now on, opens follow the network places these say each folder may point to (Open
+    /// anyway): set before the effects sent after it start, so the open that follows uses them.
+    NetworkPlaces(glowfly_core::safe_directory::network_places::Approved),
 }
 
 impl EffectMeta for ControlEffect {
@@ -28,6 +32,7 @@ impl EffectMeta for ControlEffect {
             ControlEffect::SweepWatch { .. } => "sweep-watch",
             ControlEffect::AnswerPrompt { .. } => "answer-prompt",
             ControlEffect::StopGit(_) => "stop-git",
+            ControlEffect::NetworkPlaces(_) => "network-places",
         }
     }
 

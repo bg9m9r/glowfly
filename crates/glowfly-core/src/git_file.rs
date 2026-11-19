@@ -200,11 +200,20 @@ pub(crate) fn other_repo(folder: &Path, home: &Path) -> Found {
     }
 }
 
-/// The first place libgit2 opening the repository of `d` would reach that may not be followed:
-/// a link directly in its git dir, common dir or their `info/`, a link in its object store or a
-/// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
-/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`.
+/// The first place libgit2 opening the repository of `d` would reach that may not be followed
+/// (`refusals`).
 fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
+    refusals(d, folder, home, false).into_iter().next().map_or(Ok(()), Err)
+}
+
+/// The places libgit2 opening the repository of `d` would reach that may not be followed: a
+/// link directly in its git dir, common dir or their `info/`, a link in its object store or a
+/// store its alternates name (followed to libgit2's depth of 5), a file its config includes, or
+/// its `core.worktree`, `core.excludesFile` or `core.attributesFile`. Only the first unless
+/// `all`; with `all`, each that can be found without following one: nothing is looked at past
+/// a refused link, and the config's values aren't read past a refused include.
+fn refusals(d: &RepoDirs, folder: &Path, home: &Path, all: bool) -> Vec<PathBuf> {
+    let mut out = Vec::new();
     let mut dirs = vec![d.git_dir.clone()];
     if d.common != d.git_dir {
         dirs.push(d.common.clone());
@@ -215,18 +224,33 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
             for e in read.flatten() {
                 // The listing's own type: a link is never followed to tell.
                 if e.file_type().is_ok_and(|t| t.is_symlink()) && !may_follow(&e.path(), &at) {
-                    return Err(e.path());
+                    out.push(e.path());
+                    if !all {
+                        return out;
+                    }
                 }
             }
         }
     }
+    // A refused link may be any file read below.
+    if !out.is_empty() {
+        return out;
+    }
     // Read when a status compares the submodule's HEAD tree.
-    alternates::reachable(&d.common, home)?;
+    if let Err(p) = alternates::reachable(&d.common, home) {
+        out.push(p);
+        if !all {
+            return out;
+        }
+    }
     let roots = config_includes::repo_roots(&d.git_dir, Some(&d.common));
-    config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home))?;
+    if let Err(p) = config_includes::included_within(&roots, &config_includes::Context::of_repo(&d.git_dir), &|p| may_follow(p, home)) {
+        out.push(p);
+        return out;
+    }
     // The includes are allowed, so libgit2 may follow them; an unreadable config fails the
     // open by itself.
-    let Ok(mut cfg) = git2::Config::new() else { return Ok(()) };
+    let Ok(mut cfg) = git2::Config::new() else { return out };
     for (file, level) in [(d.common.join("config"), ConfigLevel::Local), (d.git_dir.join("config.worktree"), ConfigLevel::Worktree)] {
         if file.is_file() {
             let _ = cfg.add_file(&libgit2_spelling(&file), level, false);
@@ -234,10 +258,13 @@ fn openable(d: &RepoDirs, folder: &Path, home: &Path) -> Result<(), PathBuf> {
     }
     let value = |key: &str, base: &Path| cfg.get_path(key).ok().map(|p| if p.is_absolute() { p } else { base.join(p) });
     let named = [value("core.worktree", &d.git_dir), value("core.excludesFile", folder), value("core.attributesFile", folder)];
-    match named.into_iter().flatten().find(|p| !may_follow(p, home)) {
-        Some(p) => Err(p),
-        None => Ok(()),
+    for p in named.into_iter().flatten().filter(|p| !may_follow(p, home)) {
+        out.push(p);
+        if !all {
+            break;
+        }
     }
+    out
 }
 
 /// `file` as libgit2 must be given a config file's path: with `/` alone on Windows. libgit2

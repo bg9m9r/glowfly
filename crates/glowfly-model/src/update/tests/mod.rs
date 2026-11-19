@@ -40,6 +40,7 @@ pub(super) mod lfs_tests;
 pub(super) mod lock_local_tests;
 pub(super) mod onboarding_tests;
 pub(super) mod op_steps_tests;
+pub(super) mod open_anyway_tests;
 pub(super) mod open_link_tests;
 pub(super) mod palette_profile_tests;
 pub(super) mod palette_theme_tests;

@@ -267,6 +267,7 @@ source file, update its line here. Features that span every layer are in
 - `prefs_nav.rs`: `enter_page`, the one way a Preferences page is shown (opening on it, its navigation row, its area's `ShowPage`) and what it reads as it opens; tests in `flows/prefs_pages_tests.rs`.
 - `prefs_signing.rs`: Commit Signing's key list, Generate GPG key, Extend by 2 years and copying a public key (tests in `update/tests/prefs_signing_tests.rs`; the failures' words in each language in `update/tests/prefs_errors_tests.rs`).
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.
+- `open_anyway.rs`: an open refused for network places its Git data names: the failed open, then the question (the active tab's open only); Open anyway approves those places for that folder and opens it again; Preferences forgets them (tests in `update/tests/open_anyway_tests.rs`).
 - `open_link.rs`: a clicked Markdown link (`Msg::OpenLink`) opened, or first a confirmation naming the real host when its text names another (tests in `update/tests/open_link_tests.rs`).
 - `diff_copy.rs`: Copy hunk as patch: the hunk read again from the repository (`Effect::CopyHunkPatch`) and copied when it is UTF-8 text, else a toast. Tests in `flows/diff_copy_tests.rs`.
 - `copy_message.rs`: Copy > Message (the commit menu's and the Edit menu's): the commit's whole message read from the repository (`CommitEffect::CopyMessage`) and copied, else a toast. Tests in `update/tests/copy_message_tests.rs` and `flows/copy_message_tests.rs`.

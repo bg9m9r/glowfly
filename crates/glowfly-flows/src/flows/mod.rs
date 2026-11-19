@@ -168,6 +168,7 @@ mod merge_commit_tests;
 mod notify_tests;
 mod op_preview_tests;
 mod op_progress_tests;
+mod open_anyway_tests;
 mod palette;
 mod pane_focus_tests;
 mod parked_free_tests;

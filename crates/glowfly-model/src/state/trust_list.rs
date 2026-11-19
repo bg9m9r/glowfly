@@ -1,6 +1,7 @@
 //! Preferences > Trusted repositories: every saved trust decision as a row (its folder, the
 //! decision, when it was made, the repository it was passed on from and how many were passed on
-//! from it), whether the last folder check found its folder missing, and the filter.
+//! from it), whether the last folder check found its folder missing, and the filter; then the
+//! folders opened with Open anyway and the network places approved for each.
 
 use glowfly_core::paths::same_spelling;
 use glowfly_core::settings::{RepoTrust, Settings};
@@ -56,6 +57,35 @@ pub fn rows(s: &Settings, page: &TrustPage) -> Vec<TrustRow> {
         .collect()
 }
 
+/// One folder opened with Open anyway, as the page lists it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NetworkRow {
+    /// The folder the approval is saved for.
+    pub path: PathBuf,
+    /// Its name (the whole path when it has none).
+    pub name: String,
+    /// The network places its Git data may point to.
+    pub places: Vec<String>,
+}
+
+/// Every folder with approved network places, sorted by path.
+pub fn network_rows(s: &Settings) -> Vec<NetworkRow> {
+    s.network_approvals().into_iter().map(|(path, places)| NetworkRow { name: folder_name(&path), path, places }).collect()
+}
+
+/// The rows `filter` matches, ignoring case, in the path or a place; all of them when it is
+/// blank.
+pub fn network_shown<'a>(rows: &'a [NetworkRow], filter: &str) -> Vec<&'a NetworkRow> {
+    let want = filter.trim().to_lowercase();
+    rows.iter()
+        .filter(|r| {
+            want.is_empty()
+                || r.path.display().to_string().to_lowercase().contains(&want)
+                || r.places.iter().any(|p| p.to_lowercase().contains(&want))
+        })
+        .collect()
+}
+
 /// The rows `filter` matches, ignoring case, in the path or the source's name; all of them
 /// when it is blank.
 pub fn shown<'a>(rows: &'a [TrustRow], filter: &str) -> Vec<&'a TrustRow> {
@@ -98,5 +128,19 @@ mod tests {
         assert_eq!(shown(&rows, " beta-LIB ").len(), 1);
         assert_eq!(shown(&rows, "ALPHA-TOOL").len(), 2, "the inherited row matches by its source too");
         assert!(shown(&rows, "nothing").is_empty());
+    }
+
+    #[test]
+    fn network_rows_list_each_folder_with_its_places_and_filter() {
+        let mut s = Settings::default();
+        let base = glowfly_core::paths::temp_dir().join("glowfly-trust-network-rows");
+        let (app, lib) = (base.join("app"), base.join("lib"));
+        s.approve_network_places(&lib, &["/net/build".to_owned()]);
+        s.approve_network_places(&app, &["/net/nas".to_owned(), "/net/home".to_owned()]);
+        let rows = network_rows(&s);
+        assert_eq!(rows.iter().map(|r| (r.name.as_str(), r.places.len())).collect::<Vec<_>>(), [("app", 2), ("lib", 1)]);
+        assert_eq!(network_shown(&rows, " BUILD ").len(), 1, "by a place");
+        assert_eq!(network_shown(&rows, "lib").len(), 1, "by the path");
+        assert!(network_shown(&rows, "nothing").is_empty());
     }
 }

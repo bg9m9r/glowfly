@@ -92,6 +92,8 @@ pub(super) fn reread(st: &mut AppState, settings: Settings, problem: Option<Load
     if carried {
         fx.extend(super::prefs::save_settings(st));
     }
+    // The file's approvals replace those of the defaults Glowfly started with.
+    fx.push(super::open_anyway::sync(st));
     super::profile_setup::switched(st, SetupSwap { prefs: true, connections: true }, now, fx);
     // The git that runs was set from the defaults at startup: put the file's into effect.
     if git_changed {

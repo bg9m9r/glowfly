@@ -94,6 +94,7 @@ mod notify;
 mod onboarding;
 mod op_preview;
 mod op_progress;
+mod open_anyway;
 mod open_link;
 pub mod ops;
 mod palette;
