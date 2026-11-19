@@ -288,6 +288,11 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, un
             if hook && dir.split('/').any(|part| part.eq_ignore_ascii_case("node_modules")) {
                 continue;
             }
+            // A hook's whole word with shell punctuation before its glob (`s=$dir/$n`) is a
+            // command line: its pieces (`$dir/$n`) are read apart.
+            if hook && fixed.contains(BREAKS) {
+                continue;
+            }
             let Some(mut p) = (if dir.is_empty() { Some(workdir.to_path_buf()) } else { placed(workdir, home, dir) }) else {
                 note(unread, &fixed);
                 continue;

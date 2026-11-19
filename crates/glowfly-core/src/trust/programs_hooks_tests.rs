@@ -12,18 +12,18 @@ use crate::settings::SavedTrust;
 use crate::testutil::*;
 use git2::Repository;
 
-fn scan_of(dir: &Path) -> TrustScan {
+pub(super) fn scan_of(dir: &Path) -> TrustScan {
     scan_now(&Repository::open(dir).unwrap())
 }
 
-fn paths(s: &TrustScan) -> Vec<&str> {
+pub(super) fn paths(s: &TrustScan) -> Vec<&str> {
     let mut out: Vec<&str> = s.follows.iter().map(|f| f.path.as_str()).collect();
     out.sort();
     out
 }
 
 /// Writes the hook `name` in `dir` with `text`, runnable.
-fn hook_with(dir: &Path, name: &str, text: &str) {
+pub(super) fn hook_with(dir: &Path, name: &str, text: &str) {
     hook(dir, name);
     std::fs::write(dir.join(name), text).unwrap();
 }
@@ -105,7 +105,8 @@ fn the_words_of_ordinary_hooks_follow_nothing_new() {
         "#!/usr/bin/env bash\nARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=commit-msg)\nHERE=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\nexec pre-commit \"${ARGS[@]}\"\n",
     );
     assert!(scan_of(&dir).follows.is_empty(), "{:?}", scan_of(&dir).follows);
-    // husky: its hooks run `.husky/_/h` from their own folder, which the hooks folder covers.
+    // husky: its hooks run `.husky/_/h` from their own folder, which the hooks folder covers,
+    // and `h` runs `.husky/<hook>`, not there yet.
     std::fs::create_dir_all(dir.join(".husky")).unwrap();
     hook_with(&dir.join(".husky/_"), "pre-commit", "#!/usr/bin/env sh\n. \"$(dirname \"$0\")/h\"\n");
     write(&dir, ".husky/_/h", "#!/usr/bin/env sh\n");
@@ -115,7 +116,7 @@ fn the_words_of_ordinary_hooks_follow_nothing_new() {
         "#!/usr/bin/env sh\n. \"$(dirname -- \"$0\")/_/husky.sh\"\nnpx --no -- commitlint --edit \"$1\"\n",
     );
     git(&dir, &["config", "core.hooksPath", ".husky/_"]);
-    assert_eq!(paths(&scan_of(&dir)), [".husky/_"]);
+    assert_eq!(paths(&scan_of(&dir)), [".husky/_", ".husky/pre-commit"]);
     git(&dir, &["config", "core.hooksPath", ".husky"]);
     assert_eq!(paths(&scan_of(&dir)), [".husky"]);
     let _ = std::fs::remove_dir_all(&dir);
