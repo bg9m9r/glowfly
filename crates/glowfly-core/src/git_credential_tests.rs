@@ -230,3 +230,11 @@ fn falls_back_to_the_in_memory_cache() {
     let _ = std::fs::remove_dir_all(&dir);
     let _ = std::fs::remove_file(&global);
 }
+
+#[test]
+fn the_cache_probe_socket_is_not_directly_in_the_shared_temp_folder() {
+    let Some(socket) = probe_socket() else { return };
+    let folder = socket.parent().unwrap();
+    assert_ne!(folder.parent(), Some(crate::paths::temp_dir().as_path()), "{}", socket.display());
+    assert!(folder.starts_with(crate::settings::runtime_dir().unwrap()));
+}

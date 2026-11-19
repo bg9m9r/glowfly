@@ -205,9 +205,15 @@ pub fn usable_fallback(cwd: &Path, env: &[(&str, &str)]) -> Option<String> {
 /// Whether `git credential-cache` runs here: `exit` on a socket nobody uses checks the command
 /// and its `--socket` option without touching a running daemon (nor making the folder).
 pub(crate) fn cache_runs(cwd: &Path, env: &[(&str, &str)]) -> bool {
-    let unused = crate::paths::temp_dir().join(format!("glowfly-cc-probe-{}", std::process::id())).join("s");
+    let Some(unused) = probe_socket() else { return false };
     let socket = format!("--socket={}", unused.display());
     gitcli::output(cwd, &args(&["credential-cache", &socket, "exit"]), "", &quiet_env(env), Some(gitcli::READ_TIMEOUT)).ok
+}
+
+/// A socket path for the [`cache_runs`] probe: in Glowfly's own runtime folder (private to the
+/// user), not the shared temp folder. None when there is no such folder.
+fn probe_socket() -> Option<PathBuf> {
+    crate::settings::runtime_dir().map(|d| d.join(format!("cc-probe-{}", std::process::id())).join("s"))
 }
 
 /// `value` as a POSIX extended regex that matches only itself, for `git config --unset`'s value
