@@ -158,11 +158,16 @@ fn is_pattern(text: &str) -> bool {
 /// The readings of `text` to follow: as written, and from each substitution followed by a `/`
 /// on, relative to the working tree (`$(git rev-parse --show-toplevel)/x`, `` `pwd`/x ``,
 /// `${PWD%/}/x`, `$HOME/x`: its value may be the working folder). One that starts with a
-/// substitution not followed by `/` names nothing knowable.
+/// substitution followed by anything else (`$(git rev-parse --show-toplevel)tools/x`,
+/// `"$GIT_DIR"x`) reads the rest relative to the working tree the same way: the value may be
+/// the working folder with its trailing `/`.
 fn readings(text: &str) -> Vec<String> {
     let mut out = Vec::new();
-    if !text.starts_with(shell::SUB) {
-        out.push(text.to_owned());
+    match text.strip_prefix(shell::SUB) {
+        None => out.push(text.to_owned()),
+        // `…/` and `$A$B` are read by the loop below.
+        Some(rest) if !rest.is_empty() && !rest.starts_with(['/', shell::SUB]) => out.push(rest.to_owned()),
+        Some(_) => {}
     }
     for (i, _) in text.match_indices(shell::SUB) {
         let rest = &text[i + shell::SUB.len_utf8()..];
