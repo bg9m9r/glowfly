@@ -14,7 +14,7 @@ const GRACE: &str = "Grace Hopper <grace@example.com> <ghopper@navy.example>\n";
 
 /// A commit of the empty tree, signed `who` (name, email) at `time`, on top of `parent`; the
 /// `main` branch moves to it.
-fn commit_as(repo: &Repository, parent: Option<Oid>, who: (&str, &str), time: i64) -> Oid {
+pub(super) fn commit_as(repo: &Repository, parent: Option<Oid>, who: (&str, &str), time: i64) -> Oid {
     let sig = git2::Signature::new(who.0, who.1, &git2::Time::new(time, 0)).unwrap();
     let tree = repo.find_tree(repo.treebuilder(None).unwrap().write().unwrap()).unwrap();
     let parents: Vec<git2::Commit> = parent.iter().map(|p| repo.find_commit(*p).unwrap()).collect();
@@ -77,7 +77,7 @@ fn resolve_follows_the_four_entry_forms() {
 }
 
 #[test]
-fn a_signature_libgit2_would_trim_or_refuse_stays_as_written() {
+fn an_odd_signature_without_an_entry_stays_as_written() {
     let map = MailmapText::from_text("Proper <other@example.com>\n").open();
     for (name, email) in
         [("Name,", "x@example.com"), ("", "a@example.com"), ("N", ""), ("A <B>", "a@example.com"), ("N", "a>b@example.com")]
