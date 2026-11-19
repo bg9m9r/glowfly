@@ -83,14 +83,14 @@ fn text_host(text: &str) -> Option<String> {
 }
 
 /// Whether what follows a bare host in link text (`/…`, `?…`, `#…`, or `:` with an all-digit
-/// port and then nothing or one of those) shows the text means a web address.
+/// port and then one of those) shows the text means a web address.
 fn names_host_after(rest: &str) -> bool {
     match rest.as_bytes().first() {
         Some(b'/' | b'?' | b'#') => true,
         Some(b':') => {
             let after = &rest[1..];
             let digits = after.bytes().take_while(u8::is_ascii_digit).count();
-            digits > 0 && matches!(after.as_bytes().get(digits), None | Some(b'/' | b'?' | b'#'))
+            digits > 0 && matches!(after.as_bytes().get(digits), Some(b'/' | b'?' | b'#'))
         }
         _ => false,
     }
@@ -251,17 +251,24 @@ mod tests {
     #[test]
     fn a_host_with_a_port_query_or_fragment_is_named() {
         let evil = "https://evil.example/";
-        for text in
-            ["github.com:443/acme", "github.com:443", "github.com?tab=1", "github.com#top", "github.com:8080?x", "github.com:8080#x"]
-        {
+        for text in ["github.com:443/acme", "github.com?tab=1", "github.com#top", "github.com:8080?x", "github.com:8080#x"] {
             assert_eq!(mismatch(text, evil), Some(("github.com".into(), "evil.example".into())), "{text}");
         }
-        assert_eq!(mismatch("github.com:443", "https://github.com/"), None);
+        assert_eq!(mismatch("github.com:443/", "https://github.com/"), None);
     }
 
     #[test]
     fn a_non_numeric_port_keeps_the_text_quiet() {
-        for text in ["github.com:abc/acme", "github.com:", "github.com:80a", "github.com:/x", "note.md:fix"] {
+        for text in [
+            "github.com:443",
+            "README.md:12",
+            "main.rs:40",
+            "github.com:abc/acme",
+            "github.com:",
+            "github.com:80a",
+            "github.com:/x",
+            "note.md:fix",
+        ] {
             assert_eq!(mismatch(text, "https://evil.example/"), None, "{text}");
         }
     }
