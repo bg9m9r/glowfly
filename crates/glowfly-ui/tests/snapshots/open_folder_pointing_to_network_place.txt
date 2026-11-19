@@ -1,6 +1,6 @@
 Dialog
   Label "Open a folder that points to a network place?"
   Button "Close this dialog"
-  Label "This folder's Git data points to \\\\nas\\team, Z:\\. Opening it connects to that server, and Windows may send your sign-in to it. Open it only if you know and trust that server."
+  Label "The Git data of C:\\work\\app points to 2 network places: \\\\nas\\team, Z:\\. Opening it connects to those servers, and Windows may send your sign-in to them. Open it only if you know and trust those servers."
   Button "Cancel" [focused]
   Button "Open anyway"
