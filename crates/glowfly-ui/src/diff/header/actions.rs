@@ -1,6 +1,7 @@
-//! The header's ⋯, Stage file and Close: ⋯ holds every file action (Open, Open in diff tool,
-//! Show in folder, then Restore… for a commit's file), the diff tool always enabled (with no
-//! tool set it says it opens Preferences > External Tools); Stage file or Unstage file is a
+//! The header's ⋯, Stage file and Close: ⋯ holds every file action (Open, Open in external
+//! editor at the diff's line, Open in diff tool, Show in folder, then Restore… for a commit's
+//! file), the diff tool always enabled (with no tool set, as with no editor, it says it opens
+//! Preferences > External Tools); Stage file or Unstage file is a
 //! small secondary button at the trailing edge, before the × that closes the diff. The header
 //! has no filled button (`docs/COLOUR.md`, "The accent").
 
@@ -43,6 +44,9 @@ pub(super) fn more(ui: &mut Ui, m: &HeaderModel, keys: &Keymap, t: Lang, msgs: &
         let before = msgs.len();
         if let Some(o) = &a.open {
             menu_item_if(msgs, ui, t.tr("files.menu.open_default"), o.missing, Msg::Files(FilesMsg::OpenWorkingFile(o.path.clone())));
+        }
+        if let (Some(o), Some(e)) = (&a.open, m.editor) {
+            crate::file_menu::editor_item(ui, t, msgs, &o.path, o.missing, e.setup, e.line);
         }
         if let Some(setup) = a.diff_tool {
             let open = Msg::Tools(ToolsMsg::OpenDiff(m.target.clone()));

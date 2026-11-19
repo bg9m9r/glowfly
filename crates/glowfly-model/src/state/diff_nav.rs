@@ -7,7 +7,7 @@ use super::{AppState, ViewState};
 use file_order::source_entries;
 use glowfly_core::diff_rows::step_change;
 use glowfly_core::repo::{DiffTarget, FileDiff};
-use glowfly_core::settings::Settings;
+use glowfly_core::settings::{DiffMode, Settings};
 use glowfly_core::whole_file::{self, Expanded};
 
 /// The change a file opened by stepping lands on.
@@ -116,11 +116,16 @@ pub fn step_from(rows: &[usize], pos: usize, dir: isize, file: impl FnOnce() -> 
 pub fn current_hunk(st: &AppState) -> Option<usize> {
     let (_, d) = st.session.diff.view.as_ref()?;
     let rows = change_rows_of(d, &st.settings, &st.session.tab_view.diff_expanded);
+    hunk_from(d, st.settings.diff_mode, &rows, position(st, &st.view))
+}
+
+/// The normal hunk index of the change at or above row `pos` among the change `rows` (the
+/// first change when `pos` is above all of them); `None` without changes.
+pub fn hunk_from(d: &FileDiff, mode: DiffMode, rows: &[usize], pos: usize) -> Option<usize> {
     if rows.is_empty() {
         return None;
     }
-    let i = rows.partition_point(|&r| r <= position(st, &st.view)).saturating_sub(1);
-    whole_file::hunk_of_change(d, st.settings.diff_mode, i)
+    whole_file::hunk_of_change(d, mode, rows.partition_point(|&r| r <= pos).saturating_sub(1))
 }
 
 /// The file after (`dir` 1) or before (-1) `from` in the list it came from; nothing wraps.

@@ -59,6 +59,7 @@ pub(super) fn unstaged() -> HeaderModel {
         svg: None,
         view: Some(view()),
         actions: Actions { restore: None, open: Some(OpenAction { path: path.into(), missing: None }), diff_tool: Some(None) },
+        editor: None,
         primary: Some(Primary::Stage(path.into())),
     }
 }
@@ -171,7 +172,7 @@ fn german_header_fits_in_one_row() {
 }
 
 /// Opens ⋯ on `m` and clicks `label` in its menu.
-fn in_more(m: HeaderModel, label: &str) -> Vec<Msg> {
+pub(super) fn in_more(m: HeaderModel, label: &str) -> Vec<Msg> {
     let mut h = harness(m, 1400.0);
     h.get_by_label(MORE).click();
     h.run();

@@ -30,6 +30,7 @@ use glowfly_model::state::history::HistoryPane;
 use glowfly_model::state::layout::{Pane, Panel};
 use glowfly_model::state::{AppState, PrefPage, Selection, ViewState};
 use glowfly_model::terminal::TerminalMsg;
+use glowfly_model::tools::ToolsMsg;
 
 /// Turns this frame's shortcut presses into messages (or view-state changes, for the search
 /// bar). While Preferences > Keyboard records a key, it gets every key press instead.
@@ -129,6 +130,10 @@ fn fire(id: BindingId, chord: Chord, pane: Option<Pane>, st: &AppState, view: &m
         },
         I::OpenFold => Msg::Diff(DiffMsg::OpenFoldAtTop),
         I::CloseFold => Msg::Diff(DiffMsg::CloseFoldAtTop),
+        I::OpenInEditor => match glowfly_model::state::tools::editor_line::shown_file(st) {
+            Some(path) => Msg::Tools(ToolsMsg::OpenFile { path, line: None }),
+            None => return,
+        },
         I::NextChange => step(1, st),
         I::PrevChange => step(-1, st),
         I::BlameNextRun => Msg::Blame(BlameMsg::StepRun(1)),

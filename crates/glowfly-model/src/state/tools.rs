@@ -8,6 +8,9 @@ use glowfly_core::i18n::Lang;
 use glowfly_core::settings::ExternalTools;
 use std::path::Path;
 
+#[path = "editor_line.rs"]
+pub mod editor_line;
+
 /// The file rows' menu item, in English for the log line that names it (update/files.rs).
 pub const OPEN_IN_EDITOR: &str = "Open in external editor";
 const NO_EDITOR: &str = "No external editor is set. Choose one in Preferences > External tools.";

@@ -8,6 +8,8 @@ pub mod cache;
 
 use super::diff_nav::{self, Counter, StepKind};
 use super::files::not_in_workdir;
+use super::tool_compare::ToolSetup;
+use super::tools::editor_line;
 use super::{AppState, Selection, ViewState};
 use cache::HeaderCache;
 use git2::Oid;
@@ -48,6 +50,8 @@ pub struct HeaderModel {
     /// The View menu; `None` for binary and LFS-summary diffs and an SVG's preview.
     pub view: Option<ViewGroup>,
     pub actions: Actions,
+    /// Open in external editor for `actions.open`'s file; `None` without one.
+    pub editor: Option<EditorAction>,
     pub primary: Option<Primary>,
 }
 
@@ -164,6 +168,14 @@ pub struct Actions {
     pub diff_tool: Option<Option<&'static str>>,
 }
 
+/// Open in external editor for the working file `actions.open` names: its Set up note while no
+/// editor is set, and the line it opens at (`tools::editor_line`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EditorAction {
+    pub setup: Option<&'static str>,
+    pub line: Option<u32>,
+}
+
 /// The header's Stage file or Unstage file, at its trailing edge.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Primary {
@@ -204,6 +216,11 @@ pub(super) fn build(st: &AppState, view: &ViewState, parts: &HeaderCache) -> Opt
     } else {
         ChangeText::None
     };
+    let actions = actions(st, target, order.status);
+    let editor = actions.open.as_ref().map(|_| EditorAction {
+        setup: ToolSetup::of(st.settings.lang(), &st.settings.external_tools).editor,
+        line: editor_line::of_open_diff(st, view, None, Some(&parts.rows)),
+    });
     Some(HeaderModel {
         folder,
         name,
@@ -218,7 +235,8 @@ pub(super) fn build(st: &AppState, view: &ViewState, parts: &HeaderCache) -> Opt
         counter: diff_nav::counter_from(&parts.rows, pos, || order.place),
         svg,
         view: (!diff.binary && !lfs_summary && svg != Some(true)).then(|| view_group(st, diff, has_rows)),
-        actions: actions(st, target, order.status),
+        actions,
+        editor,
         primary: match target {
             DiffTarget::Unstaged(p) => Some(Primary::Stage(p.clone())),
             DiffTarget::Staged(p) => Some(Primary::Unstage(p.clone())),
@@ -296,9 +314,14 @@ fn view_group(st: &AppState, diff: &FileDiff, rows: bool) -> ViewGroup {
     }
 }
 
+/// The header's Open for the working file of `target`, as `actions` builds it.
+pub(super) fn open_of(st: &AppState, target: &DiffTarget, status: Option<char>) -> Option<OpenAction> {
+    actions(st, target, status).open
+}
+
 fn actions(st: &AppState, target: &DiffTarget, status: Option<char>) -> Actions {
     let t = st.settings.lang();
-    let diff_tool = Some(super::tool_compare::ToolSetup::of(t, &st.settings.external_tools).diff);
+    let diff_tool = Some(ToolSetup::of(t, &st.settings.external_tools).diff);
     let none = Actions { restore: None, open: None, diff_tool };
     match target {
         // Restore, Open and Show for a commit's file, when the open detail lists it.

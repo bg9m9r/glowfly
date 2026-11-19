@@ -32,7 +32,8 @@ pub(super) fn handle(st: &mut AppState, msg: ToolsMsg, now: Instant, fx: &mut Ve
                 let gone = st.settings.lang().trf("details.wip.delete_files.gone", &[("path", &path)]);
                 return fail(st, gone, now);
             };
-            match editor_file(&st.settings.external_tools, &w, &file, line.unwrap_or(1)) {
+            let line = line.or_else(|| crate::state::tools::editor_line::on_screen(st, &st.view, &path)).unwrap_or(1);
+            match editor_file(&st.settings.external_tools, &w, &file, line) {
                 Ok(launch) => fx.push(Effect::Tool(ToolEffect::Launch { kind: ToolKind::Editor, launch, target: path, check: Some(file) })),
                 Err(text) => fail(st, text, now),
             }

@@ -75,6 +75,7 @@ Button "Copy"
 Button "Copy with diff signs"
 Button "Copy lines"
 Button "Copy hunk as patch"
+Button "Open in external editor"
 Button "Revert 1 line"
 painted:
   "demo"
@@ -128,3 +129,4 @@ painted:
   "+"
   "on Windows"
   "Ctrl+C"
+  "Set up…"

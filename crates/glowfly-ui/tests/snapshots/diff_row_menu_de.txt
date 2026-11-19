@@ -75,6 +75,7 @@ Button "Kopieren"
 Button "Mit Diff-Zeichen kopieren"
 Button "Zeilen kopieren"
 Button "Hunk als Patch kopieren"
+Button "In externem Editor öffnen"
 Button "1 Zeile reverten"
 painted:
   "demo"
@@ -128,3 +129,4 @@ painted:
   "+"
   "on Windows"
   "Ctrl+C"
+  "Einrichten…"

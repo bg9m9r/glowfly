@@ -1,6 +1,7 @@
 //! The diff's right-click menu over a line's code: Copy (its key beside it; only with text
 //! selected), Copy with diff signs, Copy lines (the whole lines under the selection, or the line
-//! clicked), Copy hunk as patch (`DiffMsg::CopyHunkPatch`), then, behind a separator, the hunk
+//! clicked), Copy hunk as patch (`DiffMsg::CopyHunkPatch`), then, behind a separator, Open in
+//! external editor at the selected or clicked line (`editor_item`), then, behind another, the hunk
 //! header's line actions (Stage, Unstage, Discard, Revert or Comment on N lines): on the selected
 //! lines, or with none on the changed line clicked. On an unchanged line they don't show. A
 //! right-click inside the selected text keeps it and anywhere else drops it; Shift+F10 opens the
@@ -82,6 +83,7 @@ fn items(ui: &mut Ui, v: &DiffView, sel: Option<&TextSel>, at: (TextSide, LineRe
     copy(ui, menu::item(t.tr("diff.row_menu.copy_signs")).blocked(no_text), &|| copied(true));
     copy(ui, menu::item(t.tr("diff.row_menu.copy_lines")), &|| diff_text::copy_lines(&text_sel::shown(v, side), sel, Some(at.1)));
     copy_hunk(ui, v, at.1, msgs);
+    super::editor_item::row_item(ui, v, sel, at.1, msgs);
     line_actions(ui, v, at.1, msgs);
 }
 

@@ -34,14 +34,14 @@ fn key(h: &mut H, key: Key, modifiers: Modifiers) {
 }
 
 /// Right-clicks at `at`, the messages before it dropped.
-fn right_click(h: &mut H, at: Pos2) {
+pub(super) fn right_click(h: &mut H, at: Pos2) {
     h.state_mut().1.clear();
     click(h, at, PointerButton::Secondary);
 }
 
 /// Clicks the open menu's item `label` and returns the messages it sent. The hunk header's
 /// button can have the same label: the menu's is the lower one, below the line.
-fn choose(h: &mut H, label: &str) -> Vec<Msg> {
+pub(super) fn choose(h: &mut H, label: &str) -> Vec<Msg> {
     h.state_mut().1.clear();
     let low = |n: &egui_kittest::kittest::Node| n.bounding_box().map_or(0.0, |b| b.y0);
     h.get_all_by_label(label).max_by(|a, b| low(a).total_cmp(&low(b))).expect("the item").click();
