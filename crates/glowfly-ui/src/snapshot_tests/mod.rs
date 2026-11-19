@@ -77,6 +77,7 @@ pub(super) mod snapshot_tests_hints;
 pub(super) mod snapshot_tests_history;
 pub(super) mod snapshot_tests_history_edges;
 pub(super) mod snapshot_tests_history_file;
+pub(super) mod snapshot_tests_history_keys;
 pub(super) mod snapshot_tests_history_preview;
 pub(super) mod snapshot_tests_history_table;
 pub(super) mod snapshot_tests_idle_edits;
