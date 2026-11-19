@@ -1,6 +1,6 @@
 //! Opening a folder whose Git data points to network places that aren't approved for it
-//! (`ReadFailed::NetworkPointer`): the open fails as any failed open does (its tab closes, the
-//! failure is logged), and when it was the active tab's open and nothing else is asking, the
+//! (`ReadFailed::NetworkPointer`): the open fails as any failed open does (its tab closes, a
+//! line is logged), and when it was the active tab's open and nothing else is asking, the
 //! user is asked whether to open it anyway. Open anyway approves those places for that folder
 //! (saved in the settings, and given to every later open by `ControlEffect::NetworkPlaces`) and
 //! opens it again; a place found after that asks again. Cancel leaves the failed open as it is.
@@ -31,13 +31,18 @@ pub(super) fn askable(kind: LoadKind, result: &Result<Box<Snapshot>, ReadFailed>
 }
 
 /// The open numbered `generation` was refused for `n`'s places (`text`, the failure as
-/// logged): it fails as any open does, then the active tab's open asks.
+/// logged): it fails as any open does, then the active tab's open asks. An open that asks logs
+/// a neutral line instead of `text`, which says it won't open.
 pub(super) fn refused(st: &mut AppState, generation: u64, n: NetworkPlaces, text: String, now: Instant, fx: &mut Vec<Effect>) {
     let ask = generation == st.load_gen && st.modal.is_none();
-    let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
+    let path = st.tabs.get(st.active_tab).and_then(|t| t.path.clone()).filter(|_| ask);
+    let text = match &path {
+        Some(p) => st.settings.lang().trf("safe_dir.network.asking", &[("path", &shown(p)), ("places", &n.places.join(", "))]),
+        None => text,
+    };
     let announced = st.logs.announce.is_some();
     super::repo_loaded::finished(st, generation, LoadKind::Open, Err(text), now, fx);
-    let Some(path) = path.filter(|_| ask) else { return };
+    let Some(path) = path else { return };
     // The dialog says it all: the log keeps the line, but no toast repeats it.
     if !announced {
         st.logs.announce = None;
@@ -45,13 +50,15 @@ pub(super) fn refused(st: &mut AppState, generation: u64, n: NetworkPlaces, text
     st.modal = Some(prompt(st.settings.lang(), path, n));
 }
 
-/// The question for a folder whose Git data points to `n`'s places, opened as `path`.
+/// The question for a folder whose Git data points to `n`'s places, opened as `path`: it names
+/// `n.folder`, which the approval is for (an ancestor of `path` when the open searched upward).
 pub(super) fn prompt(t: Lang, path: PathBuf, n: NetworkPlaces) -> Modal {
-    let places = n.places.join(", ");
+    let (places, folder) = (n.places.join(", "), shown(&n.folder));
+    let args: [(&str, &dyn std::fmt::Display); 2] = [("places", &places), ("folder", &folder)];
     let body = if cfg!(windows) {
-        t.trf("safe_dir.network.body.windows", &[("places", &places)])
+        t.trn("safe_dir.network.body.windows", n.places.len(), &args)
     } else {
-        t.trf("safe_dir.network.body.unix", &[("places", &places)])
+        t.trn("safe_dir.network.body.unix", n.places.len(), &args)
     };
     Modal::Confirm {
         title: t.tr("safe_dir.network.title").into(),

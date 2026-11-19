@@ -63,7 +63,8 @@ pub(crate) fn alias_of(dir: &Path) -> Option<PathBuf> {
 
 /// A network place for tests of what a repository's files may name: a share on Windows, an
 /// automounted host elsewhere. Its host is under `.invalid` (RFC 6761), which never resolves, so
-/// even a bug can't reach a real machine; the code under test must never touch it.
+/// even a bug can't reach a real machine. Code that refuses it never touches it; tests of an
+/// approved place do look it up, and that lookup fails fast.
 pub(crate) fn net_place() -> PathBuf {
     if cfg!(windows) { PathBuf::from(r"\\glowfly-test.invalid\share") } else { PathBuf::from("/net/glowfly-test.invalid") }
 }

@@ -54,8 +54,12 @@ fn a_refused_open_asks_and_open_anyway_approves_those_places_and_opens_again() {
     let Some(Modal::Confirm { title, body, button, cancel_default, .. }) = &st.modal else { panic!("asks: {:?}", st.modal.is_some()) };
     assert!(*cancel_default, "Cancel is the default: Enter never opens anyway");
     assert_eq!(title, "Open a folder that points to a network place?");
-    assert!(body.starts_with(r"This folder's Git data points to \\nas\team, Z:\. Opening it connects to that server"), "{body}");
-    assert_eq!(cfg!(windows), body.contains("Windows may send your sign-in"), "{body}");
+    let shown = glowfly_core::native_path::shown(&repo);
+    let names = format!(r"The Git data of {shown} points to 2 network places: \\nas\team, Z:\. Opening it connects to those servers");
+    assert!(body.starts_with(&names), "{body}");
+    assert_eq!(cfg!(windows), body.contains("Windows may send your sign-in to them"), "{body}");
+    let line = &st.log.last().unwrap().text;
+    assert_eq!(line, &format!(r"{shown}: its Git data points to \\nas\team, Z:\. Asking before opening it."), "a neutral line");
     assert_eq!(button, "Open anyway");
     assert!(st.settings.repo_network_places.is_empty(), "nothing approved yet");
 
@@ -102,6 +106,7 @@ fn a_new_place_asks_again_for_it_alone() {
     refused(&mut st, &repo, &[r"\\other\share"]);
     let Some(Modal::Confirm { body, then, .. }) = &st.modal else { panic!("asks again") };
     assert!(body.contains(r"\\other\share") && !body.contains("team"), "{body}");
+    assert!(body.contains("Opening it connects to that server") && !body.contains("network places:"), "one place: {body}");
     assert!(matches!(&**then, Msg::Repo(RepoMsg::OpenAnyway { places, .. }) if places == &[r"\\other\share".to_owned()]));
     send(&mut st, Msg::ConfirmAccepted);
     assert_eq!(st.settings.network_places_for(&repo), [r"\\nas\team".to_owned(), r"\\other\share".to_owned()]);
@@ -168,4 +173,23 @@ fn preferences_forget_a_folders_places() {
     assert!(st.log.last().is_some_and(|l| l.ok));
     // Nothing to forget: nothing happens.
     assert!(send(&mut st, Msg::Trust(TrustMsg::ForgetNetworkPlaces(repo))).is_empty());
+}
+
+#[test]
+fn the_question_names_the_folder_the_approval_is_for() {
+    // The open searched upward: the Git data the check named is the parent's.
+    let (repo, sub) = (dir("upward"), dir("upward").join("src"));
+    let mut st = state();
+    send(&mut st, Msg::Repo(RepoMsg::Open(sub.clone())));
+    let n = NetworkPlaces { folder: repo.clone(), places: vec!["/net/nas".into()] };
+    let result = Err(R::OpenFailed { path: glowfly_core::native_path::shown(&sub), why: Box::new(R::NetworkPointer(n)) });
+    let generation = st.load_gen;
+    send(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation, kind: LoadKind::Open, result }));
+    let Some(Modal::Confirm { body, .. }) = &st.modal else { panic!("asks") };
+    let want = format!("The Git data of {} points to /net/nas.", glowfly_core::native_path::shown(&repo));
+    assert!(body.starts_with(&want), "{body}");
+    send(&mut st, Msg::ConfirmAccepted);
+    assert_eq!(st.settings.network_places_for(&repo), ["/net/nas".to_owned()]);
+    assert!(st.settings.network_places_for(&sub).is_empty(), "approved for the folder named");
+    assert!(has_tab(&st, &sub), "opens what was opened");
 }
