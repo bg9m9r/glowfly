@@ -279,10 +279,27 @@ fn gated_steps(
 }
 
 /// Runs `check` (a job's `on_fail_check`) after the job failed, adding it and what it printed
-/// to the job's `output`; whether it passed.
-pub(super) fn check_passes(cwd: &Path, check: &[String], prompts: bool, output: &mut String) -> bool {
+/// to the job's `output`; whether it passed. With the job's `gate` (and the number of its
+/// commands, `at`), the check is compared first like one more of them: one the gate holds
+/// doesn't run, and fails with the gate's text.
+pub(super) fn check_passes(
+    cwd: &Path,
+    check: &[String],
+    prompts: bool,
+    gate: Option<(&super::trust_gate::Gate, usize)>,
+    output: &mut String,
+) -> bool {
+    use super::trust_gate::Step;
     output.push_str(&format!("\n$ git {}", glowfly_core::text::redact_credentials(&check.join(" "))));
-    let (passed, text) = gitcli::run_with_input(cwd, check, "", job_env(prompts));
+    let mut git = |c: &[String], input: &str, extra: &[(&str, &str)]| {
+        let env: Vec<(&str, &str)> = job_env(prompts).iter().chain(extra).copied().collect();
+        gitcli::run_with_input(cwd, c, input, &env)
+    };
+    let (passed, text) = match gate.map(|(g, at)| (g, g.before(at, check, &mut git))) {
+        None | Some((_, Step::Run)) => git(check, "", &[]),
+        Some((_, Step::Ran(ok, text))) => (ok, text),
+        Some((g, Step::Halt(halt, ran))) => (false, format!("{ran}\n{}", halt.describe(g.lang)).trim().to_owned()),
+    };
     if !text.trim().is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());
