@@ -165,3 +165,83 @@ fn a_hook_names_its_own_folder_whatever_the_folder_is_called() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// lefthook 1.x's pre-commit hook, as `lefthook install` writes it.
+const LEFTHOOK: &str = r#"#!/bin/sh
+
+if [ "$LEFTHOOK_VERBOSE" = "1" -o "$LEFTHOOK_VERBOSE" = "true" ]; then
+  set -x
+fi
+
+if [ "$LEFTHOOK" = "0" ]; then
+  exit 0
+fi
+
+call_lefthook()
+{
+  if test -n "$LEFTHOOK_BIN"
+  then
+    "$LEFTHOOK_BIN" "$@"
+  elif lefthook -h >/dev/null 2>&1
+  then
+    lefthook "$@"
+  else
+    dir="$(git rev-parse --show-toplevel)"
+    osArch=$(uname | tr '[:upper:]' '[:lower:]')
+    cpuArch=$(uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')
+    if test -f "$dir/node_modules/lefthook-${osArch}-${cpuArch}/bin/lefthook"
+    then
+      "$dir/node_modules/lefthook-${osArch}-${cpuArch}/bin/lefthook" "$@"
+    elif test -f "$dir/node_modules/@evilmartians/lefthook/bin/lefthook-${osArch}-${cpuArch}/lefthook"
+    then
+      "$dir/node_modules/@evilmartians/lefthook/bin/lefthook-${osArch}-${cpuArch}/lefthook" "$@"
+    elif test -f "$dir/node_modules/@evilmartians/lefthook-installer/bin/lefthook"
+    then
+      "$dir/node_modules/@evilmartians/lefthook-installer/bin/lefthook" "$@"
+    elif test -f "$dir/node_modules/lefthook/bin/index.js"
+    then
+      "$dir/node_modules/lefthook/bin/index.js" "$@"
+
+    elif bundle exec lefthook -h >/dev/null 2>&1
+    then
+      bundle exec lefthook "$@"
+    elif yarn lefthook -h >/dev/null 2>&1
+    then
+      yarn lefthook "$@"
+    elif pnpm lefthook -h >/dev/null 2>&1
+    then
+      pnpm lefthook "$@"
+    elif swift package plugin lefthook >/dev/null 2>&1
+    then
+      swift package --disable-sandbox plugin lefthook "$@"
+    elif command -v mint >/dev/null 2>&1
+    then
+      mint run csjones/lefthook-plugin "$@"
+    elif command -v npx >/dev/null 2>&1
+    then
+      npx lefthook "$@"
+    else
+      echo "Can't find lefthook in PATH"
+    fi
+  fi
+}
+
+call_lefthook run "pre-commit" "$@"
+"#;
+
+#[test]
+fn lefthook_s_patterns_into_installed_packages_follow_nothing() {
+    let dir = scratch_repo("hook-calls-lefthook");
+    hook_with(&dir.join(".git/hooks"), "pre-commit", LEFTHOOK);
+    // Without the packages there, the nearest folder would be the working tree's top; with
+    // them, the packages folder. Neither is followed: only the files named in full.
+    for installed in [false, true] {
+        if installed {
+            std::fs::create_dir_all(dir.join("node_modules/lefthook/bin")).unwrap();
+        }
+        let s = scan_of(&dir);
+        assert!(!paths(&s).iter().any(|p| ["", "node_modules"].contains(p)), "{:?}", s.follows);
+        assert!(paths(&s).contains(&"node_modules/lefthook/bin/index.js"), "{:?}", s.follows);
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
