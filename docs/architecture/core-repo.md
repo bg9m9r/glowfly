@@ -40,7 +40,7 @@ source file, update its line here.
 ## Diffs
 
 - A commit against its parent, another commit or the empty tree (`empty_tree`, for a line of commits reaching the first one), or the working tree either way round: `compare_workdir`, `compare_from_workdir`.
-- `repo/commit_detail.rs`: a commit's `CommitDetail` (message, author and committer as the mailmap shows them, files against the first parent).
+- `repo/commit_detail.rs`: a commit's `CommitDetail` (message, author and committer as the mailmap shows them, files against the first parent), and `commit_message`, its whole message alone for Copy > Message.
 - Gitattributes read from the version shown (`AttrSource`: a commit's own `.gitattributes` in an in-memory index on a bare handle, the index, or the working tree), for diffs, line counts, the File view and blame: `attr_source.rs`.
 - The values read through it (the `linguist-language` override, binary by the `diff` attribute) and the working-tree conversion checks before editing by hunk or line: `attrs.rs`.
 - One file's diff for the viewer (hunks, whole file, old text and the old file's line count, language): `diff_view.rs`.

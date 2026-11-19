@@ -1,5 +1,5 @@
 //! The `Execute` impl of `CommitEffect`: reading a commit's detail for the details panel, and
-//! checking its signature with git (signatures.rs).
+//! checking its signature with git (signatures.rs), and reading its whole message for Copy > Message.
 
 use super::execute::{Cx, Execute};
 use glowfly_core::error::ReadFailed;
@@ -15,6 +15,9 @@ impl Execute for CommitEffect {
             }
             CommitEffect::VerifySignature { workdir, oid, format, generation } => {
                 super::signatures::verify(&workdir, oid, format, generation)
+            }
+            CommitEffect::CopyMessage { workdir, oid } => {
+                Msg::Repo(RepoMsg::MessageRead(repo::commit_message(&workdir, oid).map_err(ReadFailed::from)))
             }
         })
     }
