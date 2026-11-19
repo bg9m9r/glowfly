@@ -84,8 +84,9 @@ fn text_host(text: &str) -> Option<String> {
 
 /// Characters that read as a dot but that some tables class as letters or punctuation IDNA
 /// refuses: the Lisu tone marks, middle dots, leaders, Syriac and full-width or ideographic stops.
-const DOT_LIKE: [char; 11] =
-    ['\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}', '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}'];
+const DOT_LIKE: [char; 15] = [
+    '\u{A78F}', '\u{1427}', '\u{0971}', '\u{02D1}', '\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}', '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}',
+];
 
 /// Whether a non-ASCII host candidate from path-only text (`xxx/…`) has something in it that
 /// could pass for a separator: a look-alike dot, a combining mark on an ASCII letter or digit
@@ -175,6 +176,10 @@ mod tests {
             ("github\u{2027}com/acme", "github\u{2027}com"),
             ("github\u{30FB}com/acme", "github\u{30fb}com"),
             ("github\u{0323}com/acme", "github\u{0323}com"),
+            ("github\u{A78F}com/acme", "github\u{a78f}com"),
+            ("github\u{1427}com/acme", "github\u{1427}com"),
+            ("github\u{0971}com/acme", "github\u{0971}com"),
+            ("github\u{02D1}com/acme", "github\u{02d1}com"),
         ] {
             let (got, real) = mismatch(text, evil).unwrap_or_else(|| panic!("{text:?} opened without asking"));
             assert_eq!((got.as_str(), real.as_str()), (shown, "evil.example"), "{text:?}");
