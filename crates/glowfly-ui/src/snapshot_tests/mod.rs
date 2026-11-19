@@ -29,6 +29,7 @@ pub(super) mod snapshot_tests_columns;
 pub(super) mod snapshot_tests_commit;
 pub(super) mod snapshot_tests_commit_states;
 pub(super) mod snapshot_tests_compare;
+pub(super) mod snapshot_tests_compare_head;
 pub(super) mod snapshot_tests_conflict_check;
 pub(super) mod snapshot_tests_conflict_files;
 pub(super) mod snapshot_tests_conflict_layout;

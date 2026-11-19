@@ -1,5 +1,5 @@
 //! Selecting several commits: Ctrl- and Shift-clicks in the graph, select all, the comparison of
-//! a pair or a line of commits (and its direction), comparing a remote branch with the current
+//! a pair or a line of commits (and its direction), comparing a branch or tag with the current
 //! branch, and keeping the selection across refreshes.
 //! Comparing with the working directory is in `compare_wip.rs`; cherry-pick and revert in
 //! `pick.rs`.
@@ -103,8 +103,9 @@ fn select_all(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// Selects HEAD's commit and `oid` (the tip of `name`) as a pair, unless the menu's reasons
 /// against it hold now.
 fn compare_with_head(st: &mut AppState, oid: git2::Oid, name: &str, fx: &mut Vec<Effect>) {
+    let t = st.settings.lang();
     let Some(snap) = &st.snap else { return };
-    if let Some(why) = remote_branch::compare_blocked(snap, oid, name) {
+    if let Some(why) = remote_branch::compare_blocked(t, snap, oid, name) {
         st.log(false, why);
         return;
     }
