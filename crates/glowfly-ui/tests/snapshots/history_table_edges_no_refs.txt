@@ -60,8 +60,6 @@ Label "1 changed file"
 Unknown "1 changed file"
 Button "login.txt" [off]
 Label "Added"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize author column"
 Button "Resize commit column"
 Button "Resize date column"

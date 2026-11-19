@@ -76,8 +76,6 @@ CheckBox "Nach dem Commit pushen" [off]
 Button "Committen" [disabled]
 Button "Weitere Commit-Optionen"
 Label "Stelle Änderungen zum Committen bereit oder drücke Ctrl+Shift+Enter, um alles bereitzustellen und zu committen."
-Button "Commits" [on]
-Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

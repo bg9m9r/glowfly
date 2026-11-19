@@ -21,7 +21,6 @@ pub(super) mod snapshot_tests_branch;
 pub(super) mod snapshot_tests_branch_colour;
 pub(super) mod snapshot_tests_branch_delete;
 pub(super) mod snapshot_tests_branch_pin;
-pub(super) mod snapshot_tests_chapters;
 pub(super) mod snapshot_tests_chips;
 pub(super) mod snapshot_tests_clone;
 pub(super) mod snapshot_tests_clone_service;

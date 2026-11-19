@@ -136,7 +136,6 @@ source file, update its line here.
 - `settings/column_widths.rs`: widths of the graph's resizable columns (dragged from the header dividers), with the per-column defaults and limits.
 - `settings/editor.rs`: diff text size and tab stops (Preferences > Diff viewer).
 - `settings/graph_filter.rs`: refs hidden from or soloed in a repository's commit graph, saved per working directory; `rename`, `rename_remote` and `remove_remote` follow renames and removals made in Glowfly.
-- `settings/history_mode.rs`: which history view a repository shows, the commit graph or the Chapters list (`HistoryMode`, saved per repository in `Settings::repo_history_modes`, read through `repo_keys`).
 - `settings/language.rs`: the UI language setting (Preferences > General): "system" or a language code.
 - `settings/panel_sizes.rs`: the sizes the window's drawers were last dragged to.
 - `settings/paths.rs`: where Glowfly keeps its own files (settings, recent repositories, tabs; the avatar cache is in `cache_dir`, the logs in `log_dir`).

@@ -83,8 +83,6 @@ Button "Amend and continue"
 Button "More commit options"
 Button "Continue"
 Button "More ways to go on"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

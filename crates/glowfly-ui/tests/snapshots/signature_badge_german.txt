@@ -62,8 +62,6 @@ Label "1 geänderte Datei"
 Unknown "1 geänderte Datei"
 Button "login.txt" [off]
 Label "Hinzugefügt"
-Button "Commits" [on]
-Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

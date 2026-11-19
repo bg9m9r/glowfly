@@ -82,8 +82,6 @@ CheckBox "Push after committing" [off]
 Button "Commit merge" [disabled]
 Button "More commit options"
 Label "Write a summary to commit."
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize date column"

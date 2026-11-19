@@ -14,7 +14,6 @@ pub mod branch_delete;
 pub mod branch_sync;
 pub mod branches;
 pub mod build_status;
-pub mod chapters;
 pub mod clone;
 pub mod clone_service;
 pub mod commit;

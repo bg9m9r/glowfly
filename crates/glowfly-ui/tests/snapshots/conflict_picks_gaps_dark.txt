@@ -81,8 +81,6 @@ Label "None"
 Button "Show: Commit the merge"
 Label "Commit the merge"
 Label "Opens once the conflicts are resolved."
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

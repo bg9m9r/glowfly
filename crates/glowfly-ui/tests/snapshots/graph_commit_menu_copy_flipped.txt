@@ -1,4 +1,4 @@
-window 1400x852
+window 1400x820
 TabList
   Tab "demo: 1 changed file" [selected]
   Tab "api-server"
@@ -65,8 +65,6 @@ CheckBox "Push after committing" [off]
 Button "Commit" [disabled]
 Button "More commit options"
 Label "Stage changes to commit, or press Ctrl+Shift+Enter to stage all and commit."
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

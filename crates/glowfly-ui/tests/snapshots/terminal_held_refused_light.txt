@@ -79,8 +79,6 @@ Button "New terminal with another shell"
 Label "The terminal waits until you trust this repository"
 Label "You chose not to trust this repository. Shell prompts often run Git, and Git would run the programs its own settings and hooks name."
 Button "Trust and run…"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

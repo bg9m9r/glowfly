@@ -21,7 +21,6 @@ mod forge_filters;
 mod graph_columns;
 mod graph_filter;
 mod history;
-mod history_mode;
 mod language;
 mod panel_sizes;
 mod paths;
@@ -57,7 +56,6 @@ pub use forge_filters::RepoForgeFilters;
 pub use graph_columns::GraphColumns;
 pub use graph_filter::{FilterOp, GraphFilter};
 pub use history::{HistoryPane, HistoryPrefs};
-pub use history_mode::HistoryMode;
 pub use panel_sizes::{PanelSizes, SizedPanel};
 pub use paths::{cache_dir, config_dir, home_dir, log_dir, runtime_dir, xdg_data_dir};
 pub use profile_rules::{RuleProblem, profile_for_git_dir, rule_for_git_dir, rule_matches, shown_folder};
@@ -244,8 +242,6 @@ pub struct Settings {
     pub repo_year_branches: HashMap<String, bool>,
     /// The merge method last used in each repository's pull request panel (`MergeMethod::api_name`), by `repo_keys`.
     pub repo_merge_methods: HashMap<String, String>,
-    /// The history view each repository shows (`HistoryMode::id`), by `repo_keys`; no entry is Commits.
-    pub repo_history_modes: HashMap<String, String>,
     /// Favorite repositories (welcome screen and repository menu), as working-directory paths in the order added.
     pub favorite_repos: Vec<String>,
     /// Named groups of favorites with their colours (`repo_groups`), in the order shown.

@@ -82,8 +82,6 @@ Label "Fortsetzen, sobald die Konflikte gelöst sind."
 Button "Erst committen oder nachbessern…"
 Button "Fortsetzen" [disabled]
 Button "Weitere Möglichkeiten"
-Button "Commits" [on]
-Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

@@ -78,8 +78,7 @@ fn rows_at_1080p(density: Density, name: &str) -> (usize, usize) {
 #[test]
 fn compact_rows_fill_a_1080p_window() {
     let (whole, shown) = rows_at_1080p(Density::Compact, "history-compact-1080");
-    // The view bar above the graph takes 32 px of the 1080 px window.
-    assert!(shown >= 32, "{whole} whole rows, {shown} shown");
+    assert!(shown >= 34, "{whole} whole rows, {shown} shown");
     let (comfortable, _) = rows_at_1080p(Density::Comfortable, "history-comfortable-1080");
     assert!(whole > comfortable, "{whole} compact rows, {comfortable} comfortable");
 }

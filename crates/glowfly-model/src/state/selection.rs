@@ -2,7 +2,7 @@
 //! Shift-click, Shift+arrows, select all). Pure logic: `update` decides which effects a new
 //! selection needs.
 
-use super::selection_span::{Span, line_span, span_of};
+use super::selection_span::{Span, span_of};
 use super::selection_wip::WorkdirCompare;
 use git2::Oid;
 use glowfly_core::i18n::Lang;
@@ -94,20 +94,6 @@ impl MultiSelection {
     /// commit, or a multi-selection with nothing loaded yet. The cursor is the anchor.
     pub fn build(oids: impl IntoIterator<Item = Oid>, anchor: Oid, snap: &Snapshot) -> Selection {
         Self::build_at(oids, anchor, anchor, snap)
-    }
-
-    /// The selection of one first-parent line of commits (a chapter's): the newest is the anchor
-    /// and cursor, and two commits combine from the older one's parent instead of being a pair.
-    pub fn build_line(oids: impl IntoIterator<Item = Oid>, snap: &Snapshot) -> Selection {
-        let oids: Vec<Oid> = oids.into_iter().collect();
-        let Some(&newest) = oids.first() else { return Selection::None };
-        let mut sel = Self::build_at(oids, newest, newest, snap);
-        if let Selection::Commits(m) = &mut sel
-            && m.oids.len() == 2
-        {
-            m.span = line_span(&m.oids, snap);
-        }
-        sel
     }
 
     /// `build` with the moving end at `cursor`.
@@ -283,10 +269,6 @@ fn on_head(snap: &Snapshot, head: Oid, oid: Oid) -> bool {
 pub fn refreshed(sel: &MultiSelection, snap: &Snapshot) -> Selection {
     let mut new = MultiSelection::build_at(sel.oids.iter().copied(), sel.anchor, sel.cursor, snap);
     if let Selection::Commits(m) = &mut new {
-        // A chapter's two commits stay a line, as `build_line` made them.
-        if sel.oids.len() == 2 && m.oids.len() == 2 && !matches!(sel.span, Span::Pair { .. }) {
-            m.span = line_span(&m.oids, snap);
-        }
         if m.span.ends().is_some() && m.span.ends() == sel.span.ends() {
             m.swapped = sel.swapped;
             m.changes = sel.changes.clone();
