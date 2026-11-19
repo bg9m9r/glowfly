@@ -189,15 +189,19 @@ trust scan all run for untrusted repositories too.
    `\\wsl$\Ubuntu\…` is refused.
 5. **This holds before trust.** Once a repository is trusted, git itself (`git status` recursing
    into submodules) follows what git follows.
-6. **The opened repository's own `.git` file, `commondir`, config and alternates are followed by
-   libgit2 at open,** as git does; the user chose that folder. The guard covers what Glowfly follows on its
-   own beyond it. These read only through libgit2's `commondir()` of the opened repository, which
-   libgit2 already followed, so they reach nothing new: `lfs/sources.rs`, `link/find.rs` (it
-   opens a folder the user or the link named), `history_size.rs`, `stop_cleanup.rs`,
-   `lock_file.rs`, `repo_pool`,
-   `trust/stamp.rs` and `repo_identity.rs`; `repo_scan.rs` reads only the first bytes of a
-   `.git` and never follows it. `trust/follow.rs` resolves config-named paths (`core.hooksPath`,
-   hook links, program paths), like the opened repository's include files: a follow-up.
+6. **The folder the user opens gets the same checks a submodule gets** (owner decision
+   2026-11-19; `git_file/opened.rs`, run by `safe_directory::check` before every open of a
+   folder that hasn't loaded): its `.git` file, `commondir`, worktree record, the links in its
+   git dir, the files its config includes and its alternates are followed only where
+   `may_follow` allows from the folder itself, so a repository that lives on a share opens as
+   before. Otherwise the open fails with `Error::NetworkPointer` naming the place
+   (`read_errors.network_pointer`), shown where any failed open is. These read only through
+   libgit2's `commondir()` of the opened repository, which was checked, so they reach nothing
+   new: `lfs/sources.rs`, `stop_cleanup.rs`, `lock_file.rs` and `repo_identity.rs`;
+   `repo_scan.rs` reads only the first bytes of a `.git` and never follows it. The trust scan
+   looks at a config-named path (`core.hooksPath`, a hook link, a program path, an include)
+   only where `may_follow` allows from the work tree; one it doesn't look at is listed in
+   `TrustScan::offsite`, and a job asks first (`Unchecked::Offsite`).
 7. **What a refusal looks like** (logged once at debug level, no toast): a nested repository in
    the sweep is walked as a plain folder by the outer rules (one tracked before is named once as
    `<folder>/.git/HEAD` and dropped); a submodule is listed as not checked out, never opened,

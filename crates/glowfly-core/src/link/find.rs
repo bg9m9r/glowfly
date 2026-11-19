@@ -75,6 +75,8 @@ fn open(path: &Path) -> std::result::Result<Repository, git2::Error> {
 /// points at there. Ok(None) for a folder that isn't a repository (or is bare) and for one that
 /// shares neither the root commit nor a remote URL with the link.
 pub fn check(path: &Path, link: &Link) -> Result<Option<Found>> {
+    // A candidate may be a folder that never loaded: checked as an open is.
+    crate::safe_directory::check(path, false)?;
     let repo = match open(path) {
         Ok(r) => r,
         Err(e) if e.code() == ErrorCode::NotFound => return Ok(None),

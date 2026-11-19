@@ -78,7 +78,9 @@ struct Target {
 
 impl Target {
     fn of(path: &Path) -> Target {
-        Target { path: path.to_owned(), group: Repository::discover(path).ok().map(|r| Group::of(&r)) }
+        // The folder may be one that never loaded (a closed tab's, a clone's parent).
+        let checked = crate::safe_directory::check(path, true).is_ok();
+        Target { path: path.to_owned(), group: checked.then(|| Repository::discover(path).ok()).flatten().map(|r| Group::of(&r)) }
     }
 
     fn covers(&self, key: &Path, group: &Group) -> bool {

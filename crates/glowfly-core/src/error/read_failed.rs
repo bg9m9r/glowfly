@@ -28,6 +28,9 @@ pub enum ReadFailed {
     /// A `.gitattributes` or `.gitignore` in the work tree (`path`, as shown) is a link to a
     /// network place outside the repository (`Error::LinkedFile`).
     LinkedFile { path: String },
+    /// The opened folder's git files name `place` (as shown), a network place other than the
+    /// folder's own (`Error::NetworkPointer`).
+    NetworkPointer { place: String },
     /// Copy hunk as patch: git no longer produces the hunk on screen.
     DiffChanged,
     /// The unchanged lines: the file's hunks differ from the ones on screen now.
@@ -57,6 +60,7 @@ impl From<Error> for ReadFailed {
             Error::NotOwned(r) => ReadFailed::NotOwned { root: crate::native_path::shown(&r.root) },
             Error::MissingContent(m) => ReadFailed::MissingContent { path: m.path, remote: m.remote },
             Error::LinkedFile(path) => ReadFailed::LinkedFile { path },
+            Error::NetworkPointer(place) => ReadFailed::NetworkPointer { place },
             other => ReadFailed::Other { said: other.to_string() },
         }
     }
@@ -90,6 +94,10 @@ impl fmt::Display for ReadFailed {
             ReadFailed::LinkedFile { path } => write!(
                 f,
                 "{path} is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it."
+            ),
+            ReadFailed::NetworkPointer { place } => write!(
+                f,
+                "This folder's Git data points to a network place ({place}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer."
             ),
             ReadFailed::DiffChanged => f.write_str("not found: the diff changed; try again on the updated diff"),
             ReadFailed::FileChanged => f.write_str("not found: the file changed"),
@@ -178,6 +186,7 @@ mod tests {
             Error::Other("could not parse the merged file".into()),
             Error::MissingContent(missing),
             Error::LinkedFile("sub/.gitignore".into()),
+            Error::NetworkPointer("//host/share/x".into()),
         ] {
             let shown = e.to_string();
             assert_eq!(ReadFailed::from(e).to_string(), shown);

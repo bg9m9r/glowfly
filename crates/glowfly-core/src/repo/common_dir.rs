@@ -33,6 +33,8 @@ impl CommonDir {
         if !path.is_absolute() {
             return None;
         }
+        // The folder may be one that never loaded (a restored tab): checked as an open is.
+        crate::safe_directory::check(path, true).ok()?;
         git2::Repository::discover(path).ok().map(|repo| Self::of(&repo))
     }
 

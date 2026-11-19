@@ -76,6 +76,7 @@ pub fn ssh_command_in(cwd: Option<&Path>, git_ssh_command: Option<&OsStr>, git_s
 /// `core.sshCommand` as git sees it in `cwd`: from the repository there with its global and
 /// system config, else (outside a repository, or with no `cwd`) from those alone.
 pub fn configured_ssh_command(cwd: Option<&Path>) -> Option<OsString> {
+    let cwd = cwd.filter(|d| crate::safe_directory::check(d, true).is_ok());
     let repo = cwd.and_then(|d| git2::Repository::open_ext(d, git2::RepositoryOpenFlags::empty(), std::iter::empty::<&OsStr>()).ok());
     let config = match repo {
         Some(r) => r.config().ok(),
