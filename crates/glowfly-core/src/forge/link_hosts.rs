@@ -98,9 +98,9 @@ fn names_host_after(rest: &str) -> bool {
 
 /// Characters that read as a dot but that some tables class as letters or punctuation IDNA
 /// refuses: the Lisu tone marks, middle dots, leaders, Syriac and full-width or ideographic stops.
-const DOT_LIKE: [char; 18] = [
-    '\u{18DF}', '\u{0660}', '\u{06F0}', '\u{A78F}', '\u{1427}', '\u{0971}', '\u{02D1}', '\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}',
-    '\u{2027}', '\u{0701}', '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}',
+const DOT_LIKE: [char; 16] = [
+    '\u{18DF}', '\u{A78F}', '\u{1427}', '\u{0971}', '\u{02D1}', '\u{A4F8}', '\u{A4F9}', '\u{00B7}', '\u{2024}', '\u{2027}', '\u{0701}',
+    '\u{0702}', '\u{FF0E}', '\u{3002}', '\u{FF61}', '\u{30FB}',
 ];
 
 /// Whether a non-ASCII host candidate from path-only text (`xxx/…`) has something in it that
@@ -203,8 +203,6 @@ mod tests {
             ("github\u{0971}com/acme", "github\u{0971}com"),
             ("github\u{02D1}com/acme", "github\u{02d1}com"),
             ("github\u{18DF}com/acme", "github\u{18df}com"),
-            ("github\u{0660}com/acme", "github\u{0660}com"),
-            ("github\u{06F0}com/acme", "github\u{06f0}com"),
         ] {
             let (got, real) = mismatch(text, evil).unwrap_or_else(|| panic!("{text:?} opened without asking"));
             assert_eq!((got.as_str(), real.as_str()), (shown, "evil.example"), "{text:?}");
