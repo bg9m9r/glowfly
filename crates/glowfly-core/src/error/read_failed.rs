@@ -25,6 +25,9 @@ pub enum ReadFailed {
     Panicked { effect: String, panic: String },
     /// A partial clone hasn't downloaded contents the read needs.
     MissingContent { path: String, remote: String },
+    /// A `.gitattributes` or `.gitignore` in the work tree (`path`, as shown) is a link to a
+    /// network place outside the repository (`Error::LinkedFile`).
+    LinkedFile { path: String },
     /// Copy hunk as patch: git no longer produces the hunk on screen.
     DiffChanged,
     /// The unchanged lines: the file's hunks differ from the ones on screen now.
@@ -53,6 +56,7 @@ impl From<Error> for ReadFailed {
             Error::NotARepository(path) => ReadFailed::NotARepository { path },
             Error::NotOwned(r) => ReadFailed::NotOwned { root: crate::native_path::shown(&r.root) },
             Error::MissingContent(m) => ReadFailed::MissingContent { path: m.path, remote: m.remote },
+            Error::LinkedFile(path) => ReadFailed::LinkedFile { path },
             other => ReadFailed::Other { said: other.to_string() },
         }
     }
@@ -83,6 +87,10 @@ impl fmt::Display for ReadFailed {
             ReadFailed::MissingContent { path, remote } => {
                 write!(f, "the contents of {path} haven't been downloaded from {remote} yet")
             }
+            ReadFailed::LinkedFile { path } => write!(
+                f,
+                "{path} is a link to a network place outside this repository, so the working tree can't be read. Replace it with a regular file or remove it."
+            ),
             ReadFailed::DiffChanged => f.write_str("not found: the diff changed; try again on the updated diff"),
             ReadFailed::FileChanged => f.write_str("not found: the file changed"),
             ReadFailed::OldFileUnreadable => f.write_str("the old file can't be read"),
@@ -169,6 +177,7 @@ mod tests {
             Error::Unsupported("is a folder".into()),
             Error::Other("could not parse the merged file".into()),
             Error::MissingContent(missing),
+            Error::LinkedFile("sub/.gitignore".into()),
         ] {
             let shown = e.to_string();
             assert_eq!(ReadFailed::from(e).to_string(), shown);

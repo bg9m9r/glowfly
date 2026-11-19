@@ -247,12 +247,16 @@ pub struct Ignores {
     index: Option<git2::Index>,
     /// The index must be (re-)read before it is asked: not loaded yet, or changed on disk since.
     index_stale: bool,
+    /// Whether libgit2 is kept from the ignore files (`tree_files::linked_away` names one), so
+    /// nothing counts as ignored; None until asked, and again after either file or the index
+    /// changed.
+    held: Option<bool>,
 }
 
 impl Ignores {
     /// When `workdir` is not a repository, nothing is ignored.
     pub fn open(workdir: &Path) -> Self {
-        Self { repo: git2::Repository::open(workdir).ok(), dirs: HashSet::new(), index: None, index_stale: true }
+        Self { repo: git2::Repository::open(workdir).ok(), dirs: HashSet::new(), index: None, index_stale: true, held: None }
     }
 
     /// Whether `rel` (relative to the workdir, '/'-separated) is ignored and not tracked. Errors
@@ -263,6 +267,9 @@ impl Ignores {
     pub fn is_ignored(&mut self, rel: &str, touch: Touch) -> bool {
         if !(prefixes(rel).any(|p| self.dirs.contains(p)) || self.dirs.contains(rel)) {
             let Some(repo) = &self.repo else { return false };
+            if *self.held.get_or_insert_with(|| crate::tree_files::linked_away(repo).is_some()) {
+                return false;
+            }
             if !repo.is_path_ignored(rel).unwrap_or(false) {
                 return false;
             }
@@ -297,12 +304,14 @@ impl Ignores {
     /// The index changed on disk: read it again before it is next asked.
     pub fn index_changed(&mut self) {
         self.index_stale = true;
+        self.held = None;
     }
 
     /// Forgets the cached folders (after a `.gitignore` or `info/exclude` changed). The index
     /// stays.
     pub fn clear(&mut self) {
         self.dirs.clear();
+        self.held = None;
     }
 }
 

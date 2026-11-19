@@ -39,6 +39,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     if repo.is_bare() {
         return Err(Error::Unsupported("bare repositories are not supported".into()));
     }
+    // Before anything reads the work tree's attributes or ignore rules.
+    crate::tree_files::check(&repo)?;
 
     // Taken first, so a change made while loading shows up in the next comparison.
     let refs_key = super::refs_key::key_of(&repo)?;
