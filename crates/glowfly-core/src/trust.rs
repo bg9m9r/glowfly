@@ -253,7 +253,7 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
     }
     let mut programs = programs::scan(repo, &mut out.config, &mut out.offsite, &mut out.unread);
     if let (Some(workdir), Some(dir)) = (repo.workdir(), &out.hooks_dir) {
-        let run = programs::hooks::scan(workdir, dir, &out.hooks, &texts, &mut out.offsite, &mut out.unread);
+        let run = programs::hooks::scan(repo, workdir, dir, &out.hooks, &texts, &mut out.offsite, &mut out.unread);
         programs.extend(run.into_iter().filter(|p| !programs.contains(p)).collect::<Vec<_>>());
     }
     out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths, &programs);

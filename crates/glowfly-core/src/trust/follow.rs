@@ -240,7 +240,7 @@ fn rel(path: &Path, root: &Path) -> Option<String> {
 /// normalization folded (NTFS, APFS, HFS+), the code points HFS+ ignores dropped, and the
 /// trailing dots and spaces Windows drops removed. Folding more than this volume does only
 /// makes more entries count as the one on disk: more is compared, never less.
-fn fold(part: &str) -> String {
+pub(super) fn fold(part: &str) -> String {
     let kept: String = part.chars().filter(|c| !ignorable(*c)).collect();
     crate::repo::name_key(kept.trim_end_matches(['.', ' ']))
 }

@@ -27,13 +27,53 @@ const VALUE_OPTIONS: &[(&[&str], &[&str])] = &[
     (&["ruby"], &["-I", "-r"]),
 ];
 
+/// How a script runs a file, which decides whether that file is read as shell.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) enum Ran {
+    /// As a hook (husky's `.husky/<hook>`): read as shell.
+    AsHook,
+    /// By `.`, `source` or a shell (`sh x`, `bash -e x`): read as shell whatever it is.
+    Shell,
+    /// As a command (`./x`, `exec x`): read as shell when its `#!` line runs one, or when it
+    /// has none and is text (sh runs such a file itself).
+    Direct,
+    /// Any other way (`node x`, an argument): read as shell only when it is a shell script.
+    Other,
+}
+
 /// A word of a line that names a script it runs.
 #[derive(Debug, PartialEq)]
 pub(super) struct RunWord {
     /// As sh reads it.
     pub text: String,
-    /// Run by `.` or `source`: read as shell whatever its name.
-    pub sourced: bool,
+    pub ran: Ran,
+}
+
+/// Words that run the next word as a command (`exec ./x`, `env A=1 ./x`) or lead into one.
+const LEADERS: &[&str] = &["exec", "env", "command", "nohup", "time", "if", "then", "else", "elif", "do", "while", "until", "!", "{", "("];
+
+/// The words of `line` that sh runs as commands, as it reads them: the first of each command,
+/// after `;`, `&&`, `||`, `|` or `&`, past assignments (`A=1 ./x`) and the words in `LEADERS`.
+pub(super) fn command_words(line: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut at_command = true;
+    for word in shell::words(line).into_iter().map(|w| w.sh) {
+        let core = word.trim_end_matches([';', '&', '|']);
+        let ends = core.len() < word.len();
+        if at_command && !core.is_empty() {
+            let assignment = core
+                .split_once('=')
+                .is_some_and(|(name, _)| !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'));
+            if !assignment && !LEADERS.contains(&core) {
+                out.push(core.to_owned());
+                at_command = false;
+            }
+        }
+        if ends {
+            at_command = true;
+        }
+    }
+    out
 }
 
 /// The words of `line` that name a script it runs, as sh reads them, bare or not.
@@ -43,12 +83,16 @@ pub(super) fn run_words(line: &str) -> Vec<RunWord> {
     for (i, word) in words.iter().enumerate() {
         let name = word.rsplit(['/', '\\']).next().unwrap_or(word).to_ascii_lowercase();
         let name = name.strip_suffix(".exe").unwrap_or(&name);
-        let sourced = matches!(name, "." | "source");
-        let builtin = sourced || name == "exec";
+        let builtin = matches!(name, "." | "source" | "exec");
         if !builtin && !INTERPRETERS.contains(&name) {
             continue;
         }
-        let mut push = |w: Option<&String>| out.extend(w.map(|text| RunWord { text: text.clone(), sourced }));
+        let ran = match name {
+            "exec" => Ran::Direct,
+            _ if name == "." || name == "source" || SHELLS.contains(&name) => Ran::Shell,
+            _ => Ran::Other,
+        };
+        let mut push = |w: Option<&String>| out.extend(w.map(|text| RunWord { text: text.clone(), ran }));
         // PowerShell's options may take values (`-ExecutionPolicy RemoteSigned`): its `-File`
         // names the script wherever it stands.
         let file = words[i + 1..].iter().position(|w| w.eq_ignore_ascii_case("-file"));

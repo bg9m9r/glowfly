@@ -1,5 +1,5 @@
 //! What a file a hook runs is, for `programs_hooks.rs`: whether it is in the working tree
-//! (`in_tree`) or among installed packages (`in_packages`), whether it is a shell script whose
+//! (`in_tree`, `rel_text`) or among installed packages (`in_packages`), whether it is a shell script whose
 //! words are read in turn (`is_shell`), its text (`text_of_file`), and where a link to it leads
 //! (`link_end`).
 
@@ -12,7 +12,13 @@ use std::path::{Component, Path, PathBuf};
 /// that climbs out is outside.
 pub(super) fn in_tree(workdir: &Path, path: &Path) -> bool {
     let Some(parts) = parts_in(workdir, path) else { return false };
-    parts.first().is_none_or(|first| !first.eq_ignore_ascii_case(".git"))
+    // `.git` as a folding file system may name it (`.GIT`, Windows' `.git.` and `.git `).
+    parts.first().is_none_or(|first| super::super::super::follow::fold(first) != ".git")
+}
+
+/// `path` relative to `workdir`, `/`-separated, `..` applied; None when it is not there.
+pub(super) fn rel_text(workdir: &Path, path: &Path) -> Option<String> {
+    parts_in(workdir, path).map(|parts| parts.join("/"))
 }
 
 /// Whether `path` in the working tree is under a `node_modules` folder: installed packages,

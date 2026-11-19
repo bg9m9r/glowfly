@@ -39,9 +39,23 @@ fn the_word_an_interpreter_or_source_runs_is_picked() {
 }
 
 #[test]
-fn only_dot_and_source_count_as_sourcing() {
-    let sourced: Vec<bool> = run_words(". a.sh; source b; exec c; sh d").into_iter().map(|w| w.sourced).collect();
-    assert_eq!(sourced, [true, true, false, false]);
+fn a_shell_dot_or_source_reads_as_shell_and_exec_runs_a_command() {
+    let ran: Vec<Ran> = run_words(". a.sh; source b; exec c; sh d; bash -e e; node f").into_iter().map(|w| w.ran).collect();
+    assert_eq!(ran, [Ran::Shell, Ran::Shell, Ran::Direct, Ran::Shell, Ran::Shell, Ran::Other]);
+}
+
+#[test]
+fn the_words_sh_runs_as_commands_are_picked() {
+    let cases: &[(&str, &[&str])] = &[
+        ("./scripts/x --fix", &["./scripts/x"]),
+        ("A=1 B=2 ./x && ./y | tee log; exec ./z", &["./x", "./y", "tee", "./z"]),
+        ("if ./check; then ./ok; else ./fail; fi", &["./check", "./ok", "./fail", "fi"]),
+        ("env FOO=1 ./tool arg", &["./tool"]),
+        ("cat ./notes", &["cat"]),
+    ];
+    for (line, want) in cases {
+        assert_eq!(command_words(line), *want, "{line}");
+    }
 }
 
 #[test]
