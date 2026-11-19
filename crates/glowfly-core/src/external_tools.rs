@@ -1,7 +1,8 @@
 //! External programs the user chose (Preferences > External tools): argument templates
 //! (`template`), finding the program on PATH, and starting it, detached or waiting for it to
 //! exit. `temp` holds the private folder for the copies diff and merge tools are given, and
-//! `compare` writes those copies for a diff or a conflict. When Preferences names no diff or
+//! `compare` writes those copies for a diff or a conflict, and `diff_exit` says which exits of a
+//! diff tool are failures. When Preferences names no diff or
 //! merge tool, `git_config` reads the one git config names, and `shell_tool` runs its
 //! configured command in sh.
 
@@ -13,6 +14,7 @@ use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 pub mod compare;
+pub mod diff_exit;
 pub mod git_config;
 pub mod shell_tool;
 pub mod temp;

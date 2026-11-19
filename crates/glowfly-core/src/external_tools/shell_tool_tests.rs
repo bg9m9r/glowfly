@@ -40,8 +40,11 @@ fn commands_run_in_the_folder_with_their_variables() {
     let r = run_shell_to_exit(&launch("echo oops >&2; exit 3", Vec::new(), &dir)).unwrap();
     assert_eq!(r, ExitReport { code: Some(3), said: "oops".into() });
 
-    assert!(spawn_shell(&launch(":", Vec::new(), &dir)).is_ok());
-    let e = spawn_shell(&launch("echo nope >&2; exit 4", Vec::new(), &dir)).unwrap_err().to_string();
+    assert!(spawn_diff_shell(&launch(":", Vec::new(), &dir)).is_ok());
+    assert!(spawn_diff_shell(&launch("exit 1", Vec::new(), &dir)).is_ok());
+    let e = spawn_diff_shell(&launch("echo nope >&2; exit 1", Vec::new(), &dir)).unwrap_err().to_string();
+    assert!(e.contains("code 1: nope"), "{e}");
+    let e = spawn_diff_shell(&launch("echo nope >&2; exit 4", Vec::new(), &dir)).unwrap_err().to_string();
     assert!(e.contains("code 4: nope"), "{e}");
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -4,13 +4,16 @@
 //! own, and stages the file itself). The diff tool is left running and only a failure is
 //! reported: a command's within `EARLY_EXIT`, `git difftool`'s within its longer watch or,
 //! since git waits for the tool, whenever it exits with an error later (`DiffToolFailedLater`).
-//! The merge tool is waited for and reported as `MergeToolExited`.
+//! Diff tools exit with 1 when the files differ (and `git difftool --no-index` does whenever they
+//! do), so 1 with nothing on stderr is no failure (`diff_exit`). The merge tool is waited for and
+//! reported as `MergeToolExited`.
 
 use super::compare::{launch_failure, reason};
 use glowfly_core::error::{Error, Result};
 use glowfly_core::external_tools::compare::{diff_files, fingerprint, merge_files};
+use glowfly_core::external_tools::diff_exit::{diff_exit_ok, without_line_ending_warnings};
 use glowfly_core::external_tools::git_config::GitToolRun;
-use glowfly_core::external_tools::shell_tool::{ShellLaunch, diff_env, merge_env, run_shell_to_exit, spawn_shell};
+use glowfly_core::external_tools::shell_tool::{ShellLaunch, diff_env, merge_env, run_shell_to_exit, spawn_diff_shell};
 use glowfly_core::external_tools::{Ended, early_exit_message, temp, watch_to_end};
 use glowfly_core::gitcli::{self, args};
 use glowfly_core::native_path::native;
@@ -27,7 +30,8 @@ use std::time::Duration;
 const GIT_DIFFTOOL_EARLY_EXIT: Duration = Duration::from_secs(10);
 
 /// Writes the diff's versions and starts git config's diff tool on them. Only a failure is
-/// reported; for `git difftool` this waits as long as the tool runs, to report a late one.
+/// reported (an exit with 1 and nothing on stderr is how diff tools say the files differ); for
+/// `git difftool` this waits as long as the tool runs, to report a late one.
 pub(super) fn open_diff(req: GitDiffRequest) -> Option<Msg> {
     open_diff_watching(req, GIT_DIFFTOOL_EARLY_EXIT)
 }
@@ -43,7 +47,7 @@ fn open_diff_watching(req: GitDiffRequest, window: Duration) -> Option<Msg> {
         Err(e) => return failed(LaunchFailure::Files(reason(&e))),
     };
     let started = match &req.tool.run {
-        GitToolRun::Command { cmd, .. } => spawn_shell(&ShellLaunch {
+        GitToolRun::Command { cmd, .. } => spawn_diff_shell(&ShellLaunch {
             script: cmd.clone(),
             env: diff_env(&files.local, &files.remote, req.target.path()),
             cwd: req.workdir.clone(),
@@ -64,18 +68,28 @@ fn open_diff_watching(req: GitDiffRequest, window: Duration) -> Option<Msg> {
 
 /// Starts `git difftool` with the built-in tool on `local` and `remote`, watching it as a
 /// program Glowfly starts: a quick failure is the error, with git's most telling line. One
-/// still running after the watch is waited for, and a later failure is the message returned.
+/// still running after the watch is waited for, and a later failure is the message returned. An
+/// exit with 1 and nothing on stderr (git's own line-ending warnings aside) is no failure.
 fn git_difftool(req: &GitDiffRequest, local: &Path, remote: &Path, window: Duration) -> Result<Option<Msg>> {
     let tool = format!("--tool={}", req.tool.name);
     let (local, remote) = (native(local).to_string_lossy().into_owned(), native(remote).to_string_lossy().into_owned());
     let a = args(&["difftool", "--no-prompt", &tool, "--no-index", "--", &local, &remote]);
-    let mut cmd = gitcli::command(&req.workdir, &a, gitcli::NO_PROMPTS);
+    let env = [gitcli::NO_PROMPTS, &[gitcli::TRUST_DIFF_EXIT]].concat();
+    let mut cmd = gitcli::command(&req.workdir, &a, &env);
     cmd.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
     let child = cmd.spawn().map_err(|e| Error::Other(format!("git couldn't start: {e}")))?;
     Ok(match watch_to_end(child, window)? {
-        Ended::Early { code, stderr } if code != Some(0) => return Err(Error::Other(early_exit_message(code, &git_said(&stderr, "")))),
-        Ended::Later { code, stderr } if code != Some(0) => Some(failed_later(req, code, &stderr)),
-        _ => None,
+        Ended::Early { code, stderr } => {
+            let said = without_line_ending_warnings(&stderr);
+            if !diff_exit_ok(code, &said) {
+                return Err(Error::Other(early_exit_message(code, &git_said(&said, ""))));
+            }
+            None
+        }
+        Ended::Later { code, stderr } => {
+            let said = without_line_ending_warnings(&stderr);
+            (!diff_exit_ok(code, &said)).then(|| failed_later(req, code, &said))
+        }
     })
 }
 
