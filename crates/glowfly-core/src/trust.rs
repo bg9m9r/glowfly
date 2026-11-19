@@ -83,8 +83,11 @@ pub struct TrustScan {
     /// Empty in a submodule: Glowfly continues only the top repository's.
     pub steps: Vec<String>,
     /// The files of a rebase or pick in progress that are there but couldn't be read for
-    /// their steps (`steps.rs`), by name in the git dir. Never part of the print, and no
-    /// decision covers them: the runner asks each time a job would run (`Unchecked::State`).
+    /// their steps (`steps.rs`), by name in the git dir, and the places its settings name that
+    /// can't be named here (a `core.hooksPath`, a program's path or a submodule's folder whose
+    /// bytes aren't UTF-8, on Windows; a submodule's after its path). Never part of the print,
+    /// and no decision covers them: the runner asks each time a job would run
+    /// (`Unchecked::State`).
     pub unread: Vec<String>,
     /// The places its settings and hooks name (as shown; a submodule's after its path) that
     /// weren't looked at, as `net_path::may_follow` refuses them from the work tree: a hooks
@@ -149,9 +152,11 @@ const MAX_SUBMODULE_DEPTH: usize = 8;
 /// out: the user put them there.
 pub fn scan(repo: &Repository) -> TrustScan {
     let mut out = scan_top_reading(repo, Reading::Whole);
-    scan_submodules(repo, "", 0, &mut out.submodules);
+    scan_submodules(repo, "", 0, &mut out.submodules, &mut out.unread);
     let inner: Vec<String> = out.submodules.iter().flat_map(|s| s.scan.offsite.iter().map(|p| format!("{}: {p}", s.path))).collect();
     out.offsite.extend(inner);
+    let inner: Vec<String> = out.submodules.iter().flat_map(|s| s.scan.unread.iter().map(|p| format!("{}: {p}", s.path))).collect();
+    out.unread.extend(inner);
     out
 }
 
@@ -174,7 +179,8 @@ fn scan_top_reading(repo: &Repository, reading: Reading) -> TrustScan {
     let mut out = scan_own(repo, reading);
     out.commands = repo.workdir().and_then(commands_digest);
     let found = steps::find(repo);
-    (out.steps, out.unread) = (found.steps, found.unread);
+    out.steps = found.steps;
+    out.unread.extend(found.unread);
     out
 }
 
@@ -221,7 +227,8 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
     }
     let home = repo.workdir().unwrap_or_else(|| repo.path());
     // A hooks folder that may not be followed from the work tree is never listed.
-    out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path).filter(|dir| !follow::note_far(dir, home, &mut out.offsite));
+    let dir = hooks_dir(repo, config.as_ref(), local_hooks_path, &mut out.unread);
+    out.hooks_dir = dir.filter(|dir| !follow::note_far(dir, home, &mut out.offsite));
     let mut paths = Vec::new();
     // Each hook's text (None: read, but too large to keep) for the files it runs.
     let mut texts: Vec<Option<Vec<u8>>> = Vec::new();
@@ -244,9 +251,9 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
             paths.push(path);
         }
     }
-    let mut programs = programs::scan(repo, &mut out.config, &mut out.offsite);
+    let mut programs = programs::scan(repo, &mut out.config, &mut out.offsite, &mut out.unread);
     if let (Some(workdir), Some(dir)) = (repo.workdir(), &out.hooks_dir) {
-        let run = programs::hooks::scan(workdir, dir, &texts, &mut out.offsite);
+        let run = programs::hooks::scan(workdir, dir, &texts, &mut out.offsite, &mut out.unread);
         programs.extend(run.into_iter().filter(|p| !programs.contains(p)).collect::<Vec<_>>());
     }
     out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths, &programs);
@@ -260,7 +267,10 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
 /// git's status, this takes every gitlink in the index whose folder holds a repository, listed
 /// in .gitmodules or not, except one whose files name another network place than the work
 /// tree's (`git_file::other_repo`), which is never opened, as one libgit2 can't open.
-fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<SubmoduleScan>) {
+///
+/// A gitlink whose path isn't UTF-8 is opened by its bytes (Unix); where it can't be named
+/// (Windows) it is named in `unread`.
+fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<SubmoduleScan>, unread: &mut Vec<String>) {
     let (Some(workdir), Ok(index)) = (repo.workdir(), repo.index()) else { return };
     if depth >= MAX_SUBMODULE_DEPTH {
         return;
@@ -272,33 +282,37 @@ fn scan_submodules(repo: &Repository, prefix: &str, depth: usize, out: &mut Vec<
             continue;
         }
         last = Some(e.path.clone());
-        let Ok(rel) = std::str::from_utf8(&e.path) else { continue };
-        let Some(folder) = gitlink_folder(workdir, rel) else { continue };
+        let rel = keys::text_of(&e.path);
+        let path = if prefix.is_empty() { rel.clone().into_owned() } else { format!("{prefix}/{rel}") };
+        if keys::path_of_text(&rel).is_none() {
+            unread.push(path);
+            continue;
+        }
+        let Some(folder) = gitlink_folder(workdir, &rel) else { continue };
         // Never opened when its files name another network place (git_file).
         if !matches!(crate::git_file::other_repo(&folder, workdir), crate::git_file::Found::Repo(_)) {
             continue;
         }
         // Doesn't search upward, so a folder that isn't checked out finds nothing.
         let Ok(sub) = Repository::open(&folder) else { continue };
-        let path = if prefix.is_empty() { rel.to_owned() } else { format!("{prefix}/{rel}") };
         let own = scan_own(&sub, Reading::Whole);
         if !own.is_empty() {
             out.push(SubmoduleScan { path: path.clone(), scan: own });
         }
-        scan_submodules(&sub, &path, depth + 1, out);
+        scan_submodules(&sub, &path, depth + 1, out, unread);
     }
 }
 
-/// The folder of the gitlink named `rel` in `workdir`, one part at a time so it uses the
-/// platform's separators. None for an absolute, drive or `..` spelling, which is never joined.
-/// Any other name is a folder git's status may run git in, also one that reads as `.git` on
-/// another file system.
+/// The folder of the gitlink named `rel` (as `keys::text_of` reads its bytes) in `workdir`,
+/// one part at a time so it uses the platform's separators, each by its bytes. None for an
+/// absolute, drive or `..` spelling, which is never joined. Any other name is a folder git's
+/// status may run git in, also one that reads as `.git` on another file system.
 fn gitlink_folder(workdir: &Path, rel: &str) -> Option<PathBuf> {
     let plain = !rel.starts_with('/') && rel.split('/').all(|p| !p.is_empty() && p != "." && p != "..");
     if !plain || (cfg!(windows) && rel.contains(['\\', ':'])) {
         return None;
     }
-    Some(rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c)))
+    rel.split('/').try_fold(workdir.to_path_buf(), |p, c| Some(p.join(keys::path_of_text(c)?)))
 }
 
 /// `scan` of the repository at `path`.
@@ -311,9 +325,15 @@ pub fn init_created_new(output: &str) -> bool {
     output.lines().any(|l| l.contains("Initialized empty Git repository"))
 }
 
-/// The folder git takes hooks from. `local` is the repository's own core.hooksPath, if set.
-fn hooks_dir(repo: &Repository, config: Option<&Config>, local: Option<String>) -> Option<PathBuf> {
+/// The folder git takes hooks from. `local` is the repository's own core.hooksPath, if set (as
+/// `keys::text_of` reads it): read by its bytes, or named in `unread` where they can't name a
+/// folder (not UTF-8, on Windows).
+fn hooks_dir(repo: &Repository, config: Option<&Config>, local: Option<String>, unread: &mut Vec<String>) -> Option<PathBuf> {
     if let Some(v) = local {
+        let Some(v) = keys::path_of_text(&v) else {
+            unread.push("core.hooksPath".to_owned());
+            return None;
+        };
         // A home that can't be found: hooks may be anywhere, so the whole working tree follows.
         let Some(p) = home_expanded(&v, crate::settings::home_dir().as_deref()) else { return repo.workdir().map(Path::to_path_buf) };
         if p.is_absolute() {
@@ -329,6 +349,8 @@ fn hooks_dir(repo: &Repository, config: Option<&Config>, local: Option<String>) 
     Some(repo.commondir().join("hooks"))
 }
 
+#[cfg(test)]
+mod non_utf8_tests;
 #[cfg(test)]
 mod offsite_tests;
 #[cfg(test)]

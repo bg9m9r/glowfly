@@ -24,7 +24,7 @@ fn followed(dir: &Path, key: &str, value: &str) -> Vec<String> {
     let workdir = repo.workdir().unwrap().to_path_buf();
     let mut config = vec![ConfigCommand { key: key.into(), value: value.into() }];
     let mut out: Vec<String> = Vec::new();
-    for p in scan(&repo, &mut config, &mut Vec::new()) {
+    for p in scan(&repo, &mut config, &mut Vec::new(), &mut Vec::new()) {
         // "" is the whole working tree.
         for rel in follow::inside(&repo, &workdir, &p) {
             if !out.contains(&rel) {
@@ -332,7 +332,7 @@ fn a_program_in_an_msys_or_verbatim_spelling_of_the_working_tree_is_followed() {
     let repo = Repository::open(&dir).unwrap();
     let mut offsite = Vec::new();
     let mut config = vec![ConfigCommand { key: "core.fsmonitor".into(), value: r"'\\?\UNC\glowfly-test.invalid\share\x.sh'".into() }];
-    assert!(scan(&repo, &mut config, &mut offsite).is_empty());
+    assert!(scan(&repo, &mut config, &mut offsite, &mut Vec::new()).is_empty());
     assert_eq!(offsite.len(), 1, "{offsite:?}");
     cleanup(&[&dir]);
 }

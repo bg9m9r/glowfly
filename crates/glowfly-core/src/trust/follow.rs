@@ -228,9 +228,12 @@ fn lexical(path: &Path) -> Option<PathBuf> {
     Some(out)
 }
 
+/// `path` relative to `root`, `/`-separated, up to its first part that isn't UTF-8: such a name
+/// (Unix) is followed by the folder above it, whose version covers it, never by a lossy
+/// spelling that names another entry or none.
 fn rel(path: &Path, root: &Path) -> Option<String> {
     let rest = path.strip_prefix(root).ok()?;
-    Some(rest.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/"))
+    Some(rest.components().map_while(|c| c.as_os_str().to_str()).collect::<Vec<_>>().join("/"))
 }
 
 /// The name a folding file system sees for one part of a path: letter case and Unicode

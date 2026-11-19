@@ -39,8 +39,15 @@ const OWN_FOLDER: &[&str] = &[
 
 /// The files in the working tree (absolute paths, maybe missing) that the hooks in `hooks_dir`
 /// with these `texts` run: each hook's bytes, or None for one read but too large to keep. A file
-/// at a place `net_path::may_follow` refuses is left out and noted in `offsite`.
-pub(in crate::trust) fn scan(workdir: &Path, hooks_dir: &Path, texts: &[Option<Vec<u8>>], offsite: &mut Vec<String>) -> Vec<PathBuf> {
+/// at a place `net_path::may_follow` refuses is left out and noted in `offsite`; one whose
+/// bytes name no file here is named in `unread`.
+pub(in crate::trust) fn scan(
+    workdir: &Path,
+    hooks_dir: &Path,
+    texts: &[Option<Vec<u8>>],
+    offsite: &mut Vec<String>,
+    unread: &mut Vec<String>,
+) -> Vec<PathBuf> {
     let home = crate::settings::home_dir();
     let folder = folder_text(workdir, hooks_dir);
     let mut out: Vec<PathBuf> = Vec::new();
@@ -71,7 +78,7 @@ pub(in crate::trust) fn scan(workdir: &Path, hooks_dir: &Path, texts: &[Option<V
                     whole = true;
                     continue 'hooks;
                 }
-                for p in path_of(workdir, home.as_deref(), &word, true) {
+                for p in path_of(workdir, home.as_deref(), &word, true, unread) {
                     if super::super::follow::note_far(&p, workdir, offsite) || out.contains(&p) {
                         continue;
                     }

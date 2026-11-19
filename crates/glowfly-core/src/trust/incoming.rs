@@ -101,8 +101,9 @@ pub enum Unchecked {
     Conflicted(String),
     /// A command, or a form of one, Glowfly doesn't read (what it is).
     Unmodeled(String),
-    /// Files of the rebase or pick in progress (their names, `TrustScan::unread`) that couldn't
-    /// be read for the commands continuing it runs.
+    /// What the scan couldn't read for the commands git would run (their names,
+    /// `TrustScan::unread`): files of the rebase or pick in progress, and paths whose bytes name
+    /// no file here.
     State(String),
     /// Places the repository's settings and hooks name (`TrustScan::offsite`) that weren't
     /// looked at for what git would run or read from them; with the files of `State` when

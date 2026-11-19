@@ -84,7 +84,7 @@ fn trust_prompt_state_unread() {
     let mut h = harness(st, true);
     h.run();
     h.check_snapshot("trust_prompt_state_unread");
-    assert!(h.query_by_label_contains("couldn't read rebase-merge/git-rebase-todo of the rebase").is_some());
+    assert!(h.query_by_label_contains("couldn't read rebase-merge/git-rebase-todo (too large").is_some());
     assert!(h.query_by_label("Trust this repository?").is_some());
     assert!(h.query_by_label("Trust and run").is_some());
 }
