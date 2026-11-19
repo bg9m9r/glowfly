@@ -104,6 +104,7 @@ impl PaletteCommand {
             C::PickSelected { revert: true } => "revert-selected",
             C::CreatePr(_) => "create-pr",
             C::PushAndCreatePr(_) => "push-create-pr",
+            C::ShowPr(_) => "show-pr",
             C::SearchCommits => "search-commits",
             C::InitializeLfs => "lfs-init",
             C::ConfigureLfs => "lfs-configure",

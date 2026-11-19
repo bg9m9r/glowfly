@@ -4,7 +4,7 @@
 //! branch tracking it and a worktree; fast-forward of the local branch tracking it, merge, rebase,
 //! conflict check, compare and set upstream against the checked-out branch, and comparing it with
 //! its version before the last force-push (Range-diff), merge and rebase as split rows whose eye
-//! button previews them; pull requests (also from a fork remote into the base repository); hide or
+//! button previews them; pull requests, shown in the panel or the browser (also from a fork remote into the base repository); hide or
 //! solo, and its colour; copying its name or a link; and delete on the remote (its dialog,
 //! `remote_branch_delete_dialog.rs`, warns of local branches tracking it). The branch's name heads
 //! the menu once; the items leave it out, and other names in labels are cut to fit, in full on
@@ -65,10 +65,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         Some(fs) if fs.remote == remote => {
             separator(ui);
             match fs.pr_for_branch(name) {
-                Some(pr) => {
-                    let label = t.trf("pr.menu.open", &[("noun", &fs.pr_word(t)), ("pr", &fs.pr_label(pr.id))]);
-                    menu_item(msgs, ui, label, Msg::OpenUrl(pr.url.clone()))
-                }
+                Some(pr) => super::pull_request::menu_items::open_items(ui, t, fs, pr, msgs),
                 None => super::pull_request::menu_items::remote(ui, t, (name, oid), snap, fs, c.sel, msgs),
             }
         }
@@ -77,10 +74,7 @@ pub fn remote_branch_menu(ui: &mut egui::Ui, remote: &str, name: &str, oid: Oid,
         Some(fs) if repos::is_pr_remote(fs, remote) => {
             separator(ui);
             match fs.pr_from(remote, name) {
-                Some(pr) => {
-                    let label = t.trf("pr.menu.open", &[("noun", &fs.pr_word(t)), ("pr", &fs.pr_label(pr.id))]);
-                    menu_item(msgs, ui, label, Msg::OpenUrl(pr.url.clone()))
-                }
+                Some(pr) => super::pull_request::menu_items::open_items(ui, t, fs, pr, msgs),
                 None => {
                     let create = Msg::Forge(ForgeMsg::CreatePrFrom { remote: remote.to_owned(), source: name.to_owned() });
                     menu_item(msgs, ui, t.trf("pr.menu.create", &[("noun", &fs.pr_word(t))]), create);

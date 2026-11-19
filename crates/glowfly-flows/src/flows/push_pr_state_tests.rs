@@ -101,7 +101,7 @@ fn pr_commands(st: &AppState) -> Vec<PaletteCommand> {
         .collect()
 }
 
-fn pr_for(source: &str) -> PullRequest {
+pub(super) fn pr_for(source: &str) -> PullRequest {
     PullRequest {
         id: 7,
         title: "Topic".into(),

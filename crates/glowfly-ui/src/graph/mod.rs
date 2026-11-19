@@ -135,8 +135,8 @@ fn table(
     if filtered && total == 0 {
         return super::graph_empty::no_matches(ui, st, view, msgs);
     }
-    // Pull requests by head commit, for graph badges.
-    let pr_at: HashMap<Oid, (String, bool)> = st.session.forge.as_ref().map(cells::pr_badges).unwrap_or_default();
+    // Pull requests by head commit, for the graph's chips.
+    let pr_at: HashMap<Oid, cells::PrBadge> = st.session.forge.as_ref().map(|f| cells::pr_badges(f, t)).unwrap_or_default();
     let highlight = highlight(ui, st, msgs);
 
     ui.spacing_mut().item_spacing.y = 0.0;

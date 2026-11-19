@@ -1,7 +1,8 @@
 //! A commit row's text cells, all on one line: the message (pull request chip, then the summary
 //! and the dim body preview), changes, the author's name (`weak`), the short SHA (mono, `faint`)
 //! and the date, right-aligned (Noto Sans's figures are tabular, so ages and dates line up).
-//! Each is cut to its column with "…"; `RowText` says which were cut, for the row's tooltip.
+//! Each is cut to its column with "…"; `RowText` says which were cut, for the row's tooltip. The
+//! pull request chip is painted here and made clickable by `commit_row.rs` (`RowText::pr`).
 
 use super::find_marks::{Mark, RowRuns, Runs, paint_cut_marked};
 use super::layout::Columns;
@@ -14,6 +15,7 @@ use crate::widgets::{Cut, chip, paint_cut_text};
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
+use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{CommitInfo, RefLabel};
 use glowfly_core::settings::{GraphColumns, Settings};
 use glowfly_model::state::ForgeState;
@@ -28,6 +30,8 @@ pub(super) struct RowText {
     pub msg: Cut,
     pub sha: Cut,
     pub author: Cut,
+    /// The pull request chip's rect, when it was painted.
+    pub pr: Option<Rect>,
 }
 
 /// What one commit row's cells show.
@@ -38,8 +42,8 @@ pub(super) struct Cells<'a> {
     /// Where the message starts: its column's content, or after the chips leading it.
     pub msg_x: f32,
     pub commit: &'a CommitInfo,
-    /// The pull request chip's label, and whether it is a draft.
-    pub pr: Option<&'a (String, bool)>,
+    /// The pull request chip.
+    pub pr: Option<&'a PrBadge>,
     pub show_body: bool,
     /// The colours of the row's text (quieter on rows a search dims).
     pub inks: Inks,
@@ -88,12 +92,26 @@ pub(super) fn name_row(resp: &egui::Response, c: &CommitInfo, refs: Option<&Vec<
     crate::access::describe(resp, &parts.join(", "));
 }
 
-/// Each open pull request's chip label ("PR #12", "Draft #3") and whether it is a draft, by
-/// its head commit.
-pub(super) fn pr_badges(f: &ForgeState) -> HashMap<Oid, (String, bool)> {
+/// A pull request chip in the graph: the pull request it opens, its label ("PR #12", "Draft
+/// #3"), whether it is a draft, and its tooltip and accessible name ("Show pull request #12").
+pub(super) struct PrBadge {
+    pub id: u64,
+    pub label: String,
+    pub draft: bool,
+    pub tip: String,
+}
+
+/// Each open pull request's chip (label, draft, and the tip that names it in `t`), by its head
+/// commit.
+pub(super) fn pr_badges(f: &ForgeState, t: Lang) -> HashMap<Oid, PrBadge> {
     let word = if f.pr_noun() == "merge request" { "MR" } else { "PR" };
-    let label = |p: &glowfly_core::forge::PullRequest| format!("{} {}", if p.draft { "Draft" } else { word }, f.pr_label(p.id));
-    f.prs.iter().filter_map(|p| Some((*f.pr_heads.get(&p.id)?, (label(p), p.draft)))).collect()
+    let badge = |p: &glowfly_core::forge::PullRequest| PrBadge {
+        id: p.id,
+        label: format!("{} {}", if p.draft { "Draft" } else { word }, f.pr_label(p.id)),
+        draft: p.draft,
+        tip: t.trf("pr.chip.tip", &[("noun", &f.pr_word(t)), ("pr", &f.pr_label(p.id))]),
+    };
+    f.prs.iter().filter_map(|p| Some((*f.pr_heads.get(&p.id)?, badge(p)))).collect()
 }
 
 /// Each month's 20th at 22:58 UTC in 2026: two-digit days (the figures are tabular) late in
@@ -155,10 +173,12 @@ pub(super) fn draw(painter: &Painter, row: &Cells) -> RowText {
     if cfg.message {
         let mp = painter.with_clip_rect(cols.rect(cols.msg, rect));
         let mut x = row.msg_x;
-        if let Some((label, draft)) = row.pr {
-            let col = if *draft || ink.dimmed { color::weak() } else { color::progress() };
+        if let Some(badge) = row.pr {
+            let col = if badge.draft || ink.dimmed { color::weak() } else { color::progress() };
             let look = chip::Look::new(color::wash(col, 0.35), col);
-            x = chip::Chip::new(chip::ChipSize::Badge, label.as_str()).look(look).paint(&mp, x, mid).right() + 6.0;
+            let r = chip::Chip::new(chip::ChipSize::Badge, badge.label.as_str()).look(look).paint(&mp, x, mid);
+            text.pr = Some(r);
+            x = r.right() + 6.0;
         }
         let body = row.show_body.then(|| c.body_preview());
         // The body's runs follow the summary's chars in the job.
@@ -241,5 +261,46 @@ mod tests {
                 assert!((w(d) - one).abs() < 0.01, "{d} is {} wide, 1 is {one}", w(d));
             }
         });
+    }
+
+    fn forge(provider: glowfly_core::forge::Provider, prs: &[(u64, bool)], heads: &[u64]) -> ForgeState {
+        use glowfly_core::forge::Target;
+        let target = Target { provider, host: "h".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+        let mut f = ForgeState::new(Some(target), "origin".into(), None);
+        f.prs = prs
+            .iter()
+            .map(|&(id, draft)| glowfly_core::forge::PullRequest {
+                id,
+                title: String::new(),
+                description: String::new(),
+                source: "s".into(),
+                target: "main".into(),
+                author: "a".into(),
+                draft,
+                reviewers: Vec::new(),
+                head: None,
+                head_repo: Default::default(),
+                merge_status: None,
+                checks: None,
+                url: String::new(),
+                facets: Default::default(),
+            })
+            .collect();
+        f.pr_heads = heads.iter().map(|&id| (id, Oid::from_bytes(&[id as u8; 20]).unwrap())).collect();
+        f
+    }
+
+    #[test]
+    fn pr_badges_name_the_pull_request() {
+        use glowfly_core::forge::Provider;
+        let badges = pr_badges(&forge(Provider::GitHub, &[(12, false), (13, false)], &[12]), Lang::En);
+        assert_eq!(badges.len(), 1, "a pull request missing from pr_heads has no badge");
+        let b = &badges[&Oid::from_bytes(&[12; 20]).unwrap()];
+        assert_eq!((b.id, b.label.as_str(), b.draft, b.tip.as_str()), (12, "PR #12", false, "Show pull request #12"));
+        let badges = pr_badges(&forge(Provider::GitLab, &[(3, true)], &[3]), Lang::En);
+        let b = &badges[&Oid::from_bytes(&[3; 20]).unwrap()];
+        assert_eq!((b.label.as_str(), b.draft, b.tip.as_str()), ("Draft !3", true, "Show merge request !3"));
+        let badges = pr_badges(&forge(Provider::GitHub, &[(12, false)], &[12]), Lang::De);
+        assert_eq!(badges.values().next().unwrap().tip, "Pull Request #12 zeigen");
     }
 }

@@ -6,7 +6,8 @@
 //! its own rect in a layout (`show`), may lead with a dot or a painted glyph and may cut its
 //! text with "…" to a width. A view that lays out its own content (several runs of text) paints
 //! the shape with [`frame`] in a rect from [`rect_at`] and [`width`]. The clickable quiet chip
-//! (a commit's SHA, parents and committer) is [`quiet_chip`].
+//! (a commit's SHA, parents and committer) is [`quiet_chip`]; a chip already painted elsewhere
+//! is made a click target with [`target_over`].
 
 use super::button_look::{Press, Target, paint_target};
 use super::truncate::{cut_galley, cut_job};
@@ -254,6 +255,17 @@ impl<'a> Chip<'a> {
         }
         p.galley(pos2(x, text_top), galley, self.look.ink);
     }
+}
+
+/// Makes a chip of `size` already painted at `rect` on `p` (the graph's pull request chip,
+/// clipped to its column) a click target: the quiet hover and pressed layers and the inset focus
+/// ring over it, the pointing hand, and `name` as its accessible button name. `resp` is its
+/// interaction (`ui.interact` over its hit area).
+pub fn target_over(p: &Painter, rect: Rect, size: ChipSize, resp: Response, name: &str) -> Response {
+    let press = Press::of(resp.hovered(), resp.is_pointer_button_down_on(), false);
+    paint_target(p, Target { rect, corners: corners(size), edge: None }, ControlSize::Compact, press, resp.has_focus());
+    crate::access::name_button(&resp, true, name);
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
 
 /// A quiet chip that can be clicked (a commit's SHA, its parents, its committer): `text` (the

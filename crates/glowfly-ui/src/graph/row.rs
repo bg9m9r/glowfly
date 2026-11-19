@@ -56,8 +56,8 @@ pub(super) struct Frame<'a> {
     /// Rows belonging to the hovered branch.
     pub highlight: Option<&'a Arc<HashSet<Oid>>>,
     pub ref_cx: ref_group::RefContext<'a>,
-    /// Pull requests by head commit, for graph badges.
-    pub pr_at: HashMap<Oid, (String, bool)>,
+    /// Pull requests by head commit, for the graph's chips.
+    pub pr_at: HashMap<Oid, cells::PrBadge>,
     pub commands: MenuCommands<'a>,
     pub tips: Option<&'a TipChecks>,
     pub wip_label: &'static str,
