@@ -268,7 +268,7 @@ source file, update its line here. Features that span every layer are in
 - `prefs_pick.rs`: the file and folder pickers and where each picked path goes.
 - `open_link.rs`: a clicked Markdown link (`Msg::OpenLink`) opened, or first a confirmation naming the real host when its text names another (tests in `update/tests/open_link_tests.rs`).
 - `diff_copy.rs`: Copy hunk as patch: the hunk read again from the repository (`Effect::CopyHunkPatch`) and copied when it is UTF-8 text, else a toast. Tests in `flows/diff_copy_tests.rs`.
-- `update/copy_message.rs`: Copy > Message: the commit's whole message read from the repository (`CommitEffect::CopyMessage`) and copied, else a toast. Tests in `update/tests/copy_message_tests.rs` and `flows/copy_message_tests.rs`.
+- `copy_message.rs`: Copy > Message (the commit menu's and the Edit menu's): the commit's whole message read from the repository (`CommitEffect::CopyMessage`) and copied, else a toast. Tests in `update/tests/copy_message_tests.rs` and `flows/copy_message_tests.rs`.
 - `terminal/schemes.rs`: importing terminal color schemes and switching the terminal to the first one.
 - `stack.rs`: restacking stacked branches: a rebase job whose results end in `rebase.rs::finished` and whose stopped runs wait in `st.restacks` for the banner's Continue or Skip; a stop whose rebase ended another way ends as the quiet `EndRestack` job (back to the branch checked out before, stash put back, finished part recorded for undo).
 - `auto_stash_restack.rs`: a restack's auto-stash as a pending entry while its stop waits (held from the ordinary put-back, saved for a restart), and telling how the restack's own put-back went.
