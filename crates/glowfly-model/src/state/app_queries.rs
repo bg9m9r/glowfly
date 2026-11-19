@@ -41,6 +41,13 @@ impl AppState {
         self.workdir().unwrap_or_else(Self::outside_dir)
     }
 
+    /// Where a sign-in asks git's credential helpers: the active repository while git runs
+    /// there unasked, else a folder outside any repository (`outside_dir`), so a repository's
+    /// own credential helper never runs before it is trusted.
+    pub fn credentials_dir(&self) -> PathBuf {
+        if self.runs_git_unasked() { self.any_dir() } else { Self::outside_dir() }
+    }
+
     /// A folder outside any repository (the temp folder), for git calls that must not read the
     /// active repository's own config, e.g. its credential helper while it isn't trusted.
     pub fn outside_dir() -> PathBuf {

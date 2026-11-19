@@ -39,7 +39,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
                 p.int_busy = true;
                 p.int_error = None;
             }
-            fx.push(Effect::Account(AccountEffect::Connect { account, user, token, cwd: st.any_dir() }));
+            fx.push(Effect::Account(AccountEffect::Connect { account, user, token, cwd: st.credentials_dir() }));
         }
         ForgeMsg::Connected { account, method, token, result } => connected(st, account, method, token, result, now, fx),
         ForgeMsg::Disconnect(account) => disconnect(st, &account, fx),
@@ -52,7 +52,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
                 // Another profile's saved accounts keep their sign-in.
                 let gcm_accounts =
                     accounts.iter().filter(|a| a.provider.supports_gcm() && !st.settings.account_in_use(a)).cloned().collect();
-                fx.push(Effect::Account(AccountEffect::ForgetCredentialManager { accounts: gcm_accounts, cwd: st.any_dir() }));
+                fx.push(Effect::Account(AccountEffect::ForgetCredentialManager { accounts: gcm_accounts, cwd: st.credentials_dir() }));
             }
             let extra = if gcm { " and signed Git Credential Manager out of those hosts" } else { "" };
             st.log(true, format!("Removed {} connection{}{extra}.", accounts.len(), if accounts.len() == 1 { "" } else { "s" }));
