@@ -2,6 +2,7 @@
 //! into it, part of the print with the version HEAD tracks, and an incoming commit's version
 //! read from its objects, so a pull or checkout that brings other hooks is noticed first.
 
+use super::super::allows as print_allows;
 use super::super::incoming::{allows, commits, targets};
 use super::super::pull::{Pull, fetched};
 use super::super::tests::hook;
@@ -280,4 +281,85 @@ fn a_hooks_path_only_the_file_system_can_resolve_follows_the_whole_tree() {
         assert!(got.is_err(), "{spelled}: {got:?}");
         cleanup(&[&work, &bare]);
     }
+}
+
+/// A repository with origin whose `core.fsmonitor` is its tracked `tools/fsm.sh`.
+fn followed_script(name: &str) -> (PathBuf, PathBuf) {
+    let (work, bare) = with_origin(name);
+    std::fs::create_dir_all(work.join("tools")).unwrap();
+    write(&work, "tools/fsm.sh", "#!/bin/sh\nexit 1\n");
+    git(&work, &["add", "."]);
+    git(&work, &["commit", "-q", "-m", "fsmonitor"]);
+    git(&work, &["push", "-q", "origin", "main"]);
+    git(&work, &["config", "core.fsmonitor", "./tools/fsm.sh"]);
+    (work, bare)
+}
+
+#[test]
+fn a_followed_file_s_bytes_on_disk_are_in_the_print() {
+    let (work, bare) = followed_script("follow-disk");
+    let s = scan(&work);
+    let digest = super::super::content_digest(b"#!/bin/sh\nexit 1\n");
+    assert_eq!(s.follow_digests.get("tools/fsm.sh"), Some(&digest));
+    let saved = trusted(&work);
+    let repo = Repository::open(&work).unwrap();
+    let stamped = super::super::stamp(&repo, &s);
+    // An uncommitted change runs other code at the next status: it asks again.
+    write(&work, "tools/fsm.sh", "#!/bin/sh\necho changed\nexit 1\n");
+    let now = scan(&work);
+    assert!(!print_allows(Some(&saved), &now), "a local edit is another print");
+    let gained = now.gained_since(saved.print.as_ref().unwrap());
+    assert_eq!(gained.follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["tools/fsm.sh"], "and is listed");
+    assert_eq!(gained.follow_digests.len(), 1);
+    assert_ne!(super::super::stamp(&repo, &now), stamped, "a refresh notices it");
+    // Put back as it was: covered again.
+    write(&work, "tools/fsm.sh", "#!/bin/sh\nexit 1\n");
+    assert!(print_allows(Some(&saved), &scan(&work)));
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn trusting_an_incoming_version_of_a_followed_file_covers_it_once_it_lands() {
+    let (work, bare) = followed_script("follow-disk-lands");
+    let saved = trusted(&work);
+    remote_commit(&bare, "main", "tools/fsm.sh", "#!/bin/sh\necho two\n");
+    git(&work, &["fetch", "-q", "origin"]);
+    let repo = Repository::open(&work).unwrap();
+    let theirs = repo.revparse_single("origin/main").unwrap().id();
+    let inc = incoming(&repo, &scan(&work).follows, theirs).unwrap();
+    assert!(!allows(Some(&saved), &inc), "held");
+    assert_eq!(inc.follow_digests.get("tools/fsm.sh"), Some(&super::super::content_digest(b"#!/bin/sh\necho two\n")));
+    let both = SavedTrust::trusted(Some(saved.print.clone().unwrap().with(&inc.print())));
+    git(&work, &["-c", "core.fsmonitor=false", "merge", "-q", "--ff-only", "origin/main"]);
+    assert!(print_allows(Some(&both), &scan(&work)), "no second question once it lands");
+    cleanup(&[&work, &bare]);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_followed_file_that_can_t_be_read_never_matches_a_read_one() {
+    let (work, bare) = followed_script("follow-disk-unreadable");
+    let saved = trusted(&work);
+    std::fs::remove_file(work.join("tools/fsm.sh")).unwrap();
+    let made = std::process::Command::new("mkfifo").arg(work.join("tools/fsm.sh")).status().is_ok_and(|s| s.success());
+    if made {
+        let s = scan(&work);
+        assert_eq!(s.follow_digests.get("tools/fsm.sh").map(String::as_str), Some(super::super::digest::UNREADABLE));
+        assert!(!print_allows(Some(&saved), &s));
+    }
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn a_followed_file_leading_to_a_network_place_is_never_read() {
+    let dir = scratch_repo("follow-disk-far");
+    std::fs::create_dir_all(dir.join("tools")).unwrap();
+    git(&dir, &["config", "core.fsmonitor", "./tools/fsm.sh"]);
+    if !link_to(&net_place().join("fsm.sh"), &dir.join("tools/fsm.sh"), false) {
+        return cleanup(&[&dir]);
+    }
+    let s = scan(&dir);
+    assert!(s.follow_digests.is_empty(), "{:?}", s.follow_digests);
+    assert_eq!(s.offsite.len(), 1, "noted: {:?}", s.offsite);
+    cleanup(&[&dir]);
 }

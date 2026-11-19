@@ -6,10 +6,13 @@
 //! covers that version, and `incoming` reads another commit's version from its tree (objects
 //! only: no checkout, filter, hook or fsmonitor runs) so a job that brings it in can be held
 //! until the user trusts it. A file a config program runs or an include names in the working
-//! tree (`programs.rs`) is followed the same way.
+//! tree (`programs.rs`), or that a hook's script runs (`programs_hooks.rs`), is followed the
+//! same way.
 
+use super::digest::{self, Reading};
 use super::{TrustScan, is_hook_name};
 use git2::{ObjectType, Oid, Repository, Tree};
+use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 
 /// A place inside the working tree that hooks run from.
@@ -83,6 +86,43 @@ pub(super) fn find(repo: &Repository, hooks_dir: Option<&Path>, hooks: &[PathBuf
     out
 }
 
+/// The most followed files whose bytes `disk_digests` reads; past it, a file's size and
+/// modification time stand in for its bytes.
+const MAX_DIGESTS: usize = 256;
+
+/// The digests of the files `follows` names in `workdir` (not a hooks folder, whose hooks are
+/// read one by one, nor the whole tree), as they are on disk, read as `reading` says
+/// (`TrustScan::follow_digests`): so an uncommitted change asks again. A file that is there
+/// but can't be read gets the unreadable digest (`digest::UNREADABLE`), which no decision made
+/// on a read covers; a folder or a file not there has none. A file at a place that may not be
+/// followed (a link leading to a network place) is never read: it is noted in `offsite`.
+pub(super) fn disk_digests(workdir: &Path, follows: &[Follow], reading: Reading, offsite: &mut Vec<String>) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for f in follows.iter().filter(|f| !f.hooks && !f.path.is_empty()) {
+        let path = on_disk(workdir, &f.path);
+        if note_far(&path, workdir, offsite) {
+            continue;
+        }
+        let Ok(meta) = std::fs::metadata(&path) else { continue };
+        if meta.is_dir() {
+            continue;
+        }
+        let digest = if out.len() < MAX_DIGESTS {
+            digest::of_file(&path, reading)
+        } else {
+            let modified = meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_nanos());
+            format!("size {} at {modified:?}", meta.len())
+        };
+        out.insert(f.path.clone(), digest);
+    }
+    out
+}
+
+/// The place on disk of the `/`-separated `rel` (a `Follow::path`) in `workdir`.
+pub(super) fn on_disk(workdir: &Path, rel: &str) -> PathBuf {
+    rel.split('/').fold(workdir.to_path_buf(), |p, c| p.join(c))
+}
+
 /// Whether a part of the `/`-separated `rel` names a place only the file system can resolve:
 /// a `:` (an NTFS alternate stream such as `::$INDEX_ALLOCATION`, which opens the folder
 /// itself) or an 8.3 short name (`GITHOO~1`).
@@ -118,8 +158,10 @@ pub(super) fn within(path: &str, root: &str) -> bool {
 /// out, the resolved one the hooks it leads to.
 pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<String> {
     let git_dirs = [repo.path(), repo.commondir()];
-    let in_git_dir = |p: &Path| git_dirs.iter().filter_map(|g| lexical(g)).any(|g| p.starts_with(g));
-    let as_spelled = lexical(path).filter(|p| !in_git_dir(p)).and_then(|p| rel(&p, &lexical(workdir)?));
+    // A `\\?\` spelling of a drive or share is compared in its plain form, as the tree's is.
+    let plain = |p: &Path| lexical(&crate::paths::plain(p));
+    let in_git_dir = |p: &Path| git_dirs.iter().filter_map(|g| plain(g)).any(|g| p.starts_with(g));
+    let as_spelled = plain(path).filter(|p| !in_git_dir(p)).and_then(|p| rel(&p, &plain(workdir)?));
     // Resolved only where it may be followed: a place that may not be is never looked at.
     let joined = workdir.join(path);
     let real = (!far(&joined, workdir)).then(|| crate::paths::resolve(&joined));
@@ -186,16 +228,19 @@ fn lexical(path: &Path) -> Option<PathBuf> {
     Some(out)
 }
 
+/// `path` relative to `root`, `/`-separated, up to its first part that isn't UTF-8: such a name
+/// (Unix) is followed by the folder above it, whose version covers it, never by a lossy
+/// spelling that names another entry or none.
 fn rel(path: &Path, root: &Path) -> Option<String> {
     let rest = path.strip_prefix(root).ok()?;
-    Some(rest.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/"))
+    Some(rest.components().map_while(|c| c.as_os_str().to_str()).collect::<Vec<_>>().join("/"))
 }
 
 /// The name a folding file system sees for one part of a path: letter case and Unicode
 /// normalization folded (NTFS, APFS, HFS+), the code points HFS+ ignores dropped, and the
 /// trailing dots and spaces Windows drops removed. Folding more than this volume does only
 /// makes more entries count as the one on disk: more is compared, never less.
-fn fold(part: &str) -> String {
+pub(super) fn fold(part: &str) -> String {
     let kept: String = part.chars().filter(|c| !ignorable(*c)).collect();
     crate::repo::name_key(kept.trim_end_matches(['.', ' ']))
 }
@@ -264,13 +309,23 @@ pub fn versions(repo: &Repository, follows: &[Follow], oid: Oid) -> Result<Vec<F
 pub fn incoming(repo: &Repository, follows: &[Follow], oid: Oid) -> Result<TrustScan, git2::Error> {
     let mut out = TrustScan { follows: versions(repo, follows, oid)?, ..TrustScan::default() };
     let odb = repo.odb().ok();
+    let small = |id: Oid| {
+        odb.as_ref().and_then(|o| o.read_header(id).ok()).is_some_and(|(size, kind)| kind == ObjectType::Blob && size <= MAX_HOOK_READ)
+    };
+    // A followed file's bytes as that commit has them, as `disk_digests` reads them once it is
+    // checked out (line-ending changes aside).
+    for f in out.follows.iter().filter(|f| !f.hooks && !f.path.is_empty()) {
+        let Some((path, id)) = &f.tracked else { continue };
+        if let Some(blob) = (path.eq_ignore_ascii_case(&f.path) && small(*id)).then(|| repo.find_blob(*id).ok()).flatten() {
+            out.follow_digests.insert(f.path.clone(), super::content_digest(blob.content()));
+        }
+    }
     for f in out.follows.iter().filter(|f| f.hooks) {
         let Some((path, id)) = &f.tracked else { continue };
         let Some(dir) = path.eq_ignore_ascii_case(&f.path).then(|| repo.find_tree(*id).ok()).flatten() else { continue };
         for e in dir.iter().filter(|e| e.kind() == Some(ObjectType::Blob)) {
             let Some(name) = e.name().filter(|n| is_hook_name(n)) else { continue };
-            let small = odb.as_ref().and_then(|o| o.read_header(e.id()).ok()).is_some_and(|(size, _)| size <= MAX_HOOK_READ);
-            if let Some(blob) = small.then(|| repo.find_blob(e.id()).ok()).flatten() {
+            if let Some(blob) = small(e.id()).then(|| repo.find_blob(e.id()).ok()).flatten() {
                 out.hook_digests.insert(name.to_owned(), super::content_digest(blob.content()));
             }
             out.hooks.push(name.to_owned());

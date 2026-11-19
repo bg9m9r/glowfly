@@ -1,0 +1,83 @@
+//! Bare words a hook runs: the script after an interpreter, `.`, `source` or `exec` is
+//! followed when it is a regular file in the working tree, from its top or from the hook's
+//! folder there; `npx`, `npm` and `git` words follow nothing.
+
+use super::super::tests::{hook_with, paths, scan_of};
+use super::*;
+use crate::testutil::*;
+
+#[test]
+fn the_word_an_interpreter_or_source_runs_is_picked() {
+    let cases: &[(&str, &[&str])] = &[
+        ("sh check.sh", &["check.sh"]),
+        ("bash -e run.sh \"$@\"", &["run.sh"]),
+        ("/usr/bin/env python3 tool.py --fix", &["tool.py"]),
+        ("node lint.js && zsh fmt.zsh", &["lint.js", "fmt.zsh"]),
+        ("pwsh -NoProfile -ExecutionPolicy RemoteSigned -File check.ps1", &["check.ps1"]),
+        ("powershell.exe -f check.ps1", &["check.ps1"]),
+        ("deno run main.ts", &["main.ts"]),
+        (". lib.sh", &["lib.sh"]),
+        ("source lib.sh", &["lib.sh"]),
+        ("exec hook.sh", &["hook.sh"]),
+        ("sh -c 'echo hi'", &[]),
+        ("bash -ec 'echo hi'", &[]),
+        ("node -e 'process.exit(0)'", &[]),
+        ("python3 -m black .", &[]),
+        ("python -W ignore -X dev x.py", &["x.py"]),
+        ("bash -o pipefail run.sh", &["run.sh"]),
+        ("perl -I lib -M strict tool.pl", &["tool.pl"]),
+        ("node -r ts-node/register --import ./hooks.mjs app.js", &["app.js"]),
+        ("ruby -I lib -r json x.rb", &["x.rb"]),
+        ("npx lint-staged", &[]),
+        ("npm test", &[]),
+        ("git diff --quiet", &[]),
+    ];
+    for (line, want) in cases {
+        let words: Vec<String> = run_words(line).into_iter().map(|w| w.text).collect();
+        assert_eq!(words, *want, "{line}");
+    }
+}
+
+#[test]
+fn a_shell_dot_or_source_reads_as_shell_and_exec_runs_a_command() {
+    let ran: Vec<Ran> = run_words(". a.sh; source b; exec c; sh d; bash -e e; node f").into_iter().map(|w| w.ran).collect();
+    assert_eq!(ran, [Ran::Shell, Ran::Shell, Ran::Direct, Ran::Shell, Ran::Shell, Ran::Other]);
+}
+
+#[test]
+fn the_words_sh_runs_as_commands_are_picked() {
+    let cases: &[(&str, &[&str])] = &[
+        ("./scripts/x --fix", &["./scripts/x"]),
+        ("A=1 B=2 ./x && ./y | tee log; exec ./z", &["./x", "./y", "tee", "./z"]),
+        ("if ./check; then ./ok; else ./fail; fi", &["./check", "./ok", "./fail", "fi"]),
+        ("env FOO=1 ./tool arg", &["./tool"]),
+        ("cat ./notes", &["cat"]),
+    ];
+    for (line, want) in cases {
+        assert_eq!(command_words(line), *want, "{line}");
+    }
+}
+
+#[test]
+fn a_bare_script_a_hook_runs_is_followed_from_the_top_and_from_its_folder() {
+    let dir = scratch_repo("hook-runs-bare");
+    for d in ["hooks", "sub"] {
+        std::fs::create_dir_all(dir.join(d)).unwrap();
+    }
+    for f in ["check.sh", "tool.py", "lint-staged", "test", "diff"] {
+        write(&dir, f, "exit 0\n");
+    }
+    // `lib.sh` is beside the hook only; what it runs is read in turn.
+    write(&dir, "hooks/lib.sh", "sh more.sh\n");
+    write(&dir, "more.sh", "exit 0\n");
+    let text = "#!/bin/sh\nsh check.sh\n. lib.sh\npython3 tool.py\nnpx lint-staged\nnpm test\ngit diff\nsh missing.sh\nsh sub\n";
+    hook_with(&dir.join("hooks"), "pre-commit", text);
+    git(&dir, &["config", "core.hooksPath", "hooks"]);
+    assert_eq!(paths(&scan_of(&dir)), ["check.sh", "hooks", "more.sh", "tool.py"]);
+    // From `.git/hooks`, only the working tree's top counts.
+    git(&dir, &["config", "--unset", "core.hooksPath"]);
+    hook_with(&dir.join(".git/hooks"), "pre-commit", "#!/bin/sh\n. lib.sh\nsh check.sh\n");
+    write(&dir, ".git/hooks/lib.sh", "sh tool.py\n");
+    assert_eq!(paths(&scan_of(&dir)), ["check.sh"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

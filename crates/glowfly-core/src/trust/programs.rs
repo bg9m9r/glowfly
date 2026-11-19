@@ -13,10 +13,14 @@
 
 use super::ConfigCommand;
 use git2::Repository;
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 #[path = "programs_shell.rs"]
 mod shell;
+
+#[path = "programs_hooks.rs"]
+pub(super) mod hooks;
 
 /// Characters that end a word inside a shell command (`a;./b`, `$(./x)`, `--file=./c`).
 const BREAKS: &[char] = &[';', '|', '&', '(', ')', '<', '>', '`', '"', '\'', '=', ','];
@@ -29,8 +33,14 @@ const BREAKS: &[char] = &[';', '|', '&', '(', ')', '<', '>', '`', '"', '\'', '='
 /// isn't listed (`Include::unsure`) is added the same way, with the working tree itself.
 ///
 /// A file at a place `net_path::may_follow` refuses from the working tree is never looked at:
-/// it is left out and noted in `offsite` (as shown, each once).
-pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: &mut Vec<String>) -> Vec<PathBuf> {
+/// it is left out and noted in `offsite` (as shown, each once). A path whose bytes (a value
+/// that isn't UTF-8) name no file here (Windows) is named in `unread` (`placed`).
+pub(super) fn scan(
+    repo: &Repository,
+    config: &mut Vec<ConfigCommand>,
+    offsite: &mut Vec<String>,
+    unread: &mut Vec<String>,
+) -> Vec<PathBuf> {
     let Some(workdir) = repo.workdir() else { return Vec::new() };
     let home = crate::settings::home_dir();
     let mut out: Vec<PathBuf> = Vec::new();
@@ -40,13 +50,13 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: 
         }
     };
     for c in config.iter() {
-        if let Some(path) = ca_file(workdir, home.as_deref(), c) {
+        if let Some(path) = ca_file(workdir, home.as_deref(), c, unread) {
             add(path);
             continue;
         }
         let Some(text) = command_text(c) else { continue };
         for word in candidates(text) {
-            path_of(workdir, home.as_deref(), &word).into_iter().for_each(&mut add);
+            path_of(workdir, home.as_deref(), &word, false, unread).into_iter().for_each(&mut add);
         }
     }
     for inc in super::stamp::include_entries(repo) {
@@ -70,15 +80,41 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: 
 }
 
 /// The CA file or folder a TLS setting reads (`http.sslCAInfo`, `http.sslCAPath`): its whole
-/// value is one path, as git reads it (a `~` expanded), relative to the working tree.
-fn ca_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand) -> Option<PathBuf> {
+/// value is one path, as git reads it (a `~` expanded), relative to the working tree. One whose
+/// bytes name no file here is named in `unread`, and None.
+fn ca_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand, unread: &mut Vec<String>) -> Option<PathBuf> {
     let key = c.key.to_ascii_lowercase();
     let reads = super::is_network_setting(&c.key) && (key.ends_with(".sslcainfo") || key.ends_with(".sslcapath"));
     if !reads || c.value.is_empty() {
         return None;
     }
-    let p = if c.value.starts_with('~') { crate::paths::expand_home(&c.value, home) } else { PathBuf::from(&c.value) };
+    let p = if c.value.starts_with('~') { Some(crate::paths::expand_home(&c.value, home)) } else { super::keys::path_of_text(&c.value) };
+    let Some(p) = p else {
+        note(unread, &c.value);
+        return None;
+    };
     Some(if p.is_absolute() { p } else { workdir.join(p) })
+}
+
+/// Adds `text` to `unread`, once.
+fn note(unread: &mut Vec<String>, text: &str) {
+    if !unread.iter().any(|u| u == text) {
+        unread.push(text.to_owned());
+    }
+}
+
+/// `text` (a value as `keys::text_of` reads it) as a path: from the working tree, or with a
+/// leading `~` from `home`, by its bytes (`keys::path_of_text`). None where those can't name a
+/// file (not UTF-8, on Windows).
+fn placed(workdir: &Path, home: Option<&Path>, text: &str) -> Option<PathBuf> {
+    if text.starts_with('~') {
+        let p = crate::paths::expand_home(text, home);
+        return match p.to_str() {
+            Some(t) => super::keys::path_of_text(t),
+            None => Some(p),
+        };
+    }
+    Some(workdir.join(super::keys::path_of_text(text)?))
 }
 
 /// The command a setting runs, as written; None for one that names no command (core.hooksPath,
@@ -158,11 +194,16 @@ fn is_pattern(text: &str) -> bool {
 /// The readings of `text` to follow: as written, and from each substitution followed by a `/`
 /// on, relative to the working tree (`$(git rev-parse --show-toplevel)/x`, `` `pwd`/x ``,
 /// `${PWD%/}/x`, `$HOME/x`: its value may be the working folder). One that starts with a
-/// substitution not followed by `/` names nothing knowable.
+/// substitution followed by anything else (`$(git rev-parse --show-toplevel)tools/x`,
+/// `"$GIT_DIR"x`) reads the rest relative to the working tree the same way: the value may be
+/// the working folder with its trailing `/`.
 fn readings(text: &str) -> Vec<String> {
     let mut out = Vec::new();
-    if !text.starts_with(shell::SUB) {
-        out.push(text.to_owned());
+    match text.strip_prefix(shell::SUB) {
+        None => out.push(text.to_owned()),
+        // `…/` and `$A$B` are read by the loop below.
+        Some(rest) if !rest.is_empty() && !rest.starts_with(['/', shell::SUB]) => out.push(rest.to_owned()),
+        Some(_) => {}
     }
     for (i, _) in text.match_indices(shell::SUB) {
         let rest = &text[i + shell::SUB.len_utf8()..];
@@ -197,34 +238,71 @@ fn readings(text: &str) -> Vec<String> {
 /// A path pattern (`is_pattern`) also follows the nearest folder at or above it that the
 /// working tree has now, whose version covers every match: the whole tree only when the
 /// pattern is at its top or nothing above it is there.
-fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf> {
+///
+/// A word of a hook's script (`hook`) counts only with a `/` or `\` in it: a bare word there is
+/// a command or its argument (`npx lint-staged`, `npm test`, `git diff`), not a script path.
+/// One that names nothing on disk counts only when it reads as a path from a place (`./x`,
+/// `../x`, an absolute or `~` path, or a first folder the working tree has now), so a ref or a
+/// message (`origin/main`, `and/or`) follows nothing.
+///
+/// A path whose bytes name no file here (`placed`) is named in `unread`.
+fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, unread: &mut Vec<String>) -> Vec<PathBuf> {
     if word.text.contains("://") || word.text.starts_with(['-', '%']) {
         return Vec::new();
     }
-    let at = |w: &str| if w.starts_with('~') { crate::paths::expand_home(w, home) } else { workdir.join(w) };
+    if hook && !word.text.contains(['/', '\\']) {
+        return Vec::new();
+    }
     let mut out: Vec<PathBuf> = Vec::new();
-    for r in readings(&word.text) {
+    for r in readings(&native_spelling(&word.text.replace('\\', "/"), cfg!(windows))) {
         let slashed = r.replace('\\', "/");
-        let shown = shell::literal(&slashed);
+        // A hook's quoted `~` (`"~/x"`) is a folder of that name: sh expands only a bare one.
+        // It counts only when it is there: a message's `'~/.x'` is no path.
+        let tilde = hook && slashed.starts_with(shell::TILDE);
+        let shown = if tilde { format!("./{}", shell::literal(&slashed)) } else { shell::literal(&slashed) };
+        let from_a_place = |shown: &str| !tilde && from_a_place(workdir, shown);
         if !slashed.contains(shell::SUB) {
-            let path = at(&shown);
             // A whole word with shell punctuation in it is a command line (`./a; ./b`): its
             // pieces count. The part before a `:` counts as the word it was cut from.
             let named = word.escaped || ((shown.contains('/') || word.text.contains('/')) && !shown.contains(BREAKS));
-            // A place that may not be followed counts as there without being looked at: `scan`
-            // notes it and leaves it out.
-            let far = super::follow::far(&path, workdir);
-            let exists = far || std::fs::symlink_metadata(&path).is_ok();
-            let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
-            if (named || exists) && !root && !out.contains(&path) {
-                out.push(path);
+            match placed(workdir, home, &shown) {
+                // Bytes that name no file here: unread when they would be followed by name.
+                None if named && (!hook || from_a_place(&shown)) => note(unread, &shown),
+                None => {}
+                Some(path) => {
+                    // A place that may not be followed counts as there without being looked
+                    // at: `scan` notes it and leaves it out.
+                    let far = super::follow::far(&path, workdir);
+                    let exists = far || std::fs::symlink_metadata(&path).is_ok();
+                    let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
+                    let placed = exists || !hook || from_a_place(&shown);
+                    if (named || exists) && placed && !root && !out.contains(&path) {
+                        out.push(path);
+                    }
+                }
             }
         }
         if is_pattern(&slashed) {
             // The literal part before the first glob, up to its last folder.
             let fixed = shell::literal(slashed.split(GLOBS).next().unwrap_or_default());
+            // A quoted `~` stays a folder of that name here too (`"~/tools/"*.sh`).
+            let fixed = if tilde { format!("./{fixed}") } else { fixed };
             let dir = fixed.rfind('/').map_or("", |i| &fixed[..i]);
-            let mut p = if dir.is_empty() { workdir.to_path_buf() } else { at(dir) };
+            // A hook's pattern into installed packages (lefthook's
+            // `$dir/node_modules/lefthook-${os}-${cpu}/bin/lefthook`) names no file the branch
+            // carries, and the nearest folder there now may be the working tree's top.
+            if hook && dir.split('/').any(|part| part.eq_ignore_ascii_case("node_modules")) {
+                continue;
+            }
+            // A hook's whole word with shell punctuation before its glob (`s=$dir/$n`) is a
+            // command line: its pieces (`$dir/$n`) are read apart.
+            if hook && fixed.contains(BREAKS) {
+                continue;
+            }
+            let Some(mut p) = (if dir.is_empty() { Some(workdir.to_path_buf()) } else { placed(workdir, home, dir) }) else {
+                note(unread, &fixed);
+                continue;
+            };
             while !super::follow::far(&p, workdir) && std::fs::symlink_metadata(&p).is_err() {
                 if !p.pop() {
                     break;
@@ -236,6 +314,43 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf
         }
     }
     out
+}
+
+/// The `/`-separated `text` as a program on Windows (`windows`) opens it: Git for Windows'
+/// shell reads `/c/x` and `/cygdrive/c/x` as `C:/x`, and `//?/C:/x`, `//./C:/x` and `/??/C:/x`
+/// name `C:/x`, `//?/UNC/server/share/x` names `//server/share/x`. Anything else, and every
+/// text elsewhere, stays as written. Pure.
+fn native_spelling(text: &str, windows: bool) -> Cow<'_, str> {
+    if !windows {
+        return Cow::Borrowed(text);
+    }
+    // A quoted `?` is kept apart from a glob's (`shell::literal`).
+    let at = text.char_indices().nth(4).map_or(text.len(), |(i, _)| i);
+    let (head, rest) = text.split_at(at);
+    for prefix in ["//?/", "//./", "/??/"] {
+        if shell::literal(head) != prefix {
+            continue;
+        }
+        if rest.get(..4).is_some_and(|u| u.eq_ignore_ascii_case("unc/")) {
+            return Cow::Owned(format!("//{}", &rest[4..]));
+        }
+        let drive = rest.as_bytes().first().is_some_and(u8::is_ascii_alphabetic) && rest.as_bytes().get(1) == Some(&b':');
+        return if drive { Cow::Owned(rest.to_owned()) } else { Cow::Borrowed(text) };
+    }
+    match crate::gpg_prompt::program::msys_candidates(text, None).first() {
+        Some(p) => Cow::Owned(p.to_string_lossy().replace('\\', "/")),
+        None => Cow::Borrowed(text),
+    }
+}
+
+/// Whether the `/`-separated `shown` reads as a path from a known place: `./` or `../`, an
+/// absolute or `~` path, or a first part the working tree has now (`scripts/check.sh`).
+fn from_a_place(workdir: &Path, shown: &str) -> bool {
+    let first = shown.split('/').next().unwrap_or_default();
+    matches!(first, "." | ".." | "") || first.starts_with('~') || Path::new(shown).is_absolute() || {
+        let top = placed(workdir, None, first);
+        top.is_some_and(|top| !super::follow::far(&top, workdir) && std::fs::symlink_metadata(&top).is_ok())
+    }
 }
 
 #[cfg(test)]

@@ -131,3 +131,29 @@ fn program_settings_that_arent_utf8_are_still_scanned() {
     assert!(!before.covers(&scan_at(&dir).unwrap().print()));
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_path_read_back_from_its_text_has_the_same_bytes() {
+    for text in ["tools/x.sh", "caf\u{e9}/x.sh", "odd\u{FFFD}name/\u{FFFD}FF.sh", ""] {
+        assert_eq!(path_of_text(&text_of(text.as_bytes())), Some(std::path::PathBuf::from(text)), "{text:?}");
+    }
+    // A mark not written by `text_of` names nothing.
+    assert_eq!(path_of_text("x\u{FFFD}"), None);
+    assert_eq!(path_of_text("x\u{FFFD}G1"), None);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_path_that_isn_t_utf8_is_read_by_its_bytes() {
+    use std::os::unix::ffi::OsStrExt;
+    for bytes in [&b"tools/\xff.sh"[..], b"\xfe\xff", b"a\xef\xbf\xbd\xc3/x"] {
+        let path = path_of_text(&text_of(bytes)).expect("a path holds any bytes here");
+        assert_eq!(path.as_os_str().as_bytes(), bytes);
+    }
+}
+
+#[cfg(not(unix))]
+#[test]
+fn a_path_that_isn_t_utf8_names_nothing_here() {
+    assert_eq!(path_of_text(&text_of(b"tools/\xff.sh")), None);
+}

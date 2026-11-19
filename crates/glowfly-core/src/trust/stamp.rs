@@ -2,7 +2,7 @@
 //! the repository's own config files and the files they include, of each file in the hooks
 //! folder, of the commands file, of the todo and strategy files of a rebase or pick in progress
 //! (`steps::FILES`), and the commit HEAD is on (the version of the hooks and config
-//! programs that follow the working tree); the config files and hooks of its submodules' git
+//! programs that follow the working tree) with each followed file's size and times; the config files and hooks of its submodules' git
 //! dirs (`repo::submodule_stamps`), and the commit each submodule that follows its own working
 //! tree is on. Stats and small reads only: while the stamp is unchanged, the scan it was taken
 //! with still stands, so frequent reads (a status read by git) can reuse it.
@@ -46,9 +46,13 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
     repo.head().ok().and_then(|r| r.target()).hash(&mut h);
     crate::repo::submodule_stamps(repo, std::time::SystemTime::now(), &mut h);
     if let Some(w) = repo.workdir() {
+        followed_meta(w, scan, &mut h);
         for sub in scan.submodules.iter().filter(|s| !s.scan.follows.is_empty()) {
-            let head = Repository::open(w.join(&sub.path)).ok().and_then(|r| r.head().ok().and_then(|r| r.target()));
+            // By its bytes, as the scan opened it.
+            let folder = w.join(super::keys::path_of_text(&sub.path).unwrap_or_else(|| PathBuf::from(&sub.path)));
+            let head = Repository::open(&folder).ok().and_then(|r| r.head().ok().and_then(|r| r.target()));
             (&sub.path, head).hash(&mut h);
+            followed_meta(&folder, &sub.scan, &mut h);
         }
     }
     h.finish()
@@ -79,7 +83,9 @@ const MAX_PATH_BYTES: usize = 4096;
 /// may name: `~` from the home folder, and a relative one from the git dir, from the common dir
 /// (a linked worktree's shared config) and from beside each file already found (git resolves
 /// it from the folder of the file that includes it), each folder once. Bounded by
-/// `MAX_FOLDERS`, `MAX_INCLUDES` and `MAX_PATH_BYTES`; an include past one is `unsure`.
+/// `MAX_FOLDERS`, `MAX_INCLUDES` and `MAX_PATH_BYTES`; an include past one is `unsure`. A name
+/// or path that isn't UTF-8 is read by its bytes (`keys::text_of`, `keys::path_of_text`);
+/// one whose bytes name no file here (Windows) is `unsure` too.
 pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
     let mut out: Vec<Include> = Vec::new();
     let Ok(config) = repo.config() else { return out };
@@ -93,26 +99,34 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
         let Ok(c) = config.open_level(level) else { continue };
         let Ok(mut entries) = c.entries(None) else { continue };
         while let Some(Ok(e)) = entries.next() {
-            let name = e.name().unwrap_or_default().to_owned();
+            let name = super::keys::text_of(e.name_bytes()).into_owned();
             let lower = name.to_ascii_lowercase();
             let included = lower == "include.path" || (lower.starts_with("includeif.") && lower.ends_with(".path"));
             if !included {
                 continue;
             }
             // A bare key names no file (git refuses one).
-            let Some(v) = crate::config_entry::utf8(e) else { continue };
-            let p = crate::paths::expand_home(v, crate::settings::home_dir().as_deref());
+            let Some(v) = crate::config_entry::raw(e).map(super::keys::text_of) else { continue };
+            let v = v.as_ref();
+            let p = match super::keys::path_of_text(v) {
+                Some(p) => match p.to_str() {
+                    Some(t) => Some(crate::paths::expand_home(t, crate::settings::home_dir().as_deref())),
+                    // Not UTF-8: a `~` is git's to expand, by bytes Glowfly doesn't follow.
+                    None => (!v.starts_with('~')).then_some(p),
+                },
+                None => None,
+            };
             let long = |p: &Path| p.as_os_str().len() > MAX_PATH_BYTES;
-            let paths: Option<Vec<PathBuf>> = if long(&p) {
-                None
-            } else if p.is_absolute() {
-                Some(vec![p])
-            } else if full || listed >= MAX_INCLUDES {
-                None
-            } else {
-                listed += 1;
-                let joined: Vec<PathBuf> = folders.iter().map(|d| d.join(&p)).collect();
-                (!joined.iter().any(|j| long(j))).then_some(joined)
+            let paths: Option<Vec<PathBuf>> = match p {
+                None => None,
+                Some(p) if long(&p) => None,
+                Some(p) if p.is_absolute() => Some(vec![p]),
+                Some(_) if full || listed >= MAX_INCLUDES => None,
+                Some(p) => {
+                    listed += 1;
+                    let joined: Vec<PathBuf> = folders.iter().map(|d| d.join(&p)).collect();
+                    (!joined.iter().any(|j| long(j))).then_some(joined)
+                }
             };
             let unsure = paths.is_none();
             let paths = paths.unwrap_or_default();
@@ -130,6 +144,14 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
         }
     }
     out
+}
+
+/// `meta` of each file `scan` follows in the working tree `workdir`, whose bytes the scan
+/// reads (`TrustScan::follow_digests`): an uncommitted change to one changes the stamp.
+fn followed_meta(workdir: &Path, scan: &TrustScan, h: &mut DefaultHasher) {
+    for f in scan.follows.iter().filter(|f| !f.hooks && !f.path.is_empty()) {
+        meta_near(&super::follow::on_disk(workdir, &f.path), workdir, h);
+    }
 }
 
 /// `meta` of `path` where it may be followed from `home` (`follow::far`); otherwise only that
