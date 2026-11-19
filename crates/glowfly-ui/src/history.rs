@@ -3,7 +3,9 @@
 //! its diff of the file or, in the File view, the whole file as of it (`history_file.rs`); the
 //! header's Diff | File | Blame switch picks between those and the blame as of it. A
 //! folder entry lists its changed files (`history_folder.rs`), one of which is shown. Each
-//! commit can restore its version of a file; Open and Show act on the file as it is today.
+//! commit can restore its version of a file; Open and Show act on the file as it is today. The
+//! entry list answers Up/Down, Page Up/Page Down and Home/End while nothing has the focus,
+//! through `list_focus.rs`.
 
 use super::UiCache;
 use super::common::{menu_item, menu_item_if, short, status_color, with_code};
@@ -11,6 +13,7 @@ use super::empty_state::{EmptyIcon, empty_state};
 use super::file_buttons::{self, CommitFile};
 use super::file_menu;
 use super::file_view_switch::{self, FileShow};
+use super::list_focus;
 use super::theme::color;
 use super::widgets::{self, paint_cut_text};
 use crate::theme::sizes::ControlSize;
@@ -18,7 +21,7 @@ use crate::theme::type_scale;
 use crate::widgets::buttons;
 use crate::widgets::paint_text;
 use crate::widgets::row_menu::RowMenuExt;
-use eframe::egui::{self, Align, Align2, CursorIcon, Key, Layout, RichText, Sense, Ui, pos2, vec2};
+use eframe::egui::{self, Align, Align2, CursorIcon, Layout, RichText, Sense, Ui, pos2, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{DiffTarget, HistoryEntry};
 use glowfly_model::keymap::Keymap;
@@ -26,11 +29,18 @@ use glowfly_model::msg::BlameMsg;
 use glowfly_model::msg::HistoryMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::state::history::{FileHistoryView, HistoryKind, HistoryPane};
+use glowfly_model::state::list_keys::{KeySet, ListKey, Place};
 use glowfly_model::state::tool_compare::{OPEN_IN_DIFF_TOOL, ToolSetup};
 use glowfly_model::state::{AppState, ViewState};
 use glowfly_model::tools::ToolsMsg;
 
 const ROW_H: f32 = 44.0;
+
+/// The rows a Page Up or Page Down moves in a list `height` high: the rows in view less one
+/// (the last stays in view, as in the graph), at least one.
+pub(super) fn page_rows(height: f32) -> usize {
+    ((height / ROW_H).floor() as usize).saturating_sub(1).max(1)
+}
 /// The row menu's item that blames the file as of the entry's commit.
 pub(super) const BLAME_AT: &str = "Blame at this commit";
 pub(super) const NO_SELECTION_TITLE: &str = "No commit selected";
@@ -98,7 +108,7 @@ fn header(ui: &mut Ui, t: Lang, keys: &Keymap, view: &FileHistoryView, msgs: &mu
 
 fn list(ui: &mut Ui, st: &AppState, scroll_to: Option<usize>, msgs: &mut Vec<Msg>) {
     let Some(view) = &st.session.history.view else { return };
-    keyboard(ui, view, msgs);
+    keyboard(ui, st, view, page_rows(ui.available_height()), msgs);
     let in_wd = view.in_workdir(st.snap.as_ref());
     let tools = ToolSetup::of(st.settings.lang(), &st.settings.external_tools);
     if view.entries.is_empty() {
@@ -202,20 +212,29 @@ fn row(ui: &Ui, st: &AppState, rect: egui::Rect, e: &HistoryEntry, kind: History
     date_rect
 }
 
-/// Up and Down move the selection while no text field has focus.
-fn keyboard(ui: &Ui, view: &FileHistoryView, msgs: &mut Vec<Msg>) {
-    if view.entries.is_empty() || ui.ctx().memory(|m| m.focused().is_some()) {
+/// The list's keys while nothing has the keyboard focus (a text field, the terminal, a button
+/// or the folder entry's file list keeps its own) and no dialog, palette or credential prompt
+/// is open: Up/Down, Page Up/Page Down (`page` rows) and Home/End move the selection among the
+/// loaded entries, read through the shared list keys (`list_focus.rs`). The presses of a frame
+/// are applied in order and send one selection.
+fn keyboard(ui: &Ui, st: &AppState, view: &FileHistoryView, page: usize, msgs: &mut Vec<Msg>) {
+    let ctx = ui.ctx();
+    let covered = st.modal.is_some() || st.palette.is_some() || st.askpass.showing();
+    if view.entries.is_empty() || covered || ctx.memory(|m| m.focused().is_some()) {
         return;
     }
-    let (up, down) =
-        ui.input(|i| (i.modifiers.is_none() && i.key_pressed(Key::ArrowUp), i.modifiers.is_none() && i.key_pressed(Key::ArrowDown)));
-    let next = match (view.selected, up, down) {
-        (Some(s), true, false) if s > 0 => s - 1,
-        (Some(s), false, true) if s + 1 < view.entries.len() => s + 1,
-        (None, _, true) | (None, true, _) => 0,
-        _ => return,
-    };
-    msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(next)));
+    let len = view.entries.len();
+    let from = view.selected.filter(|&i| i < len);
+    let mut at = from;
+    for key in list_focus::take_unfocused(ctx, page, KeySet::MOVES) {
+        let ListKey::Move(mv) = key else { continue };
+        if let Some(to) = mv.target(len, at.map_or(Place::Outside, Place::At)) {
+            at = Some(to);
+        }
+    }
+    if let Some(to) = at.filter(|_| at != from) {
+        msgs.push(Msg::History(HistoryMsg::SelectHistoryEntry(to)));
+    }
 }
 
 /// The selected commit: summary, author and date, links, (in a folder history) its changed
