@@ -47,7 +47,7 @@ fn put_back_keeps_staged_and_unstaged_apart() {
 }
 
 /// The lines 1..9, each on its own line, with the `change`d ones replaced.
-pub(super) fn lines(change: &[(usize, &str)]) -> String {
+fn lines(change: &[(usize, &str)]) -> String {
     (1..=9)
         .map(|n| {
             let line = change.iter().find(|(i, _)| *i == n).map_or(n.to_string(), |(_, t)| (*t).to_owned());
