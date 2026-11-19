@@ -22,9 +22,10 @@ use glowfly_model::state::{AppState, Modal};
 use glowfly_model::tag::TagMsg;
 use std::path::PathBuf;
 
-const ITEMS: [&str; 9] = [
+const ITEMS: [&str; 10] = [
     "Checkout (detached)",
     "Annotate…",
+    "Compare with main",
     "Push to",
     "Hide in graph",
     "Show only this",
@@ -44,7 +45,7 @@ fn with_tags(theme: ThemeChoice, name: &str, remotes: &[&str]) -> (AppState, Pat
 
 /// The middle of the sidebar row for tag `name`: the leftmost match, since the graph's ref chip
 /// may carry the same label.
-fn tag_row(h: &H, name: &str) -> Pos2 {
+pub(super) fn tag_row(h: &H, name: &str) -> Pos2 {
     let r = h.get_all_by_label(name).filter_map(|n| n.bounding_box()).min_by(|a, b| a.x0.total_cmp(&b.x0)).expect("the row");
     pos2(((r.x0 + r.x1) / 2.0) as f32, ((r.y0 + r.y1) / 2.0) as f32)
 }
@@ -74,6 +75,7 @@ fn tag_row_menu() {
     // The name is in the header (and on the row and the graph's chip), never in an item.
     let named: Vec<String> = texts_containing(&h, "v0.1.0").into_iter().filter(|l| l != "v0.1.0").collect();
     assert!(named.is_empty(), "no item repeats the tag's name: {named:?}");
+    assert!(h.get_by_label("Compare with main").is_disabled(), "v0.1.0 is at HEAD's commit");
     h.check_snapshot("tag_menu");
     open_submenu(&mut h, "Delete from remote");
     h.check_snapshot("tag_menu_delete_submenu");

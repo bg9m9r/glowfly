@@ -82,6 +82,7 @@ Button "Tag v0.1.0"
 Label "v0.1.0"
 Button "Checkout (detached)"
 Button "Annotate…"
+Button "Compare with main" [disabled]
 Button "Push to"
 Button "origin"
 Button "backup"

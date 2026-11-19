@@ -78,6 +78,7 @@ Button "Tag v0.1.0"
 Label "v0.1.0"
 Button "Checkout (detached)"
 Button "Annotate…"
+Button "Compare with main" [disabled]
 Button "Hide in graph"
 Button "Show only this"
 Button "Copy name"

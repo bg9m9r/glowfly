@@ -1,7 +1,8 @@
 //! A remote-tracking branch's operations: the local branches that track it (and whether checking
 //! one out fast-forwards it first), whether it can be checked out or compared with HEAD, and why
 //! not, and how a graph label splits into remote and branch. The remote branch menu shows these
-//! reasons on disabled items and `update` logs the same text when it refuses a late message.
+//! reasons on disabled items and `update` logs the same text when it refuses a late message. The
+//! compare reasons are shared with the local branch and tag menus.
 
 use git2::Oid;
 use glowfly_core::branch_ops::{FastForward, NameProblem, check_branch_name, fast_forward_state};
@@ -103,20 +104,22 @@ pub fn is_upstream_of_head(snap: &Snapshot, remote: &str, name: &str) -> bool {
     snap.locals.iter().any(|b| b.is_head && tracks(b, remote, name))
 }
 
-/// Why commit `oid` (the tip of the branch called `name` in messages) can't be compared with
-/// HEAD's commit as a selected pair.
-pub fn compare_blocked(snap: &Snapshot, oid: Oid, name: &str) -> Option<String> {
+/// Why commit `oid` (the tip of the branch, or the tag's commit, called `name` in messages) can't
+/// be compared with HEAD's commit as a selected pair: the remote branch, local branch and tag
+/// menus grey their Compare with item with it, and `update` logs it when it refuses a late
+/// message.
+pub fn compare_blocked(t: Lang, snap: &Snapshot, oid: Oid, name: &str) -> Option<String> {
     let (Some(current), Some(head)) = (snap.head_branch.as_deref(), snap.head_oid) else {
-        return Some("Check out a branch with commits to compare with.".to_owned());
+        return Some(t.tr("remote_branch.compare.no_branch").to_owned());
     };
     if head == oid {
-        return Some(format!("{name} is at the same commit as {current}."));
+        return Some(t.trf("remote_branch.compare.same_commit", &[("name", &name), ("branch", &current)]));
     }
     if !snap.row_of.contains_key(&oid) {
-        return Some(format!("{name}'s commit isn't loaded in the graph."));
+        return Some(t.trf("remote_branch.compare.not_loaded", &[("name", &name)]));
     }
     if !snap.row_of.contains_key(&head) {
-        return Some(format!("{current}'s commit isn't loaded in the graph."));
+        return Some(t.trf("remote_branch.compare.not_loaded", &[("name", &current)]));
     }
     None
 }

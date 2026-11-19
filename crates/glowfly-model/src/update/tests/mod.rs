@@ -11,6 +11,7 @@ pub(super) mod accessibility_tests;
 pub(super) mod avatars_tests;
 pub(super) mod branch_checkout_tests;
 pub(super) mod commit_box_tests;
+pub(super) mod compare_head_tests;
 pub(super) mod conflict_picks_tests;
 pub(super) mod conflict_trivial_tests;
 pub(super) mod copy_message_tests;

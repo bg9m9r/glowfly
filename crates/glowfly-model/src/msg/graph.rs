@@ -43,8 +43,8 @@ pub enum SelectionMsg {
     ToggleWip,
     /// The commit menu's Compare with working directory.
     CompareWithWorkdir(Oid),
-    /// The remote branch menu's Compare with the current branch: select HEAD's commit and `oid`
-    /// (named `name` in messages) as a pair.
+    /// The branch and tag menus' Compare with the current branch (remote branch, local branch,
+    /// tag): select HEAD's commit and `oid` (named `name` in messages) as a pair.
     CompareWithHead { oid: Oid, name: String },
     /// The files that differ from commit `oid` to the working tree, read for request
     /// `generation`.

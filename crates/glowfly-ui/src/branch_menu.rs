@@ -2,7 +2,8 @@
 //! for a branch another worktree has, open that worktree), push, push to another remote (only
 //! when that offers more than Push) and fast-forward (only with an upstream); merge and rebase
 //! (split rows whose eye button previews them), interactive rebase, checking for conflicts and
-//! comparing with its version before the last rebase (Range-diff); a new branch or worktree,
+//! comparing with the checked-out branch, and comparing with its version before the last rebase
+//! (Range-diff); a new branch or worktree,
 //! rename and upstream (with remotes); the stack items for a branch in a stack (`stack_menu.rs`);
 //! pull requests (pushing the branch first when the code host lacks it, into the branch selected
 //! before; with remotes but no code host, a disabled item saying why; with no remotes, none);
@@ -38,12 +39,14 @@ use glowfly_model::msg::BranchMsg;
 use glowfly_model::msg::Msg;
 use glowfly_model::msg::OpPreviewMsg;
 use glowfly_model::msg::RebaseMsg;
+use glowfly_model::msg::SelectionMsg;
 use glowfly_model::range_diff::RangeDiffMsg;
 use glowfly_model::state::branches;
 use glowfly_model::state::branches::push as branch_push;
 use glowfly_model::state::commit_menu::menu_trim;
 use glowfly_model::state::custom_commands::MenuCommands;
 use glowfly_model::state::gitflow_base::{Deleting, guard};
+use glowfly_model::state::remote_branch;
 use glowfly_model::state::worktree_branches::{Elsewhere, checkout_elsewhere, delete_blocked, fast_forward_blocked, held_blocked};
 use glowfly_model::state::{ForgeState, Selection};
 use glowfly_model::worktree::WorktreeMsg;
@@ -207,6 +210,11 @@ fn integrate_items(ui: &mut egui::Ui, t: Lang, b: &BranchInfo, snap: &Snapshot, 
         menu_row(msgs, ui, item_named(named(t.tr("branch.menu.interactive_onto"), &on)), onto);
         let check = Msg::ConflictCheck(ConflictCheckMsg::CheckBranch(theirs));
         menu_row(msgs, ui, item_named(named(t.tr("branch.menu.check_conflicts_with"), &on)), check);
+        if let Some(oid) = b.oid {
+            let compare = Msg::Selection(SelectionMsg::CompareWithHead { oid, name: name.to_owned() });
+            let blocked = remote_branch::compare_blocked(t, snap, oid, name);
+            menu_row(msgs, ui, item_named(named(t.tr("remote_branch.menu.compare_with"), &on)).blocked(blocked.as_deref()), compare);
+        }
     }
     if b.oid.is_some() {
         let compare = Msg::RangeDiff(RangeDiffMsg::OpenRewrite(format!("refs/heads/{name}")));
