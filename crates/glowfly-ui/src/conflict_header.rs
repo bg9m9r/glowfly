@@ -218,7 +218,7 @@ fn trailing(ui: &mut Ui, t: Lang, view: &ConflictView, text: bool, tool: MergeTo
         msgs.push(Msg::Conflict(ConflictMsg::CloseConflict));
     }
     if text {
-        let can = view.can_save() && !in_tool;
+        let can = view.mark_resolved_enabled(in_tool);
         let why = if in_tool {
             t.tr("tools.in_merge_tool").to_owned()
         } else if view.saving {
