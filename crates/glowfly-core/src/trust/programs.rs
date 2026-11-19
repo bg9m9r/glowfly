@@ -33,8 +33,14 @@ const BREAKS: &[char] = &[';', '|', '&', '(', ')', '<', '>', '`', '"', '\'', '='
 /// isn't listed (`Include::unsure`) is added the same way, with the working tree itself.
 ///
 /// A file at a place `net_path::may_follow` refuses from the working tree is never looked at:
-/// it is left out and noted in `offsite` (as shown, each once).
-pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: &mut Vec<String>) -> Vec<PathBuf> {
+/// it is left out and noted in `offsite` (as shown, each once). A path whose bytes (a value
+/// that isn't UTF-8) name no file here (Windows) is named in `unread` (`placed`).
+pub(super) fn scan(
+    repo: &Repository,
+    config: &mut Vec<ConfigCommand>,
+    offsite: &mut Vec<String>,
+    unread: &mut Vec<String>,
+) -> Vec<PathBuf> {
     let Some(workdir) = repo.workdir() else { return Vec::new() };
     let home = crate::settings::home_dir();
     let mut out: Vec<PathBuf> = Vec::new();
@@ -44,13 +50,13 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: 
         }
     };
     for c in config.iter() {
-        if let Some(path) = ca_file(workdir, home.as_deref(), c) {
+        if let Some(path) = ca_file(workdir, home.as_deref(), c, unread) {
             add(path);
             continue;
         }
         let Some(text) = command_text(c) else { continue };
         for word in candidates(text) {
-            path_of(workdir, home.as_deref(), &word, false).into_iter().for_each(&mut add);
+            path_of(workdir, home.as_deref(), &word, false, unread).into_iter().for_each(&mut add);
         }
     }
     for inc in super::stamp::include_entries(repo) {
@@ -74,15 +80,41 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: 
 }
 
 /// The CA file or folder a TLS setting reads (`http.sslCAInfo`, `http.sslCAPath`): its whole
-/// value is one path, as git reads it (a `~` expanded), relative to the working tree.
-fn ca_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand) -> Option<PathBuf> {
+/// value is one path, as git reads it (a `~` expanded), relative to the working tree. One whose
+/// bytes name no file here is named in `unread`, and None.
+fn ca_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand, unread: &mut Vec<String>) -> Option<PathBuf> {
     let key = c.key.to_ascii_lowercase();
     let reads = super::is_network_setting(&c.key) && (key.ends_with(".sslcainfo") || key.ends_with(".sslcapath"));
     if !reads || c.value.is_empty() {
         return None;
     }
-    let p = if c.value.starts_with('~') { crate::paths::expand_home(&c.value, home) } else { PathBuf::from(&c.value) };
+    let p = if c.value.starts_with('~') { Some(crate::paths::expand_home(&c.value, home)) } else { super::keys::path_of_text(&c.value) };
+    let Some(p) = p else {
+        note(unread, &c.value);
+        return None;
+    };
     Some(if p.is_absolute() { p } else { workdir.join(p) })
+}
+
+/// Adds `text` to `unread`, once.
+fn note(unread: &mut Vec<String>, text: &str) {
+    if !unread.iter().any(|u| u == text) {
+        unread.push(text.to_owned());
+    }
+}
+
+/// `text` (a value as `keys::text_of` reads it) as a path: from the working tree, or with a
+/// leading `~` from `home`, by its bytes (`keys::path_of_text`). None where those can't name a
+/// file (not UTF-8, on Windows).
+fn placed(workdir: &Path, home: Option<&Path>, text: &str) -> Option<PathBuf> {
+    if text.starts_with('~') {
+        let p = crate::paths::expand_home(text, home);
+        return match p.to_str() {
+            Some(t) => super::keys::path_of_text(t),
+            None => Some(p),
+        };
+    }
+    Some(workdir.join(super::keys::path_of_text(text)?))
 }
 
 /// The command a setting runs, as written; None for one that names no command (core.hooksPath,
@@ -212,38 +244,48 @@ fn readings(text: &str) -> Vec<String> {
 /// One that names nothing on disk counts only when it reads as a path from a place (`./x`,
 /// `../x`, an absolute or `~` path, or a first folder the working tree has now), so a ref or a
 /// message (`origin/main`, `and/or`) follows nothing.
-fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool) -> Vec<PathBuf> {
+///
+/// A path whose bytes name no file here (`placed`) is named in `unread`.
+fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, unread: &mut Vec<String>) -> Vec<PathBuf> {
     if word.text.contains("://") || word.text.starts_with(['-', '%']) {
         return Vec::new();
     }
     if hook && !word.text.contains(['/', '\\']) {
         return Vec::new();
     }
-    let at = |w: &str| if w.starts_with('~') { crate::paths::expand_home(w, home) } else { workdir.join(w) };
     let mut out: Vec<PathBuf> = Vec::new();
     for r in readings(&native_spelling(&word.text.replace('\\', "/"), cfg!(windows))) {
         let slashed = r.replace('\\', "/");
         let shown = shell::literal(&slashed);
         if !slashed.contains(shell::SUB) {
-            let path = at(&shown);
             // A whole word with shell punctuation in it is a command line (`./a; ./b`): its
             // pieces count. The part before a `:` counts as the word it was cut from.
             let named = word.escaped || ((shown.contains('/') || word.text.contains('/')) && !shown.contains(BREAKS));
-            // A place that may not be followed counts as there without being looked at: `scan`
-            // notes it and leaves it out.
-            let far = super::follow::far(&path, workdir);
-            let exists = far || std::fs::symlink_metadata(&path).is_ok();
-            let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
-            let placed = exists || !hook || from_a_place(workdir, &shown);
-            if (named || exists) && placed && !root && !out.contains(&path) {
-                out.push(path);
+            match placed(workdir, home, &shown) {
+                // Bytes that name no file here: unread when they would be followed by name.
+                None if named && (!hook || from_a_place(workdir, &shown)) => note(unread, &shown),
+                None => {}
+                Some(path) => {
+                    // A place that may not be followed counts as there without being looked
+                    // at: `scan` notes it and leaves it out.
+                    let far = super::follow::far(&path, workdir);
+                    let exists = far || std::fs::symlink_metadata(&path).is_ok();
+                    let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
+                    let placed = exists || !hook || from_a_place(workdir, &shown);
+                    if (named || exists) && placed && !root && !out.contains(&path) {
+                        out.push(path);
+                    }
+                }
             }
         }
         if is_pattern(&slashed) {
             // The literal part before the first glob, up to its last folder.
             let fixed = shell::literal(slashed.split(GLOBS).next().unwrap_or_default());
             let dir = fixed.rfind('/').map_or("", |i| &fixed[..i]);
-            let mut p = if dir.is_empty() { workdir.to_path_buf() } else { at(dir) };
+            let Some(mut p) = (if dir.is_empty() { Some(workdir.to_path_buf()) } else { placed(workdir, home, dir) }) else {
+                note(unread, &fixed);
+                continue;
+            };
             while !super::follow::far(&p, workdir) && std::fs::symlink_metadata(&p).is_err() {
                 if !p.pop() {
                     break;
@@ -289,8 +331,8 @@ fn native_spelling(text: &str, windows: bool) -> Cow<'_, str> {
 fn from_a_place(workdir: &Path, shown: &str) -> bool {
     let first = shown.split('/').next().unwrap_or_default();
     matches!(first, "." | ".." | "") || first.starts_with('~') || Path::new(shown).is_absolute() || {
-        let top = workdir.join(first);
-        !super::follow::far(&top, workdir) && std::fs::symlink_metadata(&top).is_ok()
+        let top = placed(workdir, None, first);
+        top.is_some_and(|top| !super::follow::far(&top, workdir) && std::fs::symlink_metadata(&top).is_ok())
     }
 }
 

@@ -290,15 +290,15 @@ fn a_remote_or_upstream_name_that_reads_as_an_option_asks() {
 #[test]
 fn a_home_relative_hooks_path_is_expanded_as_git_does() {
     let home = Path::new("/home/ada");
-    assert_eq!(home_expanded("~/hooks", Some(home)), Some(home.join("hooks")));
-    assert_eq!(home_expanded("~", Some(home)), Some(home.to_path_buf()));
+    assert_eq!(home_expanded(Path::new("~/hooks"), Some(home)), Some(home.join("hooks")));
+    assert_eq!(home_expanded(Path::new("~"), Some(home)), Some(home.to_path_buf()));
     let me = std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_default();
     if !me.is_empty() {
-        assert_eq!(home_expanded(&format!("~{me}/h"), Some(home)), Some(home.join("h")), "this user's own home");
+        assert_eq!(home_expanded(Path::new(&format!("~{me}/h")), Some(home)), Some(home.join("h")), "this user's own home");
     }
-    assert_eq!(home_expanded("~no-such-user-here/h", Some(home)), None, "a home that can't be found is unclear, never guessed");
-    assert_eq!(home_expanded(".githooks", Some(home)), Some(Path::new(".githooks").to_path_buf()));
-    assert_eq!(home_expanded("~/hooks", None), Some(Path::new("~/hooks").to_path_buf()));
+    assert_eq!(home_expanded(Path::new("~no-such-user-here/h"), Some(home)), None, "a home that can't be found is unclear, never guessed");
+    assert_eq!(home_expanded(Path::new(".githooks"), Some(home)), Some(Path::new(".githooks").to_path_buf()));
+    assert_eq!(home_expanded(Path::new("~/hooks"), None), Some(Path::new("~/hooks").to_path_buf()));
 }
 
 #[test]

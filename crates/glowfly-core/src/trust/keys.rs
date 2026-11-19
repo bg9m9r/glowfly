@@ -5,6 +5,7 @@
 
 use git2::Config;
 use std::borrow::Cow;
+use std::path::PathBuf;
 
 /// Single keys that name a program, as libgit2 returns them (lowercase), with their usual spelling.
 const COMMAND_KEYS: &[(&str, &str)] = &[
@@ -170,6 +171,42 @@ pub(super) fn text_of(bytes: &[u8]) -> Cow<'_, str> {
             Cow::Owned(out)
         }
     }
+}
+
+/// The bytes `text_of` wrote as `text`, as a path: by its bytes where a path may hold any
+/// (Unix), so a name that isn't UTF-8 is read as git reads it. None where it can't name one: on
+/// Windows, a value that isn't UTF-8 names no file Glowfly can open.
+pub(super) fn path_of_text(text: &str) -> Option<PathBuf> {
+    const MARK: char = '\u{FFFD}';
+    if !text.contains(MARK) {
+        return Some(PathBuf::from(text));
+    }
+    let mut bytes = Vec::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    let mut utf8 = [0u8; 4];
+    while let Some(c) = chars.next() {
+        if c == MARK && chars.next_if_eq(&MARK).is_none() {
+            let hex: String = chars.by_ref().take(2).collect();
+            bytes.push(u8::from_str_radix(&hex, 16).ok().filter(|_| hex.len() == 2)?);
+        } else {
+            bytes.extend_from_slice(c.encode_utf8(&mut utf8).as_bytes());
+        }
+    }
+    match String::from_utf8(bytes) {
+        Ok(s) => Some(PathBuf::from(s)),
+        Err(e) => os_path(e.into_bytes()),
+    }
+}
+
+#[cfg(unix)]
+fn os_path(bytes: Vec<u8>) -> Option<PathBuf> {
+    use std::os::unix::ffi::OsStringExt;
+    Some(PathBuf::from(std::ffi::OsString::from_vec(bytes)))
+}
+
+#[cfg(not(unix))]
+fn os_path(_bytes: Vec<u8>) -> Option<PathBuf> {
+    None
 }
 
 /// Whether git reaching `url` runs a command: the ext:: transport (any case, since a Windows
