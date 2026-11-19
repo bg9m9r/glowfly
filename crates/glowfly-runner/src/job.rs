@@ -130,15 +130,8 @@ impl Execute for JobEffect {
                     if stopped {
                         return Msg::Job(JobMsg::Stopped { output, undo });
                     }
-                    let mut output = output;
-                    // Through the gate like the job's own commands, as the one after them.
-                    let gate = cx.gate.map(|(g, _)| (g, cmds.len()));
-                    match on_fail_check.filter(|_| !ok && !halted) {
-                        Some(check) if git_ops::check_passes(&cwd, &check, prompts, gate, &mut output) => {
-                            Msg::Job(JobMsg::FailCheckPassed { output, undo })
-                        }
-                        _ => Msg::Job(JobMsg::JobDone { ok, output, undo }),
-                    }
+                    let check = on_fail_check.filter(|_| !ok && !halted);
+                    after_failure(cx, &cwd, check, prompts, cmds.len(), ok, output, undo)
                 }))
             }
             JobEffect::UndoRedo { cwd, action, redo, opts } => {
@@ -148,6 +141,26 @@ impl Execute for JobEffect {
                 Some(journal::around(&cwd, Some(op), || undo_run::undo_redo(&cwd, action, redo, opts, gate, cx.seams.trashers)))
             }
         }
+    }
+}
+
+/// The job's result: its `check` (`on_fail_check`, after it failed, unless the gate stopped it)
+/// runs first, through the gate like the job's own commands, as the one after its `count`.
+#[allow(clippy::too_many_arguments)]
+fn after_failure(
+    cx: &Cx<'_>,
+    cwd: &Path,
+    check: Option<Vec<String>>,
+    prompts: bool,
+    count: usize,
+    ok: bool,
+    mut output: String,
+    undo: Option<UndoResult>,
+) -> Msg {
+    let gate = cx.gate.map(|(g, _)| (g, count));
+    match check {
+        Some(check) if git_ops::check_passes(cwd, &check, prompts, gate, &mut output) => Msg::Job(JobMsg::FailCheckPassed { output, undo }),
+        _ => Msg::Job(JobMsg::JobDone { ok, output, undo }),
     }
 }
 
