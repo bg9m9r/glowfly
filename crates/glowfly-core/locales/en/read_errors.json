@@ -13,5 +13,6 @@
   "read_errors.old_file_unreadable": "the old file can't be read",
   "read_errors.open_failed": "Could not open {path}: {why}",
   "read_errors.panicked": "Glowfly hit an internal error ({effect}): {panic}",
-  "read_errors.stopped": "stopped"
+  "read_errors.stopped": "stopped",
+  "read_errors.unchecked_git_data": "This folder's Git data can't be checked ({what}), so Glowfly won't open it."
 }

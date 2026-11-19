@@ -83,7 +83,7 @@ fn a_hooks_folder_that_isnt_looked_at_holds_every_job_whatever_was_decided() {
     glowfly_core::gitcli::run(&dir, &glowfly_core::gitcli::args(&["config", "core.hooksPath", place]));
     let scan = glowfly_core::trust::scan_at(&dir).unwrap();
     assert_eq!(scan.offsite.len(), 1, "{scan:?}");
-    let reason = Unchecked::Offsite(scan.offsite.join(", "));
+    let reason = Unchecked::Offsite { places: scan.offsite.join(", "), files: None };
     // The setting itself asks first; a decision made on this very scan still doesn't cover
     // what wasn't read.
     assert!(matches!(verify(&check(&dir, None), &job(&dir)), Verdict::Stale(_)));
@@ -93,7 +93,24 @@ fn a_hooks_folder_that_isnt_looked_at_holds_every_job_whatever_was_decided() {
     let accepted = glowfly_model::effect::Accepted { at: None, reason };
     let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved.clone()) };
     assert!(matches!(verify(&once, &job(&dir)), Verdict::Pass(_)), "Trust and run passes it for this run");
-    assert!(matches!(verify(&check(&dir, saved), &job(&dir)), Verdict::Unchecked(_)));
+    assert!(matches!(verify(&check(&dir, saved.clone()), &job(&dir)), Verdict::Unchecked(_)));
+
+    // With a rebase file that can't be read too, one reason names both; accepting either
+    // alone doesn't pass the job.
+    let todo = dir.join(".git/rebase-merge/git-rebase-todo");
+    std::fs::create_dir_all(&todo).unwrap();
+    let files = "rebase-merge/git-rebase-todo".to_owned();
+    let both = Unchecked::Offsite { places: scan.offsite.join(", "), files: Some(files.clone()) };
+    let Verdict::Unchecked(found) = verify(&check(&dir, saved.clone()), &job(&dir)) else { panic!("held") };
+    assert_eq!(found.1, both);
+    for alone in [Unchecked::State(files), Unchecked::Offsite { places: scan.offsite.join(", "), files: None }] {
+        let accepted = glowfly_model::effect::Accepted { at: None, reason: alone };
+        let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved.clone()) };
+        assert!(matches!(verify(&once, &job(&dir)), Verdict::Unchecked(_)));
+    }
+    let accepted = glowfly_model::effect::Accepted { at: None, reason: both };
+    let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved) };
+    assert!(matches!(verify(&once, &job(&dir)), Verdict::Pass(_)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

@@ -31,6 +31,9 @@ pub enum ReadFailed {
     /// The opened folder's git files name `place` (as shown), a network place other than the
     /// folder's own (`Error::NetworkPointer`).
     NetworkPointer { place: String },
+    /// The opened folder's git files can't be checked for where they lead; `what` is the file
+    /// or place, as shown (`Error::UncheckedGitData`).
+    UncheckedGitData { what: String },
     /// Copy hunk as patch: git no longer produces the hunk on screen.
     DiffChanged,
     /// The unchanged lines: the file's hunks differ from the ones on screen now.
@@ -61,6 +64,7 @@ impl From<Error> for ReadFailed {
             Error::MissingContent(m) => ReadFailed::MissingContent { path: m.path, remote: m.remote },
             Error::LinkedFile(path) => ReadFailed::LinkedFile { path },
             Error::NetworkPointer(place) => ReadFailed::NetworkPointer { place },
+            Error::UncheckedGitData(what) => ReadFailed::UncheckedGitData { what },
             other => ReadFailed::Other { said: other.to_string() },
         }
     }
@@ -99,6 +103,9 @@ impl fmt::Display for ReadFailed {
                 f,
                 "This folder's Git data points to a network place ({place}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer."
             ),
+            ReadFailed::UncheckedGitData { what } => {
+                write!(f, "This folder's Git data can't be checked ({what}), so Glowfly won't open it.")
+            }
             ReadFailed::DiffChanged => f.write_str("not found: the diff changed; try again on the updated diff"),
             ReadFailed::FileChanged => f.write_str("not found: the file changed"),
             ReadFailed::OldFileUnreadable => f.write_str("the old file can't be read"),
@@ -187,6 +194,7 @@ mod tests {
             Error::MissingContent(missing),
             Error::LinkedFile("sub/.gitignore".into()),
             Error::NetworkPointer("//host/share/x".into()),
+            Error::UncheckedGitData("/r/.git".into()),
         ] {
             let shown = e.to_string();
             assert_eq!(ReadFailed::from(e).to_string(), shown);

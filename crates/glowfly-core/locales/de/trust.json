@@ -37,7 +37,7 @@
   "trust.steps.show_less": "Weniger anzeigen",
   "trust.steps.title": "Befehle, die der laufende Vorgang ausführt",
   "trust.unchecked.conflicted": "Das Zusammenführen dessen, was dies holt, würde in {path}, wo Hooks ausgeführt werden, einen Konflikt ergeben und Konfliktmarkierungen in einem Hook hinterlassen. Vertrauen und ausführen führt es trotzdem aus.",
-  "trust.unchecked.offsite": "Glowfly liest {places} nicht: die Einstellungen oder Hooks dieses Repositorys führen dorthin, an einen Netzwerkort, und es weiß daher nicht, was Git von dort ausführen würde. Vertrauen und ausführen führt es trotzdem aus.",
+  "trust.unchecked.offsite": "Glowfly liest {places} nicht: die Einstellungen oder Hooks dieses Repositorys führen dorthin, an einen Netzwerkort, und es weiß daher nicht, was Git von dort ausführen oder lesen würde. Vertrauen und ausführen führt es trotzdem aus.",
   "trust.unchecked.patched": "Ein Patch, den dies anwendet, schreibt {path}, wo Hooks ausgeführt werden, und Git würde ausführen, was er schreibt. Vertrauen und ausführen führt es trotzdem aus.",
   "trust.unchecked.state": "Glowfly konnte {files} des laufenden Rebase, Cherry-Pick oder Revert nicht lesen (zu groß, keine normale Datei oder an einem Ort, dem es nicht folgt) und weiß daher nicht, welche Befehle das Fortsetzen ausführen würde. Vertrauen und ausführen führt es trotzdem aus.",
   "trust.unchecked.unmodeled": "Glowfly kann nicht erkennen, was {what} dort schreibt, wo Hooks ausgeführt werden, daher wurde es nicht mit dem verglichen, dem du vertraut hast. Vertrauen und ausführen führt es trotzdem aus.",

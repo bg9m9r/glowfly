@@ -88,6 +88,22 @@ fn a_folder_whose_git_data_names_a_network_place_fails_to_open_like_any_other() 
         "/r konnte nicht geöffnet werden: Die Git-Daten dieses Ordners verweisen auf einen Netzwerkort (//host/share/x), daher öffnet Glowfly ihn nicht. Öffne das Repository dort, wo es wirklich liegt, oder entferne diesen Verweis.",
         "No se pudo abrir /r: Los datos de Git de esta carpeta apuntan a una ubicación de red (//host/share/x), así que Glowfly no la abre. Abre el repositorio desde donde está realmente o elimina esa referencia.",
     ];
+    let untold = [
+        "Could not open /r: This folder's Git data can't be checked (/r/.git), so Glowfly won't open it.",
+        "/r konnte nicht geöffnet werden: Die Git-Daten dieses Ordners lassen sich nicht prüfen (/r/.git), daher öffnet Glowfly ihn nicht.",
+        "No se pudo abrir /r: Los datos de Git de esta carpeta no se pueden comprobar (/r/.git), así que Glowfly no la abre.",
+    ];
+    for ((code, _), want) in NOT_A_REPO.into_iter().zip(untold) {
+        let mut st = state();
+        st.settings.language = code.into();
+        send(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+        let why = Box::new(R::UncheckedGitData { what: "/r/.git".into() });
+        let g = st.load_gen;
+        let result = Err(R::OpenFailed { path: "/r".into(), why });
+        send(&mut st, Msg::Repo(RepoMsg::RepoLoaded { generation: g, kind: LoadKind::Open, result }));
+        assert_eq!(last_failure(&st), want, "{code}");
+        assert!(st.tabs.iter().all(|t| t.path.as_deref() != Some(dir.as_path())), "{code}: its tab closes");
+    }
     for ((code, _), want) in NOT_A_REPO.into_iter().zip(wants) {
         // What a failed open of a folder that is no repository leaves, to compare with.
         let mut plain = state();

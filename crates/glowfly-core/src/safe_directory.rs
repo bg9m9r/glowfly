@@ -28,10 +28,14 @@ pub struct Refusal {
 
 /// Ok when the git files of the folder `path` (and of those above it when `search`, as
 /// libgit2's own search reads them) name no network place other than the folder's own
-/// (`git_file::opened`); otherwise [`Error::NetworkPointer`] with the place named. Every open
+/// (`git_file::opened`); otherwise [`Error::NetworkPointer`] with the place named, or
+/// [`Error::UncheckedGitData`] where what they name can't be told. Every open
 /// of a folder the user chose runs this first.
 pub fn check(path: &Path, search: bool) -> Result<()> {
-    crate::git_file::opened::check(path, search).map_err(|p| Error::NetworkPointer(crate::native_path::shown(&p)))
+    crate::git_file::opened::check(path, search).map_err(|r| {
+        let shown = crate::native_path::shown(&r.place);
+        if r.network { Error::NetworkPointer(shown) } else { Error::UncheckedGitData(shown) }
+    })
 }
 
 /// `Repository::discover(path)`, opening a folder libgit2 refuses for its owner when git opens

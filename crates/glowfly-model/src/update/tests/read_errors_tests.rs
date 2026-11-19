@@ -86,6 +86,14 @@ pub(super) fn variants() -> Vec<(R, [&'static str; 3])> {
             ],
         ),
         (
+            R::UncheckedGitData { what: "/r/.git".into() },
+            [
+                "This folder's Git data can't be checked (/r/.git), so Glowfly won't open it.",
+                "Die Git-Daten dieses Ordners lassen sich nicht prüfen (/r/.git), daher öffnet Glowfly ihn nicht.",
+                "Los datos de Git de esta carpeta no se pueden comprobar (/r/.git), así que Glowfly no la abre.",
+            ],
+        ),
+        (
             R::NotARepository { path: "/r".into() },
             ["/r is not a git repository", "/r ist kein Git-Repository", "/r no es un repositorio git"],
         ),
@@ -142,6 +150,7 @@ fn paths_remotes_and_said_text_are_kept_in_every_language() {
             R::Internal { effect } => vec![effect],
             R::NotARepository { path } | R::LinkedFile { path } => vec![path],
             R::NetworkPointer { place } => vec![place],
+            R::UncheckedGitData { what } => vec![what],
             R::NotOwned { root } => vec![root],
             R::OpenFailed { path, why } => match why.as_ref() {
                 R::NotARepository { path: inner } => vec![path, inner],

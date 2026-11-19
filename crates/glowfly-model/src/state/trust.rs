@@ -331,7 +331,13 @@ pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::inco
         Unchecked::Conflicted(p) => t.trf("trust.unchecked.conflicted", &[("path", &printable(p))]),
         Unchecked::Unmodeled(what) => t.trf("trust.unchecked.unmodeled", &[("what", &printable(what))]),
         Unchecked::State(files) => t.trf("trust.unchecked.state", &[("files", &printable(files))]),
-        Unchecked::Offsite(places) => t.trf("trust.unchecked.offsite", &[("places", &printable(places))]),
+        Unchecked::Offsite { places, files } => {
+            let offsite = t.trf("trust.unchecked.offsite", &[("places", &printable(places))]);
+            match files {
+                Some(files) => format!("{} {offsite}", t.trf("trust.unchecked.state", &[("files", &printable(files))])),
+                None => offsite,
+            }
+        }
     }
 }
 
