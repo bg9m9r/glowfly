@@ -282,6 +282,12 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool, un
             // The literal part before the first glob, up to its last folder.
             let fixed = shell::literal(slashed.split(GLOBS).next().unwrap_or_default());
             let dir = fixed.rfind('/').map_or("", |i| &fixed[..i]);
+            // A hook's pattern into installed packages (lefthook's
+            // `$dir/node_modules/lefthook-${os}-${cpu}/bin/lefthook`) names no file the branch
+            // carries, and the nearest folder there now may be the working tree's top.
+            if hook && dir.split('/').any(|part| part.eq_ignore_ascii_case("node_modules")) {
+                continue;
+            }
             let Some(mut p) = (if dir.is_empty() { Some(workdir.to_path_buf()) } else { placed(workdir, home, dir) }) else {
                 note(unread, &fixed);
                 continue;
