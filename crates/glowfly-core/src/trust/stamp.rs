@@ -2,7 +2,7 @@
 //! the repository's own config files and the files they include, of each file in the hooks
 //! folder, of the commands file, of the todo and strategy files of a rebase or pick in progress
 //! (`steps::FILES`), and the commit HEAD is on (the version of the hooks and config
-//! programs that follow the working tree); the config files and hooks of its submodules' git
+//! programs that follow the working tree) with each followed file's size and times; the config files and hooks of its submodules' git
 //! dirs (`repo::submodule_stamps`), and the commit each submodule that follows its own working
 //! tree is on. Stats and small reads only: while the stamp is unchanged, the scan it was taken
 //! with still stands, so frequent reads (a status read by git) can reuse it.
@@ -46,9 +46,11 @@ pub fn stamp(repo: &Repository, scan: &TrustScan) -> u64 {
     repo.head().ok().and_then(|r| r.target()).hash(&mut h);
     crate::repo::submodule_stamps(repo, std::time::SystemTime::now(), &mut h);
     if let Some(w) = repo.workdir() {
+        followed_meta(w, scan, &mut h);
         for sub in scan.submodules.iter().filter(|s| !s.scan.follows.is_empty()) {
             let head = Repository::open(w.join(&sub.path)).ok().and_then(|r| r.head().ok().and_then(|r| r.target()));
             (&sub.path, head).hash(&mut h);
+            followed_meta(&w.join(&sub.path), &sub.scan, &mut h);
         }
     }
     h.finish()
@@ -130,6 +132,14 @@ pub(super) fn include_entries(repo: &Repository) -> Vec<Include> {
         }
     }
     out
+}
+
+/// `meta` of each file `scan` follows in the working tree `workdir`, whose bytes the scan
+/// reads (`TrustScan::follow_digests`): an uncommitted change to one changes the stamp.
+fn followed_meta(workdir: &Path, scan: &TrustScan, h: &mut DefaultHasher) {
+    for f in scan.follows.iter().filter(|f| !f.hooks && !f.path.is_empty()) {
+        meta_near(&super::follow::on_disk(workdir, &f.path), workdir, h);
+    }
 }
 
 /// `meta` of `path` where it may be followed from `home` (`follow::far`); otherwise only that
