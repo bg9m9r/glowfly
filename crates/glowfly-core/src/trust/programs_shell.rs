@@ -36,6 +36,11 @@ pub(super) fn literal(text: &str) -> String {
     text.chars().map(|c| QUOTED.iter().find(|(_, s)| *s == c).map_or(c, |(q, _)| *q)).collect()
 }
 
+/// `text` as a quoted part of a word reads: its glob and bracket characters as stand-ins.
+pub(super) fn quoted(text: &str) -> String {
+    text.chars().map(|c| QUOTED.iter().find(|(q, _)| *q == c).map_or(c, |(_, s)| *s)).collect()
+}
+
 /// The words of `text`, as sh splits them.
 pub(super) fn words(text: &str) -> Vec<Word> {
     let chars: Vec<char> = text.chars().collect();
