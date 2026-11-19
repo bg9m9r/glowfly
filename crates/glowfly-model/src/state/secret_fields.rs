@@ -46,3 +46,36 @@ impl SecretFields {
         self.ssh_passphrase != self.ssh_confirm
     }
 }
+
+impl Drop for SecretFields {
+    fn drop(&mut self) {
+        self.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::MaybeUninit;
+
+    #[test]
+    fn dropping_the_fields_wipes_them() {
+        let mut slot = MaybeUninit::new(SecretFields {
+            int_token: "t".into(),
+            signing_passphrase: "p".into(),
+            ssh_passphrase: "s".into(),
+            ssh_confirm: "s".into(),
+        });
+        let p = slot.as_mut_ptr();
+        // SAFETY: `p` points at the initialised value, dropped here exactly once; afterwards only
+        // the (empty) lengths are read, never the freed buffers.
+        unsafe {
+            std::ptr::drop_in_place(p);
+            for f in
+                [&raw const (*p).int_token, &raw const (*p).signing_passphrase, &raw const (*p).ssh_passphrase, &raw const (*p).ssh_confirm]
+            {
+                assert_eq!(f.as_ref().unwrap().len(), 0);
+            }
+        }
+    }
+}

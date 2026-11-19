@@ -106,3 +106,30 @@ impl PromptFields {
         self.focus_pending = true;
     }
 }
+
+impl Drop for PromptFields {
+    fn drop(&mut self) {
+        self.clear();
+    }
+}
+
+#[cfg(test)]
+mod fields_tests {
+    use super::*;
+    use std::mem::MaybeUninit;
+
+    #[test]
+    fn dropping_the_fields_clears_them() {
+        let mut slot = MaybeUninit::new(PromptFields { user: "ada".into(), secret: "hunter2".into(), reveal: true, ..Default::default() });
+        let p = slot.as_mut_ptr();
+        // SAFETY: `p` points at the initialised value, dropped here exactly once and read only for
+        // plain fields afterwards (the buffers it freed are not touched).
+        unsafe {
+            std::ptr::drop_in_place(p);
+            assert!(!(*p).reveal, "drop ran the clear");
+            assert!((*p).focus_pending);
+            assert_eq!((&raw const (*p).secret).as_ref().unwrap().len(), 0);
+            assert_eq!((&raw const (*p).user).as_ref().unwrap().len(), 0);
+        }
+    }
+}
