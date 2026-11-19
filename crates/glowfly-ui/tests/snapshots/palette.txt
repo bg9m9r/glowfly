@@ -15,6 +15,7 @@ Dialog
   Button "Switch branch…"
   Button "Delete tag…"
   Button "Rename branch main…"
+  Button "Delete branch…"
   Button "Search commits"
   Button "File history…"
   Button "Blame file…"

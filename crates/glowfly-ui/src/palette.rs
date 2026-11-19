@@ -1,8 +1,10 @@
 //! The command palette (Ctrl+P): a search field over the commands available now, ranked by a
 //! fuzzy match, or over a two-step command's items (tracked files for File history, stashes to
-//! apply, pop or delete; a stash's row shows its date before its ref), or a free-text step (the message for a new stash). The lists come
-//! from `state::palette`; this file only draws them (with the empty query's group headings) and
-//! turns keys and clicks into messages. The query is drawn from a copy and sent back as
+//! apply, pop or delete; a stash's row shows its date before its ref), or a free-text step (the
+//! message for a new stash). The lists come from `state::palette`; this file only draws them
+//! (with the empty query's group headings) and turns keys and clicks into messages. A detail too
+//! long for its row is cut with "…" (whole on hover), so the label keeps up to 40% of the row; a
+//! row that can't be chosen (a branch that can't be deleted) is drawn dim with its reason. The query is drawn from a copy and sent back as
 //! `EditMsg::PaletteQuery`; update then resets the selection and ranks a sub-list for it.
 
 use super::theme::color;
@@ -248,6 +250,8 @@ fn pick_list(ui: &mut Ui, st: &AppState, query: &str, scroll: &mut bool, msgs: &
                         let label = pk.label(hit.index);
                         // A file's folder part (through the last '/') is dimmed.
                         let dim = if kind.dims_folders() { label.rfind('/').map_or(0, |b| label[..=b].chars().count()) } else { 0 };
+                        // A branch that can't be deleted is drawn dim, with its reason as the detail.
+                        let dim = if pk.blocked(hit.index).is_some() { usize::MAX } else { dim };
                         let detail = pk.shown_detail(hit.index, &st.settings, st.cues.now, st.cues.utc_offset);
                         let names = kind.lists_refs();
                         let (resp, detail_rect) = row(ui, label, detail.as_deref(), None, (&hit.matched, dim), names, i == sel);
@@ -346,29 +350,42 @@ fn row(
         right_w = g.size().x + 18.0;
         p.galley(pos2(rect.right() - g.size().x - 10.0, sizes::text_pos(rect, &g).y), g, color::weak());
     }
-    let mut detail_rect = None;
+    let font = FontId::proportional(LABEL_SIZE);
+    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
+    let (mut detail_rect, mut detail_cut) = (None, None);
     if let Some(detail) = detail {
-        let g = p.layout_no_wrap(detail.to_owned(), type_scale::font(type_scale::SMALL), color::weak());
+        let small = type_scale::font(type_scale::SMALL);
+        let mut g = p.layout_no_wrap(detail.to_owned(), small.clone(), color::weak());
         // 10px in from the row's edge, or 14px left of the shortcut (`right_w` already holds
         // 8px of space to its left).
         let gap = if shortcut.is_some() { 6.0 } else { 10.0 };
+        // A detail too long for the room the label leaves is cut, not the label.
+        let room = label::detail_room(rect.width(), right_w + gap, width(label));
+        if g.size().x > room {
+            g = truncate::cut_galley(ui.ctx(), truncate::cut_job(detail, small, color::weak()), room);
+            detail_cut = Some(detail);
+        }
         let x = rect.right() - right_w - g.size().x - gap;
         right_w += g.size().x + gap + 8.0;
         detail_rect = Some(Rect::from_x_y_ranges(x..=x + g.size().x, rect.y_range()));
         p.galley(pos2(x, sizes::text_pos(rect, &g).y), g, color::weak());
     }
     let text_rect = Rect::from_min_max(pos2(rect.left() + 10.0, rect.top()), pos2(rect.right() - right_w, rect.bottom()));
-    let font = FontId::proportional(LABEL_SIZE);
-    let width = |s: &str| p.layout_no_wrap(s.to_owned(), font.clone(), Color32::PLACEHOLDER).size().x;
     let cut = names.then(|| truncate::middle_cut(label, text_rect.width(), width)).flatten();
     let job = match cut {
         Some(cut) => {
             let (shown, matched) = label::cut_marks(label, cut, matched);
-            label::label_job(&shown, &matched, 0, LABEL_SIZE)
+            label::label_job(&shown, &matched, if dim_before == usize::MAX { usize::MAX } else { 0 }, LABEL_SIZE)
         }
         None => label::label_job(label, matched, dim_before, LABEL_SIZE),
     };
     let g = ui.fonts(|f| f.layout_job(job));
     p.with_clip_rect(text_rect).galley(pos2(text_rect.left(), sizes::text_pos(rect, &g).y), g, color::text());
-    (if cut.is_some() { resp.on_hover_text(label) } else { resp }, detail_rect)
+    let over_detail = detail_rect.zip(ui.ctx().pointer_hover_pos()).is_some_and(|(r, pos)| r.contains(pos));
+    let resp = match detail_cut {
+        Some(whole) if resp.hovered() && over_detail => resp.on_hover_text_at_pointer(whole),
+        _ if cut.is_some() => resp.on_hover_text(label),
+        _ => resp,
+    };
+    (resp, detail_rect)
 }

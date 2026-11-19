@@ -8,6 +8,7 @@
 use crate::msg::{BranchMsg, Msg};
 use crate::state::commit_menu::menu_trim;
 use crate::state::gitflow_base;
+use crate::state::worktree_branches;
 use git2::Oid;
 use glowfly_core::gitflow::FlowBase;
 use glowfly_core::i18n::Lang;
@@ -83,4 +84,13 @@ impl DeleteForm {
         (self.lost != Lost::Counting)
             .then(|| Msg::Branch(BranchMsg::Delete { name: self.name.clone(), tip: self.tip, force: !self.in_head }))
     }
+}
+
+/// Why local branch `b` can't be deleted: it is checked out here or held by another worktree.
+/// The words the Delete dialog's refusal logs and the palette's Delete branch step lists.
+pub fn refused(t: Lang, snap: &Snapshot, b: &BranchInfo) -> Option<String> {
+    if b.is_head {
+        return Some(t.trf("branch.delete.checked_out", &[("branch", &b.name)]));
+    }
+    worktree_branches::delete_blocked(t, snap, &b.name)
 }

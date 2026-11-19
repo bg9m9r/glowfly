@@ -34,7 +34,7 @@ pub use kinds::{InputKind, PickKind};
 
 use super::AppState;
 use super::forge::ForgeState;
-use cache::{CommandCache, by_recency};
+use cache::{CommandCache, by_recency, demote};
 
 use glowfly_core::fuzzy;
 use glowfly_core::i18n::Lang;
@@ -91,8 +91,11 @@ pub struct Pick {
     profiles: Vec<ProfileRow>,
     /// The issues behind the items of an issue sub-list (empty for other kinds).
     issues: Vec<IssuePickRow>,
-    /// The ref entries behind the Switch branch or Delete tag sub-list (empty for others).
+    /// The ref entries behind the Switch branch, Delete tag or Delete branch sub-list (empty for
+    /// others).
     refs: Vec<Entry>,
+    /// Why item `i` cannot be chosen, for the Delete branch sub-list (empty for other kinds).
+    reasons: Vec<Option<String>>,
     /// The ranking for the last query, kept until the query or the items change (boxed, so a
     /// sub-list keeps `Mode` small).
     ranked: Option<Box<Ranked>>,
@@ -182,6 +185,7 @@ pub fn listed(st: &AppState, query: &str) -> Listed {
     let items: Vec<(&str, &str)> = entries.iter().map(|e| (e.label.as_str(), e.keywords)).collect();
     let mut ranked = fuzzy::rank(query, &items);
     let command = |i: usize| entries.get(i).map(|e| &e.command);
+    demote(query, command, &mut ranked);
     by_recency(st, command, &mut ranked);
     let total = ranked.len();
     let mut groups = Vec::new();
