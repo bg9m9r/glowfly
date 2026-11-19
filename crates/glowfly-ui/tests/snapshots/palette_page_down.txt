@@ -15,6 +15,7 @@ Dialog
   Button "Switch branch…"
   Button "Delete tag…"
   Button "Rename branch main…" [selected]
+  Button "Delete branch…"
   Button "Search commits"
   Button "File history…"
   Button "Blame file…"
@@ -90,4 +91,3 @@ painted:
   "nothing staged"
   "1 file"
   "Ctrl+Shift+O"
-  "Ctrl+F"

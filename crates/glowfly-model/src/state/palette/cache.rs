@@ -153,6 +153,7 @@ impl CommandCache {
         let mut ranked: Vec<(usize, fuzzy::Match)> = fuzzy::rank(query, &items).into_iter().map(|(pos, m)| (candidates[pos], m)).collect();
         let matches = ranked.iter().map(|(i, _)| *i).collect();
         let command = |i: usize| self.entry(i).map(|e| &e.command);
+        demote(query, command, &mut ranked);
         by_recency(st, command, &mut ranked);
         let total = ranked.len();
         let mut groups = Vec::new();
@@ -162,6 +163,31 @@ impl CommandCache {
         groups.retain(|&(_, first)| first < MAX_COMMAND_ROWS);
         let rows = ranked.into_iter().take(MAX_COMMAND_ROWS).map(|(i, m)| (i, m.positions)).collect();
         Ranking { query: query.to_owned(), recent: st.palette_recent.clone(), suggested, matches, rows, total, groups }
+    }
+}
+
+/// How far a command that `ranks_low` falls for a query that doesn't start at its label's first
+/// letter. More than a label match beats the same word matched through another entry's keywords
+/// (33 points for "branch"), so those entries list first.
+const DEMOTED_BY: i32 = 40;
+
+/// Lowers the score of the commands that `ranks_low` for a typed query, unless the match begins
+/// at the label's first character (the user is typing the command's name), and ranks again. The
+/// sort is stable, so the ranking's own tie-breaks still order the rest. Both the cache and
+/// `palette::listed` apply it, before `by_recency`.
+pub(super) fn demote<'a>(query: &str, command: impl Fn(usize) -> Option<&'a PaletteCommand>, ranked: &mut [(usize, fuzzy::Match)]) {
+    if query.trim().is_empty() {
+        return;
+    }
+    let mut moved = false;
+    for (i, m) in ranked.iter_mut() {
+        if command(*i).is_some_and(PaletteCommand::ranks_low) && m.positions.first() != Some(&0) {
+            m.score -= DEMOTED_BY;
+            moved = true;
+        }
+    }
+    if moved {
+        ranked.sort_by_key(|(_, m)| Reverse(m.score));
     }
 }
 

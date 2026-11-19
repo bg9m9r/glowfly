@@ -3,6 +3,7 @@
 //! have helpers other areas' tests use too.
 
 mod blame_tests;
+mod branch_delete_tests;
 mod checkout_tests;
 mod compare_tests;
 mod conflict_tests;
