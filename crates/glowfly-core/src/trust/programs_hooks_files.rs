@@ -43,21 +43,26 @@ fn parts_in(workdir: &Path, path: &Path) -> Option<Vec<String>> {
     Some(parts)
 }
 
-/// Whether the file at `path`, whose first bytes are `head`, is a shell script: named `*.sh`,
-/// or starting with a `#!` line that runs sh or a shell like it (`#!/bin/bash`,
-/// `#!/usr/bin/env -S zsh -e`).
+/// Whether the file at `path`, whose first bytes are `head` (`super::HEAD_BYTES` of them), is a
+/// shell script: named `*.sh`, or starting with a `#!` line that runs sh or a shell like it
+/// (`#!/bin/bash`, `#!/usr/bin/env -S zsh -e`). A `#!` line whose program can't be told counts
+/// as one: one longer than `super::MAX_LINE_BYTES` (a system that can't read it all leaves the
+/// file to sh, and one that reads further may find a shell), or one that names no program.
 pub(super) fn is_shell(path: &Path, head: Option<&[u8]>) -> bool {
     if path.extension().is_some_and(|e| e.eq_ignore_ascii_case("sh")) {
         return true;
     }
-    let Some(line) = head.and_then(|h| h.strip_prefix(b"#!")) else { return false };
-    let line = String::from_utf8_lossy(line.split(|b| *b == b'\n').next().unwrap_or_default()).into_owned();
+    let Some(rest) = head.and_then(|h| h.strip_prefix(b"#!")) else { return false };
+    let Some(end) = rest.iter().position(|b| *b == b'\n').or((rest.len() + 2 <= super::MAX_LINE_BYTES).then_some(rest.len())) else {
+        return true;
+    };
+    let line = String::from_utf8_lossy(&rest[..end]).into_owned();
     let mut words = line.split_whitespace().map(|w| w.rsplit(['/', '\\']).next().unwrap_or(w));
     let mut program = words.next();
     if program == Some("env") {
         program = words.find(|w| !w.starts_with('-') && !w.contains('='));
     }
-    program.is_some_and(|p| SHELLS.contains(&p))
+    program.is_none_or(|p| SHELLS.contains(&p))
 }
 
 /// The first `max` bytes of the file at `path`, and whether they are all of it; None when it
