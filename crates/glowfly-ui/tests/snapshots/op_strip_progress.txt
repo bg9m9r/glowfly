@@ -50,8 +50,6 @@ Button "Worktrees actions"
 Button "Submodules, 0 submodules"
 Button "Add submodule"
 Button "Submodules actions"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

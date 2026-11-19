@@ -68,8 +68,6 @@ Label "1"
 Button "docs/guide.md to docs/manual.md" [off]
 Label "Renamed"
 Label "+1"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

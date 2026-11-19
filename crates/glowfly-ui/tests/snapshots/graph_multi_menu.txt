@@ -65,8 +65,6 @@ Button "app.txt" [off]
 Label "Modified"
 Button "search.txt" [off]
 Label "Added"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

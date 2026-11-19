@@ -74,8 +74,6 @@ Label "1 Datei"
 Label "dcc73f3"
 Button "README.md" [off]
 Label "Hinzugefügt"
-Button "Commits" [on]
-Button "Kapitel" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"
