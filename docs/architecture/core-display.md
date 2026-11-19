@@ -7,9 +7,6 @@ source file, update its line here.
 
 - `graph.rs`, `graph/`: lane layout for the commit graph, with WIP rows for this worktree and for other worktrees with uncommitted changes.
 - `graph/lanes.rs`: the lane layout itself (`layout`), kept with where the lanes stand below the last row so `Layout::extend` lays more commits out under it.
-- `chapters.rs`: the Chapters view's grouping (`group`): HEAD's first-parent history as chapters (a merge with what it brought in, a squash landing, a run of neighbouring commits by one author), a pure computation over the loaded commits; each chapter's id, title, commits, authors, dates and release tags.
-- `chapters/words.rs`: the grouping's text rules: squash numbers (`(#n)`), closing lines (Closes / Fixes), merge titles from git's default messages and pull request titles, and who counts as the same author.
-- `chapters/release.rs`: which tag names look like a release (`v1.2.3`, `1.0.0-rc.1`, `release/1.4`; not `v2` or `nightly`).
 - `owners.rs`: which branch owns each node and lane, naming a merge's other parents from its message: `merge_names.rs`. `Owners::extend` goes on from the last row's lane owners for more rows.
 - `Snapshot::lay_out_graph` (`repo/branch_colours.rs`) lays the graph out with its owners and colours, at load and when the work tree turns clean or dirty; `Snapshot::layout_job` hands the same work to a worker (`LayoutJob`, `LayoutFit`) for a large history.
 - `branch_colour.rs`: branch colours: a branch's key (its name, without the remote), its hue slot from an FNV-1a hash of the key (main takes the trunk unless pinned), and a person's initials tone from their email (`person_tone`, one of eight).

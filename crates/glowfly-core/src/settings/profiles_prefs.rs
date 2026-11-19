@@ -131,7 +131,6 @@ pub const GLOBAL_FIELDS: &[&str] = &[
     "repo_submodule_updates",
     "repo_year_branches",
     "repo_merge_methods",
-    "repo_history_modes",
     "favorite_repos",
     "repo_groups",
     // Goes with the groups, which are global.

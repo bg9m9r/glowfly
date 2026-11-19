@@ -65,8 +65,6 @@ CheckBox "Enviar después de confirmar" [off]
 Button "Confirmar" [disabled]
 Button "Más opciones de commit"
 Label "Prepara cambios para confirmar o pulsa Ctrl+Shift+Enter para prepararlo todo y confirmar."
-Button "Commits" [on]
-Button "Capítulos" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

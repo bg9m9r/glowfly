@@ -13,7 +13,6 @@ pub mod branch_ops;
 pub mod branch_ref;
 pub mod bundled_fonts;
 pub mod changelog;
-pub mod chapters;
 pub mod clone_https;
 pub mod clone_ops;
 pub mod clone_stop;

@@ -66,8 +66,6 @@ CheckBox "Push after committing" [off]
 Button "Commit" [disabled]
 Button "More commit options"
 Label "Another operation is still running."
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

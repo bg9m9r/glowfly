@@ -55,8 +55,6 @@ Button "Filter" [off]
 ComboBox "Author"
 Label "1 of 2"
 Button "Close"
-Button "Commits" [on]
-Button "Chapters" [disabled, off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

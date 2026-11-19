@@ -61,8 +61,6 @@ Button "new.txt" [off]
 Label "Añadido"
 Button "README.md" [off]
 Label "Modificado"
-Button "Commits" [on]
-Button "Capítulos" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

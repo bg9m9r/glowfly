@@ -64,8 +64,6 @@ CheckBox "Push after committing" [off]
 Button "Commit" [disabled]
 Button "More commit options"
 Label "Nothing to commit. The working tree is clean."
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

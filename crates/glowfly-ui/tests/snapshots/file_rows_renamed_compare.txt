@@ -66,8 +66,6 @@ Button "notes/todo.md to archive/todo.md" [off]
 Label "Renamed"
 Button "docs/guide.md to docs/manual.md" [off]
 Label "Renamed"
-Button "Commits" [on]
-Button "Chapters" [off]
 Button "Resize branch / tag column"
 Button "Resize author column"
 Button "Resize commit column"

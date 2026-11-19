@@ -171,8 +171,6 @@ pub struct RepoSession {
     pub tab_view: super::session_view::TabView,
     /// This tab's commits this session, for the Tidy tip (state/hints.rs).
     pub hint_commits: super::hints::CommitRun,
-    /// The Chapters history view: the repository's choice, the grouping, what is expanded (state/chapters.rs).
-    pub chapters: super::chapters::ChaptersView,
 }
 
 impl RepoSession {
