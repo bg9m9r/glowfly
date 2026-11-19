@@ -57,6 +57,7 @@ start with `state/`, `update/` or `ui/`.
 - `history_preview.rs`: the File view's previews: the Text | Preview switch and a Markdown file drawn by the shared `markdown.rs` renderer through `MarkdownCache`, or an image.
 - `preview_cache.rs`: frees an image preview's texture at the end of a frame that drew none.
 - `image_paint.rs`: a decoded image's texture (always smooth for a font's specimen) and checkerboard, shared with the binary diff.
+- `snapshot_tests/snapshot_tests_history_keys.rs`: the file and folder history lists' Up/Down, Page Up/Page Down and Home/End from the first, a middle and the last entry and with none selected, and the cases they stay silent (a focused field, button or folder file list, a dialog).
 - `file_view_switch.rs`: the Diff | File | Blame switch the file history and blame headers share.
 - `blame/gutter.rs`: a run's gutter: its author, date, commit and summary, the age strip and tint, and the hover text with the commit's whole message.
 - `blame/header.rs`: the blame header.
@@ -117,7 +118,7 @@ start with `state/`, `update/` or `ui/`.
 - `file_old_path.rs`: the weak old-path note after a renamed or copied file's path in a file row, and how it gives way (cut, then dropped, before the path is cut); the Stash dialog's checklist shares it.
 - `file_tree.rs`: the changed-file lists as a tree: the rows a list draws (cached between frames by which list it is), a folder row, the header's List / Tree toggle and a file row's indent.
 - `folder_menu.rs`: a folder row's menu: Folder history, Copy path, and Stage or Unstage folder in the WIP lists.
-- `list_focus.rs`: a file list that takes the keyboard focus as one Tab stop: its focus target, the keys it takes before any binding (`state/list_keys.rs`; each list names which beyond its moves, `KeySet`), and its arrows kept from egui's focus moves from its first frame on (`restore`). Reuse it for any other file list.
+- `list_focus.rs`: a file list that takes the keyboard focus as one Tab stop: its focus target, the keys it takes before any binding (`state/list_keys.rs`; each list names which beyond its moves, `KeySet`), and its arrows kept from egui's focus moves from its first frame on (`restore`); `take_unfocused` serves a list answering while nothing has the focus (the graph, the file history's entry list). Reuse it for any other file list.
 - `wip_keys.rs`: the Unstaged and Staged Files lists on `list_focus.rs`: one stable focus target per list, their keys as `KeyAction::WipList` messages, and the list `update` asked to focus.
 - `file_list_keys.rs`: the lists that only open files (commit, comparison, stacked, working-directory comparison, pull request, folder history, Conflicted and Resolved Files) on `list_focus.rs`: one focus target per list taking only its plain moves (`KeySet::MOVES`) as `KeyAction::FileList` messages, a row's click focusing it, and the focus ring.
 - `pane_focus.rs`: the panes the pane keys and F6 move between (`state/layout.rs::Pane`): the graph's, the left panel's and the other central views' focus targets, where each pane was drawn (which pane has the focus), the details panel's first file list taking a requested focus, and Esc on a focused control giving the graph the focus back. Tests in `snapshot_tests/snapshot_tests_pane_focus.rs`.

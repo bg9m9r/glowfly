@@ -6,7 +6,8 @@
 //! of a frame, before the list can lock them, so on the first frame after the list took the
 //! focus an arrow would also carry the focus away: the list takes it back on the next frame
 //! (`restore`). For the WIP lists (`wip_keys.rs`), the lists that only move the open file
-//! (`file_list_keys.rs`) and any other list built the same way, and the graph (`graph/select.rs`).
+//! (`file_list_keys.rs`) and any other list built the same way, the graph (`graph/select.rs`) and the file and folder history's entry list
+//! (`history.rs`), which answers only while nothing has the focus.
 //! A list's rows show their selection as focused only while it has the focus (`rows_active`).
 
 use eframe::egui::{self, Event, EventFilter, Id, Key, Modifiers, WidgetInfo, WidgetType};
@@ -94,7 +95,7 @@ pub(crate) fn take(ctx: &egui::Context, id: Id, keys: KeySet) -> Vec<ListKey> {
     taken
 }
 
-/// `take` for a list that also answers while nothing has the focus (the graph): this frame's
+/// `take` for a list that also answers while nothing has the focus (the graph, the file history's list): this frame's
 /// keys of `keys`, with `page` rows in view, whoever would get them.
 pub(crate) fn take_unfocused(ctx: &egui::Context, page: usize, keys: KeySet) -> Vec<ListKey> {
     drain(ctx, page.max(1), keys).0
