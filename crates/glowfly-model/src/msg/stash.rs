@@ -14,6 +14,7 @@ use std::path::PathBuf;
 pub enum StashMsg {
     /// Applies, pops or drops the stash shown at `stash@{index}`, only if that entry still is
     /// commit `oid` (another tab, worktree or terminal may have pushed or dropped one since).
+    /// An apply or pop brings back what was staged too (update/stash.rs).
     /// Built only by state/stash_actions.rs and state/stash_confirm.rs.
     Run { action: StashAction, index: usize, oid: Oid },
     /// Open the Rename stash dialog for the stash with this commit, found again in the snapshot.

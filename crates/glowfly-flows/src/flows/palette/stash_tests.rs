@@ -201,7 +201,7 @@ fn apply_chosen_stash() {
     let (mut fresh, fresh_dir) = two_stashes("stash-apply-argv");
     let oid = fresh.snap.as_ref().unwrap().stashes[1].oid;
     let fx = run(&mut fresh, Msg::Palette(PaletteMsg::RunPaletteCommand(C::StashOp { action: StashAction::Apply, oid })));
-    assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "stash@{1}"]));
+    assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "--index", "stash@{1}"]));
     let _ = std::fs::remove_dir_all(&fresh_dir);
 
     drive(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd)));
@@ -262,7 +262,7 @@ fn stash_op_follows_oid_when_list_changes() {
     git(&dir, &["stash", "push", "-u", "-m", "third"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let fx = run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(cmd.clone())));
-    assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "stash@{1}"]));
+    assert_eq!(git_cmds(&fx), argv(&["stash", "apply", "--index", "stash@{1}"]));
     // Only the argv matters here; the job never ran.
     st.job = None;
 

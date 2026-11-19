@@ -56,6 +56,7 @@ fn job(dir: &Path, cmds: &[&[&str]]) -> Effect {
         expect: None,
         stoppable: false,
         on_fail_check: None,
+        without_index: None,
         auto_stash: None,
     })
 }

@@ -78,15 +78,15 @@ fn make_dirty(st: &mut AppState, dir: &Path) {
 fn clean_tree_runs_straight_away() {
     let (mut st, dir, oid) = one_stash("stash-confirm-clean");
     let (cmds, expect) = git_job(&palette(&mut st, C::StashOp { action: StashAction::Apply, oid }));
-    assert_eq!((cmds, expect), (argv(&["stash", "apply", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
+    assert_eq!((cmds, expect), (argv(&["stash", "apply", "--index", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
     assert!(st.modal.is_none());
     st.job = None;
     let (cmds, _) = git_job(&palette(&mut st, C::StashOp { action: StashAction::Pop, oid }));
-    assert_eq!(cmds, argv(&["stash", "pop", "stash@{0}"]));
+    assert_eq!(cmds, argv(&["stash", "pop", "--index", "stash@{0}"]));
     st.job = None;
     // Unstash names the stash the snapshot shows, so a stash pushed meanwhile isn't popped.
     let (cmds, expect) = git_job(&palette(&mut st, C::PopStash));
-    assert_eq!((cmds, expect), (argv(&["stash", "pop", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
+    assert_eq!((cmds, expect), (argv(&["stash", "pop", "--index", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -104,20 +104,20 @@ fn dirty_tree_asks_first() {
     assert!(body.contains("a file you have changed too") && body.contains("\n    a.txt"), "the overlap: {body}");
     assert!(!body.contains("the stash is kept"));
     let (cmds, expect) = git_job(&run(&mut st, Msg::ConfirmAccepted));
-    assert_eq!((cmds, expect), (argv(&["stash", "apply", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
+    assert_eq!((cmds, expect), (argv(&["stash", "apply", "--index", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
     st.job = None;
 
     ask(&mut st, C::StashOp { action: StashAction::Pop, oid });
     let (title, body, button) = confirm(&st);
     assert_eq!((title.as_str(), button.as_str()), ("Unstash", "Unstash"));
     assert!(body.contains(&message) && body.contains("the stash is kept"), "{body}");
-    assert_eq!(git_job(&run(&mut st, Msg::ConfirmAccepted)).0, argv(&["stash", "pop", "stash@{0}"]));
+    assert_eq!(git_job(&run(&mut st, Msg::ConfirmAccepted)).0, argv(&["stash", "pop", "--index", "stash@{0}"]));
     st.job = None;
 
     ask(&mut st, C::PopStash);
     assert_eq!(confirm(&st).0, "Unstash", "the Unstash the latest stash entry asks too");
     let (cmds, expect) = git_job(&run(&mut st, Msg::ConfirmAccepted));
-    assert_eq!((cmds, expect), (argv(&["stash", "pop", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
+    assert_eq!((cmds, expect), (argv(&["stash", "pop", "--index", "stash@{0}"]), Some(("stash@{0}".into(), oid))));
     st.job = None;
 
     assert!(palette(&mut st, C::StashOp { action: StashAction::Drop, oid }).is_empty());

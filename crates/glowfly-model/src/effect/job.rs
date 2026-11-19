@@ -32,9 +32,13 @@ pub enum JobEffect {
         /// Run after a failure: when this check passes the job ends with
         /// `JobMsg::FailCheckPassed` instead of `JobDone` (a patch that is already applied).
         on_fail_check: Option<Vec<String>>,
+        /// The job's one command without `--index`, for Apply and Unstash of a stash: the runner
+        /// runs it instead when something is staged (git resets the index when it applies a
+        /// stash with `--index`), and once more after git refuses to restore the staged state.
+        without_index: Option<Vec<String>>,
         /// The auto-stash its first command makes: once that command succeeds the runner writes
         /// its saved record and sends `AutoStashMsg::Made` (runner/auto_stash_made.rs).
-        auto_stash: Option<AutoStashJob>,
+        auto_stash: Option<Box<AutoStashJob>>,
     },
     /// Undoes (or redoes) `action` after checking the repository still matches it.
     UndoRedo { cwd: PathBuf, action: Action, redo: bool, opts: UndoOpts },

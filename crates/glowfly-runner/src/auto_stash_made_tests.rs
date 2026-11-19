@@ -34,7 +34,8 @@ fn run_git(dir: &Path, cmds: Vec<Vec<String>>, auto_stash: Option<AutoStashJob>)
         expect: None,
         stoppable: false,
         on_fail_check: None,
-        auto_stash,
+        without_index: None,
+        auto_stash: auto_stash.map(Box::new),
     }))
 }
 

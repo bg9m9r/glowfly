@@ -5,6 +5,7 @@
   "stash.ask.overlap.other": "Der Stash ändert {count} Dateien, die du auch geändert hast, deshalb kann Git mit Konflikten anhalten oder das Anwenden ablehnen:",
   "stash.ask.pop_kept": "Gibt es Konflikte, bleibt der Stash erhalten.",
   "stash.ask.unknown": "Ändern beide dieselben Dateien, kann Git mit Konflikten anhalten oder das Anwenden ablehnen.",
+  "stash.back_unstaged.toast": "Die Änderungen aus dem Stash sind zurück, aber nicht bereitgestellt: das Bereitgestellte passte nicht mehr in den Index.",
   "stash.blocked.conflicted": "Löse die Dateien mit Konflikten, bevor du einen Stash anlegst.",
   "stash.blocked.conflicts": "Löse zuerst die Dateien mit Konflikten: Solange Dateien Konflikte haben, kann Git keinen Stash anwenden.",
   "stash.blocked.no_files": "Wähle mindestens eine Datei für den Stash.",

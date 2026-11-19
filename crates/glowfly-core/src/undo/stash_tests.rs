@@ -9,7 +9,7 @@ use crate::testutil::*;
 use std::path::{Path, PathBuf};
 
 /// Status as "<code><path>" lists: (unstaged, staged).
-fn split(dir: &Path) -> (Vec<String>, Vec<String>) {
+pub(super) fn split(dir: &Path) -> (Vec<String>, Vec<String>) {
     let (unstaged, staged, _) = status_at(dir, true).unwrap();
     let names = |v: Vec<crate::repo::FileEntry>| v.into_iter().map(|f| format!("{}{}", f.status, f.path)).collect::<Vec<_>>();
     (names(unstaged), names(staged))
@@ -228,7 +228,7 @@ fn pop_undo_and_redo() {
     assert_eq!(stashes(&dir), vec![(0, oid, "On main: wip".to_owned())]);
 
     let redo = plan(&dir, &action, true).unwrap();
-    assert_eq!(redo, cmds(&[&["stash", "pop", "stash@{0}"]]));
+    assert_eq!(redo, Plan::ApplyStash { pop: true, index: 0, stash: oid });
     run_plan(&dir, redo);
     assert!(stashes(&dir).is_empty() && !clean(&dir));
     let action = redone(&dir, action).unwrap();
@@ -253,7 +253,9 @@ fn apply_undo_keeps_the_list_and_restores_a_dropped_stash() {
     run_plan(&dir, undo);
     assert!(clean(&dir));
     assert_eq!(stashes(&dir).len(), 1, "no duplicate");
-    run_plan(&dir, plan(&dir, &action, true).unwrap());
+    let redo = plan(&dir, &action, true).unwrap();
+    assert!(matches!(redo, Plan::ApplyStash { pop: false, index: 0, .. }), "{redo:?}");
+    run_plan(&dir, redo);
     assert!(!clean(&dir));
 
     // Dropped after the apply: undo puts it back first.

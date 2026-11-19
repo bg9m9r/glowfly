@@ -5,6 +5,7 @@
   "stash.ask.overlap.other": "Cambia {count} archivos que tú también has cambiado, así que Git puede detenerse con conflictos o negarse a aplicarlo:",
   "stash.ask.pop_kept": "Si hay conflictos, el stash se conserva.",
   "stash.ask.unknown": "Si cambian los mismos archivos, Git puede detenerse con conflictos o negarse a aplicarlo.",
+  "stash.back_unstaged.toast": "Los cambios del stash han vuelto, pero sin preparar: lo preparado ya no encajaba en el índice.",
   "stash.blocked.conflicted": "Resuelve los archivos en conflicto antes de crear un stash.",
   "stash.blocked.conflicts": "Resuelve primero los archivos en conflicto: Git no puede aplicar un stash mientras haya archivos en conflicto.",
   "stash.blocked.no_files": "Elige al menos un archivo para el stash.",

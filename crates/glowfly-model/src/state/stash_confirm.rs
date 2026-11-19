@@ -8,6 +8,7 @@
 //! list needs the stash's files, so the question goes through `StashMsg::Ask`, which reads them
 //! (`StashEffect::ReadPaths`) and opens it with `ask_confirm`. Every pop and apply of a listed
 //! stash names it by position and commit (`StashMsg::Run`), so git is refused if the list moved.
+//! Apply and Unstash ask git for the staged state too (update/stash.rs).
 
 use super::conflict_check::{POPOVER_FILES, file_list};
 use super::rebase::has_conflicts;
@@ -27,15 +28,6 @@ pub enum StashAction {
 }
 
 impl StashAction {
-    /// The `git stash` subcommand.
-    pub fn git_verb(self) -> &'static str {
-        match self {
-            StashAction::Apply => "apply",
-            StashAction::Pop => "pop",
-            StashAction::Drop => "drop",
-        }
-    }
-
     /// The job's label in the activity log, as the sidebar names it.
     pub fn job_label(self) -> &'static str {
         match self {

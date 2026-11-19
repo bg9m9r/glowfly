@@ -6,15 +6,15 @@ use crate::testkit::git_out;
 use crate::testutil::{git, scratch_repo, write};
 use std::path::{Path, PathBuf};
 
-fn read(dir: &Path, file: &str) -> String {
+pub(super) fn read(dir: &Path, file: &str) -> String {
     std::fs::read_to_string(dir.join(file)).unwrap()
 }
 
-fn names(dir: &Path, a: &[&str]) -> Vec<String> {
+pub(super) fn names(dir: &Path, a: &[&str]) -> Vec<String> {
     git_out(dir, a).lines().map(str::to_owned).collect()
 }
 
-fn top_oid(dir: &Path) -> Oid {
+pub(crate) fn top_oid(dir: &Path) -> Oid {
     list(dir).unwrap()[0].oid
 }
 
@@ -58,7 +58,7 @@ fn lines(change: &[(usize, &str)]) -> String {
 
 /// a.txt holds the lines 1..9; line 6 is changed to "six", staged and stashed. HEAD then gets
 /// `head`: line 4 sits inside the staged hunk's context, so `git apply --cached` fails.
-fn index_wont_fit(name: &str, head: &[(usize, &str)]) -> (PathBuf, Oid) {
+pub(crate) fn index_wont_fit(name: &str, head: &[(usize, &str)]) -> (PathBuf, Oid) {
     let dir = scratch_repo(name);
     write(&dir, "a.txt", &lines(&[]));
     git(&dir, &["add", "."]);

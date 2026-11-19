@@ -89,3 +89,18 @@ fn pop_latest_names_the_newest_stash_by_position_and_commit() {
     let m = pop_latest(&snap, EN).unwrap();
     assert!(matches!(m, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid: o }) if o == oid()));
 }
+
+#[test]
+fn every_entry_point_sends_the_same_run() {
+    let (_, snap) = fixture("actions-entry-points");
+    let mut snap = with_stash(snap);
+    snap.stashes[0].index = 2;
+    let [apply, pop, ..] = menu(&snap);
+    let o = oid();
+    let is =
+        |msg: &Msg, want: StashAction| matches!(msg, Msg::Stash(StashMsg::Run { action, index: 2, oid }) if *action == want && *oid == o);
+    let by_commit = |option| for_commit(&snap, EN, option, o).expect("listed");
+    let latest = pop_latest(&snap, EN).expect("a stash");
+    assert!(is(&pop.msg, StashAction::Pop) && is(&by_commit(StashOption::Pop), StashAction::Pop) && is(&latest, StashAction::Pop));
+    assert!(is(&apply.msg, StashAction::Apply) && is(&by_commit(StashOption::Apply), StashAction::Apply));
+}

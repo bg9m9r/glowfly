@@ -294,6 +294,10 @@ fn stash_kind(a: &[&str], argv: &[String]) -> Option<UndoKind> {
         ["stash", verb @ ("pop" | "apply"), rev] if plain(rev) => {
             Some(UndoKind::StashApply { pop: *verb == "pop", rev: Some((*rev).to_owned()) })
         }
+        ["stash", verb @ ("pop" | "apply"), "--index"] => Some(UndoKind::StashApply { pop: *verb == "pop", rev: None }),
+        ["stash", verb @ ("pop" | "apply"), "--index", rev] if plain(rev) => {
+            Some(UndoKind::StashApply { pop: *verb == "pop", rev: Some((*rev).to_owned()) })
+        }
         ["stash", "drop"] => Some(UndoKind::StashDrop { rev: None }),
         ["stash", "drop", rev] if plain(rev) => Some(UndoKind::StashDrop { rev: Some((*rev).to_owned()) }),
         _ => None,

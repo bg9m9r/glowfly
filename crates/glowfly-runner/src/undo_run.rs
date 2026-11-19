@@ -172,6 +172,19 @@ fn carry_out(
             }
             done(outputs.join("\n"), action.clone(), action)
         }
+        // Redo of a pop or apply: with the staged state again, or without when git can't restore it.
+        Ok(Plan::ApplyStash { pop, index, stash }) => {
+            let (back, output) = glowfly_core::stash_ops::apply_with(cwd, pop, index, stash, &mut |cmd| {
+                let ran = git.run(cwd, &[cmd.to_vec()]);
+                *held = ran.held;
+                (ran.ok, ran.output)
+            });
+            if !back.is_back() {
+                return failed(output);
+            }
+            let after = if redo { undo::redone(cwd, action.clone()).unwrap_or_else(|_| action.clone()) } else { action.clone() };
+            done(output, action, after)
+        }
         Ok(Plan::AbortAgain) => {
             let (ok, output, again, h) = super::stashes::abort_keeping(cwd, None, git);
             *held = h;

@@ -174,6 +174,13 @@ pub enum Plan {
     /// Put a conflict change's files back as they were before it, or after it for a redo
     /// (`put_conflicts`).
     PutConflicts,
+    /// Apply or pop `stash@{index}` (commit `stash`) with its staged state, without when git
+    /// can't restore it: `stash_ops::apply_with`.
+    ApplyStash {
+        pop: bool,
+        index: usize,
+        stash: Oid,
+    },
     /// Carry out each part's plan in order, stopping at the first failure (`Action::Batch`).
     Each(Vec<(Action, Plan)>),
 }
@@ -244,6 +251,8 @@ mod reverted_tests;
 mod saved_tests;
 #[cfg(test)]
 mod stash_bytes_tests;
+#[cfg(test)]
+mod stash_index_tests;
 #[cfg(test)]
 mod stash_tests;
 #[cfg(test)]

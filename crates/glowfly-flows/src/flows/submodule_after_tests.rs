@@ -72,14 +72,11 @@ fn stash_newer(st: &mut AppState, parent: &Path, stash: &[&str]) -> Oid {
 fn update_after_stash_pop() {
     let (mut st, parent, lib) = two_branches("smb-after-pop");
     st.settings.submodules.keep_updated = true;
-    stash_newer(&mut st, &parent, &["stash", "push", "-q"]);
+    let newer = stash_newer(&mut st, &parent, &["stash", "push", "-q"]);
     let oid = st.snap.as_ref().unwrap().stashes[0].oid;
-    // A plain pop puts back the files but leaves the recorded commit: the check finds nothing.
-    let fx = after_job(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid }));
-    assert!(checks_all(&fx, Batch::Auto), "{fx:?}");
-    let fx = step(&mut st, fx);
-    assert!(st.job.is_none(), "{fx:?}");
-    assert_eq!(sub(&st).state, SubmoduleState::InSync);
+    // The pop brings the staged commit back with its index: the update follows to it.
+    updates_after(&mut st, Msg::Stash(StashMsg::Run { action: StashAction::Pop, index: 0, oid }));
+    assert_eq!(sub(&st).checked_out, Some(newer));
     cleanup(&[&parent, &lib]);
 }
 

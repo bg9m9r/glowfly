@@ -10,7 +10,7 @@ use glowfly_model::state::AppState;
 use glowfly_model::state::auto_stash::back_unstaged;
 use std::path::Path;
 
-fn stash_count(dir: &Path) -> usize {
+pub(super) fn stash_count(dir: &Path) -> usize {
     glowfly_core::stash_ops::list(dir).unwrap().len()
 }
 
@@ -26,7 +26,7 @@ fn checkout_feature_with_stash(st: &mut AppState) {
     assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("feature"));
 }
 
-fn logged(st: &AppState, text: &str) -> bool {
+pub(super) fn logged(st: &AppState, text: &str) -> bool {
     st.log.iter().any(|l| l.text.contains(text))
 }
 
@@ -48,7 +48,7 @@ fn stash_and_checkout_keeps_the_staged_file_staged() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-fn lines(change: &[(usize, &str)]) -> String {
+pub(super) fn lines(change: &[(usize, &str)]) -> String {
     (1..=9)
         .map(|n| {
             let line = change.iter().find(|(i, _)| *i == n).map_or(n.to_string(), |(_, t)| (*t).to_owned());
