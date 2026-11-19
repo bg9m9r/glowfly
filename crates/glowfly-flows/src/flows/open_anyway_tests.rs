@@ -26,7 +26,7 @@ fn open_anyway_lets_the_load_past_the_check() {
     assert!(st.snap.is_none());
     assert!(matches!(&st.modal, Some(Modal::Confirm { then, .. }) if matches!(&**then, Msg::Repo(RepoMsg::OpenAnyway { .. }))), "asks");
     let refused = st.log.last().expect("the failure is logged").text.clone();
-    assert!(refused.contains("network place"), "{refused}");
+    assert!(refused.ends_with("Asking before opening it.") && !refused.contains("won't open"), "{refused}");
 
     drive(&mut st, Msg::ConfirmAccepted);
     assert!(st.modal.is_none(), "it doesn't ask again");
