@@ -256,6 +256,7 @@ fn palette_entries() {
     let (mut st, dir) = ready("palette");
     git(&dir, &["branch", "feature/a", "develop"]);
     git(&dir, &["branch", "release/1.2.0", "develop"]);
+    git(&dir, &["branch", "release/1.10.0", "develop"]);
     drive(&mut st, Msg::Repo(RepoMsg::Refresh));
     let finishes: Vec<(C, String, Option<String>)> =
         entries(&st).into_iter().filter(|e| matches!(e.command, C::FinishGitFlow(_))).map(|e| (e.command, e.label, e.detail)).collect();
@@ -266,6 +267,7 @@ fn palette_entries() {
             (C::FinishGitFlow("feature/login".into()), "Finish Git Flow feature login…".into(), into("develop")),
             (C::FinishGitFlow("feature/a".into()), "Finish Git Flow feature a…".into(), into("develop")),
             (C::FinishGitFlow("release/1.2.0".into()), "Finish Git Flow release 1.2.0…".into(), into("main and develop")),
+            (C::FinishGitFlow("release/1.10.0".into()), "Finish Git Flow release 1.10.0…".into(), into("main and develop")),
         ]
     );
     run(&mut st, Msg::Palette(PaletteMsg::RunPaletteCommand(C::FinishGitFlow("release/1.2.0".into()))));
