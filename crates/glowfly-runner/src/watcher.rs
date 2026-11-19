@@ -289,7 +289,7 @@ fn classify(ev: &Event, paths: &WatchPaths, ignores: &mut Ignores) -> (Change, V
     for p in &ev.paths {
         let name = p.file_name().and_then(|n| n.to_str());
         let parent = p.parent().and_then(|d| d.file_name()).and_then(|n| n.to_str());
-        if name == Some(".gitignore") || (name == Some("exclude") && parent == Some("info")) {
+        if matches!(name, Some(".gitignore" | ".gitattributes")) || (name == Some("exclude") && parent == Some("info")) {
             ignores.clear();
         }
         let (c, rel) = paths.classify_path(p, what, &mut |rel| ignores.is_ignored(rel, what));

@@ -74,7 +74,9 @@ const MAX_WALKED: usize = 4096;
 /// Whether libgit2 would read a `.gitmodules` differently from git anywhere it reads one for
 /// `repo`'s work tree: the work tree's own, or that of a checked-out submodule at any depth
 /// (libgit2's status of a submodule compares its work tree, which reads the submodule's own
-/// `.gitmodules` when its index holds a gitlink, and so on down). Whatever can't be told counts
+/// `.gitmodules` when its index holds a gitlink, and so on down), or would read a checked-out
+/// submodule's `.gitattributes` or `.gitignore` through a link that may not be followed
+/// (`tree_files::linked_away_at`). Whatever can't be told counts
 /// as unread: a gitlink whose name isn't UTF-8 or isn't a plain relative path inside the work
 /// tree, a submodule whose repository names another work tree than its own folder
 /// (`work_tree_is`), one whose index can't be read, one below the first level whose
@@ -114,6 +116,10 @@ fn below(workdir: &Path, mut links: Vec<Vec<u8>>, depth: usize, walked: &mut usi
         };
         *walked += 1;
         if depth + 1 >= MAX_DEPTH || *walked > MAX_WALKED || !taken_alike(&dirs, &folder, workdir) || kind(&folder) == Gitmodules::Unread {
+            return true;
+        }
+        // libgit2's status of the submodule compares its work tree, reading these two there.
+        if crate::tree_files::linked_away_at(&folder, workdir, &dirs.git_dir.join("index")).is_some() {
             return true;
         }
         let Some(inner) = gitlinks_of(&dirs.git_dir.join("index")) else { return true };

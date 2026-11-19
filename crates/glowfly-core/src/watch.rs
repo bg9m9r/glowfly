@@ -307,8 +307,8 @@ impl Ignores {
         self.held = None;
     }
 
-    /// Forgets the cached folders (after a `.gitignore` or `info/exclude` changed). The index
-    /// stays.
+    /// Forgets the cached folders and whether the ignore files are read at all (after a
+    /// `.gitignore`, `.gitattributes` or `info/exclude` changed). The index stays.
     pub fn clear(&mut self) {
         self.dirs.clear();
         self.held = None;
