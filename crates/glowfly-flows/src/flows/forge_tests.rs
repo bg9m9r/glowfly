@@ -133,11 +133,13 @@ fn the_repository_chooses_whether_year_like_branch_names_name_issues() {
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
     assert_eq!(branch_issue(&st, "2024-cleanup"), None);
+    assert_eq!(branch_issue(&st, "20241016-release"), None);
     assert_eq!(branch_issue(&st, "123-fix").as_deref(), Some("123"));
 
     let fx = update(&mut st, Msg::Forge(ForgeMsg::SetYearBranches(true)), Instant::now());
     assert!(fx.iter().any(|e| matches!(e, Effect::Save(SaveEffect::Settings(..)))), "the choice is saved");
     assert_eq!(branch_issue(&st, "2024-cleanup").as_deref(), Some("2024"));
+    assert_eq!(branch_issue(&st, "20241016-release").as_deref(), Some("20241016"));
 
     // Kept for the repository: opening it again reads it.
     let mut again = state();

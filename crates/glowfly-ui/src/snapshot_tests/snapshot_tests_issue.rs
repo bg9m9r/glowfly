@@ -296,7 +296,7 @@ fn prefs_tracker_year_branches() {
     let mut h = harness(st, false);
     h.run();
     h.check_snapshot("prefs_tracker_year_branches");
-    h.get_by_label("Read a year at the start of a branch name as an issue number").click();
+    h.get_by_label("Read a year or a date at the start of a branch name as an issue number").click();
     h.run();
     assert!(pushed(&h, &|m: &Msg| matches!(m, Msg::Forge(ForgeMsg::SetYearBranches(true)))));
     drop(h);

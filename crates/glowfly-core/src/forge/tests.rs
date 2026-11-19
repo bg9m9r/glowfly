@@ -254,3 +254,40 @@ fn a_fork_source_is_another_repository() {
     let renamed = t(Provider::GitHub, "github.com", "team", "app-fork");
     assert_eq!(pr(Some(renamed.clone())).fork_source(&target), Some(&renamed));
 }
+
+#[test]
+fn dates_at_the_start_of_branch_names_are_not_issues_unless_the_repository_says_so() {
+    let hash = |b, years| branch_issue(RefStyle::Hash, b, years);
+    for b in ["20241016-release", "20241016_x", "release/20241016-hotfix", "19700101-x", "20991231-x"] {
+        let digits = &b.rsplit('/').next().unwrap()[..8];
+        assert_eq!(hash(b, false), None, "{b}");
+        assert_eq!(hash(b, true).as_deref(), Some(digits), "{b}");
+    }
+    assert_eq!(branch_issue(RefStyle::AzureBoards, "20241016-release", false), None);
+}
+
+#[test]
+fn eight_digit_numbers_that_are_not_dates_stay_issues() {
+    for (b, n) in [
+        ("20241016", "20241016"),
+        ("feature/20241016", "20241016"),
+        ("12345678-x", "12345678"),
+        ("20241399-x", "20241399"),
+        ("20240015-x", "20240015"),
+        ("20240132-x", "20240132"),
+        ("20240001-x", "20240001"),
+        ("19691231-x", "19691231"),
+        ("21000101-x", "21000101"),
+        ("202410-x", "202410"),
+        ("202410161-x", "202410161"),
+    ] {
+        assert_eq!(branch_issue(RefStyle::Hash, b, false).as_deref(), Some(n), "{b}");
+    }
+}
+
+#[test]
+fn explicit_forms_name_dated_issues_whatever_the_setting() {
+    for b in ["#20241016", "#20241016-release", "gh-20241016", "issue-20241016", "Issues_20241016"] {
+        assert_eq!(branch_issue(RefStyle::Hash, b, false).as_deref(), Some("20241016"), "{b}");
+    }
+}
