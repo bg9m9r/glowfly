@@ -5,6 +5,7 @@ use super::selection::MultiSelection;
 use super::{AppState, Selection};
 use crate::keymap::{BindingId, Chord, KeyName, Keymap};
 use crate::state::git_env::GitState;
+use git2::Oid;
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::{DEFAULT_ZOOM_PERCENT, ZOOM_STEPS};
 
@@ -88,16 +89,16 @@ pub fn copy_sha(st: &AppState) -> Result<ShaCopy, &'static str> {
     }
 }
 
-/// The selected commit's summary for Copy commit message, or why it is disabled.
-pub fn copy_message(st: &AppState) -> Result<String, &'static str> {
+/// The one selected commit whose whole message Copy commit message copies, or why it is disabled.
+pub fn copy_message_target(st: &AppState) -> Result<Oid, &'static str> {
     let no_commit = st.settings.lang().tr("menu.edit.no_commit");
     let oid = match &st.session.selection {
-        Selection::Commit(oid) => oid,
-        Selection::VsWorkdir(w) => &w.oid,
+        Selection::Commit(oid) => *oid,
+        Selection::VsWorkdir(w) => w.oid,
         _ => return Err(no_commit),
     };
     let Some(snap) = &st.snap else { return Err(no_commit) };
-    snap.row_of.get(oid).map(|&row| snap.commits[row].summary.to_string()).ok_or(no_commit)
+    if snap.row_of.contains_key(&oid) { Ok(oid) } else { Err(no_commit) }
 }
 
 /// The checked-out branch for Copy branch name, or why it is disabled.
