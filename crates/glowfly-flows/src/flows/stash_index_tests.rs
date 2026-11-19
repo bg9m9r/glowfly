@@ -3,6 +3,7 @@
 //! no longer fits and everything comes back unstaged, keeps the staged selection that is already
 //! there, and keeps the stash over a conflict.
 
+use super::auto_stash_index_tests::{lines, logged, stash_count};
 use super::job_errors_tests::two_branches;
 use super::stash_push_options_tests::push_with;
 use super::tests::{clean_tree, drive, git, scratch_repo, state};
@@ -12,7 +13,6 @@ use glowfly_core::stash_ops::StashScope;
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
 use glowfly_model::state::stash_actions::{self, StashOption};
-use std::path::Path;
 
 fn paths(rows: &[FileEntry]) -> Vec<String> {
     rows.iter().map(|f| f.path.clone()).collect()
@@ -22,14 +22,6 @@ fn paths(rows: &[FileEntry]) -> Vec<String> {
 fn changes(st: &AppState) -> (Vec<String>, Vec<String>) {
     let snap = st.snap.as_ref().unwrap();
     (paths(&snap.staged), paths(&snap.unstaged))
-}
-
-fn stash_count(dir: &Path) -> usize {
-    glowfly_core::stash_ops::list(dir).unwrap().len()
-}
-
-fn logged(st: &AppState, text: &str) -> bool {
-    st.log.iter().any(|l| l.text.contains(text))
 }
 
 fn stash_all(st: &mut AppState) {
@@ -76,15 +68,6 @@ fn unstash_puts_the_staged_changes_back_as_staged_and_undo_and_redo_agree() {
     assert_eq!(changes(&st), before);
     assert_eq!(stash_count(&dir), 0);
     let _ = std::fs::remove_dir_all(&dir);
-}
-
-fn lines(change: &[(usize, &str)]) -> String {
-    (1..=9)
-        .map(|n| {
-            let line = change.iter().find(|(i, _)| *i == n).map_or(n.to_string(), |(_, t)| (*t).to_owned());
-            line + "\n"
-        })
-        .collect()
 }
 
 /// n.txt (lines 1..9) with line 6 staged and stashed, then line 4 committed on main: the stash's
