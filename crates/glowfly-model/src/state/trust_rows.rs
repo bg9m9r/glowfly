@@ -116,6 +116,7 @@ mod tests {
             incoming: None,
             unchecked: None,
             open_step: None,
+            remember: false,
         };
         assert_eq!(row_follows(&p, None), [follow("tools/x"), follow("git-lfs")]);
         assert_eq!(row_follows(&p, Some("lib")), [follow("bin/y"), follow("git-lfs.exe")]);

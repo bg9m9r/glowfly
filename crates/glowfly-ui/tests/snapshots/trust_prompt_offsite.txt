@@ -1,0 +1,16 @@
+Dialog
+  Label "Trust this repository?"
+  Button "Close this dialog"
+  Label "tools"
+  Label "C:\\work\\tools"
+  Label "Pull needs git to run this repository's settings and hooks."
+  Label "Glowfly doesn't read //nas/team/hooks: this repository's settings or hooks lead there, to a network place, so it can't tell what Git would run or read from it. Trust and run runs it anyway."
+  CheckBox "Don't ask again for these places in this repository" [off]
+  Label "This repository's own settings or hooks make git run programs. So far Glowfly has only read its files."
+  Label "Settings that run commands"
+  Label "Not recognised"
+  Label "core.hooksPath = //nas/team/hooks"
+  Label "Trust it only if you know where it came from."
+  Label "Until then, Glowfly won't fetch in the background, ask its credential helper for sign-ins or let git read its status, and it asks before running git commands you start."
+  Button "Cancel" [focused]
+  Button "Trust and run"

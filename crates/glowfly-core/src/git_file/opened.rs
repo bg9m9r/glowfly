@@ -49,8 +49,20 @@ fn start_of(spelled: &Path) -> Result<PathBuf, Refused> {
     if cfg!(windows) {
         return Ok(spelled.to_path_buf());
     }
-    // The place in use: the path's own network root, or this computer.
-    let anchor = spelled.ancestors().take_while(|a| root_of(a).is_some()).last().or_else(|| spelled.ancestors().last());
+    // The place in use: the network root of the path it spells once its `.` and `..` are
+    // taken out (by the text alone), or this computer. The walk itself goes by the spelling
+    // as given, so every folder it passes through on the way is looked at.
+    let mut plain = PathBuf::new();
+    for part in spelled.components() {
+        match part {
+            std::path::Component::ParentDir => {
+                plain.pop();
+            }
+            std::path::Component::CurDir => {}
+            part => plain.push(part),
+        }
+    }
+    let anchor = plain.ancestors().take_while(|a| root_of(a).is_some()).last().or_else(|| plain.ancestors().last());
     match leads_to(spelled, anchor.unwrap_or(spelled)) {
         Leads::Near => Ok(std::fs::canonicalize(spelled).unwrap_or_else(|_| spelled.to_path_buf())),
         far => Err(Refused { place: spelled.to_path_buf(), network: far == Leads::Network }),

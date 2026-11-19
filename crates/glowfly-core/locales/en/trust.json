@@ -39,6 +39,7 @@
   "trust.unchecked.conflicted": "Merging what it brings in would conflict in {path}, where hooks run from, leaving conflict markers in a hook. Trust and run runs it anyway.",
   "trust.unchecked.offsite": "Glowfly doesn't read {places}: this repository's settings or hooks lead there, to a network place, so it can't tell what Git would run or read from it. Trust and run runs it anyway.",
   "trust.unchecked.patched": "A patch it applies writes {path}, where hooks run from, and Git would run what it writes. Trust and run runs it anyway.",
+  "trust.unchecked.remember": "Don't ask again for these places in this repository",
   "trust.unchecked.state": "Glowfly couldn't read {files} of the rebase, cherry-pick or revert in progress (too large, not a plain file, or somewhere it doesn't follow), so it can't tell which commands continuing it would run. Trust and run runs it anyway.",
   "trust.unchecked.unmodeled": "Glowfly can't tell what {what} writes where hooks run from, so it wasn't compared with what you trusted. Trust and run runs it anyway.",
   "trust.unchecked.unreadable": "Glowfly couldn't read the commits it brings in ({error}), as happens in a partial clone, so their hooks weren't compared with what you trusted. Trust and run runs it anyway; or fetch them first with hooks turned off (git -c core.hooksPath= fetch).",

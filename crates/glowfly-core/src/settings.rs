@@ -234,6 +234,11 @@ pub struct Settings {
     /// as its `repo_keys` key; keyed like `repo_trust`. Revoking that repository revokes these too.
     #[serde(default)]
     pub repo_trust_from: HashMap<String, String>,
+    /// The places a trusted repository's settings and hooks name that Glowfly doesn't read
+    /// (`TrustScan::offsite`, as shown) and the user chose not to be asked about again, keyed
+    /// like `repo_trust`. Kept only beside a Trusted decision: removed with it.
+    #[serde(default)]
+    pub repo_trust_places: HashMap<String, Vec<String>>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
     pub status_tip_shown: HashMap<String, bool>,
     /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.

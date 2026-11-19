@@ -70,6 +70,7 @@ fn trusted(dir: &Path) -> TrustCheck {
         sealed: Sealed::Job { label: "Update".into() },
         accepted: None,
         lang: Default::default(),
+        places: Vec::new(),
     }
 }
 

@@ -18,7 +18,15 @@ fn repo(name: &str) -> PathBuf {
 
 fn check(dir: &Path, saved: Option<SavedTrust>) -> TrustCheck {
     let sealed = Sealed::Job { label: "Fetch".into() };
-    TrustCheck { workdir: dir.to_path_buf(), real: dir.to_path_buf(), saved, sealed, accepted: None, lang: Default::default() }
+    TrustCheck {
+        workdir: dir.to_path_buf(),
+        real: dir.to_path_buf(),
+        saved,
+        sealed,
+        accepted: None,
+        lang: Default::default(),
+        places: Vec::new(),
+    }
 }
 
 fn hook(dir: &Path, text: &str) {
@@ -83,7 +91,7 @@ fn a_hooks_folder_that_isnt_looked_at_holds_every_job_whatever_was_decided() {
     glowfly_core::gitcli::run(&dir, &glowfly_core::gitcli::args(&["config", "core.hooksPath", place]));
     let scan = glowfly_core::trust::scan_at(&dir).unwrap();
     assert_eq!(scan.offsite.len(), 1, "{scan:?}");
-    let reason = Unchecked::Offsite { places: scan.offsite.join(", "), files: None };
+    let reason = Unchecked::Offsite { places: scan.offsite.clone(), files: None };
     // The setting itself asks first; a decision made on this very scan still doesn't cover
     // what wasn't read.
     assert!(matches!(verify(&check(&dir, None), &job(&dir)), Verdict::Stale(_)));
@@ -100,17 +108,70 @@ fn a_hooks_folder_that_isnt_looked_at_holds_every_job_whatever_was_decided() {
     let todo = dir.join(".git/rebase-merge/git-rebase-todo");
     std::fs::create_dir_all(&todo).unwrap();
     let files = "rebase-merge/git-rebase-todo".to_owned();
-    let both = Unchecked::Offsite { places: scan.offsite.join(", "), files: Some(files.clone()) };
+    let both = Unchecked::Offsite { places: scan.offsite.clone(), files: Some(files.clone()) };
     let Verdict::Unchecked(found) = verify(&check(&dir, saved.clone()), &job(&dir)) else { panic!("held") };
     assert_eq!(found.1, both);
-    for alone in [Unchecked::State(files), Unchecked::Offsite { places: scan.offsite.join(", "), files: None }] {
+    for alone in [Unchecked::State(files), Unchecked::Offsite { places: scan.offsite.clone(), files: None }] {
         let accepted = glowfly_model::effect::Accepted { at: None, reason: alone };
         let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved.clone()) };
         assert!(matches!(verify(&once, &job(&dir)), Verdict::Unchecked(_)));
     }
-    let accepted = glowfly_model::effect::Accepted { at: None, reason: both };
-    let once = TrustCheck { accepted: Some(accepted), ..check(&dir, saved) };
+    let accepted = glowfly_model::effect::Accepted { at: None, reason: both.clone() };
+    let once = TrustCheck { accepted: Some(accepted.clone()), ..check(&dir, saved.clone()) };
     assert!(matches!(verify(&once, &job(&dir)), Verdict::Pass(_)));
+    // With the places remembered the files still ask, alone; the answer that named both
+    // (given with the choice to remember) passes this run.
+    let known = TrustCheck { places: scan.offsite.clone(), ..check(&dir, saved.clone()) };
+    let Verdict::Unchecked(found) = verify(&known, &job(&dir)) else { panic!("held for the files") };
+    assert_eq!(found.1, Unchecked::State("rebase-merge/git-rebase-todo".into()));
+    assert!(matches!(verify(&TrustCheck { accepted: Some(accepted), ..known }, &job(&dir)), Verdict::Pass(_)));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn places_the_user_chose_not_to_be_asked_about_again_dont_hold_a_trusted_repository_s_jobs() {
+    let dir = repo("offsite-remembered");
+    let place = |name: &str| {
+        if cfg!(windows) { format!("//glowfly-test.invalid/share/{name}") } else { format!("/net/glowfly-test.invalid/{name}") }
+    };
+    let config = |key: &str, value: &str| {
+        glowfly_core::gitcli::run(&dir, &glowfly_core::gitcli::args(&["config", key, value]));
+    };
+    config("core.hooksPath", &place("hooks"));
+    let scan = glowfly_core::trust::scan_at(&dir).unwrap();
+    let saved = Some(SavedTrust::trusted(Some(scan.print())));
+    let with = |saved: Option<SavedTrust>, places: &[String]| TrustCheck { places: places.to_vec(), ..check(&dir, saved) };
+    assert!(matches!(verify(&with(saved.clone(), &[]), &job(&dir)), Verdict::Unchecked(_)), "asked until remembered");
+    assert!(matches!(verify(&with(saved.clone(), &scan.offsite), &job(&dir)), Verdict::Pass(_)), "remembered: no hold");
+    // Others remembered beside it change nothing; one that isn't this place doesn't cover it.
+    let more = [scan.offsite.clone(), vec!["elsewhere".to_owned()]].concat();
+    assert!(matches!(verify(&with(saved.clone(), &more), &job(&dir)), Verdict::Pass(_)));
+    assert!(matches!(verify(&with(saved.clone(), &["elsewhere".to_owned()]), &job(&dir)), Verdict::Unchecked(_)));
+
+    // Never without a Trusted decision: not trusted, undecided, or revoked since.
+    let refused = Some(SavedTrust { trust: glowfly_core::settings::RepoTrust::NotTrusted, print: None });
+    for saved in [refused, None] {
+        assert!(!matches!(verify(&with(saved, &scan.offsite), &job(&dir)), Verdict::Pass(_)));
+    }
+    let mut s = glowfly_core::settings::Settings::default();
+    s.set_trust(&dir, saved.clone());
+    s.remember_places(&dir, &scan.offsite);
+    assert!(matches!(verify(&with(s.saved_trust(&dir), &s.remembered_places(&dir)), &job(&dir)), Verdict::Pass(_)));
+    s.revoke_trust(&dir);
+    assert!(s.remembered_places(&dir).is_empty(), "revoking forgets them");
+    assert!(!matches!(verify(&with(s.saved_trust(&dir), &s.remembered_places(&dir)), &job(&dir)), Verdict::Pass(_)));
+
+    // A new place holds again, and the reason names it with the rest.
+    let known = scan.offsite.clone();
+    config("http.sslCAInfo", &place("ca.pem"));
+    let wider = glowfly_core::trust::scan_at(&dir).unwrap();
+    assert_eq!(wider.offsite.len(), 2, "{wider:?}");
+    // The changed setting asks through the decision first, as any change does.
+    assert!(matches!(verify(&with(saved, &known), &job(&dir)), Verdict::Stale(_)));
+    let again = Some(SavedTrust::trusted(Some(wider.print())));
+    let Verdict::Unchecked(found) = verify(&with(again.clone(), &known), &job(&dir)) else { panic!("the new place asks") };
+    assert_eq!(found.1, Unchecked::Offsite { places: wider.offsite.clone(), files: None });
+    assert!(matches!(verify(&with(again, &wider.offsite), &job(&dir)), Verdict::Pass(_)));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

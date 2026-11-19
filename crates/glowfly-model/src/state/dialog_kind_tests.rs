@@ -106,6 +106,7 @@ fn forms_info_and_confirms_are_told_apart() {
         incoming: None,
         unchecked: None,
         open_step: None,
+        remember: false,
     };
     let fork = ForkCreate {
         workdir: folder("app"),

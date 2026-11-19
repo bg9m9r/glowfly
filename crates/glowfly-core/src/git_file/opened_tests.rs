@@ -190,3 +190,35 @@ fn a_link_in_the_opened_path_is_resolved_as_libgit2_does() {
     }
     let _ = std::fs::remove_dir_all(&top);
 }
+
+#[test]
+fn a_link_in_the_opened_path_to_another_network_place_is_refused() {
+    let top = crate::paths::temp_dir().join(format!("glowfly-test-opened-far-link-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&top);
+    std::fs::create_dir_all(top.join("plain")).unwrap();
+    assert_eq!(check(&top.join("plain"), false), Ok(()));
+    // Only Unix resolves the opened path; on Windows libgit2 goes up it as spelled.
+    if cfg!(unix) && link_to(&net_place().join("x"), &top.join("far"), true) {
+        let far = top.join("far");
+        assert_eq!(check(&far, true), Err(Refused { place: far.clone(), network: true }));
+        let shown = crate::native_path::shown(&far);
+        assert!(matches!(load(&far, &LoadOptions::default()), Err(Error::NetworkPointer(p)) if p == shown));
+        // A folder below the link too.
+        assert_eq!(check(&far.join("src"), true), Err(Refused { place: far.join("src"), network: true }));
+
+        // A spelling that leaves through `..` for a network place: the folders it passes
+        // through are looked at, so a link among them to another place is found.
+        std::fs::create_dir_all(top.join("real/b")).unwrap();
+        assert!(link_to(&Path::new("/net/glowfly-other.invalid").join("x"), &top.join("a"), true));
+        let up = "../".repeat(top.components().count() + 1);
+        for (first, refused) in [("real", false), ("a", true)] {
+            let spelled = top.join(format!("{first}/b/{up}net/glowfly-test.invalid/r"));
+            let found = check(&spelled, false);
+            assert_eq!(found.is_err(), refused, "{first}: {found:?}");
+            if refused {
+                assert_eq!(found, Err(Refused { place: spelled, network: true }));
+            }
+        }
+    }
+    let _ = std::fs::remove_dir_all(&top);
+}

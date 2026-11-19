@@ -10,7 +10,9 @@
 //! effect names before it starts, and for a job of git commands each command's just before it
 //! runs, a pull pinned to the commits its fetch brought. A job in a repository whose rebase or
 //! pick in progress has files that couldn't be read for the commands it runs
-//! (`TrustScan::unread`) is held each time, whatever was decided, until Trust and run. Nothing the repository names runs for
+//! (`TrustScan::unread`) is held each time, whatever was decided, until Trust and run; so is one
+//! whose settings or hooks name places Glowfly doesn't read (`TrustScan::offsite`), unless the
+//! repository is trusted and the user chose not to be asked about those places again. Nothing the repository names runs for
 //! the check; a pull's fetch runs (under the settings just checked) to learn what it merges.
 //! A scan or comparison that fails holds the work back: it never runs unchecked.
 
@@ -117,13 +119,18 @@ pub(super) fn verify(c: &TrustCheck, effect: &Effect) -> Verdict {
     // The same for the places its settings and hooks name that weren't looked at.
     // Both are named by one reason, so accepting it accepts what was shown.
     let files = (!now.unread.is_empty()).then(|| now.unread.join(", "));
-    let reason = match (files, now.offsite.is_empty()) {
-        (files, false) => Some(Unchecked::Offsite { places: now.offsite.join(", "), files }),
+    let whole = match (files.clone(), now.offsite.is_empty()) {
+        (files, false) => Some(Unchecked::Offsite { places: now.offsite.clone(), files }),
         (files, true) => files.map(Unchecked::State),
     };
+    // Places the user chose not to be asked about again in this trusted repository: only
+    // when every place found now is among them; the files still ask.
+    let remembered = c.saved.as_ref().is_some_and(|t| t.is_trusted()) && now.offsite.iter().all(|p| c.places.contains(p));
+    let reason = if remembered { files.map(Unchecked::State) } else { whole.clone() };
     if matches!(c.sealed, Sealed::Job { .. })
         && let Some(reason) = reason
         && accept != Some(&reason)
+        && accept != whole.as_ref()
     {
         return Verdict::Unchecked(Box::new((now, reason)));
     }

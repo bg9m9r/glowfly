@@ -63,7 +63,8 @@ fn check_for(st: &AppState, sealed: Sealed, cwd: &Path, accepted: Option<Accepte
             (real, st.saved_trust_for(cwd))
         }
     };
-    TrustCheck { workdir: cwd.to_path_buf(), real, saved, sealed, accepted, lang: st.settings.lang() }
+    let places = st.settings.remembered_places(&real);
+    TrustCheck { workdir: cwd.to_path_buf(), real, saved, sealed, accepted, lang: st.settings.lang(), places }
 }
 
 /// Wraps the effects one update returns with their checks: each sealed one (`st.trust.seals`
@@ -173,6 +174,7 @@ pub(super) fn stale(st: &mut AppState, s: Stale) {
                 incoming: incoming.map(Box::new),
                 unchecked: unchecked.map(Box::new),
                 open_step: None,
+                remember: false,
             };
             super::trust::hold(st, job, effect, prompt, !active);
         }
