@@ -126,3 +126,19 @@ fn a_quoted_tilde_before_a_glob_or_in_a_bare_word_is_a_name_here() {
     assert_eq!(paths(&s), ["~/tools", "~x.sh"], "{:?}", s.unread);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_long_hash_bang_line_is_read_to_its_end_and_past_the_limit_counts_as_shell() {
+    let dir = runs_x("hook-shell-long-line", "#!/bin/sh\n./scripts/x\n");
+    let long_path = format!("#!/bin/{}sh", "/".repeat(250));
+    let spaced = format!("#!/usr/bin/env{}bash", " ".repeat(300));
+    let unknown = format!("#!/usr/bin/env{}node", " ".repeat(MAX_LINE_BYTES));
+    for first in [long_path, spaced, unknown] {
+        write(&dir, "scripts/x", &format!("{first}\n./scripts/y\n"));
+        assert_eq!(paths(&scan_of(&dir)), ["scripts/x", "scripts/y"], "{}", &first[..20]);
+    }
+    // A long line that runs no shell, ending within the limit, is no shell script.
+    write(&dir, "scripts/x", &format!("#!/usr/bin/env{}node\n./scripts/y\n", " ".repeat(300)));
+    assert_eq!(paths(&scan_of(&dir)), ["scripts/x"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}

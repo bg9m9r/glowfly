@@ -49,8 +49,9 @@ const MAX_LINE_BYTES: usize = 4096;
 /// The most files followed for what hooks run.
 const MAX_FILES: usize = 64;
 
-/// The bytes of a file read to tell whether it is read as shell (its `#!` line, a NUL byte).
-const HEAD_BYTES: usize = 256;
+/// The bytes of a file read to tell whether it is read as shell (its `#!` line, a NUL byte):
+/// one more than the longest `#!` line read (`files::is_shell`).
+const HEAD_BYTES: usize = MAX_LINE_BYTES + 1;
 
 /// How many scripts below a hook are read: a hook's own text is at 0.
 const MAX_DEPTH: usize = 3;
