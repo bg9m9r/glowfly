@@ -340,7 +340,7 @@ crate::msg::msg_areas! { area_router! {
                 inactive::inactive(st, &workdir, *msg, now);
             }
         }
-        Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then }),
+        Msg::Confirm { title, body, button, then } => st.modal = Some(crate::state::Modal::Confirm { title, body, button, then, cancel_default: false }),
         Msg::ConfirmDanger { title, body, button, ack, then } => {
             st.modal = Some(crate::state::Modal::ConfirmDanger { title, body, button, ack, acked: false, then });
         }

@@ -58,5 +58,5 @@ pub(super) fn sized(st: &mut AppState, workdir: &Path, id: u64, size: HistorySiz
         return;
     }
     let then = Box::new(Msg::Job(JobMsg::DeepenNow(Deepen::Full)));
-    st.modal = Some(Modal::Confirm { title, body, button, then });
+    st.modal = Some(Modal::Confirm { title, body, button, then, cancel_default: false });
 }

@@ -10,12 +10,14 @@ use crate::widgets::{buttons, details::disclosure};
 use eframe::egui::{self, Ui};
 use glowfly_model::msg::Msg;
 
-/// The dialog's texts: `details`, when given, sits collapsed under the body.
+/// The dialog's texts: `details`, when given, sits collapsed under the body. `cancel_default`
+/// makes Cancel the default button (`Footer::dismiss_default`).
 pub(super) struct Texts<'a> {
     pub title: &'a str,
     pub body: &'a str,
     pub button: &'a str,
     pub details: Option<&'a str>,
+    pub cancel_default: bool,
 }
 
 /// Draws the dialog; returns true when it should close (Cancel). `ack` is the acknowledgement's
@@ -23,7 +25,7 @@ pub(super) struct Texts<'a> {
 pub(super) fn show(
     ui: &mut Ui,
     cx: Cx,
-    Texts { title, body, button, details }: Texts,
+    Texts { title, body, button, details, cancel_default }: Texts,
     tone: Tone,
     ack: Option<(&str, &mut bool)>,
     alt: Option<&str>,
@@ -50,7 +52,7 @@ pub(super) fn show(
         Tone::Normal => footer.primary(buttons::primary(button)),
         Tone::Danger => footer.danger(buttons::danger(button).enabled(ok).why(Some(cx.t.tr("common.ack.tip")))),
     };
-    let out = d.finish(ui, footer.cancel());
+    let out = d.finish(ui, footer.cancel().dismiss_default(cancel_default));
     if out.primary {
         msgs.push(Msg::ConfirmAccepted);
     } else if out.alt == Some(0) {

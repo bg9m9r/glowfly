@@ -203,9 +203,9 @@ trust scan all run for untrusted repositories too.
    and those places only (`update/open_anyway.rs`, `safe_directory::network_places`). The folders
    are tried in libgit2's order (`.git`, then the folder as a git dir, where alone its
    `commondir` file is read), above the resolved path on Unix. There, a link in the opened
-   path that leads to another network place than the path is spelled on is refused too
-   (`~/work -> /net/nas/work` must be opened by its real path, `/net/nas/work`), since what
-   libgit2 would find past it can't be looked at first. These read only through
+   path that leads to another network place than the path is spelled on counts as pointing to
+   that place (`~/work -> /net/nas/work` names `/net/nas`), since what libgit2 would find past
+   it can't be looked at first, and is asked about like any other. These read only through
    libgit2's `commondir()` of the opened repository, which was checked, so they reach nothing
    new: `lfs/sources.rs`, `stop_cleanup.rs`, `lock_file.rs` and `repo_identity.rs`;
    `repo_scan.rs` reads only the first bytes of a `.git` and never follows it. The trust scan

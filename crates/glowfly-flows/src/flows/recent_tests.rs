@@ -237,7 +237,7 @@ fn a_listed_folder_that_is_gone_offers_to_forget_it() {
     let mut st = state();
     st.recent = vec![path.clone()];
     drive(&mut st, Msg::Repo(RepoMsg::Open(path.clone())));
-    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("asks to remove it") };
+    let Some(Modal::Confirm { title, body, button, then, .. }) = &st.modal else { panic!("asks to remove it") };
     assert_eq!(title, "Repository not found");
     assert!(body.ends_with("Remove it from your Recent list?"), "{body}");
     assert_eq!(button, "Remove");

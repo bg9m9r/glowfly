@@ -55,7 +55,7 @@ fn restore_asks_first() {
     st.snap.as_mut().unwrap().unstaged.clear();
     let oid = head(&dir);
     assert!(run(&mut st, ask(oid, "a.txt", false)).is_empty());
-    let Some(Modal::Confirm { title, body, button, then }) = &st.modal else { panic!("expected the confirmation") };
+    let Some(Modal::Confirm { title, body, button, then, .. }) = &st.modal else { panic!("expected the confirmation") };
     assert_eq!(title, "Restore file");
     assert_eq!(button, "Restore");
     assert!(body.contains(&short(oid)) && body.contains("left unstaged"), "{body}");

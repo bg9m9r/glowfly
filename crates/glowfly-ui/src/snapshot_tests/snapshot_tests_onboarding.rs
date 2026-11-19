@@ -134,7 +134,13 @@ fn welcome_default_has_focus() {
 #[test]
 fn a_dialog_over_the_welcome_takes_the_keys() {
     let mut st = on(ThemeChoice::Dark, WelcomeStep::Start, Some(ada()));
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::ClearLog) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::ClearLog),
+        cancel_default: false,
+    });
     let mut h = harness(st, true);
     h.run();
     std::mem::take(&mut h.state_mut().1);

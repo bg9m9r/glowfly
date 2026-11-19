@@ -84,7 +84,7 @@ fn open_question(st: &mut AppState, ask: &StashAsk, paths: Result<Vec<String>, g
         tracing::debug!("could not read the stash's files: {e}");
     }
     if let Msg::Confirm { title, body, button, then } = stash_confirm::ask_confirm(snap, t, ask, paths.as_deref().ok()) {
-        st.modal = Some(Modal::Confirm { title, body, button, then });
+        st.modal = Some(Modal::Confirm { title, body, button, then, cancel_default: false });
     }
 }
 

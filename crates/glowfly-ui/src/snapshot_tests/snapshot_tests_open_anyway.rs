@@ -1,9 +1,11 @@
 //! Opening a folder whose Git data points to network places: the question the failed open asks
-//! (Open anyway accepts, Cancel closes), and Preferences > Trusted repositories listing the
-//! folders opened anyway with their places, where Forget only asks update (`TrustMsg`).
+//! (Open anyway accepts; Cancel closes and is the default, so Enter never opens), and
+//! Preferences > Trusted repositories listing the folders opened anyway with their places, where
+//! Forget only asks update (`TrustMsg`).
 
 use super::snapshot_check::CheckSnapshot;
 use super::snapshot_tests::{harness, settings};
+use eframe::egui::Key;
 use egui_kittest::kittest::Queryable;
 use glowfly_core::error::{NetworkPlaces, ReadFailed};
 use glowfly_core::settings::{SavedTrust, ThemeChoice};
@@ -53,6 +55,28 @@ fn open_folder_pointing_to_network_place() {
     h.get_by_label("Cancel").click();
     h.run();
     assert!(h.state().1.iter().any(|m| matches!(m, Msg::CloseModal)), "Cancel closes");
+}
+
+#[test]
+fn enter_on_the_network_question_cancels() {
+    let mut h = harness(asked(), false);
+    h.run();
+    assert!(h.get_by_label("Cancel").is_focused(), "Cancel is the default");
+    h.press_key(Key::Enter);
+    h.run();
+    let msgs = std::mem::take(&mut h.state_mut().1);
+    assert!(msgs.iter().any(|m| matches!(m, Msg::CloseModal)), "Enter cancels");
+    assert!(!msgs.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "Enter never opens anyway");
+    // The same question without the flag: Enter accepts, as in every other confirmation.
+    let mut st = asked();
+    if let Some(Modal::Confirm { cancel_default, .. }) = &mut st.modal {
+        *cancel_default = false;
+    }
+    let mut h = harness(st, false);
+    h.run();
+    h.press_key(Key::Enter);
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::ConfirmAccepted)), "another confirmation accepts on Enter");
 }
 
 /// Preferences on Trusted repositories: one decision and two folders opened anyway.

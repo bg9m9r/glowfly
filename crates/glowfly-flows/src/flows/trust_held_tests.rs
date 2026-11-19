@@ -307,7 +307,13 @@ fn a_second_job_is_refused_while_the_prompt_is_open() {
 fn a_stale_held_job_is_replaced() {
     let (mut st, dir) = held_repo("held-stale");
     run(&mut st, pull());
-    st.modal = Some(Modal::Confirm { title: "t".into(), body: "b".into(), button: "OK".into(), then: Box::new(Msg::CloseModal) });
+    st.modal = Some(Modal::Confirm {
+        title: "t".into(),
+        body: "b".into(),
+        button: "OK".into(),
+        then: Box::new(Msg::CloseModal),
+        cancel_default: false,
+    });
     run(&mut st, push());
     assert_eq!(held_label(&st), Some("Push"));
     assert!(logged(&st, "Pull wasn't run"));

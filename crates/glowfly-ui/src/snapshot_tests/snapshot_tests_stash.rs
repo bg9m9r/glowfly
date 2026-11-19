@@ -139,7 +139,7 @@ fn stash_apply_confirm_light() {
     let msg = glowfly_model::state::stash_confirm::ask_confirm(snap, t, &ask, Some(&paths));
     let Msg::Confirm { title, body, button, then } = msg else { panic!("a confirmation on a dirty tree") };
     assert!(body.contains(&paths[0]) && !body.contains("untouched.txt"), "{body}");
-    st.modal = Some(Modal::Confirm { title, body, button, then });
+    st.modal = Some(Modal::Confirm { title, body, button, then, cancel_default: false });
     let mut h = harness(st, false);
     h.run();
     assert!(h.query_by_label_contains("on top of your uncommitted changes").is_some());

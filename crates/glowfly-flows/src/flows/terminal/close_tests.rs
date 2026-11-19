@@ -155,7 +155,13 @@ fn starting_and_ended_shells_close_at_once() {
 fn another_dialog_leaves_everything_as_it_was() {
     let (mut st, dir, one) = open_with_panel("term-close-modal");
     started(&mut st, one);
-    let other = Modal::Confirm { title: "Other".into(), body: String::new(), button: "OK".into(), then: Box::new(Msg::Terminal(T::Hide)) };
+    let other = Modal::Confirm {
+        title: "Other".into(),
+        body: String::new(),
+        button: "OK".into(),
+        then: Box::new(Msg::Terminal(T::Hide)),
+        cancel_default: false,
+    };
     st.modal = Some(other);
     let fx = terminal(activity(&mut st, one, running(Some("git"))));
     assert!(fx.is_empty(), "{fx:?}");
