@@ -194,23 +194,27 @@ fn the_activity_line_is_unchanged() {
 }
 
 #[test]
-fn a_clone_names_no_tab() {
-    let (mut st, _, b) = two_tabs();
-    st.job = Some(RunningJob { then_open: Some((repo("made"), Created::Clone)), ..job("Clone", &b) });
-    done(&mut st, false, "fatal: repository not found");
-    let toasts = failures(&st);
-    assert_eq!(toasts.len(), 1);
-    assert_eq!(toasts[0].tab, None);
+fn a_clone_or_init_names_no_tab() {
+    for (made, label) in [(Created::Clone, "Clone"), (Created::Init, "New repository")] {
+        let (mut st, _, b) = two_tabs();
+        st.job = Some(RunningJob { then_open: Some((repo("made"), made)), ..job(label, &b) });
+        done(&mut st, false, "fatal: repository not found");
+        let toasts = failures(&st);
+        assert_eq!(toasts.len(), 1, "{label}");
+        assert_eq!(toasts[0].tab, None, "{label}");
+    }
 }
 
 #[test]
-fn a_repository_made_by_a_failed_clone_names_no_tab() {
-    let (mut st, _, b) = two_tabs();
-    st.job = Some(RunningJob { then_open: Some((repo("made"), Created::Clone)), ..job("Clone", &b) });
-    let mut fx = Vec::new();
-    finish_made(&mut st, true, false, "boom".into(), Some("headline".into()), Instant::now(), &mut fx);
-    assert!(!failures(&st).is_empty());
-    assert!(st.toasts.iter().all(|t| t.tab.is_none()));
+fn a_repository_made_by_a_failed_clone_or_init_names_no_tab() {
+    for (made, label) in [(Created::Clone, "Clone"), (Created::Init, "New repository")] {
+        let (mut st, _, b) = two_tabs();
+        st.job = Some(RunningJob { then_open: Some((repo("made"), made)), ..job(label, &b) });
+        let mut fx = Vec::new();
+        finish_made(&mut st, true, false, "boom".into(), Some("headline".into()), Instant::now(), &mut fx);
+        assert!(!failures(&st).is_empty(), "{label}");
+        assert!(st.toasts.iter().all(|t| t.tab.is_none()), "{label}");
+    }
 }
 
 #[test]
