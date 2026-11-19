@@ -304,3 +304,36 @@ fn a_fetch_update_starts_by_itself_is_checked_again_by_the_runner() {
     let plain = update(&mut st, stage_file(), Instant::now());
     assert!(plain.iter().all(|e| e.trust_check().is_none()));
 }
+
+#[test]
+fn a_service_call_or_size_check_that_signs_in_is_checked_again_by_the_runner() {
+    use crate::effect::partial::{HistorySizeRequest, SizeService};
+    use crate::effect::{ForgeCall, NetworkEffect};
+    use glowfly_core::forge::{Auth, Provider, Target};
+    let mut st = clean("ft-service");
+    let workdir = st.workdir().unwrap();
+    let target =
+        || Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
+    let auth = || Some(Auth::from_token(Provider::GitHub, None, "t", "saved token"));
+    let call = || ForgeCall::Refresh { need_default: false, with_issues: false };
+    let forge = |cwd: PathBuf, auth: Option<Auth>| {
+        Effect::Network(NetworkEffect::Forge { target: target(), cwd, auth, interactive: false, connected: true, call: call() })
+    };
+    let size = |service: Option<SizeService>| {
+        let url = Some("https://github.com/o/r".to_owned());
+        Effect::Partial(PartialEffect::SizeHistory(HistorySizeRequest { workdir: workdir.clone(), id: 1, url, service }))
+    };
+    let service = |auth: Option<Auth>| Some(SizeService { target: target(), auth, connected: true });
+    // Signing in may ask the repository's credential helper: checked first.
+    let mut fx = vec![forge(workdir.clone(), None), size(service(None))];
+    super::trust_seal::wrap(&mut st, &mut fx, 0);
+    for e in &fx {
+        let check = e.trust_check().expect("checked");
+        assert_eq!((&check.sealed, &check.workdir), (&Sealed::Read, &workdir), "{e:?}");
+    }
+    // A sign-in already in hand, a call made outside any repository, or a size measured only
+    // on disk asks no helper here.
+    let mut fx = vec![forge(workdir.clone(), auth()), forge(AppState::outside_dir(), None), size(service(auth())), size(None)];
+    super::trust_seal::wrap(&mut st, &mut fx, 0);
+    assert!(fx.iter().all(|e| e.trust_check().is_none()), "{fx:?}");
+}

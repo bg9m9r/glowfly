@@ -10,11 +10,12 @@ use glowfly_model::effect::JobEffect;
 use glowfly_model::effect::LoadEffect;
 use glowfly_model::effect::partial::PartialEffect;
 use glowfly_model::effect::{
-    CloneEffect, Effect, FailedLineCounts, ForgeError, InitEffect, LoadKind, RebaseEffect, ReposEffect, SparseEffect, StashEffect,
-    SubmoduleEffect, UndoResult, UpdateEffect, WorktreeEffect,
+    CloneEffect, Effect, FailedLineCounts, ForgeCall, ForgeError, ForgeReply, ForgeResult, InitEffect, LoadKind, NetworkEffect,
+    RebaseEffect, ReposEffect, SparseEffect, StashEffect, SubmoduleEffect, UndoResult, UpdateEffect, WorktreeEffect,
 };
 use glowfly_model::msg::BlameMsg;
 use glowfly_model::msg::CloneMsg;
+use glowfly_model::msg::ForgeMsg;
 use glowfly_model::msg::JobMsg;
 use glowfly_model::msg::LoadMsg;
 use glowfly_model::msg::Msg;
@@ -116,6 +117,9 @@ enum Kind {
     Content(u64),
     /// Saving a patch to this file: it says the patch wasn't created.
     Patch(PathBuf),
+    /// A hosting service's call (its target, and whether it asked for pull request details):
+    /// the forge state counts it as loading until a reply arrives.
+    Forge(Target, bool),
     Log,
 }
 
@@ -183,6 +187,9 @@ impl Recovery {
             Effect::Partial(PartialEffect::SizeHistory(r)) => Kind::Sizing(r.workdir.clone(), r.id),
             Effect::Partial(PartialEffect::FetchContent(r)) => Kind::Content(r.id),
             Effect::Patch(PatchEffect::Export { dest, .. }) => Kind::Patch(dest.clone()),
+            Effect::Network(NetworkEffect::Forge { target, call, .. }) => {
+                Kind::Forge(target.clone(), matches!(call, ForgeCall::PrDetails(_)))
+            }
             _ => Kind::Log,
         };
         Self { name, scope: effect.scope().cloned(), kind }
@@ -258,6 +265,14 @@ impl Recovery {
             }
             Kind::Content(id) => Msg::Partial(PartialMsg::ContentFetched { id, result: Err(ContentFailure::Failed(text)) }),
             Kind::Patch(dest) => Msg::Patch(PatchMsg::Exported { dest, result: Err(text) }),
+            Kind::Forge(target, details) => {
+                let results = if details {
+                    vec![ForgeResult::PrDetails(Err(ForgeError { message: text, auth: false }))]
+                } else {
+                    vec![ForgeResult::AuthFailed(text)]
+                };
+                Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, auth: None, results }))
+            }
             Kind::Log => Msg::Logged { ok: false, text },
         };
         match self.scope {

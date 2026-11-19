@@ -5,7 +5,8 @@
 //! update returns, each sealed effect is wrapped with its check (`wrap`, `Effect::Checked`), and
 //! so is every read that lets git run in a repository (`read_in`: a status read by git, a
 //! signature check, a diff or blame through git's filters, a patch of uncommitted changes, file
-//! work that starts git: update/file_trust.rs, a fetch update starts by itself).
+//! work that starts git: update/file_trust.rs, a fetch update starts by itself, a hosting
+//! service's call that may ask the credential helper).
 //! When the check finds the repository no longer covered (a hook edited while the prompt was open, a pull that brings
 //! other hooks into a hooks folder that follows the working tree), the work comes back here
 //! (`stale`): the active tab takes the scan just made, and the work waits for the trust prompt
@@ -135,6 +136,11 @@ fn read_in(e: &Effect) -> Option<&Path> {
         // git runs here unasked, and the repository may have changed since.
         Effect::Partial(PartialEffect::FetchContent(r)) => &r.workdir,
         Effect::PullRequest(PrEffect::FetchHead(j)) => &j.workdir,
+        // A hosting service's call, or the history size check's, that signs in first: that may
+        // ask the repository's credential helper (one made from outside any repository reads
+        // no repository's settings).
+        Effect::Network(NetworkEffect::Forge { cwd, auth: None, .. }) if *cwd != AppState::outside_dir() => cwd,
+        Effect::Partial(PartialEffect::SizeHistory(r)) if r.service.as_ref().is_some_and(|s| s.auth.is_none()) => &r.workdir,
         _ => return None,
     };
     Some(w.as_path())
