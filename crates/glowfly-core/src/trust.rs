@@ -216,6 +216,8 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
     // A hooks folder that may not be followed from the work tree is never listed.
     out.hooks_dir = hooks_dir(repo, config.as_ref(), local_hooks_path).filter(|dir| !follow::note_far(dir, home, &mut out.offsite));
     let mut paths = Vec::new();
+    // Each hook's text (None: read, but too large to keep) for the files it runs.
+    let mut texts: Vec<Option<Vec<u8>>> = Vec::new();
     if let Some(dir) = &out.hooks_dir {
         for (name, path) in active_hooks(dir) {
             // A hook that is a link leading there is listed by name alone, never read.
@@ -223,16 +225,23 @@ fn scan_own(repo: &Repository, reading: Reading) -> TrustScan {
                 out.hooks.push(name);
                 continue;
             }
-            let (digest, bytes) = digest::of_file_keeping(&path, reading, known::MAX_HOOK_BYTES);
-            out.hook_digests.insert(name.clone(), digest);
-            if let Some(k) = bytes.and_then(|b| known::hook(&name, &b)) {
-                out.known_hooks.insert(name.clone(), k);
+            let (digest, bytes) = digest::of_file_keeping(&path, reading, programs::hooks::MAX_TEXT_BYTES);
+            let known = bytes.as_deref().filter(|b| b.len() <= known::MAX_HOOK_BYTES).and_then(|b| known::hook(&name, b));
+            match known {
+                Some(k) => _ = out.known_hooks.insert(name.clone(), k),
+                None if digest != digest::UNREADABLE => texts.push(bytes),
+                None => {}
             }
+            out.hook_digests.insert(name.clone(), digest);
             out.hooks.push(name);
             paths.push(path);
         }
     }
-    let programs = programs::scan(repo, &mut out.config, &mut out.offsite);
+    let mut programs = programs::scan(repo, &mut out.config, &mut out.offsite);
+    if let (Some(workdir), Some(dir)) = (repo.workdir(), &out.hooks_dir) {
+        let run = programs::hooks::scan(workdir, dir, &texts, &mut out.offsite);
+        programs.extend(run.into_iter().filter(|p| !programs.contains(p)).collect::<Vec<_>>());
+    }
     out.follows = follow::find(repo, out.hooks_dir.as_deref(), &paths, &programs);
     out
 }
