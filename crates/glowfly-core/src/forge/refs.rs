@@ -146,7 +146,7 @@ pub fn keep_jira_key(key: &str, filter: &str, projects: Option<&HashSet<String>>
 /// An issue key encoded at the start of a branch's last path segment, e.g.
 /// `feature/1234-login-page`, `1234_fix`, or `bugfix/PROJ-12-crash`. A number may also follow an
 /// explicit marker: `#1234`, `gh-1234` or `issue-1234` (also `issues-`, and `_` for `-`). A
-/// bare leading number that looks like a year (`year_like`) counts only when `years` is set
+/// bare leading number that looks like a year or a date (`year_like`) counts only when `years` is set
 /// (This repository > Issue tracker); the explicit forms always count.
 pub fn branch_issue(style: RefStyle, branch: &str, years: bool) -> Option<String> {
     let last = branch.rsplit('/').next()?;
@@ -182,12 +182,22 @@ fn explicit_number(last: &str) -> Option<&str> {
     })
 }
 
-/// Whether the leading number `digits` of segment `last` reads as a year rather than an issue:
-/// exactly four digits from 1970 to 2099, followed by `-` or `_` (`2024-cleanup`,
-/// `2024_q3-report`, `2026-10-16-notes`). A segment that is only the number (`2024`) is still
-/// an issue, as are longer numbers and dates written without separators (`20241016-x`).
+/// Whether the leading number `digits` of segment `last` reads as a year or a date rather than
+/// an issue. Two forms qualify: exactly four digits from 1970 to 2099 (`2024-cleanup`,
+/// `2024_q3-report`, `2026-10-16-notes`), or eight digits forming a date YYYYMMDD (year 1970 to
+/// 2099, month 01 to 12, day 01 to 31: `20241016-release`). Either must be followed by `-` or
+/// `_`. A segment that is only the number (`2024`, `20241016`) is still an issue, as are other
+/// lengths and eight digits that are not such a date (`12345678-x`, `20241399-x`).
 fn year_like(digits: &str, last: &str) -> bool {
-    digits.len() == 4 && (1970..=2099).contains(&digits.parse::<u16>().unwrap_or(0)) && last.len() > 4
+    let in_range = |s: &str, lo: u16, hi: u16| s.parse::<u16>().is_ok_and(|n| (lo..=hi).contains(&n));
+    let year = |y: &str| in_range(y, 1970, 2099);
+    // `leading_number` guarantees `-` or `_` (or the end) after the digits.
+    last.len() > digits.len()
+        && match digits.len() {
+            4 => year(digits),
+            8 => year(&digits[..4]) && in_range(&digits[4..6], 1, 12) && in_range(&digits[6..], 1, 31),
+            _ => false,
+        }
 }
 
 /// Branch name for starting work on an issue: `1234-short-title-slug` / `PROJ-12-short-title`.
@@ -225,11 +235,11 @@ mod tests {
             assert_eq!(hash(b, true).as_deref(), Some(&b.rsplit('/').next().unwrap()[..4]), "{b}");
         }
         assert_eq!(branch_issue(RefStyle::AzureBoards, "2024-cleanup", false), None);
-        // Ordinary issue numbers, a bare number, numbers outside 1970-2099 and longer ones.
+        // Ordinary issue numbers, a bare number, and numbers outside 1970-2099.
         for (b, n) in [("123-fix", "123"), ("feature/1234-login", "1234"), ("2024", "2024"), ("1969-x", "1969"), ("2100-x", "2100")] {
             assert_eq!(hash(b, false).as_deref(), Some(n), "{b}");
         }
-        assert_eq!(hash("20241016-release", false).as_deref(), Some("20241016"));
+        assert_eq!(hash("20241016-release", false), None);
         assert_eq!(hash("123-fix", true).as_deref(), Some("123"));
     }
 

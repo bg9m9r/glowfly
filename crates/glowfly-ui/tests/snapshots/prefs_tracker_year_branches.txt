@@ -31,8 +31,8 @@ RadioButton "GitHub issues (from the remote)" [on]
 RadioButton "None" [off]
 Label "Connect Jira Cloud, Jira Data Center or Trello under Integrations to use it here."
 Label "Branch names"
-CheckBox "Read a year at the start of a branch name as an issue number" [off]
-Label "Off: a branch like 2024-cleanup links no issue…"
+CheckBox "Read a year or a date at the start of a branch name as an issue number" [off]
+Label "Off: branches like 2024-cleanup or 20241016-release…"
 Link "Learn more"
 painted:
   "Connect Jira Cloud, Jira Data Center or Trello under\nIntegrations to use it here."
