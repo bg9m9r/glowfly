@@ -52,8 +52,8 @@ pub fn input(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mu
         ctx.input_mut(|i| super::chords::copy_as_key(i, &st.keymap, |id, shell| allowed(id, shell, &live)));
     }
     while let Some((id, chord, repeat)) = ctx.input_mut(|i| take_press(i, &st.keymap, |id, shell| allowed(id, shell, &live))) {
-        // A held key would queue the same fetch or push again and again.
-        if repeat && runs_command(id) {
+        // A held key would queue the same fetch or push again, or start the editor again, and again.
+        if repeat && (runs_command(id) || id == BindingId::OpenInEditor) {
             continue;
         }
         fire(id, chord, live.pane, st, view, msgs);
