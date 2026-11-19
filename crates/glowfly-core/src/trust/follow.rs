@@ -119,8 +119,10 @@ pub(super) fn within(path: &str, root: &str) -> bool {
 /// out, the resolved one the hooks it leads to.
 pub(super) fn inside(repo: &Repository, workdir: &Path, path: &Path) -> Vec<String> {
     let git_dirs = [repo.path(), repo.commondir()];
-    let in_git_dir = |p: &Path| git_dirs.iter().filter_map(|g| lexical(g)).any(|g| p.starts_with(g));
-    let as_spelled = lexical(path).filter(|p| !in_git_dir(p)).and_then(|p| rel(&p, &lexical(workdir)?));
+    // A `\\?\` spelling of a drive or share is compared in its plain form, as the tree's is.
+    let plain = |p: &Path| lexical(&crate::paths::plain(p));
+    let in_git_dir = |p: &Path| git_dirs.iter().filter_map(|g| plain(g)).any(|g| p.starts_with(g));
+    let as_spelled = plain(path).filter(|p| !in_git_dir(p)).and_then(|p| rel(&p, &plain(workdir)?));
     // Resolved only where it may be followed: a place that may not be is never looked at.
     let joined = workdir.join(path);
     let real = (!far(&joined, workdir)).then(|| crate::paths::resolve(&joined));

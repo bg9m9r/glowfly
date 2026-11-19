@@ -298,3 +298,41 @@ fn a_tracked_include_file_asks_and_follows_the_branch() {
     assert!(s.follows.is_empty() && s.config.is_empty(), "{s:?}");
     cleanup(&[&dir]);
 }
+
+#[test]
+fn windows_spellings_read_as_the_place_they_name() {
+    let cases = [
+        ("/c/repo/tools/x.sh", "C:/repo/tools/x.sh"),
+        ("/cygdrive/d/x.sh", "D:/x.sh"),
+        ("//?/C:/repo/x.sh", "C:/repo/x.sh"),
+        ("//./c:/repo/x.sh", "c:/repo/x.sh"),
+        ("/??/C:/repo/x.sh", "C:/repo/x.sh"),
+        ("//?/UNC/nas/team/x.sh", "//nas/team/x.sh"),
+        ("//?/GLOBALROOT/x", "//?/GLOBALROOT/x"),
+        ("/usr/bin/x", "/usr/bin/x"),
+        ("tools/x.sh", "tools/x.sh"),
+    ];
+    for (text, windows) in cases {
+        assert_eq!(native_spelling(text, true), windows, "{text}");
+        assert_eq!(native_spelling(text, false), text, "{text}: only Windows reads them so");
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn a_program_in_an_msys_or_verbatim_spelling_of_the_working_tree_is_followed() {
+    let dir = scratch_repo("programs-spellings");
+    let top = git_spelling(&dir);
+    let msys = format!("/{}{}", top[..1].to_ascii_lowercase(), &top[2..]);
+    assert_eq!(followed(&dir, "core.fsmonitor", &format!("{msys}/tools/fsm.sh")), ["tools/fsm.sh"]);
+    let verbatim = format!(r"'\\?\{}\tools\v.sh'", dir.display());
+    assert_eq!(followed(&dir, "filter.x.clean", &format!("sh {verbatim}")), ["tools/v.sh"]);
+    // Outside the working tree, or at a network place, nothing is followed or looked at.
+    assert!(followed(&dir, "core.fsmonitor", &format!("{msys}/../elsewhere.sh")).is_empty());
+    let repo = Repository::open(&dir).unwrap();
+    let mut offsite = Vec::new();
+    let mut config = vec![ConfigCommand { key: "core.fsmonitor".into(), value: r"'\\?\UNC\glowfly-test.invalid\share\x.sh'".into() }];
+    assert!(scan(&repo, &mut config, &mut offsite).is_empty());
+    assert_eq!(offsite.len(), 1, "{offsite:?}");
+    cleanup(&[&dir]);
+}

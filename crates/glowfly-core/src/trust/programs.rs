@@ -13,6 +13,7 @@
 
 use super::ConfigCommand;
 use git2::Repository;
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 #[path = "programs_shell.rs"]
@@ -220,7 +221,7 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool) ->
     }
     let at = |w: &str| if w.starts_with('~') { crate::paths::expand_home(w, home) } else { workdir.join(w) };
     let mut out: Vec<PathBuf> = Vec::new();
-    for r in readings(&word.text) {
+    for r in readings(&native_spelling(&word.text.replace('\\', "/"), cfg!(windows))) {
         let slashed = r.replace('\\', "/");
         let shown = shell::literal(&slashed);
         if !slashed.contains(shell::SUB) {
@@ -254,6 +255,33 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool) ->
         }
     }
     out
+}
+
+/// The `/`-separated `text` as a program on Windows (`windows`) opens it: Git for Windows'
+/// shell reads `/c/x` and `/cygdrive/c/x` as `C:/x`, and `//?/C:/x`, `//./C:/x` and `/??/C:/x`
+/// name `C:/x`, `//?/UNC/server/share/x` names `//server/share/x`. Anything else, and every
+/// text elsewhere, stays as written. Pure.
+fn native_spelling(text: &str, windows: bool) -> Cow<'_, str> {
+    if !windows {
+        return Cow::Borrowed(text);
+    }
+    // A quoted `?` is kept apart from a glob's (`shell::literal`).
+    let at = text.char_indices().nth(4).map_or(text.len(), |(i, _)| i);
+    let (head, rest) = text.split_at(at);
+    for prefix in ["//?/", "//./", "/??/"] {
+        if shell::literal(head) != prefix {
+            continue;
+        }
+        if rest.get(..4).is_some_and(|u| u.eq_ignore_ascii_case("unc/")) {
+            return Cow::Owned(format!("//{}", &rest[4..]));
+        }
+        let drive = rest.as_bytes().first().is_some_and(u8::is_ascii_alphabetic) && rest.as_bytes().get(1) == Some(&b':');
+        return if drive { Cow::Owned(rest.to_owned()) } else { Cow::Borrowed(text) };
+    }
+    match crate::gpg_prompt::program::msys_candidates(text, None).first() {
+        Some(p) => Cow::Owned(p.to_string_lossy().replace('\\', "/")),
+        None => Cow::Borrowed(text),
+    }
 }
 
 /// Whether the `/`-separated `shown` reads as a path from a known place: `./` or `../`, an
