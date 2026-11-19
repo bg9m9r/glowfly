@@ -13,7 +13,7 @@ fn the_word_an_interpreter_or_source_runs_is_picked() {
         ("bash -e run.sh \"$@\"", &["run.sh"]),
         ("/usr/bin/env python3 tool.py --fix", &["tool.py"]),
         ("node lint.js && zsh fmt.zsh", &["lint.js", "fmt.zsh"]),
-        ("pwsh -NoProfile -ExecutionPolicy Bypass -File check.ps1", &["check.ps1"]),
+        ("pwsh -NoProfile -ExecutionPolicy RemoteSigned -File check.ps1", &["check.ps1"]),
         ("powershell.exe -f check.ps1", &["check.ps1"]),
         ("deno run main.ts", &["main.ts"]),
         (". lib.sh", &["lib.sh"]),

@@ -26,7 +26,7 @@ pub(super) fn run_words(line: &str) -> Vec<String> {
             continue;
         }
         let shell_like = matches!(name, "sh" | "bash" | "zsh" | "dash" | "ksh");
-        // PowerShell's options may take values (`-ExecutionPolicy Bypass`): its `-File` names
+        // PowerShell's options may take values (`-ExecutionPolicy RemoteSigned`): its `-File` names
         // the script wherever it stands.
         let file = words[i + 1..].iter().position(|w| w.eq_ignore_ascii_case("-file"));
         if matches!(name, "pwsh" | "powershell")
