@@ -132,6 +132,17 @@ fn unix_root(text: &str) -> Option<NetRoot> {
     Some(NetRoot::Automount(host.to_ascii_lowercase()))
 }
 
+/// What following a path would lead to (`leads_to`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Leads {
+    /// A local place, or one on `home`'s network root.
+    Near,
+    /// Another network place, by its spelling or a link's.
+    Network,
+    /// It can't be told: a device path, a name the OS won't look up, too many links or parts.
+    Unknown,
+}
+
 /// Whether `named`, a path a repository's files name, may be touched from `home`, the place
 /// already in use: its spelling and every link on the way lead to a local place or one on
 /// `home`'s network root. The spelling is checked before anything is touched; then each part
@@ -139,15 +150,30 @@ fn unix_root(text: &str) -> Option<NetRoot> {
 /// goes through the same checks (at most `MAX_LINKS`). `named` must be absolute: a relative one
 /// would be read from the process's own folder.
 pub(crate) fn may_follow(named: &Path, home: &Path) -> bool {
+    leads_to(named, home) == Leads::Near
+}
+
+/// `may_follow`, telling a network place from one that can't be told. Touches what
+/// `may_follow` touches.
+pub(crate) fn leads_to(named: &Path, home: &Path) -> Leads {
     // The OS is never asked about a name holding a NUL, so it can't be checked.
     if named.as_os_str().as_encoded_bytes().contains(&0) {
-        return false;
+        return Leads::Unknown;
     }
     let home_root = root_of(home);
-    if !may_follow_for(root_of(named).as_ref(), home_root.as_ref()) {
-        return false;
+    match spelled(root_of(named).as_ref(), home_root.as_ref()) {
+        Leads::Near => walk(named, home, home_root.as_ref()),
+        far => far,
     }
-    walk(named, home, home_root.as_ref())
+}
+
+/// `may_follow_for` as a `Leads`.
+fn spelled(named: Option<&NetRoot>, home: Option<&NetRoot>) -> Leads {
+    match named {
+        _ if may_follow_for(named, home) => Leads::Near,
+        Some(NetRoot::Device) => Leads::Unknown,
+        _ => Leads::Network,
+    }
 }
 
 /// One part of a path being walked.
@@ -186,7 +212,7 @@ fn parts(p: &Path) -> Vec<Part> {
     out
 }
 
-fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
+fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> Leads {
     debug_assert!(named.is_absolute(), "net_path::walk needs an absolute path: {}", named.display());
     let mut todo: Vec<Part> = parts(named);
     todo.reverse();
@@ -195,7 +221,7 @@ fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
     while let Some(part) = todo.pop() {
         seen += 1;
         if seen > MAX_PARTS {
-            return false;
+            return Leads::Unknown;
         }
         let name = match part {
             Part::Root(r) => {
@@ -216,15 +242,16 @@ fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
             continue;
         }
         // `..` can lead into an automounter's root on Unix.
-        if !may_follow_for(spelled_root_for(&next.to_string_lossy(), cfg!(windows)).as_ref(), home_root) {
-            return false;
+        let by_spelling = spelled(spelled_root_for(&next.to_string_lossy(), cfg!(windows)).as_ref(), home_root);
+        if by_spelling != Leads::Near {
+            return by_spelling;
         }
         let meta = match std::fs::symlink_metadata(&next) {
             Ok(meta) => meta,
             // Nothing further exists to be reached.
-            Err(e) if matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory) => return true,
+            Err(e) if matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory) => return Leads::Near,
             // Any other failure (a name the OS won't look up, no permission) can't be checked.
-            Err(_) => return false,
+            Err(_) => return Leads::Unknown,
         };
         if !meta.file_type().is_symlink() {
             at = next;
@@ -232,18 +259,19 @@ fn walk(named: &Path, home: &Path, home_root: Option<&NetRoot>) -> bool {
         }
         links += 1;
         if links > MAX_LINKS {
-            return false;
+            return Leads::Unknown;
         }
-        let Ok(target) = std::fs::read_link(&next) else { return false };
-        if !may_follow_for(root_of(&target).as_ref(), home_root) {
-            return false;
+        let Ok(target) = std::fs::read_link(&next) else { return Leads::Unknown };
+        let by_target = spelled(root_of(&target).as_ref(), home_root);
+        if by_target != Leads::Near {
+            return by_target;
         }
         // An absolute target starts over from its root; a relative one goes on from `at`.
         let mut spliced = parts(&target);
         spliced.reverse();
         todo.extend(spliced);
     }
-    true
+    Leads::Near
 }
 
 #[cfg(test)]

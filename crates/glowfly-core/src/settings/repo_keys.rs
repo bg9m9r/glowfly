@@ -135,9 +135,13 @@ impl Settings {
     }
 
     /// Saves the decision `t` for the repository at `real` (None removes it, with its time and
-    /// source). Don't trust, or no print, removes the saved print.
+    /// source). Don't trust, or no print, removes the saved print; anything but Trusted
+    /// removes the places not asked about again (`remember_places`).
     pub fn set_trust(&mut self, real: &Path, t: Option<SavedTrust>) {
         let print = t.as_ref().filter(|t| t.trust == RepoTrust::Trusted).and_then(|t| t.print.clone());
+        if !t.as_ref().is_some_and(SavedTrust::is_trusted) {
+            set(&mut self.repo_trust_places, real, None);
+        }
         if t.is_none() {
             set(&mut self.repo_trust_times, real, None);
             set(&mut self.repo_trust_from, real, None);

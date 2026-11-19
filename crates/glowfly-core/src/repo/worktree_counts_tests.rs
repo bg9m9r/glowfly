@@ -70,7 +70,7 @@ fn an_untrusted_worktree_is_counted_without_running_its_hooks() {
     let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
     git(&dir, &["config", "core.fsmonitor", &hook]);
 
-    let count = count_worktree(&wt, None, COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, None, COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes, &count.path), (ChangesRead::Counted, DIRTY, &wt));
     assert!(!marker.exists(), "no hook ran");
     cleanup(&[&wt, &dir]);
@@ -82,13 +82,16 @@ fn a_trusted_worktree_is_counted_through_git() {
     let wt = linked(&dir, "feat");
     dirty(&wt);
     git(&dir, &["config", "core.untrackedCache", "true"]);
-    let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
 
     let plain = crate::paths::temp_dir().join(format!("glowfly-wtcount-plain-{}", std::process::id()));
     std::fs::create_dir_all(&plain).unwrap();
-    let none = count_worktree(&plain, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
-    assert_eq!((none.read, none.changes), (ChangesRead::Counted, ChangeCounts::default()), "not a repository");
+    let none = count_worktree(&plain, &dir, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
+    assert_eq!((none.read, none.changes), (ChangesRead::Held, ChangeCounts::default()), "not a repository for now: asked again");
+    // Once it is one, a recount counts it.
+    git(&plain, &["init", "-q"]);
+    assert_eq!(count_worktree(&plain, &dir, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT).read, ChangesRead::Counted);
     cleanup(&[&wt, &dir, &plain]);
 }
 
@@ -100,13 +103,13 @@ fn a_worktree_not_trusted_never_runs_git() {
     let marker = dir.join("ran.txt");
     let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
     git(&dir, &["config", "core.fsmonitor", &hook]);
-    let count = count_worktree(&wt, Some(&SavedTrust { trust: RepoTrust::NotTrusted, print: None }), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, Some(&SavedTrust { trust: RepoTrust::NotTrusted, print: None }), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(!marker.exists(), "no hook ran");
 
     // Trusting it lets git read it, so its hook runs.
     let print = crate::trust::scan_at(&wt).unwrap().print();
-    let count = count_worktree(&wt, Some(&SavedTrust::trusted(Some(print))), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, Some(&SavedTrust::trusted(Some(print))), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(marker.exists(), "git read it");
     cleanup(&[&wt, &dir]);
@@ -122,12 +125,12 @@ fn a_trusted_worktree_that_gained_a_hook_since_is_counted_without_git() {
     let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
     git(&dir, &["config", "core.fsmonitor", &hook]);
     let stale = SavedTrust::trusted(Some(before));
-    let count = count_worktree(&wt, Some(&stale), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, Some(&stale), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(!marker.exists(), "the decision doesn't cover the new hook, so git didn't run");
 
     let now = SavedTrust::trusted(Some(crate::trust::scan_at(&wt).unwrap().print()));
-    let count = count_worktree(&wt, Some(&now), COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, Some(&now), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     assert!(marker.exists(), "git read it");
     cleanup(&[&wt, &dir]);
@@ -145,9 +148,32 @@ fn a_worktree_whose_git_file_names_a_network_place_is_never_opened() {
     let mut list = super::super::worktrees::list(&repo);
     count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
     assert_eq!((list[1].read, list[1].changes), (ChangesRead::NotCounted, ChangeCounts::default()), "{:?}", list[1]);
-    let count = count_worktree(&wt, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
-    assert_eq!((count.read, count.changes), (ChangesRead::Counted, ChangeCounts::default()), "as one that can't be opened");
+    let count = count_worktree(&wt, &dir, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
+    assert_eq!((count.read, count.changes), (ChangesRead::NotCounted, ChangeCounts::default()), "as the load leaves it");
     write(&wt, ".git", &real);
+    drop(repo);
+    cleanup(&[&wt, &dir]);
+}
+
+#[test]
+fn a_worktree_whose_record_names_a_network_place_is_listed_and_never_counted() {
+    let dir = two_files("wtcount-far-record");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let admin = dir.join(".git/worktrees").join(wt.file_name().unwrap());
+    let place = net_place().join("wt");
+    write(&admin, "gitdir", &format!("{}\n", git_spelling(&place.join(".git"))));
+    let repo = Repository::open(&dir).unwrap();
+    let mut list = super::super::worktrees::list(&repo);
+    count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
+    let row = list.iter().find(|w| !w.current).expect("listed from its admin dir");
+    assert!(on_net_place(&row.path), "{:?}", row.path);
+    assert_eq!((row.read, row.changes, row.missing), (ChangesRead::NotCounted, ChangeCounts::default(), false));
+    // Asked for by its listed folder, from the work tree it is listed in: never opened.
+    for decision in [None, Some(SavedTrust::trusted(None))] {
+        let count = count_worktree(&row.path, &dir, decision.as_ref(), COUNT_TIMEOUT);
+        assert_eq!((count.read, count.changes), (ChangesRead::NotCounted, ChangeCounts::default()));
+    }
     drop(repo);
     cleanup(&[&wt, &dir]);
 }
@@ -162,7 +188,7 @@ fn a_worktree_of_a_repository_with_a_conditional_include_is_still_counted() {
     std::fs::write(dir.join(".git/extra.cfg"), "[core]\n\tautocrlf = false\n").unwrap();
     std::fs::write(&config, format!("{text}[includeIf \"gitdir:**\"]\n\tpath = extra.cfg\n")).unwrap();
 
-    let count = count_worktree(&wt, None, COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, None, COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     let repo = Repository::open(&dir).unwrap();
     let mut list = super::super::worktrees::list(&repo);
@@ -182,7 +208,7 @@ fn a_worktree_of_a_repository_with_many_includes_is_still_counted() {
     let at = dir.join(".git").to_string_lossy().replace('\\', "/");
     let many: String = (0..=crate::config_includes::MAX_FILES).map(|i| format!("\tpath = {at}/many{i}.cfg\n")).collect();
     std::fs::write(&config, format!("{text}[include]\n{many}")).unwrap();
-    let count = count_worktree(&wt, None, COUNT_TIMEOUT);
+    let count = count_worktree(&wt, &dir, None, COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     cleanup(&[&wt, &dir]);
 }
@@ -193,14 +219,17 @@ fn a_worktree_whose_gitattributes_is_linked_away_is_not_read() {
     let wt = linked(&dir, "feat");
     dirty(&wt);
     let untrusted = SavedTrust { trust: RepoTrust::NotTrusted, print: None };
-    assert_eq!(count_worktree(&wt, Some(&untrusted), COUNT_TIMEOUT).changes, DIRTY);
+    assert_eq!(count_worktree(&wt, &dir, Some(&untrusted), COUNT_TIMEOUT).changes, DIRTY);
     // In the other worktree's own folder; the opened repository's files are plain.
     if link_to(&net_place().join("attributes"), &wt.join(".gitattributes"), false) {
         let held = super::super::status::libgit2_status(&Repository::open(&wt).unwrap());
         assert!(matches!(held, Err(crate::error::Error::LinkedFile(f)) if f == ".gitattributes"));
-        let count = count_worktree(&wt, Some(&untrusted), COUNT_TIMEOUT);
-        assert_eq!((count.read, count.changes), (ChangesRead::NotCounted, ChangeCounts::default()));
+        let count = count_worktree(&wt, &dir, Some(&untrusted), COUNT_TIMEOUT);
+        assert_eq!((count.read, count.changes), (ChangesRead::Held, ChangeCounts::default()));
         assert!(super::super::status::libgit2_status(&Repository::open(&dir).unwrap()).is_ok());
+        // Plain again: counted.
+        std::fs::remove_file(wt.join(".gitattributes")).unwrap();
+        assert_eq!(count_worktree(&wt, &dir, Some(&untrusted), COUNT_TIMEOUT).read, ChangesRead::Counted);
     }
     cleanup(&[&wt, &dir]);
 }

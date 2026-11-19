@@ -34,6 +34,7 @@ pub(super) fn prompt_state(theme: ThemeChoice, scan: TrustScan, refused: bool, h
         incoming: None,
         unchecked: None,
         open_step: None,
+        remember: false,
     }));
     st
 }
@@ -212,7 +213,7 @@ fn trust_prompt_changed() {
     };
     let mut st = prompt_state(ThemeChoice::Dark, scan, false, None);
     if let Some(Modal::Trust(p)) = st.modal.as_mut() {
-        p.gained = Some(gained);
+        p.gained = Some(Box::new(gained));
     }
     let mut h = harness(st, true);
     h.run();

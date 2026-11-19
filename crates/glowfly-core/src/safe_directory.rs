@@ -26,18 +26,32 @@ pub struct Refusal {
     pub admins: bool,
 }
 
+/// Ok when the git files of the folder `path` (and of those above it when `search`, as
+/// libgit2's own search reads them) name no network place other than the folder's own
+/// (`git_file::opened`); otherwise [`Error::NetworkPointer`] with the place named, or
+/// [`Error::UncheckedGitData`] where what they name can't be told. Every open
+/// of a folder the user chose runs this first.
+pub fn check(path: &Path, search: bool) -> Result<()> {
+    crate::git_file::opened::check(path, search).map_err(|r| {
+        let shown = crate::native_path::shown(&r.place);
+        if r.network { Error::NetworkPointer(shown) } else { Error::UncheckedGitData(shown) }
+    })
+}
+
 /// `Repository::discover(path)`, opening a folder libgit2 refuses for its owner when git opens
 /// it; a real refusal is [`Error::NotOwned`], anything else [`Error::NotARepository`].
 pub fn discover(path: &Path) -> Result<Repository> {
-    opened(path, || Repository::discover(path))
+    opened(path, true, || Repository::discover(path))
 }
 
 /// [`discover`] for `Repository::open(path)` (no search above `path`).
 pub fn open(path: &Path) -> Result<Repository> {
-    opened(path, || Repository::open(path))
+    opened(path, false, || Repository::open(path))
 }
 
-fn opened(path: &Path, open: impl Fn() -> std::result::Result<Repository, git2::Error>) -> Result<Repository> {
+fn opened(path: &Path, search: bool, open: impl Fn() -> std::result::Result<Repository, git2::Error>) -> Result<Repository> {
+    // Before libgit2 follows the folder's own git files.
+    check(path, search)?;
     match open() {
         Ok(r) => Ok(r),
         Err(e) if e.code() == git2::ErrorCode::Owner => {

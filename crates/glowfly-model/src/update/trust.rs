@@ -34,6 +34,11 @@ pub(super) fn handle(st: &mut AppState, msg: TrustMsg, now: Instant, fx: &mut Ve
                 p.open_step = (p.open_step != Some(i)).then_some(i);
             }
         }
+        TrustMsg::RememberPlaces(on) => {
+            if let Some(Modal::Trust(p)) = &mut st.modal {
+                p.remember = on && p.offsite_places().is_some();
+            }
+        }
     }
 }
 
@@ -72,6 +77,11 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
         Some(Modal::Trust(p)) if p.held.is_some() => p.unchecked.as_deref().cloned(),
         _ => None,
     };
+    // Ticked on the prompt that named them: kept beside the Trusted decision made below.
+    let places = match &st.modal {
+        Some(Modal::Trust(p)) if p.remember && same_spelling(&p.real, real) => p.offsite_places().map(<[String]>::to_vec),
+        _ => None,
+    };
     if trusted {
         // What the user was shown: the open prompt's scan, else the active repository's.
         let print = match (&st.modal, &st.snap) {
@@ -87,6 +97,9 @@ fn decide(st: &mut AppState, real: &Path, trusted: bool, now: Instant, fx: &mut 
         match print {
             Some(print) => record_trusted(&mut st.settings, real, earlier.map_or_else(|| print.clone(), |e| e.with(&print))),
             None => record(&mut st.settings, real, RepoTrust::Trusted),
+        }
+        if let Some(places) = &places {
+            st.settings.remember_places(real, places);
         }
         // A later change in this session asks again.
         st.trust.asked.retain(|p| !same_spelling(p, real));

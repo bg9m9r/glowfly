@@ -65,6 +65,29 @@ impl Settings {
         repo_keys::set(&mut self.repo_trust_from, real, from.map(repo_keys::key));
     }
 
+    /// The places the user chose not to be asked about again in the trusted repository at
+    /// `real`; none unless its decision is Trusted.
+    pub fn remembered_places(&self, real: &Path) -> Vec<String> {
+        let trusted = repo_keys::get(&self.repo_trust, real) == Some(&RepoTrust::Trusted);
+        repo_keys::get(&self.repo_trust_places, real).filter(|_| trusted).cloned().unwrap_or_default()
+    }
+
+    /// Adds `places` to those not asked about again in the repository at `real`, if its
+    /// decision is Trusted (otherwise nothing is kept).
+    pub fn remember_places(&mut self, real: &Path, places: &[String]) {
+        if repo_keys::get(&self.repo_trust, real) != Some(&RepoTrust::Trusted) {
+            return;
+        }
+        let mut all = self.remembered_places(real);
+        for p in places {
+            if !all.contains(p) {
+                all.push(p.clone());
+            }
+        }
+        all.sort();
+        repo_keys::set(&mut self.repo_trust_places, real, (!all.is_empty()).then_some(all));
+    }
+
     /// Every saved decision, sorted by path (ignoring case first, then exactly).
     pub fn trust_decisions(&self) -> Vec<TrustDecision> {
         let mut out: Vec<TrustDecision> = self

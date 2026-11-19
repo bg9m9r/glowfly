@@ -88,3 +88,26 @@ fn trust_prompt_state_unread() {
     assert!(h.query_by_label("Trust this repository?").is_some());
     assert!(h.query_by_label("Trust and run").is_some());
 }
+
+#[test]
+fn trust_prompt_offsite() {
+    // A hooks folder on a share isn't read: the job waits, and the prompt offers not to ask
+    // about that place again.
+    let scan =
+        TrustScan { config: vec![super::snapshot_tests_trust::setting("core.hooksPath", "//nas/team/hooks")], ..TrustScan::default() };
+    let mut st = super::snapshot_tests_trust::prompt_state(ThemeChoice::Dark, scan, false, Some("Pull"));
+    if let Some(Modal::Trust(p)) = &mut st.modal {
+        p.unchecked = Some(Box::new(glowfly_model::effect::Accepted {
+            at: None,
+            reason: glowfly_core::trust::incoming::Unchecked::Offsite { places: vec!["//nas/team/hooks".into()], files: None },
+        }));
+    }
+    let mut h = harness(st, true);
+    h.run();
+    h.check_snapshot("trust_prompt_offsite");
+    assert!(h.query_by_label_contains("Glowfly doesn't read //nas/team/hooks").is_some());
+    assert!(h.query_by_label("Trust and run").is_some());
+    h.get_by_label("Don't ask again for these places in this repository").click();
+    h.run();
+    assert!(h.state().1.iter().any(|m| matches!(m, Msg::Trust(TrustMsg::RememberPlaces(true)))));
+}

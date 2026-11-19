@@ -135,6 +135,7 @@ fn a_seal_goes_with_the_effect_it_was_made_for() {
         sealed: Sealed::Job { label: label.into() },
         accepted: None,
         lang: Default::default(),
+        places: Vec::new(),
     };
     let save = || Effect::Save(SaveEffect::Recent(Vec::new()));
     let shell = || Effect::Os(glowfly_model::effect::OsEffect::OpenTerminal(dir.clone()));
