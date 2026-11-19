@@ -26,6 +26,10 @@ const MAX_LINE_BYTES: usize = 4096;
 /// The most files followed for what hooks run.
 const MAX_FILES: usize = 64;
 
+/// Where a hook's text named its own folder: put in before the text is split into words, so a
+/// folder with spaces or shell characters in its name stays one part of one word.
+const OWN: &str = "\u{E020}";
+
 /// The ways a hook script names its own folder.
 const OWN_FOLDER: &[&str] = &[
     "$(dirname \"$0\")",
@@ -62,9 +66,9 @@ pub(in crate::trust) fn scan(
             continue;
         }
         let mut text = super::super::keys::text_of(bytes).into_owned();
-        if let Some(folder) = &folder {
+        if folder.is_some() {
             for form in OWN_FOLDER {
-                text = text.replace(form, folder);
+                text = text.replace(form, OWN);
             }
         }
         let mut words = 0;
@@ -73,7 +77,10 @@ pub(in crate::trust) fn scan(
                 whole = true;
                 continue 'hooks;
             }
-            for word in candidates(line) {
+            for mut word in candidates(line) {
+                if let Some(folder) = &folder {
+                    word.text = word.text.replace(OWN, folder);
+                }
                 words += 1;
                 if words > MAX_WORDS {
                     whole = true;
@@ -98,14 +105,15 @@ pub(in crate::trust) fn scan(
     out
 }
 
-/// `hooks_dir` as a hook's words would spell it: relative to the working tree when it is there,
-/// `/`-separated. None when it has a character the word scanner reads as shell syntax.
+/// `hooks_dir` as the part of a word that a hook's `$(dirname "$0")` stands for: relative to the
+/// working tree when it is there, `/`-separated, read as quoted (spaces and glob characters are
+/// part of its name). None for a folder whose name isn't UTF-8.
 fn folder_text(workdir: &Path, hooks_dir: &Path) -> Option<String> {
     let rel = hooks_dir.strip_prefix(workdir).ok().filter(|r| !r.as_os_str().is_empty());
     let text = rel.unwrap_or(hooks_dir).to_str()?.replace('\\', "/");
-    let plain =
-        !text.is_empty() && !text.starts_with('~') && !text.contains(|c: char| c.is_whitespace() || "\"'`$;|&()<>=,*?[]{}!#".contains(c));
-    plain.then_some(text)
+    // A relative `~x` names a folder here, never a home folder.
+    let text = if rel.is_some() && text.starts_with('~') { format!("./{text}") } else { text };
+    Some(super::shell::quoted(&text))
 }
 
 #[cfg(test)]

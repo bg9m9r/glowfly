@@ -151,3 +151,17 @@ fn past_the_limits_the_whole_working_tree_follows() {
     assert_eq!(paths(&scan_of(&dir)), [""], "a NUL byte");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_hook_names_its_own_folder_whatever_the_folder_is_called() {
+    let dir = scratch_repo("hook-calls-own-folder");
+    std::fs::create_dir_all(dir.join("scripts")).unwrap();
+    write(&dir, "scripts/check.sh", "#!/bin/sh\nexit 0\n");
+    for folder in ["my hooks", "hooks [v2]; x"] {
+        let text = "#!/bin/sh\n. \"$(dirname -- \"$0\")/../scripts/check.sh\"\n";
+        hook_with(&dir.join(folder), "pre-commit", text);
+        git(&dir, &["config", "core.hooksPath", folder]);
+        assert_eq!(paths(&scan_of(&dir)), [folder, "scripts/check.sh"], "{folder}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
