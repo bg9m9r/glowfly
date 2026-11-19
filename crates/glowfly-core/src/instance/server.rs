@@ -73,9 +73,10 @@ pub fn serve(on_open: impl Fn(Handed) + Send + 'static) -> io::Result<Listener> 
 }
 
 /// With `claim`, listens on a new loopback port now, writes `file`, and calls `on_open`
-/// with each item a connection with the right token sends. Without, a thread waits for the lock next to `file` and does the same once it has it. Each connection is
-/// served on its own short-lived thread (up to `MAX_CONNECTIONS` at once) and gets
-/// `REQUEST_TIMEOUT` for the whole exchange; `on_open` is called one item at a time.
+/// with each item a connection with the right token sends. Without, a thread waits for the
+/// lock next to `file` and does the same once it has it. Each connection is served on its
+/// own short-lived thread (up to `MAX_CONNECTIONS` at once) and gets `REQUEST_TIMEOUT` for the
+/// whole exchange; `on_open` is called one item at a time.
 pub fn serve_at(file: &Path, claim: Option<Claim>, on_open: impl Fn(Handed) + Send + 'static) -> io::Result<Listener> {
     let slot = Arc::new(Mutex::new(Slot::default()));
     match claim {
@@ -211,4 +212,20 @@ fn answer(stream: &TcpStream, token: &str, deadline: Instant) -> Option<Handed> 
     let mut stream = stream;
     let _ = stream.write_all(reply.as_bytes()).and_then(|()| stream.flush());
     item
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_connection_cap_gives_places_back() {
+        let live = Arc::new(AtomicUsize::new(0));
+        let mut held: Vec<_> = (0..MAX_CONNECTIONS).map(|_| ConnSlot::take(&live).expect("a place")).collect();
+        assert!(ConnSlot::take(&live).is_none(), "one over the cap is refused");
+        held.pop();
+        assert!(ConnSlot::take(&live).is_some(), "a dropped one frees its place");
+        drop(held);
+        assert_eq!(live.load(Ordering::SeqCst), 0);
+    }
 }
