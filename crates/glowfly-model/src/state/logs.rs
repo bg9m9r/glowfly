@@ -144,7 +144,8 @@ pub struct LogsState {
     /// panel or from the failure toast's button (a `LogsMsg::Fix` proxy).
     pub fixes: Vec<(EntryId, ToastAction)>,
     /// A second fix beside a run's fix (Try again beside Delete lock file), from the panel or
-    /// the toast's second button (a `LogsMsg::AltFix` proxy). Running either drops both.
+    /// the toast's second button (a `LogsMsg::AltFix` proxy). Running either drops both; a fix that asks first runs, and drops both, only when its
+    /// confirmation's button does (`LogsMsg::RunFix`).
     pub alt_fixes: Vec<(EntryId, ToastAction)>,
     /// The TLS settings read for failed certificate or revocation runs, newest last, at most
     /// `FIX_LIMIT` (state/tls_help.rs).

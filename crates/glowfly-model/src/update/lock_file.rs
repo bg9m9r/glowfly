@@ -3,7 +3,8 @@
 //! working-tree op that failed on one does the same through update/lock_local.rs. Only when the
 //! lock is a plain file in the repository's git dir and no git process runs
 //! (`glowfly_core::lock_file`) does Delete lock file come first on the entry and its toast
-//! (`checked`). The button asks first, then the runner checks everything again and deletes it
+//! (`checked`). The button asks first; Cancel leaves Delete lock file and Try again on the entry and
+//! its toast (update/logs_runs.rs). Once confirmed, the runner checks everything again and deletes it
 //! (`delete`), and the job or op runs again (`deleted`); a refusal says why and still offers
 //! Try again.
 

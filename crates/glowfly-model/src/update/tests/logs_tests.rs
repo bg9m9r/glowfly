@@ -275,3 +275,48 @@ fn loaded_runs_come_back() {
     assert!(!st.logs.open.contains(&id) && st.logs.fix(id).is_none());
     assert!(st.logs.open.contains(&other), "another tab's open rows stay");
 }
+
+#[test]
+fn a_fix_that_asks_first_is_taken_only_once_confirmed() {
+    use crate::msg::EditMsg;
+    use crate::state::{Modal, ToastAction};
+    let mut st = state();
+    let id = st.log_noted(false, "Failed");
+    let then = Msg::Logs(LogsMsg::DismissFailure(id));
+    let ask = Msg::confirm_danger_ack("Sure?", "Body".into(), "Go", "I understand", then);
+    st.logs.keep_fix(id, ToastAction { label: "Go…".into(), msg: Box::new(ask), workdir: None });
+    let now = ToastAction { label: "Now".into(), msg: Box::new(Msg::Logs(LogsMsg::Fold(id))), workdir: None };
+    st.logs.offer_first(id, now);
+    assert_eq!(st.logs.alt_fix(id).map(|f| f.label.as_str()), Some("Go…"));
+
+    logs(&mut st, LogsMsg::AltFix(id));
+    let Some(Modal::ConfirmDanger { title, ack, acked, then, .. }) = &st.modal else { panic!("it asks first") };
+    assert_eq!((title.as_str(), ack.as_deref(), *acked), ("Sure?", Some("I understand"), false));
+    assert!(matches!(**then, Msg::Logs(LogsMsg::RunFix { id: i, alt: true }) if i == id));
+    run(&mut st, Msg::CloseModal);
+    assert!(st.modal.is_none() && st.logs.fix(id).is_some() && st.logs.alt_fix(id).is_some());
+
+    logs(&mut st, LogsMsg::AltFix(id));
+    run(&mut st, Msg::Edit(EditMsg::ConfirmAck(true)));
+    run(&mut st, Msg::ConfirmAccepted);
+    assert!(st.logs.dismissed.contains(&id));
+    assert!(st.logs.fix(id).is_none() && st.logs.alt_fix(id).is_none());
+    logs(&mut st, LogsMsg::RunFix { id, alt: true });
+    assert!(st.modal.is_none());
+
+    // A fix that runs at once is taken at once.
+    let id = st.log_noted(false, "Failed again");
+    st.logs.keep_fix(id, ToastAction { label: "Now".into(), msg: Box::new(Msg::Logs(LogsMsg::Fold(id))), workdir: None });
+    logs(&mut st, LogsMsg::Fix(id));
+    assert!(st.modal.is_none() && st.logs.open.contains(&id));
+    assert!(st.logs.fix(id).is_none());
+
+    // The toast keeps its place while its fix asks.
+    let id = st.log_noted(false, "Third");
+    let ask = Msg::confirm("Sure?", "Body".into(), "Go", Msg::Logs(LogsMsg::DismissFailure(id)));
+    let proxy = st.logs.keep_fix(id, ToastAction { label: "Go…".into(), msg: Box::new(ask), workdir: None });
+    let tid = st.toast_action(false, "Failed", proxy, Instant::now());
+    run(&mut st, Msg::ToastAction(tid));
+    assert!(matches!(st.modal, Some(Modal::Confirm { .. })));
+    assert!(st.toasts.iter().any(|t| t.id == tid));
+}

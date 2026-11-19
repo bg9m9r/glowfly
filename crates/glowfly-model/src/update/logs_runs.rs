@@ -1,6 +1,7 @@
 //! Finished jobs in the activity log: each is logged as a run (its label, a one-line summary
 //! and how long it took), a loud failure opens its row and keeps its fix, which the panel's
-//! button and the failure toast's share (`LogsMsg::Fix`); the panel's rows fold open and closed
+//! button and the failure toast's share (`LogsMsg::Fix`; a fix that asks first is taken only when
+//! its confirmation's button runs, `LogsMsg::RunFix`); the panel's rows fold open and closed
 //! in update/logs_filter.rs. A run's text has git's line-ending warnings folded into one line
 //! (glowfly_core::crlf_warnings). `stamp` times the active job from the end of the `update` that
 //! started it.
@@ -159,17 +160,84 @@ pub(super) fn is_proxy(action: Option<&ToastAction>, id: EntryId) -> bool {
     action.is_some_and(|a| matches!(*a.msg, Msg::Logs(LogsMsg::Fix(i) | LogsMsg::AltFix(i)) if i == id))
 }
 
+/// Run `id`'s fix, or with `alt` its second fix, while it is kept.
+fn kept(st: &AppState, id: EntryId, alt: bool) -> Option<&ToastAction> {
+    if alt { st.logs.alt_fix(id) } else { st.logs.fix(id) }
+}
+
+/// Whether a fix's message asks first: a confirmation whose button runs the fix's step.
+fn asks_first(msg: &Msg) -> bool {
+    matches!(msg, Msg::Confirm { .. } | Msg::ConfirmDanger { .. })
+}
+
+/// The confirmation `msg` asks, with `then` in place of its step (title, body, button and
+/// acknowledgement as they are); None for a fix that runs at once.
+fn asking(msg: &Msg, then: Msg) -> Option<Msg> {
+    match msg {
+        Msg::Confirm { title, body, button, .. } => {
+            Some(Msg::Confirm { title: title.clone(), body: body.clone(), button: button.clone(), then: Box::new(then) })
+        }
+        Msg::ConfirmDanger { title, body, button, ack, .. } => Some(Msg::ConfirmDanger {
+            title: title.clone(),
+            body: body.clone(),
+            button: button.clone(),
+            ack: ack.clone(),
+            then: Box::new(then),
+        }),
+        _ => None,
+    }
+}
+
+/// Whether run `id`'s fix may run now (`notify::may_run`), checked on a stand-in so a refusal
+/// leaves it kept.
+fn may_run_fix(st: &mut AppState, id: EntryId, alt: bool, now: Instant) -> bool {
+    let Some(f) = kept(st, id, alt) else { return false };
+    let probe = ToastAction { label: f.label.clone(), msg: Box::new(Msg::Logs(LogsMsg::Fix(id))), workdir: f.workdir.clone() };
+    super::notify::may_run(st, &probe, now)
+}
+
+/// Removes every toast offering one of run `id`'s fixes.
+fn drop_toasts(st: &mut AppState, id: EntryId) {
+    st.toasts.retain(|t| ![&t.action, &t.alt, &t.details].iter().any(|a| is_proxy(a.as_ref(), id)));
+}
+
+/// The run and fix behind toast button `action` when it is a fix proxy (`Fix` / `AltFix`) whose
+/// kept fix asks first: its toast stays up while it asks (update/notify.rs).
+pub(super) fn asking_proxy(st: &AppState, action: Option<&ToastAction>) -> Option<(EntryId, bool)> {
+    let (id, alt) = match action.map(|a| &*a.msg) {
+        Some(Msg::Logs(LogsMsg::Fix(i))) => (*i, false),
+        Some(Msg::Logs(LogsMsg::AltFix(i))) => (*i, true),
+        _ => return None,
+    };
+    kept(st, id, alt).is_some_and(|f| asks_first(&f.msg)).then_some((id, alt))
+}
+
 /// Runs run `id`'s fix (with `alt`, its second fix) once, while its repository is the active
 /// tab (else a toast says to switch back and the fix is kept). The other fix and the failure
-/// toast offering them go too.
+/// toast offering them go too. A fix that asks first only opens its confirmation, its button
+/// wrapped in `LogsMsg::RunFix`: Cancel or Esc leaves both fixes and the toast.
 pub(super) fn fix(st: &mut AppState, id: EntryId, alt: bool, now: Instant, fx: &mut Vec<Effect>) {
-    let Some(f) = (if alt { st.logs.alt_fix(id) } else { st.logs.fix(id) }) else { return };
-    // Checked on a stand-in, so a refusal leaves the fix where it is.
-    let probe = ToastAction { label: f.label.clone(), msg: Box::new(Msg::Logs(LogsMsg::Fix(id))), workdir: f.workdir.clone() };
-    if !super::notify::may_run(st, &probe, now) {
+    if !may_run_fix(st, id, alt, now) {
         return;
     }
+    let ask = kept(st, id, alt).and_then(|f| asking(&f.msg, Msg::Logs(LogsMsg::RunFix { id, alt })));
+    if let Some(ask) = ask {
+        return fx.extend(super::update_sealed(st, ask, now));
+    }
     let Some(action) = st.logs.take_fix(id, alt) else { return };
-    st.toasts.retain(|t| ![&t.action, &t.alt, &t.details].iter().any(|a| is_proxy(a.as_ref(), id)));
+    drop_toasts(st, id);
     super::notify::run_action(st, action, now, fx);
+}
+
+/// `LogsMsg::RunFix`: the confirmation of run `id`'s fix was accepted. Takes both fixes and
+/// their toast, then runs the step its confirmation holds. Nothing runs once the fix is gone or
+/// no longer asks first; outside its tab it is kept, as `fix` keeps it.
+pub(super) fn confirmed(st: &mut AppState, id: EntryId, alt: bool, now: Instant, fx: &mut Vec<Effect>) {
+    if !kept(st, id, alt).is_some_and(|f| asks_first(&f.msg)) || !may_run_fix(st, id, alt, now) {
+        return;
+    }
+    let Some(ToastAction { label, msg, workdir }) = st.logs.take_fix(id, alt) else { return };
+    drop_toasts(st, id);
+    let (Msg::Confirm { then, .. } | Msg::ConfirmDanger { then, .. }) = *msg else { return };
+    super::notify::run_action(st, ToastAction { label, msg: then, workdir }, now, fx);
 }
