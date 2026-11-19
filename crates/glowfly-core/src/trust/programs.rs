@@ -18,6 +18,9 @@ use std::path::{Path, PathBuf};
 #[path = "programs_shell.rs"]
 mod shell;
 
+#[path = "programs_hooks.rs"]
+pub(super) mod hooks;
+
 /// Characters that end a word inside a shell command (`a;./b`, `$(./x)`, `--file=./c`).
 const BREAKS: &[char] = &[';', '|', '&', '(', ')', '<', '>', '`', '"', '\'', '=', ','];
 
@@ -46,7 +49,7 @@ pub(super) fn scan(repo: &Repository, config: &mut Vec<ConfigCommand>, offsite: 
         }
         let Some(text) = command_text(c) else { continue };
         for word in candidates(text) {
-            path_of(workdir, home.as_deref(), &word).into_iter().for_each(&mut add);
+            path_of(workdir, home.as_deref(), &word, false).into_iter().for_each(&mut add);
         }
     }
     for inc in super::stamp::include_entries(repo) {
@@ -202,8 +205,17 @@ fn readings(text: &str) -> Vec<String> {
 /// A path pattern (`is_pattern`) also follows the nearest folder at or above it that the
 /// working tree has now, whose version covers every match: the whole tree only when the
 /// pattern is at its top or nothing above it is there.
-fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf> {
+///
+/// A word of a hook's script (`hook`) counts only with a `/` or `\` in it: a bare word there is
+/// a command or its argument (`npx lint-staged`, `npm test`, `git diff`), not a script path.
+/// One that names nothing on disk counts only when it reads as a path from a place (`./x`,
+/// `../x`, an absolute or `~` path, or a first folder the working tree has now), so a ref or a
+/// message (`origin/main`, `and/or`) follows nothing.
+fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate, hook: bool) -> Vec<PathBuf> {
     if word.text.contains("://") || word.text.starts_with(['-', '%']) {
+        return Vec::new();
+    }
+    if hook && !word.text.contains(['/', '\\']) {
         return Vec::new();
     }
     let at = |w: &str| if w.starts_with('~') { crate::paths::expand_home(w, home) } else { workdir.join(w) };
@@ -221,7 +233,8 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf
             let far = super::follow::far(&path, workdir);
             let exists = far || std::fs::symlink_metadata(&path).is_ok();
             let root = !far && crate::paths::resolve(&path) == crate::paths::resolve(workdir);
-            if (named || exists) && !root && !out.contains(&path) {
+            let placed = exists || !hook || from_a_place(workdir, &shown);
+            if (named || exists) && placed && !root && !out.contains(&path) {
                 out.push(path);
             }
         }
@@ -241,6 +254,16 @@ fn path_of(workdir: &Path, home: Option<&Path>, word: &Candidate) -> Vec<PathBuf
         }
     }
     out
+}
+
+/// Whether the `/`-separated `shown` reads as a path from a known place: `./` or `../`, an
+/// absolute or `~` path, or a first part the working tree has now (`scripts/check.sh`).
+fn from_a_place(workdir: &Path, shown: &str) -> bool {
+    let first = shown.split('/').next().unwrap_or_default();
+    matches!(first, "." | ".." | "") || first.starts_with('~') || Path::new(shown).is_absolute() || {
+        let top = workdir.join(first);
+        !super::follow::far(&top, workdir) && std::fs::symlink_metadata(&top).is_ok()
+    }
 }
 
 #[cfg(test)]

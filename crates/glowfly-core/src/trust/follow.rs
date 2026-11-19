@@ -6,7 +6,8 @@
 //! covers that version, and `incoming` reads another commit's version from its tree (objects
 //! only: no checkout, filter, hook or fsmonitor runs) so a job that brings it in can be held
 //! until the user trusts it. A file a config program runs or an include names in the working
-//! tree (`programs.rs`) is followed the same way.
+//! tree (`programs.rs`), or that a hook's script runs (`programs_hooks.rs`), is followed the
+//! same way.
 
 use super::{TrustScan, is_hook_name};
 use git2::{ObjectType, Oid, Repository, Tree};
