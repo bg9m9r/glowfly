@@ -1,9 +1,11 @@
 //! Preferences > Trusted repositories: what the page is for, a filter once the list is long
 //! (`trust_list::FILTER_FROM`) and Forget missing folders once the folder check found any, then
-//! every saved decision (trusted_repos_row.rs) or why there is none to show. The page edits
-//! only its filter; revoking and forgetting are `TrustMsg`s for update/trust_revoke.rs.
+//! every saved decision (trusted_repos_row.rs) or why there is none to show, and the folders
+//! opened with Open anyway with their network places (trusted_network.rs). The page edits only
+//! its filter; revoking and forgetting are `TrustMsg`s for update/trust_revoke.rs and
+//! update/open_anyway.rs.
 
-use super::{intro, trusted_repos_row};
+use super::{intro, trusted_network, trusted_repos_row};
 use crate::theme::sizes::ControlSize;
 use crate::theme::tokens::radius;
 use crate::theme::{color, controls, type_scale};
@@ -11,7 +13,7 @@ use crate::widgets::buttons;
 use eframe::egui::{self, Align, CornerRadius, Id, Layout, RichText, Stroke, TextEdit, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_model::msg::{Msg, TrustMsg};
-use glowfly_model::state::trust_list::{FILTER_FROM, TrustRow, missing_paths, shown};
+use glowfly_model::state::trust_list::{FILTER_FROM, NetworkRow, TrustRow, missing_paths, shown};
 
 /// The widest the list gets, so a row's button stays near its name.
 const MAX_W: f32 = 760.0;
@@ -23,6 +25,8 @@ pub struct TrustedView {
     pub when: Vec<Option<String>>,
     /// The folder check reported (no marks and no Forget button while it runs).
     pub checked: bool,
+    /// Every folder opened with Open anyway, with its approved network places.
+    pub network: Vec<NetworkRow>,
     pub t: Lang,
 }
 
@@ -34,6 +38,13 @@ pub fn trusted_page(ui: &mut Ui, v: &TrustedView, filter: &mut String, msgs: &mu
     if controls_line(ui, v, filter, msgs) {
         ui.add_space(10.0);
     }
+    decisions(ui, v, filter, msgs);
+    trusted_network::section(ui, t, &v.network, filter, msgs);
+}
+
+/// The decisions' heading and list, or why there is none to show.
+fn decisions(ui: &mut Ui, v: &TrustedView, filter: &str, msgs: &mut Vec<Msg>) {
+    let t = v.t;
     // The list's heading, which the Preferences search reveals.
     let heading = RichText::new(t.tr("prefs.trust.decisions.label")).font(type_scale::strong(ui, type_scale::SMALL)).color(color::weak());
     ui.label(heading).on_hover_text(t.tr("prefs.trust.decisions.help"));

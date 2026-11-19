@@ -239,6 +239,11 @@ pub struct Settings {
     /// like `repo_trust`. Kept only beside a Trusted decision: removed with it.
     #[serde(default)]
     pub repo_trust_places: HashMap<String, Vec<String>>,
+    /// The network places the user agreed a folder's Git data may point to (Open anyway, as
+    /// `net_path::place_text` writes them), keyed by `repo_keys` with the folder the open's
+    /// check named (`NetworkPlaces::folder`). Forgotten from Preferences > Trusted repositories.
+    #[serde(default)]
+    pub repo_network_places: HashMap<String, Vec<String>>,
     /// Repositories the slow-status note was shown for, keyed by `repo_keys`.
     pub status_tip_shown: HashMap<String, bool>,
     /// Per-repository override of `submodules.keep_updated`, keyed by `repo_keys`; no entry follows it.

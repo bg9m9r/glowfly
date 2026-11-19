@@ -13,6 +13,7 @@ use git2::Repository;
 use std::path::{Path, PathBuf};
 
 pub mod allowed;
+pub mod network_places;
 pub mod verdict;
 
 /// A repository git refuses because another user owns it.
@@ -27,14 +28,21 @@ pub struct Refusal {
 }
 
 /// Ok when the git files of the folder `path` (and of those above it when `search`, as
-/// libgit2's own search reads them) name no network place other than the folder's own
-/// (`git_file::opened`); otherwise [`Error::NetworkPointer`] with the place named, or
-/// [`Error::UncheckedGitData`] where what they name can't be told. Every open
-/// of a folder the user chose runs this first.
+/// libgit2's own search reads them) name no network place other than the folder's own and
+/// those approved for that folder (`network_places::current`; `git_file::opened`); otherwise
+/// [`Error::NetworkPointer`] with the folder and the places named, or
+/// [`Error::UncheckedGitData`] where what they name can't be told. Every open of a folder the
+/// user chose runs this first.
 pub fn check(path: &Path, search: bool) -> Result<()> {
-    crate::git_file::opened::check(path, search).map_err(|r| {
-        let shown = crate::native_path::shown(&r.place);
-        if r.network { Error::NetworkPointer(shown) } else { Error::UncheckedGitData(shown) }
+    check_with(path, search, &network_places::current())
+}
+
+/// `check` with the places `approved` lists.
+pub fn check_with(path: &Path, search: bool, approved: &network_places::Approved) -> Result<()> {
+    use crate::git_file::opened::{Refused, check};
+    check(path, search, approved).map_err(|r| match r {
+        Refused::Network { folder, places } => Error::NetworkPointer(crate::error::NetworkPlaces { folder, places }),
+        Refused::Unchecked(what) => Error::UncheckedGitData(crate::native_path::shown(&what)),
     })
 }
 

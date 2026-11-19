@@ -42,6 +42,7 @@ mod theme_picker;
 mod theme_row;
 mod tools;
 mod trello;
+mod trusted_network;
 mod trusted_repos;
 mod trusted_repos_row;
 mod updates_row;
@@ -125,6 +126,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
         when: trust_rows.iter().map(|r| r.at.map(|at| st.settings.format_time(at, st.cues.now, st.cues.utc_offset))).collect(),
         rows: trust_rows,
         checked: prefs.trust.missing.is_some(),
+        network: glowfly_model::state::trust_list::network_rows(&st.settings),
         t,
     };
     let switching = st.profile_switch;

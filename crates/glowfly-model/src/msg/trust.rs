@@ -28,6 +28,9 @@ pub enum TrustMsg {
     Revoke { real: PathBuf },
     /// Remove the decisions of every folder the last check found missing.
     ForgetMissing,
+    /// Forget the network places approved for this folder (Open anyway), so opening it asks
+    /// again (update/open_anyway.rs).
+    ForgetNetworkPlaces(PathBuf),
     /// Which of the decided folders exist (`TrustEffect::CheckFolders`).
     FoldersChecked(Vec<crate::msg::FolderCheck>),
     /// The open prompt's Show all or Show less on the cut step row at this index.
@@ -72,6 +75,7 @@ impl TrustMsg {
             | Self::Stale(_)
             | Self::Revoke { .. }
             | Self::ForgetMissing
+            | Self::ForgetNetworkPlaces(_)
             | Self::FoldersChecked(_)
             | Self::ToggleStep(_)
             | Self::RememberPlaces(_) => None,

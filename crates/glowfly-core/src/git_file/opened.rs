@@ -11,34 +11,64 @@
 //! for a repository (a `HEAD` file, with `objects/` and `refs/` in its common dir). On Unix
 //! libgit2 resolves the links in the path it starts from, so the folders above are those of
 //! the resolved path; on Windows it goes up the path as spelled.
+//!
+//! The network places the user agreed a folder's Git data may lead to (`Approved`, per folder)
+//! are followed while that folder alone is looked at (`net_path::allowing`). A refusal names
+//! every other network place found without following one; a place reached only through one
+//! that isn't followed is found once that one is approved.
 
-use super::{Found, Named, RepoDirs, common_dir_of, dirs_of, openable, worktree_folder};
-use crate::net_path::{Leads, leads_to, may_follow, root_of};
+use super::{Found, Named, RepoDirs, common_dir_of, dirs_of, refusals, worktree_folder};
+use crate::net_path::{Leads, allowing, leads_to, may_follow, place_text, root_of};
+use crate::safe_directory::network_places::Approved;
 use std::path::{Path, PathBuf};
 
 /// Why a folder isn't opened.
 #[derive(Debug, PartialEq)]
-pub(crate) struct Refused {
-    /// The first place, or the file naming it, that may not be followed.
-    pub place: PathBuf,
-    /// It is another network place; otherwise where it leads can't be told (a file libgit2
-    /// would read differently, a name the system won't look up, too many object stores).
-    pub network: bool,
+pub(crate) enum Refused {
+    /// `folder`'s Git data leads to these network places, none of them approved for it (as
+    /// `net_path::place_text` writes them, in the order found, each once).
+    Network { folder: PathBuf, places: Vec<String> },
+    /// Where this place, or the file naming it, leads can't be told (a file libgit2 would read
+    /// differently, a name the system won't look up, too many object stores): never approved.
+    Unchecked(PathBuf),
 }
 
 /// Whether libgit2 can look for the repository at `path` (and above it when `search`) without
-/// following its files to a place that may not be followed from the folder holding them.
-pub(crate) fn check(path: &Path, search: bool) -> Result<(), Refused> {
+/// following its files to a place that may not be followed from the folder holding them, or
+/// one `approved` lists for that folder.
+pub(crate) fn check(path: &Path, search: bool, approved: &Approved) -> Result<(), Refused> {
     // A path that can't be made absolute fails libgit2's own open.
     let Ok(spelled) = std::path::absolute(path) else { return Ok(()) };
-    let start = start_of(&spelled)?;
+    let start = {
+        let _allowed = allowing(approved.places_for(&spelled));
+        start_of(&spelled)?
+    };
     for folder in start.ancestors() {
-        let refused = |place: PathBuf| Refused { network: leads_to(&place, folder) == Leads::Network, place };
-        if look(folder).map_err(refused)? || !search {
+        let _allowed = allowing(approved.places_for(folder));
+        if look(folder).map_err(|found| refused(folder, folder, found))? || !search {
             break;
         }
     }
     Ok(())
+}
+
+/// What the places `found` in `folder`'s Git data are, told from `home` (the place in use)
+/// while the folder's approved places are allowed: unchecked when any one can't be told, else
+/// the network places they lead to.
+fn refused(folder: &Path, home: &Path, found: Vec<PathBuf>) -> Refused {
+    let mut places: Vec<String> = Vec::new();
+    for p in found {
+        let text = match leads_to(&p, home) {
+            Leads::Network(root) => place_text(&root),
+            _ => None,
+        };
+        match text {
+            Some(text) if !places.contains(&text) => places.push(text),
+            Some(_) => {}
+            None => return Refused::Unchecked(p),
+        }
+    }
+    Refused::Network { folder: folder.to_path_buf(), places }
 }
 
 /// The folder libgit2 starts from for `spelled` (absolute). On Unix it resolves the path
@@ -63,17 +93,19 @@ fn start_of(spelled: &Path) -> Result<PathBuf, Refused> {
         }
     }
     let anchor = plain.ancestors().take_while(|a| root_of(a).is_some()).last().or_else(|| plain.ancestors().last());
-    match leads_to(spelled, anchor.unwrap_or(spelled)) {
-        Leads::Near => Ok(std::fs::canonicalize(spelled).unwrap_or_else(|_| spelled.to_path_buf())),
-        far => Err(Refused { place: spelled.to_path_buf(), network: far == Leads::Network }),
+    let anchor = anchor.unwrap_or(spelled);
+    if may_follow(spelled, anchor) {
+        Ok(std::fs::canonicalize(spelled).unwrap_or_else(|_| spelled.to_path_buf()))
+    } else {
+        Err(refused(spelled, anchor, vec![spelled.to_path_buf()]))
     }
 }
 
 /// Whether libgit2 finds a repository in `folder`: its `.git`, else the folder itself as a git
-/// dir. Err with the first place that may not be followed.
-fn look(folder: &Path) -> Result<bool, PathBuf> {
+/// dir. Err with the places found that may not be followed.
+fn look(folder: &Path) -> Result<bool, Vec<PathBuf>> {
     match dirs_of(folder, folder) {
-        Found::Refused(p) => return Err(p),
+        Found::Refused(p) => return Err(vec![p]),
         Found::Repo(d) if taken(&d, folder)? => return Ok(true),
         _ => {}
     }
@@ -81,7 +113,7 @@ fn look(folder: &Path) -> Result<bool, PathBuf> {
     // file of that name (it asks for a file, so a folder named so is passed over).
     let named = std::fs::symlink_metadata(folder.join("commondir")).is_ok_and(|m| !m.is_dir());
     let common = match if named { common_dir_of(folder, folder) } else { Named::None } {
-        Named::Refused(p) => return Err(p),
+        Named::Refused(p) => return Err(vec![p]),
         Named::At(common) => common,
         Named::None => folder.to_path_buf(),
     };
@@ -90,27 +122,32 @@ fn look(folder: &Path) -> Result<bool, PathBuf> {
 
 /// Whether libgit2 takes `d` (found in `folder`) for a repository, as its
 /// `is_valid_repository_path` tells; then everything opening it follows is checked. Err with
-/// the first place that may not be followed.
-fn taken(d: &RepoDirs, folder: &Path) -> Result<bool, PathBuf> {
+/// every place found that may not be followed (`git_file::refusals`).
+fn taken(d: &RepoDirs, folder: &Path) -> Result<bool, Vec<PathBuf>> {
     for (file, is_dir) in [(d.git_dir.join("HEAD"), false), (d.common.join("objects"), true), (d.common.join("refs"), true)] {
         // libgit2 stats each through a link.
         if !may_follow(&file, folder) {
-            return Err(file);
+            return Err(vec![file]);
         }
         if !std::fs::metadata(&file).is_ok_and(|m| if is_dir { m.is_dir() } else { m.is_file() }) {
             return Ok(false);
         }
     }
+    let mut found = Vec::new();
     // A linked worktree's work tree is the folder its `gitdir` record names.
     if d.common != d.git_dir
         && let Named::Refused(p) = worktree_folder(&d.git_dir, folder)
     {
-        return Err(p);
+        found.push(p);
     }
-    openable(d, folder, folder)?;
-    Ok(true)
+    found.extend(refusals(d, folder, folder, true));
+    if found.is_empty() { Ok(true) } else { Err(found) }
 }
 
 #[cfg(test)]
 #[path = "opened_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "opened_approved_tests.rs"]
+mod approved_tests;

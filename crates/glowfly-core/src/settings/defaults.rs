@@ -81,6 +81,7 @@ impl Default for Settings {
             repo_trust_times: HashMap::new(),
             repo_trust_from: HashMap::new(),
             repo_trust_places: HashMap::new(),
+            repo_network_places: HashMap::new(),
             status_tip_shown: HashMap::new(),
             repo_submodule_updates: HashMap::new(),
             repo_year_branches: HashMap::new(),

@@ -296,6 +296,7 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/ssh/windows.rs`: Preferences > SSH, in the Agent section: the Windows' OpenSSH row.
 - `prefs/tools.rs`: Preferences > External tools: the editor, diff tool and merge tool with their arguments, then the Conflict view section with its one switch, Pick trivial conflicts when a file opens.
 - `prefs/trusted_repos.rs`: Preferences > Trusted repositories: the intro, the filter (from eight decisions on) and Forget missing folders, then the list or why it is empty.
+- `prefs/trusted_network.rs`: Preferences > Trusted repositories, under the decisions: each folder opened with Open anyway, its path and network places, and Forget.
 - `prefs/trusted_repos_row.rs`: Preferences > Trusted repositories: one decision's row: name, decision chip and Revoke or Forget; under it the path, date, source, heir count and a painted Not found mark.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
 - `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.

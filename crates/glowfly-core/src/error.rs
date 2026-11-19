@@ -10,6 +10,17 @@ pub mod write_failed;
 pub use read_failed::ReadFailed;
 pub use write_failed::WriteFailed;
 
+/// The network places an opened folder's Git data points to that aren't approved for it
+/// (`Error::NetworkPointer`): Open anyway approves them for `folder`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NetworkPlaces {
+    /// The folder whose Git data names them, as the check looked at it: the key their approval
+    /// is saved under (`safe_directory::network_places`).
+    pub folder: std::path::PathBuf,
+    /// Each place as `net_path::place_text` writes it (`\\server\share`, `Z:\`, `/net/<host>`).
+    pub places: Vec<String>,
+}
+
 /// Errors returned by repository access and hosting-service calls.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -62,12 +73,13 @@ pub enum Error {
     )]
     LinkedFile(String),
     /// The opened folder's git files (a `.git` file, `commondir`, a config include, an
-    /// alternates line: the place named, as shown) lead to a network place other than the
-    /// folder's own, so it isn't opened (`git_file::opened`).
+    /// alternates line) lead to network places other than the folder's own that weren't
+    /// approved for it, so it isn't opened (`git_file::opened`).
     #[error(
-        "This folder's Git data points to a network place ({0}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer."
+        "This folder's Git data points to a network place ({}), so Glowfly won't open it. Open the repository from where it really is, or remove that pointer.",
+        .0.places.join(", ")
     )]
-    NetworkPointer(String),
+    NetworkPointer(NetworkPlaces),
     /// The opened folder's git files can't be checked for where they lead (the file or place,
     /// as shown): an oversized or many-lined `.git` or `commondir`, a value libgit2 would read
     /// from the process's own folder, a name the system won't look up, too many object stores.

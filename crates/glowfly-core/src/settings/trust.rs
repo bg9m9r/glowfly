@@ -1,6 +1,7 @@
 //! Repository trust decisions (see `trust`): what the user answered for a repository, when,
 //! and which decisions were passed on from another repository (listed, revoked and forgotten
-//! from Preferences > Trusted repositories).
+//! from Preferences > Trusted repositories), and the network places a folder's Git data may
+//! point to because the user said Open anyway (listed and forgotten on the same page).
 
 use super::{Settings, repo_keys};
 use crate::paths;
@@ -145,6 +146,48 @@ impl Settings {
             self.set_trust(p, None);
         }
         gone
+    }
+}
+
+impl Settings {
+    /// The network places approved for the folder `folder` (Open anyway), sorted.
+    pub fn network_places_for(&self, folder: &Path) -> Vec<String> {
+        repo_keys::get(&self.repo_network_places, folder).cloned().unwrap_or_default()
+    }
+
+    /// Adds `places` to those approved for `folder` (each once, sorted).
+    pub fn approve_network_places(&mut self, folder: &Path, places: &[String]) {
+        let mut all = self.network_places_for(folder);
+        for p in places {
+            if !all.contains(p) {
+                all.push(p.clone());
+            }
+        }
+        all.sort();
+        repo_keys::set(&mut self.repo_network_places, folder, (!all.is_empty()).then_some(all));
+    }
+
+    /// Forgets the places approved for `folder`; returns whether it had any.
+    pub fn forget_network_places(&mut self, folder: &Path) -> bool {
+        let had = repo_keys::get(&self.repo_network_places, folder).is_some();
+        repo_keys::set(&mut self.repo_network_places, folder, None);
+        had
+    }
+
+    /// Every folder with approved places and those places, sorted by path as `trust_decisions`.
+    pub fn network_approvals(&self) -> Vec<(PathBuf, Vec<String>)> {
+        let mut out: Vec<(PathBuf, Vec<String>)> =
+            self.repo_network_places.iter().map(|(k, places)| (paths::decode(k), places.clone())).collect();
+        out.sort_by_cached_key(|(p, _)| {
+            let shown = p.to_string_lossy().into_owned();
+            (shown.to_lowercase(), shown)
+        });
+        out
+    }
+
+    /// `network_approvals` as the opens of this process follow them.
+    pub fn approved_network_places(&self) -> crate::safe_directory::network_places::Approved {
+        crate::safe_directory::network_places::Approved::new(self.network_approvals())
     }
 }
 

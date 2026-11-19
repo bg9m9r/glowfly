@@ -25,6 +25,7 @@
   "trust.known.lfs.tip": "Git LFS's standard setup: it runs the git-lfs installed on this computer, not a file from the repository.",
   "trust.network.note": "These can turn off certificate checks, send Git's traffic, sign-ins included, through another server, or name a file Git reads cookies from and writes them to.",
   "trust.network.title": "Settings that change how Git connects",
+  "trust.network_forgot": "Forgot the network places allowed for {name}. Glowfly asks again before opening it.",
   "trust.revoked": "Revoked trust in {name}. Glowfly asks again before Git runs its settings or hooks.",
   "trust.revoked_with.one": "Revoked trust in {name} and the repository passed on from it. Glowfly asks again before Git runs their settings or hooks.",
   "trust.revoked_with.other": "Revoked trust in {name} and the {count} repositories passed on from it. Glowfly asks again before Git runs their settings or hooks.",
