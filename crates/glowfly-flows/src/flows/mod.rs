@@ -295,6 +295,7 @@ mod tool_compare_tests;
 mod tool_git_tests;
 mod tools_tests;
 mod trello_tests;
+mod trust_credentials_tests;
 mod trust_elsewhere_tests;
 mod trust_file_ops_tests;
 mod trust_held_tab_tests;

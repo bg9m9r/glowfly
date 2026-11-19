@@ -26,7 +26,7 @@ pub(super) fn load_boards(st: &mut AppState, account: Account, fx: &mut Vec<Effe
 
 fn start(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
     let connected = forge::is_connected(&account, &st.settings.connections);
-    let cwd = st.any_dir();
+    let cwd = st.credentials_dir();
     let Some(p) = st.prefs.as_mut() else { return };
     if !connected {
         // Never contacted without a connection in this profile.
