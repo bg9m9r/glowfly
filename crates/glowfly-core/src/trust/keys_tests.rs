@@ -69,6 +69,16 @@ fn tls_and_proxy_settings_are_listed_whatever_their_value() {
         ("http.https://example.com/.extraheader", "X-Extra: 1", "http.https://example.com/.extraHeader"),
         ("http.https://example.com/.curloptresolve", "example.com:443:203.0.113.5", "http.https://example.com/.curloptResolve"),
         ("http.https://example.com/.followredirects", "false", "http.https://example.com/.followRedirects"),
+        // How git signs in, the certificate's and key's form, and the HTTP version.
+        ("http.emptyauth", "true", "http.emptyAuth"),
+        ("http.proactiveauth", "basic", "http.proactiveAuth"),
+        ("http.delegation", "always", "http.delegation"),
+        ("http.sslcertpasswordprotected", "true", "http.sslCertPasswordProtected"),
+        ("http.sslcerttype", "P12", "http.sslCertType"),
+        ("http.sslkeytype", "ENG", "http.sslKeyType"),
+        ("http.version", "HTTP/1.1", "http.version"),
+        ("http.https://example.com/.emptyauth", "true", "http.https://example.com/.emptyAuth"),
+        ("http.https://example.com/.version", "HTTP/2", "http.https://example.com/.version"),
     ];
     for (name, value, shown) in cases {
         assert_eq!(listed(name, value).as_deref(), Some(shown), "{name} = {value}");
@@ -127,6 +137,42 @@ fn a_repositorys_own_tls_proxy_and_lfs_settings_are_scanned() {
     git(&dir, &["config", "http.proxy", "other.example"]);
     assert!(!before.covers(&scan_at(&dir).unwrap().print()));
     assert!(s.config.contains(&ConfigCommand { key: "remote.origin.proxy".into(), value: "socks5://p".into() }));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_changed_certificate_key_or_pinned_key_file_asks_again() {
+    let dir = scratch_repo("trust-keys-tls-files");
+    std::fs::create_dir_all(dir.join("certs")).unwrap();
+    let files = ["certs/me.pem", "certs/me.key", "certs/pin.pem"];
+    for f in files {
+        write(
+            &dir, f, "one
+",
+        );
+    }
+    git(&dir, &["add", "."]);
+    git(&dir, &["commit", "-q", "-m", "certs"]);
+    git(&dir, &["config", "http.sslCert", files[0]]);
+    git(&dir, &["config", "http.sslKey", files[1]]);
+    git(&dir, &["config", "http.pinnedPubkey", files[2]]);
+    let saved = scan_at(&dir).unwrap().print();
+    for f in files {
+        write(
+            &dir, f, "two
+",
+        );
+        assert!(!saved.covers(&scan_at(&dir).unwrap().print()), "{f} changed");
+        write(
+            &dir, f, "one
+",
+        );
+        assert!(saved.covers(&scan_at(&dir).unwrap().print()), "{f} put back");
+    }
+    // Hashes name no file.
+    git(&dir, &["config", "http.pinnedPubkey", "sha256//AAAA"]);
+    let s = scan_at(&dir).unwrap();
+    assert!(!s.follows.iter().any(|f| f.path == files[2]), "{:?}", s.follows);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

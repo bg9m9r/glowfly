@@ -28,8 +28,8 @@ const COMMAND_KEYS: &[(&str, &str)] = &[
     ("lfs.standalonetransferagent", "lfs.standaloneTransferAgent"),
 ];
 
-/// The `http.*` and `http.<url>.*` keys that change TLS checks, the client certificate, the
-/// TLS library and its versions and ciphers, where a host resolves, which redirects git follows,
+/// The `http.*` and `http.<url>.*` keys that change TLS checks, the client certificate, how git
+/// signs in, the HTTP version, the TLS library and its versions and ciphers, where a host resolves, which redirects git follows,
 /// the headers sent with every request, send traffic through a proxy, or name the file git
 /// reads cookies from and (with `saveCookies`) writes them to, as libgit2 returns them, with
 /// their usual spelling.
@@ -47,6 +47,14 @@ const HTTP_KEYS: &[(&str, &str)] = &[
     ("curloptresolve", "curloptResolve"),
     ("followredirects", "followRedirects"),
     ("extraheader", "extraHeader"),
+    // How git signs in, the client certificate's and key's form, and the HTTP version.
+    ("emptyauth", "emptyAuth"),
+    ("proactiveauth", "proactiveAuth"),
+    ("delegation", "delegation"),
+    ("sslcertpasswordprotected", "sslCertPasswordProtected"),
+    ("sslcerttype", "sslCertType"),
+    ("sslkeytype", "sslKeyType"),
+    ("version", "version"),
     ("proxy", "proxy"),
     ("cookiefile", "cookieFile"),
     ("savecookies", "saveCookies"),

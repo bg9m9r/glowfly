@@ -118,6 +118,11 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("http.https://example.com/.sslCAPath", "./certs", &["certs"]),
         // One path, spaces and all, never split into words.
         ("http.sslCAInfo", "my certs/ca file.pem", &["my certs/ca file.pem"]),
+        // The client certificate and key, and the pinned key's file (not its hashes).
+        ("http.sslCert", "certs/me.pem", &["certs/me.pem"]),
+        ("http.https://example.com/.sslKey", "certs/me.key", &["certs/me.key"]),
+        ("http.pinnedPubkey", "certs/pin.pem", &["certs/pin.pem"]),
+        ("http.pinnedPubkey", "sha256//certs/pin", &[]),
         // A transfer agent's name, a TLS switch or a proxy names no file.
         ("lfs.standaloneTransferAgent", "present", &[]),
         ("http.sslVerify", "present", &[]),
