@@ -75,8 +75,15 @@ impl PushRemotes {
     }
 }
 
+/// Whether a configured push remote value can name a remote: not empty, not starting with `-`
+/// (which a command line would read as an option) and without a control character.
+fn usable_remote(value: &str) -> bool {
+    !value.is_empty() && !value.starts_with('-') && !value.chars().any(char::is_control)
+}
+
 /// Reads the push remotes and `push.default` from `repo`'s config; none when it can't be read.
-/// Empty remote names are left out (git treats them as unset).
+/// Empty remote names are left out (git treats them as unset), and so are ones that start with
+/// `-` or hold a control character: none names a remote.
 pub fn push_remotes(repo: &Repository) -> PushRemotes {
     let read = || -> Result<PushRemotes, git2::Error> {
         let cfg = repo.config()?.snapshot()?;
@@ -95,7 +102,7 @@ pub fn push_remotes(repo: &Repository) -> PushRemotes {
             }
             let (Some(name), true) = (e.name(), e.has_value()) else { continue };
             let value = String::from_utf8_lossy(e.value_bytes()).trim().to_owned();
-            let set = (!value.is_empty()).then_some(value);
+            let set = usable_remote(&value).then_some(value);
             if name.eq_ignore_ascii_case("remote.pushdefault") {
                 out.default = set;
                 continue;
@@ -249,6 +256,34 @@ mod tests {
         set_config(&dir, &[("remote.pushDefault", "first"), ("include.path", "push.cfg")]);
         let p = push_remotes(&Repository::open(&dir).unwrap());
         assert_eq!((p.default.as_deref(), p.of_branch("main")), (Some("included"), Some("fork")));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn unusable_push_remote_values_are_dropped() {
+        let dir = scratch_repo("push-remotes-unusable");
+        let local = dir.join(".git/config");
+        let text = std::fs::read_to_string(&local).unwrap();
+        // The escapes are in the file's text: git reads `\t` and `\n` in a quoted value as the
+        // control characters.
+        let extra = [
+            "[remote]",
+            "\tpushDefault = \"a\\tb\"",
+            "[branch \"x\"]",
+            "\tpushRemote = -oops",
+            "[branch \"y\"]",
+            "\tpushRemote = \"fo\\nrk\"",
+            "[branch \"z\"]",
+            "\tpushRemote = fork",
+        ]
+        .join("\n");
+        std::fs::write(&local, format!("{text}\n{extra}\n")).unwrap();
+        let p = push_remotes(&Repository::open(&dir).unwrap());
+        assert_eq!(p.default, None, "a control character");
+        assert_eq!(p.of_branch("x"), None, "a leading dash");
+        assert_eq!(p.of_branch("y"), None, "a newline");
+        assert_eq!(p.of_branch("z"), Some("fork"));
+        assert!(usable_remote("origin") && usable_remote("my-fork") && !usable_remote("--upload-pack=x") && !usable_remote(""));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
