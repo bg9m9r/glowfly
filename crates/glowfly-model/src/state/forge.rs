@@ -156,6 +156,15 @@ impl ForgeState {
         (on(&self.host), on(&self.tracker))
     }
 
+    /// Whether `target` (the code host or the tracker) last answered that no credentials exist
+    /// for it at all (`forge::says_not_connected`) and no sign-in is held for its account.
+    pub fn found_not_connected(&self, target: &Target) -> bool {
+        let says = |s: &Status| matches!(s, Status::Error(e) if forge::says_not_connected(e));
+        !self.auth.contains_key(&target.account().key())
+            && ((self.host.as_ref() == Some(target) && says(&self.host_status))
+                || (self.tracker.as_ref() == Some(target) && says(&self.tracker_status)))
+    }
+
     pub fn host_provider(&self) -> Option<Provider> {
         self.host.as_ref().map(|t| t.provider)
     }

@@ -70,10 +70,19 @@ fn trello_boards(account: Account, cwd: &Path) -> Msg {
     Msg::Forge(ForgeMsg::TrelloBoardsLoaded { account, result })
 }
 
+/// Background calls of an unconnected account never ask Git Credential Manager (`background_auth`).
+fn lookup(target: &Target, cwd: &Path, interactive: bool, connected: bool, call: &ForgeCall) -> glowfly_core::error::Result<Auth> {
+    if !interactive && call.is_background() {
+        forge::background_auth(&target.account(), cwd, connected)
+    } else {
+        forge::resolve_auth(&target.account(), cwd, interactive, connected)
+    }
+}
+
 pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: bool, connected: bool, call: ForgeCall) -> ForgeReply {
     let auth = match auth {
         Some(a) => a,
-        None => match forge::resolve_auth(&target.account(), cwd, interactive, connected) {
+        None => match lookup(&target, cwd, interactive, connected, &call) {
             Ok(a) => a,
             Err(e) => return ForgeReply { target, auth: None, results: auth_failed(&call, e.to_string()) },
         },

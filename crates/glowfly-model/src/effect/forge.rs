@@ -25,6 +25,15 @@ pub enum ForgeCall {
     Filter(super::FilterCall),
 }
 
+impl ForgeCall {
+    /// Whether the app asks this on its own (refreshes, mentioned issues, checks, filters) rather
+    /// than for something the user did. A background call for an account the profile hasn't
+    /// connected uses only an environment token (`forge::background_auth`).
+    pub fn is_background(&self) -> bool {
+        !matches!(self, ForgeCall::Create(_))
+    }
+}
+
 /// A hosting-service failure, flagged when signing in again could fix it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ForgeError {
@@ -60,4 +69,32 @@ pub struct ForgeReply {
     pub target: Target,
     pub auth: Option<Auth>,
     pub results: Vec<ForgeResult>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_creating_a_pull_request_is_the_users_own_call() {
+        let new = NewPullRequest {
+            source: "topic".into(),
+            target: "main".into(),
+            title: "t".into(),
+            description: String::new(),
+            draft: false,
+            issues: vec![],
+            source_repo: None,
+        };
+        assert!(!ForgeCall::Create(new).is_background());
+        for call in [
+            ForgeCall::Refresh { need_default: true, with_issues: true },
+            ForgeCall::MyIssues { project_keys: false },
+            ForgeCall::Issues(vec![]),
+            ForgeCall::TipChecks(vec![]),
+            ForgeCall::PrDetails(vec![]),
+        ] {
+            assert!(call.is_background(), "{call:?}");
+        }
+    }
 }

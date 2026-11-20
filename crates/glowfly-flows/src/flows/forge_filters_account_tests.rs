@@ -135,9 +135,9 @@ fn a_user_without_teams_keeps_the_sign_in_and_personal_requests() {
 fn an_account_not_connected_is_offered_a_connection() {
     let (mut st, dir) = open("ffa-connect");
     let fs = st.session.forge.as_mut().unwrap();
-    // As the runner reports `resolve_auth` finding no credentials at all.
-    fs.host_status = Status::Error("authentication failed: not connected to GitHub".into());
-    fs.tracker_status = Status::Error("authentication failed: not connected to GitHub".into());
+    // As update stores the runner's report of no credentials at all.
+    fs.host_status = Status::Error("not connected to GitHub".into());
+    fs.tracker_status = Status::Error("not connected to GitHub".into());
     let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(connect_prompt(Lang::En, fs, &[]).as_deref(), Some("Connect GitHub to see its pull requests here."));
     let issues = connect_issues_prompt(Lang::En, fs, &[], true);

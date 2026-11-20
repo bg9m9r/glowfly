@@ -116,6 +116,9 @@ pub fn is_connected(account: &Account, connections: &[Connection]) -> bool {
 /// connected, the connection removed), so the sidebar can offer Connect… for exactly that.
 const NOT_CONNECTED: &str = "not connected to ";
 
+/// What `Error::Auth` prints before its message.
+const AUTH_PREFIX: &str = "authentication failed: ";
+
 /// "not connected to GitHub", or with `at` ("not connected to GitLab at git.example.com").
 pub fn not_connected_text(provider: Provider, at: Option<&str>) -> String {
     match at {
@@ -128,7 +131,17 @@ pub fn not_connected_text(provider: Provider, at: Option<&str>) -> String {
 /// ("authentication failed: not connected to GitHub"), rather than a failure of credentials
 /// that were found (an expired token, a network error, a rate limit).
 pub fn says_not_connected(message: &str) -> bool {
-    message.strip_prefix("authentication failed: ").unwrap_or(message).starts_with(NOT_CONNECTED)
+    message.strip_prefix(AUTH_PREFIX).unwrap_or(message).starts_with(NOT_CONNECTED)
+}
+
+/// A failed sign-in as the status bar shows it. Missing credentials read as the bare
+/// `not_connected_text` ("not connected to GitHub"), like a guessed server's status and
+/// Preferences; any other failure keeps its cause.
+pub fn sign_in_status(message: String) -> String {
+    match message.strip_prefix(AUTH_PREFIX) {
+        Some(rest) if rest.starts_with(NOT_CONNECTED) => rest.to_owned(),
+        _ => message,
+    }
 }
 
 /// The provider's environment-variable token, for public hosts only: a token meant for
@@ -167,6 +180,29 @@ pub fn resolve_auth(account: &Account, cwd: &Path, interactive: bool, connected:
         return from_credential_manager(account, cwd, interactive);
     }
     Err(Error::Auth(not_connected_text(account.provider, None)))
+}
+
+/// Credentials for a call the app makes on its own. An account the current profile hasn't
+/// `connected` gets only its environment token, never a Git Credential Manager lookup (a
+/// process, and a sign-in this profile was never given); Sign in and the user's own actions use
+/// `resolve_auth`.
+pub fn background_auth(account: &Account, cwd: &Path, connected: bool) -> Result<Auth> {
+    background_with(account, connected, |n| std::env::var(n).ok(), || resolve_auth(account, cwd, false, true))
+}
+
+fn background_with(
+    account: &Account,
+    connected: bool,
+    var: impl Fn(&str) -> Option<String>,
+    lookup: impl FnOnce() -> Result<Auth>,
+) -> Result<Auth> {
+    if connected {
+        return lookup();
+    }
+    match env_token(account, var) {
+        Some((token, name)) => Ok(Auth::from_token(account.provider, None, &token, name)),
+        None => Err(Error::Auth(not_connected_text(account.provider, None))),
+    }
 }
 
 pub(super) fn credential_host(account: &Account) -> String {
@@ -309,6 +345,35 @@ mod tests {
         assert!(!says_not_connected("network error: offline"));
         assert!(!says_not_connected("HTTP 403: API rate limit exceeded"));
         assert!(!says_not_connected("authentication failed: bad credentials"));
+    }
+
+    #[test]
+    fn background_lookups_without_a_connection_use_only_the_environment() {
+        let gh = acct(Provider::GitHub, "github.com");
+        let none = |_: &str| None;
+        let err = background_with(&gh, false, none, || panic!("looked up")).unwrap_err();
+        assert!(says_not_connected(&err.to_string()), "{err}");
+        let auth = background_with(&gh, false, env, || panic!("looked up")).unwrap();
+        assert_eq!((auth.source.as_str(), auth.header.as_str()), ("GITHUB_TOKEN", "Bearer secret-GITHUB_TOKEN"));
+        let fake = || Ok(Auth::from_token(Provider::GitHub, None, "t", "Git Credential Manager"));
+        let looked = background_with(&gh, true, none, fake).unwrap();
+        assert_eq!((looked.source.as_str(), looked.header.as_str()), ("Git Credential Manager", "Bearer t"));
+        let ghe = acct(Provider::GitHubEnterprise, "github.evil.example");
+        let err = background_with(&ghe, false, env, || panic!("looked up")).unwrap_err();
+        assert!(says_not_connected(&err.to_string()), "{err}");
+    }
+
+    #[test]
+    fn missing_credentials_show_as_not_connected() {
+        assert_eq!(sign_in_status("authentication failed: not connected to GitHub".into()), "not connected to GitHub");
+        let bare = sign_in_status(resolve_error_text());
+        assert_eq!(bare, "not connected to GitHub");
+        assert!(says_not_connected(&bare));
+        for other in
+            ["authentication failed: bad credentials", "not connected to GitLab at git.acme.io", "network error: offline", "not signed in"]
+        {
+            assert_eq!(sign_in_status(other.into()), other);
+        }
     }
 
     /// What `resolve_auth` fails with when nothing is found, as the runner reports it.

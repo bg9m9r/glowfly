@@ -127,6 +127,11 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
         }
         return;
     }
+    // Not connected and nothing found last time: a background request would only repeat that.
+    if !interactive && !connected && call.is_background() && fs.found_not_connected(&target) {
+        tracing::debug!("forge request skipped: {} is not connected", account.display());
+        return;
+    }
     fs.loading += 1;
     let auth = if interactive { None } else { fs.auth.get(&account.key()).cloned() };
     fx.push(Effect::Network(NetworkEffect::Forge { target, cwd, auth, interactive, connected, call }));
@@ -225,6 +230,7 @@ fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effe
             _ if other_repo => {}
             ForgeResult::AuthFailed(e) => {
                 fs.auth.remove(&key);
+                let e = forge::sign_in_status(e);
                 if is_host {
                     fs.host_status = Status::Error(e.clone());
                 }
