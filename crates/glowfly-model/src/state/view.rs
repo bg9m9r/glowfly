@@ -90,6 +90,10 @@ pub struct ViewState {
     pub activity_focus: Option<crate::state::logs::EntryId>,
     /// Scroll the cursor row into view once (set by update; the view clears it).
     pub activity_focus_scroll: bool,
+    /// The keyboard cursor was last placed by the search's step: the header's count says its
+    /// place, and its row is ringed though the field has the focus. Set by update, cleared when
+    /// the filter changes.
+    pub activity_step: bool,
     pub show_search: bool,
     /// The author picker's filter field.
     pub author_filter: String,
@@ -188,6 +192,7 @@ impl Default for ViewState {
             logs_search: String::new(),
             activity_focus: None,
             activity_focus_scroll: false,
+            activity_step: false,
             show_search: false,
             author_filter: String::new(),
             dashboard_filter: String::new(),

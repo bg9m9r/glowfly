@@ -279,3 +279,82 @@ fn a_failure_the_search_hides_is_still_announced() {
     send(&mut st, LogsMsg::SearchChanged);
     assert!(st.toasts.is_empty());
 }
+
+fn step_msg(st: &mut AppState, back: bool) {
+    send(st, LogsMsg::Step { back });
+}
+
+#[test]
+fn step_moves_the_cursor_through_shown_rows() {
+    let mut st = panel(vec![run("Pull", false, "a"), run("Push", true, ""), run("Fetch", false, "b"), run("Merge", false, "c")]);
+    let all = ids(&st);
+    send(&mut st, LogsMsg::SetFailuresOnly(true));
+    for want in [0, 2, 3, 0] {
+        step_msg(&mut st, false);
+        assert_eq!(st.view.activity_focus, Some(all[want]));
+        assert_eq!(st.view.activity_reveal, Some(all[want]));
+        assert!(st.view.activity_step);
+        st.view.activity_reveal = None;
+    }
+    step_msg(&mut st, true);
+    assert_eq!(st.view.activity_focus, Some(all[3]), "back from the first wraps to the last");
+    step_msg(&mut st, true);
+    assert_eq!(st.view.activity_focus, Some(all[2]));
+}
+
+#[test]
+fn a_step_opens_its_row_and_folds_the_last_one_again() {
+    let mut st = panel(vec![run("Pull", false, "a"), run("Push", false, "b"), run("Merge", false, "c")]);
+    let all = ids(&st);
+    send(&mut st, LogsMsg::SetFailuresOnly(true));
+    step_msg(&mut st, false);
+    assert!(st.logs.open.contains(&all[0]));
+    assert_eq!(st.logs.step_opened, Some(all[0]));
+    step_msg(&mut st, false);
+    assert!(st.logs.open.contains(&all[1]) && !st.logs.open.contains(&all[0]), "the last step's row folds again");
+    assert_eq!(st.logs.step_opened, Some(all[1]));
+    // A row opened by hand stays open when the steps move past it.
+    send(&mut st, LogsMsg::Fold(all[2]));
+    step_msg(&mut st, false);
+    assert_eq!(st.view.activity_focus, Some(all[2]));
+    assert!(!st.logs.open.contains(&all[1]));
+    assert_eq!(st.logs.step_opened, None, "already open: the step opened nothing");
+    step_msg(&mut st, false);
+    assert!(st.logs.open.contains(&all[2]), "left alone");
+    // Folded by hand and opened again: the step no longer owns it.
+    step_msg(&mut st, false);
+    assert_eq!(st.logs.step_opened, Some(all[1]));
+    send(&mut st, LogsMsg::Fold(all[1]));
+    send(&mut st, LogsMsg::Fold(all[1]));
+    assert_eq!(st.logs.step_opened, None);
+    step_msg(&mut st, false);
+    step_msg(&mut st, false);
+    step_msg(&mut st, false);
+    assert!(st.logs.open.contains(&all[1]), "opened by the user, so it stays open");
+}
+
+#[test]
+fn step_does_nothing_without_a_filter_or_off_the_activity_tab() {
+    let mut st = panel(vec![run("Pull", false, "a"), run("Push", true, "")]);
+    step_msg(&mut st, false);
+    assert_eq!(st.view.activity_focus, None, "no filter");
+    send(&mut st, LogsMsg::SetFailuresOnly(true));
+    st.logs.tab = LogKind::Errors;
+    step_msg(&mut st, false);
+    assert_eq!(st.view.activity_focus, None);
+    st.logs.tab = LogKind::Activity;
+    st.view.show_log = false;
+    step_msg(&mut st, false);
+    assert_eq!(st.view.activity_focus, None);
+    st.view.show_log = true;
+    step_msg(&mut st, false);
+    assert!(st.view.activity_step);
+    send(&mut st, LogsMsg::SetFailuresOnly(false));
+    assert!(!st.view.activity_step);
+    st.view.activity_step = true;
+    send(&mut st, LogsMsg::SearchChanged);
+    assert!(!st.view.activity_step);
+    st.view.activity_step = true;
+    send(&mut st, LogsMsg::Show(LogKind::Activity));
+    assert!(!st.view.activity_step);
+}

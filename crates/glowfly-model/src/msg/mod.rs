@@ -144,7 +144,8 @@ msg_areas! { msg_enum! {
         },
         OpenTerminal,
         OpenFolder(PathBuf),
-        /// The activity log's Clear button.
+        /// The activity log's Clear button: clears the active tab's log, asking first while the
+        /// filter hides some of it (update/logs.rs).
         ClearLog,
         /// A line for the activity log from a background effect of any area.
         Logged {

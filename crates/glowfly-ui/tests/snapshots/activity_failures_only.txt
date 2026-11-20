@@ -13,6 +13,9 @@ Button "Errors" [off]
 Button "Performance" [off]
 TextInput "Search titles, causes and output"
 CheckBox "Failures only" [on]
+Label "2 matches of 9"
+Button "Previous match"
+Button "Next match"
 Unknown "Activity log"
 Button "Pull, failed, Your changes to 1 file would be overwritten."
 Label "Your changes to 1 file would be overwritten."
@@ -34,6 +37,7 @@ Label "Look through the folders you keep projects in for repositories."
 painted:
   "Repository"
   "Open…"
+  "2 of 9"
   "3 minutes ago"
   "850 ms"
   "Pull"

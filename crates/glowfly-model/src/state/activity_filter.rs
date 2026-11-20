@@ -2,7 +2,8 @@
 //! rows show (with either on there are no routine groups, every kept entry is its own row) and
 //! whether an entry's row is drawn open (folded open by hand, or unfolded because the search
 //! found its text in the output). Pure; ui/activity_rows.rs draws the rows and update/
-//! logs_filter.rs acts on them, both through this file.
+//! logs_filter.rs acts on them, both through this file. It also counts what a filter leaves
+//! (the header's "3 of 120", Clear's confirmation) and finds the entry a search step reaches.
 
 use super::activity_rows::{ActivityRow, SessionHead, output_of, rows, title_of};
 use super::logs::{EntryId, LogEntry, LogsState};
@@ -104,6 +105,74 @@ pub fn row_ids(log: &[LogEntry], f: &Filter) -> Vec<EntryId> {
 /// The indexes of the `lines` that contain `needle` (lowercase), all of them with no needle.
 pub fn matching_lines(lines: &[String], needle: &str) -> Vec<usize> {
     (0..lines.len()).filter(|&i| contains_lower(&lines[i], needle)).collect()
+}
+
+/// How many entries or lines a filter leaves of all of them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MatchCount {
+    pub shown: usize,
+    pub total: usize,
+}
+
+impl MatchCount {
+    /// How many the filter leaves out.
+    pub fn hidden(&self) -> usize {
+        self.total - self.shown
+    }
+}
+
+/// The Activity count: None while no filter is on. With a filter on every kept entry is one row.
+pub fn match_count(log: &[LogEntry], f: &Filter) -> Option<MatchCount> {
+    f.is_active().then(|| MatchCount { shown: log.iter().filter(|e| f.keeps(e)).count(), total: log.len() })
+}
+
+/// A log tail's count for the lowercase `needle`: None for no needle.
+pub fn line_count(lines: &[String], needle: &str) -> Option<MatchCount> {
+    (!needle.is_empty()).then(|| MatchCount { shown: matching_lines(lines, needle).len(), total: lines.len() })
+}
+
+/// The 1-based place of entry `id` among the shown entries; None when it isn't shown or no filter
+/// is on.
+pub fn place(log: &[LogEntry], f: &Filter, id: EntryId) -> Option<usize> {
+    if !f.is_active() {
+        return None;
+    }
+    let mut n = 0;
+    for e in log.iter().filter(|e| f.keeps(e)) {
+        n += 1;
+        if e.id == id {
+            return Some(n);
+        }
+    }
+    None
+}
+
+/// The shown entry a step from the cursor `from` reaches, wrapping at the ends; `back` steps to
+/// the previous one. A cursor on an entry the filter hides steps from its place in the log. None
+/// when nothing shows or no filter is on.
+pub fn step_from(log: &[LogEntry], f: &Filter, from: Option<EntryId>, back: bool) -> Option<EntryId> {
+    if !f.is_active() {
+        return None;
+    }
+    let shown: Vec<usize> = (0..log.len()).filter(|&i| f.keeps(&log[i])).collect();
+    let n = shown.len();
+    let last = *shown.last()?;
+    let pos = from.and_then(|id| log.iter().position(|e| e.id == id));
+    let to = match pos {
+        None => {
+            if back {
+                last
+            } else {
+                shown[0]
+            }
+        }
+        Some(p) => match shown.iter().position(|&i| i == p) {
+            Some(k) => shown[if back { (k + n - 1) % n } else { (k + 1) % n }],
+            None if back => shown.iter().rev().find(|&&i| i < p).copied().unwrap_or(last),
+            None => shown.iter().find(|&&i| i > p).copied().unwrap_or(shown[0]),
+        },
+    };
+    Some(log[to].id)
 }
 
 #[cfg(test)]
