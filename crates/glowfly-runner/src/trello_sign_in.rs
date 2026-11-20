@@ -1,6 +1,7 @@
 //! Sign in with Trello (`AccountEffect::TrelloSignIn`): opens Trello's "Allow Glowfly" page
-//! through `Msg::OpenUrl` once the local port is bound, then waits for the token until Trello
-//! answers, the time runs out or Cancel stops it (`StopKey::TrelloSignIn`).
+//! through `Msg::OpenUrl` once the local port is bound (not when Cancel came first), then waits
+//! for the token until Trello answers, the time runs out or Cancel stops it
+//! (`StopKey::TrelloSignIn`).
 
 use super::execute::Cx;
 use glowfly_core::trello_sign_in::{self, TIMEOUT};

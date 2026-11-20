@@ -131,3 +131,37 @@ fn closing_preferences_stops_the_wait() {
     assert!(st.prefs.is_none());
     assert_eq!(stops(&fx), 1);
 }
+
+#[test]
+fn connecting_through_the_form_stops_the_wait() {
+    let mut st = on_trello(Some(KEY));
+    let at = Instant::now();
+    start(&mut st, at);
+    let connect = ForgeMsg::Connect { account: trello(), user: Some("mine".into()), token: Some(TOKEN.into()) };
+    let fx = update(&mut st, Msg::Forge(connect), at);
+    assert_eq!((stops(&fx), step(&st)), (1, &SignInStep::Idle), "stopped as Cancel stops it");
+    assert!(ended(&mut st, at, Ok(TOKEN.into())).is_empty(), "the stopped wait's token is not used");
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs), at);
+    assert_eq!(stops(&fx), 0, "nothing left to stop");
+}
+
+#[test]
+fn closing_preferences_stops_a_running_wait_whatever_the_page_shows() {
+    let mut st = on_trello(Some(KEY));
+    let at = Instant::now();
+    start(&mut st, at);
+    st.prefs.as_mut().unwrap().trello_sign_in.step = SignInStep::Idle;
+    let fx = update(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs), at);
+    assert_eq!(stops(&fx), 1);
+}
+
+#[test]
+fn the_fallback_keeps_a_key_already_typed() {
+    let mut st = on_trello(Some(KEY));
+    st.prefs.as_mut().unwrap().int_user = "my-own-key".into();
+    let at = Instant::now();
+    start(&mut st, at);
+    ended(&mut st, at, Err(SignInEnd::TimedOut));
+    assert!(matches!(step(&st), SignInStep::Failed { fallback: true, .. }));
+    assert_eq!(st.prefs.as_ref().unwrap().int_user, "my-own-key");
+}

@@ -35,6 +35,7 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
         ForgeMsg::PushToMyFork { branch, target } => super::fork_pr::open(st, branch, target, fx),
         ForgeMsg::CreatePr { pr, from, into } => super::push_pr::create(st, pr, &from, &into, fx),
         ForgeMsg::Connect { account, user, token } => {
+            super::trello_sign_in::connecting(st, &account, fx);
             if let Some(p) = st.prefs.as_mut() {
                 p.int_busy = true;
                 p.int_error = None;
@@ -350,7 +351,7 @@ fn connected(
             }
             refresh(st, true, false, now, fx);
             super::dashboard::account_changed(st, &account, fx);
-            super::trello_sign_in::connected(st, &account);
+            super::trello_sign_in::connected(st, &account, fx);
         }
         Err(e) => {
             let t = st.settings.lang();

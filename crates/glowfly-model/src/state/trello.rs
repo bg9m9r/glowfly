@@ -26,6 +26,9 @@ pub struct TrelloSignIn {
     /// tests replace.
     pub key: Option<String>,
     pub step: SignInStep,
+    /// The wait the runner may still run (when it started), from its start until its end
+    /// arrives or it is stopped, whatever `step` shows.
+    pub running: Option<Instant>,
     /// A Trello account was connected in this Preferences session: offer it as the open
     /// repository's tracker.
     pub offer_tracker: bool,
@@ -33,7 +36,12 @@ pub struct TrelloSignIn {
 
 impl Default for TrelloSignIn {
     fn default() -> Self {
-        Self { key: glowfly_core::trello_sign_in::GLOWFLY_TRELLO_KEY.map(str::to_owned), step: SignInStep::Idle, offer_tracker: false }
+        Self {
+            key: glowfly_core::trello_sign_in::GLOWFLY_TRELLO_KEY.map(str::to_owned),
+            step: SignInStep::Idle,
+            running: None,
+            offer_tracker: false,
+        }
     }
 }
 
