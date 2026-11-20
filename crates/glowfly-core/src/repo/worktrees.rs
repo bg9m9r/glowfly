@@ -38,8 +38,8 @@ pub struct WorktreeInfo {
     /// shows this worktree under another spelling. None when it is missing or on another
     /// network place.
     pub folder: Option<crate::paths::FolderId>,
-    /// Its uncommitted changes, counted by full loads (or the background count after one) for
-    /// worktrees other than the current one. Zero unless `read` is Counted, and for one that
+    /// Its uncommitted changes, counted by the background count after a full load (or carried
+    /// from the snapshot before it) for worktrees other than the current one. Zero unless `read` is Counted, and for one that
     /// can't be read.
     pub changes: ChangeCounts,
     /// How `changes` was read: NotCounted for the current or a missing one, with the option off,

@@ -1,7 +1,8 @@
-//! Other worktrees' uncommitted changes, for their WIP rows in the graph. A full load counts
-//! only the small ones, within a time budget, and leaves the rest Pending, so one huge linked
-//! worktree doesn't hold up the graph of every tab. The app then counts the Pending ones in the
-//! background, one worktree at a time, through git when it may run there.
+//! Other worktrees' uncommitted changes, for their WIP rows in the graph. A full load reads none
+//! of them: it marks each other worktree it may open Pending, or Carried with the counts the
+//! snapshot before it had for the same folder at the same HEAD, so their rows stay put through a
+//! reload; the app then counts those in the background, one count per tab at a time, through git
+//! when it may run there.
 
 use super::status::ChangeCounts;
 use super::status_speed::SlowStatus;
@@ -22,8 +23,12 @@ pub enum ChangesRead {
     NotCounted,
     /// `changes` holds its counts.
     Counted,
-    /// Left for a background count after the load.
+    /// Not read yet: left for the background count right after the load.
     Pending,
+    /// `changes` holds the counts the snapshot before this load had for the same folder at the
+    /// same HEAD (`Snapshot::prior`); shown as counted, and counted again in the background right
+    /// after the load.
+    Carried,
     /// Too large to count in the background; open it in a tab to see its changes.
     TooLarge,
     /// A count couldn't read it for now: the worktree's own files held the read
@@ -32,25 +37,11 @@ pub enum ChangesRead {
     Held,
 }
 
-/// Indexes with more entries than this are left for the background count.
-pub const LOAD_COUNT_INDEX: u32 = 20_000;
-/// How long one load spends counting other worktrees before leaving the rest for later.
-pub const LOAD_COUNT_BUDGET: Duration = Duration::from_millis(500);
 /// How long git may take to read one worktree's status in the background.
 pub const COUNT_TIMEOUT: Duration = Duration::from_secs(20);
 /// Past this many index entries a worktree where git may not run isn't counted at all: a
 /// libgit2 read can't be stopped once started.
 pub const NO_GIT_COUNT_INDEX: u32 = 200_000;
-
-/// What a load may spend on counting other worktrees.
-pub(super) struct LoadLimits {
-    pub max_entries: u32,
-    pub budget: Duration,
-}
-
-impl LoadLimits {
-    pub const DEFAULT: Self = Self { max_entries: LOAD_COUNT_INDEX, budget: LOAD_COUNT_BUDGET };
-}
 
 /// The entry count in the header of the index file at `index` ("DIRC", a version, then a
 /// big-endian count). None when it is missing or not an index. Reads only the header.
@@ -63,25 +54,37 @@ pub(crate) fn index_entries(index: &Path) -> Option<u32> {
     Some(u32::from_be_bytes([head[8], head[9], head[10], head[11]]))
 }
 
-/// Counts the uncommitted changes of every listed worktree other than the current one and the
-/// missing ones, while they are small and the budget lasts; the rest are left Pending. Read by
-/// libgit2 alone, so no hook, fsmonitor or filter runs: safe while the repository isn't trusted.
-/// One that can't be opened or read counts as clean. One whose folder, or a file libgit2 would
-/// follow in opening it (its `.git` file's `gitdir:`, `commondir`, config), is on another network
-/// place than `home` (the common dir) is never opened and stays NotCounted.
-pub(super) fn count_in_load(list: &mut [WorktreeInfo], home: &Path, limits: &LoadLimits) {
-    let started = Instant::now();
+/// Another worktree's counts as the snapshot on screen holds them, for the next load to show
+/// until its background count lands (`Snapshot::prior`).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct KnownCount {
+    path: PathBuf,
+    head: Option<git2::Oid>,
+    changes: ChangeCounts,
+}
+
+/// What a later load may carry over from `list`: other worktrees, not missing, whose read is
+/// Counted, Held or Carried.
+pub(crate) fn known_counts(list: &[WorktreeInfo]) -> Vec<KnownCount> {
+    list.iter()
+        .filter(|w| !w.current && !w.missing && matches!(w.read, ChangesRead::Counted | ChangesRead::Held | ChangesRead::Carried))
+        .map(|w| KnownCount { path: w.path.clone(), head: w.head, changes: w.changes })
+        .collect()
+}
+
+/// Marks every listed worktree but the current and the missing ones for the background count,
+/// reading none of them: Carried with its `known` counts when the snapshot before had them for
+/// the same folder (`paths::same_spelling`) at the same HEAD, else Pending with none. One whose
+/// folder, or a file libgit2 would follow in opening it (its `.git` file's `gitdir:`,
+/// `commondir`, config), is on another network place than `home` (the common dir) stays
+/// NotCounted, as `count_worktree` leaves it.
+pub(super) fn leave_for_later(list: &mut [WorktreeInfo], home: &Path, known: &[KnownCount]) {
     for wt in list.iter_mut().filter(|w| !w.current && !w.missing && openable(&w.path, home)) {
-        let repo = Repository::open(&wt.path).ok();
-        let entries = repo.as_ref().and_then(|r| index_entries(&r.path().join("index"))).unwrap_or(0);
-        if entries > limits.max_entries || started.elapsed() >= limits.budget {
-            wt.read = ChangesRead::Pending;
-            wt.changes = ChangeCounts::default();
-            continue;
-        }
-        let (read, changes) = counted(repo.map(|r| super::status::libgit2_status(&r)));
-        wt.changes = changes;
-        wt.read = read;
+        let same = known.iter().find(|k| k.head == wt.head && crate::paths::same_spelling(&k.path, &wt.path));
+        (wt.read, wt.changes) = match same {
+            Some(k) => (ChangesRead::Carried, k.changes),
+            None => (ChangesRead::Pending, ChangeCounts::default()),
+        };
     }
 }
 

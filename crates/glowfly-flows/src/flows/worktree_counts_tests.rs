@@ -1,5 +1,5 @@
-//! Headless tests for other worktrees counted after the load: a worktree the load left Pending
-//! shows as being counted, one background count fills it in and lays the graph out again, only
+//! Headless tests for other worktrees counted after the load (`worktree_carry_tests.rs` has what
+//! a reload carries): a worktree the load left Pending shows as being counted, one background count fills it in and lays the graph out again, only
 //! one count runs at a time (also through unchanged refreshes), a count for other refs is
 //! dropped, a too-large worktree isn't retried, the option off counts nothing, a slow count
 //! offers the untracked cache, git reads a worktree only by that worktree's own trust, and a
@@ -35,7 +35,7 @@ pub(super) fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     (st, dir, linked)
 }
 
-const SIDE: ChangeCounts = ChangeCounts { modified: 1, added: 1, deleted: 0 };
+pub(super) const SIDE: ChangeCounts = ChangeCounts { modified: 1, added: 1, deleted: 0 };
 
 fn cleanup(dirs: &[&Path]) {
     for d in dirs {
@@ -43,24 +43,21 @@ fn cleanup(dirs: &[&Path]) {
     }
 }
 
-/// Delivers a fresh load of the active tab in which the linked worktree was left Pending, as a
-/// load would leave a large one. Returns the effects.
+/// Delivers a fresh load of the active tab, in which the linked worktree is Pending (a core load
+/// leaves every other worktree so). Returns the effects.
 fn load_pending(st: &mut AppState) -> Vec<Effect> {
     let workdir = st.workdir().unwrap();
-    let mut snap = glowfly_core::repo::load(&workdir, &st.load_options(&workdir)).unwrap();
-    snap.worktrees[1].read = ChangesRead::Pending;
-    snap.worktrees[1].changes = ChangeCounts::default();
-    snap.lay_out_graph();
+    let snap = glowfly_core::repo::load(&workdir, &st.load_options(&workdir)).unwrap();
     let msg = Msg::Repo(RepoMsg::RepoLoaded { generation: st.load_gen, kind: LoadKind::Refresh, result: Ok(Box::new(snap)) });
     update(st, msg, Instant::now())
 }
 
-fn counts(fx: &[Effect]) -> Vec<&glowfly_model::worktree::CountRequest> {
+pub(super) fn counts(fx: &[Effect]) -> Vec<&glowfly_model::worktree::CountRequest> {
     fx.iter().filter_map(|e| if let Effect::Worktree(WorktreeEffect::CountChanges(r)) = e { Some(r) } else { None }).collect()
 }
 
 /// Runs `msg` and the loads it leads to, collecting every other effect on the way.
-fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
+pub(super) fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     let mut all = Vec::new();
     let mut queue = vec![msg];
     while let Some(m) = queue.pop() {
@@ -80,7 +77,7 @@ fn step(st: &mut AppState, msg: Msg) -> Vec<Effect> {
     all
 }
 
-fn linked_info(st: &AppState) -> &glowfly_core::repo::WorktreeInfo {
+pub(super) fn linked_info(st: &AppState) -> &glowfly_core::repo::WorktreeInfo {
     &st.snap.as_ref().unwrap().worktrees[1]
 }
 
@@ -95,7 +92,7 @@ fn result(path: &Path, read: ChangesRead, changes: ChangeCounts, slow: Option<Sl
 #[test]
 fn a_large_worktree_is_counted_after_the_graph() {
     let (mut st, dir, linked) = opened("wtcount-after");
-    assert_eq!(linked_info(&st).read, ChangesRead::Counted, "a small worktree is counted by the load");
+    assert_eq!(linked_info(&st).read, ChangesRead::Counted, "counted right after the load");
     let fx = load_pending(&mut st);
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.commits.is_empty());
@@ -257,7 +254,7 @@ fn another_worktree_is_counted_by_its_own_trust_not_the_tab_s() {
 }
 
 /// Runs the one count among `fx`, and delivers its result at `now`.
-fn run_count(st: &mut AppState, fx: Vec<Effect>, now: Instant) -> Vec<Effect> {
+pub(super) fn run_count(st: &mut AppState, fx: Vec<Effect>, now: Instant) -> Vec<Effect> {
     let count = fx.into_iter().find(|e| matches!(e, Effect::Worktree(WorktreeEffect::CountChanges(_)))).expect("a count");
     let done = glowfly_runner::testing::execute(count).expect("a result");
     update(st, done, now)
@@ -266,11 +263,11 @@ fn run_count(st: &mut AppState, fx: Vec<Effect>, now: Instant) -> Vec<Effect> {
 #[test]
 fn a_status_only_reload_counts_other_worktrees_again_at_most_once_per_interval() {
     let (mut st, dir, linked) = opened("wtcount-recount");
-    assert_eq!(linked_info(&st).changes, SIDE, "counted by the load");
+    assert_eq!(linked_info(&st).changes, SIDE, "counted right after the load");
     std::fs::write(linked.join("c.txt"), "more there\n").unwrap();
     let watched = || Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
     let fx = step(&mut st, watched());
-    assert!(counts(&fx).is_empty(), "the load counted them just now: {fx:?}");
+    assert!(counts(&fx).is_empty(), "counted right after the load, just now: {fx:?}");
     let due = st.refresh.recount.due().expect("kept for the end of the interval");
     assert!(due <= Instant::now() + RECOUNT_EVERY);
     assert!(counts(&update(&mut st, Msg::Tick(due - Duration::from_millis(1)), due)).is_empty(), "not before");

@@ -79,4 +79,5 @@ pub(super) mod wip_keys_lines_tests;
 pub(super) mod wip_picks_actions_tests;
 pub(super) mod wip_picks_delete_tests;
 pub(super) mod wip_picks_tests;
+pub(super) mod worktree_counts_tests;
 pub(super) mod write_errors_tests;

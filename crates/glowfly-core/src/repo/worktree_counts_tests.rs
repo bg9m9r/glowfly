@@ -1,9 +1,11 @@
-//! Counting other worktrees' changes: the index header, the load's limits, how a background
-//! count reads a worktree, and that git runs there only when it may.
+//! Counting other worktrees' changes: the index header, what a load leaves for the background
+//! count (Pending, or Carried from the prior), how that count reads a worktree, and that git runs
+//! there only when it may.
 
 use super::*;
 use crate::repo::status_cli_tests::marker_script;
-use crate::repo::worktrees::wip_tests::{DIRTY, cleanup, dirty, linked, two_files};
+use crate::repo::worktrees::wip_tests::{DIRTY, cleanup, counted_load, dirty, linked, two_files};
+use crate::repo::{GraphCache, LoadOptions, Prior, load, load_reusing};
 use crate::testutil::*;
 
 #[test]
@@ -16,28 +18,91 @@ fn index_entries_reads_the_header() {
 }
 
 #[test]
-fn a_load_counts_only_small_worktrees_within_its_budget() {
+fn a_load_leaves_other_worktrees_pending_without_reading_them() {
     let dir = two_files("wtcount-load");
     let wt = linked(&dir, "feat");
     dirty(&wt);
-    let repo = Repository::open(&dir).unwrap();
-    let listed = || super::super::worktrees::list(&repo);
+    let snap = load(&dir, &LoadOptions::all(100)).unwrap();
+    assert_eq!((snap.worktrees[1].read, snap.worktrees[1].changes), (ChangesRead::Pending, ChangeCounts::default()));
+    assert_eq!(snap.worktrees[0].read, ChangesRead::NotCounted, "the current worktree is never counted");
+    assert!(snap.graph.worktree_wips.is_empty());
 
-    let mut small = listed();
-    count_in_load(&mut small, repo.commondir(), &LoadLimits { max_entries: 1, ..LoadLimits::DEFAULT });
-    assert_eq!((small[1].read, small[1].changes), (ChangesRead::Pending, ChangeCounts::default()), "its index is too large");
+    let off = load(&dir, &LoadOptions { worktree_wips: false, ..LoadOptions::all(100) }).unwrap();
+    assert!(off.worktrees.iter().all(|w| w.read == ChangesRead::NotCounted && w.changes.is_empty()));
+    assert!(off.graph.worktree_wips.is_empty());
+    cleanup(&[&wt, &dir]);
+}
 
-    let mut late = listed();
-    count_in_load(&mut late, repo.commondir(), &LoadLimits { budget: Duration::ZERO, ..LoadLimits::DEFAULT });
-    assert_eq!(late[1].read, ChangesRead::Pending, "the budget is spent");
+#[test]
+fn a_reload_carries_the_counts_of_an_unchanged_worktree() {
+    let dir = two_files("wtcount-carry");
+    let wt = linked(&dir, "feat");
+    dirty(&wt);
+    let opts = LoadOptions::all(100);
+    let snap = counted_load(&dir, &opts);
+    assert_eq!((snap.worktrees[1].read, snap.worktrees[1].changes), (ChangesRead::Counted, DIRTY));
 
-    let mut all = listed();
-    count_in_load(&mut all, repo.commondir(), &LoadLimits::DEFAULT);
-    assert_eq!((all[1].read, all[1].changes), (ChangesRead::Counted, DIRTY));
-    for list in [&small, &late, &all] {
-        assert!(list[0].current);
-        assert_eq!(list[0].read, ChangesRead::NotCounted, "the current worktree is never counted");
+    let reload = |prior: &Prior| load_reusing(&dir, &opts, &GraphCache::default(), Some(prior)).unwrap();
+    let carried = reload(&snap.prior());
+    assert_eq!((carried.worktrees[1].read, carried.worktrees[1].changes), (ChangesRead::Carried, DIRTY));
+    assert_eq!(carried.graph.worktree_wips.len(), 1, "its row is in the load's own layout");
+    assert_eq!(carried.graph.worktree_wips, snap.graph.worktree_wips);
+
+    // Carried counts carry on to the next load, until a count replaces them.
+    let again = reload(&carried.prior());
+    assert_eq!((again.worktrees[1].read, again.worktrees[1].changes), (ChangesRead::Carried, DIRTY));
+
+    // A commit there moves its HEAD: the old counts no longer describe it.
+    git(&wt, &["add", "-A"]);
+    git(&wt, &["commit", "-q", "-m", "more"]);
+    let moved = reload(&snap.prior());
+    assert_eq!((moved.worktrees[1].read, moved.worktrees[1].changes), (ChangesRead::Pending, ChangeCounts::default()));
+    assert!(moved.graph.worktree_wips.is_empty());
+
+    // Held reads carry without counts; TooLarge and Pending reads are not carried.
+    for (read, want) in [
+        (ChangesRead::Held, ChangesRead::Carried),
+        (ChangesRead::TooLarge, ChangesRead::Pending),
+        (ChangesRead::Pending, ChangesRead::Pending),
+    ] {
+        let mut s = load(&dir, &opts).unwrap();
+        s.worktrees[1].read = read;
+        s.worktrees[1].changes = ChangeCounts::default();
+        let next = reload(&s.prior());
+        assert_eq!((next.worktrees[1].read, next.worktrees[1].changes), (want, ChangeCounts::default()), "{read:?}");
     }
+    cleanup(&[&wt, &dir]);
+}
+
+#[test]
+fn known_counts_takes_only_other_counted_worktrees() {
+    let dir = two_files("wtcount-known");
+    let wt = linked(&dir, "feat");
+    let repo = Repository::open(&dir).unwrap();
+    let base = super::super::worktrees::list(&repo);
+    let reads = [
+        ChangesRead::NotCounted,
+        ChangesRead::Pending,
+        ChangesRead::TooLarge,
+        ChangesRead::Counted,
+        ChangesRead::Held,
+        ChangesRead::Carried,
+    ];
+    let mut list = vec![base[0].clone(), base[1].clone()];
+    list[0].read = ChangesRead::Counted; // the current one
+    list[1].missing = true;
+    list[1].read = ChangesRead::Counted;
+    for (i, read) in reads.into_iter().enumerate() {
+        let mut w = base[1].clone();
+        w.path = wt.join(i.to_string());
+        w.read = read;
+        w.changes = ChangeCounts { modified: i + 1, ..Default::default() };
+        list.push(w);
+    }
+    let known = known_counts(&list);
+    let paths: Vec<_> = known.iter().map(|k| k.path.clone()).collect();
+    assert_eq!(paths, [wt.join("3"), wt.join("4"), wt.join("5")], "Counted, Held and Carried");
+    assert_eq!(known[0].changes, ChangeCounts { modified: 4, ..Default::default() });
     drop(repo);
     cleanup(&[&wt, &dir]);
 }
@@ -146,8 +211,11 @@ fn a_worktree_whose_git_file_names_a_network_place_is_never_opened() {
     // Its folder and record are local; only the folder's own `.git` file names the place.
     write(&wt, ".git", &format!("gitdir: {}\n", git_spelling(&net_place().join("wt/.git"))));
     let mut list = super::super::worktrees::list(&repo);
-    count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
+    leave_for_later(&mut list, repo.commondir(), &[]);
     assert_eq!((list[1].read, list[1].changes), (ChangesRead::NotCounted, ChangeCounts::default()), "{:?}", list[1]);
+    let known = [KnownCount { path: list[1].path.clone(), head: list[1].head, changes: DIRTY }];
+    leave_for_later(&mut list, repo.commondir(), &known);
+    assert_eq!(list[1].read, ChangesRead::NotCounted, "never carried either");
     let count = count_worktree(&wt, &dir, Some(&SavedTrust::trusted(None)), COUNT_TIMEOUT);
     assert_eq!((count.read, count.changes), (ChangesRead::NotCounted, ChangeCounts::default()), "as the load leaves it");
     write(&wt, ".git", &real);
@@ -165,7 +233,7 @@ fn a_worktree_whose_record_names_a_network_place_is_listed_and_never_counted() {
     write(&admin, "gitdir", &format!("{}\n", git_spelling(&place.join(".git"))));
     let repo = Repository::open(&dir).unwrap();
     let mut list = super::super::worktrees::list(&repo);
-    count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
+    leave_for_later(&mut list, repo.commondir(), &[]);
     let row = list.iter().find(|w| !w.current).expect("listed from its admin dir");
     assert!(on_net_place(&row.path), "{:?}", row.path);
     assert_eq!((row.read, row.changes, row.missing), (ChangesRead::NotCounted, ChangeCounts::default(), false));
@@ -192,9 +260,9 @@ fn a_worktree_of_a_repository_with_a_conditional_include_is_still_counted() {
     assert_eq!((count.read, count.changes), (ChangesRead::Counted, DIRTY));
     let repo = Repository::open(&dir).unwrap();
     let mut list = super::super::worktrees::list(&repo);
-    count_in_load(&mut list, repo.commondir(), &LoadLimits::DEFAULT);
+    leave_for_later(&mut list, repo.commondir(), &[]);
     let row = list.iter().find(|w| !w.current).expect("the linked worktree");
-    assert_eq!((row.read, row.changes), (ChangesRead::Counted, DIRTY));
+    assert_eq!((row.read, row.changes), (ChangesRead::Pending, ChangeCounts::default()), "it can be opened");
     cleanup(&[&wt, &dir]);
 }
 
