@@ -1,0 +1,11 @@
+Dialog
+  Label "Delete remote branch"
+  TextInput "Find a remote branch to delete" [focused]
+  Button "fork/search" [selected]
+  Button "origin/login-page"
+  Button "origin/main"
+  Button "origin/search"
+  Label "Up/Down to choose, Enter to choose, Backspace or Esc to go back"
+painted:
+  "main"
+  "search"

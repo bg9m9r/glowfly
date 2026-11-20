@@ -4,7 +4,7 @@
 //! two-step commands open: the file finder (loading its items in the background), the stash
 //! sub-lists (apply, pop, delete and rename), the profile sub-list (switching profiles), the
 //! assigned-issue sub-lists (starting a Git Flow branch from an issue), the branch and tag
-//! sub-lists (Switch branch, Delete tag, Delete branch), the stash message step and the commit count of a
+//! sub-lists (Switch branch, Delete tag, Delete branch, Delete remote branch), the stash message step and the commit count of a
 //! shallow clone's fetch (entered in `steps`). The Stash dialog's entries open that dialog.
 //! A command's key from Preferences > Keyboard runs it the same way (`keys`).
 
@@ -251,6 +251,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         C::CheckoutTag(name) => Msg::Tag(TagMsg::Checkout { tag: name }),
         C::DeleteTag(name) => Msg::Tag(TagMsg::OpenDelete { tag: name }),
         C::DeleteBranch(name) => Msg::Branch(BranchMsg::DeleteDialog(name)),
+        C::DeleteRemoteBranch { remote, branch } => Msg::Branch(BranchMsg::DeleteRemoteDialog { remote, name: branch }),
         C::OpenRecent(path) => Msg::Repo(RepoMsg::Open(path)),
         C::CopyLink(t) => Msg::DeepLink(crate::deep_link::DeepLinkMsg::Copy(t)),
         C::OpenFileHistory(path) => Msg::History(HistoryMsg::OpenFileHistory { path, at: None }),
@@ -288,6 +289,7 @@ pub(super) fn run(st: &mut AppState, cmd: PaletteCommand, now: Instant, fx: &mut
         | C::ChooseCheckout
         | C::ChooseTagToDelete
         | C::ChooseBranchToDelete
+        | C::ChooseRemoteBranchToDelete
         | C::ChooseGitFlowIssue(_)
         | C::ChooseIssueToView
         | C::StashMessage

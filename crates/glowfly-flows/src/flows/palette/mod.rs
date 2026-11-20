@@ -19,6 +19,7 @@ mod pick_tests;
 mod pr_tests;
 mod rebase_tests;
 mod recent_tests;
+mod remote_delete_tests;
 mod repos_tests;
 pub(super) mod stash_tests;
 mod submodule_tests;

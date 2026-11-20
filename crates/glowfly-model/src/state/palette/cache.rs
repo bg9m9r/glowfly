@@ -171,7 +171,7 @@ impl CommandCache {
 /// (33 points for "branch"), so those entries list first.
 const DEMOTED_BY: i32 = 40;
 
-/// Lowers the score of the commands that `ranks_low` for a typed query, unless the match begins
+/// Lowers the score of the commands that `ranks_low` (Delete branch…, Delete remote branch…) for a typed query, unless the match begins
 /// at the label's first character (the user is typing the command's name), and ranks again. The
 /// sort is stable, so the ranking's own tie-breaks still order the rest. Both the cache and
 /// `palette::listed` apply it, before `by_recency`.
