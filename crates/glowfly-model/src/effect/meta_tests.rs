@@ -4,9 +4,9 @@
 
 use crate::effect::partial::{ContentRequest, PartialEffect, StopKey};
 use crate::effect::{
-    CloneEffect, CommitEffect, ConflictEffect, ConflictRead, DiffEffect, Effect, FileOp, FilesEffect, IndexRequest, JobEffect, KnownRepo,
-    LfsEffect, LoadEffect, LoadKind, MonitorJob, MonitorOff, ReposEffect, SandboxRule, SelectionEffect, SparseEffect, StackRequest,
-    UndoOpts, WorktreeEffect,
+    CloneEffect, CommitEffect, ConflictEffect, ConflictRead, DiffEffect, Effect, FileOp, FilesEffect, IndexRequest, JobEffect, LfsEffect,
+    LoadEffect, LoadKind, MonitorJob, MonitorOff, ReposEffect, SandboxRule, SelectionEffect, SparseEffect, StackRequest, UndoOpts,
+    WorktreeEffect,
 };
 use crate::worktree::{CountRequest, MoveRequest, NewWorktree, RemoveRequest};
 use glowfly_core::repo_sync::SyncOp;
@@ -179,17 +179,6 @@ fn load_diff_and_job_effects_keep_their_metadata() {
                 prior: None,
             }),
             ("load-repo", None, None, true),
-        ),
-        (
-            Effect::Load(LoadEffect::Repo {
-                path: w.clone(),
-                opts: Default::default(),
-                generation: 1,
-                kind: LoadKind::Refresh,
-                known: Some(KnownRepo { refs_key: 7, refs_only: true, submodules: false, open: None, git_status: false }),
-                prior: None,
-            }),
-            ("check-refs", None, None, true),
         ),
         (
             Effect::Load(LoadEffect::Status {

@@ -52,7 +52,7 @@ source file, update its line here. Features that span every layer are in
 ## `effect/`: effects
 
 - `Effect`: everything slow or outside the process (`mod.rs`): one variant per effect area, from the table in `areas.rs`, and no flat variants (`source_checks`' `hygiene/flat_effects.rs` keeps them out).
-- `meta.rs`: `EffectMeta`, what each area decides for its effects beside its type (name, scope, timing, queue, pool hold, stop key, the tests' sandbox rule); tests in `meta_tests.rs`.
+- `meta.rs`: `EffectMeta`, what each area decides for its effects beside its type (name, scope, timing, queue, pool hold, stop key, the tests' sandbox rule); tests in `meta_tests.rs` and `meta_refs_tests.rs` (the refs-only check's name).
 - `areas.rs`: the table of effect areas; `effect_match!` runs one body for every area in `Effect`'s metadata, the sandbox's rule and the runner's dispatch.
 - The data some effects carry: `repo.rs` (with `LoadKind`: opening, a refresh, or a load for more that goes on from the walk), `forge.rs`, `forge_filters.rs` (PR and issue filter calls), `issue.rs` (the issue panel's and the Create issue dialog's tracker calls and posting a comment), `blame.rs`, `hunk_patch.rs` (Copy hunk as patch's read, run by `runner/hunk_patch.rs`), `notify.rs` (desktop notifications).
 - Grouped effects: the Clone dialog (`clone.rs`), the Init dialog (`init.rs`), the SUBMODULES section (`submodule.rs`), interactive rebase (`rebase.rs`), connected accounts (`account.rs`) and the stash list (`stash.rs`).

@@ -58,3 +58,7 @@ pub enum SandboxRule {
 #[cfg(test)]
 #[path = "meta_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "meta_refs_tests.rs"]
+mod refs_tests;
