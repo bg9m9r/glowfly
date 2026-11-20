@@ -1,5 +1,6 @@
-//! A stash sub-list's drawn detail ("<date> · stash@{n}"), its hover text, and that the date is
-//! no search keyword (the hidden keyword stays the bare ref).
+//! Sub-list rows: a stash's drawn detail ("<date> · stash@{n}"), its hover text, and that the
+//! date is no search keyword (the hidden keyword stays the bare ref); other kinds keeping their
+//! detail; and the remote branches to delete (sorted, no `HEAD`, tracking locals as the detail).
 
 use super::*;
 use crate::state::stash_confirm::StashAction;
