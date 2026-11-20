@@ -1675,7 +1675,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly"
-version = "0.6.0-rc.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "ab_glyph",
  "arboard",
@@ -1706,7 +1706,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly-core"
-version = "0.6.0-rc.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "base64 0.22.1",
  "blake2",
@@ -1751,7 +1751,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly-flows"
-version = "0.6.0-rc.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "chrono",
  "git2",
@@ -1765,7 +1765,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly-model"
-version = "0.6.0-rc.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "chrono",
  "git2",
@@ -1776,7 +1776,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly-runner"
-version = "0.6.0-rc.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "chrono",
  "git2",
@@ -1792,7 +1792,7 @@ dependencies = [
 
 [[package]]
 name = "glowfly-ui"
-version = "0.6.0-rc.1"
+version = "0.7.0-rc.1"
 dependencies = [
  "chrono",
  "dify",
