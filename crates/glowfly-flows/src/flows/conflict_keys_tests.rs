@@ -49,6 +49,9 @@ fn two_in_one(name: &str) -> PathBuf {
     dir
 }
 
+/// What f.txt holds once it is resolved to our side.
+const OURS: &str = "our top\n1\n2\n3\n4\n5\n6\n7\nour end\n";
+
 /// `two_in_one`, but the index's theirs stage holds our text, so f.txt re-merges without
 /// conflict chunks while the path stays unmerged, and the working file has no markers.
 fn without_chunks(name: &str) -> PathBuf {
@@ -61,20 +64,7 @@ fn without_chunks(name: &str) -> PathBuf {
     // Replaces the stage-3 entry (the stage is in the flags, which `their` already carries).
     index.add(&theirs).unwrap();
     index.write().unwrap();
-    std::fs::write(
-        dir.join("f.txt"),
-        "our top
-1
-2
-3
-4
-5
-6
-7
-our end
-",
-    )
-    .unwrap();
+    std::fs::write(dir.join("f.txt"), OURS).unwrap();
     dir
 }
 
@@ -100,19 +90,7 @@ fn ctrl_enter_resolves_a_conflicted_file_without_conflicts() {
     }
     press(&mut st, Chord::cmd(K::Enter));
 
-    assert_eq!(
-        std::fs::read_to_string(dir.join("f.txt")).unwrap(),
-        "our top
-1
-2
-3
-4
-5
-6
-7
-our end
-"
-    );
+    assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap(), OURS);
     let snap = st.snap.as_ref().unwrap();
     assert!(!snap.unstaged.iter().any(|f| f.status == '!'), "marked resolved");
     assert!(st.session.conflict.view.is_none());

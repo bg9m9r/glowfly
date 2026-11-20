@@ -43,11 +43,7 @@ fn st(name: &str, state: RepositoryState, conflicted: usize) -> AppState {
 fn chunkless(name: &str) -> AppState {
     let mut st = st(name, RepositoryState::Merge, 1);
     let mut view = ConflictView::loading("f.txt".into());
-    view.set_file(file(vec![Segment::Clean(vec![
-        "a
-"
-        .into(),
-    ])]));
+    view.set_file(file(vec![Segment::Clean(vec!["a\n".into()])]));
     st.session.conflict.view = Some(view);
     st
 }
