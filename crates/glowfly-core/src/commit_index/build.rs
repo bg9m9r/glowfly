@@ -6,7 +6,14 @@
 //! The invariant everything relies on: positions are the graph walk's pop order for `key.starts`
 //! (the same queue, `repo::walk_order`, pushing the same parents in the same order), so
 //! `repo::load` with `max_commits = p + 1` loads the commit at position `p`.
+//!
+//! An update stops walking once its queue equals the base walk's queue at some base position `p`
+//! (the same commits, the same tie order, and exactly the base's first `p` commits visited). From
+//! there the rest of the walk is the base's tail, which is appended as it is (`splice.rs`); when
+//! no such point comes (a ref moved back, a force-push, a deleted branch with commits nothing
+//! else reaches), the walk runs to the end.
 
+use super::splice::Splice;
 use super::{Builder, CommitIndex, IndexKey, MAX_INDEXED, Texts};
 use crate::commit_text::Decoder;
 use crate::error::Result;
@@ -68,6 +75,19 @@ pub(crate) fn build_capped(
     build_paced(workdir, key, base, progress, stop, &Pace::capped(max))
 }
 
+/// What an update did, for tests and the debug log.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Counts {
+    /// Commits read from the repository.
+    pub read: usize,
+    /// Base entries copied one by one through the queue.
+    pub walked: usize,
+    /// Base entries appended in bulk.
+    pub spliced: usize,
+    /// The base position the bulk copy started at.
+    pub splice_at: Option<usize>,
+}
+
 pub(crate) fn build_paced(
     workdir: &Path,
     key: &IndexKey,
@@ -76,6 +96,18 @@ pub(crate) fn build_paced(
     stop: &dyn Fn() -> bool,
     pace: &Pace,
 ) -> Result<Option<CommitIndex>> {
+    build_counted(workdir, key, base, progress, stop, pace).map(|o| o.map(|(ix, _)| ix))
+}
+
+/// `build_paced`, also saying what it read, walked and spliced.
+pub(crate) fn build_counted(
+    workdir: &Path,
+    key: &IndexKey,
+    base: Option<&CommitIndex>,
+    progress: &mut dyn FnMut(Progress),
+    stop: &dyn Fn() -> bool,
+    pace: &Pace,
+) -> Result<Option<(CommitIndex, Counts)>> {
     let _span = tracing::debug_span!("index.build", reuse = base.is_some()).entered();
     let repo = Repository::discover(workdir)?;
     // A capped base lacks parents of its oldest commits, and a deepened or unshallowed clone has
@@ -86,22 +118,36 @@ pub(crate) fn build_paced(
     progress(report(0));
 
     let mut out = Builder::new(key.clone(), base);
-    let time_of = |oid: Oid| -> Result<i64> {
+    let mut counts = Counts::default();
+    let mut splice = base.map(Splice::new);
+    // A commit's committer time, and whether the base holds it.
+    let time_in = |oid: Oid| -> Result<(i64, bool)> {
         match base.and_then(|b| b.time_of(oid)) {
-            Some(t) => Ok(t),
-            None => Ok(repo.find_commit(oid)?.time().seconds()),
+            Some(t) => Ok((t, true)),
+            None => Ok((repo.find_commit(oid)?.time().seconds(), false)),
         }
     };
     let mut queue = TimeQueue::default();
     for &start in &key.starts {
-        queue.push(start, time_of(start)?);
+        let (t, known) = time_in(start)?;
+        if queue.push(start, t)
+            && let Some(s) = &mut splice
+        {
+            s.pushed(start, known);
+        }
     }
     let mut last_report = Instant::now();
     let mut complete = true;
+    let mut found = None;
     let mut parents: Vec<Oid> = Vec::new();
     // The flattened body, in a buffer reused for every commit.
     let mut body = String::new();
-    while let Some(oid) = queue.pop() {
+    loop {
+        if let Some(p) = splice.as_mut().and_then(|s| s.ready(&queue)) {
+            found = Some(p);
+            break;
+        }
+        let Some(oid) = queue.pop() else { break };
         let n = out.len();
         if n >= pace.max {
             complete = false;
@@ -116,17 +162,33 @@ pub(crate) fn build_paced(
                 last_report = Instant::now();
             }
         }
-        if let Some((e, walked)) = base.and_then(|b| b.walked(oid)) {
+        if let Some((pos, e, walked)) = base.and_then(|b| b.walked(oid)) {
+            if let Some(s) = &mut splice {
+                s.popped(oid, Some(pos));
+            }
             for &p in walked {
-                queue.push(p, time_of(p)?);
+                // The parents of a complete base's commit are in it.
+                if queue.push(p, time_in(p)?.0)
+                    && let Some(s) = &mut splice
+                {
+                    s.pushed(p, true);
+                }
             }
             out.push_copied(e, walked);
+            counts.walked += 1;
             continue;
+        }
+        if let Some(s) = &mut splice {
+            s.popped(oid, None);
         }
         let c = repo.find_commit(oid)?;
         parents.clear();
         for (p, time) in walk_parents(&c) {
-            queue.push(p, time);
+            if queue.push(p, time)
+                && let Some(s) = &mut splice
+            {
+                s.pushed(p, base.is_some_and(|b| b.position(p).is_some()));
+            }
             parents.push(p);
         }
         let d = Decoder::of(&c);
@@ -138,9 +200,36 @@ pub(crate) fn build_paced(
         let (name, email) = (d.name(&author), d.email(&author));
         let who = (&*name, &*email);
         out.push_new(oid, (c.time().seconds(), author.when().seconds()), who, texts, &parents);
+        counts.read += 1;
+    }
+    if let (Some(p), Some(b)) = (found, base) {
+        // The rest of the walk is the base's tail from `p`: append it, as far as the cap allows.
+        let total = b.len() - p;
+        let take = total.min(pace.max.saturating_sub(out.len()));
+        let at = out.len();
+        let chunk = pace.check_every.max(1);
+        let mut done = 0;
+        while done < take {
+            if stop() {
+                return Ok(None);
+            }
+            let n = out.len();
+            if n > 0 && last_report.elapsed() >= pace.report_every {
+                progress(report(n));
+                last_report = Instant::now();
+            }
+            let step = chunk.min(take - done);
+            out.copy_tail(b, p + done, step);
+            done += step;
+        }
+        out.index_tail(b, p, at, take);
+        complete = take == total;
+        counts.spliced = take;
+        counts.splice_at = Some(p);
     }
     if stop() {
         return Ok(None);
     }
-    Ok(Some(out.finish(complete)))
+    tracing::debug!(read = counts.read, walked = counts.walked, spliced = counts.spliced, splice_at = ?counts.splice_at, "index.build");
+    Ok(Some((out.finish(complete), counts)))
 }

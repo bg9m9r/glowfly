@@ -24,12 +24,15 @@ pub(crate) struct TimeQueue {
 }
 
 impl TimeQueue {
-    /// Queues `oid` with committer time `time` (seconds), unless it was queued before.
-    pub(crate) fn push(&mut self, oid: Oid, time: i64) {
-        if self.seen.insert(oid) {
+    /// Queues `oid` with committer time `time` (seconds), unless it was queued before; returns
+    /// whether it was queued now.
+    pub(crate) fn push(&mut self, oid: Oid, time: i64) -> bool {
+        let new = self.seen.insert(oid);
+        if new {
             self.order += 1;
             self.queue.push((time, Reverse(self.order), oid));
         }
+        new
     }
 
     /// The next commit to visit.

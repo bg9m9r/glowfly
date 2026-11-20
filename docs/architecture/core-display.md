@@ -58,8 +58,9 @@ source file, update its line here.
 - `fuzzy.rs`, `matching.rs`: matching for the command palette, filters and search (`contains_lower` looks for an ASCII needle in place, without lowercasing, even in text that isn't all ASCII).
 - `commit_query.rs`: commit search queries: author and path terms, matching rows, the author list (names and emails as the mailmap shows them).
 - `path_query.rs`: path terms of the commit search: folder, file name or glob, matched ignoring case and Unicode form.
-- `commit_index/`: the whole-history index for search: every commit the graph's walk would visit, in its order, with what search matches (the summary and the whole flattened body, held once). Tests: `tests.rs`, `build_tests.rs`, `store_tests.rs`, `deep_match_tests.rs` (a match past the preview, found with and without the index; an old-format file rebuilt).
+- `commit_index/`: the whole-history index for search: every commit the graph's walk would visit, in its order, with what search matches (the summary and the whole flattened body, held once). Tests: `tests.rs`, `build_tests.rs`, `store_tests.rs`, `deep_match_tests.rs` (a match past the preview, found with and without the index; an old-format file rebuilt), `splice_tests.rs` (updates equal to fresh builds after fast-forward, clock skew, new/deleted branches, merges and force-push; what each reads; cap and stop during the bulk copy).
 - `commit_index/build.rs`: build and incremental update off the UI thread.
+- `commit_index/splice.rs`: an update's shortcut: spots where the rest of the walk is the previous index's tail and appends it in bulk.
 - `commit_index/store.rs`: the saved index per repository in the cache folder: used as it is or as a base, pruned by age and size.
 - `commit_index/store/format.rs`: the saved file's layout: header, sections, CRC trailer, and the checks on read.
 - `commit_index/matching.rs`: `CommitIndex::matching`: the index matches through `CommitQuery`'s own text and author tests, with each stored signature mapped once per query through the mailmap (the index keeps them as written).
