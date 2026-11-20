@@ -193,6 +193,13 @@ pub fn fast_forward_ref_cmds(name: &str, from: git2::Oid, to: git2::Oid, upstrea
     ]
 }
 
+/// Moves local branch `name` back to `from` after a failed checkout fast-forwarded it (`git
+/// branch -f`): git refuses a branch checked out in any worktree. The caller makes it run only
+/// while the branch is still where the fast-forward left it (`JobSpec::expect`).
+pub fn move_back_cmd(name: &str, from: git2::Oid) -> Vec<String> {
+    args(&["branch", "-f", "--", name, &from.to_string()])
+}
+
 /// Creates local branch `name` at remote-tracking branch `remote`/`remote_branch` with that as
 /// its upstream (`--track`, so the two names can differ), checking it out when `checkout`. The
 /// start is the full ref name, so a local branch spelled like it is never picked instead.
@@ -265,5 +272,8 @@ pub fn push_cmd(branch: &str, remote: &str, remote_branch: &str, set_upstream: b
 
 #[cfg(test)]
 mod merge_ref_tests;
+#[cfg(test)]
+#[path = "branch_ops/move_back_tests.rs"]
+mod move_back_tests;
 #[cfg(test)]
 mod tests;

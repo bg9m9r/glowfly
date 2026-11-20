@@ -50,6 +50,7 @@ fn fixed(t: Lang, label: &str) -> Option<&'static str> {
         "Interactive rebase" => t.tr("job.label.interactive_rebase"),
         "Lock worktree" => t.tr("job.label.lock_worktree"),
         "Merge" => t.tr("job.label.merge"),
+        "Move branch back" => t.tr("job.label.move_branch_back"),
         "Move worktree" => t.tr("job.label.move_worktree"),
         "Prune worktrees" => t.tr("job.label.prune_worktrees"),
         "Publish to GitHub" => t.tr("job.label.publish_github"),

@@ -1,6 +1,9 @@
 {
   "remote_branch.checkout.diverged": "{branch} and {upstream} have diverged ({ahead} ahead, {behind} behind), so {branch} is checked out without moving it. Merge or rebase to bring them together.",
   "remote_branch.checkout.gone": "{upstream} no longer exists.",
+  "remote_branch.checkout.moved_back": "The checkout failed after {branch} was fast-forwarded to {upstream} ({to}), so {branch} was moved back to {from}.",
+  "remote_branch.checkout.not_moved_back.log": "The checkout failed after {branch} was fast-forwarded from {from} to {to} ({upstream}), and {branch} could not be moved back: {reason}",
+  "remote_branch.checkout.not_moved_back.toast": "The checkout failed after fast-forwarding {branch}, and it couldn't be moved back to {from}.",
   "remote_branch.checkout.not_tracking": "{branch} no longer tracks {upstream}.",
   "remote_branch.compare.no_branch": "Check out a branch with commits to compare with.",
   "remote_branch.compare.not_loaded": "{name}'s commit isn't loaded in the graph.",

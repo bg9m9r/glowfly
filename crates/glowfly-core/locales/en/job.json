@@ -42,6 +42,7 @@
   "job.label.interactive_rebase": "Interactive rebase",
   "job.label.lock_worktree": "Lock worktree",
   "job.label.merge": "Merge",
+  "job.label.move_branch_back": "Move branch back",
   "job.label.move_worktree": "Move worktree",
   "job.label.prune_worktrees": "Prune worktrees",
   "job.label.publish_github": "Publish to GitHub",

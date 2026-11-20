@@ -1,11 +1,15 @@
 //! `AppState`'s queries: whether hunk indexes are current and line operations blocked, the
 //! active tab's id, the working folder, load options. The activity log's `log` and `log_quiet` are in `logs.rs`.
 
+use super::AppState;
 use super::tabs::TabId;
-use super::{AppState, WHOLE_FILE_BLOCKS_LINE_OPS};
 use glowfly_core::repo::LoadOptions;
 use glowfly_core::settings::{BranchVisibility, DiffMode};
 use std::path::{Path, PathBuf};
+
+/// Why selecting and applying single lines is refused in the whole-file view.
+pub const WHOLE_FILE_BLOCKS_LINE_OPS: &str =
+    "Line selection isn't available in the whole-file view yet. Switch to Hunks to stage, discard or revert single lines.";
 
 impl AppState {
     /// The active tab's id, if there is a tab.

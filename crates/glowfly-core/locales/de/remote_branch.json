@@ -1,6 +1,9 @@
 {
   "remote_branch.checkout.diverged": "{branch} und {upstream} sind auseinandergelaufen ({ahead} voraus, {behind} zurück), daher wird {branch} ausgecheckt, ohne ihn zu verschieben. Führe sie mit Merge oder Rebase zusammen.",
   "remote_branch.checkout.gone": "{upstream} gibt es nicht mehr.",
+  "remote_branch.checkout.moved_back": "Das Auschecken ist fehlgeschlagen, nachdem {branch} per Fast-Forward auf {upstream} ({to}) nachgezogen wurde, daher wurde {branch} auf {from} zurückgesetzt.",
+  "remote_branch.checkout.not_moved_back.log": "Das Auschecken ist fehlgeschlagen, nachdem {branch} per Fast-Forward von {from} auf {to} ({upstream}) nachgezogen wurde, und {branch} konnte nicht zurückgesetzt werden: {reason}",
+  "remote_branch.checkout.not_moved_back.toast": "Auschecken nach dem Fast-Forward von {branch} fehlgeschlagen; {branch} konnte nicht auf {from} zurückgesetzt werden.",
   "remote_branch.checkout.not_tracking": "{branch} folgt {upstream} nicht mehr.",
   "remote_branch.compare.no_branch": "Checke einen Branch mit Commits aus, um damit zu vergleichen.",
   "remote_branch.compare.not_loaded": "Der Commit von {name} ist nicht im Graphen geladen.",

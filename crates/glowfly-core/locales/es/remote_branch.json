@@ -1,6 +1,9 @@
 {
   "remote_branch.checkout.diverged": "{branch} y {upstream} han divergido ({ahead} por delante, {behind} por detrás), así que se hace checkout de {branch} sin moverla. Haz merge o rebase para juntarlas.",
   "remote_branch.checkout.gone": "{upstream} ya no existe.",
+  "remote_branch.checkout.moved_back": "El checkout falló después de avanzar {branch} rápidamente a {upstream} ({to}), así que {branch} se devolvió a {from}.",
+  "remote_branch.checkout.not_moved_back.log": "El checkout falló después de avanzar {branch} rápidamente de {from} a {to} ({upstream}), y no se pudo devolver {branch}: {reason}",
+  "remote_branch.checkout.not_moved_back.toast": "El checkout falló tras el avance rápido de {branch}, y no se pudo devolver a {from}.",
   "remote_branch.checkout.not_tracking": "{branch} ya no sigue a {upstream}.",
   "remote_branch.compare.no_branch": "Haz checkout de una rama con commits para comparar con ella.",
   "remote_branch.compare.not_loaded": "El commit de {name} no está cargado en el grafo.",

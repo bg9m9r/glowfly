@@ -5,7 +5,7 @@
 //! checked as emitted, and end to end against a repository with a bare `origin`.
 
 use super::branch_tests::{remote_commit, with_origin};
-use super::tests::{clean_tree, drive, git};
+use super::tests::{clean_tree, drive, finish, git};
 use super::update;
 use git2::Oid;
 use glowfly_core::branch_ops::create_tracking_cmd;
@@ -214,5 +214,103 @@ fn new_branch_from_a_remote_branch_tracks_it_under_another_name() {
             .is_empty()
     );
     assert_eq!(last_log(&st), "origin/gone no longer exists.");
+    cleanup(&[&work, &bare]);
+}
+
+fn short(o: Oid) -> String {
+    o.to_string()[..7].to_owned()
+}
+
+/// A commit on top of `parent` with the tree of `branch`, not on any branch.
+fn child_of(dir: &Path, branch: &str, parent: Oid, msg: &str) -> Oid {
+    let out = glowfly_core::testkit::git_out(dir, &["commit-tree", &format!("{branch}^{{tree}}"), "-p", &parent.to_string(), "-m", msg]);
+    Oid::from_str(out.trim()).unwrap()
+}
+
+#[test]
+fn checkout_failing_after_the_fast_forward_moves_the_branch_back() {
+    let (mut st, work, bare) = behind("rco-back");
+    let (from, to) = (tip(&work, "refs/heads/feature"), tip(&work, "refs/remotes/origin/feature"));
+    // The remote's new commit adds f.txt, which is in the way as an untracked file.
+    std::fs::write(work.join("f.txt"), "mine\n").unwrap();
+    drive(&mut st, checkout("origin", "feature"));
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(snap.head_branch.as_deref(), Some("main"));
+    assert_eq!(tip(&work, "refs/heads/feature"), from, "moved back");
+    let feature = snap.locals.iter().find(|b| b.name == "feature").unwrap();
+    assert_eq!(feature.tracking, Some(Tracking { remote: "origin".into(), merge: "feature".into() }));
+    assert!(st.toasts.iter().any(|t| !t.ok), "the checkout's failure is toasted");
+    let said = format!(
+        "The checkout failed after feature was fast-forwarded to origin/feature ({}), so feature was moved back to {}.",
+        short(to),
+        short(from)
+    );
+    assert!(st.log.iter().any(|l| l.ok && l.text == said), "{:?}", st.log.iter().map(|l| &l.text).collect::<Vec<_>>());
+    assert!(st.toasts.iter().all(|t| !t.text.contains("moved back")));
+
+    std::fs::remove_file(work.join("f.txt")).unwrap();
+    drive(&mut st, checkout("origin", "feature"));
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!((snap.head_branch.as_deref(), snap.head_oid), (Some("feature"), Some(to)));
+    cleanup(&[&work, &bare]);
+}
+
+#[test]
+fn checkout_failing_after_the_fast_forward_keeps_a_branch_that_moved_meanwhile() {
+    let (mut st, work, bare) = behind("rco-moved");
+    let (from, to) = (tip(&work, "refs/heads/feature"), tip(&work, "refs/remotes/origin/feature"));
+    std::fs::write(work.join("f.txt"), "mine\n").unwrap();
+    // Run the checkout job and keep what its result leads to, without running it yet.
+    let mut queue: Vec<Effect> = update(&mut st, checkout("origin", "feature"), Instant::now());
+    let mut collected = Vec::new();
+    while let Some(e) = queue.pop() {
+        if is_move_back(&e) {
+            collected.push(e);
+            continue;
+        }
+        if super::tests::skipped(&e) {
+            continue;
+        }
+        for m in glowfly_runner::testing::execute_all(e) {
+            queue.extend(update(&mut st, m, Instant::now()));
+        }
+    }
+    let back = collected.iter().find_map(|e| match e {
+        Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, expect, .. }) => Some((cmds.clone(), expect.clone())),
+        _ => None,
+    });
+    assert_eq!(
+        back,
+        Some((vec![args(&["branch", "-f", "--", "feature", &from.to_string()])], Some(("refs/heads/feature".to_owned(), to))))
+    );
+    // The branch moves again before the move-back runs.
+    let third = child_of(&work, "feature", to, "elsewhere");
+    git(&work, &["update-ref", "refs/heads/feature", &third.to_string()]);
+    finish(&mut st, collected);
+    assert_eq!(tip(&work, "refs/heads/feature"), third, "left alone");
+    let line = st.log.iter().find(|l| l.text.contains("could not be moved back")).expect("failure line");
+    assert!(!line.ok && line.text.contains(&short(from)) && line.text.contains(&short(to)), "{}", line.text);
+    let toast = st.toasts.iter().find(|t| t.text.contains("couldn't be moved back")).expect("toast");
+    assert_eq!(toast.text, format!("The checkout failed after fast-forwarding feature, and it couldn't be moved back to {}.", short(from)));
+    cleanup(&[&work, &bare]);
+}
+
+fn is_move_back(e: &Effect) -> bool {
+    matches!(e, Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) if cmds.first().is_some_and(|c| c.starts_with(&["branch".to_owned(), "-f".to_owned()])))
+}
+
+#[test]
+fn checkout_failing_before_the_fast_forward_claims_nothing() {
+    let (mut st, work, bare) = behind("rco-stale");
+    let from = tip(&work, "refs/heads/feature");
+    // The branch moves after the snapshot, so the update-ref's lease refuses.
+    let moved = child_of(&work, "feature", from, "meanwhile");
+    git(&work, &["update-ref", "refs/heads/feature", &moved.to_string()]);
+    drive(&mut st, checkout("origin", "feature"));
+    assert_eq!(tip(&work, "refs/heads/feature"), moved);
+    assert_eq!(st.snap.as_ref().unwrap().head_branch.as_deref(), Some("main"));
+    let said: Vec<&String> = st.log.iter().map(|l| &l.text).collect();
+    assert!(said.iter().all(|l| !l.contains("moved back") && !l.contains("fast-forwarded from")), "{said:?}");
+    assert!(st.ff_checkout.is_none());
     cleanup(&[&work, &bare]);
 }
