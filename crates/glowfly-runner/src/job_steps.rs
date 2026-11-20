@@ -106,7 +106,7 @@ impl<'a> Live<'a> {
     /// Runs the job command `c`, echoed as `$ git …` first: a splittable pull as its fetch and
     /// its merge or rebase, anything else as it is. Whether it succeeded, and the output.
     fn command(&mut self, c: &[String]) -> (bool, String) {
-        let echo = format!("$ git {}", glowfly_core::text::redact_credentials(&c.join(" ")));
+        let echo = glowfly_core::text::command_echo(c);
         if gitcli::subcommand(c) == Some("pull")
             && let Some(pull) = glowfly_core::trust::pull::Pull::of(c)
         {

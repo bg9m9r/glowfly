@@ -72,7 +72,7 @@ fn run(
     let mut output = String::new();
     let reflog = [("GIT_REFLOG_ACTION", pull.reflog.as_str())];
     let shown = |cmd: &[String], output: &mut String, git: &mut Git<'_>| {
-        output.push_str(&format!("$ git {}\n", crate::text::redact_credentials(&cmd.join(" "))));
+        output.push_str(&format!("{}\n", crate::text::command_echo(cmd)));
         let (ok, text) = git(cmd, "", &reflog);
         if !text.is_empty() {
             output.push_str(text.trim_end());

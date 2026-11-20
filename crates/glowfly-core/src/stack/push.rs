@@ -147,8 +147,7 @@ pub fn push(workdir: &Path, targets: &[PushTarget]) -> Result<StackPush> {
     let mut output = String::new();
     for (cmd, indices) in porcelain::commands(&layers) {
         let out = gitcli::output(workdir, &cmd, "", &[], None);
-        let shown = crate::text::redact_credentials(&cmd.join(" "));
-        join(&mut output, &format!("$ git {shown}\n{}", out.combined()));
+        join(&mut output, &format!("{}\n{}", crate::text::command_echo(&cmd), out.combined()));
         for (flag, to, summary) in porcelain::parse(&out.stdout) {
             let Some(&i) = indices.iter().find(|&&i| to == format!("refs/heads/{}", targets[i].dest)) else { continue };
             outcomes[i] = match flag {

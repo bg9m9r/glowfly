@@ -26,14 +26,15 @@ pub(super) fn take(st: &mut AppState, job: &RunningJob, output: &str) -> Option<
 
 /// Whether the job stopped in its first command: always for a single command, and for more when
 /// `output` echoes no more than one `$ git ` command (counted as `gitflow::finish::failed_step`
-/// does), leaving out the failure check run after it (`on_fail_check`). Counting too many only
+/// does), leaving out the failure check run after it (`on_fail_check`, echoed as
+/// `text::command_echo` writes it, as the runner does). Counting too many only
 /// withholds Try again.
 fn failed_first(spec: &JobSpec, output: &str) -> bool {
     if spec.cmds.len() <= 1 {
         return true;
     }
     let echoes: Vec<&str> = output.lines().filter(|l| l.starts_with("$ git ")).collect();
-    let check = spec.on_fail_check.as_ref().map(|c| format!("$ git {}", c.join(" ")));
+    let check = spec.on_fail_check.as_ref().map(|c| glowfly_core::text::command_echo(c));
     let checked = check.is_some_and(|c| echoes.last().is_some_and(|l| *l == c));
     echoes.len() - usize::from(checked) <= 1
 }

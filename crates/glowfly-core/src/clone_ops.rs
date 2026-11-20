@@ -112,7 +112,7 @@ pub fn sparse_submodule_cmds(folders: &[String]) -> Vec<Vec<String>> {
 /// succeeded.
 pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String], submodules: &[Vec<String>]) -> CloneOutcome {
     let (ok, out) = gitcli::run_with_input(parent, cmd, "", &[]);
-    let mut output = crate::text::redact_credentials(&format!("$ git {}", cmd.join(" ")));
+    let mut output = crate::text::command_echo(cmd);
     let out = out.trim();
     if !out.is_empty() {
         output.push('\n');
@@ -131,7 +131,7 @@ pub fn run_sparse(parent: &Path, cmd: &[String], dest: &Path, folders: &[String]
     for c in submodules {
         let (c_ok, out) = gitcli::run_with_input(dest, c, "", &[]);
         output.push('\n');
-        output.push_str(&crate::text::redact_credentials(&format!("$ git {}", c.join(" "))));
+        output.push_str(&crate::text::command_echo(c));
         let out = out.trim();
         if !out.is_empty() {
             output.push('\n');

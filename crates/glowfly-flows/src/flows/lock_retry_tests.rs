@@ -226,6 +226,20 @@ $ git push
 }
 
 #[test]
+fn try_again_reads_a_quoted_failure_check() {
+    let (mut st, dir, locked) = opened("lr-quoted-check");
+    let spec = JobSpec {
+        on_fail_check: Some(args(&["config", "x.y", "a b"])),
+        ..JobSpec::new("Fetch and push".into(), vec![args(&["push"]), args(&["fetch"])])
+    };
+    glowfly_model::update::jobs::start_job(&mut st, spec, &mut Vec::new());
+    assert!(st.job.is_some());
+    fail(&mut st, &format!("$ git push\n{locked}\n\n$ git config x.y \"a b\""));
+    assert_eq!(buttons(last_toast(&st)), ["Try again", "Details"], "the check's echo is not a second command");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn try_again_on_a_commit_commits_the_draft_as_it_is_now() {
     let (mut st, dir, locked) = opened("lr-commit");
     std::fs::remove_file(dir.join(".git").join("index.lock")).unwrap();

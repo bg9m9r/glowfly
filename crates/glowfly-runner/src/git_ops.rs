@@ -161,7 +161,7 @@ pub(super) fn run_git_each(
     let mut output = String::new();
     for (at, c) in cmds.iter().enumerate() {
         starting(at);
-        output.push_str(&format!("$ git {}\n", glowfly_core::text::redact_credentials(&c.join(" "))));
+        output.push_str(&format!("{}\n", glowfly_core::text::command_echo(c)));
         let (success, text) = gitcli::run_with_input(cwd, c, "", job_env(prompts));
         if !text.is_empty() {
             output.push_str(&text);
@@ -262,7 +262,7 @@ fn gated_steps(
                 (ok, String::new())
             }
             Step::Run => {
-                output.push_str(&format!("$ git {}\n", glowfly_core::text::redact_credentials(&c.join(" "))));
+                output.push_str(&format!("{}\n", glowfly_core::text::command_echo(c)));
                 git(c, "", &[])
             }
         };
@@ -290,7 +290,7 @@ pub(super) fn check_passes(
     output: &mut String,
 ) -> bool {
     use super::trust_gate::Step;
-    output.push_str(&format!("\n$ git {}", glowfly_core::text::redact_credentials(&check.join(" "))));
+    output.push_str(&format!("\n{}", glowfly_core::text::command_echo(check)));
     let mut git = |c: &[String], input: &str, extra: &[(&str, &str)]| {
         let env: Vec<(&str, &str)> = job_env(prompts).iter().chain(extra).copied().collect();
         gitcli::run_with_input(cwd, c, input, &env)

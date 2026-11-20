@@ -8,7 +8,8 @@
 //! screen-reader name; `architecture_docs` checks that `docs/architecture/` names every source
 //! file; `config_values` keeps git config entry values read through glowfly-core's
 //! `config_entry`; `log_encoding` keeps the git commands that print commit text on `gitcli::utf8_args`;
-//! `stash_actions` keeps the messages that act on one stash behind their builder.
+//! `stash_actions` keeps the messages that act on one stash behind their builder;
+//! `command_echo` keeps every `$ git …` echo of a job's output built by `text::command_echo`.
 //! All of them read the sources through glowfly-ui's string-aware
 //! `view_checks/support/lexer.rs`.
 
@@ -19,6 +20,7 @@ mod views;
 
 mod access_names;
 mod architecture_docs;
+mod command_echo;
 mod config_values;
 mod dead_pub;
 mod dependencies;

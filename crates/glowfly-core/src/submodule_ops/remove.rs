@@ -109,7 +109,7 @@ pub fn remove(workdir: &Path, path: &str, name: &str) -> RemoveReport {
 
 /// Runs `git <cmd>` in `cwd`, echoing it and its output into `output` as git jobs do.
 fn run(cwd: &Path, cmd: &[String], output: &mut String) -> bool {
-    output.push_str(&format!("$ git {}\n", cmd.join(" ")));
+    output.push_str(&format!("{}\n", crate::text::command_echo(cmd)));
     let (ok, text) = gitcli::run_with_input(cwd, cmd, "", &[]);
     if !text.is_empty() {
         output.push_str(&text);

@@ -93,7 +93,7 @@ fn commit(dir: &Path, file: &str, text: &str, message: &str) {
 fn run_job(dir: &Path, cmds: &[Vec<String>]) -> (bool, String) {
     let mut out = String::new();
     for c in cmds {
-        out.push_str(&format!("$ git {}\n", c.join(" ")));
+        out.push_str(&format!("{}\n", crate::text::command_echo(c)));
         let (ok, o) = run(dir, c);
         out.push_str(o.trim_end());
         out.push('\n');

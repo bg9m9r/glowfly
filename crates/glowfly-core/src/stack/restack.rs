@@ -117,7 +117,7 @@ fn detach_inside(workdir: &Path, repo: &Repository, step: &RestackStep, output: 
 /// Runs `git <args>`, adding the command and what it printed to `output`; whether it worked.
 pub(super) fn git(workdir: &Path, args: &[String], output: &mut String) -> bool {
     let (ok, out) = gitcli::run(workdir, args);
-    join(output, &format!("$ git {}\n{out}", args.join(" ")));
+    join(output, &format!("{}\n{out}", crate::text::command_echo(args)));
     ok
 }
 

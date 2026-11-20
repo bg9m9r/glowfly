@@ -88,7 +88,7 @@ pub fn move_worktree(cwd: &Path, from: &Path, to: &Path) -> MoveReport {
     }
     let cmd = move_cmd(&wt.path, to);
     let (_, text) = gitcli::run(cwd, &cmd);
-    let mut output = format!("$ git {}", cmd.join(" "));
+    let mut output = crate::text::command_echo(&cmd);
     if !text.trim().is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());

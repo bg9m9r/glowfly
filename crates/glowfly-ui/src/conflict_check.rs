@@ -264,7 +264,7 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport, merge_names: Option<
         }
     };
     let action = |(label, name): (String, Option<String>), says: String, verb: &str, cmd: Vec<String>| {
-        let tip = format!("{says}\n{}", typed(&cmd));
+        let tip = format!("{says}\n{}", glowfly_core::text::command_line(&cmd));
         let name = name.unwrap_or_else(|| label.clone());
         Action { label, name, tip, msg: Msg::git_cmd(verb, cmd) }
     };
@@ -272,17 +272,4 @@ fn actions(ui: &egui::Ui, t: Lang, report: &ConflictReport, merge_names: Option<
         action(merge, merge_says, "Merge", merge_cmd(target, merge_names.unwrap_or(&MergeNames::default()))),
         action(rebase, rebase_says, "Rebase", rebase_cmd(target)),
     ]
-}
-
-/// The command line as typed: `git`, then each argument, one with whitespace or `"` in double
-/// quotes (`"` and `\` escaped in it).
-fn typed(cmd: &[String]) -> String {
-    let quoted = |a: &String| {
-        if a.is_empty() || a.chars().any(|c| c.is_whitespace() || c == '"') {
-            format!("\"{}\"", a.replace('\\', "\\\\").replace('"', "\\\""))
-        } else {
-            a.clone()
-        }
-    };
-    std::iter::once("git".to_owned()).chain(cmd.iter().map(quoted)).collect::<Vec<_>>().join(" ")
 }

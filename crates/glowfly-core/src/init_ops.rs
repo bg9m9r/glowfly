@@ -274,7 +274,7 @@ pub struct InitOutcome {
 /// environment `env`.
 fn git(cwd: &Path, cmd: &[String], env: &[(&str, &str)], log: &mut String) -> bool {
     let (ok, out) = gitcli::run_with_input(cwd, cmd, "", env);
-    log.push_str(&format!("$ git {}\n", cmd.join(" ")));
+    log.push_str(&format!("{}\n", crate::text::command_echo(cmd)));
     if !out.trim().is_empty() {
         log.push_str(out.trim_end());
         log.push('\n');

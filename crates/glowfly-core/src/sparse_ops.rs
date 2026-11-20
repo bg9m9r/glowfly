@@ -128,7 +128,7 @@ impl SparseCommand {
 pub fn run(cwd: &Path, command: &SparseCommand) -> (bool, String) {
     let a = command.args();
     let (ok, out) = gitcli::run_with_input(cwd, &a, &command.input(), &[]);
-    let mut text = format!("$ git {}", a.join(" "));
+    let mut text = crate::text::command_echo(&a);
     if let SparseCommand::Set { mode, paths } = command {
         if paths.is_empty() && *mode == SparseMode::Cone {
             text.push_str("\n  (no paths: only files at the root)");
