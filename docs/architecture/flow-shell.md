@@ -19,7 +19,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 
 ## Toasts
 
-- Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`. A toast with the same words and kind as one already up restarts that one's timer instead of stacking a copy; it keeps its id, so screen readers don't announce it again. A toast raised for a repository in a tab that isn't active carries that tab's shown name (`Toast::tab`, set by `toast_in` / `toast_action_in`, fixed when raised, part of what makes two toasts the same) and `ui/toasts.rs` draws it as "In {tab}: {text}".
+- Toasts (`state/toasts.rs`) can carry one action button with a stored `Msg`. A toast with the same words and kind as one already up restarts that one's timer instead of stacking a copy, and keeps its Details unless the new call brings its own; it keeps its id, so screen readers don't announce it again. A toast raised for a repository in a tab that isn't active carries that tab's shown name (`Toast::tab`, set by `toast_in` / `toast_action_in`, fixed when raised, part of what makes two toasts the same) and `ui/toasts.rs` draws it as "In {tab}: {text}".
 - A click sends `Msg::ToastAction(id)`; `update/notify.rs` removes the toast and runs the message only while the toast's repository is the active tab.
 - A failed job's toast says git's cause in plain words and can carry a fix (`update/job_errors.rs`, from `git_errors::classify`), with Details beside it in `Toast::details` (`Msg::ToastDetails`, which works from any tab), and a second fix between them in `Toast::alt` (`Msg::ToastAlt`): Delete lock file comes first with Try again beside it (`update/lock_file.rs`, `update/job_retry.rs`; a stage, unstage or discard that met a lock offers the same, `update/lock_local.rs`), a Schannel revocation check that couldn't finish offers Relax check for this repository with Relax check for all repositories beside it (`update/tls_fix.rs`), and a push rejected as behind offers Pull (for the checked-out branch) with Force push with lease beside it, only when the job's push command and git's rejection line show it was that branch, pushed to its upstream (`state/branches/rejected_push.rs`). The buttons wrap inside the toast's width. A certificate or revocation failure's Details also list the TLS settings git used and where each is set (`state/tls_help.rs`, read by the runner after the failure).
 - Every cause's sentence comes from `state/error_words.rs` (`cause`, `explained`), which the auto-stash put-back, clone, submodule, Git Flow and worktree headlines and the Fetch/Pull repositories rows share; a toast that stopped on conflicts takes its count from the complete status read after the job (`update/conflict_count.rs`). The fallback "<label> failed: …" names the job in the UI language (`state/job_spec/labels.rs`).
@@ -115,6 +115,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 ## Desktop notifications
 
 - `update/notify.rs::desktop` returns `Effect::Notify` (a `DesktopNote`, `effect/notify.rs`) only while `settings.desktop_notifications` is on and `st.cues.focused` is false.
+- The note's body names the repository as the tab strip does (`menu_bar::tab_name`, its label first), or by folder name when no tab shows it.
 - The shell sets `cues.focused` from egui at the start of each frame, before runner results are handled, so `update` never asks egui.
 - Finished non-quiet jobs (`update/ops.rs::finish_job`) and behind alerts use it; turning the setting on sends one confirmation regardless of focus.
 - `runner/notify.rs` shows the note through notify-rust (the only caller, `tests/source_checks/layering.rs`) and reports a refusal as `PrefsMsg::DesktopNotificationFailed`.
@@ -196,7 +197,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - `activity.jsonl` lines carry that `repo` (`paths::encode`).
 - `LogsMsg::Start` at startup reads the file, and its earlier entries are handed to the tabs showing their repositories, in front of this session's lines.
 - Entries for a repository no tab shows wait in `LogsState::unclaimed` until a tab activates or opens it (`update/logs_tabs.rs`).
-- Nothing opens the panel by itself: a failure logged with `log` / `log_in` is announced at the end of `update` as a failure toast with Details (`logs_tabs::announce`), or gives Details to a failure toast pushed in that update.
+- Nothing opens the panel by itself: a failure logged with `log` / `log_in` is announced at the end of `update` as a failure toast with Details (`logs_tabs::announce`), or gives Details to (or renews them on) a failure toast pushed or shown again in that update.
 - Details selects the line's tab and shows its activity log, opening the failed run's row.
 - An entry is a note or a run: a job that ends in `ops::finish_job` is logged by `update/logs_runs.rs` (`job_ended`) with a `RunInfo`, persisted as the line's optional `run` object.
 - A run's text has git's line-ending warnings folded into one line that says how many (`glowfly_core::crlf_warnings`).

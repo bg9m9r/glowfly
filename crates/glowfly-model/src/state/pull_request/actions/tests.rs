@@ -51,6 +51,7 @@ pub fn view(d: Option<PrDetail>) -> PrView {
         head_ref: None,
         shown: None,
         head_fetch: Default::default(),
+        kept_head: None,
         asked: None,
         tab: PrTab::Overview,
         page: d.map_or(Page::Loading, |detail| {

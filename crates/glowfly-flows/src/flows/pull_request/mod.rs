@@ -11,6 +11,7 @@ mod checks_tests;
 mod cleanup_tests;
 mod commits_tests;
 mod gitlab_tests;
+mod head_ref_tests;
 mod kept_drafts_tests;
 mod line_comment_reply_tests;
 mod line_comment_tests;

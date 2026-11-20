@@ -288,8 +288,8 @@ pub struct AppState {
     pub rename_job: Option<branch_sync::RenameJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
     pub ff_checkout: Option<remote_branch::move_back::FastForwardCheckout>,
-    /// The running clean-up after a pull request merge that deletes the local branch, for its headline.
-    pub pr_cleanup: Option<pull_request::cleanup::CleanupJob>,
+    /// The pull request work that outlives a tab, global, never parked: the running clean-up after a merge and the refs keeping panels' heads.
+    pub pull_requests: pull_request::PrGlobal,
     /// The running Apply patch job (update/patch.rs), for its headline.
     pub patch_apply: Option<patch::PendingApply>,
     /// The glowfly:// link being opened and the scheme registration (global).
@@ -374,7 +374,7 @@ impl AppState {
             rename_job: None,
             tag_checkout: None,
             ff_checkout: None,
-            pr_cleanup: None,
+            pull_requests: Default::default(),
             patch_apply: None,
             deep_link: Default::default(),
             profile_switch: None,

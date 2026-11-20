@@ -203,15 +203,16 @@ pub fn fetch_cmd(name: &str) -> Vec<String> {
     args(&["fetch", "--prune", "--", name])
 }
 
-/// Fetches `refname` from `remote` (a pull request's head ref) for its objects only: no tags,
+/// Fetches `refname` from `remote` (a pull request's head ref) into the ref `dest`
+/// (`pr_head_refs::pr_head_ref`), forced because pull request heads get force-pushed. No tags,
 /// no submodules, and with an empty refmap, so no remote-tracking ref changes. Without
 /// `write_fetch_head` (git 2.29 and later) FETCH_HEAD isn't written either.
-pub fn fetch_ref_cmd(remote: &str, refname: &str, write_fetch_head: bool) -> Vec<String> {
+pub fn fetch_ref_cmd(remote: &str, refname: &str, dest: &str, write_fetch_head: bool) -> Vec<String> {
     let mut cmd = args(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap="]);
     if !write_fetch_head {
         cmd.push("--no-write-fetch-head".into());
     }
-    cmd.extend(["--".to_owned(), remote.to_owned(), refname.to_owned()]);
+    cmd.extend(["--".to_owned(), remote.to_owned(), format!("+{refname}:{dest}")]);
     cmd
 }
 

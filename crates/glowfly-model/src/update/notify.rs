@@ -9,7 +9,8 @@
 //! Desktop notifications: while the setting is on and the window is in the background, behind
 //! alerts and finished jobs also go to the OS (`desktop`); turning the setting on sends one to
 //! confirm (`set_desktop`), and a refusal comes back to `desktop_failed`. A click on one brings
-//! the window forward and shows the repository it was about (`desktop_clicked`).
+//! the window forward and shows the repository it was about (`desktop_clicked`). A note names
+//! the repository as the tab strip does.
 
 use crate::effect::{DesktopNote, Effect, LoadKind, NoteKind, UiEffect};
 use crate::msg::{Msg, NotifyMsg};
@@ -140,7 +141,7 @@ pub(super) fn run_action(st: &mut AppState, action: ToastAction, now: Instant, f
     true
 }
 
-/// Also shows `title` as a desktop notification, with the repository's name as its body, when
+/// Also shows `title` as a desktop notification, with the repository's name as the tab strip shows it (its label first) as its body, when
 /// the setting is on and the window is in the background.
 pub(super) fn desktop(st: &AppState, kind: NoteKind, title: &str, workdir: Option<&Path>, fx: &mut Vec<Effect>) {
     if !st.settings.desktop_notifications || st.cues.focused {
@@ -149,11 +150,12 @@ pub(super) fn desktop(st: &AppState, kind: NoteKind, title: &str, workdir: Optio
     fx.push(Effect::Notify(notify::desktop_note(kind, title, &repo_label(st, workdir), workdir)));
 }
 
-/// The name of the tab showing `workdir`, else its folder name, else nothing.
+/// The name the tab strip shows for the tab showing `workdir` (`menu_bar::tab_name`: its label
+/// first), else its folder name, else nothing.
 fn repo_label(st: &AppState, workdir: Option<&Path>) -> String {
     let Some(w) = workdir else { return String::new() };
-    if let Some(t) = st.tabs.iter().find(|t| t.is(w)) {
-        return t.name.clone();
+    if let Some(i) = st.tabs.iter().position(|t| t.is(w)) {
+        return crate::state::menu_bar::tab_name(st, i).to_owned();
     }
     w.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
 }

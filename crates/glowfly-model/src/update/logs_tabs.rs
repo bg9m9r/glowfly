@@ -111,12 +111,12 @@ pub(super) fn announce(st: &mut AppState, since: u64, now: Instant) {
 }
 
 /// Gives the newest failure toast shown after `since` the Details `action`: as its action, or
-/// beside its fix.
+/// beside its fix, replacing any Details it kept from an earlier showing.
 fn give_details(st: &mut AppState, since: u64, action: ToastAction) {
     let Some(t) = st.toasts.iter_mut().filter(|t| t.shown > since && !t.ok).max_by_key(|t| t.shown) else { return };
-    if t.action.is_none() {
+    if t.action.as_ref().is_none_or(ToastAction::is_details) {
         t.action = Some(action);
-    } else if t.details.is_none() {
+    } else {
         t.details = Some(action);
     }
 }

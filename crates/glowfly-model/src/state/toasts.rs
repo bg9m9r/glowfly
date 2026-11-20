@@ -11,7 +11,8 @@
 //! while it fades and when it expires (`toast_wake`); a toast held or never expiring wakes nothing.
 //!
 //! A toast never stacks a copy of itself: one with the same words and kind as a toast that is up
-//! restarts that toast's timer instead (`push_toast`), so clicking a refusal twice leaves one.
+//! restarts that toast's timer instead (`push_toast`), so clicking a refusal twice leaves one; it
+//! keeps its Details unless the new one brings its own.
 //! A toast carrying a fix is its own, though: two fixes with the same words may be for different
 //! things (a message can't be compared), so both stay.
 //!
@@ -76,6 +77,13 @@ pub struct ToastAction {
     pub workdir: Option<PathBuf>,
 }
 
+impl ToastAction {
+    /// The activity log's Details (a failed line's row, or the log itself), not a fix.
+    pub(crate) fn is_details(&self) -> bool {
+        matches!(*self.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_)))
+    }
+}
+
 impl Toast {
     /// The sentence a toast for another tab says: `text` with that tab's `name` (whole, or cut to
     /// fit) first.
@@ -93,8 +101,7 @@ impl Toast {
 
     /// It carries a fix: an action other than the activity log's Details, or a second fix.
     fn has_fix(&self) -> bool {
-        let details = |a: &ToastAction| matches!(*a.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_)));
-        self.alt.is_some() || self.action.as_ref().is_some_and(|a| !details(a))
+        self.alt.is_some() || self.action.as_ref().is_some_and(|a| !a.is_details())
     }
 
     /// How long it stays up with `time` chosen: longer with a button, so there is time to click
@@ -223,17 +230,21 @@ impl AppState {
 
     /// Shows a toast, unless one with the same words, kind and tab is up and neither carries a fix
     /// (`Toast::has_fix`; a fix's target can't be compared, so two with the same words both
-    /// stay): that one is shown again in place, its timer restarted (a held one stays held) and
-    /// its Details dropped, for the new announcement to give again. It keeps its id and its one
-    /// activity line; a screen reader reads a failure shown again (`shown`), not a success.
-    /// Returns its id.
+    /// stay): that one is shown again in place, its timer restarted (a held one stays held). It
+    /// keeps its Details unless this call brings its own, which replace them, and a caller that
+    /// gives Details after showing it (update/logs_tabs.rs) replaces them too. It keeps its id
+    /// and its one activity line; a screen reader reads a failure shown again (`shown`), not a
+    /// success. Returns its id.
     fn push_toast(&mut self, ok: bool, text: String, action: Option<ToastAction>, tab: Option<String>, now: Instant) -> u64 {
         self.toast_seq += 1;
         let text = super::logs::redacted(text);
-        let fix = action.as_ref().is_some_and(|a| !matches!(*a.msg, Msg::Logs(LogsMsg::Details { .. } | LogsMsg::Show(_))));
+        let fix = action.as_ref().is_some_and(|a| !a.is_details());
         if !fix && let Some(t) = self.toasts.iter_mut().find(|t| t.ok == ok && t.text == text && t.tab == tab && !t.has_fix()) {
             (t.shown, t.at, t.counted) = (self.toast_seq, now, Duration::ZERO);
-            (t.action, t.details) = (action, None);
+            // Details given again replace the ones it has; none given keeps them.
+            if action.is_some() {
+                t.action = action;
+            }
             return t.id;
         }
         let t = Toast {

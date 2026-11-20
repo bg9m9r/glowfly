@@ -37,7 +37,7 @@ fn move_head(bare: &Path, from: &str, file: &str) -> Oid {
     git2::Repository::open_bare(bare).unwrap().refname_to_id("refs/pull/7/head").unwrap()
 }
 
-fn refs(dir: &Path) -> BTreeSet<String> {
+pub(super) fn refs(dir: &Path) -> BTreeSet<String> {
     let repo = git2::Repository::open(dir).unwrap();
     repo.references().unwrap().filter_map(|r| r.ok()?.name().map(str::to_owned)).collect()
 }
@@ -61,20 +61,20 @@ fn head_jobs(fx: &[Effect]) -> Vec<&HeadJob> {
 }
 
 /// Runs `e` and hands its result to `update`, returning the effects that raised.
-fn step(st: &mut AppState, e: Effect) -> Vec<Effect> {
+pub(super) fn step(st: &mut AppState, e: Effect) -> Vec<Effect> {
     let msg = glowfly_runner::testing::execute(e).expect("a result");
     update(st, msg, Instant::now())
 }
 
-fn take(fx: Vec<Effect>, pick: impl Fn(&Effect) -> bool) -> Effect {
+pub(super) fn take(fx: Vec<Effect>, pick: impl Fn(&Effect) -> bool) -> Effect {
     fx.into_iter().find(|e| pick(e)).expect("the effect")
 }
 
-fn is_files(e: &Effect) -> bool {
+pub(super) fn is_files(e: &Effect) -> bool {
     matches!(e, Effect::PullRequest(PrEffect::Files(_)))
 }
 
-fn is_head(e: &Effect) -> bool {
+pub(super) fn is_head(e: &Effect) -> bool {
     matches!(e, Effect::PullRequest(PrEffect::FetchHead(_)))
 }
 
@@ -123,7 +123,7 @@ fn a_fork_head_is_fetched_then_compared() {
     let job = head_jobs(&fx)[0];
     assert!(!job.prompts);
     assert_eq!(job.head, head.to_string());
-    for arg in ["refs/pull/7/head", "--no-tags", "--refmap=", "--recurse-submodules=no", "origin"] {
+    for arg in ["+refs/pull/7/head:refs/glowfly/pr/7", "--no-tags", "--refmap=", "--recurse-submodules=no", "origin"] {
         assert!(job.cmd.iter().any(|a| a == arg), "{arg}: {:?}", job.cmd);
     }
     assert_eq!(view(&st).head_fetch, HeadFetch::Running);
@@ -139,7 +139,9 @@ fn a_fork_head_is_fetched_then_compared() {
     let summaries: Vec<&str> = shown.commits.commits.iter().map(|c| c.summary.as_str()).collect();
     assert_eq!(summaries, ["f.txt", "g.txt"], "oldest first");
     assert_eq!(out_of_sync(v), [OutOfSync::HeadUsed { branch: None, head, fork: false }]);
-    assert_eq!(refs(&work), before, "no ref was written");
+    let mut expected = before;
+    expected.insert("refs/glowfly/pr/7".to_owned());
+    assert_eq!(refs(&work), expected, "only the pull request's own ref was written");
     assert!(!refs(&work).contains("refs/remotes/origin/from-a-fork"));
     cleanup(&[&work, &bare]);
 }

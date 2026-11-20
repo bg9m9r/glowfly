@@ -8,7 +8,8 @@
 //! aren't of the service's head), and a new code comment on diff lines in line_comment.rs. Checking
 //! out a pull request's branch is in checkout.rs, the detail requests for the listed ones in
 //! details.rs, matching their heads to loaded commits in heads.rs and the Create pull request
-//! dialog's From / Into picks in repo_pick.rs.
+//! dialog's From / Into picks in repo_pick.rs. The refs that keep a shown pull request's head are
+//! held and deleted in head_refs.rs.
 
 use crate::effect::Effect;
 use crate::pull_request::PullRequestMsg;
@@ -27,6 +28,7 @@ mod checks;
 pub(super) mod cleanup;
 mod commits;
 pub(super) mod details;
+pub(super) mod head_refs;
 pub(super) mod heads;
 mod kept;
 mod line_comment;
