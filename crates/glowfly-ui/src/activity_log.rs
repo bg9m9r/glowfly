@@ -2,7 +2,8 @@
 //! Performance tabs and the search field (ui/activity_search.rs) on the left, quiet icon buttons
 //! on the right with the More menu's Copy log and Export logs, a hairline under it), then
 //! the active tab's activity log (ui/activity_rows.rs) or the end of the error or performance
-//! log, read by the runner, its lines filtered by the search with the match marked.
+//! log, read by the runner, its lines filtered by the search with the match marked. Copy log
+//! copies what the filter shows; Clear asks first while it hides entries (update/logs.rs).
 
 use super::common::menu_item_if;
 use super::pane_status::{self, Failure};
@@ -88,7 +89,7 @@ fn buttons(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>
     let hide_clicked =
         icon_tip(ghost(ui, ControlSize::Regular, Some(Icon::ChevronDown), None, hide, true), keys, t, Tip::new(hide)).clicked();
     divider(ui);
-    more(ui, st, msgs);
+    more(ui, st, &view.logs_search, msgs);
     let open = t.tr("logs.header.open_folder");
     let body = match &st.logs.dir {
         Some(dir) => glowfly_core::native_path::shown(dir),
@@ -109,8 +110,9 @@ fn buttons(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut Vec<Msg>
     }
 }
 
-/// The More button and its menu: Copy log (what the current tab shows) and Export logs.
-fn more(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
+/// The More button and its menu: Copy log (what the current tab shows, as filtered) and Export
+/// logs (every log, whole).
+fn more(ui: &mut Ui, st: &AppState, search: &str, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     let name = t.tr("logs.header.more");
     let id = ui.make_persistent_id("logs-more");
@@ -121,7 +123,7 @@ fn more(ui: &mut Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     popup_below(ui, id, &r, PopupCloseBehavior::CloseOnClickOutside, |ui| {
         ui.set_min_width(200.0);
         let before = msgs.len();
-        menu_item_if(msgs, ui, t.tr("logs.header.copy_log"), copy_log_blocked(st), Msg::Logs(LogsMsg::CopyLog));
+        menu_item_if(msgs, ui, t.tr("logs.header.copy_log"), copy_log_blocked(st, search), Msg::Logs(LogsMsg::CopyLog));
         menu_item_if(msgs, ui, t.tr("logs.header.export"), None, Msg::Logs(LogsMsg::Export));
         if msgs.len() > before {
             ui.memory_mut(|m| m.close_popup());

@@ -138,6 +138,8 @@ pub struct LogsState {
     /// Rows the search unfolded that were folded again by hand; emptied when the search text
     /// changes (state/activity_filter.rs).
     pub search_closed: HashSet<EntryId>,
+    /// The row the last search step folded open; the next step folds it again.
+    pub step_opened: Option<EntryId>,
     /// The failed runs dismissed from the status bar: no longer a tab's last failure.
     pub dismissed: HashSet<EntryId>,
     /// The fixes failed runs offer, newest last, at most `FIX_LIMIT`. Each runs once, from the

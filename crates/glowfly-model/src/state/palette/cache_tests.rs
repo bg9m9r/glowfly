@@ -157,3 +157,30 @@ fn delete_branch_lists_below_the_checkouts_for_a_word_in_its_label_only() {
     assert_eq!(rows.0[0].0, "Delete branch…", "typed by its own name, it isn't demoted");
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn delete_remote_branch_comes_with_remote_branches_and_lists_below_the_checkouts() {
+    let (mut st, dir) = state("demote-remote", 0);
+    let mut cache = CommandCache::default();
+    let rows = check(&mut cache, &st, "");
+    assert!(!rows.0.iter().any(|r| r.0 == "Delete remote branch…"), "no remote branches: no entry");
+    let builds = cache.ref_builds;
+    let head = st.snap.as_ref().and_then(|s| s.head_oid).expect("born");
+    st.snap.as_mut().expect("open").remotes = vec![("origin".into(), vec![("feature/cache".into(), head), ("gone".into(), head)])];
+    let rows = check(&mut cache, &st, "");
+    assert!(rows.0.iter().any(|r| r.0 == "Delete remote branch…"), "a remote branch: the entry");
+    assert_eq!(cache.ref_builds, builds + 1, "remotes are a ref input");
+
+    let position = |rows: &Plain, label: &str| rows.0.iter().position(|r| r.0 == label).unwrap_or_else(|| panic!("{label:?} is listed"));
+    for query in ["branch", "branch ", "bran", "remote", "delete r", "del"] {
+        check(&mut cache, &st, query);
+    }
+    let rows = check(&mut cache, &st, "branch");
+    let delete = position(&rows, "Delete remote branch…");
+    for before in ["Create branch at HEAD…", "Switch branch…", "Checkout feature/cache", "Checkout fix/checkout"] {
+        assert!(position(&rows, before) < delete, "{before} is above Delete remote branch…");
+    }
+    let rows = check(&mut cache, &st, "delete rem");
+    assert_eq!(rows.0[0].0, "Delete remote branch…", "typed by its own name, it isn't demoted");
+    let _ = std::fs::remove_dir_all(&dir);
+}

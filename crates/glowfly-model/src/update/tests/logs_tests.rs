@@ -320,3 +320,43 @@ fn a_fix_that_asks_first_is_taken_only_once_confirmed() {
     assert!(matches!(st.modal, Some(Modal::Confirm { .. })));
     assert!(st.toasts.iter().any(|t| t.id == tid));
 }
+
+#[test]
+fn clear_confirmation_texts() {
+    use crate::state::{LogEntry, Modal};
+    let body = |st: &AppState| match &st.modal {
+        Some(Modal::ConfirmDanger { body, then, .. }) if matches!(&**then, Msg::Logs(LogsMsg::ClearConfirmed)) => Some(body.clone()),
+        _ => None,
+    };
+    let mut st = state();
+    st.log = (0..120).map(|i| LogEntry::new(i >= 3, format!("entry {i}"))).collect();
+    st.logs.failures_only = true;
+    run(&mut st, Msg::ClearLog);
+    assert_eq!(body(&st).as_deref(), Some("Clear the whole activity log? The filter hides 117 of its 120 entries; they are cleared too."));
+    assert_eq!(st.log.len(), 120);
+    st.modal = None;
+    st.logs.failures_only = false;
+    st.view.logs_search = "entry 1".into();
+    run(&mut st, Msg::ClearLog);
+    assert_eq!(body(&st).unwrap(), "Clear the whole activity log? The filter hides 89 of its 120 entries; they are cleared too.");
+    st.modal = None;
+    st.log = vec![LogEntry::new(true, "a"), LogEntry::new(false, "b")];
+    st.view.logs_search.clear();
+    st.logs.failures_only = true;
+    run(&mut st, Msg::ClearLog);
+    assert_eq!(body(&st).unwrap(), "Clear the whole activity log? The filter hides 1 of its 2 entries; it is cleared too.");
+    st.modal = None;
+    st.view.logs_search = "zzz".into();
+    run(&mut st, Msg::ClearLog);
+    assert_eq!(body(&st).unwrap(), "Clear the whole activity log? The filter hides all 2 of its entries; they are cleared too.");
+    st.modal = None;
+    st.log.truncate(1);
+    run(&mut st, Msg::ClearLog);
+    assert_eq!(body(&st).unwrap(), "Clear the whole activity log? The filter hides its only entry; it is cleared too.");
+    st.modal = None;
+    // A filter that hides nothing clears at once.
+    st.log = vec![LogEntry::new(false, "b")];
+    st.view.logs_search.clear();
+    run(&mut st, Msg::ClearLog);
+    assert!(st.modal.is_none() && st.log.is_empty());
+}

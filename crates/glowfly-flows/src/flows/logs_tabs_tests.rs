@@ -9,7 +9,7 @@ use glowfly_core::logs::ActivityEntry;
 use glowfly_model::effect::{Effect, LoadKind};
 use glowfly_model::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg, NewLine};
 use glowfly_model::msg::{JobMsg, Msg, PrefsMsg, RepoMsg, TabsMsg};
-use glowfly_model::state::{AppState, RunningJob, Tab};
+use glowfly_model::state::{AppState, Modal, RunningJob, Tab};
 use glowfly_model::update::update;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
@@ -361,4 +361,37 @@ fn a_failed_open_keeps_its_error() {
     assert_eq!(st.tabs[st.active_tab].path.as_deref(), Some(a.as_path()));
     assert_eq!(texts(&st.log), ["in a", "not a repository"]);
     assert!(failure_with_details(&st));
+}
+
+#[test]
+fn clear_asks_first_while_the_filter_hides_entries() {
+    let setup = || {
+        let (mut st, a, b) = two_tabs();
+        loaded(&mut st, Vec::new());
+        st.log_quiet(true, "fetched");
+        st.log_quiet(false, "couldn't push");
+        st.log_quiet(true, "checked out");
+        run(&mut st, scoped(&b, failed("in b")));
+        (st, a)
+    };
+    let (mut st, a) = setup();
+    run(&mut st, Msg::Logs(LogsMsg::SetFailuresOnly(true)));
+    assert!(run(&mut st, Msg::ClearLog).is_empty());
+    assert_eq!(st.log.len(), 3, "nothing is cleared yet");
+    let body = "Clear the whole activity log? The filter hides 2 of its 3 entries; they are cleared too.";
+    let asked = matches!(&st.modal, Some(Modal::ConfirmDanger { body: b, then, .. }) if b == body && matches!(&**then, Msg::Logs(LogsMsg::ClearConfirmed)));
+    assert!(asked, "the confirmation: {:?}", st.modal.is_some());
+    let fx = run(&mut st, Msg::ConfirmAccepted);
+    assert!(st.log.is_empty());
+    assert_eq!(st.tabs[1].log.len(), 1, "the other tab keeps its log");
+    assert!(matches!(&fx[..], [Effect::Logs(LogsEffect::ClearActivity { repo: Some(r) })] if *r == a), "{fx:?}");
+
+    let (mut st, _) = setup();
+    run(&mut st, Msg::Logs(LogsMsg::SetFailuresOnly(true)));
+    run(&mut st, Msg::ClearLog);
+    run(&mut st, Msg::CloseModal);
+    assert_eq!(st.log.len(), 3, "Cancel keeps every entry");
+    run(&mut st, Msg::Logs(LogsMsg::SetFailuresOnly(false)));
+    run(&mut st, Msg::ClearLog);
+    assert!(st.modal.is_none() && st.log.is_empty(), "with no filter it clears at once");
 }

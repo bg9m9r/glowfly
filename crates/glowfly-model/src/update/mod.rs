@@ -376,6 +376,6 @@ crate::msg::msg_areas! { area_router! {
         Msg::OpenTerminal => tools::open_terminal(st, now, fx),
         Msg::OpenFolder(p) => fx.push(Effect::Os(OsEffect::OpenFolder(p))),
         Msg::Logged { ok, text } => st.log(ok, text),
-        Msg::ClearLog => logs::clear(st, fx),
+        Msg::ClearLog => logs::clear_or_ask(st, fx),
     }
 } }

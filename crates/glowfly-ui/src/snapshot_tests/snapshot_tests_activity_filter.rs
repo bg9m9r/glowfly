@@ -290,8 +290,98 @@ fn activity_log_error_tab_search() {
     assert_eq!(marked, ["theme", "theme"], "both hits in the line are marked (the module and the file)");
     assert!(shapes.iter().all(|t| !t.galley.text().contains("INFO")), "the other lines are filtered out");
     assert!(h.query_by_label("Failures only").is_none(), "the toggle is the Activity tab's");
+    h.get_by_label("1 match of 4");
+    assert!(h.query_by_label("Next match").is_none(), "no cursor on a file tab, so no step buttons");
 
     h.state_mut().0.view.logs_search = "zzzz".into();
     h.run();
     h.get_by_label("No line shown here matches “zzzz”.");
+}
+
+#[test]
+fn activity_filter_count() {
+    let (mut st, _) = session(ThemeChoice::Dark);
+    st.view.logs_search = "fetch".into();
+    let mut h = tall(st, true);
+    h.check_snapshot("activity_filter_count");
+    h.get_by_label("5 matches of 9");
+    h.get_by_label("Previous match");
+    h.get_by_label("Next match").click();
+    h.run();
+    assert!(sent(&h, |m| matches!(m, LogsMsg::Step { back: false })));
+
+    let (mut st, _) = session(ThemeChoice::Dark);
+    st.logs.failures_only = true;
+    tall(st, true).get_by_label("2 matches of 9");
+
+    let (st, _) = session(ThemeChoice::Dark);
+    let h = tall(st, true);
+    assert!(h.query_by_label("Next match").is_none() && h.query_by_label("Previous match").is_none(), "no filter: no step buttons");
+    assert!(h.query_by_label("2 matches of 9").is_none() && h.query_by_label("9 matches of 9").is_none(), "and no count");
+}
+
+#[test]
+fn activity_filter_stepping() {
+    let (mut st, [_, _, pull]) = session(ThemeChoice::Dark);
+    st.logs.failures_only = true;
+    st.view.activity_step = true;
+    st.view.activity_focus = Some(pull);
+    let mut h = tall(st, true);
+    h.check_snapshot("activity_filter_stepping");
+    h.get_by_label("1 of 2 matches");
+    h.get_by_label("Previous match").click();
+    h.run();
+    assert!(sent(&h, |m| matches!(m, LogsMsg::Step { back: true })));
+}
+
+/// Applies the messages the frames sent so far.
+fn apply(h: &mut H) {
+    for m in std::mem::take(&mut h.state_mut().1) {
+        glowfly_model::update::update(&mut h.state_mut().0, m, Instant::now());
+    }
+}
+
+#[test]
+fn enter_in_the_search_field_steps() {
+    const FIELD: &str = "Search titles, causes and output";
+    let (mut h, _) = keyed("");
+    // Without a filter Enter sends nothing.
+    h.get_by_label(FIELD).focus();
+    h.run();
+    h.press_key(Key::Enter);
+    h.run_ok();
+    assert!(!sent(&h, |m| matches!(m, LogsMsg::Step { .. })), "no filter: Enter steps nowhere");
+
+    let (mut h, _) = keyed("");
+    h.state_mut().0.logs.failures_only = true;
+    let id_of = |h: &H, text: &str| h.state().0.log.iter().find(|e| e.text.starts_with(text)).map(|e| e.id).unwrap();
+    let (pull, second) = (id_of(&h, "Pull"), id_of(&h, "Couldn't reach"));
+    h.run();
+    h.get_by_label(FIELD).focus();
+    h.run();
+    h.press_key(Key::Enter);
+    h.run_ok();
+    assert!(sent(&h, |m| matches!(m, LogsMsg::Step { back: false })));
+    assert!(row_keys(&h).is_empty(), "the list's keys didn't get the Enter");
+    assert!(h.get_by_label(FIELD).is_focused(), "the field keeps the focus");
+    apply(&mut h);
+    assert_eq!(h.state().0.view.activity_focus, Some(pull));
+    h.run_ok();
+    h.get_by_label("1 of 2 matches");
+
+    h.press_key(Key::Enter);
+    h.run_ok();
+    apply(&mut h);
+    assert_eq!(h.state().0.view.activity_focus, Some(second));
+    assert!(h.get_by_label(FIELD).is_focused());
+
+    let shift = Modifiers { shift: true, ..Modifiers::NONE };
+    h.input_mut().modifiers = shift;
+    h.input_mut().events.push(Event::Key { key: Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers: shift });
+    h.run_ok();
+    h.input_mut().modifiers = Modifiers::NONE;
+    assert!(sent(&h, |m| matches!(m, LogsMsg::Step { back: true })));
+    apply(&mut h);
+    assert_eq!(h.state().0.view.activity_focus, Some(pull), "Shift+Enter goes back");
+    assert!(h.get_by_label(FIELD).is_focused());
 }

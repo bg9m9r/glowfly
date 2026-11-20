@@ -14,6 +14,9 @@ Button "Performance" [off]
 TextInput "Search titles, causes and output" = "zzz"
 Button "Clear search"
 CheckBox "Failures only" [off]
+Label "0 matches of 9"
+Button "Previous match" [disabled]
+Button "Next match" [disabled]
 Label "Nothing in this tab's activity matches “zzz”."
 Image
 Label "Glowfly"
@@ -29,3 +32,4 @@ Label "Look through the folders you keep projects in for repositories."
 painted:
   "Repository"
   "Open…"
+  "0 of 9"

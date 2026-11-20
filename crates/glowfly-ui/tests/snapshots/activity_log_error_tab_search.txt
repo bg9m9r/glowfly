@@ -13,6 +13,7 @@ Button "Errors" [on]
 Button "Performance" [off]
 TextInput "Search this log" = "theme"
 Button "Clear search"
+Label "1 match of 4"
 Label "Showing the end of the file. Open the logs folder for all of it."
 Label "2026-10-16 09:30:04.481 +00:00  WARN main glowfly::themes: theme file sand-dark.json: unknown color \"glow\""
 Image
@@ -29,3 +30,4 @@ Label "Look through the folders you keep projects in for repositories."
 painted:
   "Repository"
   "Open…"
+  "1 of 4"

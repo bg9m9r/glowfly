@@ -1,5 +1,5 @@
 //! Entering the palette's second steps: the sub-lists a two-step command opens (tracked files,
-//! stashes, profiles, issues, branches and tags to switch to, tags and local branches to delete) and its free-text
+//! stashes, profiles, issues, branches and tags to switch to, tags, local branches and remote branches to delete) and its free-text
 //! steps, opening the palette first when it is closed.
 
 use super::may_open;
@@ -28,8 +28,8 @@ fn open_step(st: &mut AppState, mode: Mode) -> bool {
 }
 
 /// Switches the palette to the sub-list for `kind` (opening it if closed) and fills it: the
-/// tracked files load in the background, the stashes, checkouts, tags and local branches come
-/// from the snapshot, the profiles from settings.
+/// tracked files load in the background, the stashes, checkouts, tags, local branches and remote
+/// branches come from the snapshot, the profiles from settings.
 pub(in crate::update) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut Vec<Effect>) {
     match kind {
         PickKind::FileHistory | PickKind::Blame => {
@@ -88,6 +88,11 @@ pub(in crate::update) fn enter_pick(st: &mut AppState, kind: PickKind, fx: &mut 
             let t = st.settings.lang();
             let Some(snap) = st.snap.as_ref().filter(|s| branches::can_pick(s)) else { return };
             let pick = Pick::branches_to_delete(t, snap);
+            open_step(st, Mode::Pick(pick));
+        }
+        PickKind::DeleteRemoteBranch => {
+            let Some(snap) = st.snap.as_ref().filter(|s| branches::can_pick_remote(s)) else { return };
+            let pick = Pick::remote_branches_to_delete(snap);
             open_step(st, Mode::Pick(pick));
         }
         PickKind::DeleteTag => {
