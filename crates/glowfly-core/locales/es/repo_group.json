@@ -2,6 +2,7 @@
   "repo_group.actions.tip": "Acciones del grupo",
   "repo_group.add.button": "Añadir {count}",
   "repo_group.add.button_none": "Añadir",
+  "repo_group.add.gone": "No se añadió nada: ya no hay ningún grupo llamado {name}.",
   "repo_group.add.in_group": "En {name}",
   "repo_group.add.none_ticked": "Marca los repositorios que quieres añadir.",
   "repo_group.add.nothing": "No hay nada que añadir: todos los favoritos ya están en este grupo y Recientes está vacío.",

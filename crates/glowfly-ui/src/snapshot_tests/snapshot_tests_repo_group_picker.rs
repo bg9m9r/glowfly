@@ -81,7 +81,26 @@ fn repo_group_add_dialog_ticks_and_adds_in_list_order() {
     h.get_by_label("Add 2").click();
     h.run();
     let want = vec![PathBuf::from(abs("docs")), PathBuf::from(api())];
-    assert!(matches!(last(&h), Msg::Groups(GroupMsg::AddRepos { group: 0, paths }) if *paths == want), "list order, not tick order");
+    assert!(
+        matches!(last(&h), Msg::Groups(GroupMsg::AddRepos { group, paths }) if group == "Work" && *paths == want),
+        "list order, not tick order"
+    );
+}
+
+#[test]
+fn repo_group_add_dialog_after_its_group_is_gone() {
+    let mut st = picker_state(ThemeChoice::Dark);
+    open_picker(&mut st, &["docs"]);
+    // A settings re-read dropped Work: Home is now the first group.
+    st.settings.repo_groups.remove(0);
+    let mut h = harness(st, true);
+    h.run();
+    assert!(h.query_all_by_label("Add to Work").next().is_some(), "the title keeps the remembered name");
+    assert!(h.query_all_by_label("In Home").next().is_some(), "the other group is found by name, not by index");
+    h.get_by_label("Add 1").click();
+    h.run();
+    let want = vec![PathBuf::from(abs("docs"))];
+    assert!(matches!(last(&h), Msg::Groups(GroupMsg::AddRepos { group, paths }) if group == "Work" && *paths == want));
 }
 
 #[test]
@@ -216,7 +235,7 @@ fn welcome_recent_add_to_group() {
     h.get_all_by_label("Home").last().expect("Home in the submenu").click();
     h.run();
     let old = vec![PathBuf::from(abs("old-site"))];
-    assert!(matches!(last(&h), Msg::Groups(GroupMsg::AddRepos { group: 1, paths }) if *paths == old));
+    assert!(matches!(last(&h), Msg::Groups(GroupMsg::AddRepos { group, paths }) if group == "Home" && *paths == old));
 }
 
 #[test]

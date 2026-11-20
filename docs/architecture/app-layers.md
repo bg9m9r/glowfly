@@ -111,7 +111,7 @@ source file, update its line here. Features that span every layer are in
 - `stack_prs.rs`: a stack's pull request layers, the bottom layer's base, why Create pull requests for the stack is off and the run of create dialogs.
 - `palette/commands/stack.rs`: the palette's stack entries.
 - `repo_groups.rs`: repository groups' members, the shown order of the favorites (groups first; the favorite keys follow it), a repository's group and colour, and the New group / Rename group form.
-- `repo_group_picker.rs`: a group's Add repositories picker: what it offers (favorites outside the group, then Recent), its filter and the ticked rows.
+- `repo_group_picker.rs`: a group's Add repositories picker: what it offers (favorites outside the group, then Recent), its filter and the ticked rows, kept by group name.
 - `clock.rs`: `Clock`, what dates are formatted with (the settings, and now and the zone from `st.cues`), for pure rules and, through ui's `date_tip`, the views.
 - `clone.rs`, `clone_service.rs`: the Clone dialog.
 - `init.rs`: the Init dialog.
