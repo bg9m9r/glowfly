@@ -119,7 +119,7 @@ pub fn frame<R>(ui: &mut Ui, kind: BannerKind, icon: Option<(Icon, Color32)>, co
             (None, Some(s)) => severity::paint(ui.painter(), c, ICON, s, s.color()),
             (None, None) => {
                 let spin = Rect::from_center_size(c, vec2(SPINNER, SPINNER));
-                egui::Spinner::new().size(SPINNER).color(color::progress()).paint_at(ui, spin);
+                super::Spinner::new().size(SPINNER).color(color::progress()).paint_at(ui, spin);
             }
         }
         inner.inner

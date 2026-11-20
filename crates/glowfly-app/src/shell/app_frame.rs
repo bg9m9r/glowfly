@@ -5,6 +5,7 @@
 
 use super::GlowflyApp;
 use eframe::egui;
+use glowfly_ui::widgets::redraw::{self, REDRAW};
 use std::time::{Duration, Instant};
 
 impl GlowflyApp {
@@ -33,15 +34,20 @@ impl GlowflyApp {
         self.st.cues.frame_times = self.frames.summary();
     }
 
-    /// Asks for the frames that come without input: while work runs or toasts fade, for
-    /// auto-fetch, the Saved tick, the status poll, the retry of a failed load for more, a
+    /// Asks for the frames that come without input: while work runs or a toast fades or expires,
+    /// for auto-fetch, the Saved tick, the status poll, the retry of a failed load for more, a
     /// typed search's pause and the search index's delayed build and freeing.
     pub(super) fn schedule_repaints(&self, ctx: &egui::Context, now: Instant) {
-        // Keep polling while work is in flight or toasts are fading.
-        if self.st.job.is_some() || self.st.loading || !self.st.toasts.is_empty() {
+        // Keep polling while work is in flight.
+        if self.st.job.is_some() || self.st.loading {
             ctx.request_repaint_after(Duration::from_millis(150));
         } else if self.st.settings.auto_fetch_minutes > 0 {
             ctx.request_repaint_after(Duration::from_secs(5));
+        }
+        // Toasts wake when their fade starts, while it runs and when they expire.
+        let step = (!redraw::window_hidden(ctx)).then_some(REDRAW);
+        if let Some(d) = self.st.toast_wake(now, step) {
+            ctx.request_repaint_after(d.max(REDRAW));
         }
         // The "Saved" tick beside a Preferences title fades out.
         if self.st.prefs.as_ref().is_some_and(|p| p.saved.showing() || p.saved.pending) {

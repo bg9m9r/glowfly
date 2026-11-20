@@ -1,7 +1,7 @@
 //! The bottom status bar (design pass D15). Left: the job running as dots, its text and Cancel
 //! (or a load, or a fresh build of the search's whole-history index); with none, the active
 //! tab's last failure ("Fetch failed · Details", `status_glance.rs`); then the hosting service
-//! and tracker with the counts their sidebar lists show (`state::status_counts`). Right: the
+//! and tracker with the counts their sidebar lists show (`state::status_counts`), then dots while either is loading. Right: the
 //! What's new and update chips and Show toolbar, then when the repository was last fetched
 //! (`status_glance.rs`), the live state and the zoom level while it isn't 100%. The version is
 //! in About. Toasts are in `toasts.rs`, the logs panel in `activity_log.rs`. Parts are joined by
@@ -65,7 +65,8 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                         status_label_ui(ui, t, &fs.tracker_status, issues_text(t, fs, &filters).as_deref(), msgs);
                     }
                     if fs.loading > 0 {
-                        ui.add(egui::Spinner::new().size(12.0));
+                        dots::show(ui, color::weak(), st.motion_reduced(), DOTS_PAD)
+                            .widget_info(|| egui::WidgetInfo::new(egui::WidgetType::ProgressIndicator));
                     }
                 }
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {

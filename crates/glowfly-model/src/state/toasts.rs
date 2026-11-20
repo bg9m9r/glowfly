@@ -7,7 +7,8 @@
 //! How long a toast stays is Preferences > Accessibility's `toast_time`; a failure that offers a
 //! fix or Details stays until it is closed. The pointer over a toast, or the keyboard focus in
 //! it, holds it (`hold_toast`): its clock stops, so it neither fades nor expires, and when it is
-//! let go at least `HOLD_GRACE` is left.
+//! let go at least `HOLD_GRACE` is left. The window wakes for a toast only when its fade starts,
+//! while it fades and when it expires (`toast_wake`); a toast held or never expiring wakes nothing.
 //!
 //! A toast never stacks a copy of itself: one with the same words and kind as a toast that is up
 //! restarts that toast's timer instead (`push_toast`), so clicking a refusal twice leaves one.
@@ -121,6 +122,21 @@ impl Toast {
 
     pub fn expired(&self, now: Instant, time: ToastTime) -> bool {
         !self.held && self.lifetime(time).is_some_and(|life| self.age(now) >= life)
+    }
+
+    /// How long until it next needs a frame at `now`: when its fade starts, then every `step`
+    /// while it fades (None: the window can't be seen, so only its end), and when it expires.
+    /// None for a toast that is held or never expires; zero once it is due.
+    fn next_change(&self, now: Instant, time: ToastTime, step: Option<Duration>) -> Option<Duration> {
+        let life = self.lifetime(time).filter(|_| !self.held)?;
+        let (age, fade_at) = (self.age(now), life.saturating_sub(FADE));
+        Some(if age < fade_at {
+            fade_at - age
+        } else if age < life {
+            step.map_or(life - age, |s| s.min(life - age))
+        } else {
+            Duration::ZERO
+        })
     }
 }
 
@@ -262,6 +278,14 @@ impl AppState {
     /// The toast under the pointer.
     pub fn held_toast(&self) -> Option<u64> {
         self.toasts.iter().find(|t| t.held).map(|t| t.id)
+    }
+
+    /// How long until a toast next needs a frame (`Toast::next_change`): the soonest of them.
+    /// `step` is how often a fade is redrawn; None means the window can't be seen, so a fade
+    /// wakes only at its end. None when no toast is due to change.
+    pub fn toast_wake(&self, now: Instant, step: Option<Duration>) -> Option<Duration> {
+        let time = self.settings.a11y.toast_time;
+        self.toasts.iter().filter_map(|t| t.next_change(now, time, step)).min()
     }
 
     /// Drops the toasts whose time is up at `now`.

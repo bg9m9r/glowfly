@@ -56,7 +56,7 @@ pub fn status_item(ui: &mut egui::Ui, st: &AppState, msgs: &mut Vec<Msg>) {
     let icon_at = pos2(rect.left() + m.pad_x + m.glyph / 2.0, rect.center().y);
     if working {
         let spin = egui::Rect::from_center_size(icon_at, vec2(m.glyph, m.glyph));
-        ui.put(spin, egui::Spinner::new().size(m.glyph).color(accent));
+        ui.put(spin, crate::widgets::Spinner::new().size(m.glyph).color(accent));
     } else {
         // A down arrow onto a line: the glyph fonts lack, painted in the badge's glyph slot.
         widgets::paint_icon_sized(ui.painter(), icon_at, Icon::Pull, accent, m.glyph);

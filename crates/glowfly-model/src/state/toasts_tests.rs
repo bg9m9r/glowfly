@@ -15,6 +15,47 @@ fn state() -> (AppState, Instant) {
 }
 
 #[test]
+fn a_toast_wakes_at_its_fade_its_steps_and_its_end() {
+    let (mut st, t0) = state();
+    st.toast(true, "Copied it", t0);
+    let step = Some(Duration::from_millis(33));
+    assert_eq!(st.toast_wake(t0, step), Some(Duration::from_secs(4)), "5 s life, its last second fades");
+    assert_eq!(st.toast_wake(t0 + Duration::from_millis(4500), step), step, "stepped while it fades");
+    assert_eq!(st.toast_wake(t0 + Duration::from_millis(4990), step), Some(Duration::from_millis(10)), "no later than its end");
+    assert_eq!(st.toast_wake(t0 + Duration::from_millis(4500), None), Some(Duration::from_millis(500)), "unseen: only its end");
+    assert_eq!(st.toast_wake(t0 + secs(6.0), step), Some(Duration::ZERO), "due once its time is up");
+}
+
+#[test]
+fn toasts_that_never_expire_or_are_held_ask_for_nothing() {
+    let (mut st, t0) = state();
+    let step = Some(Duration::from_millis(33));
+    assert_eq!(st.toast_wake(t0, step), None, "no toasts");
+    st.toast_action(false, "Push failed", details(), t0);
+    assert_eq!(st.toast_wake(t0 + secs(10.0), step), None, "a failure with Details never expires");
+    st.toasts.clear();
+    st.settings.a11y.toast_time = ToastTime::UntilClosed;
+    st.toast(true, "Copied it", t0);
+    assert_eq!(st.toast_wake(t0, step), None, "until closed");
+    st.settings.a11y.toast_time = T;
+    let id = st.toasts[0].id;
+    st.hold_toast(Some(id), t0 + secs(4.5));
+    assert_eq!(st.toast_wake(t0 + secs(4.5), step), None, "held");
+    st.hold_toast(None, t0 + secs(10.0));
+    let wake = st.toast_wake(t0 + secs(10.0), step).expect("let go, it expires");
+    assert!(wake <= HOLD_GRACE - FADE, "{wake:?}");
+}
+
+#[test]
+fn the_earlier_of_two_toasts_wakes_the_window() {
+    let (mut st, t0) = state();
+    st.toast(true, "First", t0);
+    st.toast(true, "Second", t0 + secs(2.0));
+    let step = Some(Duration::from_millis(33));
+    assert_eq!(st.toast_wake(t0 + secs(2.0), step), Some(Duration::from_secs(2)), "the first fades in 2 s, the second in 4");
+}
+
+#[test]
 fn a_toast_shown_once_restarts_instead_of_stacking() {
     let (mut st, t0) = state();
     let action = || ToastAction { label: "Fix".into(), msg: Box::new(Msg::Tick(t0)), workdir: None };

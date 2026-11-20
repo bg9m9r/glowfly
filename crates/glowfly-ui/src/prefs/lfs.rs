@@ -54,7 +54,7 @@ pub fn lfs_page(ui: &mut Ui, page: &LfsPage, pattern: &mut String, cx: &LfsConte
     }
     let Some(status) = page.status.clone() else {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             ui.label(RichText::new(t.tr("lfs.page.checking.body")).color(color::weak()));
         });
         return;

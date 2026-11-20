@@ -12,7 +12,7 @@
 //! a button with the keyboard too in `menu_open.rs`. The toolbar's buttons, toggles, split buttons, caret,
 //! borderless groups and the dividers between them are in `tool.rs`, and the flush segments of a
 //! segment bar (the pickers, a split) in `segment_bar.rs`. The tab bars' painted close × and new-tab + are in
-//! `tab_glyph.rs`, the three dots of running work in `dots.rs`, the firefly loader of a loading pane in `fireflies.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
+//! `tab_glyph.rs`, the three dots of running work in `dots.rs`, the firefly loader of a loading pane in `fireflies.rs` (both paced by `redraw.rs`, the one pace animations share), the loading spinner `spinner.rs`, glyphs moved onto the pixel grid in `icon_snap.rs`, a quiet target a view
 //! lays out itself (a tab, the title bar's menu button) in `quiet_target.rs`, and every chip and
 //! badge (the two chip sizes, and the quiet, clickable chips of the commit details) in `chip.rs`. The quiet headers' ghost buttons, divider
 //! and icon tooltips (the diff header, the terminal panel) are in `ghost.rs`. A dialog's 36 px
@@ -55,6 +55,7 @@ mod menu_submenu_keyed;
 pub(crate) mod popover;
 pub mod quiet_target;
 pub mod reason;
+pub mod redraw;
 pub mod row_fill;
 pub mod row_menu;
 pub mod scroll_cue;
@@ -62,6 +63,7 @@ pub mod section_header;
 pub mod segment_bar;
 pub mod segmented;
 pub mod severity;
+mod spinner;
 pub mod tab_glyph;
 pub mod text_field;
 mod text_line;
@@ -82,6 +84,7 @@ pub use icon::{Icon, paint_icon, paint_icon_sized, paint_icon_stroked};
 pub use section_header::section_fonts;
 #[cfg(test)]
 pub use section_header::section_header;
+pub use spinner::Spinner;
 pub use text_field::TextField;
 pub use text_line::{line_rect, paint_text, put_line};
 pub use tool::*;

@@ -147,7 +147,7 @@ pub(super) fn block(ui: &mut Ui, glyph: Glyph, title: RichText, hint: Option<&st
             match glyph {
                 Glyph::Icon(icon) => super::empty_state_icons::paint(ui.painter(), rect.center(), icon, color::weak()),
                 Glyph::Severity(s) => severity::paint(ui.painter(), rect.center(), ICON, s, s.color()),
-                Glyph::Spinner => egui::Spinner::new().size(SPINNER).color(color::weak()).paint_at(ui, rect),
+                Glyph::Spinner => crate::widgets::Spinner::new().size(SPINNER).color(color::weak()).paint_at(ui, rect),
             }
             ui.add_space(glyph_gap);
         }

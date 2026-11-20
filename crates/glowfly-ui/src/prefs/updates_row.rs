@@ -191,7 +191,7 @@ fn stale(ui: &mut Ui, t: Lang, version: &glowfly_core::app_update::Version, file
 
 fn spinning(ui: &mut Ui, text: &str) {
     ui.horizontal(|ui| {
-        ui.add(egui::Spinner::new().size(12.0));
+        ui.add(crate::widgets::Spinner::new().size(12.0));
         ui.label(RichText::new(text).color(color::weak()));
     });
 }

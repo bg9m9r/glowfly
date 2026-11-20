@@ -30,7 +30,7 @@ repository flows are in [flow-repo.md](flow-repo.md).
 - A toast is one sentence of at most 16 words; the longer story goes to the activity log behind Details. `glowfly-core`'s `i18n/toast_length_tests.rs` holds every English `toast` text to 140 characters.
 - Every toast has an x (`NotifyMsg::CloseToast`) that removes it without running its action.
 - The conflict view's Resolved and Saved-with-markers toasts carry Undo while the entry that did it is the newest (`update/conflict.rs::undo_button`, run as `JobMsg::UndoWith`, which refuses once the history moved).
-- The pointer over a toast holds it: `ui/toasts.rs` sends `NotifyMsg::HoldToast` when the toast under the pointer changes, and a held toast's clock stops (`Toast::counted` and `held`), so it neither fades nor expires.
+- The pointer over a toast holds it: `ui/toasts.rs` sends `NotifyMsg::HoldToast` when the toast under the pointer changes, and a held toast's clock stops (`Toast::counted` and `held`), so it neither fades nor expires. A toast wakes the window only when its fade starts, while it fades and when it expires (`AppState::toast_wake`); a held or never-expiring toast wakes nothing.
 - Let go, a held toast has at least `HOLD_GRACE` left, and the toast limit drops the oldest toast that isn't held.
 - The keyboard focus on a toast's button holds it as the pointer does; how long toasts stay is Accessibility's `toast_time`, and a failure with a fix or Details stays until closed.
 - Every toast leaves an activity line (`update/toast_log.rs`), so a dropped or expired one can still be read.

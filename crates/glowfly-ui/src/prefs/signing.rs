@@ -157,7 +157,7 @@ pub fn signing_page(
                     msgs.push(Msg::Prefs(PrefsMsg::GenerateGpgKey));
                 }
                 if signing.generating {
-                    ui.add(egui::Spinner::new().size(14.0));
+                    ui.add(crate::widgets::Spinner::new().size(14.0));
                 }
             });
             if git.user_name.is_empty() || git.user_email.is_empty() {
@@ -203,7 +203,7 @@ fn extend_row(ui: &mut Ui, t: Lang, offer: bool, signing: &SigningState, msgs: &
                 msgs.push(Msg::Prefs(PrefsMsg::ExtendKey));
             }
             if signing.extending {
-                ui.add(egui::Spinner::new().size(16.0));
+                ui.add(crate::widgets::Spinner::new().size(16.0));
             }
         });
     }

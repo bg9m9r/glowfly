@@ -1,14 +1,14 @@
 //! The firefly loader (design pass D20): three small dots in `lantern` that light up one after
 //! another, for a pane or a row that is loading. The words it replaces stay as its AccessKit
 //! label. Under reduce motion the dots stand still at 60%. While it moves it asks for the next
-//! frame only when the fade next changes, and not at all while hidden (scrolled out of view,
-//! clipped away or the window minimized), so an idle window stops repainting.
+//! frame at the shared pace (`redraw::REDRAW`), and not at all while hidden (scrolled out of
+//! view, clipped away or the window minimized), so an idle window stops repainting.
 
 use super::super::theme::color::{self, Palette};
 use super::super::theme::contrast;
 use super::super::theme::tokens::motion;
+use super::redraw::{self, REDRAW};
 use eframe::egui::{Painter, Pos2, Rect, Response, Sense, Ui, Vec2, WidgetInfo, WidgetType, emath::GuiRounding, pos2, vec2};
-use std::time::Duration;
 
 /// A dot's diameter and the distance between dot centres.
 const DOT: f32 = 4.0;
@@ -22,8 +22,6 @@ const LOW: f32 = 0.25;
 const STILL: f32 = 0.6;
 /// The contrast a still dot keeps on bg, panel and raised.
 const STILL_FLOOR: f64 = 3.0;
-/// The fade is redrawn this often while it moves (egui wakes for it; nothing repaints between).
-const REDRAW: Duration = Duration::from_millis(33);
 /// Where in its cycle a dot has risen, starts to fall and has fallen: it holds full for a third
 /// of the cycle, so one of the three is always at full `lantern`.
 const RISEN: f64 = 0.25;
@@ -76,16 +74,11 @@ pub fn paint(p: &Painter, c: Pos2, pal: &Palette, time: Option<f64>) {
     }
 }
 
-/// Whether a loader at `rect` would be seen: inside `ui`'s clip and the window not minimized.
-fn visible(ui: &Ui, rect: Rect) -> bool {
-    ui.is_rect_visible(rect) && !ui.input(|i| i.viewport().minimized.unwrap_or(false))
-}
-
 /// Paints the loader centred on `c` with `ui`'s painter, still under reduce motion
 /// (`motion::reduced`). While it moves and can be seen, asks for a frame after `REDRAW`.
 pub fn paint_at(ui: &Ui, c: Pos2) {
     let rect = Rect::from_center_size(c, SIZE);
-    let moving = !motion::reduced(ui.ctx()) && visible(ui, rect);
+    let moving = !motion::reduced(ui.ctx()) && redraw::seen(ui, rect);
     paint(ui.painter(), c, &color::current(), moving.then(|| ui.input(|i| i.time)));
     if moving {
         ui.ctx().request_repaint_after(REDRAW);

@@ -8,7 +8,7 @@ use super::DiffView;
 use crate::theme::color;
 use crate::theme::tokens::radius;
 use crate::widgets::paint_text;
-use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Spinner, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
+use eframe::egui::{Align2, CornerRadius, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, WidgetInfo, WidgetType, pos2, vec2};
 use glowfly_core::diff_rows::GapSpan;
 use glowfly_core::whole_file::Fold;
 use glowfly_model::msg::DiffMsg;
@@ -66,7 +66,7 @@ fn run_row(ui: &mut Ui, rect: Rect, v: &DiffView, row: RunRow, sign_x: f32, text
 
 /// The loading mark of a control: a small spinner in `rect`, in the quiet ink.
 fn spinner(ui: &Ui, rect: Rect) {
-    Spinner::new().size(rect.width()).color(color::weak()).paint_at(ui, rect);
+    crate::widgets::Spinner::new().size(rect.width()).color(color::weak()).paint_at(ui, rect);
 }
 
 /// Draws fold `f` across the full row `rect`. A click asks to show the lines.

@@ -73,7 +73,7 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, form: SignIn<'_>, cancel: bool, msgs: 
                     msgs.push(Msg::Forge(ForgeMsg::Connect { account: a.clone(), user: None, token: None }));
                 }
                 if prefs.int_busy {
-                    ui.add(egui::Spinner::new().size(14.0));
+                    ui.add(crate::widgets::Spinner::new().size(14.0));
                 }
             });
         });
@@ -135,7 +135,7 @@ pub fn sign_in_form(ui: &mut Ui, t: Lang, form: SignIn<'_>, cancel: bool, msgs: 
                 msgs.push(Msg::Prefs(PrefsMsg::ShowAccountForm(false)));
             }
             if prefs.int_busy {
-                ui.add(egui::Spinner::new().size(14.0));
+                ui.add(crate::widgets::Spinner::new().size(14.0));
             }
         });
     });

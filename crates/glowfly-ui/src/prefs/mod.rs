@@ -192,7 +192,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
                 }
                 if needs_git && prefs.git.is_none() {
                     ui.horizontal(|ui| {
-                        ui.add(egui::Spinner::new());
+                        ui.add(crate::widgets::Spinner::new());
                         ui.label(RichText::new(t.tr("prefs.common.reading_git_config")).color(color::weak()));
                     });
                     return;
