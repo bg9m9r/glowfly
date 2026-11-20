@@ -48,6 +48,13 @@ impl AppState {
         if self.runs_git_unasked() { self.any_dir() } else { Self::outside_dir() }
     }
 
+    /// `credentials_dir` for a call made for the repository at `workdir`: a folder outside any
+    /// repository unless `workdir` is the active repository (whose trust then decides).
+    pub fn credentials_dir_for(&self, workdir: &Path) -> PathBuf {
+        let active = self.workdir().is_some_and(|w| glowfly_core::paths::same_spelling(&w, workdir));
+        if active { self.credentials_dir() } else { Self::outside_dir() }
+    }
+
     /// A folder outside any repository (the temp folder), for git calls that must not read the
     /// active repository's own config, e.g. its credential helper while it isn't trusted.
     pub fn outside_dir() -> PathBuf {

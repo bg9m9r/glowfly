@@ -67,6 +67,8 @@ pub struct LineMapJob {
 #[derive(Debug)]
 pub struct PrRequest {
     pub workdir: PathBuf,
+    /// Where signing in asks git's credential helpers (`AppState::credentials_dir_for`).
+    pub cwd: PathBuf,
     pub target: Target,
     /// None signs in (environment, saved token, Git Credential Manager).
     pub auth: Option<Auth>,

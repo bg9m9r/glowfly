@@ -34,7 +34,8 @@ fn req(st: &AppState, workdir: PathBuf, target: Target) -> ForkRequest {
     let account = target.account();
     let auth = st.session.forge.as_ref().and_then(|f| f.auth.get(&account.key())).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
-    ForkRequest { workdir, target, auth, connected }
+    let cwd = st.credentials_dir_for(&workdir);
+    ForkRequest { workdir, cwd, target, auth, connected }
 }
 
 /// The remote's repository for `action`, and the active repository, or None after logging why.

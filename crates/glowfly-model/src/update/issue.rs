@@ -64,7 +64,8 @@ pub(super) fn request(st: &AppState) -> Result<IssueRequest, String> {
     }
     let auth = fs.auth.get(&account.key()).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
-    Ok(IssueRequest { workdir, target, auth, connected })
+    let cwd = st.credentials_dir_for(&workdir);
+    Ok(IssueRequest { workdir, cwd, target, auth, connected })
 }
 
 /// Loads the open panel's details (again); the last ones stay on screen meanwhile. Nothing is

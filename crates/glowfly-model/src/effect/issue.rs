@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 #[derive(Debug)]
 pub struct IssueRequest {
     pub workdir: PathBuf,
+    /// Where signing in asks git's credential helpers (`AppState::credentials_dir_for`).
+    pub cwd: PathBuf,
     pub target: Target,
     /// None signs in (environment, saved token, Git Credential Manager).
     pub auth: Option<Auth>,
@@ -127,7 +129,13 @@ mod tests {
         let effects: Vec<IssueEffect> = calls
             .into_iter()
             .map(|call| {
-                let req = IssueRequest { workdir: PathBuf::from("repo"), target: target.clone(), auth: None, connected: false };
+                let req = IssueRequest {
+                    workdir: PathBuf::from("repo"),
+                    cwd: PathBuf::from("repo"),
+                    target: target.clone(),
+                    auth: None,
+                    connected: false,
+                };
                 IssueEffect::Call(Box::new(IssueJob { req, generation: 1, call }))
             })
             .collect();

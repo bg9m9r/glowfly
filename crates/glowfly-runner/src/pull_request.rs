@@ -5,7 +5,7 @@
 //! local source tip (`repo::pr_line_maps`), and its calls to the hosting service (the page, a comment, a
 //! review, its checks, a merge, a thread reply or resolve, a new code comment on diff lines,
 //! alone or in the pending review). The calls sign in the way the pull
-//! request list does, in the panel's repository.
+//! request list does, in the request's `cwd` (the panel's repository while it is trusted).
 
 use super::execute::{Cx, Execute};
 use glowfly_core::forge::{self, Auth, CheckQuery, ReviewRequest};
@@ -47,7 +47,7 @@ fn call(job: CallJob) -> Msg {
     let interactive = !matches!(call, PrCall::Load | PrCall::Checks { .. });
     let auth: Result<Auth, ForgeError> = match req.auth {
         Some(a) => Ok(a),
-        None => forge::resolve_auth(&req.target.account(), &req.workdir, interactive, req.connected).map_err(ForgeError::from),
+        None => forge::resolve_auth(&req.target.account(), &req.cwd, interactive, req.connected).map_err(ForgeError::from),
     };
     let t = &req.target;
     let reply = match call {

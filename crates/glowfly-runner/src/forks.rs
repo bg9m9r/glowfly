@@ -1,6 +1,6 @@
 //! The fork dialogs' hosting-service calls (`Effect::Remote`): listing a repository's forks,
 //! finding the user's own fork and forking into the user's account. Signs in the way the pull
-//! request calls do, in the dialog's repository.
+//! request calls do, in the request's `cwd` (the dialog's repository only while it is trusted).
 
 use super::execute::{Cx, Execute};
 use glowfly_core::forge::{self, Auth, Wait};
@@ -11,7 +11,7 @@ use glowfly_model::remote::{ForkRequest, RemoteEffect, RemoteMsg};
 fn auth(req: &mut ForkRequest) -> Result<Auth, ForgeError> {
     match req.auth.take() {
         Some(a) => Ok(a),
-        None => forge::resolve_auth(&req.target.account(), &req.workdir, true, req.connected).map_err(ForgeError::from),
+        None => forge::resolve_auth(&req.target.account(), &req.cwd, true, req.connected).map_err(ForgeError::from),
     }
 }
 

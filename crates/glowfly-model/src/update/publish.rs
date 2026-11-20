@@ -61,7 +61,7 @@ pub(super) fn handle(st: &mut AppState, msg: PublishMsg, fx: &mut Vec<Effect>) {
             f.clear_error();
             let repo = NewRepo { owner: f.owner.clone(), name, description: f.description.trim().to_owned(), private: f.private };
             let (workdir, branch) = (f.workdir.clone(), f.branch.clone());
-            let cwd = credentials_dir(st, &workdir);
+            let cwd = st.credentials_dir_for(&workdir);
             fx.push(Effect::Account(AccountEffect::CreateRepo { account, cwd, workdir, user, repo, branch }));
         }
         PublishMsg::Published { workdir, branch, result } => match result {
@@ -145,14 +145,6 @@ fn load_owners(st: &mut AppState, fx: &mut Vec<Effect>) {
     f.loading = true;
     f.clear_error();
     let workdir = f.workdir.clone();
-    let cwd = credentials_dir(st, &workdir);
+    let cwd = st.credentials_dir_for(&workdir);
     fx.push(Effect::Account(AccountEffect::Owners { account, cwd }));
-}
-
-/// Where the dialog for the repository at `workdir` looks up credentials: the repository
-/// itself, or a folder outside any repository while git is held there, so its own credential
-/// helper never runs before it is trusted.
-fn credentials_dir(st: &AppState, workdir: &std::path::Path) -> std::path::PathBuf {
-    let active = st.workdir().is_some_and(|w| same_spelling(&w, workdir));
-    if active && st.runs_git_unasked() { workdir.to_path_buf() } else { AppState::outside_dir() }
 }
