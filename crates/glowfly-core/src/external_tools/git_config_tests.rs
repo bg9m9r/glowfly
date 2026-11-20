@@ -26,16 +26,6 @@ fn command(key: &str, cmd: &str) -> GitToolRun {
 }
 
 #[test]
-fn parse_z_reads_values_newlines_and_valueless_keys() {
-    let out = "difftool.My.Tool.cmd\na \"$LOCAL\"\nb\0difftool.My.Tool.trustexitcode\0diff.tool\nMy.Tool\0";
-    assert_eq!(
-        parse_z(out),
-        [set("difftool.My.Tool.cmd", "a \"$LOCAL\"\nb"), e("difftool.My.Tool.trustexitcode", None), set("diff.tool", "My.Tool")]
-    );
-    assert!(parse_z("").is_empty());
-}
-
-#[test]
 fn diff_falls_back_to_merge_tool_like_git() {
     let only_merge = [set("merge.tool", "m"), set("mergetool.m.cmd", "m-cmd")];
     let (name, by, run) = run_of(&only_merge, ToolMode::Diff, &no).unwrap();

@@ -8,6 +8,7 @@ source file, update its line here.
 - `git_version.rs`: which git runs (found on the PATH children get) and the features its version lacks.
 - `env_path.rs`: that PATH, which on macOS merges in the login shell's.
 - `flatpak.rs`: running inside a Flatpak sandbox: detecting it (`/.flatpak-info`, or a valid `FLATPAK_ID` with the program under `/app`), the host's XDG folders (`host_var`, `child_config_home`) for what Glowfly shares with the host (git's XDG config, the home Trash), and pointing libgit2's XDG config search path at the host's at start (`init`).
+- `git_session.rs`: `git version` and `git --exec-path` of the git children run, asked once per chosen program per session.
 - `git_program.rs`: the git program every git child runs (chosen in Preferences > Git, else `git` from PATH), checking a program before it is used, and finding the installed gits.
 - `safe_directory.rs`: repositories git refuses because another user owns them: opening one git opens, the typed error for a real refusal, and listing a folder in `safe.directory` in git's spelling.
 - `safe_directory/verdict.rs`: asking git whether it opens a folder libgit2 refused for its owner, and whom git names as the owner.
@@ -154,7 +155,7 @@ source file, update its line here.
 
 ## Identity and profiles
 
-- `identity.rs`: the author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; reading the global identity; writing an identity to the global config in order.
+- `identity.rs`: the author identity (user.name, user.email, user.signingkey) and the one path that writes a git config value; reading the global identity in one `git config --global --list`; writing an identity to the global config in order.
 - `profile_includes.rs`, `profile_includes/`: profile folder rules in the global git config: an `[includeIf "gitdir:<folder>/"]` entry per rule pointing at the profile's include file in Glowfly's `git-profiles` folder (`[user]` only, no profile name).
 - `pattern.rs`: the patterns and the include file's quoting.
 - `profile_includes/` also holds the plan (entries shallow-first), the sync (files rewritten when changed; with `place`, Glowfly's own sections removed and added again at the end of the file, sections pointing elsewhere or shared with the user's keys left alone), and checking a picked folder (resolved, valid text, case folding probed).

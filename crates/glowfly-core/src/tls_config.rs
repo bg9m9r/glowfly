@@ -6,7 +6,7 @@
 //! revocation checks need git 2.43 (an older git dies on the non-boolean value). Parsing and
 //! resolving are pure; [`read`] runs `git config` (runner threads only).
 
-use crate::external_tools::git_config::parse_z;
+use crate::config_list::parse_z;
 use crate::git_version::Version;
 use crate::gitcli;
 use std::path::Path;

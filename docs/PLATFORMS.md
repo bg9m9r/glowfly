@@ -559,8 +559,11 @@ trust scan all run for untrusted repositories too.
    would open their install dialog. Show which git runs and its version (Preferences > General
    and > Git), gate features by `git_version::Feature` (`RangeDiff` 2.19, `Restore` 2.23, `ForceIfIncludes` 2.30,
    `SparseCheckout` 2.35, `MergeTree` 2.38), re-detect them when the git changes, and show
-   `GitInfo::banner` with the reasons.
-4. **Read git config booleans with `--type=bool`** (`runner/config.rs`): `yes`, `1` and `TRUE`
+   `GitInfo::banner` with the reasons. `git version` and `git --exec-path` are asked once per
+   chosen program (`git_session`).
+4. **Read git config booleans as git does** (`config_list::parse_bool`, checked against
+   `git config --type=bool` in tests; `runner/config.rs` reads each scope once with
+   `--list -z`): `yes`, `1` and `TRUE`
    are true. `core.autocrlf` is three-way (`true`, `input`, `false`), and a value that can't be
    read is never rewritten.
 5. **For untranslated git messages set `LANGUAGE=C` and `LC_MESSAGES=C`, never `LC_ALL=C`**

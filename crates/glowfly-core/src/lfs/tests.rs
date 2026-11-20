@@ -201,3 +201,15 @@ fn pattern_problems_follow_the_language() {
     assert!(PatternProblem::AlreadyTracked("*.psd".into()).message(Lang::De).contains("*.psd"));
     assert_ne!(PatternProblem::GitFile.message(Lang::De), PatternProblem::GitFile.message(Lang::En));
 }
+
+#[test]
+fn lfs_filters_read_the_filter_as_git_does() {
+    let has = |z: &str| lfs_filters(&ConfigList::parse(z));
+    assert!(has("filter.lfs.process\ngit-lfs filter-process\0"));
+    assert!(has("Filter.lfs.Smudge\ngit-lfs smudge -- %f\0"), "section and variable in any case");
+    assert!(!has("filter.LFS.process\ngit-lfs filter-process\0"), "the subsection is case-sensitive");
+    assert!(!has("filter.lfs.process\n  \0"), "blank is not set");
+    assert!(!has("filter.lfs.process\0"), "valueless is not set");
+    assert!(!has("filter.lfs.process\ngit-lfs filter-process\0filter.lfs.process\n\0"), "the last value wins");
+    assert!(!has(""));
+}

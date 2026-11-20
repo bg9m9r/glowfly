@@ -361,9 +361,9 @@ fn raw_inner(
 }
 
 /// The installed git's version (`git version`), or None when git can't be run or prints
-/// something unexpected.
+/// something unexpected. Asked once per chosen git program per session (`git_session`).
 pub fn version(cwd: &Path) -> Option<(u32, u32, u32)> {
-    parse_version(&read(cwd, &args(&["version"])).stdout)
+    crate::git_session::version(cwd)
 }
 
 /// Reads "git version 2.54.0.windows.1", "git version 2.39.3 (Apple Git-146)" or

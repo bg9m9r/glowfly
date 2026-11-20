@@ -9,6 +9,7 @@
 //! arguments, for example, quietly installs the hooks. Only `git lfs version` runs; the rest is
 //! read from files and git config. The app runs the command lines through `gitcli` as jobs.
 
+use crate::config_list::ConfigList;
 use crate::error::{Error, Result};
 use crate::gitcli::{args, read};
 use crate::i18n::Lang;
@@ -105,11 +106,15 @@ pub fn hook_state(dir: &Path) -> (bool, Vec<String>) {
 }
 
 /// Whether the LFS filter is configured (at any level: Git for Windows sets it system-wide).
+/// One unscoped `git config --list -z`, which reads every scope and follows includes.
 fn filters_configured(workdir: &Path) -> bool {
-    ["filter.lfs.process", "filter.lfs.smudge"].iter().any(|key| {
-        let out = read(workdir, &args(&["config", "--get", key]));
-        out.ok && !out.stdout.trim().is_empty()
-    })
+    let out = read(workdir, &args(&["config", "--list", "-z"]));
+    out.ok && lfs_filters(&ConfigList::parse(&out.stdout))
+}
+
+/// Whether `config` sets the LFS filter's `process` or `smudge` command to something.
+fn lfs_filters(config: &ConfigList) -> bool {
+    ["filter.lfs.process", "filter.lfs.smudge"].iter().any(|k| config.text(k).is_some_and(|v| !v.trim().is_empty()))
 }
 
 /// A typed pattern as git-lfs writes it to `.gitattributes`: a space becomes `[[:space:]]`

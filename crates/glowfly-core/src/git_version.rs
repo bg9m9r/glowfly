@@ -225,6 +225,9 @@ pub fn download_url() -> &'static str {
 pub fn detect(cwd: &Path) -> GitInfo {
     if let Some(p) = crate::git_program::chosen() {
         let version = crate::git_program::probe(&p, cwd).ok();
+        if let Some(v) = version {
+            crate::git_session::note_version(Some(p.clone()), v);
+        }
         return GitInfo { path: Some(p), version, chosen: true };
     }
     GitInfo { path: crate::external_tools::find_on_path(Path::new("git")), version: gitcli::version(cwd), chosen: false }

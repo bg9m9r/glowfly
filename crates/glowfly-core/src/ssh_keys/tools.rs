@@ -1,7 +1,6 @@
 //! Finding ssh's own programs (`ssh-keygen`, `ssh-add`): on PATH, in Git for Windows' bundled
 //! copy, or in Windows' OpenSSH.
 
-use crate::gitcli::{self, args};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
@@ -43,8 +42,7 @@ pub(super) fn windows_roots(cwd: &Path) -> (Option<PathBuf>, Option<PathBuf>) {
     if !cfg!(windows) {
         return (None, None);
     }
-    let out = gitcli::read(cwd, &args(&["--exec-path"]));
-    let exec = (out.ok && !out.stdout.trim().is_empty()).then(|| PathBuf::from(out.stdout.trim()));
+    let exec = crate::git_session::exec_path(cwd);
     (exec, std::env::var_os("SystemRoot").map(PathBuf::from))
 }
 
