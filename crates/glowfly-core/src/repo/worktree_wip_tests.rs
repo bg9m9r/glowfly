@@ -1,8 +1,8 @@
-//! Other worktrees' uncommitted changes against real repositories: counted by full loads (libgit2
-//! only, also while untrusted) for every worktree but the current one, and laid out as a WIP row
-//! above the worktree's HEAD commit; skipped for clean and missing worktrees, with the option
-//! off, and by `worktrees_at`; no row for a HEAD outside the loaded history. The helpers serve
-//! `worktree_counts`' tests too.
+//! Other worktrees' uncommitted changes against real repositories: a full load leaves every
+//! worktree but the current one Pending, and `counted_load` counts them as the app's background
+//! count does (also while untrusted), so each gets a WIP row above its HEAD commit; skipped for
+//! clean and missing worktrees, with the option off, and by `worktrees_at`; no row for a HEAD
+//! outside the loaded history. The helpers serve `worktree_counts`' tests too.
 
 use crate::repo::status_cli_tests::marker_script;
 use crate::repo::*;
@@ -37,6 +37,19 @@ pub(in crate::repo) fn dirty(wt: &Path) {
     git(wt, &["add", "c.txt"]);
 }
 
+/// `load`, then what the app's background count does right after: every Pending or Carried
+/// worktree counted (`count_worktree`) and the graph laid out again.
+pub(in crate::repo) fn counted_load(dir: &Path, opts: &LoadOptions) -> Snapshot {
+    let mut snap = load(dir, opts).unwrap();
+    let workdir = snap.workdir.clone();
+    for wt in snap.worktrees.iter_mut().filter(|w| matches!(w.read, ChangesRead::Pending | ChangesRead::Carried)) {
+        let count = count_worktree(&wt.path, &workdir, None, COUNT_TIMEOUT);
+        (wt.read, wt.changes) = (count.read, count.changes);
+    }
+    snap.lay_out_graph();
+    snap
+}
+
 pub(in crate::repo) const DIRTY: ChangeCounts = ChangeCounts { modified: 1, added: 2, deleted: 1 };
 
 fn tip(dir: &Path, branch: &str) -> Oid {
@@ -54,7 +67,10 @@ fn changes_in_a_linked_worktree_are_counted() {
     let dir = two_files("wtwip-counted");
     let wt = linked(&dir, "feat");
     dirty(&wt);
-    let snap = load(&dir, &LoadOptions::all(100)).unwrap();
+    let raw = load(&dir, &LoadOptions::all(100)).unwrap();
+    assert_eq!((raw.worktrees[1].read, raw.worktrees[1].changes), (ChangesRead::Pending, ChangeCounts::default()));
+    assert!(raw.graph.worktree_wips.is_empty(), "the load reads no other worktree");
+    let snap = counted_load(&dir, &LoadOptions::all(100));
     assert_eq!(snap.worktrees.len(), 2);
     assert!(snap.worktrees[0].current);
     assert_eq!(snap.worktrees[0].changes, ChangeCounts::default(), "the current worktree is not counted");
@@ -71,7 +87,7 @@ fn changes_in_a_linked_worktree_are_counted() {
 fn a_clean_worktree_gets_no_row() {
     let dir = two_files("wtwip-clean");
     let wt = linked(&dir, "feat");
-    let snap = load(&dir, &LoadOptions::all(100)).unwrap();
+    let snap = counted_load(&dir, &LoadOptions::all(100));
     assert!(snap.worktrees[1].changes.is_empty());
     assert_eq!(snap.worktrees[1].read, ChangesRead::Counted, "counted, and clean");
     assert!(snap.graph.worktree_wips.is_empty());
@@ -83,7 +99,7 @@ fn loading_from_a_linked_worktree_counts_the_main_one() {
     let dir = two_files("wtwip-from-linked");
     let wt = linked(&dir, "feat");
     write(&dir, "a.txt", "changed in main\n");
-    let snap = load(&wt, &LoadOptions::all(100)).unwrap();
+    let snap = counted_load(&wt, &LoadOptions::all(100));
     let (main, here) = (&snap.worktrees[0], &snap.worktrees[1]);
     assert!(main.is_main() && !main.current && here.current);
     assert_eq!(main.changes, ChangeCounts { modified: 1, added: 0, deleted: 0 });
@@ -102,7 +118,7 @@ fn missing_worktrees_and_the_option_off_are_skipped() {
     let wt = linked(&dir, "feat");
     dirty(&wt);
 
-    let snap = load(&dir, &LoadOptions::all(100)).unwrap();
+    let snap = counted_load(&dir, &LoadOptions::all(100));
     let missing = snap.worktrees.iter().find(|w| w.branch.as_deref() == Some("gone")).unwrap();
     assert!(missing.missing && missing.changes.is_empty());
     assert_eq!(missing.read, ChangesRead::NotCounted);
@@ -127,7 +143,7 @@ fn a_head_outside_the_loaded_history_gets_no_row() {
     git(&wt, &["commit", "-q", "-m", "feature work"]);
     dirty(&wt);
     let opts = LoadOptions { max_commits: 100, hidden: vec!["refs/heads/feat".into()], worktree_wips: true, ..Default::default() };
-    let snap = load(&dir, &opts).unwrap();
+    let snap = counted_load(&dir, &opts);
     assert_eq!(snap.worktrees[1].changes, DIRTY);
     assert!(!snap.row_of.contains_key(&tip(&dir, "feat")));
     assert!(snap.graph.worktree_wips.is_empty());
@@ -143,7 +159,7 @@ fn counted_while_untrusted() {
     let hook = marker_script(&dir.join(".git/fsmon.sh"), &marker);
     git(&dir, &["config", "core.fsmonitor", &hook]);
 
-    let snap = load(&dir, &LoadOptions { trusted: false, ..LoadOptions::all(100) }).unwrap();
+    let snap = counted_load(&dir, &LoadOptions { trusted: false, ..LoadOptions::all(100) });
     assert!(!snap.trust_scan.is_empty(), "the scan finds the hook");
     assert_eq!(snap.worktrees[1].changes, DIRTY);
     assert_eq!(snap.graph.worktree_wips.len(), 1);

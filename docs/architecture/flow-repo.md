@@ -195,10 +195,10 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 
 ## Other worktrees' changes
 
-- Their WIP rows never hold up a load: `repo::worktree_counts` counts them during the load only while their index is small (`LOAD_COUNT_INDEX` entries, read from the index header) and the load's budget (`LOAD_COUNT_BUDGET`) lasts, and marks the rest `ChangesRead::Pending`.
-- Right after the load `update/worktree_counts.rs` asks for one `WorktreeEffect::CountChanges` (scoped; one per tab at a time, `RefreshState::counting`, kept across unchanged refreshes).
+- Their WIP rows never hold up a load: a full load reads none of them; `repo::worktree_counts::leave_for_later` marks each other worktree it may open `ChangesRead::Pending`, or `Carried` with the counts `Snapshot::prior` had for the same folder at the same HEAD (so a refresh keeps the rows; F5 and opening start Pending).
+- Right after the load `update/worktree_counts.rs` asks for one `WorktreeEffect::CountChanges` for the Pending and Carried ones (scoped; one per tab at a time, `RefreshState::counting`, kept across unchanged refreshes).
 - The runner reads each through git with `COUNT_TIMEOUT` when git may run there, otherwise through libgit2.
-- `WorktreeMsg::ChangesCounted` fills in the counts for the same `refs_key` and lays the graph out again.
+- `WorktreeMsg::ChangesCounted` fills in the counts for the same `refs_key` and lays the graph out again if the set of WIP rows changed; a Carried one left out of the result becomes Counted with its carried counts. Tests in `update/tests/worktree_counts_tests.rs`, `flows/worktree_counts_tests.rs` and `flows/worktree_carry_tests.rs`.
 - A read that times out, or one libgit2 would have to make of a huge index, is `TooLarge` and shown as not counted until the next full load.
 - A reload that keeps the snapshot (the watcher's, a status-only one; not a refs-only check) counts the counted ones again through the same effect (`worktree_counts::recount`), at most once per `RECOUNT_EVERY` (`state/refresh/recount.rs`); one asked for sooner runs on a tick or when the running count ends. Returning to the tab (its `RefreshState` reset) counts at once; returning to the window keeps the interval.
 

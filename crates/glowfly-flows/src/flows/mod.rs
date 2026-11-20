@@ -354,6 +354,7 @@ mod work_files_trash_tests;
 mod work_files_undo_tests;
 mod work_files_unstage_tests;
 mod worktree_branch_tests;
+mod worktree_carry_tests;
 mod worktree_counts_tests;
 mod worktree_manage_tests;
 mod worktree_monitor_tests;

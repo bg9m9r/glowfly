@@ -72,7 +72,8 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let submodules_unread = crate::gitmodules::unread_anywhere(&repo);
     let mut worktrees = worktrees::list(&repo);
     if opts.worktree_wips {
-        super::worktree_counts::count_in_load(&mut worktrees, repo.commondir(), &super::worktree_counts::LoadLimits::DEFAULT);
+        let known = prior.map_or(&[][..], |p| p.worktrees.as_slice());
+        super::worktree_counts::leave_for_later(&mut worktrees, repo.commondir(), known);
     }
     let shallow_roots = super::shallow::roots(&repo);
     let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);

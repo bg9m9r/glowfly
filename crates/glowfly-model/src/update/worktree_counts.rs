@@ -1,7 +1,8 @@
-//! Counting other worktrees' changes after a load. A full load counts only the small ones and
-//! leaves the rest Pending, so one huge linked worktree doesn't hold up the graph; right after it
-//! one background effect (`WorktreeEffect::CountChanges`) counts those, and the result
-//! (`WorktreeMsg::ChangesCounted`) fills in their counts and lays the graph out again. One count
+//! Counting other worktrees' changes after a load. A full load reads none of them; right after it
+//! one background effect (`WorktreeEffect::CountChanges`) counts the Pending ones and those
+//! carried from the snapshot before (Carried, shown with their last counts meanwhile), and the
+//! result (`WorktreeMsg::ChangesCounted`) fills in their counts and lays the graph out again if
+//! the set of WIP rows changed. One count
 //! runs per tab at a time, and it outlives refreshes that find the repository unchanged.
 //!
 //! A reload that keeps the snapshot (the watcher's, a status-only one, or returning to the window,
@@ -18,17 +19,17 @@ use glowfly_core::paths::same_spelling;
 use glowfly_core::repo::{ChangesRead, WorktreeCount, WorktreeInfo, worktree_wip_heads};
 use std::time::Instant;
 
-/// A full load has just counted the other worktrees (`now`): asks for the Pending ones, and the
-/// next recount waits its interval from here.
+/// A full load has just listed the other worktrees, Pending or Carried: asks for their
+/// background count; the next recount waits its interval from here.
 pub(super) fn loaded(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     st.refresh.recount.started(now);
     want(st, fx);
 }
 
-/// Asks for the background count of the snapshot's Pending worktrees, unless one runs already
-/// or the option is off.
+/// Asks for the background count of the snapshot's worktrees the last full load left for it
+/// (Pending or Carried), unless one runs already or the option is off.
 pub(super) fn want(st: &mut AppState, fx: &mut Vec<Effect>) {
-    ask(st, |w| w.read == ChangesRead::Pending, fx);
+    ask(st, |w| matches!(w.read, ChangesRead::Pending | ChangesRead::Carried), fx);
 }
 
 /// Asks for one background count of the snapshot's worktrees `pick` chooses; false when none
@@ -51,11 +52,11 @@ fn ask(st: &mut AppState, pick: impl Fn(&WorktreeInfo) -> bool, fx: &mut Vec<Eff
     true
 }
 
-/// Other worktrees counted before, or whose read a count found Held (not the current one, a
-/// missing one, one too large to count in the background, or a NotCounted one): what a recount
-/// reads again.
+/// Other worktrees counted before (or carried), or whose read a count found Held (not the
+/// current one, a missing one, one too large to count in the background, or a NotCounted one):
+/// what a recount reads again.
 fn recountable(w: &WorktreeInfo) -> bool {
-    !w.current && !w.missing && matches!(w.read, ChangesRead::Counted | ChangesRead::Held)
+    !w.current && !w.missing && matches!(w.read, ChangesRead::Counted | ChangesRead::Held | ChangesRead::Carried)
 }
 
 /// Counts the other worktrees again after a reload that kept the snapshot, at `now`: at once
@@ -96,12 +97,14 @@ pub(super) fn counted(st: &mut AppState, refs_key: u64, counts: Vec<WorktreeCoun
         let rows_before = worktree_wip_heads(&snap.worktrees);
         for wt in snap.worktrees.iter_mut().filter(|w| !w.current) {
             match (counts.iter().find(|c| same_spelling(&c.path, &wt.path)), wt.read) {
-                (Some(c), ChangesRead::Pending | ChangesRead::Counted | ChangesRead::Held) => {
+                (Some(c), ChangesRead::Pending | ChangesRead::Carried | ChangesRead::Counted | ChangesRead::Held) => {
                     wt.read = c.read;
                     wt.changes = c.changes;
                 }
                 // Left out of the result: not asked again, so Pending can't loop.
                 (None, ChangesRead::Pending) => wt.read = ChangesRead::TooLarge,
+                // Left out: its carried counts stand until the next recount.
+                (None, ChangesRead::Carried) => wt.read = ChangesRead::Counted,
                 _ => {}
             }
         }

@@ -8,6 +8,8 @@
 //! named in the old or the new list is read again; and `info/grafts`, which turns the reuse off.
 //! The mailmap is a third thing that changes what a loaded commit shows (its author): when its
 //! text differs from the one the prior was read with, the reuse is off for that load too.
+//! The prior also carries the other worktrees' last counts, for a full load to show until its
+//! background count lands (`worktree_counts::leave_for_later`); `load_more` ignores them.
 
 use super::{Authors, CommitInfo, Snapshot};
 use crate::mailmap::MailmapText;
@@ -65,12 +67,14 @@ pub struct Prior {
     pub frontier: Option<Arc<Frontier>>,
     /// The mailmap its authors were shown with (`Snapshot::mailmap`).
     pub mailmap: MailmapText,
+    /// The other worktrees' last counts, carried until the next load's background count.
+    pub(crate) worktrees: Vec<super::worktree_counts::KnownCount>,
 }
 
 impl std::fmt::Debug for Prior {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let frontier = if self.frontier.is_some() { "yes" } else { "no" };
-        write!(f, "Prior({} commits, frontier: {frontier})", self.commits.len())
+        write!(f, "Prior({} commits, frontier: {frontier}, worktrees: {})", self.commits.len(), self.worktrees.len())
     }
 }
 
@@ -82,6 +86,7 @@ impl Snapshot {
             shallow_roots: self.shallow_roots.clone(),
             frontier: self.frontier.clone(),
             mailmap: self.mailmap.clone(),
+            worktrees: super::worktree_counts::known_counts(&self.worktrees),
         }
     }
 }

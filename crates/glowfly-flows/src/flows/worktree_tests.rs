@@ -69,7 +69,7 @@ fn run(st: &mut AppState, fx: Vec<Effect>) -> Vec<Vec<String>> {
             Effect::Job(glowfly_model::effect::JobEffect::RunGit { cmds, .. }) => ran.extend(cmds.clone()),
             Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. })
             | Effect::Load(glowfly_model::effect::LoadEffect::Status { .. })
-            | Effect::Worktree(WorktreeEffect::CheckFolder(_)) => {}
+            | Effect::Worktree(WorktreeEffect::CheckFolder(_) | WorktreeEffect::CountChanges(_)) => {}
             _ => continue,
         }
         if let Some(m) = glowfly_runner::testing::execute(e) {

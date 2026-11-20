@@ -103,7 +103,7 @@ pub fn right_text(wt: &WorktreeInfo) -> String {
     match wt.read {
         ChangesRead::Pending => out.push_str(" · counting…"),
         ChangesRead::TooLarge => out.push_str(" · not counted"),
-        ChangesRead::NotCounted | ChangesRead::Held | ChangesRead::Counted => {}
+        ChangesRead::NotCounted | ChangesRead::Held | ChangesRead::Counted | ChangesRead::Carried => {}
     }
     out
 }
@@ -125,7 +125,7 @@ pub fn tooltip(wt: &WorktreeInfo) -> String {
         ChangesRead::TooLarge => {
             lines.push("Too large to count its uncommitted changes in the background. Open it in a tab to see them.".to_owned())
         }
-        ChangesRead::NotCounted | ChangesRead::Held | ChangesRead::Counted => {}
+        ChangesRead::NotCounted | ChangesRead::Held | ChangesRead::Counted | ChangesRead::Carried => {}
     }
     if wt.current {
         lines.push("Open in this tab.".to_owned());

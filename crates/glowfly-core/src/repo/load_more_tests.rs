@@ -1,4 +1,5 @@
 use super::*;
+use crate::repo::worktrees::wip_tests::counted_load;
 use crate::testutil::*;
 use git2::Oid;
 use std::collections::HashMap;
@@ -209,13 +210,13 @@ fn a_worktree_row_past_the_first_page_lands_with_its_commit() {
     write(&dir, "dirty.txt", "changed\n");
 
     let opts = |n| LoadOptions::all(n);
-    let mut s = load(&dir, &opts(20)).unwrap();
+    let mut s = counted_load(&dir, &opts(20));
     assert!(s.graph.wip.is_some(), "the main worktree is dirty");
     assert!(s.graph.worktree_wips.is_empty(), "the worktree's commit isn't loaded yet");
     while s.truncated {
         let want = s.commits.len() + 40;
         s.extend_history(page(&dir, &s, want)).ok().unwrap();
-        same_history(&s, &load(&dir, &opts(want)).unwrap(), &format!("at {want}"));
+        same_history(&s, &counted_load(&dir, &opts(want)), &format!("at {want}"));
     }
     let [w] = &s.graph.worktree_wips[..] else { panic!("one worktree row: {:?}", s.graph.worktree_wips) };
     assert_eq!(s.commits[w.before].oid, main[3]);
