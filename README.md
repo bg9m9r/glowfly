@@ -176,8 +176,9 @@ board) under Preferences > This repository > Issue tracker.
   Trello gets the card link.
 - **Credentials**: an environment variable, then a token saved in the system's credential store
   (Windows Credential Manager, the macOS Keychain or the Secret Service on Linux), then Git
-  Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5
-  minutes) never show a sign-in window.
+  Credential Manager (the same sign-in `git push` uses). Background refreshes (every 5 minutes)
+  ask Git Credential Manager only for accounts connected in Preferences and never show a sign-in
+  window; for an account you haven't connected, Sign in (or creating a pull request) asks it.
 - **Live check**: `GLOWFLY_LIVE_REMOTE=<url> cargo test live_remote -- --ignored --nocapture` runs
   read-only API calls against a real service.
 
