@@ -79,17 +79,48 @@ fn changed_tree(name: &str) -> PathBuf {
     dir
 }
 
-/// The counts for the rows of both ways of reading the status equal the whole-tree counts.
+/// A status read's rows: (unstaged, staged).
+type Rows = (Vec<FileEntry>, Vec<FileEntry>);
+
+/// The rows of both ways of reading the status: (git's, libgit2's). The repository is set up for
+/// git's fast status reads (`wants_git`), and git is run through `status_cli` here as well, so
+/// that a git failure can't fall back to libgit2's rows unseen.
+fn both_rows(dir: &Path) -> (Rows, Rows) {
+    git(dir, &["config", "core.untrackedCache", "true"]);
+    let repo = git2::Repository::open(dir).unwrap();
+    assert!(crate::repo::status::wants_git(&repo), "the fixture should take the git route");
+    let (raw_unstaged, raw_staged) = crate::repo::status_cli::status(&repo, dir).expect("git reads the status");
+    let (unstaged, staged, _) = status_at(dir, true).unwrap();
+    // `status_at` also marks LFS pointers, which git's own rows don't carry.
+    let plain = |rows: &[FileEntry]| rows.iter().map(|f| (f.path.clone(), f.status, f.renamed_from.clone())).collect::<Vec<_>>();
+    assert_eq!((plain(&raw_unstaged), plain(&raw_staged)), (plain(&unstaged), plain(&staged)), "status_at takes the git route");
+    let (lib_unstaged, lib_staged, _) = status_at(dir, false).unwrap();
+    ((unstaged, staged), (lib_unstaged, lib_staged))
+}
+/// git's rows and libgit2's are the same, but for an intent-to-add file: git reads it as untracked
+/// (`status_cli::changed`), libgit2 as added in the index and modified in the work tree.
+fn assert_same_rows(by_git: &Rows, by_libgit2: &Rows) {
+    let rest = |rows: &[FileEntry]| rows.iter().filter(|f| f.path != "ita.txt").cloned().collect::<Vec<_>>();
+    assert_eq!((rest(&by_git.0), rest(&by_git.1)), (rest(&by_libgit2.0), rest(&by_libgit2.1)), "git's rows and libgit2's rows");
+    let ita = |rows: &[FileEntry]| rows.iter().find(|f| f.path == "ita.txt").map(|f| f.status);
+    if ita(&by_git.0).is_some() {
+        assert_eq!((ita(&by_git.0), ita(&by_git.1)), (Some('?'), None), "git's rows for an intent-to-add file");
+        assert_eq!((ita(&by_libgit2.0), ita(&by_libgit2.1)), (Some('M'), Some('A')), "libgit2's rows for it");
+    }
+}
+
+/// The counts for the rows of both ways of reading the status equal the whole-tree counts, and
+/// the two ways give the same rows.
 fn assert_scoped_matches(dir: &Path) -> WipLineCounts {
     let whole = wip_line_counts(dir).unwrap();
-    for git_status in [true, false] {
-        let (unstaged, staged, _) = status_at(dir, git_status).unwrap();
+    let (by_git, by_libgit2) = both_rows(dir);
+    assert_same_rows(&by_git, &by_libgit2);
+    for ((unstaged, staged), way) in [(by_git, "git"), (by_libgit2, "libgit2")] {
         let scoped = wip_line_counts_of(dir, &WipPaths::of(&staged, &unstaged)).unwrap();
-        assert_eq!(scoped, whole, "git_status {git_status}");
+        assert_eq!(scoped, whole, "rows read by {way}");
     }
     whole
 }
-
 #[test]
 fn scoped_counts_match_the_whole_tree() {
     let dir = changed_tree("wipscope-all");
@@ -249,9 +280,8 @@ fn git_and_libgit2_rows_match_with_a_submodule_an_intent_to_add_file_and_a_binar
     git(&parent, &["add", "-N", "ita.txt"]);
     put(&parent, "new.bin", "\0\0");
     put(&parent, "art.psd", &pointer('c'));
-    let (u_git, s_git, _) = status_at(&parent, true).unwrap();
-    let (u_lib, s_lib, _) = status_at(&parent, false).unwrap();
-    assert_eq!((&u_git, &s_git), (&u_lib, &s_lib));
+    let ((u_git, s_git), (u_lib, s_lib)) = both_rows(&parent);
+    assert_same_rows(&(u_git.clone(), s_git), &(u_lib, s_lib));
     assert!(u_git.iter().any(|f| f.path == "art.psd" && f.lfs), "{u_git:?}");
     clean_submodule_fixture(&parent);
 }
