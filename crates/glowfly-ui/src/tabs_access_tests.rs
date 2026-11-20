@@ -84,8 +84,9 @@ fn tab_walks_the_preferences_navigation_rows() {
         h.run();
         let id = h.ctx.memory(|m| m.focused()).expect("Tab focuses something");
         let at = h.ctx.read_response(id).map(|r| r.rect).expect("a drawn target");
-        // The navigation column is 250 px wide, its rows the column's full width.
-        if at.left() <= 0.5 && (at.width() - 250.0).abs() <= 1.0 {
+        // The navigation column is 250 px wide, its rows the column's width less the 8 px the
+        // scroll cue keeps free beside its bar.
+        if at.left() <= 0.5 && (at.width() - 242.0).abs() <= 1.0 {
             rows.push(id);
         }
     }
