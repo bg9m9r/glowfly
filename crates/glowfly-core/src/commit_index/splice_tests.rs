@@ -101,6 +101,7 @@ fn unchanged_refs_copy_the_whole_base() {
     assert_eq!((c.read, c.walked, c.splice_at, c.spliced), (0, 0, Some(0), base.len()));
     assert_eq!(full(&updated), full(&base));
     assert!(updated.complete());
+    same_search(&updated, &base);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -212,10 +213,12 @@ fn a_capped_update_splices_up_to_the_cap() {
     assert_eq!((c.splice_at, c.spliced), (Some(0), 3));
     let fresh4 = build_counted(&dir, &key, None, &mut |_| {}, &|| false, &Pace::capped(4)).unwrap().unwrap().0;
     assert_eq!(full(&four), full(&fresh4));
+    same_search(&four, &fresh4);
 
     let (six, c) = capped(6);
     assert_eq!((six.len(), six.complete(), c.spliced), (6, true, 5));
     assert_eq!(full(&six), full(&fresh));
+    same_search(&six, &fresh);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -248,9 +251,50 @@ fn progress_grows_during_the_bulk_copy() {
     let key = IndexKey::of(&snapshot(&dir, LoadOptions::all(1000)));
     let mut seen = Vec::new();
     let (updated, _) = build_counted(&dir, &key, Some(&base), &mut |p| seen.push(p), &|| false, &every_commit()).unwrap().unwrap();
+    let fresh = index(&dir, &snapshot(&dir, LoadOptions::all(1000)), None);
+    assert_eq!(full(&updated), full(&fresh));
+    same_search(&updated, &fresh);
     assert!(seen.len() > 2, "{seen:?}");
     assert!(seen.windows(2).all(|w| w[1].indexed > w[0].indexed), "{seen:?}");
     assert!(seen.iter().all(|p| p.estimate.is_none()));
     assert!(seen.last().unwrap().indexed <= updated.len());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `base` with two commits that tie on time (and are not parent and child) swapped: the order
+/// another version's walk might have left them in.
+fn with_a_tie_swapped(mut base: CommitIndex) -> CommitIndex {
+    let i = (0..base.len() - 1)
+        .find(|&i| {
+            let (a, b) = (base.entries[i], base.entries[i + 1]);
+            a.time == b.time && !base.walked(a.oid).unwrap().2.contains(&b.oid) && !base.walked(b.oid).unwrap().2.contains(&a.oid)
+        })
+        .expect("the fixture has tied commits");
+    base.entries.swap(i, i + 1);
+    for j in [i, i + 1] {
+        base.by_oid.insert(base.entries[j].oid, j as u32);
+    }
+    base
+}
+
+#[test]
+fn a_base_whose_positions_are_not_trusted_is_walked_not_spliced() {
+    let dir = branchy("splice-untrusted");
+    let mut base = with_a_tie_swapped(base_of(&dir));
+    commit_at(&dir, "new1", 700);
+    let after = snapshot(&dir, LoadOptions::all(1000));
+    let fresh = index(&dir, &after, None);
+
+    // Trusted, the swapped tail would be copied as it is: the check that this fixture bites.
+    let (copied, c) = update(&dir, &after, &base);
+    assert_eq!(c.splice_at, Some(0));
+    assert_ne!(full(&copied), full(&fresh));
+
+    base.trusted = false;
+    let (updated, c) = update(&dir, &after, &base);
+    assert_eq!((c.splice_at, c.spliced, c.read), (None, 0, 1));
+    assert_eq!(full(&updated), full(&fresh));
+    same_search(&updated, &fresh);
+    assert!(updated.trusted, "an index built here has this version's walk order");
     let _ = std::fs::remove_dir_all(&dir);
 }
