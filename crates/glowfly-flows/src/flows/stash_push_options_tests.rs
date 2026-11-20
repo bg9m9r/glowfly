@@ -191,7 +191,7 @@ fn keep_index_stash_end_to_end() {
     assert_eq!(rows(&snap.staged), [('M', "a.txt")]);
     assert!(!snap.unstaged.iter().any(|f| f.path == "b.txt" || f.path == "c.txt"), "{:?}", snap.unstaged);
 
-    // Undo puts every part back where it was: pop --index finds the index unchanged.
+    // Undo puts every part back where it was: the plain pop keeps the staged change staged.
     drive(&mut st, Msg::Job(JobMsg::Undo));
     let snap = st.snap.as_ref().unwrap();
     assert!(snap.stashes.is_empty(), "no stashes left");

@@ -1,7 +1,7 @@
 //! "Stash changes and undo": local changes go into a stash whose message carries this run's nonce
 //! (`undo::undo_stash_message`), the refused undo runs, and the stash is found again only by that
-//! message and its commit id. The stash is never dropped except by a `git stash pop --index` that
-//! worked; anything else leaves it in the list and the result says so (`UndoStash`).
+//! message and its commit id. The stash is never dropped except by a `git stash pop` that
+//! worked (`--index` unless something is staged); anything else leaves it in the list and the result says so (`UndoStash`).
 //!
 //! - A merge, pull, cherry-pick, revert or rebase undo (`Action::restores_stash`) stashes staged
 //!   and unstaged changes only (untracked files stay, and git refuses rather than write over
@@ -108,8 +108,9 @@ pub(super) fn stash_and_undo(cwd: &Path, action: Action, redo: bool, opts: UndoO
     }
 }
 
-/// Puts stash `stash` back with `pop --index` only: `None` when it worked, else what became of
-/// it, with the line naming the stash that stays.
+/// Puts stash `stash` back with `pop --index` (plain when something is staged), never retrying
+/// plainly: `None` when it worked, else what became of it, with the line naming the stash that
+/// stays.
 pub(super) fn put_back(cwd: &Path, git: UndoGit, stash: git2::Oid, message: &str, text: &mut String) -> Option<StashHow> {
     // Through the trust gate too: a pop it holds runs nothing, and the stash stays.
     let mut held = false;

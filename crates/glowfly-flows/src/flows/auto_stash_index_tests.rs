@@ -88,3 +88,27 @@ fn a_put_back_that_cannot_restore_the_index_says_so() {
     assert_eq!(stash_count(&dir), 0);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_put_back_over_a_squash_keeps_it_staged() {
+    let (mut st, dir) = two_branches("asi-squash");
+    std::fs::write(dir.join("a.txt"), "one\nmine\n").unwrap();
+    git(&dir, &["add", "a.txt"]);
+    std::fs::write(dir.join("f.txt"), "1\n2\n3\n4\n5\n6\n7\nmine\n").unwrap();
+    drive(&mut st, Msg::Repo(RepoMsg::Refresh));
+    assert!(up(&mut st, Msg::git("Merge", &["merge", "--squash", "feature"])).is_empty());
+    ask(&st);
+    let fx = up(&mut st, Msg::AutoStash(AutoStashMsg::Stash));
+    finish(&mut st, fx);
+    let snap = st.snap.as_ref().unwrap();
+    assert_eq!(paths(&snap.staged), vec!["f.txt"], "the squash result stays staged");
+    assert_eq!(paths(&snap.unstaged), vec!["a.txt", "f.txt"], "the stash's changes come back unstaged");
+    let toast = st.toasts.iter().rev().find(|t| t.text.starts_with("Your changes from")).expect("the back toast");
+    assert!(toast.ok && toast.text.ends_with("are back."), "{}", toast.text);
+    assert!(logged(&st, "$ git stash pop stash@{0}") && !logged(&st, "stash pop --index"));
+    let text = std::fs::read_to_string(dir.join("f.txt")).unwrap().replace("\r\n", "\n");
+    assert!(text.contains("feature\n") && text.contains("\nmine\n"), "{text}");
+    assert_eq!(stash_count(&dir), 0);
+    assert!(st.auto_stash.pending.is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}

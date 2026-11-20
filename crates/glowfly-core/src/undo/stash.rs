@@ -1,4 +1,5 @@
-//! Undoing stashes. A stash push is undone by popping that stash back (with its index), as long
+//! Undoing stashes. A stash push is undone by popping that stash back (with its index, unless
+//! something is staged then: git would reset the index and lose that selection), as long
 //! as none of the paths it holds has changed since (staged files a push of selected files left as
 //! they were don't count). A pop or apply onto a clean working tree is
 //! undone by putting the stash back in the list (when it was dropped) and clearing what it
@@ -145,7 +146,7 @@ pub(super) fn plan_push(workdir: &Path, repo: &Repository, action: &Action, head
     if let Some(refused) = super::in_the_way::check_stash(workdir, repo, *stash, *head, action, redo)? {
         return Ok(refused);
     }
-    Ok(Plan::Run(vec![args(&["stash", "pop", "--index", &stash_ref(n)])]))
+    Ok(Plan::Run(vec![crate::stash_ops::apply_command(true, n, !crate::stash_ops::anything_staged(workdir))]))
 }
 
 /// Undoes (or redoes) a pop or apply onto a clean working tree.

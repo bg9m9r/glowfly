@@ -5,10 +5,12 @@
 //! out feature"), so the STASHES list can recognise it whatever language the UI shows. It is
 //! made with `git stash push -m` in the same job as the operation (untracked files stay, as with
 //! git's own `--autostash`) and put back with `git stash pop --index`, so what was staged comes
-//! back staged. When git can't restore the staged state (the staged hunks no longer fit the
-//! index) it changes nothing, and a plain `git stash pop` follows, bringing everything back
-//! unstaged. On conflicts git keeps the entry.
+//! back staged; when something is staged by then, the plain `git stash pop` runs instead, since
+//! `--index` would reset the index and lose that selection. When git can't restore the staged
+//! state (the staged hunks no longer fit the index) it changes nothing, and a plain
+//! `git stash pop` follows, bringing everything back unstaged. On conflicts git keeps the entry.
 
+use super::apply::{anything_staged, apply_command, index_refusal};
 use super::{list, split_message};
 use crate::gitcli::{self, args};
 use crate::repo::StashInfo;
@@ -243,18 +245,22 @@ pub fn prepare_put_back(workdir: &Path, oid: Oid) -> Result<usize, (PutBack, Str
     }
 }
 
-/// Runs `git stash pop --index stash@{index}` (found by `prepare_put_back` for `oid`) and tells
+/// Runs `git stash pop --index stash@{index}` (found by `prepare_put_back` for `oid`), or the
+/// plain `git stash pop` when something is staged (git would reset the index and lose that
+/// selection; the stash's changes then come back unstaged and it reports `Restored`), and tells
 /// what happened, with the commands and their output for the log. When git refuses to restore
 /// the index ("Try without --index": nothing changed, the entry is kept), it runs a plain
-/// `git stash pop` straight away and reports `RestoredUnstaged` when that works.
+/// `git stash pop` straight away and reports `RestoredUnstaged` when that works; the plain retry
+/// only follows a refused `--index`.
 pub fn pop_put_back(workdir: &Path, index: usize, oid: Oid) -> (PutBack, String) {
-    let (ok, mut output, listed) = pop(workdir, &args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]), oid);
+    let with_index = !anything_staged(workdir);
+    let (ok, mut output, listed) = pop(workdir, &apply_command(true, index, with_index), oid);
     let paths = conflicted_paths(workdir);
-    if !ok && listed && paths.is_empty() && super::apply::index_refusal(&output) {
+    if !ok && with_index && listed && paths.is_empty() && index_refusal(&output) {
         let Some(again) = list(workdir).ok().and_then(|l| l.iter().find(|s| s.oid == oid).map(|s| s.index)) else {
             return (PutBack::Failed, output);
         };
-        let (ok, text, listed) = pop(workdir, &args(&["stash", "pop", &format!("stash@{{{again}}}")]), oid);
+        let (ok, text, listed) = pop(workdir, &apply_command(true, again, false), oid);
         output.push('\n');
         output.push_str(&text);
         return match classify(workdir, ok, listed) {
@@ -265,9 +271,9 @@ pub fn pop_put_back(workdir: &Path, index: usize, oid: Oid) -> (PutBack, String)
     (classify_with(ok, listed, paths), output)
 }
 
-/// Puts stash `oid` back with `git stash pop --index` only, never falling back to a plain pop:
-/// when git can't restore the staged state too, or anything else goes wrong, the entry stays
-/// in the list (`Failed` or `Conflicted`). Refused, changing nothing, while an operation is in
+/// Puts stash `oid` back with `git stash pop --index` (the plain pop when something is staged,
+/// keeping that selection), never retrying with a plain pop after git refuses the staged state:
+/// when git can't restore it, or anything else goes wrong, the entry stays in the list (`Failed` or `Conflicted`). Refused, changing nothing, while an operation is in
 /// progress or files are conflicted (`NotReady`), or when the stash is gone (`Gone`).
 pub fn pop_index(workdir: &Path, oid: Oid) -> (PutBack, String) {
     pop_index_with(workdir, oid, &mut |cmd| logged(workdir, cmd))
@@ -280,7 +286,8 @@ pub fn pop_index_with(workdir: &Path, oid: Oid, run: &mut dyn FnMut(&[String]) -
         Ok(i) => i,
         Err(refused) => return refused,
     };
-    let (ok, output) = run(&args(&["stash", "pop", "--index", &format!("stash@{{{index}}}")]));
+    let with_index = !anything_staged(workdir);
+    let (ok, output) = run(&apply_command(true, index, with_index));
     let listed = list(workdir).map(|l| l.iter().any(|s| s.oid == oid)).unwrap_or(true);
     (classify_with(ok, listed, conflicted_paths(workdir)), output)
 }

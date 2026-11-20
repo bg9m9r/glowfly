@@ -1,5 +1,6 @@
-//! Stash push, pop and apply: undoing a push pops it back with its index; undoing a pop or apply
-//! onto a clean tree puts the stash back and clears what it applied.
+//! Stash push, pop and apply: undoing a push pops it back with its index (plain when something is
+//! staged); undoing a pop or apply onto a clean tree puts the stash back and clears what it
+//! applied.
 
 use super::tests::{cmds, commit, refused, run_plan};
 use super::*;
@@ -96,7 +97,7 @@ fn stash_push_keep_index_undo() {
     let action = action.expect("recorded");
     assert_eq!(split(&dir), (vec![], vec!["Mb.txt".to_owned()]), "only the staged change is left");
     let undo = plan(&dir, &action, false).unwrap();
-    assert_eq!(undo, cmds(&[&["stash", "pop", "--index", "stash@{0}"]]));
+    assert_eq!(undo, cmds(&[&["stash", "pop", "stash@{0}"]]));
     run_plan(&dir, undo);
     assert_eq!(split(&dir), dirty);
     assert!(stashes(&dir).is_empty());
@@ -166,7 +167,7 @@ fn partial_stash_undo_allows_staged_files_it_left_alone() {
     assert_eq!(split(&dir), (vec![], vec!["Mb.txt".to_owned()]), "b.txt stays staged");
     write(&dir, "b.txt", "b edited after\n");
     let undo = plan(&dir, &action, false).unwrap();
-    assert_eq!(undo, cmds(&[&["stash", "pop", "--index", "stash@{0}"]]));
+    assert_eq!(undo, cmds(&[&["stash", "pop", "stash@{0}"]]));
     run_plan(&dir, undo);
     assert_eq!(split(&dir), (vec!["Ma.txt".to_owned(), "Mb.txt".to_owned()], vec!["Mb.txt".to_owned()]));
     assert_eq!(std::fs::read_to_string(dir.join("b.txt")).unwrap(), "b edited after\n");

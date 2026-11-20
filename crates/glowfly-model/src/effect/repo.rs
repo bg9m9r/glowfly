@@ -198,7 +198,7 @@ pub struct UndoStash {
 /// What became of the changes "Stash changes and undo" stashed.
 #[derive(Clone, Debug, PartialEq)]
 pub enum StashHow {
-    /// Nothing was undone, and they are back as they were (`pop --index`).
+    /// Nothing was undone, and they are back as they were (`pop --index`, or plain over staged changes).
     Back,
     /// They stay in the list: by design (`Action::restores_stash` is false), or because the undo
     /// failed partway.
