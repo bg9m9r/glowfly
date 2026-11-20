@@ -168,13 +168,18 @@ fn trello_words_and_refs() {
     assert!(!fs.links_issue("Fixes AbCd1234", "AbCd1234"), "a bare id isn't a link");
 
     // An expired token drops the cached sign-in, so the next refresh reads the saved one again.
-    fs.auth.insert(acct().key(), Auth::from_token(Provider::Trello, Some("k"), "t", "saved token"));
+    st.auth_cache.store(
+        acct().key(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::Trello, Some("k"), "t", "saved token"),
+        true,
+    );
     fs.loading = 1;
     let error = ForgeError { message: "authentication failed: the Trello token has expired".into(), auth: true };
-    let reply = ForgeReply { target: tracker, auth: None, results: vec![ForgeResult::MyIssues(Err(error))] };
+    let reply = ForgeReply { target: tracker, results: vec![ForgeResult::MyIssues(Err(error))] };
     run(&mut st, ForgeMsg::ForgeReplied(reply));
     let fs = st.session.forge.as_ref().unwrap();
-    assert!(!fs.auth.contains_key(&acct().key()));
+    assert!(st.auth_cache.get(&acct().key(), &glowfly_model::state::AppState::outside_dir(), false).is_none());
     assert!(matches!(&fs.tracker_status, Status::Error(e) if e.contains("expired")));
 
     // Other trackers keep their words.

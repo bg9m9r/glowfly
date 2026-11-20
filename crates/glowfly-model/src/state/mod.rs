@@ -6,6 +6,7 @@ pub mod activity_rows;
 pub mod am_banner;
 mod app_queries;
 pub mod askpass;
+pub mod auth_cache;
 pub mod auto_stash;
 pub mod blame;
 pub mod blame_find;
@@ -308,6 +309,8 @@ pub struct AppState {
     pub custom_commands: custom_commands::CustomCommands,
     /// The first-run welcome and the tour (global, not per tab; nothing saved but the welcome flag).
     pub onboarding: onboarding::Onboarding,
+    /// Hosting-service credentials shared by every tab and the dashboard (global, never parked).
+    pub auth_cache: auth_cache::AuthCache,
     /// The cross-repository dashboard: global, not parked with a tab.
     pub dashboard: dashboard::Dashboard,
     /// Auto-stashes being made or waiting to be put back, per workdir: global, not parked.
@@ -381,6 +384,7 @@ impl AppState {
             trust: Default::default(),
             custom_commands: Default::default(),
             onboarding: Default::default(),
+            auth_cache: Default::default(),
             dashboard: Default::default(),
             auto_stash: Default::default(),
             updates: Default::default(),

@@ -32,9 +32,9 @@ pub(super) fn view(st: &mut AppState, name: &str, fx: &mut Vec<Effect>) {
 /// A request for `target` with this session's credential for it, if any.
 fn req(st: &AppState, workdir: PathBuf, target: Target) -> ForkRequest {
     let account = target.account();
-    let auth = st.session.forge.as_ref().and_then(|f| f.auth.get(&account.key())).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
     let cwd = st.credentials_dir_for(&workdir);
+    let auth = st.auth_cache.get(&account.key(), &cwd, false).cloned();
     ForkRequest { workdir, cwd, target, auth, connected }
 }
 

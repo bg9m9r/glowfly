@@ -165,7 +165,7 @@ fn a_moved_tip_asks_again() {
     finish_keeping(&mut st, fx);
     assert!(matches!(placement(view(&st)), Placement::Mapped(_)));
     let z = local_commit(&dirs[0], "new1\nnew2\nfeature\nmore\n");
-    let reply = ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr(7, Some(z))]))] };
+    let reply = ForgeReply { target: github(), results: vec![ForgeResult::Prs(Ok(vec![pr(7, Some(z))]))] };
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     assert_eq!(current(view(&st)), None, "the old maps aren't used while the files load");
     assert!(marks(view(&st), "f.txt").is_none());

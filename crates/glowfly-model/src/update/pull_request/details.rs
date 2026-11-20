@@ -64,10 +64,10 @@ pub(in crate::update) fn send_next(st: &mut AppState, fx: &mut Vec<Effect>) {
     }
 }
 
-/// A chunk's answer, filled in as it comes; true when a listed pull request changed. A failure
-/// (or an answer cut short by one) stops the pass until the next refresh, and never changes the
-/// host's status or what is shown.
-pub(in crate::update) fn replied(fs: &mut ForgeState, result: Result<Vec<PrDetails>, ForgeError>, key: &str, now: Instant) -> bool {
+/// A chunk's answer, filled in as it comes: whether a listed pull request changed, and whether
+/// the service rejected the credential. A failure (or an answer cut short by one) stops the pass
+/// until the next refresh, and never changes the host's status or what is shown.
+pub(in crate::update) fn replied(fs: &mut ForgeState, result: Result<Vec<PrDetails>, ForgeError>, now: Instant) -> (bool, bool) {
     fs.details.in_flight = false;
     let asking = std::mem::take(&mut fs.details.asking);
     let list = match result {
@@ -75,10 +75,7 @@ pub(in crate::update) fn replied(fs: &mut ForgeState, result: Result<Vec<PrDetai
         Err(e) => {
             tracing::debug!("pull request details: {}", e.message);
             fs.details.queue.clear();
-            if e.auth {
-                fs.auth.remove(key);
-            }
-            return false;
+            return (false, e.auth);
         }
     };
     let cut_short = list.len() < asking.len();
@@ -100,5 +97,5 @@ pub(in crate::update) fn replied(fs: &mut ForgeState, result: Result<Vec<PrDetai
         let moved: Vec<u64> = fs.prs.iter().filter(|p| asking.contains(&p.id) && fs.details.stale(p, now)).map(|p| p.id).collect();
         fs.details.queue.extend(moved);
     }
-    changed
+    (changed, false)
 }

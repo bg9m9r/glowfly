@@ -2,33 +2,43 @@
 //! background (`Effect::Partial`).
 
 use super::execute::{Cx, Execute};
+use super::sign_ins::{Ask, sign_in};
 use glowfly_core::forge;
 use glowfly_core::gitcli::Stop;
 use glowfly_core::history_size::{HistorySize, SizeSource, local_store_bytes};
 use glowfly_model::effect::partial::{ContentRequest, HistorySizeRequest, PartialEffect};
 use glowfly_model::msg::{ContentFailure, Msg, PartialMsg};
 
-pub(super) fn run(e: PartialEffect, stop: Option<&Stop>) -> Msg {
+pub(super) fn run(e: PartialEffect, cx: &Cx<'_>) -> Msg {
     match e {
-        PartialEffect::SizeHistory(r) => size(r),
-        PartialEffect::FetchContent(r) => fetch(r, stop),
+        PartialEffect::SizeHistory(r) => size(r, cx),
+        PartialEffect::FetchContent(r) => fetch(r, cx.stop),
     }
 }
 
 impl Execute for PartialEffect {
     fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self, cx.stop))
+        Some(run(self, cx))
     }
 }
 
 /// The hosting service's reported size, else the size on disk of a source on this computer.
-fn size(r: HistorySizeRequest) -> Msg {
+fn size(r: HistorySizeRequest, cx: &Cx<'_>) -> Msg {
     let HistorySizeRequest { workdir, id, url, service } = r;
     let reported = service.and_then(|s| {
-        let account = s.target.account();
         let auth = match s.auth {
             Some(a) => Ok(a),
-            None => forge::resolve_auth(&account, &workdir, false, s.connected),
+            None => {
+                let ask = Ask {
+                    account: s.target.account(),
+                    cwd: &workdir,
+                    interactive: false,
+                    connected: s.connected,
+                    env_only: false,
+                    asked: false,
+                };
+                sign_in(cx, ask)
+            }
         };
         match auth.and_then(|a| forge::repo_size(&s.target, &a)) {
             Ok(bytes) => bytes.map(|bytes| HistorySize::Known { bytes, source: SizeSource::Service(s.target.provider.name().to_owned()) }),

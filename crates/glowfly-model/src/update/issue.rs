@@ -62,9 +62,9 @@ pub(super) fn request(st: &AppState) -> Result<IssueRequest, String> {
     if !forge::may_contact(&account, &st.settings.connections) {
         return Err(format!("not connected to {} at {}", account.provider.name(), account.display()));
     }
-    let auth = fs.auth.get(&account.key()).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
     let cwd = st.credentials_dir_for(&workdir);
+    let auth = st.auth_cache.get(&account.key(), &cwd, false).cloned();
     Ok(IssueRequest { workdir, cwd, target, auth, connected })
 }
 
@@ -114,11 +114,8 @@ fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, k
     if !current || !st.session.issue.view.as_ref().is_some_and(|v| v.key == key && &v.target == target) {
         return;
     }
-    if let Err(e) = &result
-        && e.auth
-        && let Some(fs) = st.session.forge.as_mut()
-    {
-        fs.auth.remove(&target.account().key());
+    if result.as_ref().is_err_and(|e| e.auth) {
+        st.auth_cache.forget(&target.account().key());
     }
     let Some(v) = st.session.issue.view.as_mut() else { return };
     v.reloading = false;

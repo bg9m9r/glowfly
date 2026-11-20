@@ -34,7 +34,8 @@ pub(super) fn start(st: &mut AppState, remote: String, fx: &mut Vec<Effect>) {
         .and_then(|u| forge::parse_remote(u, connections))
         .filter(|t| forge::may_contact(&t.account(), connections))
         .map(|target| SizeService {
-            auth: st.session.forge.as_ref().and_then(|f| f.auth.get(&target.account().key())).cloned(),
+            // The runner signs in from the repository's own folder.
+            auth: st.auth_cache.get(&target.account().key(), &workdir, false).cloned(),
             connected: forge::is_connected(&target.account(), connections),
             target,
         });

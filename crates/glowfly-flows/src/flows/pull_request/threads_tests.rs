@@ -156,12 +156,17 @@ fn resolve_auth_error_drops_cached_auth() {
     let (mut st, _, dirs) = opened("prt-auth");
     loaded_threads(&mut st, vec![thread("T1", "f.txt", Some(1))], |_| {});
     let key = github().account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     run(&mut st, PullRequestMsg::Resolve { thread: "T1".into(), resolve: true });
     let failed = ForgeError { message: "authentication failed: 401".into(), auth: true };
     let msg = reply_msg(&st, PrReply::Resolved { thread: "T1".into(), resolve: true, result: Err(failed) });
     run(&mut st, msg);
-    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_none());
     assert!(st.log.last().is_some_and(|l| l.text == "Resolving a thread on #7 failed: authentication failed: 401"));
     assert_eq!(view(&st).action_error.as_ref().map(|(a, _)| a.clone()), Some(PrAction::Resolve("T1".into())));
     done(st, dirs);

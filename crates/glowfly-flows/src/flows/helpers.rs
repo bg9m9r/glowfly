@@ -250,7 +250,7 @@ fn forge_replies_update_pull_requests_and_errors() {
         url: "u".into(),
         facets: Default::default(),
     };
-    let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
+    let reply = ForgeReply { target: target.clone(), results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.prs.len(), 1);
@@ -258,7 +258,7 @@ fn forge_replies_update_pull_requests_and_errors() {
     assert_eq!(fs.host_status, Status::Ok);
     assert_eq!(fs.pr_label(7), "#7");
 
-    let reply = ForgeReply { target: target.clone(), auth: None, results: vec![ForgeResult::AuthFailed("not signed in".into())] };
+    let reply = ForgeReply { target: target.clone(), results: vec![ForgeResult::AuthFailed("not signed in".into())] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.host_status, Status::Error("not signed in".into()));
@@ -267,7 +267,7 @@ fn forge_replies_update_pull_requests_and_errors() {
     let other = Target { repo: "elsewhere".into(), ..target };
     update(
         &mut st,
-        Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target: other, auth: None, results: vec![ForgeResult::Prs(Ok(Vec::new()))] })),
+        Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target: other, results: vec![ForgeResult::Prs(Ok(Vec::new()))] })),
         Instant::now(),
     );
     assert_eq!(st.session.forge.as_ref().unwrap().prs.len(), 1);

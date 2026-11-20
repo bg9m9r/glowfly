@@ -29,9 +29,9 @@ pub(super) fn service_request(st: &AppState) -> Result<PrRequest, String> {
     if !forge::may_contact(&account, &st.settings.connections) {
         return Err(format!("not connected to {} at {}", account.provider.name(), account.display()));
     }
-    let auth = fs.auth.get(&account.key()).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
     let cwd = st.credentials_dir_for(&workdir);
+    let auth = st.auth_cache.get(&account.key(), &cwd, false).cloned();
     Ok(PrRequest { workdir, cwd, target, auth, connected })
 }
 
@@ -191,10 +191,7 @@ pub(super) fn replied(
         _ => false,
     };
     if active && failed_auth {
-        let key = target.account().key();
-        if let Some(fs) = st.session.forge.as_mut() {
-            fs.auth.remove(&key);
-        }
+        st.auth_cache.forget(&target.account().key());
     }
     let prefix = target.provider.pr_prefix();
     let label = format!("{prefix}{id}");

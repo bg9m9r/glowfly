@@ -116,36 +116,34 @@ pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
     run_issue_query(st, true, fx);
 }
 
-/// A filter call's answer from the service whose account key is `key`; `from_host` and
-/// `from_tracker` say which of the repository's services it is. An answer from a service the
-/// state no longer uses for that kind (the tracker changed), or asked under an earlier account,
-/// is dropped.
-pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, key: &str, from_host: bool, from_tracker: bool) {
+/// A filter call's answer from the code host and/or the tracker (`from_host` and `from_tracker`
+/// say which of the repository's services it is). An answer from a service the state no longer
+/// uses for that kind (the tracker changed), or asked under an earlier account, is dropped.
+/// True when the service rejected the credential: the account's sign-in is to be forgotten.
+pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, from_host: bool, from_tracker: bool) -> bool {
     match r {
         FilterResult::Me { epoch, result } => {
             if !from_host || epoch != fs.filters.host_epoch {
-                return;
+                return false;
             }
             match result {
                 Ok(me) => fs.filters.me = MeState::Known(me),
                 Err(e) => {
-                    if e.auth {
-                        fs.auth.remove(key);
-                    }
                     fs.filters.me = MeState::Failed(e.message);
+                    return e.auth;
                 }
             }
         }
         FilterResult::Issues { choice, conditions, epoch, me, result } => {
             if !from_tracker || epoch != fs.filters.tracker_epoch {
-                return;
+                return false;
             }
             // The user a search looked up is the code host's when the host is the tracker.
             if let Some(me) = me.filter(|_| from_host && fs.filters.known_me().is_none()) {
                 fs.filters.me = MeState::Known(me);
             }
             // A reply for a filter no longer shown (or changed since) is dropped.
-            let Some(list) = fs.filters.issues.as_mut().filter(|l| l.choice == choice && l.conditions == conditions) else { return };
+            let Some(list) = fs.filters.issues.as_mut().filter(|l| l.choice == choice && l.conditions == conditions) else { return false };
             match result {
                 Ok(items) => {
                     for i in &items {
@@ -155,11 +153,9 @@ pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, key: &str, from_host
                     list.status = Status::Ok;
                 }
                 Err(e) => {
-                    if e.auth {
-                        fs.auth.remove(key);
-                    }
                     list.items.clear();
                     list.status = Status::Error(e.message);
+                    return e.auth;
                 }
             }
         }
@@ -169,18 +165,15 @@ pub(super) fn replied(fs: &mut ForgeState, r: FilterResult, key: &str, from_host
                 FilterKind::Issues => from_tracker,
             };
             if !from_target {
-                return;
+                return false;
             }
-            let state = match result {
-                Ok(o) => OptionsState::Loaded(o),
-                Err(e) => {
-                    if e.auth {
-                        fs.auth.remove(key);
-                    }
-                    OptionsState::Failed(e.message)
-                }
+            let (state, rejected) = match result {
+                Ok(o) => (OptionsState::Loaded(o), false),
+                Err(e) => (OptionsState::Failed(e.message), e.auth),
             };
             *fs.filters.options_mut(kind) = state;
+            return rejected;
         }
     }
+    false
 }

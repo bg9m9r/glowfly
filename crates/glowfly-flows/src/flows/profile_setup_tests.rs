@@ -162,7 +162,7 @@ fn account_change_reloads_forge() {
 
     let fx = switch(&mut st, PERSONAL);
     let fs = st.session.forge.as_ref().expect("still on GitHub");
-    assert!(fs.prs.is_empty() && fs.auth.is_empty(), "rebuilt");
+    assert!(fs.prs.is_empty() && st.auth_cache.is_empty(), "rebuilt");
     assert!(fs.last_refresh.is_some(), "refreshed at once");
     assert_eq!(forge_calls(&fx), 1, "{fx:?}");
     // Personal doesn't list github.com, so the sign-in Work saved for it isn't used.
@@ -257,14 +257,15 @@ fn the_dashboard_forgets_the_previous_profiles_sign_ins() {
     use glowfly_model::state::dashboard::{AccountRow, AccountState};
     let mut st = with_setups();
     let account = github().account;
+    let auth = glowfly_core::forge::Auth::from_token(Provider::GitHub, None, "t", "test");
+    st.auth_cache.store(account.key(), &glowfly_model::state::AppState::outside_dir(), auth, true);
     let d = &mut st.dashboard;
-    d.auth.insert(account.key(), glowfly_core::forge::Auth::from_token(Provider::GitHub, None, "t", "test"));
     let me = Some(glowfly_core::forge::Me { id: "work-user".into(), name: "Work User".into(), ..Default::default() });
     d.accounts = vec![AccountRow { me, ..AccountRow::new(account.clone(), AccountState::Ok) }];
     d.fetched = Some(std::time::Instant::now());
     switch(&mut st, PERSONAL);
     let d = &st.dashboard;
-    assert!(d.auth.is_empty(), "no credential carries over");
+    assert!(st.auth_cache.is_empty(), "no credential carries over");
     assert!(d.account(&account).is_some_and(|a| a.me.is_none()), "nor the signed-in user");
     assert!(d.fetched.is_none(), "the results are stale");
 }

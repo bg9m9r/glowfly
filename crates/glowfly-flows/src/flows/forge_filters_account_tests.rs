@@ -114,7 +114,12 @@ fn a_user_without_teams_keeps_the_sign_in_and_personal_requests() {
     let (mut st, dir) = open("ffa-no-teams");
     let h = host(&st);
     let key = h.account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     send(&mut st, choose(FilterKind::Prs, Builtin::NeedsMyReview));
     let asked = |id, f: PrFacets| PullRequest { facets: PrFacets { author_id: "grace".into(), ..f }, ..pr(id, "grace") };
     st.session.forge.as_mut().unwrap().prs = vec![
@@ -125,7 +130,7 @@ fn a_user_without_teams_keeps_the_sign_in_and_personal_requests() {
     reply(&mut st, h, FilterResult::Me { epoch: 0, result: Ok(Me { teams: vec![], ..user("ada") }) });
     let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.filters.me, MeState::Known(user("ada")));
-    assert!(fs.auth.contains_key(&key), "still signed in");
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_some(), "still signed in");
     let filters = st.settings.forge_filters_for(&st.snap.as_ref().unwrap().real_workdir);
     assert_eq!(pr_view(Lang::En, fs, &filters).rows.iter().map(|p| p.id).collect::<Vec<_>>(), [2], "the team-only request isn't listed");
     let _ = std::fs::remove_dir_all(dir);

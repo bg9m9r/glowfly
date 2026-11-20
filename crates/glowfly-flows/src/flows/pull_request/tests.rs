@@ -238,7 +238,7 @@ fn refresh_updates_the_copy() {
     open(&mut st);
     let mut renamed = st.session.forge.as_ref().unwrap().prs[0].clone();
     renamed.title = "Add f, renamed".into();
-    let reply = |prs| ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(prs))] };
+    let reply = |prs| ForgeReply { target: github(), results: vec![ForgeResult::Prs(Ok(prs))] };
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply(vec![renamed]))), Instant::now());
     let v = st.session.pull_request.view.as_ref().unwrap();
     assert_eq!(v.pr.title, "Add f, renamed");

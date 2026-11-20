@@ -94,7 +94,7 @@ fn create(st: &mut AppState) -> Vec<Effect> {
 
 fn reply(st: &mut AppState, result: ForgeResult) {
     let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
-    drive(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, auth: None, results: vec![result] })));
+    drive(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, results: vec![result] })));
 }
 
 fn done(dir: &Path, bare: &Path) {

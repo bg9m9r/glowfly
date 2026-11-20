@@ -123,9 +123,13 @@ fn fork_dialog_asks_for_the_forks() {
     };
     assert!(want(&fx, false), "{fx:?}");
     // A credential from this session is passed along.
-    let mut fs = ForgeState::new(Some(target()), "origin".into(), None);
-    fs.auth.insert(target().account().key(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
-    st.session.forge = Some(fs);
+    st.session.forge = Some(ForgeState::new(Some(target()), "origin".into(), None));
+    st.auth_cache.store(
+        target().account().key(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     assert!(want(&run(&mut st, RemoteMsg::ForkDialog("origin".into())), true));
 
     st.modal = None;

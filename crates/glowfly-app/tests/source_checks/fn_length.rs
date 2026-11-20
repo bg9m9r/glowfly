@@ -23,7 +23,7 @@ const LONG_FUNCTIONS: &[&str] = &[
     "crates/glowfly-core/src/trust/targets.rs: targets",
     "crates/glowfly-core/src/undo/planning.rs: plan_with",
     "crates/glowfly-model/src/state/palette/recent.rs: recall_key",
-    "crates/glowfly-model/src/update/forge.rs: replied",
+    "crates/glowfly-model/src/update/forge_replied.rs: replied",
     "crates/glowfly-model/src/update/palette.rs: run",
     "crates/glowfly-ui/src/icons.rs: paint",
     "crates/glowfly-ui/src/prefs/mod.rs: show",

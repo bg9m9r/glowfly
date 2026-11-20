@@ -102,8 +102,8 @@ fn sign_in(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
         return;
     }
     let connected = forge::is_connected(&account, connections);
-    let d = &mut st.dashboard;
-    let targets: Vec<TargetJob> = d
+    let targets: Vec<TargetJob> = st
+        .dashboard
         .targets
         .iter()
         .filter(|t| t.target.account() == account)
@@ -112,7 +112,8 @@ fn sign_in(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
     if targets.is_empty() {
         return;
     }
-    d.auth.remove(&account.key());
+    st.auth_cache.forget(&account.key());
+    let d = &mut st.dashboard;
     let me = d.account(&account).and_then(|a| a.me.clone());
     if let Some(row) = d.account_mut(&account) {
         row.state = AccountState::Pending;
@@ -130,6 +131,8 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
     if r.generation != d.generation {
         return;
     }
+    // Accounts whose credential failed: forgotten once the rows are updated.
+    let mut forget: Vec<String> = Vec::new();
     for a in r.accounts {
         let key = a.account.key();
         let said = |e: crate::effect::ForgeError| hosting(lang, a.account.provider, Ask::Read, &e);
@@ -149,14 +152,12 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
             }
         }
         let Some(row) = d.accounts.iter_mut().find(|x| x.account == a.account) else { continue };
+        // The credential itself reached the shared cache in `ForgeMsg::AuthFound`.
         match a.auth {
-            Ok(auth) => {
-                row.state = AccountState::Ok;
-                d.auth.insert(key.clone(), auth);
-            }
+            Ok(_) => row.state = AccountState::Ok,
             Err(e) => {
                 row.state = AccountState::SignInFailed(e);
-                d.auth.remove(&key);
+                drop_auth = true;
             }
         }
         match a.me {
@@ -165,7 +166,7 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
             None => {}
         }
         if drop_auth {
-            d.auth.remove(&key);
+            forget.push(key);
         }
     }
     if !r.partial {
@@ -175,6 +176,9 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
     d.in_flight = d.in_flight.saturating_sub(1);
     if d.in_flight == 0 {
         d.phase = Phase::Idle;
+    }
+    for key in forget {
+        st.auth_cache.forget(&key);
     }
 }
 
@@ -221,8 +225,8 @@ pub(super) fn prs_arrived(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>)
 /// new connection may be someone else), and the results are stale (asked again at once while
 /// the dashboard is open).
 pub(super) fn account_changed(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
+    st.auth_cache.forget(&account.key());
     let d = &mut st.dashboard;
-    d.auth.remove(&account.key());
     if let Some(row) = d.account_mut(account) {
         (row.me, row.me_error) = (None, None);
     }
@@ -231,9 +235,8 @@ pub(super) fn account_changed(st: &mut AppState, account: &Account, fx: &mut Vec
 
 /// Another profile's connections were loaded: every cached credential and signed-in user goes.
 pub(super) fn connections_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
-    let d = &mut st.dashboard;
-    d.auth.clear();
-    for row in &mut d.accounts {
+    st.auth_cache.clear();
+    for row in &mut st.dashboard.accounts {
         (row.me, row.me_error) = (None, None);
     }
     stale(st, fx);

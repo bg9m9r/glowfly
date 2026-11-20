@@ -1,13 +1,11 @@
 //! Hosting services: detection, refresh, replies, connections. Starting a pull request is in
 //! update/push_pr.rs.
 
-use super::pull_request::details;
 use crate::effect::NetworkEffect;
-use crate::effect::{AccountEffect, Effect, ForgeCall, ForgeReply, ForgeResult};
+use crate::effect::{AccountEffect, Effect, ForgeCall};
 use crate::msg::ForgeMsg;
-use crate::state::error_words::{hosting, hosting_log, typed};
-use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, PrefPage, ProjectKeys, Status, pull_request::repos, tracker_target};
-use glowfly_core::error::advice::Ask;
+use crate::state::error_words::typed;
+use crate::state::{AppState, FORGE_REFRESH_INTERVAL, ForgeState, PrefPage, Status, pull_request::repos, tracker_target};
 use glowfly_core::forge::{self, Account, Connection, ServiceError, Target};
 use glowfly_core::repo::Snapshot;
 use std::time::Instant;
@@ -25,7 +23,8 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
             }
             refresh(st, true, interactive, now, fx);
         }
-        ForgeMsg::ForgeReplied(reply) => replied(st, reply, now, fx),
+        ForgeMsg::ForgeReplied(reply) => super::forge_replied::replied(st, reply, now, fx),
+        ForgeMsg::AuthFound(f) => super::forge_replied::auth_found(st, *f),
         ForgeMsg::TipsShown(oids) => super::build_status::shown(st, oids),
         ForgeMsg::CreatePrDialog { source, target } => super::push_pr::open_dialog(st, source, target, None, fx),
         ForgeMsg::CreatePrFrom { remote, source } => super::push_pr::open_dialog(st, source, None, Some(remote), fx),
@@ -116,6 +115,9 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
     let cwd = st.any_dir();
     let account = target.account();
     let connected = forge::is_connected(&account, &st.settings.connections);
+    // A background request of an unconnected account looks only at the environment.
+    let env_only = !interactive && !connected && call.is_background();
+    let held = st.auth_cache.get(&account.key(), &cwd, env_only).cloned();
     let Some(fs) = st.session.forge.as_mut() else { return };
     if !forge::may_contact(&account, &st.settings.connections) {
         let msg = forge::not_connected_text(account.provider, Some(&account.display()));
@@ -128,12 +130,12 @@ pub(super) fn request(st: &mut AppState, target: Target, interactive: bool, call
         return;
     }
     // Not connected and nothing found last time: a background request would only repeat that.
-    if !interactive && !connected && call.is_background() && fs.found_not_connected(&target) {
+    if env_only && fs.found_not_connected(&target, held.is_some()) {
         tracing::debug!("forge request skipped: {} is not connected", account.display());
         return;
     }
     fs.loading += 1;
-    let auth = if interactive { None } else { fs.auth.get(&account.key()).cloned() };
+    let auth = if interactive { None } else { held };
     fx.push(Effect::Network(NetworkEffect::Forge { target, cwd, auth, interactive, connected, call }));
 }
 
@@ -177,143 +179,6 @@ pub(super) fn want_issues(st: &mut AppState, keys: Vec<String>, fx: &mut Vec<Eff
     request(st, tracker, false, ForgeCall::Issues(missing), fx);
 }
 
-#[expect(clippy::too_many_lines, reason = "one arm per forge reply; split by reply kind")]
-fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &mut Vec<Effect>) {
-    let mut logs: Vec<(bool, String)> = Vec::new();
-    let mut prs_changed = false;
-    // Created pull requests' sources and whether a create failed, for a stack's run.
-    let (mut created, mut create_failed) = (Vec::new(), false);
-    let (t, provider) = (st.settings.lang(), reply.target.provider);
-    let Some(fs) = st.session.forge.as_mut() else { return };
-    let is_host = fs.host.as_ref() == Some(&reply.target);
-    let is_tracker = fs.tracker.as_ref() == Some(&reply.target);
-    // A pull request created on another PR repository (an upstream of a fork).
-    let other_repo = !is_host && !is_tracker && fs.pr_repos.iter().any(|r| r.target == reply.target);
-    if !is_host && !is_tracker && !other_repo {
-        return; // the repository changed since the request
-    }
-    fs.loading = fs.loading.saturating_sub(1);
-    let key = reply.target.account().key();
-    if let Some(a) = reply.auth {
-        fs.auth.insert(key.clone(), a);
-    }
-    for result in reply.results {
-        match result {
-            ForgeResult::Created(Ok(pr)) if other_repo => {
-                logs.push((
-                    true,
-                    format!(
-                        "Created {} {} {}
-{}",
-                        fs.pr_noun(),
-                        fs.pr_label(pr.id),
-                        pr.title,
-                        pr.url
-                    ),
-                ));
-                created.push(pr.source.clone());
-            }
-            ForgeResult::AuthFailed(e) if other_repo => {
-                fs.auth.remove(&key);
-                create_failed = true;
-                logs.push((false, format!("Creating the {} failed: {e}", fs.pr_noun())));
-            }
-            ForgeResult::Created(Err(e)) if other_repo => {
-                if e.auth {
-                    fs.auth.remove(&key);
-                }
-                create_failed = true;
-                let line = format!("Creating the {} failed: {}", fs.pr_noun(), e.message);
-                logs.push((false, hosting_log(t, provider, Ask::Change, &e, line)));
-            }
-            // The rest belongs to the code host's and the tracker's repositories.
-            _ if other_repo => {}
-            ForgeResult::AuthFailed(e) => {
-                fs.auth.remove(&key);
-                let e = forge::sign_in_status(e);
-                if is_host {
-                    fs.host_status = Status::Error(e.clone());
-                }
-                if is_tracker {
-                    fs.tracker_status = Status::Error(e);
-                }
-            }
-            ForgeResult::Prs(Ok(prs)) => {
-                fs.prs = prs;
-                details::list_arrived(fs, now);
-                fs.host_status = Status::Ok;
-                prs_changed = true;
-            }
-            ForgeResult::Prs(Err(e)) => {
-                if e.auth {
-                    fs.auth.remove(&key);
-                }
-                fs.host_status = Status::Error(hosting(t, provider, Ask::Read, &e));
-            }
-            ForgeResult::MyIssues(Ok(items)) => {
-                for i in &items {
-                    fs.cache.insert(i.key.clone(), i.clone());
-                }
-                fs.my_issues = items;
-                fs.tracker_status = Status::Ok;
-            }
-            ForgeResult::MyIssues(Err(e)) => {
-                if e.auth {
-                    fs.auth.remove(&key);
-                }
-                fs.tracker_status = Status::Error(hosting(t, provider, Ask::Read, &e));
-            }
-            ForgeResult::Issues(keys, result) => {
-                if let Ok(items) = result {
-                    for i in items {
-                        fs.cache.insert(i.key.clone(), i);
-                    }
-                    // Keys that came back missing stay "pending" so they aren't refetched.
-                    for k in keys.iter().filter(|k| fs.cache.contains_key(*k)) {
-                        fs.pending.remove(k);
-                    }
-                }
-            }
-            ForgeResult::DefaultBranch(b) => fs.default_branch = b.or(fs.default_branch.take()),
-            ForgeResult::Created(Ok(pr)) => {
-                logs.push((true, format!("Created {} {} {}\n{}", fs.pr_noun(), fs.pr_label(pr.id), pr.title, pr.url)));
-                created.push(pr.source.clone());
-                fs.prs.insert(0, *pr);
-                prs_changed = true;
-            }
-            ForgeResult::Created(Err(e)) => {
-                create_failed = true;
-                let line = format!("Creating the {} failed: {}", fs.pr_noun(), e.message);
-                logs.push((false, hosting_log(t, provider, Ask::Change, &e, line)));
-            }
-            ForgeResult::TipChecks(asked, r) => super::build_status::replied(fs, &asked, r.map_err(drop), now),
-            ForgeResult::PrDetails(r) => prs_changed |= details::replied(fs, r, &key, now),
-            ForgeResult::ProjectKeys(r) => match r {
-                Ok(Some(keys)) => fs.jira_projects = ProjectKeys::Known(keys.into_iter().collect()),
-                Ok(None) => fs.jira_projects = ProjectKeys::TooMany,
-                // Left unknown, so the next refresh asks again.
-                Err(e) => tracing::debug!("Jira project keys: {}", e.message),
-            },
-            ForgeResult::Filter(r) => super::forge_filters::replied(fs, r, &key, is_host, is_tracker),
-        }
-    }
-    for (ok, text) in logs {
-        st.toast(ok, text.lines().next().unwrap_or_default().to_owned(), now);
-        st.log(ok, text);
-    }
-    if prs_changed {
-        super::pull_request::heads::resolve_pr_heads(st);
-        super::build_status::seed_from_prs(st, now);
-        super::pull_request::prs_changed(st, fx);
-        super::dashboard::prs_arrived(st, now, fx);
-    }
-    if create_failed {
-        super::stack_prs::create_failed(st);
-    }
-    super::stack_prs::created(st, &created, fx);
-    details::send_next(st, fx);
-}
-
 fn connected(
     st: &mut AppState,
     account: Account,
@@ -344,8 +209,8 @@ fn connected(
             let (service, place) = (account.provider.name(), account.display());
             st.log(true, t.trf("prefs.integrations.connected", &[("service", &service), ("account", &place), ("user", &user)]));
             // A new connection can make a self-hosted remote recognizable.
+            st.auth_cache.forget(&account.key());
             if let Some(fs) = st.session.forge.as_mut() {
-                fs.auth.remove(&account.key());
                 let (host, tracker) = fs.uses_account(&account);
                 fs.filters.account_changed(host, tracker);
                 fs.host_status = Status::Idle;
@@ -377,8 +242,8 @@ fn disconnect(st: &mut AppState, account: &Account, fx: &mut Vec<Effect>) {
     }
     fx.extend(super::prefs::save_settings(st));
     super::dashboard::account_changed(st, account, fx);
+    st.auth_cache.forget(&account.key());
     if let Some(fs) = st.session.forge.as_mut() {
-        fs.auth.remove(&account.key());
         let msg = forge::not_connected_text(account.provider, None);
         let (host, tracker) = fs.uses_account(account);
         fs.filters.account_changed(host, tracker);

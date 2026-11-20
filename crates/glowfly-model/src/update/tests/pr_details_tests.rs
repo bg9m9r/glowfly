@@ -68,7 +68,7 @@ fn chunks(fx: Vec<Effect>) -> Vec<Vec<u64>> {
 
 fn reply(st: &mut AppState, result: ForgeResult, now: Instant) -> Vec<Vec<u64>> {
     let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
-    let reply = ForgeReply { target, auth: None, results: vec![result] };
+    let reply = ForgeReply { target, results: vec![result] };
     chunks(update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), now))
 }
 
