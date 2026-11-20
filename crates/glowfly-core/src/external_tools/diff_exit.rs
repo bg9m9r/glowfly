@@ -13,9 +13,24 @@ pub fn diff_exit_ok(code: Option<i32>, stderr: &str) -> bool {
 }
 
 /// What `git difftool` printed, without git's own line-ending notes on the copies
-/// (`core.autocrlf`), which are not the tool's.
+/// (`core.autocrlf`), which are not the tool's: git 2.37+'s one-line shape and the older
+/// two-line one ([`is_old_warning`]).
 pub fn without_line_ending_warnings(stderr: &str) -> String {
-    stderr.lines().filter(|l| !crate::crlf_warnings::is_warning(l.trim())).collect::<Vec<_>>().join("\n")
+    stderr.lines().filter(|l| !crate::crlf_warnings::is_warning(l.trim()) && !is_old_warning(l.trim())).collect::<Vec<_>>().join("\n")
+}
+
+/// What git before 2.37 printed on the line after an older-shape warning.
+const OLD_TAIL: &str = "The file will have its original line endings in your working directory";
+
+/// Whether `line` (trimmed) is a line of git's pre-2.37 line-ending warning: "warning: LF will be
+/// replaced by CRLF in <path>." (or CRLF by LF), or the line git printed after it.
+fn is_old_warning(line: &str) -> bool {
+    if line.strip_suffix('.').unwrap_or(line) == OLD_TAIL {
+        return true;
+    }
+    ["warning: LF will be replaced by CRLF in ", "warning: CRLF will be replaced by LF in "]
+        .iter()
+        .any(|p| line.strip_prefix(p).and_then(|r| r.strip_suffix('.')).is_some_and(|path| !path.is_empty()))
 }
 
 /// A watched diff tool as a result: only an early exit [`diff_exit_ok`] doesn't allow is an error.
@@ -59,6 +74,22 @@ mod tests {
         let more = format!("{warned}oops\n");
         assert_eq!(without_line_ending_warnings(&more), "oops");
         assert_eq!(without_line_ending_warnings("warning: something else\n"), "warning: something else");
+    }
+
+    #[test]
+    fn older_gits_line_ending_warnings_are_not_the_tools_words() {
+        let warned = "warning: LF will be replaced by CRLF in a.txt.\r\n\
+                      The file will have its original line endings in your working directory\r\n\
+                      warning: CRLF will be replaced by LF in d/b c.txt.\n\
+                      The file will have its original line endings in your working directory.\n";
+        let said = without_line_ending_warnings(warned);
+        assert_eq!(said, "");
+        assert!(diff_exit_ok(Some(1), &said));
+        assert_eq!(without_line_ending_warnings(&format!("{warned}oops\n")), "oops");
+        for kept in ["warning: LF will be replaced by CRLF in .", "warning: LF will be replaced by CRLF in a.txt", "The file will be gone"]
+        {
+            assert_eq!(without_line_ending_warnings(kept), kept);
+        }
     }
 
     #[test]
