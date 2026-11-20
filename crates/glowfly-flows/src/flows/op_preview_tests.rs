@@ -1,7 +1,8 @@
 //! Previewing an operation: opening asks the runner, results fill only the dialog that asked,
 //! a merge on an old git says why at once, Apply sends what the menu item sends (and is refused
 //! while busy or stale), Preview again asks anew, a drop end to end, and a merge and a rebase
-//! applied onto the branch despite a tag of the same name.
+//! applied onto the branch despite a tag of the same name, the merge's echo in the log keeping
+//! its message in quotes.
 
 use super::rebase_quick_tests::{last_toast, up};
 use super::rebase_tests::{repo, running_job};
@@ -279,5 +280,16 @@ fn preview_apply_rebases_onto_the_branch_not_a_same_named_tag() {
     let head = repo.head().unwrap().peel_to_commit().unwrap().id();
     assert!(repo.graph_descendant_of(head, f).unwrap(), "main now sits on feature's tip");
     assert_eq!(last_undo(&st), "rebase onto feature");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_shadowed_merge_echoes_its_message_in_quotes() {
+    let (mut st, dir, f) = with_shadowing_tag("opp-merge-echo");
+    deliver_open(&mut st, merge(f));
+    apply(&mut st);
+    let want = r#"$ git merge -m "Merge branch 'feature'" -- refs/heads/feature"#;
+    let texts: Vec<&str> = st.log.iter().map(|l| l.text.as_str()).collect();
+    assert!(texts.iter().any(|t| t.lines().any(|x| x == want)), "{texts:?}");
     let _ = std::fs::remove_dir_all(&dir);
 }

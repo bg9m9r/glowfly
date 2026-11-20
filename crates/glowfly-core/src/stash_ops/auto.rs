@@ -296,7 +296,7 @@ fn pop(workdir: &Path, cmd: &[String], oid: Oid) -> (bool, String, bool) {
 /// Runs `cmd`: whether it worked, and the command with its output.
 pub(super) fn logged(workdir: &Path, cmd: &[String]) -> (bool, String) {
     let (ok, text) = gitcli::run(workdir, cmd);
-    let mut output = format!("$ git {}", cmd.join(" "));
+    let mut output = crate::text::command_echo(cmd);
     if !text.is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());

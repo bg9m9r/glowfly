@@ -183,7 +183,7 @@ fn failed(out: &GitOutput) -> MonitorTrouble {
 
 /// Runs `args`, adding "$ git <args>" and what it printed to `log`.
 fn run(cwd: &Path, args: &[String], timeout: Duration, log: &mut String) -> GitOutput {
-    log.push_str(&format!("$ git {}\n", args.join(" ")));
+    log.push_str(&format!("{}\n", crate::text::command_echo(args)));
     let out = gitcli::output(cwd, args, "", gitcli::NO_PROMPTS, Some(timeout));
     let text = out.combined();
     if !text.is_empty() {

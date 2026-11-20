@@ -42,7 +42,7 @@ pub fn run(workdir: &Path, pushes: &[RemotePush], env: &[(&str, &str)]) -> Pushe
     let mut output = String::new();
     let mut failed = Vec::new();
     for p in pushes {
-        output.push_str(&format!("$ git {}\n", crate::text::redact_credentials(&p.cmd.join(" "))));
+        output.push_str(&format!("{}\n", crate::text::command_echo(&p.cmd)));
         let (ok, text) = gitcli::run_with_input(workdir, &p.cmd, "", env);
         if !text.trim().is_empty() {
             output.push_str(text.trim_end());

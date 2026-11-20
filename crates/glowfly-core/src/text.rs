@@ -1,4 +1,5 @@
-//! Making text from outside (servers, remote URLs) safe to show or log.
+//! Making text from outside (servers, remote URLs) safe to show or log, and git command lines as
+//! typed for the job log.
 
 /// Unicode bidirectional formatting characters, which can make text display in a different
 /// order than it reads (e.g. hide the real end of a URL or file name).
@@ -90,6 +91,47 @@ pub fn redact_credentials(text: &str) -> String {
     out
 }
 
+/// `a` as it is typed in a command line: unchanged unless it is empty or holds whitespace or a
+/// `"`, which puts it in double quotes with `\` and `"` escaped and a line break written `\n`
+/// (`\r` for a carriage return).
+fn typed_arg(a: &str) -> std::borrow::Cow<'_, str> {
+    if !a.is_empty() && !a.chars().any(|c| c.is_whitespace() || c == '"') {
+        return std::borrow::Cow::Borrowed(a);
+    }
+    let mut out = String::with_capacity(a.len() + 2);
+    out.push('"');
+    for c in a.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    std::borrow::Cow::Owned(out)
+}
+
+/// `git` and `args` as typed: an argument that is empty or holds whitespace or `"` in double
+/// quotes with `\` and `"` escaped, a line break inside one written `\n` (`\r` for a carriage
+/// return), so the line stays one line. Not redacted: a job log uses `command_echo`.
+pub fn command_line(args: &[String]) -> String {
+    let mut out = String::from("git");
+    for a in args {
+        out.push(' ');
+        out.push_str(&typed_arg(a));
+    }
+    out
+}
+
+/// A job log's echo of `git args` (`$ git …`, one line): `command_line` with URL credentials
+/// hidden (`redact_credentials`, after quoting, so an echo of plain arguments reads as it always
+/// did). Every `$ git` echo is built here (tests/source_checks/command_echo.rs).
+pub fn command_echo(args: &[String]) -> String {
+    format!("$ {}", redact_credentials(&command_line(args)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -135,5 +177,67 @@ mod tests {
         assert_eq!(r("«https://user:TOKEN@host/x»"), "«https://***@host/x»");
         assert_eq!(r("é://u:p@h/x"), "é://***@h/x");
         assert_eq!(r("\u{fffd}to://m"), "\u{fffd}to://m", "found by the redact_credentials fuzz check");
+    }
+
+    fn args(a: &[&str]) -> Vec<String> {
+        a.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn command_line_writes_plain_arguments_as_they_are() {
+        assert_eq!(command_line(&args(&["push", "--", "origin", "main"])), "git push -- origin main");
+        assert_eq!(command_line(&[]), "git");
+        assert_eq!(command_line(&args(&["worktree", "remove", r"C:\x", "stash@{0}"])), r"git worktree remove C:\x stash@{0}");
+    }
+
+    #[test]
+    fn command_line_quotes_an_argument_with_a_space() {
+        assert_eq!(
+            command_line(&args(&["merge", "-m", "Merge branch 'x'", "--", "refs/heads/x"])),
+            r#"git merge -m "Merge branch 'x'" -- refs/heads/x"#
+        );
+        assert_eq!(command_line(&args(&["x", "a\tb"])), "git x \"a\tb\"");
+    }
+
+    #[test]
+    fn command_line_quotes_an_empty_argument() {
+        assert_eq!(command_line(&args(&["config", "x.y", ""])), r#"git config x.y """#);
+    }
+
+    #[test]
+    fn command_line_escapes_quotes_and_backslashes() {
+        assert_eq!(command_line(&args(&["commit", "-m", r#"say "hi" in C:\a b"#])), r#"git commit -m "say \"hi\" in C:\\a b""#);
+        assert_eq!(command_line(&args(&["x", r#"a"b"#])), r#"git x "a\"b""#);
+    }
+
+    #[test]
+    fn command_line_keeps_a_line_break_on_one_line() {
+        let line = command_line(&args(&["commit", "-m", "one\ntwo\r\n"]));
+        assert_eq!(line, r#"git commit -m "one\ntwo\r\n""#);
+        assert!(!line.contains('\n') && !line.contains('\r'));
+        // A typed backslash and n stays apart from an escaped line break.
+        assert_eq!(command_line(&args(&["x", r"a\n b"])), r#"git x "a\\n b""#);
+    }
+
+    #[test]
+    fn command_echo_hides_credentials() {
+        assert_eq!(command_echo(&args(&["push", "https://u:TOKEN@h/o/r.git", "main"])), "$ git push https://***@h/o/r.git main");
+        assert_eq!(
+            command_echo(&args(&["remote", "add", "my fork", "https://u:TOKEN@h/r"])),
+            r#"$ git remote add "my fork" https://***@h/r"#
+        );
+        assert_eq!(command_echo(&args(&["-c", "remote.o.url=x y https://a:b@h/x"])), r#"$ git -c "remote.o.url=x y https://***@h/x""#);
+    }
+
+    #[test]
+    fn command_echo_of_plain_arguments_is_unchanged() {
+        for (a, echo) in [
+            (args(&["push", "https://u:TOKEN@h/o/r.git", "main"]), "$ git push https://***@h/o/r.git main"),
+            (args(&["stash", "pop", "--index", "stash@{0}"]), "$ git stash pop --index stash@{0}"),
+            (args(&["worktree", "remove", "C:/x/y"]), "$ git worktree remove C:/x/y"),
+            (args(&["clone", "ssh://git@h/x"]), "$ git clone ssh://git@h/x"),
+        ] {
+            assert_eq!(command_echo(&a), echo);
+        }
     }
 }

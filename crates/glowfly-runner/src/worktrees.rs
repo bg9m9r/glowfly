@@ -46,7 +46,7 @@ pub(super) fn count(r: CountRequest) -> Msg {
 /// `output`. Returns whether it worked and git's text.
 fn run_logged(r: &RemoveRequest, cmd: &[String], output: &mut String) -> (bool, String) {
     let (ok, text) = gitcli::run(&r.repo, cmd);
-    output.push_str(&format!("\n$ git {}", cmd.join(" ")));
+    output.push_str(&format!("\n{}", glowfly_core::text::command_echo(cmd)));
     if !text.trim().is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());

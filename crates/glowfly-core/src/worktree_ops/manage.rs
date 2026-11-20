@@ -152,7 +152,7 @@ pub fn remove(cwd: &Path, path: &Path, force: RemoveForce) -> RemoveReport {
     }
     let cmd = remove_cmd(&wt.path, force);
     let (_, text) = gitcli::run(cwd, &cmd);
-    let mut output = format!("$ git {}", cmd.join(" "));
+    let mut output = crate::text::command_echo(&cmd);
     if !text.trim().is_empty() {
         output.push('\n');
         output.push_str(text.trim_end());

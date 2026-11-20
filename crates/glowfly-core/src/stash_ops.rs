@@ -131,7 +131,7 @@ fn rename_with(workdir: &Path, index: usize, oid: Oid, message: &str, run: &mut 
     }
     let mut output = String::new();
     let mut step = |cmd: &[String]| {
-        output.push_str(&format!("$ git {}\n", crate::text::redact_credentials(&cmd.join(" "))));
+        output.push_str(&format!("{}\n", crate::text::command_echo(cmd)));
         let (ok, text) = run(cmd);
         if !text.is_empty() {
             output.push_str(&text);

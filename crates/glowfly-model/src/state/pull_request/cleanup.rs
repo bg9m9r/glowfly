@@ -155,7 +155,7 @@ impl CleanupJob {
     /// The failed job's headline when it stopped in the local part, which keeps the branch; None
     /// when it stopped before (git's cause in plain words says that better).
     pub fn stopped(&self, t: Lang, output: &str) -> Option<String> {
-        let restore = format!("$ git {}", self.restore.join(" "));
+        let restore = glowfly_core::text::command_echo(&self.restore);
         let output = output.rfind(&restore).map_or(output, |at| &output[..at]);
         let step = (*self.steps.get(failed_step(output, self.steps.len()))?)?;
         // git's own error line, rather than the hints it prints after it.
