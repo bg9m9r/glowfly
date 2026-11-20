@@ -6,7 +6,9 @@
 
 use super::attr_source::{AttrSource, attr_repo};
 use super::rpath;
+pub use super::wip_paths::WipPaths;
 use crate::error::Result;
+use crate::repo_pool;
 use git2::{Delta, Diff, DiffOptions, FileMode, Oid, Patch, Repository};
 use std::collections::HashMap;
 use std::path::Path;
@@ -90,7 +92,7 @@ fn opts() -> DiffOptions {
 /// The counts of commit `oid`'s files against its first parent (every line added for a root
 /// commit), from the same diff `commit_detail` lists.
 pub fn commit_line_counts(workdir: &Path, oid: Oid) -> Result<FileLineCounts> {
-    let repo = Repository::open(workdir)?;
+    let repo = repo_pool::lend(workdir, repo_pool::Use::Workdir)?;
     // Binary files (not counted) as the commit's own gitattributes say.
     let paths = super::diff::commit_paths(&repo, oid);
     let attrs = attr_repo(&repo, AttrSource::Commit(oid), &paths.iter().map(String::as_str).collect::<Vec<_>>());
@@ -99,23 +101,66 @@ pub fn commit_line_counts(workdir: &Path, oid: Oid) -> Result<FileLineCounts> {
     counts_of(&attrs, &diff, false, MAX_COUNTED_FILES)
 }
 
-/// The counts of the working tree's staged and unstaged files. Ignored files are left out.
+/// The counts of the working tree's staged and unstaged files, read over the whole tree. Ignored
+/// files are left out.
 pub fn wip_line_counts(workdir: &Path) -> Result<WipLineCounts> {
-    let repo = Repository::open(workdir)?;
-    crate::tree_files::check(&repo)?;
+    wip_counts(&*repo_pool::lend(workdir, repo_pool::Use::Workdir)?, None)
+}
+
+/// `wip_line_counts` for the rows of one status read (`WipPaths`): only those paths are diffed,
+/// each taken literally, so the time follows the changed files and not the size of the tree.
+/// Rows past the paths' cap have no counts, and their list is incomplete.
+pub fn wip_line_counts_of(workdir: &Path, paths: &WipPaths) -> Result<WipLineCounts> {
+    wip_counts(&*repo_pool::lend(workdir, repo_pool::Use::Workdir)?, Some(paths))
+}
+
+/// `o` limited to `paths`, each matched exactly or as a folder: no pattern.
+fn scoped<'o>(o: &'o mut DiffOptions, paths: &WipPaths) -> &'o mut DiffOptions {
+    for p in &paths.paths {
+        o.pathspec(p.as_slice());
+    }
+    o.disable_pathspec_match(true)
+}
+
+fn wip_counts(repo: &Repository, scope: Option<&WipPaths>) -> Result<WipLineCounts> {
+    crate::tree_files::check(repo)?;
+    // An empty path list would mean every path.
+    if scope.is_some_and(WipPaths::is_empty) {
+        return Ok(WipLineCounts {
+            staged: FileLineCounts { complete: true, ..Default::default() },
+            unstaged: FileLineCounts { complete: true, ..Default::default() },
+        });
+    }
     // Staged files by the index's gitattributes, unstaged ones by the working tree's.
-    let index = attr_repo(&repo, AttrSource::Index, &[]);
-    let mut o = opts();
-    let mut staged = index.diff_tree_to_index(super::diff::head_tree(&index).as_ref(), None, Some(&mut o))?;
-    staged.find_similar(None)?;
-    let mut o = opts();
-    o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true);
-    // No rename detection: the status doesn't detect work-tree renames either.
-    let unstaged = repo.diff_index_to_workdir(None, Some(crate::git_file::skip_offsite_submodules(&repo, &mut o)))?;
-    Ok(WipLineCounts {
-        staged: counts_of(&index, &staged, false, MAX_COUNTED_FILES)?,
-        unstaged: counts_of(&repo, &unstaged, true, MAX_COUNTED_FILES)?,
-    })
+    let mut staged = {
+        let _s = tracing::debug_span!("line_counts.staged", paths = scope.map(|p| p.paths.len())).entered();
+        let index = attr_repo(repo, AttrSource::Index, &[]);
+        let mut o = opts();
+        if let Some(p) = scope.filter(|p| !p.staged_whole) {
+            scoped(&mut o, p);
+        }
+        let mut diff = index.diff_tree_to_index(super::diff::head_tree(&index).as_ref(), None, Some(&mut o))?;
+        diff.find_similar(None)?;
+        let _c = tracing::debug_span!("line_counts.count", list = "staged", deltas = diff.deltas().len()).entered();
+        counts_of(&index, &diff, false, MAX_COUNTED_FILES)?
+    };
+    let mut unstaged = {
+        let _s = tracing::debug_span!("line_counts.unstaged", paths = scope.map(|p| p.paths.len())).entered();
+        let mut o = opts();
+        o.include_untracked(true).recurse_untracked_dirs(true).show_untracked_content(true);
+        if let Some(p) = scope {
+            scoped(&mut o, p);
+        }
+        // No rename detection: the status doesn't detect work-tree renames either.
+        let diff = repo.diff_index_to_workdir(None, Some(crate::git_file::skip_offsite_submodules(repo, &mut o)))?;
+        let _c = tracing::debug_span!("line_counts.count", list = "unstaged", deltas = diff.deltas().len()).entered();
+        counts_of(repo, &diff, true, MAX_COUNTED_FILES)?
+    };
+    if let Some(p) = scope {
+        staged.complete &= !p.staged_more;
+        unstaged.complete &= !p.unstaged_more;
+    }
+    Ok(WipLineCounts { staged, unstaged })
 }
 
 /// The counts of `diff`'s first `cap` deltas; `in_workdir` when its new side is the working tree.
@@ -149,3 +194,6 @@ pub(super) fn counts_of(repo: &Repository, diff: &Diff<'_>, in_workdir: bool, ca
 #[cfg(test)]
 #[path = "line_counts_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "line_counts_wip_tests.rs"]
+mod wip_tests;

@@ -38,40 +38,13 @@ fn be32(b: &[u8], at: usize) -> Option<u32> {
 /// The extensions of the index `b`, whose object names are `hash` bytes long; None unless
 /// the entries and extensions end exactly at the trailing checksum.
 fn extensions_in(b: &[u8], hash: usize) -> Option<Vec<String>> {
-    if b.get(..4)? != b"DIRC" {
-        return None;
-    }
-    let version = be32(b, 4)?;
-    let count = be32(b, 8)?;
-    if !(2..=4).contains(&version) {
-        return None;
-    }
-    let end = b.len().checked_sub(hash)?;
-    let mut at = 12;
-    // ctime, mtime, dev, ino, mode, uid, gid, size (4 bytes each), then the object name.
-    let fixed = 40 + hash;
-    for _ in 0..count {
-        let start = at;
-        let flags = u16::from_be_bytes(b.get(start + fixed..start + fixed + 2)?.try_into().ok()?);
-        at = start + fixed + 2;
-        if version >= 3 && flags & 0x4000 != 0 {
-            at += 2;
-        }
-        if version == 4 {
-            // The number of bytes taken off the previous path, as git's offset varint.
-            while *b.get(at)? & 0x80 != 0 {
-                at += 1;
-            }
-            at += 1;
-        }
-        let nul = b.get(at..end)?.iter().position(|&c| c == 0)?;
-        at += nul + 1;
-        if version < 4 {
-            // Padded with NULs to a multiple of eight bytes from the entry's start.
-            let len = at - start;
-            at = start + len.div_ceil(8) * 8;
-        }
-    }
+    let at = super::index_walk::walk(b, hash, |_, _| {})?;
+    extensions_from(b, at, b.len().checked_sub(hash)?)
+}
+
+/// The signatures of the extensions in `b[at..end]` (`end` being where the trailing checksum
+/// starts); None unless they end exactly at `end`.
+pub(super) fn extensions_from(b: &[u8], mut at: usize, end: usize) -> Option<Vec<String>> {
     let mut found = Vec::new();
     while at < end {
         let sig = b.get(at..at.checked_add(4)?)?;

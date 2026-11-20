@@ -38,8 +38,8 @@ fn file_is_pointer(workdir: Option<&Path>, path: &str) -> bool {
 /// deletion), unstaged ones as `mark_unstaged` does.
 pub(super) fn mark_wip(repo: &Repository, unstaged: &mut [FileEntry], staged: &mut [FileEntry]) {
     let Ok(index) = repo.index() else { return };
-    mark_staged(repo, &index, staged);
-    mark_unstaged(repo, &index, unstaged);
+    tracing::debug_span!("status.lfs.staged", rows = staged.len()).in_scope(|| mark_staged(repo, &index, staged));
+    tracing::debug_span!("status.lfs.unstaged", rows = unstaged.len()).in_scope(|| mark_unstaged(repo, &index, unstaged));
 }
 
 /// Marks staged rows by the index blob (HEAD's for a staged deletion).

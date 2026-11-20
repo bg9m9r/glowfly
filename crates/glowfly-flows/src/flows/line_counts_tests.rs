@@ -4,7 +4,7 @@
 use super::tests::{drive, finish, git, said, scratch_repo, state};
 use super::update;
 use git2::Oid;
-use glowfly_core::repo::{LineCount, WipLineCounts};
+use glowfly_core::repo::{LineCount, WipLineCounts, WipPaths};
 use glowfly_model::effect::{Effect, LineCountsEffect};
 use glowfly_model::msg::{Msg, RepoMsg, StageMsg, TabsMsg};
 use glowfly_model::state::AppState;
@@ -38,6 +38,16 @@ fn wip_asks(fx: &[Effect]) -> Vec<u64> {
     fx.iter()
         .filter_map(|e| match e {
             Effect::LineCounts(LineCountsEffect::Wip { generation, .. }) => Some(*generation),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The paths of the working tree's count requests in `fx`.
+fn wip_scopes(fx: &[Effect]) -> Vec<&WipPaths> {
+    fx.iter()
+        .filter_map(|e| match e {
+            Effect::LineCounts(LineCountsEffect::Wip { paths, .. }) => Some(paths),
             _ => None,
         })
         .collect()
@@ -107,6 +117,12 @@ fn wip_counts_follow_the_status() {
     let w = st.session.reads.line_counts.wip().expect("counted after the open");
     assert_eq!(w.unstaged.get("a.txt"), Some(n(1, 0)));
     assert_eq!(w.staged.get("a.txt"), None);
+    let mut fx = Vec::new();
+    super::line_counts::status_changed(&mut st, &mut fx);
+    let [scope] = wip_scopes(&fx)[..] else { panic!("one request") };
+    assert_eq!(scope.paths, [b"a.txt".to_vec()], "the request carries the status rows' paths");
+    assert!(!scope.staged_more && !scope.unstaged_more);
+    finish_counts(&mut st, fx);
 
     drive(&mut st, Msg::Stage(StageMsg::StageFile("a.txt".into())));
     let w = st.session.reads.line_counts.wip().unwrap();
@@ -145,6 +161,57 @@ fn a_status_read_while_wip_counts_run_is_queued() {
     let mut fx = Vec::new();
     super::line_counts::status_changed(&mut st, &mut fx);
     assert_eq!(wip_asks(&fx).len(), 1, "a failure isn't left busy");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_rename_scopes_the_count_to_both_its_paths() {
+    let dir = scratch_repo("lc-rename");
+    let lines: String = (0..10)
+        .map(|i| {
+            format!(
+                "line {i}
+"
+            )
+        })
+        .collect();
+    std::fs::write(dir.join("a.txt"), &lines).unwrap();
+    git(&dir, &["commit", "-q", "-am", "ten lines"]);
+    git(&dir, &["mv", "a.txt", "moved.txt"]);
+    let mut st = opened(&dir);
+    let fx = run(&mut st, Msg::Repo(RepoMsg::Refresh));
+    finish(&mut st, fx);
+    let staged = &st.snap.as_ref().unwrap().staged;
+    assert!(staged.iter().any(|f| f.status == 'R' && f.path == "moved.txt" && f.renamed_from.as_deref() == Some("a.txt")), "{staged:?}");
+    let mut fx = Vec::new();
+    super::line_counts::status_changed(&mut st, &mut fx);
+    let [scope] = wip_scopes(&fx)[..] else { panic!("one request") };
+    assert_eq!(scope.paths, [b"a.txt".to_vec(), b"moved.txt".to_vec()]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_queued_request_carries_the_newest_rows() {
+    let dir = scratch_repo("lc-newest");
+    let mut st = opened(&dir);
+    let mut fx = Vec::new();
+    super::line_counts::status_changed(&mut st, &mut fx);
+    let [generation] = wip_asks(&fx)[..] else { panic!("one request") };
+
+    // A file changes and the status is read again while the count runs: nothing is sent yet.
+    std::fs::write(
+        dir.join("b.txt"),
+        "new
+",
+    )
+    .unwrap();
+    let fx = run(&mut st, Msg::Repo(RepoMsg::Refresh));
+    finish(&mut st, fx);
+    assert!(st.snap.as_ref().is_some_and(|s| s.unstaged.iter().any(|f| f.path == "b.txt")));
+
+    let fx = run(&mut st, Msg::Repo(RepoMsg::WipLineCountsLoaded { generation, result: Ok(Box::default()) }));
+    let [scope] = wip_scopes(&fx)[..] else { panic!("the queued request is sent") };
+    assert_eq!(scope.paths, [b"a.txt".to_vec(), b"b.txt".to_vec()]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

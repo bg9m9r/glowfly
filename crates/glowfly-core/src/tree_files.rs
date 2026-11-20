@@ -46,6 +46,7 @@ pub(crate) fn read(file: &Path) -> Option<Vec<u8>> {
 
 /// Ok unless `linked_away` names a file: the check before libgit2 reads `repo`'s work tree.
 pub(crate) fn check(repo: &Repository) -> Result<()> {
+    let _span = tracing::debug_span!("tree_files.check").entered();
     match linked_away(repo) {
         Some(file) => Err(Error::LinkedFile(file)),
         None => Ok(()),
@@ -112,12 +113,17 @@ fn link_folders(file: &Path) -> Option<Vec<Tracked>> {
     {
         return Some(folders.clone());
     }
-    let index = git2::Index::open(file).ok()?;
+    let _span = tracing::debug_span!("tree_files.link_folders.read").entered();
+    let links = match crate::repo::index_walk::entries_of_file(file, |mode, _| mode == LINK) {
+        Some(found) => found,
+        // A split or sparse index, or one the walk doesn't read: libgit2 knows them.
+        None => git2::Index::open(file).ok()?.iter().filter(|e| e.mode == LINK).map(|e| (e.mode, e.path)).collect(),
+    };
     let mut folders: BTreeSet<Tracked> = BTreeSet::new();
-    for e in index.iter().filter(|e| e.mode == LINK) {
-        let (dir, name) = match e.path.iter().rposition(|b| *b == b'/') {
-            Some(at) => (&e.path[..at], &e.path[at + 1..]),
-            None => (&e.path[..0], &e.path[..]),
+    for (_, path) in &links {
+        let (dir, name) = match path.iter().rposition(|b| *b == b'/') {
+            Some(at) => (&path[..at], &path[at + 1..]),
+            None => (&path[..0], &path[..]),
         };
         if may_name(name) {
             folders.insert((dir.to_vec(), named(name)));

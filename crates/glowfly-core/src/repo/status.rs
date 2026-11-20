@@ -86,7 +86,8 @@ pub(super) fn load_status(
     git_status: bool,
     records: Option<&super::RecordMemo>,
 ) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
-    let found = repo.index().map(|mut i| super::collide::collisions(&mut i)).unwrap_or_default();
+    let found = tracing::debug_span!("status.collisions")
+        .in_scope(|| repo.index().map(|mut i| super::collide::collisions(&mut i)).unwrap_or_default());
     load_status_with(repo, git_status, &found, records)
 }
 
@@ -99,30 +100,40 @@ pub(super) fn load_status_with(
     found: &[super::Collision],
     records: Option<&super::RecordMemo>,
 ) -> Result<(Vec<FileEntry>, Vec<FileEntry>)> {
-    crate::tree_files::check(repo)?;
+    tracing::debug_span!("status.check").in_scope(|| crate::tree_files::check(repo))?;
     if let Some(workdir) = repo.workdir()
         && git_status
-        && wants_git(repo)
+        && tracing::debug_span!("status.wants_git").in_scope(|| wants_git(repo))
     {
-        let lost = super::index_ext::should_record(repo, records);
-        let lists = match &lost {
-            Some(_) => super::status_cli::status_recording(repo, workdir),
-            None => super::status_cli::status(repo, workdir),
-        };
-        if let Some(l) = &lost {
-            super::index_ext::record_after(records, l);
-        }
+        let lost = tracing::debug_span!("status.record").in_scope(|| super::index_ext::should_record(repo, records));
+        let lists = tracing::debug_span!("status.git").in_scope(|| {
+            let lists = match &lost {
+                Some(_) => super::status_cli::status_recording(repo, workdir),
+                None => super::status_cli::status(repo, workdir),
+            };
+            if let Some(l) = &lost {
+                super::index_ext::record_after(records, l);
+            }
+            lists
+        });
         if let Some(lists) = lists {
-            return Ok(mark_rows(repo, lists, found));
+            return Ok(mark_rows(repo, lists, found, "git"));
         }
     }
-    libgit2_status_checked(repo).map(|lists| mark_rows(repo, lists, found))
+    let lists = tracing::debug_span!("status.libgit2").in_scope(|| libgit2_status_checked(repo))?;
+    Ok(mark_rows(repo, lists, found, "libgit2"))
 }
 
 /// Marks a whole read's rows: twins, then LFS pointers.
-fn mark_rows(repo: &Repository, lists: (Vec<FileEntry>, Vec<FileEntry>), found: &[super::Collision]) -> (Vec<FileEntry>, Vec<FileEntry>) {
-    let (mut unstaged, mut staged) = mark_twins(repo, lists, found);
-    super::lfs_marks::mark_wip(repo, &mut unstaged, &mut staged);
+fn mark_rows(
+    repo: &Repository,
+    lists: (Vec<FileEntry>, Vec<FileEntry>),
+    found: &[super::Collision],
+    via: &str,
+) -> (Vec<FileEntry>, Vec<FileEntry>) {
+    let (mut unstaged, mut staged) = tracing::debug_span!("status.twins").in_scope(|| mark_twins(repo, lists, found));
+    tracing::debug_span!("status.lfs").in_scope(|| super::lfs_marks::mark_wip(repo, &mut unstaged, &mut staged));
+    tracing::debug!(unstaged = unstaged.len(), staged = staged.len(), via, "status rows");
     (unstaged, staged)
 }
 

@@ -89,6 +89,14 @@ thread: search keystrokes, relayout, branch hover and swapping snapshots.
 GLOWFLY_PERF_REPO=<out>/linux cargo test -p glowfly-flows --release perf_timing -- --ignored --nocapture
 ```
 
+`perf_status_tests` times a load, a status read and the WIP line counts (of a status read's paths,
+and of the whole tree) on `wide-tree`, each twice, printing the closing time of every
+glowfly-core span (`status.*`, `line_counts.*`):
+
+```
+GLOWFLY_PERF_REPO=<out>/wide-tree cargo test -p glowfly-flows --release perf_status -- --ignored --nocapture
+```
+
 In PowerShell, set `$env:GLOWFLY_PERF_REPO = '<out>/linux'` first. The test loads at most the
 newest 200,000 commits, so on the kernel it times about a seventh of the history (200k of its
 1.5M commits). Run it against `git` and `linux` at least, and against `linear` and `many-refs`

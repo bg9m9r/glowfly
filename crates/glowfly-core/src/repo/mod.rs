@@ -57,6 +57,7 @@ mod hunk_copy;
 mod index;
 mod index_ext;
 mod index_memo;
+pub(crate) mod index_walk;
 mod lfs_marks;
 mod line_counts;
 mod line_map;
@@ -106,6 +107,7 @@ mod unmerged;
 pub(crate) mod walk;
 pub(crate) mod walk_order;
 mod walk_reuse;
+mod wip_paths;
 mod workfile;
 mod workfile_disk;
 mod workfile_mv;
@@ -157,7 +159,9 @@ pub use index::{
 };
 pub use index_ext::RecordMemo;
 pub use index_memo::{IndexDelta, IndexMemo, MAX_INDEX_MEMO};
-pub use line_counts::{FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, commit_line_counts, wip_line_counts};
+pub use line_counts::{
+    FileLineCounts, LineCount, MAX_COUNTED_FILES, WipLineCounts, WipPaths, commit_line_counts, wip_line_counts, wip_line_counts_of,
+};
 pub use line_map::{LineChange, LineMap, PrLineMaps, line_maps, pr_line_maps};
 pub use lines::{apply_lines, apply_shown};
 pub use load::{load, load_cached, load_reusing, messages_between};

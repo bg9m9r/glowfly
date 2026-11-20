@@ -4,6 +4,7 @@
 use super::EffectMeta;
 use super::SandboxRule;
 use git2::Oid;
+use glowfly_core::repo::WipPaths;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -11,8 +12,9 @@ pub enum LineCountsEffect {
     /// Commit `oid`'s files against its first parent; reported as `RepoMsg::CommitLineCountsLoaded`.
     Commit { workdir: PathBuf, oid: Oid },
     /// The working tree's staged and unstaged files; reported as `RepoMsg::WipLineCountsLoaded`
-    /// with `generation`.
-    Wip { workdir: PathBuf, generation: u64 },
+    /// with `generation`. `paths` are the changed paths of the status read that asked for the
+    /// count: only those are diffed.
+    Wip { workdir: PathBuf, generation: u64, paths: WipPaths },
 }
 
 /// The request a failed (panicked) count answers, so it doesn't stay pending.
