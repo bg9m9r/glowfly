@@ -5,7 +5,7 @@ use super::super::update;
 use crate::logs::{LogKind, LogsMsg};
 use crate::msg::{Msg, TabsMsg};
 use crate::state::AppState;
-use crate::state::activity_filter::{Filter, row_ids};
+use crate::state::activity_filter::{Filter, is_open, row_ids};
 use crate::state::activity_rows::is_routine_label;
 use crate::state::list_keys::{ListKey, ListMove};
 use crate::state::logs::{EntryId, LogEntry};
@@ -331,6 +331,25 @@ fn a_step_opens_its_row_and_folds_the_last_one_again() {
     step_msg(&mut st, false);
     step_msg(&mut st, false);
     assert!(st.logs.open.contains(&all[1]), "opened by the user, so it stays open");
+}
+
+#[test]
+fn a_step_folds_back_a_match_the_user_had_folded_shut() {
+    let mut st = panel(vec![run("Pull", false, "overwritten a"), run("Push", false, "overwritten b")]);
+    let all = ids(&st);
+    st.view.logs_search = "overwritten".into();
+    send(&mut st, LogsMsg::SearchChanged);
+    send(&mut st, LogsMsg::Fold(all[0]));
+    let f = Filter::new(false, "overwritten");
+    let shown = |st: &AppState, i: usize| is_open(&st.logs, &st.log[i], &f);
+    assert!(!shown(&st, 0) && shown(&st, 1), "the search unfolds both; the user folded the first");
+    step_msg(&mut st, false);
+    assert_eq!(st.view.activity_focus, Some(all[0]));
+    assert!(shown(&st, 0), "the step opens the folded row");
+    step_msg(&mut st, false);
+    assert_eq!(st.view.activity_focus, Some(all[1]));
+    assert!(!shown(&st, 0), "moving on folds the row the step opened shut again");
+    assert!(shown(&st, 1));
 }
 
 #[test]
