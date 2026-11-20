@@ -93,7 +93,7 @@ pub use ssh_keys::{
     AddKeyOutcome, RegisteredKey, add_ssh_key, default_title, list_ssh_keys, needs_fallback, same_key, ssh_keys_page, title_problem,
 };
 use std::collections::HashMap;
-pub use trello::{TrelloBoard, authorize_url as trello_authorize_url, trello_boards};
+pub use trello::{TrelloBoard, authorize_url as trello_authorize_url, sign_in_url as trello_sign_in_url, trello_boards};
 pub use user_repos::{HostedRepo, MyRepos, lists_my_repos, my_repos};
 pub use web::{NoWebPage, WebPage, web_page};
 

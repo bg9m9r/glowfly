@@ -52,6 +52,13 @@ pub fn authorize_url(key: &str, write: bool) -> Option<String> {
         .then(|| format!("{WEB}/1/authorize?expiration=never&scope={scope}&response_type=token&name=Glowfly&key={key}"))
 }
 
+/// Trello's "Allow Glowfly" page for `key`, asking for a token that can read and write and
+/// never expires, which Trello hands to `return_url` in the URL's fragment (Sign in with
+/// Trello, `trello_sign_in`). None until the key looks like one.
+pub fn sign_in_url(key: &str, return_url: &str) -> Option<String> {
+    authorize_url(key, true).map(|url| format!("{url}&callback_method=fragment&return_url={}", enc(return_url)))
+}
+
 impl Target {
     /// A Trello account's cards; an empty `board_id` means every open board.
     pub fn trello(account: &Account, board_id: &str, board_name: &str) -> Target {
@@ -314,6 +321,21 @@ mod tests {
             assert_eq!(authorize_url(bad, false), None, "{bad}");
             assert_eq!(authorize_url(bad, true), None, "{bad}");
         }
+    }
+
+    #[test]
+    fn sign_in_url_returns_to_glowfly() {
+        let key = "0123456789abcdef0123456789abcdef";
+        let url = sign_in_url(key, "http://localhost:47613/trello/abc").unwrap();
+        for part in [
+            "scope=read,write&",
+            "expiration=never",
+            "callback_method=fragment",
+            "return_url=http%3A%2F%2Flocalhost%3A47613%2Ftrello%2Fabc",
+        ] {
+            assert!(url.contains(part), "{url}");
+        }
+        assert_eq!(sign_in_url("short", "http://localhost:1/"), None);
     }
 
     #[test]

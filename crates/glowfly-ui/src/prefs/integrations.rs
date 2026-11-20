@@ -3,7 +3,7 @@
 //! Tracker (with whether year-like branch names name issues).
 
 use super::integrations_form::{account_card, aligned, sign_in_form};
-use super::{help, row, text_field, trello};
+use super::{help, row, text_field, trello, trello_sign_in};
 use crate::theme::controls;
 use crate::widgets::buttons;
 use eframe::egui::Ui;
@@ -23,7 +23,15 @@ pub struct SignIn<'a> {
     pub token: &'a mut String,
 }
 
-pub fn integration_page(ui: &mut Ui, s: &mut Settings, form: SignIn<'_>, fs: Option<&ForgeState>, msgs: &mut Vec<Msg>) {
+/// `workdir` is the open repository's, for Trello's offer to become its tracker.
+pub fn integration_page(
+    ui: &mut Ui,
+    s: &mut Settings,
+    form: SignIn<'_>,
+    fs: Option<&ForgeState>,
+    workdir: Option<&Path>,
+    msgs: &mut Vec<Msg>,
+) {
     let prefs = form.prefs;
     let provider = prefs.int_provider;
     let t = s.lang();
@@ -37,9 +45,16 @@ pub fn integration_page(ui: &mut Ui, s: &mut Settings, form: SignIn<'_>, fs: Opt
         aligned(ui, |ui| account_card(ui, c, msgs));
         ui.add_space(8.0);
     }
+    if provider == Provider::Trello {
+        trello_sign_in::offer_tracker(ui, s, prefs, workdir, msgs);
+    }
+    let own_key = prefs.trello_sign_in.key.as_deref().filter(|_| provider == Provider::Trello);
     if mine.is_empty() || prefs.int_adding {
         ui.add_space(6.0);
-        sign_in_form(ui, t, form, !mine.is_empty(), msgs);
+        match own_key {
+            Some(key) => trello_sign_in::sign_in(ui, t, key, form, !mine.is_empty(), msgs),
+            None => sign_in_form(ui, t, form, !mine.is_empty(), msgs),
+        }
     } else {
         aligned(ui, |ui| {
             if ui.add(buttons::secondary("Add another account")).clicked() {

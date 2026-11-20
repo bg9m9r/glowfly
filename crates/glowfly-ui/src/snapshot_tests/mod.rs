@@ -218,6 +218,7 @@ pub(super) mod snapshot_tests_title_bar_keys;
 pub(super) mod snapshot_tests_toasts;
 pub(super) mod snapshot_tests_tools;
 pub(super) mod snapshot_tests_trello;
+pub(super) mod snapshot_tests_trello_sign_in;
 pub(super) mod snapshot_tests_trust;
 pub(super) mod snapshot_tests_trust_held;
 pub(super) mod snapshot_tests_trust_lfs;

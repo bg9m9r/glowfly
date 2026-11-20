@@ -5,7 +5,9 @@ use crate::effect::ForgeReply;
 use crate::state::pull_request::repos::RepoSide;
 use glowfly_core::forge::{Account, CreatedRepo, NewPullRequest, ServiceError, TrelloBoard};
 use glowfly_core::settings::TrackerChoice;
+use glowfly_core::trello_sign_in::SignInEnd;
 use std::path::PathBuf;
+use std::time::Instant;
 
 /// Credential prompts from git and ssh through the askpass helper (state/askpass.rs,
 /// update/askpass.rs).
@@ -124,6 +126,17 @@ pub enum ForgeMsg {
         account: Account,
         result: Result<Vec<TrelloBoard>, ServiceError>,
     },
+    /// Integrations > Trello's "Sign in with Trello": wait for a token for Glowfly's own key
+    /// (update/trello_sign_in.rs).
+    StartTrelloSignIn,
+    /// Its Cancel: stop waiting.
+    CancelTrelloSignIn,
+    /// The wait begun at `started` for `key` ended: the token, or why there is none.
+    TrelloSignInEnded {
+        started: Instant,
+        key: String,
+        result: Result<String, SignInEnd>,
+    },
 }
 
 impl ForgeMsg {
@@ -149,7 +162,10 @@ impl ForgeMsg {
             | Self::Connected { .. }
             | Self::ShowTrackerPage
             | Self::LoadTrelloBoards(..)
-            | Self::TrelloBoardsLoaded { .. } => None,
+            | Self::TrelloBoardsLoaded { .. }
+            | Self::StartTrelloSignIn
+            | Self::CancelTrelloSignIn
+            | Self::TrelloSignInEnded { .. } => None,
         }
     }
 }

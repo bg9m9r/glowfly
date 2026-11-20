@@ -51,6 +51,9 @@ source file, update its line here.
 - `askpass/prompt.rs`: what a git or ssh prompt asks for, decided from its text.
 - `askpass/protocol.rs`: the line protocol between the helper process and the app's listener: one JSON request line from the helper, one JSON response line back.
 - `askpass/server.rs`: the app's side: a loopback listener that turns each helper connection into an `Event::Asked` and waits for the app to `Server::answer` it.
+- `trello_sign_in/`: Sign in with Trello: Glowfly's own API key (`GLOWFLY_TRELLO_KEY`), the fixed local ports Trello returns to, and reading the token from the returned URL fragment.
+- `trello_sign_in/listener.rs`: the loopback listener on 127.0.0.1 and ::1 that serves the return page for its nonce and takes the posted token, until Trello answers, 5 minutes pass or the caller stops it.
+- `trello_sign_in/request.rs`: the listener's HTTP as pure functions: reading a request, routing by nonce and local host, the responses and the return page.
 - `gpg_prompt/args.rs`: reading git's arguments for gpg and building the wrapper's own.
 - `gpg_prompt/env.rs`: the environment that makes git run Glowfly as its gpg.program (pure, `vars`), and the signing environment gitcli adds to each command (`for_command`).
 - `gpg_prompt/flow.rs`: the wrapper's steps: probe, ask, sign with loopback, or fall back to the program's own pinentry.

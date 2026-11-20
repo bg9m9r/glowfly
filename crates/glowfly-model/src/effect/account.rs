@@ -4,8 +4,10 @@
 
 use super::EffectMeta;
 use super::SandboxRule;
+use super::partial::StopKey;
 use glowfly_core::forge::{Account, NewRepo};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 #[derive(Debug)]
 pub enum AccountEffect {
@@ -45,6 +47,13 @@ pub enum AccountEffect {
         account: Account,
         cwd: PathBuf,
     },
+    /// Sign in with Trello: opens Trello's "Allow Glowfly" page for `key` in the browser and
+    /// waits for the token on a local port (`ForgeMsg::TrelloSignInEnded`); stopped by
+    /// `StopGit(StopKey::TrelloSignIn)`. `started` tells this wait from a later one.
+    TrelloSignIn {
+        key: String,
+        started: Instant,
+    },
 }
 
 impl EffectMeta for AccountEffect {
@@ -57,6 +66,7 @@ impl EffectMeta for AccountEffect {
             AccountEffect::DeleteToken(_) => "delete-token",
             AccountEffect::ForgetCredentialManager { .. } => "forget-gcm",
             AccountEffect::TrelloBoards { .. } => "trello-boards",
+            AccountEffect::TrelloSignIn { .. } => "trello-sign-in",
         }
     }
 
@@ -64,8 +74,13 @@ impl EffectMeta for AccountEffect {
         None
     }
 
+    /// Not Sign in with Trello: it waits on the user.
     fn timed(&self) -> bool {
-        true
+        !matches!(self, AccountEffect::TrelloSignIn { .. })
+    }
+
+    fn stop_key(&self) -> Option<StopKey> {
+        matches!(self, AccountEffect::TrelloSignIn { .. }).then_some(StopKey::TrelloSignIn)
     }
 
     fn queue(&self) -> Option<&Path> {

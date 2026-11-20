@@ -294,6 +294,7 @@ mod toast_hold_tests;
 mod tool_compare_tests;
 mod tool_git_tests;
 mod tools_tests;
+mod trello_sign_in_tests;
 mod trello_tests;
 mod trust_credentials_tests;
 mod trust_elsewhere_tests;

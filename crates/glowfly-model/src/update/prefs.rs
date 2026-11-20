@@ -115,6 +115,7 @@ fn open(st: &mut AppState, page: PrefPage, fx: &mut Vec<Effect>) {
 }
 
 fn close(st: &mut AppState, fx: &mut Vec<Effect>) {
+    super::trello_sign_in::closing(st, fx);
     st.prefs = None;
     st.view.secrets.clear();
     // The Commit Signing page may have changed the program or the allowed signers file.

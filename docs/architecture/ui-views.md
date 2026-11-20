@@ -300,6 +300,7 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/trusted_network.rs`: Preferences > Trusted repositories, under the decisions: each folder opened with Open anyway, its path and network places, and Forget.
 - `prefs/trusted_repos_row.rs`: Preferences > Trusted repositories: one decision's row: name, decision chip and Revoke or Forget; under it the path, date, source, heir count and a painted Not found mark.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
+- `prefs/trello_sign_in.rs`: Integrations > Trello with Glowfly's own key set: Sign in with Trello (the wait, its Cancel, the fallback to Trello's token page), the manual fields under "Use your own API key", and the offer to use Trello for the open repository.
 - `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
 
 ## Snapshot tests

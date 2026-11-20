@@ -23,6 +23,8 @@ pub(super) fn account(e: AccountEffect) -> Option<Msg> {
         }
         AccountEffect::Connect { account, user, token, cwd } => Some(connect(account, user, token, &cwd)),
         AccountEffect::TrelloBoards { account, cwd } => Some(trello_boards(account, &cwd)),
+        // Waits on the user, so it runs with the runner's stop (`Execute` below).
+        AccountEffect::TrelloSignIn { .. } => None,
         AccountEffect::SaveToken { account, user, token } => forge::save_token(&account, user.as_deref(), &token)
             .err()
             .map(|e| Msg::Logged { ok: false, text: format!("Connected, but the token could not be saved: {e}") }),
@@ -38,8 +40,11 @@ pub(super) fn account(e: AccountEffect) -> Option<Msg> {
 }
 
 impl Execute for AccountEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        account(self)
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        match self {
+            AccountEffect::TrelloSignIn { key, started } => Some(super::trello_sign_in::sign_in(key, started, cx)),
+            e => account(e),
+        }
     }
 }
 

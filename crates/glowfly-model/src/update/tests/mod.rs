@@ -68,6 +68,7 @@ pub(super) mod tab_glance_tests;
 pub(super) mod terminal_schemes_tests;
 pub(super) mod themes_tests;
 pub(super) mod toast_tab_tests;
+pub(super) mod trello_sign_in_tests;
 pub(super) mod trust_prompt_tests;
 pub(super) mod trust_revoke_tests;
 pub(super) mod undo_rename_tests;

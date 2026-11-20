@@ -110,6 +110,7 @@ pub mod testing;
 mod themes;
 mod tls;
 mod tools;
+mod trello_sign_in;
 mod trust;
 mod trust_gate;
 mod ui;
