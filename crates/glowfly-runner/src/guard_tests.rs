@@ -171,7 +171,7 @@ fn a_panicking_blame_ends_the_views_loading() {
 #[test]
 fn a_panicking_line_count_reports_a_failed_result() {
     use glowfly_model::effect::LineCountsEffect;
-    let effect = Effect::LineCounts(LineCountsEffect::Wip { workdir: "r".into(), generation: 3 });
+    let effect = Effect::LineCounts(LineCountsEffect::Wip { workdir: "r".into(), generation: 3, paths: Default::default() });
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();
     let Msg::Scoped { msg, .. } = msg else { panic!("scoped to its repository") };
     assert!(

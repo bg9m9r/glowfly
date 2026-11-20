@@ -42,13 +42,13 @@ fn read(repo: &Repository, workdir: &Path, timeout: Duration, record: bool) -> R
     if record {
         cmd.remove(0);
     }
-    cmd.extend(options(repo));
+    cmd.extend(tracing::debug_span!("status.git.options").in_scope(|| options(repo)));
     // Paths are git's bytes, which needn't be UTF-8: kept undecoded until `rpath` reads them.
-    let (out, stdout) = output_bytes(workdir, &cmd, NO_PROMPTS, Some(timeout));
+    let (out, stdout) = tracing::debug_span!("status.git.run").in_scope(|| output_bytes(workdir, &cmd, NO_PROMPTS, Some(timeout)));
     if !out.ok {
         return Err(out.timed_out);
     }
-    Ok(parse(&stdout))
+    Ok(tracing::debug_span!("status.git.parse", bytes = stdout.len()).in_scope(|| parse(&stdout)))
 }
 
 /// `status` of only the work-tree paths `paths` (each taken literally, a folder covering

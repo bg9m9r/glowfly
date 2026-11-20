@@ -6,7 +6,7 @@ use crate::effect::{Effect, LineCountsEffect};
 use crate::state::{AppState, Selection};
 use git2::Oid;
 use glowfly_core::error::ReadFailed;
-use glowfly_core::repo::{FileLineCounts, WipLineCounts};
+use glowfly_core::repo::{FileLineCounts, WipLineCounts, WipPaths};
 use std::sync::Arc;
 
 /// The graph shows these commits and needs their totals (`RepoMsg::WantStats`).
@@ -63,8 +63,9 @@ pub fn status_changed(st: &mut AppState, fx: &mut Vec<Effect>) {
         return;
     }
     let workdir = snap.workdir.clone();
+    let paths = WipPaths::of(&snap.staged, &snap.unstaged);
     if let Some(generation) = st.session.reads.line_counts.start_wip() {
-        fx.push(Effect::LineCounts(LineCountsEffect::Wip { workdir, generation }));
+        fx.push(Effect::LineCounts(LineCountsEffect::Wip { workdir, generation, paths }));
     }
 }
 

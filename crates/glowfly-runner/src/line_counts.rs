@@ -13,9 +13,10 @@ pub(super) fn run(e: LineCountsEffect) -> Msg {
         LineCountsEffect::Commit { workdir, oid } => {
             RepoMsg::CommitLineCountsLoaded { oid, result: repo::commit_line_counts(&workdir, oid).map(Arc::new).map_err(ReadFailed::from) }
         }
-        LineCountsEffect::Wip { workdir, generation } => {
-            RepoMsg::WipLineCountsLoaded { generation, result: repo::wip_line_counts(&workdir).map(Box::new).map_err(ReadFailed::from) }
-        }
+        LineCountsEffect::Wip { workdir, generation, paths } => RepoMsg::WipLineCountsLoaded {
+            generation,
+            result: repo::wip_line_counts_of(&workdir, &paths).map(Box::new).map_err(ReadFailed::from),
+        },
     })
 }
 

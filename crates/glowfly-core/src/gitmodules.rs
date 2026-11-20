@@ -214,7 +214,11 @@ fn gitlinks_of(file: &Path) -> Option<Vec<Vec<u8>>> {
     {
         return Some(links.clone());
     }
-    let links: Vec<Vec<u8>> = git2::Index::open(file).ok()?.iter().filter(|e| e.mode == 0o160000).map(|e| e.path).collect();
+    let links: Vec<Vec<u8>> = match crate::repo::index_walk::entries_of_file(file, |mode, _| mode == 0o160000) {
+        Some(found) => found.into_iter().map(|(_, path)| path).collect(),
+        // A split or sparse index, or one the walk doesn't read: libgit2 knows them.
+        None => git2::Index::open(file).ok()?.iter().filter(|e| e.mode == 0o160000).map(|e| e.path).collect(),
+    };
     if let Ok(mut seen) = SEEN.lock() {
         let map = seen.get_or_insert_with(HashMap::new);
         if map.len() >= MAX_WALKED {
