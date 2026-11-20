@@ -97,7 +97,10 @@ pulldown-cmark.workspace = true
 keyring = { workspace = true, features = ["sync-secret-service", "crypto-rust"] }
 
 [target."cfg(windows)".dependencies]
-windows = { workspace = true, features = ["Win32_Foundation", "Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Diagnostics_ToolHelp", "Win32_System_JobObjects", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Wdk_System_Threading"] }
+# Sign in with Trello's listener (trello_sign_in/listener.rs): a socket set to
+# SO_EXCLUSIVEADDRUSE (through windows' WinSock) before it binds, which std can't do.
+socket2 = "0.6"
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Diagnostics_ToolHelp", "Win32_System_JobObjects", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Wdk_System_Threading"] }
 
 # Linux: whether a repository is on a network or virtual file system (statfs). macOS: why the
 # Trash refused a file, and whether a volume is on the network (the volume's flags). Both:
