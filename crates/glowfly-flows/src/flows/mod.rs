@@ -29,6 +29,7 @@ mod askpass_gpg_tests;
 mod askpass_ssh_sign_tests;
 mod askpass_store_tests;
 mod askpass_tests;
+mod auth_cache_tests;
 mod auto_stash_flow_tests;
 mod auto_stash_guard_tests;
 mod auto_stash_index_tests;

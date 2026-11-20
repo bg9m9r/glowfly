@@ -1,7 +1,8 @@
 //! What the forge effect asks a hosting service, and what comes back.
 
-use glowfly_core::forge::{Auth, Checks, Issue, NewPullRequest, PrDetails, PullRequest, Target, TipQuery};
+use glowfly_core::forge::{Account, Auth, Checks, Issue, NewPullRequest, PrDetails, PullRequest, Target, TipQuery};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// What to ask a hosting service.
 #[derive(Debug)]
@@ -67,8 +68,20 @@ pub enum ForgeResult {
 #[derive(Debug)]
 pub struct ForgeReply {
     pub target: Target,
-    pub auth: Option<Auth>,
     pub results: Vec<ForgeResult>,
+}
+
+/// A credential a lookup found (runner/sign_ins.rs), sent before the call's own result.
+#[derive(Debug)]
+pub struct FoundAuth {
+    pub account: Account,
+    /// The folder the lookup ran in (the request's cwd).
+    pub dir: PathBuf,
+    /// `connected` as the request had it: a different answer now means the connection changed since.
+    pub connected: bool,
+    /// The user asked for this call (Sign in, or their own action rather than a background one).
+    pub asked: bool,
+    pub auth: Auth,
 }
 
 #[cfg(test)]

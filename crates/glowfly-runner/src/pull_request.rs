@@ -8,13 +8,14 @@
 //! request list does, in the request's `cwd` (the panel's repository while it is trusted).
 
 use super::execute::{Cx, Execute};
+use super::sign_ins::{Ask, sign_in};
 use glowfly_core::forge::{self, Auth, CheckQuery, ReviewRequest};
 use glowfly_core::repo;
 use glowfly_model::effect::ForgeError;
 use glowfly_model::msg::Msg;
 use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 
-pub(super) fn run(e: PrEffect) -> Msg {
+pub(super) fn run(e: PrEffect, cx: &Cx<'_>) -> Msg {
     match e {
         PrEffect::Files(job) => {
             let result = repo::pr_compare(&job.workdir, job.target, job.branch, job.head.as_deref()).map_err(|e| e.to_string());
@@ -30,24 +31,34 @@ pub(super) fn run(e: PrEffect) -> Msg {
                 repo::pr_line_maps(&job.workdir, &job.head, job.local, job.target, job.base, &job.paths).map_err(|e| e.to_string());
             Msg::PullRequest(PullRequestMsg::LinesMapped { id: job.id, generation: job.generation, result })
         }
-        PrEffect::Call(job) => call(*job),
+        PrEffect::Call(job) => call(*job, cx),
     }
 }
 
 impl Execute for PrEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self))
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self, cx))
     }
 }
 
-fn call(job: CallJob) -> Msg {
+fn call(job: CallJob, cx: &Cx<'_>) -> Msg {
     let CallJob { req, id, generation, call } = job;
     // Loading the page or the checks in the background never asks for credentials; the user's
     // own actions may.
     let interactive = !matches!(call, PrCall::Load | PrCall::Checks { .. });
     let auth: Result<Auth, ForgeError> = match req.auth {
         Some(a) => Ok(a),
-        None => forge::resolve_auth(&req.target.account(), &req.cwd, interactive, req.connected).map_err(ForgeError::from),
+        None => {
+            let ask = Ask {
+                account: req.target.account(),
+                cwd: &req.cwd,
+                interactive,
+                connected: req.connected,
+                env_only: false,
+                asked: interactive,
+            };
+            sign_in(cx, ask).map_err(ForgeError::from)
+        }
     };
     let t = &req.target;
     let reply = match call {

@@ -57,6 +57,8 @@ pub struct FetchReply {
 #[derive(Debug)]
 pub struct AccountReply {
     pub account: Account,
+    /// The model reads only whether it succeeded; the credential itself reaches the cache through
+    /// `ForgeMsg::AuthFound`.
     pub auth: Result<Auth, String>,
     /// The signed-in user, when it was looked up.
     pub me: Option<Result<Me, ForgeError>>,

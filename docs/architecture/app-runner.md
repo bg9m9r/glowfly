@@ -11,7 +11,8 @@ here.
 ## `runner/`: background work
 
 - `mod.rs`: runs effects on worker threads and reports back with `Msg`s; one file per kind of work.
-- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate and seams among them); `execute_with` runs an area's impl and scopes its result.
+- `execute.rs`: `Execute` (each effect area's impl lives in its `runner/<area>.rs`) and `Cx`, what an effect may need from the runner (its trust gate, seams and the sign-in flights among them); `execute_with` runs an area's impl and scopes its result.
+
 - `seams.rs`: `Seams`, what the work reaches outside the repositories with: the trash, the sequence editor, the path search's chunk time and where saves of settings, recent repositories and tabs go; `Seams::REAL` in the app, the stand-ins of `testing::SEAMS` in tests.
 - `testing.rs` (tests only, and other crates' tests through glowfly-runner's `test-support` feature): the entry points tests run the runner through (`execute`, `execute_all` keeping what an effect sends before its result, `execute_checked`, `sandboxed`, the stand-in trash `test_bin`, the saves folder `own_files`, the diff decoration), always with the stand-ins, refusing effects that reach outside the test (those the sandbox drops, bar a few that only read); `testing_tests.rs` checks they never reach the real trash, editor or config folder.
 - `lfs.rs`, `selection.rs`: the `Execute` impls of `LfsEffect` and `SelectionEffect`.
@@ -43,7 +44,8 @@ here.
 - `runner/expect.rs`: the check a job can carry (`JobEffect::RunGit { expect }`): a revision named by position, such as `stash@{2}`, must still be the commit the user picked, or nothing runs.
 - `runner/files.rs`: the `Execute` impl of `FilesEffect`: restoring a file from a commit with an undo entry, creating, renaming, deleting and discarding (untracked) a working-tree file, listing the tracked files, a staging or conflict edit (`git_ops.rs`), reverting part of a diff (`revert.rs`) and discarding or deleting several files at once (`discard_paths.rs`, `delete_paths.rs`); and checking the Clone dialog's parent folder (`CloneEffect::CheckParent`).
 - `runner/history.rs`: the `Execute` impl of `HistoryEffect` (a file's or folder's history; the path search and the line counts when they reach a worker rather than `Runner::run`'s own), and a file's text as of a commit for the File view, with its syntax spans and previews.
-- `runner/forge_calls.rs`: calls to hosting services: pull requests and issues (`NetworkEffect::Forge`), and connected accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello account's boards.
+- `runner/sign_ins.rs` (tests in `runner/sign_ins_tests.rs`): credential lookups for hosting-service calls: one lookup in flight per account, folder and kind (`SignInFlights`), and each answer reported to the model's shared cache (`ForgeMsg::AuthFound`).
+- `runner/forge_calls.rs`: calls to hosting services (signing in through `sign_ins.rs`): pull requests and issues (`NetworkEffect::Forge`), and connected accounts (`Effect::Account`): signing in, tokens, owners, creating a repository and a Trello account's boards.
 - `runner/trello_sign_in.rs`: Sign in with Trello: opens Trello's page through `Msg::OpenUrl` once the local port is bound and waits for the token, stopped by Cancel (`StopKey::TrelloSignIn`).
 - `runner/forge_filter_calls.rs`: calls of pull request and issue filters (`ForgeCall::Filter`): the signed-in user, issue searches and the filter dialog's options.
 - `runner/forks.rs`: the fork dialogs' hosting-service calls (`Effect::Remote`): listing a repository's forks, finding the user's own fork and forking into the user's account.

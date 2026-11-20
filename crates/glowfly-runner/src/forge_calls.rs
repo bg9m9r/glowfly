@@ -3,6 +3,7 @@
 //! account's boards.
 
 use super::execute::{Cx, Execute};
+use super::sign_ins::{Ask, sign_in};
 use glowfly_core::forge::{self, Account, Auth, Target};
 use glowfly_model::effect::{AccountEffect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
 use glowfly_model::msg::{ForgeMsg, Msg, PublishMsg};
@@ -70,22 +71,34 @@ fn trello_boards(account: Account, cwd: &Path) -> Msg {
     Msg::Forge(ForgeMsg::TrelloBoardsLoaded { account, result })
 }
 
-/// Background calls of an unconnected account never ask Git Credential Manager (`background_auth`).
-fn lookup(target: &Target, cwd: &Path, interactive: bool, connected: bool, call: &ForgeCall) -> glowfly_core::error::Result<Auth> {
-    if !interactive && call.is_background() {
-        forge::background_auth(&target.account(), cwd, connected)
-    } else {
-        forge::resolve_auth(&target.account(), cwd, interactive, connected)
-    }
-}
-
-pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: bool, connected: bool, call: ForgeCall) -> ForgeReply {
+/// Runs a call with the credential the request carries, else one found through `sign_ins`. A
+/// background call of an unconnected account never asks Git Credential Manager (`env_only`).
+pub(super) fn call(
+    target: Target,
+    cwd: &Path,
+    auth: Option<Auth>,
+    interactive: bool,
+    connected: bool,
+    call: ForgeCall,
+    cx: &Cx<'_>,
+) -> ForgeReply {
     let auth = match auth {
         Some(a) => a,
-        None => match lookup(&target, cwd, interactive, connected, &call) {
-            Ok(a) => a,
-            Err(e) => return ForgeReply { target, auth: None, results: auth_failed(&call, e.to_string()) },
-        },
+        None => {
+            let background = call.is_background();
+            let ask = Ask {
+                account: target.account(),
+                cwd,
+                interactive,
+                connected,
+                env_only: !interactive && !connected && background,
+                asked: interactive || !background,
+            };
+            match sign_in(cx, ask) {
+                Ok(a) => a,
+                Err(e) => return ForgeReply { target, results: auth_failed(&call, e.to_string()) },
+            }
+        }
     };
     let t = &target;
     let results = match call {
@@ -120,7 +133,7 @@ pub(super) fn call(target: Target, cwd: &Path, auth: Option<Auth>, interactive: 
         ForgeCall::PrDetails(prs) => vec![ForgeResult::PrDetails(forge::pr_details(t, &auth, &prs).map_err(ForgeError::from))],
         ForgeCall::Filter(c) => vec![ForgeResult::Filter(super::forge_filter_calls::call(t, &auth, c))],
     };
-    ForgeReply { target, auth: Some(auth), results }
+    ForgeReply { target, results }
 }
 
 /// A failed sign-in, answered in the shape the call expects where that matters: the second pass

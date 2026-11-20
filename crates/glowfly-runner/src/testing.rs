@@ -12,6 +12,7 @@
 
 use super::execute::{Cx, Execute, execute_with};
 use super::seams::{Seams, SeamsKind};
+use super::sign_ins::SignInFlights;
 use super::{Runner, Waker};
 use glowfly_core::rebase::SequenceEditor;
 use glowfly_core::{repo, undo};
@@ -32,6 +33,10 @@ pub const SEAMS: Seams = Seams {
     chunk: Duration::from_secs(30),
     save: save_for_test,
 };
+
+/// The credential lookups of every test's effects (the network ones are refused, so tests of the
+/// lookups themselves build their own, in sign_ins_tests.rs).
+static SIGN_INS: SignInFlights = SignInFlights::new();
 
 /// Runs one effect to completion (blocking) and returns the message to send back, if any.
 /// Results that belong to one repository come back as `Msg::Scoped`.
@@ -106,7 +111,7 @@ fn allowed(effect: &Effect) -> bool {
 /// The `Cx` of an effect run on its own: never cancelled, no stop, no gate, other messages
 /// dropped, a fresh graph cache, and the stand-ins.
 fn cx(graph_cache: &repo::GraphCache) -> Cx<'_> {
-    Cx { cancelled: &|| false, graph_cache, stop: None, gate: None, send: &|_| {}, seams: SEAMS }
+    Cx { cancelled: &|| false, graph_cache, stop: None, gate: None, send: &|_| {}, seams: SEAMS, sign_ins: &SIGN_INS }
 }
 
 /// `Runner::new` for a whole-app test: saves land in `files`, outside effects are dropped

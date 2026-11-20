@@ -156,7 +156,7 @@ fn a_fork_on_origin_opens_into_upstream() {
     // The pull request is created on upstream from the fork; its reply is logged, not listed.
     let fx = update(&mut st, create(new_pr("topic"), "origin", "upstream"), Instant::now());
     assert_eq!(creates(&fx), [(t("https://github.com/o/r"), Some(t("https://github.com/ada/r")))]);
-    let reply = |target: Target, results| msg(ForgeMsg::ForgeReplied(ForgeReply { target, auth: None, results }));
+    let reply = |target: Target, results| msg(ForgeMsg::ForgeReplied(ForgeReply { target, results }));
     let pr = PullRequest {
         id: 12,
         title: "Topic".into(),

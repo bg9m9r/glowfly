@@ -91,6 +91,7 @@ mod saves;
 mod seams;
 mod selection;
 mod session;
+mod sign_ins;
 mod signatures;
 mod sparse;
 mod ssh;
@@ -173,6 +174,8 @@ pub struct Runner {
     index: index::IndexWorker,
     /// Ahead/behind and containment answers, kept between repository loads.
     graph_cache: Arc<repo::GraphCache>,
+    /// The credential lookups in flight (sign_ins.rs), shared by every effect.
+    sign_ins: Arc<sign_ins::SignInFlights>,
     /// The log files' worker (attached at startup, never in tests).
     logs: logs::LogWorker,
     /// The stops of the running git commands that can be cancelled (`ControlEffect::StopGit`).
@@ -200,6 +203,7 @@ impl Runner {
             saves: Default::default(),
             queues: Default::default(),
             graph_cache: Default::default(),
+            sign_ins: Arc::new(sign_ins::SignInFlights::new()),
             stats: Default::default(),
             path_search: Default::default(),
             index: Default::default(),
@@ -275,6 +279,7 @@ impl Runner {
         // What a check that fails sends back: the failure its sender waits for.
         let failed = guard::Recovery::of(&effect, name);
         let graph_cache = Arc::clone(&self.graph_cache);
+        let sign_ins = Arc::clone(&self.sign_ins);
         // Registered now, so a stop asked while it waits in its repository's queue is kept.
         let stop = effect.stop_key().map(|key| (key, self.stops.register(key)));
         let stops = Arc::clone(&self.stops);
@@ -293,7 +298,15 @@ impl Runner {
                 }
             };
             let stop_ref = stop.as_ref().map(|(_, s)| s);
-            let cx = Cx { cancelled: &cancelled, graph_cache: &graph_cache, stop: stop_ref, gate: None, send: &send, seams };
+            let cx = Cx {
+                cancelled: &cancelled,
+                graph_cache: &graph_cache,
+                stop: stop_ref,
+                gate: None,
+                send: &send,
+                seams,
+                sign_ins: &sign_ins,
+            };
             let msg = guard::guarded_noting(
                 recovery,
                 || busy.panicked(),

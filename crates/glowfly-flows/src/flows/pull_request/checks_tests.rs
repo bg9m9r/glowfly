@@ -60,7 +60,7 @@ fn head(st: &AppState) -> String {
 fn listed_again(st: &mut AppState, f: impl FnOnce(&mut glowfly_core::forge::PullRequest)) -> Vec<Effect> {
     let mut pr = st.session.forge.as_ref().unwrap().prs[0].clone();
     f(&mut pr);
-    let reply = ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
+    let reply = ForgeReply { target: github(), results: vec![ForgeResult::Prs(Ok(vec![pr]))] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now())
 }
 
@@ -150,9 +150,14 @@ fn a_failed_first_load_fails_and_a_failed_reload_keeps_the_list() {
 fn an_auth_failure_forgets_the_cached_auth() {
     let (mut st, _, dirs) = opened("prk-auth");
     let key = github().account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     answer(&mut st, Err(ForgeError { message: "authentication failed: 401".into(), auth: true }), Instant::now());
-    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_none());
     assert_eq!(view(&st).checks.pane, ChecksPane::Failed("authentication failed: 401".into()));
     done(st, dirs);
 }

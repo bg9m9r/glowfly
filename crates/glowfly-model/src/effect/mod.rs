@@ -70,7 +70,7 @@ pub use credential::CredentialEffect;
 pub use dashboard::*;
 pub use diff::DiffEffect;
 pub use files::FilesEffect;
-pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult};
+pub use forge::{ForgeCall, ForgeError, ForgeReply, ForgeResult, FoundAuth};
 pub use forge_filters::{FilterCall, FilterResult};
 pub use history::{FileTextRequest, HistoryEffect};
 pub use hunk_patch::HunkPatchRequest;

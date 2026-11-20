@@ -82,11 +82,8 @@ pub(super) fn commented(
     let t = st.settings.lang();
     let result = result.map_err(|e| ForgeError { message: hosting(t, target.provider, Ask::Change, &e), ..e });
     let failure = result.as_ref().err().map(|e| e.message.clone());
-    if active
-        && result.as_ref().is_err_and(|e| e.auth)
-        && let Some(fs) = st.session.forge.as_mut()
-    {
-        fs.auth.remove(&target.account().key());
+    if active && result.as_ref().is_err_and(|e| e.auth) {
+        st.auth_cache.forget(&target.account().key());
     }
     let mine = |v: &&mut IssueView| v.comment.posting && v.key == key && &v.target == target;
     let view = if active {

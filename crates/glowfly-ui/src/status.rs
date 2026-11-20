@@ -50,7 +50,7 @@ pub fn status_bar(ctx: &egui::Context, st: &AppState, msgs: &mut Vec<Msg>) {
                         ui.label(RichText::new(h.provider.name()).color(color::text()).font(type_scale::strong(ui, type_scale::BODY)));
                         ui.label(RichText::new(h.display()).color(color::weak()));
                         status_label_ui(ui, t, &fs.host_status, prs_text(t, fs, &filters).as_deref(), msgs);
-                        if let Some(a) = fs.auth.get(&h.account().key()) {
+                        if let Some(a) = st.auth_cache.get(&h.account().key(), &st.any_dir(), false) {
                             ui.label(RichText::new(t.trf("status.via", &[("source", &a.source)])).color(color::faint()));
                         }
                     }

@@ -167,10 +167,8 @@ pub(super) fn created(
         Err(e) => {
             st.log(false, format!("Creating the {noun} failed: {}", e.message));
             let said = hosting(st.settings.lang(), target.provider, Ask::Change, &e);
-            if e.auth
-                && let Some(fs) = st.session.forge.as_mut()
-            {
-                fs.auth.remove(&target.account().key());
+            if e.auth {
+                st.auth_cache.forget(&target.account().key());
             }
             match form_mut(st).filter(|_| waiting) {
                 Some(form) => {

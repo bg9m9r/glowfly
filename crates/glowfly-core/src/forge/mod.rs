@@ -60,8 +60,8 @@ mod user_repos;
 mod web;
 
 pub use auth::{
-    Auth, background_auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host, may_contact,
-    not_connected_text, resolve_auth, save_token, says_not_connected, sign_in_status,
+    Auth, HELPER_SOURCE, background_auth, delete_token, forget_credential_manager, from_credential_manager, is_connected, is_public_host,
+    may_contact, not_connected_text, resolve_auth, save_token, says_not_connected, sign_in_status,
 };
 pub use check_detail::{CheckList, CheckQuery, CheckRun, MAX_CHECKS, RunState, check_list, checks_in_app, duration_text};
 pub use checks::{CHECKED_PRS, CheckState, Checks, TipQuery};
@@ -287,6 +287,11 @@ pub trait Forge: Sync {
     fn post_issue_comment(&self, _t: &Target, _auth: &Auth, _key: &str, _body: &str) -> Result<Entry> {
         Err(Error::Unsupported("commenting on issues isn't supported on this service".into()))
     }
+}
+
+/// What a request waiting on a credential lookup is told when the lookup died without an answer.
+pub fn lookup_stopped_text() -> String {
+    "the sign-in lookup stopped".into()
 }
 
 /// The implementation for a provider.

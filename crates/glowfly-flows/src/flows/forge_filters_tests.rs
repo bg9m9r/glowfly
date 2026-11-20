@@ -53,7 +53,7 @@ pub(super) fn saved(fx: &[Effect]) -> Option<&Settings> {
 }
 
 pub(super) fn reply(st: &mut AppState, target: Target, r: FilterResult) {
-    let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::Filter(r)] };
+    let reply = ForgeReply { target, results: vec![ForgeResult::Filter(r)] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
 }
 
@@ -228,12 +228,17 @@ fn a_tracker_that_cannot_apply_the_filter_is_not_asked() {
 fn an_auth_error_drops_the_saved_sign_in() {
     let (mut st, dir) = open("ff-auth");
     let key = host(&st).account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     send(&mut st, choose(FilterKind::Issues, Builtin::IssuesCreatedByMe));
     let (choice, conditions) = (FilterChoice::Builtin(Builtin::IssuesCreatedByMe), Builtin::IssuesCreatedByMe.conditions());
     let h = host(&st);
     reply(&mut st, h, FilterResult::Issues { choice, conditions, epoch: 0, me: None, result: Err(error(true)) });
-    assert!(!fs(&st).auth.contains_key(&key));
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_none());
     assert_eq!(fs(&st).filters.issues.as_ref().unwrap().status, Status::Error("boom".into()));
     let _ = std::fs::remove_dir_all(dir);
 }
@@ -293,7 +298,6 @@ fn dropped_replies_are_asked_for_again() {
         workdir: dir.join("elsewhere"),
         msg: Box::new(Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply {
             target: host(&st),
-            auth: None,
             results: vec![ForgeResult::Filter(FilterResult::Me { epoch: 0, result: Ok(ada()) })],
         }))),
     };

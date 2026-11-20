@@ -26,7 +26,7 @@ fn run(st: &mut AppState, m: DashboardMsg) -> Vec<Effect> {
 }
 
 fn listed(st: &mut AppState, target: Target, prs: Vec<PullRequest>) {
-    let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::Prs(Ok(prs))] };
+    let reply = ForgeReply { target, results: vec![ForgeResult::Prs(Ok(prs))] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
 }
 

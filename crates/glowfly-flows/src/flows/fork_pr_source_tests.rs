@@ -34,7 +34,7 @@ fn with_two_topics(name: &str) -> (AppState, [PathBuf; 3], Oid, Oid) {
 
 fn listed(st: &mut AppState, prs: Vec<PullRequest>) {
     let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
-    drive(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, auth: None, results: vec![ForgeResult::Prs(Ok(prs))] })));
+    drive(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, results: vec![ForgeResult::Prs(Ok(prs))] })));
 }
 
 fn pr(id: u64, head_repo: HeadRepo) -> PullRequest {

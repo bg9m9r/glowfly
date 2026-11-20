@@ -8,10 +8,10 @@ use glowfly_model::effect::NetworkEffect;
 use glowfly_model::msg::{AvatarMsg, ForgeMsg, Msg};
 
 impl Execute for NetworkEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
         match self {
             NetworkEffect::Forge { target, cwd, auth, interactive, connected, call } => {
-                Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call))))
+                Some(Msg::Forge(ForgeMsg::ForgeReplied(forge_calls::call(target, &cwd, auth, interactive, connected, call, cx))))
             }
             NetworkEffect::Avatars(emails) => {
                 let images = emails

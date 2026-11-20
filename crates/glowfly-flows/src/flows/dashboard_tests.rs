@@ -229,7 +229,7 @@ fn filled(st: &mut AppState) {
         scanned("app", &[("origin", "https://gitlab.com/g/app")], &[]),
     ];
     deliver(st, repos);
-    st.dashboard.auth.insert(gitlab().key(), token(Provider::GitLab));
+    st.auth_cache.store(gitlab().key(), &AppState::outside_dir(), token(Provider::GitLab), true);
     let t = |target: Target, prs, issues| TargetReply { target, prs: Some(prs), issues: Some(issues) };
     let widgets = vec![pr(1, "Speed up search", "ADA", &[]), pr(2, "Fix login", "grace", &["ada"]), pr(3, "Docs", "linus", &["ada"])];
     let github = AccountReply {
@@ -255,8 +255,9 @@ fn replies_fill_the_rows_and_failures_are_kept_apart() {
     assert_eq!(counts(d, "fix"), [0, 1, 0]);
     let gl = d.account(&gitlab()).unwrap();
     assert_eq!(gl.state, AccountState::SignInFailed("not signed in to GitLab".into()));
-    assert!(!d.auth.contains_key(&gitlab().key()), "the failed credential is dropped");
-    assert!(d.auth.contains_key(&gh("o", "r").account().key()));
+    let held = |a: &Account| st.auth_cache.get(&a.key(), &AppState::outside_dir(), false).is_some();
+    assert!(!held(&gitlab()), "the failed credential is dropped");
+    assert!(!held(&gh("o", "r").account()), "a reply alone adds none: the runner's AuthFound does");
     let mine = sections(d, DashShow::Mine, "");
     let api = mine[0].repos.iter().find(|r| r.data.target.repo == "api").unwrap();
     assert_eq!(api.error, Some("GitHub had a problem on its side. Try again in a few minutes."), "in plain words");
@@ -314,7 +315,7 @@ fn connecting_or_disconnecting_drops_the_credential_and_refreshes_while_open() {
         Msg::Forge(ForgeMsg::Connected { account: account.clone(), method: "access token".into(), token: None, result: Ok("ada".into()) })
     };
     let cached = |st: &mut AppState| {
-        st.dashboard.auth.insert(account.key(), token(Provider::GitHub));
+        st.auth_cache.store(account.key(), &AppState::outside_dir(), token(Provider::GitHub), true);
         st.dashboard.fetched = Some(Instant::now());
         let me = Some(Me { id: "ada".into(), name: "Ada".into(), ..Default::default() });
         st.dashboard.accounts = vec![AccountRow { me, ..AccountRow::new(account.clone(), AccountState::Ok) }];
@@ -323,7 +324,9 @@ fn connecting_or_disconnecting_drops_the_credential_and_refreshes_while_open() {
     // results' freshness all go.
     let dropped = |st: &AppState| {
         let d = &st.dashboard;
-        !d.auth.contains_key(&account.key()) && d.fetched.is_none() && d.account(&account).is_some_and(|a| a.me.is_none())
+        st.auth_cache.get(&account.key(), &AppState::outside_dir(), false).is_none()
+            && d.fetched.is_none()
+            && d.account(&account).is_some_and(|a| a.me.is_none())
     };
     for open in [false, true] {
         st.dashboard.open = open;

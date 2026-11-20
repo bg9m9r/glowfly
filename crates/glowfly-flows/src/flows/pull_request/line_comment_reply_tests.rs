@@ -141,12 +141,17 @@ fn failed_post_keeps_the_draft_with_the_services_words() {
 fn an_auth_failure_drops_the_cached_auth() {
     let (mut st, dirs) = ready("plc-auth", |_| {});
     let key = github().account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     posted(&mut st, false);
     let e = ForgeError { message: "authentication failed: 401".into(), auth: true };
     let msg = reply_msg(&st, PrReply::LineCommented { review: false, result: Err(e) });
     run(&mut st, msg);
-    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_none());
     done(st, dirs);
 }
 

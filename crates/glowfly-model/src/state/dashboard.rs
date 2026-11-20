@@ -6,8 +6,7 @@
 
 use super::AppState;
 use super::FORGE_REFRESH_INTERVAL;
-use glowfly_core::forge::{Account, Auth, Connection, Issue, Me, Provider, PullRequest, Target};
-use std::collections::HashMap;
+use glowfly_core::forge::{Account, Connection, Issue, Me, Provider, PullRequest, Target};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -158,8 +157,6 @@ pub struct Dashboard {
     pub unreadable: Vec<(PathBuf, String)>,
     /// Targets past `MAX_TARGETS`, not asked.
     pub over_limit: usize,
-    /// Credentials by account key.
-    pub auth: HashMap<String, Auth>,
     pub pending_pr: Option<PendingPr>,
 }
 

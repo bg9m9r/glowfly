@@ -108,6 +108,8 @@ pub enum ForgeMsg {
         into: String,
     },
     ForgeReplied(ForgeReply),
+    /// A lookup found a credential: kept app-wide (unscoped, sent by the runner before the call's reply).
+    AuthFound(Box<crate::effect::FoundAuth>),
     /// The branch tips drawn this frame (LOCAL and REMOTE rows, graph ref labels), sent by the
     /// shell when the set changes.
     TipsShown(Vec<git2::Oid>),
@@ -158,6 +160,7 @@ impl ForgeMsg {
             | Self::PushToMyFork { .. }
             | Self::CreatePr { .. }
             | Self::ForgeReplied(..)
+            | Self::AuthFound(..)
             | Self::TipsShown(..)
             | Self::Connected { .. }
             | Self::ShowTrackerPage

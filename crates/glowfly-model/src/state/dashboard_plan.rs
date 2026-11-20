@@ -139,7 +139,7 @@ pub fn plan(st: &AppState, scans: &[(PathBuf, Result<ScannedRepo, ReadFailed>)])
         p.accounts.push(AccountRow { me: me.clone(), ..AccountRow::new(account.clone(), AccountState::Pending) });
         p.jobs.push(AccountJob {
             connected: forge::is_connected(&account, connections),
-            auth: d.auth.get(&account.key()).cloned(),
+            auth: st.auth_cache.get(&account.key(), &AppState::outside_dir(), false).cloned(),
             me,
             targets: vec![job],
             account,

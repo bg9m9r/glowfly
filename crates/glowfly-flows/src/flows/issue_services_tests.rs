@@ -206,7 +206,12 @@ fn a_read_only_trello_token_keeps_the_dialog_and_the_sign_in() {
     let (mut st, dir) = open_repo("issue-trello-read-only");
     let t = trello(&mut st, BOARD);
     let key = t.account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::Trello, Some("k"), "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::Trello, Some("k"), "tok", "test"),
+        true,
+    );
     run(&mut st, IssueMsg::CreateDialog);
     let msg = options(&st, BOARD, lists());
     run(&mut st, msg);
@@ -218,7 +223,7 @@ fn a_read_only_trello_token_keeps_the_dialog_and_the_sign_in() {
     run(&mut st, msg);
     let f = form(&st);
     assert_eq!((f.busy, f.error.as_deref()), (false, Some(why)));
-    assert!(st.session.forge.as_ref().unwrap().auth.contains_key(&key), "the token is kept");
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_some(), "the token is kept");
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text.starts_with("Creating the card failed: ")));
     done(st, dir);
 }

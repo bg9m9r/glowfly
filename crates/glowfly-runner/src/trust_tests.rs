@@ -245,7 +245,16 @@ fn a_status_read_that_fails_its_check_reads_without_git() {
 /// `execute_checked`'s refusal of the network: these effects must never get past the check.
 fn checked_here(c: TrustCheck, effect: Effect) -> Option<Msg> {
     let graph_cache = glowfly_core::repo::GraphCache::default();
-    let cx = Cx { cancelled: &|| false, graph_cache: &graph_cache, stop: None, gate: None, send: &|_| {}, seams: crate::testing::SEAMS };
+    let sign_ins = crate::sign_ins::SignInFlights::new();
+    let cx = Cx {
+        cancelled: &|| false,
+        graph_cache: &graph_cache,
+        stop: None,
+        gate: None,
+        send: &|_| {},
+        seams: crate::testing::SEAMS,
+        sign_ins: &sign_ins,
+    };
     let fail = crate::guard::Recovery::of(&effect, effect.name());
     checked(c, effect, |text| fail.failed(text), &cx)
 }

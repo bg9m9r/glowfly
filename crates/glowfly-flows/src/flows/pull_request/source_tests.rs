@@ -303,7 +303,7 @@ fn a_new_listed_head_and_a_parked_fetch_ask_again() {
     let head = move_head(&bare, "refs/pull/7/head", "k.txt");
     let mut listed = pr(7, Some(head));
     listed.source = "from-a-fork".into();
-    let reply = ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(vec![listed]))] };
+    let reply = ForgeReply { target: github(), results: vec![ForgeResult::Prs(Ok(vec![listed]))] };
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
     assert_eq!(view(&st).head_fetch, HeadFetch::Idle);
     let fx = step(&mut st, take(fx, is_files));

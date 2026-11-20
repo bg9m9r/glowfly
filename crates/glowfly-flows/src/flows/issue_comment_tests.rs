@@ -130,10 +130,15 @@ fn a_failed_post_keeps_the_draft() {
     assert!(st.log.last().is_some_and(|l| !l.ok && l.text == format!("Commenting on issue #12 failed: {locked}")));
 
     let key = github().account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     post(&mut st, "Me too");
     answer(&mut st, &workdir, "12", Err(ForgeError { message: "Bad credentials".into(), auth: true }));
-    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key), "the credential is forgotten");
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_none(), "the credential is forgotten");
     done(st, dir);
 }
 

@@ -2,11 +2,11 @@
 
 use super::tests::{drive, git, scratch_repo, state};
 use super::update;
-use glowfly_core::forge::{self, Account, Auth, Connection, Provider, Target};
+use glowfly_core::forge::{self, Account, Auth, Connection, HELPER_SOURCE, Provider, Target};
 use glowfly_core::i18n::Lang;
 use glowfly_model::effect::NetworkEffect;
 use glowfly_model::effect::SaveEffect;
-use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult};
+use glowfly_model::effect::{Effect, ForgeCall, ForgeError, ForgeReply, ForgeResult, FoundAuth};
 use glowfly_model::msg::ForgeMsg;
 use glowfly_model::msg::{Msg, RepoMsg};
 use glowfly_model::state::forge_filters::connect_prompt;
@@ -78,7 +78,7 @@ fn asks_project_keys(st: &mut AppState) -> Option<bool> {
 
 fn project_keys_reply(st: &mut AppState, result: Result<Option<Vec<String>>, ForgeError>) {
     let target = st.session.forge.as_ref().unwrap().tracker.clone().unwrap();
-    let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::ProjectKeys(result)] };
+    let reply = ForgeReply { target, results: vec![ForgeResult::ProjectKeys(result)] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), Instant::now());
 }
 
@@ -165,9 +165,16 @@ fn forge_sends(st: &mut AppState, msg: Msg) -> Vec<(bool, bool, bool)> {
         .collect()
 }
 
-fn reply(st: &mut AppState, auth: Option<Auth>, result: ForgeResult) {
+fn reply(st: &mut AppState, result: ForgeResult) {
     let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
-    update(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, auth, results: vec![result] })), Instant::now());
+    update(st, Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, results: vec![result] })), Instant::now());
+}
+
+/// The runner's report of a credential its lookup found, sent before the call's own result.
+fn found(st: &mut AppState, auth: Auth, asked: bool) {
+    let account = st.session.forge.as_ref().unwrap().host.as_ref().unwrap().account();
+    let found = FoundAuth { account, dir: AppState::outside_dir(), connected: false, asked, auth };
+    update(st, Msg::Forge(ForgeMsg::AuthFound(Box::new(found))), Instant::now());
 }
 
 #[test]
@@ -179,7 +186,7 @@ fn a_profile_without_the_account_is_answered_once_then_waits_for_sign_in() {
 
     // The runner found no environment token and asked nobody else.
     let none = glowfly_core::error::Error::Auth(forge::not_connected_text(Provider::GitHub, None)).to_string();
-    reply(&mut st, None, ForgeResult::AuthFailed(none));
+    reply(&mut st, ForgeResult::AuthFailed(none));
     let fs = st.session.forge.as_ref().unwrap();
     assert_eq!(fs.loading, 0);
     assert_eq!(fs.host_status, Status::Error("not connected to GitHub".into()));
@@ -191,8 +198,9 @@ fn a_profile_without_the_account_is_answered_once_then_waits_for_sign_in() {
 
     // Sign in asks, with the sign-in window allowed.
     assert_eq!(forge_sends(&mut st, Msg::Forge(ForgeMsg::ForgeRefresh { interactive: true })), [(true, false, false)]);
-    let signed_in = Auth::from_token(Provider::GitHub, None, "t", "Git Credential Manager");
-    reply(&mut st, Some(signed_in), ForgeResult::Prs(Ok(vec![])));
+    let signed_in = Auth::from_token(Provider::GitHub, None, "t", HELPER_SOURCE);
+    found(&mut st, signed_in, true);
+    reply(&mut st, ForgeResult::Prs(Ok(vec![])));
     assert_eq!(st.session.forge.as_ref().unwrap().host_status, Status::Ok);
     // The sign-in it returned is held, so later background requests carry it.
     assert_eq!(forge_sends(&mut st, Msg::Repo(RepoMsg::Refresh)), [(false, true, false)]);

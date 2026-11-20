@@ -130,9 +130,16 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 ## Dashboard
 
 - Global state (`state/dashboard.rs`), never parked.
-- Scan, then one Fetch effect, with credentials resolved outside any repository.
+- Scan, then one Fetch effect, with credentials resolved outside any repository and read from the shared cache (`state/auth_cache.rs`).
 - Opening a PR waits for that tab's list (`pending_pr`).
 - Which repositories and calls a refresh plans is in `state/dashboard_plan.rs`; the rows the view draws in `state/dashboard_rows.rs`.
+
+## Hosting-service credentials
+
+- `AppState::auth_cache` holds the answers for every tab and the dashboard. An environment or saved-token answer is kept for the account anywhere; a git credential helper's answer only for the folder (`cwd`) it was looked up in, as each repository can configure its own helper. A background refresh of an unconnected account reuses a helper's answer only when the user asked for it in that folder (Sign in, their own call) or the account is connected.
+- The runner looks credentials up through `SignInFlights`: one lookup per account, folder, interactive and connected, whatever asks (refresh, pull requests, issues, filters, forks, the size check, the dashboard), so Git Credential Manager shows one window.
+- Each answer reaches the cache as `ForgeMsg::AuthFound` before the call's own result; one for an account whose connection changed since the lookup started is ignored.
+- A reply flagged as a sign-in failure, Connect, Disconnect, Forget tokens, the dashboard's Sign in and a profile switch drop the account's answers (all of them, for every folder).
 
 ## Find repositories
 

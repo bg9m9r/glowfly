@@ -4,28 +4,39 @@
 //! prompt for credentials.
 
 use super::execute::{Cx, Execute};
+use super::sign_ins::{Ask, sign_in};
 use glowfly_core::forge::{self, Auth};
 use glowfly_model::effect::{ForgeError, IssueCall, IssueEffect, IssueJob, IssueReply};
 use glowfly_model::msg::{IssueMsg, Msg};
 
-pub(super) fn run(e: IssueEffect) -> Msg {
+pub(super) fn run(e: IssueEffect, cx: &Cx<'_>) -> Msg {
     match e {
-        IssueEffect::Call(job) => call(*job),
+        IssueEffect::Call(job) => call(*job, cx),
     }
 }
 
 impl Execute for IssueEffect {
-    fn execute(self, _cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self))
+    fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
+        Some(run(self, cx))
     }
 }
 
-fn call(job: IssueJob) -> Msg {
+fn call(job: IssueJob, cx: &Cx<'_>) -> Msg {
     let IssueJob { req, generation, call } = job;
     let interactive = matches!(call, IssueCall::Create(_) | IssueCall::Comment { .. });
     let auth: Result<Auth, ForgeError> = match req.auth {
         Some(a) => Ok(a),
-        None => forge::resolve_auth(&req.target.account(), &req.cwd, interactive, req.connected).map_err(ForgeError::from),
+        None => {
+            let ask = Ask {
+                account: req.target.account(),
+                cwd: &req.cwd,
+                interactive,
+                connected: req.connected,
+                env_only: false,
+                asked: interactive,
+            };
+            sign_in(cx, ask).map_err(ForgeError::from)
+        }
     };
     let t = &req.target;
     let reply = match call {

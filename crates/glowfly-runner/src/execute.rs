@@ -26,6 +26,8 @@ pub(super) struct Cx<'a> {
     pub send: &'a dyn Fn(Msg),
     /// What the work reaches outside the repositories with (`seams.rs`).
     pub seams: super::seams::Seams,
+    /// One credential lookup in flight per key, shared by every worker (sign_ins.rs).
+    pub sign_ins: &'a super::sign_ins::SignInFlights,
 }
 
 /// Runs one effect area's value to completion (blocking), returning the message to send back.

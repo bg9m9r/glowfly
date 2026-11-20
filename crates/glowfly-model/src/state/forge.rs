@@ -3,7 +3,7 @@
 use super::build_status::TipChecks;
 use super::pull_request::details::PrDetailPass;
 use git2::Oid;
-use glowfly_core::forge::{self, Account, Auth, Issue, Provider, PullRequest, RefStyle, Target};
+use glowfly_core::forge::{self, Account, Issue, Provider, PullRequest, RefStyle, Target};
 use glowfly_core::i18n::Lang;
 use glowfly_core::settings::TrackerChoice;
 use std::collections::{HashMap, HashSet};
@@ -48,8 +48,6 @@ pub struct ForgeState {
     /// requests across forks; set by detect.
     pub pr_repos: Vec<super::pull_request::repos::PrRepo>,
     pub tracker: Option<Target>,
-    /// Credentials by account key.
-    pub auth: HashMap<String, Auth>,
     pub host_status: Status,
     pub tracker_status: Status,
     /// Requests in flight.
@@ -85,7 +83,6 @@ impl ForgeState {
             remote,
             pr_repos: Vec::new(),
             tracker,
-            auth: HashMap::new(),
             host_status: Status::Idle,
             tracker_status: Status::Idle,
             loading: 0,
@@ -157,10 +154,10 @@ impl ForgeState {
     }
 
     /// Whether `target` (the code host or the tracker) last answered that no credentials exist
-    /// for it at all (`forge::says_not_connected`) and no sign-in is held for its account.
-    pub fn found_not_connected(&self, target: &Target) -> bool {
+    /// for it at all (`forge::says_not_connected`) and no sign-in is `held` for its account.
+    pub fn found_not_connected(&self, target: &Target, held: bool) -> bool {
         let says = |s: &Status| matches!(s, Status::Error(e) if forge::says_not_connected(e));
-        !self.auth.contains_key(&target.account().key())
+        !held
             && ((self.host.as_ref() == Some(target) && says(&self.host_status))
                 || (self.tracker.as_ref() == Some(target) && says(&self.tracker_status)))
     }

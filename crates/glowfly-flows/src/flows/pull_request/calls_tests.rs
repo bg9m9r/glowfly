@@ -113,7 +113,7 @@ pub(super) fn done(st: AppState, dirs: [PathBuf; 2]) {
 fn open_github_pr_requests_the_page() {
     let (mut st, work, bare, _) = setup("prc-open", &[]);
     let auth = Auth::from_token(Provider::GitHub, None, "tok", "test");
-    st.session.forge.as_mut().unwrap().auth.insert(github().account().key(), auth);
+    st.auth_cache.store(github().account().key(), &glowfly_model::state::AppState::outside_dir(), auth, true);
     let fx = run(&mut st, PullRequestMsg::Open(7));
     let jobs = calls(&fx);
     assert_eq!(jobs.len(), 1);
@@ -305,10 +305,15 @@ fn reviewed_ok_reloads_page_and_refreshes_forge() {
 fn auth_error_drops_cached_auth() {
     let (mut st, _, dirs) = opened("prc-auth");
     let key = github().account().key();
-    st.session.forge.as_mut().unwrap().auth.insert(key.clone(), Auth::from_token(Provider::GitHub, None, "tok", "test"));
+    st.auth_cache.store(
+        key.clone(),
+        &glowfly_model::state::AppState::outside_dir(),
+        Auth::from_token(Provider::GitHub, None, "tok", "test"),
+        true,
+    );
     let msg = reply_msg(&st, PrReply::Loaded(Err(ForgeError { message: "authentication failed: 401".into(), auth: true })));
     run(&mut st, msg);
-    assert!(!st.session.forge.as_ref().unwrap().auth.contains_key(&key));
+    assert!(st.auth_cache.get(&key, &glowfly_model::state::AppState::outside_dir(), false).is_none());
     assert_eq!(view(&st).page, Page::Failed("authentication failed: 401".into()));
     done(st, dirs);
 }
@@ -330,7 +335,7 @@ fn prs_changed_with_new_head_reloads_page() {
     run(&mut st, PullRequestMsg::Open(7));
     loaded(&mut st, |_| {});
     let mut listed = st.session.forge.as_ref().unwrap().prs[0].clone();
-    let reply = |prs| ForgeReply { target: github(), auth: None, results: vec![ForgeResult::Prs(Ok(prs))] };
+    let reply = |prs| ForgeReply { target: github(), results: vec![ForgeResult::Prs(Ok(prs))] };
     let fx = update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply(vec![listed.clone()]))), Instant::now());
     assert_eq!(loads(&fx), 0, "the same head");
     listed.head = Some(rev(&work, "main").to_string());

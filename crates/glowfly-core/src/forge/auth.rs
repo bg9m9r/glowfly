@@ -21,7 +21,15 @@ impl std::fmt::Debug for Auth {
     }
 }
 
+/// The `Auth::source` of an answer a git credential helper gave.
+pub const HELPER_SOURCE: &str = "Git Credential Manager";
+
 impl Auth {
+    /// Whether a git credential helper gave this answer: it depends on the folder the lookup ran in.
+    pub fn is_helper_answer(&self) -> bool {
+        self.source == HELPER_SOURCE
+    }
+
     fn bearer(provider: Provider, token: &str, source: &str) -> Auth {
         Auth { header: format!("Bearer {}", token.trim()), provider, source: source.into() }
     }
@@ -238,7 +246,7 @@ pub fn from_credential_manager(account: &Account, cwd: &Path, interactive: bool)
     let field = |k: &str| out.stdout.lines().find_map(|l| l.strip_prefix(&format!("{k}="))).map(str::to_owned);
     let password = field("password").ok_or_else(|| Error::Auth("the credential helper returned no token".into()))?;
     let user = field("username").unwrap_or_default();
-    let (p, source) = (account.provider, "Git Credential Manager");
+    let (p, source) = (account.provider, HELPER_SOURCE);
     Ok(match p {
         // Microsoft Entra access tokens are JWTs; anything else is a PAT used with Basic auth.
         Provider::AzureDevOps if password.starts_with("eyJ") => Auth::bearer(p, &password, source),
@@ -302,6 +310,14 @@ mod tests {
         assert!(may_ask_gcm(&ghe, true));
         assert!(!may_ask_gcm(&acct(Provider::JiraCloud, "x.atlassian.net"), true), "Jira has no GCM sign-in");
         assert!(!may_ask_gcm(&acct(Provider::Trello, "trello.com"), true), "Trello has no GCM sign-in");
+    }
+
+    #[test]
+    fn only_a_helper_answer_depends_on_the_folder() {
+        let make = |source: &str| Auth::from_token(Provider::GitHub, None, "t", source);
+        assert!(make(HELPER_SOURCE).is_helper_answer());
+        assert!(!make("saved token").is_helper_answer());
+        assert!(!make("GITHUB_TOKEN").is_helper_answer());
     }
 
     #[test]

@@ -50,7 +50,7 @@ fn tick(st: &mut AppState, now: Instant) -> Vec<Vec<TipQuery>> {
 
 fn reply(st: &mut AppState, tips: Vec<TipQuery>, result: Result<HashMap<String, Checks>, ForgeError>, now: Instant) {
     let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
-    let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::TipChecks(tips, result)] };
+    let reply = ForgeReply { target, results: vec![ForgeResult::TipChecks(tips, result)] };
     update(st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), now);
 }
 
@@ -144,7 +144,7 @@ fn tips_are_seeded_from_pull_requests() {
         facets: Default::default(),
     };
     let target = st.session.forge.as_ref().unwrap().host.clone().unwrap();
-    let reply = ForgeReply { target, auth: None, results: vec![ForgeResult::Prs(Ok(vec![pr.clone()]))] };
+    let reply = ForgeReply { target, results: vec![ForgeResult::Prs(Ok(vec![pr.clone()]))] };
     let t0 = Instant::now();
     update(&mut st, Msg::Forge(ForgeMsg::ForgeReplied(reply)), t0);
     assert_eq!(st.session.forge.as_ref().unwrap().tips.checks(main), pr.checks.as_ref());

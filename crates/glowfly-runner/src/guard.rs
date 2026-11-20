@@ -271,7 +271,7 @@ impl Recovery {
                 } else {
                     vec![ForgeResult::AuthFailed(text)]
                 };
-                Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, auth: None, results }))
+                Msg::Forge(ForgeMsg::ForgeReplied(ForgeReply { target, results }))
             }
             Kind::Log => Msg::Logged { ok: false, text },
         };
