@@ -8,6 +8,19 @@ use std::time::Duration;
 /// earliest request of a frame, so several moving things still give one frame per `REDRAW`.
 pub const REDRAW: Duration = Duration::from_millis(33);
 
+/// Asks for a frame `after` from now. egui takes its predicted frame time (`predicted_dt`, 1/60 s
+/// unless a backend sets it) off every delay so a frame doesn't overshoot; that would halve the
+/// 33 ms pace on a fast display, so it is added back here.
+pub fn after(ctx: &Context, after: Duration) {
+    let predicted = Duration::try_from_secs_f32(ctx.input(|i| i.predicted_dt)).unwrap_or_default();
+    ctx.request_repaint_after(after + predicted);
+}
+
+/// Asks for the next paced frame: `after` with `REDRAW`.
+pub fn pace(ctx: &Context) {
+    after(ctx, REDRAW);
+}
+
 /// Whether the window can't be seen: minimized, or with nothing inside (egui's `ViewportInfo`
 /// has no occluded flag).
 pub fn window_hidden(ctx: &Context) -> bool {
@@ -27,7 +40,7 @@ pub fn seen(ui: &Ui, rect: Rect) -> bool {
 pub fn next_frame(ui: &Ui, rect: Rect) -> bool {
     let seen = seen(ui, rect);
     if seen {
-        ui.ctx().request_repaint_after(REDRAW);
+        pace(ui.ctx());
     }
     seen
 }
@@ -36,7 +49,7 @@ pub fn next_frame(ui: &Ui, rect: Rect) -> bool {
 /// check (the tab strip's running dots).
 pub fn wake(ctx: &Context) {
     if !window_hidden(ctx) {
-        ctx.request_repaint_after(REDRAW);
+        pace(ctx);
     }
 }
 

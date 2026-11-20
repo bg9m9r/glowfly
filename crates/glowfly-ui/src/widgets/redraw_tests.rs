@@ -71,3 +71,23 @@ fn an_empty_inner_rect_counts_as_hidden() {
     h.step();
     assert!(!wants_frame(&h), "{:?}", delay(&h));
 }
+
+/// egui takes `predicted_dt` off every delay, so what is requested is the pace plus it: the
+/// delay the backend sees is the pace itself, whatever the frame time the backend predicts.
+#[test]
+fn the_pace_holds_whatever_frame_time_egui_predicts() {
+    for dt in [1.0 / 60.0, 1.0 / 144.0, 1.0 / 540.0] {
+        for wake_only in [false, true] {
+            let mut h = crate::snapshot_check::builder().with_size(vec2(120.0, 40.0)).with_step_dt(dt).build_ui(move |ui| {
+                if wake_only {
+                    wake(ui.ctx());
+                } else {
+                    next_frame(ui, ui.max_rect());
+                }
+            });
+            h.run();
+            let d = delay(&h).as_secs_f64();
+            assert!((d - REDRAW.as_secs_f64()).abs() < 0.0005, "dt {dt}, wake {wake_only}: {d}");
+        }
+    }
+}

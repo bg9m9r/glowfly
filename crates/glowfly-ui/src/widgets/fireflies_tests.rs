@@ -3,6 +3,7 @@
 //! moves a fixed step per frame, so nothing here waits on the wall clock.
 
 use super::*;
+use crate::widgets::redraw::REDRAW;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;

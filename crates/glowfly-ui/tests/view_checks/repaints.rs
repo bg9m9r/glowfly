@@ -34,14 +34,14 @@ fn bare_repaints(src: &str) -> Vec<usize> {
     bare_lines(src).iter().enumerate().filter(|(_, l)| l.contains("request_repaint()")).map(|(i, _)| i + 1).collect()
 }
 
-/// The lines (1-based) of `src` that use egui's spinner: `egui::Spinner`, or `Spinner::new(` not
+/// The lines (1-based) of `src` that use egui's spinner: `egui::Spinner`, `ui.spinner()`, or `Spinner::new(` not
 /// reached through `widgets::`.
 fn egui_spinners(src: &str) -> Vec<usize> {
     let ours = |l: &str| l.contains("widgets::Spinner::new(") || l.contains("super::Spinner::new(");
     bare_lines(src)
         .iter()
         .enumerate()
-        .filter(|(_, l)| l.contains("egui::Spinner") || (l.contains("Spinner::new(") && !ours(l)))
+        .filter(|(_, l)| l.contains("egui::Spinner") || l.contains(".spinner()") || (l.contains("Spinner::new(") && !ours(l)))
         .map(|(i, _)| i + 1)
         .collect()
 }

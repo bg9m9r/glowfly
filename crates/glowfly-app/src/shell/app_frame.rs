@@ -47,7 +47,7 @@ impl GlowflyApp {
         // Toasts wake when their fade starts, while it runs and when they expire.
         let step = (!redraw::window_hidden(ctx)).then_some(REDRAW);
         if let Some(d) = self.st.toast_wake(now, step) {
-            ctx.request_repaint_after(d.max(REDRAW));
+            redraw::after(ctx, d.max(REDRAW));
         }
         // The "Saved" tick beside a Preferences title fades out.
         if self.st.prefs.as_ref().is_some_and(|p| p.saved.showing() || p.saved.pending) {
