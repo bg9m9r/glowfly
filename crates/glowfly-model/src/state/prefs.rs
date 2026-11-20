@@ -194,6 +194,8 @@ pub struct PrefsState {
     pub saved: crate::state::prefs_save::SavedFlash,
     /// Saves whose config writes are still running.
     pub saving: Vec<crate::state::prefs_save::PendingSave>,
+    /// A save whose git job is still running (or held for the trust prompt).
+    pub job_save: Option<crate::state::prefs_save::JobSave>,
     /// The last save that git refused, with the page it was on: shown on that page.
     pub save_error: Option<(PrefPage, String)>,
     /// The Integrations sign-in form is shown beside connected accounts.
@@ -232,6 +234,7 @@ impl PrefsState {
             leave_approved: false,
             saved: Default::default(),
             saving: Vec::new(),
+            job_save: None,
             save_error: None,
             int_adding: false,
             git_tools: None,

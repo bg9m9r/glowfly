@@ -264,6 +264,7 @@ fn forget(st: &mut AppState, h: HeldJob, trusted: bool) -> Option<PrStart> {
     let label = h.job.label.as_str();
     st.gitflow_finish.take_if(|j| j.label == label);
     st.tag_job.take_if(|j| j.label == label);
+    super::prefs_job_save::dropped(st, label);
     st.patch_apply.take_if(|j| j.label == label);
     st.auto_stash.making.take_if(|m| m.label == label);
     st.auto_stash.unstashed.take_if(|u| u.label == label);

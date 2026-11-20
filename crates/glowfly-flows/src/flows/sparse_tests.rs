@@ -23,7 +23,7 @@ fn sparse(st: &mut AppState, m: SparseMsg) -> Vec<Effect> {
 }
 
 /// A scratch repository opened in a fresh state.
-fn open(name: &str) -> (AppState, PathBuf) {
+pub(super) fn open(name: &str) -> (AppState, PathBuf) {
     let dir = scratch_repo(name);
     let mut st = state();
     drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
@@ -31,7 +31,7 @@ fn open(name: &str) -> (AppState, PathBuf) {
     (st, dir)
 }
 
-fn cleanup(dir: &Path) {
+pub(super) fn cleanup(dir: &Path) {
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -43,7 +43,7 @@ fn page_mut(st: &mut AppState) -> &mut SparsePage {
     &mut st.prefs.as_mut().unwrap().sparse
 }
 
-fn on(paths: &[&str], mode: SparseMode) -> SparseStatus {
+pub(super) fn on(paths: &[&str], mode: SparseMode) -> SparseStatus {
     SparseStatus {
         enabled: true,
         mode,
@@ -59,7 +59,7 @@ fn off() -> SparseStatus {
 }
 
 /// Opens the page and delivers `s` as the status.
-fn page_with(st: &mut AppState, s: SparseStatus) {
+pub(super) fn page_with(st: &mut AppState, s: SparseStatus) {
     run(st, Msg::Prefs(PrefsMsg::OpenPrefs(PrefPage::RepoSparse)));
     let generation = page(st).generation;
     sparse(st, SparseMsg::Loaded { generation, result: Ok(s) });
@@ -69,7 +69,7 @@ fn loads(fx: &[Effect]) -> bool {
     fx.iter().any(|e| matches!(e, Effect::Sparse(SparseEffect::Load { .. })))
 }
 
-fn command(fx: &[Effect]) -> Option<SparseCommand> {
+pub(super) fn command(fx: &[Effect]) -> Option<SparseCommand> {
     let commands: Vec<&SparseCommand> = fx
         .iter()
         .filter_map(|e| match e {

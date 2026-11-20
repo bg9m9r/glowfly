@@ -3,7 +3,7 @@
 //! values go out as one `Effect::Prefs(PrefsEffect::WriteGitConfig)` (`batch`), and the tick
 //! waits for it to report success (`written`); a refused write keeps the page edited and shows
 //! git's error on it. Profiles write through `profiles::set_identity`, and Git Flow and sparse
-//! checkout through their own jobs.
+//! checkout through their own jobs, and their tick waits for the job (update/prefs_job_save.rs).
 
 use crate::effect::Effect;
 use crate::effect::{ConfigWrite, PrefsEffect};
@@ -44,6 +44,7 @@ pub(super) fn save_page(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
     }
     let start = fx.len();
     let mut written = None;
+    let mut job = None;
     let saved = match page {
         PrefPage::General => {
             written =
@@ -75,10 +76,21 @@ pub(super) fn save_page(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
             save_profile(st, fx);
             true
         }
-        PrefPage::RepoGitFlow => super::gitflow::apply(st, fx),
-        PrefPage::RepoSparse => super::sparse::apply(st, fx),
+        PrefPage::RepoGitFlow => {
+            job = super::gitflow::apply(st, fx);
+            job.is_some()
+        }
+        PrefPage::RepoSparse => {
+            job = super::sparse::apply(st, fx);
+            job.is_some()
+        }
         _ => true,
     };
+    // The job's own ending ticks (or shows why not): never here.
+    if let Some(label) = job {
+        super::prefs_job_save::started(st, page, label);
+        return saved;
+    }
     let Some(p) = st.prefs.as_mut() else { return saved };
     if let Some(ticket) = batch(fx, start) {
         // A settings save on the way (a profile's) marked the tick: it waits for git too.

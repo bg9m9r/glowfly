@@ -112,3 +112,13 @@ fn repo_pages_are_the_four_that_write_the_repository_config() {
     let repo: Vec<_> = all.into_iter().filter(|p| repo_page(*p)).collect();
     assert_eq!(repo, [RepoIdentity, RepoHooks, RepoGitFlow, RepoSparse]);
 }
+
+#[test]
+fn a_page_saving_through_a_job_counts_as_saving() {
+    let mut p = prefs_on(PrefPage::RepoGitFlow);
+    assert!(!saving(&p));
+    p.job_save = Some(JobSave { page: PrefPage::RepoSparse, label: "Save sparse paths".into(), workdir: None });
+    assert!(!saving(&p), "another page's job doesn't hold this one");
+    p.job_save = Some(JobSave { page: p.page, label: "Save Git Flow settings".into(), workdir: None });
+    assert!(saving(&p));
+}

@@ -108,6 +108,7 @@ pub mod patch;
 pub mod pick;
 mod pick_done;
 pub mod prefs;
+mod prefs_job_save;
 mod prefs_leave;
 mod prefs_nav;
 mod prefs_pick;
