@@ -189,7 +189,8 @@ fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &Grap
 
     let connections = &st.settings.connections;
     let filtering = !filter.is_empty();
-    let ctx = super::remotes::Ctx { shown: &shown, sel, current: &current, fs, graph, idle, filtering, connections, actions: &actions, t };
+    let filter = filter.as_str();
+    let ctx = super::remotes::Ctx { shown: &shown, filter, sel, current: &current, fs, graph, idle, connections, actions: &actions, t };
     let open = empty.open_mut(repo, Folding::Remote, snap.remotes.len(), &mut sections.remote);
     super::remotes::section(ui, snap, open, ctx, hover_next, tips_seen, msgs);
     // The Connect tip, where the pull requests appear once an account is connected.
@@ -245,7 +246,7 @@ fn sections(ui: &mut egui::Ui, st: &AppState, view: &mut ViewState, graph: &Grap
         super::gitflow_section::section(ui, snap, &s, &mut sections.gitflow, rows, hover_next, msgs);
     }
 
-    let rows = super::tags::Rows { shown: &shown, sel, idle, graph, new_tag: &actions.tag, annotated: &actions.annotated_tag, t };
+    let rows = super::tags::Rows { shown: &shown, filter, sel, idle, graph, new_tag: &actions.tag, annotated: &actions.annotated_tag, t };
     super::tags::section(ui, snap, empty.open_mut(repo, Folding::Tags, snap.tags.len(), &mut sections.tags), rows, msgs);
 
     let stash = (&actions.stash, &actions.stash_staged);

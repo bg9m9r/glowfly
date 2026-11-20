@@ -4,21 +4,21 @@
 //! width and moves nothing after the pickers. Each width is the name's in the pickers' font,
 //! rounded up to a multiple of `ROUND_TO` so small list changes don't nudge the bar, held between
 //! the part's floor and cap (`REPO_FIT`, `BRANCH_FIT`), and never so narrow that the part's
-//! caption is cut. The widest branch name is measured once per local branch list and kept in
-//! egui's temporary data under the list's hash, since a repository can have thousands.
+//! caption is cut. The widest branch name is measured once per snapshot (its status stamp), font
+//! and zoom and kept in egui's temporary data, since a repository can have thousands.
 
+use crate::frame_memo;
 use crate::theme::type_scale::{self, CAPTION};
 use eframe::egui::{self, Color32, FontId, Id};
 use glowfly_core::repo::Snapshot;
 use glowfly_model::state::AppState;
-use std::hash::{Hash, Hasher};
 
 /// The repository and branch name slots' floors and caps.
 pub(super) const REPO_FIT: (f32, f32) = (48.0, 144.0);
 pub(super) const BRANCH_FIT: (f32, f32) = (48.0, 192.0);
 /// The step a fitted width is rounded up to.
 const ROUND_TO: f32 = 8.0;
-/// Where the widest local branch name is kept, with the hash of what it was measured from.
+/// Where the widest local branch name is kept, with the snapshot, font and zoom it was measured for.
 const WIDEST: &str = "toolbar-widest-branch";
 
 /// `name_w` rounded up to a multiple of `ROUND_TO`, held within `(min, max)`, then widened to
@@ -38,26 +38,11 @@ pub(super) fn caption_need(ctx: &egui::Context, caption: &str, other: f32) -> f3
     text_w(ctx, caption, &type_scale::font(CAPTION)) - other
 }
 
-/// The widest of `snap`'s local branch names in `font`: measured when the list (or the font)
-/// changed, otherwise last measurement's.
+/// The widest of `snap`'s local branch names in `font`: measured when the snapshot, the font or
+/// the zoom changed, otherwise last measurement's.
 pub(super) fn widest_branch(ctx: &egui::Context, snap: &Snapshot, font: &FontId) -> f32 {
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    font.hash(&mut h);
-    ctx.pixels_per_point().to_bits().hash(&mut h);
-    snap.locals.len().hash(&mut h);
-    for b in &snap.locals {
-        b.name.hash(&mut h);
-    }
-    let key = h.finish();
-    let id = Id::new(WIDEST);
-    if let Some((k, w)) = ctx.data(|d| d.get_temp::<(u64, f32)>(id))
-        && k == key
-    {
-        return w;
-    }
-    let w = snap.locals.iter().map(|b| text_w(ctx, &b.name, font)).fold(0.0, f32::max);
-    ctx.data_mut(|d| d.insert_temp(id, (key, w)));
-    w
+    let key = (snap.status_stamp, font.clone(), ctx.pixels_per_point());
+    frame_memo::kept(ctx, Id::new(WIDEST), key, || snap.locals.iter().map(|b| text_w(ctx, &b.name, font)).fold(0.0, f32::max))
 }
 
 /// The repository and branch name slots for `st`, before a narrow window shrinks them:
@@ -95,5 +80,31 @@ mod tests {
     fn the_caption_is_never_cut() {
         assert_eq!(fit(20.0, REPO_FIT, 52.3), 53.0);
         assert_eq!(fit(100.0, REPO_FIT, 52.3), 104.0, "a wider name sets it");
+    }
+
+    #[test]
+    fn the_widest_branch_is_kept_per_snapshot_font_and_zoom() {
+        use crate::snapshot_tests::{remove_fixture, with_repo};
+        let (mut st, dir) = with_repo(glowfly_core::settings::ThemeChoice::Dark, "widest-kept");
+        let snap = st.snap.as_mut().unwrap();
+        let ctx = egui::Context::default();
+        crate::theme::fonts::use_test_cjk();
+        crate::theme::fonts::install(&ctx);
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        let font = FontId::proportional(14.0);
+        let direct = |snap: &Snapshot, font: &FontId| snap.locals.iter().map(|b| text_w(&ctx, &b.name, font)).fold(0.0, f32::max);
+        let w0 = widest_branch(&ctx, &*snap, &font);
+        assert_eq!(w0, direct(&*snap, &font));
+        let mut long = snap.locals[0].clone();
+        long.name = "feature/a-really-quite-long-branch-name".into();
+        snap.locals.push(long);
+        assert_eq!(widest_branch(&ctx, &*snap, &font), w0, "kept for the same snapshot");
+        snap.status_stamp = glowfly_core::repo::next_status_stamp();
+        let w1 = widest_branch(&ctx, &*snap, &font);
+        assert!(w1 > w0);
+        assert_eq!(w1, direct(&*snap, &font));
+        let big = FontId::proportional(16.0);
+        assert_eq!(widest_branch(&ctx, &*snap, &big), direct(&*snap, &big), "a larger font measures again");
+        remove_fixture(&dir);
     }
 }

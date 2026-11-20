@@ -7,6 +7,7 @@
 use super::find_marks::{Mark, RowRuns, Runs, paint_cut_marked};
 use super::layout::Columns;
 use crate::common::{added_color, removed_color};
+use crate::frame_memo;
 use crate::theme::color;
 use crate::theme::sizes;
 use crate::theme::type_scale;
@@ -16,7 +17,7 @@ use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{self, Align, Color32, FontId, Label, Painter, Pos2, Rect, RichText, Ui, pos2};
 use git2::Oid;
 use glowfly_core::i18n::Lang;
-use glowfly_core::repo::{CommitInfo, RefLabel};
+use glowfly_core::repo::{CommitInfo, RefLabel, Snapshot};
 use glowfly_core::settings::{GraphColumns, Settings};
 use glowfly_model::state::ForgeState;
 use std::collections::HashMap;
@@ -130,6 +131,14 @@ const WIDE_DAYS: [i64; 12] = [
     1_795_215_480,
     1_797_807_480,
 ];
+
+/// The oldest loaded commit's time, kept per snapshot and history length (load more appends
+/// commits without a new stamp, and freeing a parked tab's history empties the list).
+pub(super) fn oldest(ctx: &egui::Context, snap: &Snapshot) -> Option<i64> {
+    frame_memo::kept(ctx, egui::Id::new("graph-oldest-commit"), (snap.status_stamp, snap.commits.len()), || {
+        snap.commits.iter().map(|c| c.time).min()
+    })
+}
 
 /// The widest dates the DATE column shows, for its least width: each month as the graph formats
 /// it at `now` (absolute dates), or, while dates are ages, its short form: with the year ("Dec
@@ -247,6 +256,24 @@ pub(super) fn message_tip(ui: &mut Ui, c: &CommitInfo, with_body: bool) {
 mod tests {
     use super::*;
     use eframe::egui;
+
+    #[test]
+    fn the_oldest_commit_follows_a_longer_history_and_a_new_snapshot() {
+        use crate::snapshot_tests::{remove_fixture, with_repo};
+        use std::sync::Arc;
+        let (mut st, dir) = with_repo(glowfly_core::settings::ThemeChoice::Dark, "oldest-kept");
+        let snap = st.snap.as_mut().unwrap();
+        let ctx = egui::Context::default();
+        let o0 = oldest(&ctx, &*snap).expect("a history");
+        let mut older = snap.commits[0].clone();
+        older.time = o0 - 400 * 86_400;
+        let longer: Vec<CommitInfo> = snap.commits.iter().cloned().chain([older]).collect();
+        snap.commits = Arc::from(longer);
+        assert_eq!(oldest(&ctx, &*snap), Some(o0 - 400 * 86_400), "load more appends under the same stamp");
+        snap.commits = Arc::from(Vec::new());
+        assert_eq!(oldest(&ctx, &*snap), None, "a freed history has none");
+        remove_fixture(&dir);
+    }
 
     #[test]
     fn date_figures_are_tabular() {

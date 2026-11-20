@@ -78,7 +78,7 @@ start with `state/`, `update/` or `ui/`.
 - `graph/layout.rs`: the history table's column layout: each column a cell, divider to divider, whose stored width is the whole cell, with its content 12 px in from a divider and 16 px in from the table's edges.
 - `graph/fit.rs`: how the columns give way in a narrow graph (CHANGES, COMMIT, AUTHOR, DATE hide, then BRANCH / TAG narrows and its chips move inline, MESSAGE keeping 240 px), never saved.
 - `graph/cells.rs`: the graph row's single-line text cells, and the pull request chips by head commit, each with the pull request it opens.
-- `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips.
+- `graph/refs_fit.rs`: how wide BRANCH / TAG's chips want to be (each row folded to its first chip and "+N"), for the column's auto-fit and inline chips; kept per snapshot, chip font and zoom.
 - `graph/wip_row.rs`: this tab's WIP row with its label (`weak` until the row is chosen), change chips and line total, spanning the columns it leaves empty; short of room the total hides, then the label is cut to 6 characters, then the chips hide.
 - `graph/branch_chip.rs`: a branch's ref chip drawn outside the graph, as the Branch / tag column draws it (the rebase panel's tip row).
 - `graph/labels.rs`: the row's ref chips with their marks (names cut in their middle; the checked-out branch in semibold), fitting and "+N" chip, the halo round the checked-out branch and HEAD (no layout room; a ref chip after it moves 3 px).
