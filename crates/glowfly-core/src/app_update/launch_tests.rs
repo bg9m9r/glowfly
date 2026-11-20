@@ -1,5 +1,5 @@
 //! Detached starts' Windows flags, and trying a copied helper: it must exit successfully, in
-//! time, printing what was expected.
+//! time, printing what was expected, and a start that finds it busy is tried again.
 
 use super::*;
 
@@ -51,6 +51,53 @@ fn a_probe_that_hangs_is_killed() {
     assert!(started.elapsed() < Duration::from_secs(20), "{:?}", started.elapsed());
 }
 
+fn busy() -> std::io::Error {
+    std::io::Error::from(std::io::ErrorKind::ExecutableFileBusy)
+}
+
+#[test]
+fn a_busy_start_is_tried_again() {
+    let mut calls = 0;
+    let r = retry_busy(Duration::ZERO, || {
+        calls += 1;
+        if calls < 3 { Err(busy()) } else { Ok(7) }
+    });
+    assert_eq!(r.unwrap(), 7);
+    assert_eq!(calls, 3);
+}
+
+#[test]
+fn a_start_busy_every_time_gives_up() {
+    let mut calls = 0;
+    let r: std::io::Result<()> = retry_busy(Duration::ZERO, || {
+        calls += 1;
+        Err(busy())
+    });
+    assert_eq!(r.unwrap_err().kind(), std::io::ErrorKind::ExecutableFileBusy);
+    assert_eq!(calls, BUSY_TRIES);
+}
+
+#[test]
+fn other_start_errors_are_not_retried() {
+    for kind in [std::io::ErrorKind::NotFound, std::io::ErrorKind::PermissionDenied] {
+        let mut calls = 0;
+        let r: std::io::Result<()> = retry_busy(Duration::ZERO, || {
+            calls += 1;
+            Err(std::io::Error::from(kind))
+        });
+        assert_eq!(r.unwrap_err().kind(), kind);
+        assert_eq!(calls, 1);
+    }
+}
+
+#[test]
+fn busy_retries_stay_short() {
+    const { assert!(BUSY_TRIES > 1) };
+    let extra = BUSY_WAIT * (BUSY_TRIES - 1);
+    assert!(extra < Duration::from_secs(1), "{extra:?}");
+    assert!(extra * 10 < TRY_TIMEOUT, "{extra:?}");
+}
+
 /// The real try on Unix: a script that answers like this build runs, and one that doesn't, or
 /// a file without the executable bit (as on a noexec mount), doesn't.
 #[cfg(unix)]
@@ -61,16 +108,20 @@ fn trying_a_copy_on_unix() {
     let _ = crate::persist::remove_tree(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let script = |name: &str, body: &str, mode: u32| {
+        use std::io::Write;
         let p = dir.join(name);
-        std::fs::write(
-            &p,
+        let mut f = std::fs::File::create(&p).unwrap();
+        f.write_all(
             format!(
                 "#!/bin/sh
 {body}
 "
-            ),
+            )
+            .as_bytes(),
         )
         .unwrap();
+        f.sync_all().unwrap();
+        drop(f); // Closed before it is run: an open write handle makes the start fail as busy.
         std::fs::set_permissions(&p, std::fs::Permissions::from_mode(mode)).unwrap();
         p
     };

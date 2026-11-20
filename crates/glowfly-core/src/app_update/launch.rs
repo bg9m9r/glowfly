@@ -1,7 +1,8 @@
 //! Starting the update helper, and the helper starting Glowfly again, so that neither ends with
 //! the process that started it: on Windows in a new process group, without a console and out
 //! of the starter's job when that is allowed; on Unix in a new session, so a closing terminal
-//! doesn't take it along. Also whether a copied helper can run where it was put ([`try_run`]).
+//! doesn't take it along. Also whether a copied helper can run where it was put ([`try_run`]),
+//! trying a start again while the copy is busy.
 
 use std::ffi::OsString;
 use std::path::Path;
@@ -73,6 +74,30 @@ const EXIT_GRACE: Duration = Duration::from_secs(1);
 /// The most of a tried helper's output that is read.
 #[cfg_attr(not(unix), allow(dead_code))]
 const TRY_OUTPUT: u64 = 4096;
+/// How many times a tried helper is started in all when the system says it is busy ("text file busy").
+#[cfg_attr(not(unix), allow(dead_code))]
+const BUSY_TRIES: u32 = 5;
+/// The wait between those starts.
+#[cfg_attr(not(unix), allow(dead_code))]
+const BUSY_WAIT: Duration = Duration::from_millis(40);
+
+/// Runs `attempt` until it doesn't fail with "text file busy", at most [`BUSY_TRIES`] times, `wait`
+/// apart. On Linux a file can't be started while another process still holds it open for writing,
+/// which a fork elsewhere in this process can do for a moment. Any other result is returned at
+/// once, and the last busy error once the tries run out.
+#[cfg_attr(not(unix), allow(dead_code))]
+fn retry_busy<T>(wait: Duration, mut attempt: impl FnMut() -> std::io::Result<T>) -> std::io::Result<T> {
+    let mut tries = 1;
+    loop {
+        match attempt() {
+            Err(e) if e.kind() == std::io::ErrorKind::ExecutableFileBusy && tries < BUSY_TRIES => {
+                tries += 1;
+                std::thread::sleep(wait);
+            }
+            r => return r,
+        }
+    }
+}
 
 /// Whether `program` (a copy of Glowfly) runs where it is: started with `--version`, it must
 /// print this build's `glowfly <version>` and exit successfully within [`TRY_TIMEOUT`]. On Linux
@@ -94,11 +119,13 @@ pub fn try_run(program: &Path) -> std::io::Result<()> {
 
 /// Runs `cmd` (no input, its errors dropped) and checks that it exits successfully within
 /// `timeout` with `expected` as its whole output (surrounding whitespace aside). One that takes
-/// longer is killed and counts as not running.
+/// longer is killed and counts as not running. A start the system finds busy is tried again a few
+/// times ([`retry_busy`]).
 #[cfg_attr(not(unix), allow(dead_code))]
 pub fn probe(mut cmd: Command, expected: &str, timeout: Duration) -> std::io::Result<()> {
     use std::io::{Error, ErrorKind, Read};
-    let mut child = cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn()?;
+    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+    let mut child = retry_busy(BUSY_WAIT, || cmd.spawn())?;
     let out = child.stdout.take();
     // Read on a thread: a program that keeps its output open can't hold the wait up.
     let (tx, rx) = std::sync::mpsc::channel();
