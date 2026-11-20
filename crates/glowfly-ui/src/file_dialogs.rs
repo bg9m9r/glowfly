@@ -133,7 +133,7 @@ fn footer(
     msgs: &mut Vec<Msg>,
 ) -> bool {
     if busy {
-        ui.add(egui::Spinner::new().size(12.0));
+        ui.add(crate::widgets::Spinner::new().size(12.0));
     }
     let out = d.finish(ui, Footer::new().cancel().primary(buttons::primary(label).enabled(valid && !busy)).submit(submit));
     if out.attempted {

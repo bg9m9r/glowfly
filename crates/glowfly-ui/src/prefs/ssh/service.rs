@@ -46,7 +46,7 @@ pub(in crate::prefs) fn upload_form(ui: &mut Ui, t: Lang, form: &UploadForm, tit
                     msgs.push(Msg::Ssh(SshMsg::CancelService));
                 }
                 if form.state == UploadState::Sending {
-                    ui.add(egui::Spinner::new().size(14.0));
+                    ui.add(crate::widgets::Spinner::new().size(14.0));
                 }
             });
             match &form.state {

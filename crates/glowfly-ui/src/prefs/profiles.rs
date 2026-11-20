@@ -145,7 +145,7 @@ fn profile_row(
             page.renaming = Some(RenameForm::new(p.id, &p.name));
         }
         if switching == Some(p.id) {
-            ui.add(egui::Spinner::new().size(14.0));
+            ui.add(crate::widgets::Spinner::new().size(14.0));
         } else if !current && ui.add(buttons::secondary(SWITCH_BUTTON).enabled(switching.is_none())).clicked() {
             msgs.push(Msg::Profile(ProfileMsg::Switch(p.id)));
         }

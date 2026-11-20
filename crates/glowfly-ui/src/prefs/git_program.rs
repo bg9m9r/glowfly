@@ -143,7 +143,7 @@ fn under(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
 
 fn spinner(ui: &mut Ui, text: &str) {
     ui.horizontal(|ui| {
-        ui.add(egui::Spinner::new());
+        ui.add(crate::widgets::Spinner::new());
         ui.label(RichText::new(text).color(color::weak()));
     });
 }

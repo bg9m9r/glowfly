@@ -47,7 +47,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, filter: &mut String, lists: FinderLists, 
             msgs.push(Msg::Repos(ReposMsg::Rescan));
         }
         if scan.running {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             ui.label(RichText::new(t.tr("finder.scanning")).color(color::weak()));
         }
     });

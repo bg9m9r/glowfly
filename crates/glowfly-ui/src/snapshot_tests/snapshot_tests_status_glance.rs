@@ -4,18 +4,20 @@
 //! the left with the failure making way for it.
 
 use crate::snapshot_check::CheckSnapshot;
+use crate::snapshot_tests::snapshot_tests_forge_filters::target;
 use crate::snapshot_tests::{NOW, remove_fixture, with_repo};
 use crate::theme::{self, color};
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use glowfly_core::forge::Provider;
 use glowfly_core::logs::RunInfo;
 use glowfly_core::repo::RemoteInfo;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::logs::LogsMsg;
 use glowfly_model::msg::{JobMsg, Msg};
 use glowfly_model::state::job_stop::{JobStop, Step};
-use glowfly_model::state::{AppState, LogEntry, RunningJob};
+use glowfly_model::state::{AppState, ForgeState, LogEntry, RunningJob};
 use std::path::PathBuf;
 
 type H = Harness<'static, (AppState, Vec<Msg>)>;
@@ -27,9 +29,15 @@ fn bar(st: AppState, dark: bool) -> H {
 
 /// [`bar`] at `width`.
 fn bar_sized(st: AppState, dark: bool, width: f32) -> H {
+    bar_stepped(st, dark, width, 0.25)
+}
+
+/// [`bar_sized`] stepping `dt` seconds a frame (egui takes that off a delayed repaint, so a
+/// bar pacing its frames only lets `run` finish when `dt` is shorter than the pace).
+fn bar_stepped(st: AppState, dark: bool, width: f32, dt: f32) -> H {
     let p = theme::view_palette(dark);
     let size = egui::vec2(width, crate::status::BAR_H);
-    crate::snapshot_check::builder().with_size(size).build_state(
+    crate::snapshot_check::builder().with_size(size).with_step_dt(dt).build_state(
         move |ctx, (st, msgs): &mut (AppState, Vec<Msg>)| {
             color::set_palette(&p);
             theme::apply_style(ctx, &p);
@@ -166,6 +174,25 @@ fn status_bar_failure_narrow_de() {
     let mut h = bar_sized(st, true, 520.0);
     h.run();
     h.check_snapshot("status_bar_failure_narrow_de");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// While the hosting service is loading, the bar shows the quiet dots after its part, as a
+/// progress indicator, and asks for frames at the shared pace (`run` finishes only when no
+/// frame is asked for at once).
+#[test]
+fn status_bar_forge_loading() {
+    let (mut st, dir) = with_repo(ThemeChoice::Dark, "status-forge-loading");
+    let github = target(Provider::GitHub, "github.com");
+    let mut f = ForgeState::new(Some(github.clone()), "origin".into(), Some(github));
+    f.loading = 1;
+    st.session.forge = Some(f);
+    let mut h = bar_stepped(st, true, 900.0, 1.0 / 60.0);
+    h.run();
+    h.check_snapshot("status_bar_forge_loading");
+    let delay = h.output().viewport_output[&egui::ViewportId::ROOT].repaint_delay;
+    assert!(delay <= crate::widgets::redraw::REDRAW, "{delay:?}");
     drop(h);
     remove_fixture(&dir);
 }

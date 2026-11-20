@@ -44,7 +44,7 @@ pub fn identity(ui: &mut egui::Ui, w: &Welcome, f: &mut WelcomeFields, settings:
     let form = &w.identity;
     if form.reading {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             weak(ui, t.tr("welcome.identity.reading"));
         });
         return;
@@ -120,7 +120,7 @@ pub fn git(ui: &mut egui::Ui, t: Lang, git: &GitState, msgs: &mut Vec<Msg>) {
     ui.add_space(10.0);
     let Some(info) = &git.info else {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             weak(ui, t.tr("welcome.git.looking"));
         });
         return;

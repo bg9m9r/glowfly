@@ -6,6 +6,7 @@ use super::*;
 use eframe::egui;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
+use std::time::Duration;
 
 #[test]
 fn one_dot_is_always_at_full_strength() {

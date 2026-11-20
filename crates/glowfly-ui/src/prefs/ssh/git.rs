@@ -27,7 +27,7 @@ pub(in crate::prefs) fn which_key(ui: &mut Ui, t: Lang, page: &SshPage, listing:
     ui.add_space(10.0);
     let Some(choices) = &page.choice else {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new().size(14.0));
+            ui.add(crate::widgets::Spinner::new().size(14.0));
             ui.label(RichText::new(t.tr("prefs.ssh.which.reading")).size(type_scale::SMALL).color(color::weak()));
         });
         ui.add_space(18.0);
@@ -95,7 +95,7 @@ impl Level<'_> {
                 });
                 shown.inner.widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, enabled, format!("{label}: {selected}")));
                 if page.choice_busy && page.choice_repo == repo {
-                    ui.add(egui::Spinner::new().size(14.0));
+                    ui.add(crate::widgets::Spinner::new().size(14.0));
                 }
             });
             match choice {

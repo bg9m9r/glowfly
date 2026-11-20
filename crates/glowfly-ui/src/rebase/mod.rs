@@ -65,7 +65,7 @@ pub fn show(ui: &mut Ui, st: &AppState, cache: &mut UiCache, msgs: &mut Vec<Msg>
     ui.separator();
     if panel.loading {
         ui.add_space(24.0);
-        ui.vertical_centered(|ui| ui.add(egui::Spinner::new().size(22.0)));
+        ui.vertical_centered(|ui| ui.add(crate::widgets::Spinner::new().size(22.0)));
         return;
     }
     rows::list(ui, st, cache, msgs);
@@ -104,7 +104,7 @@ fn header(ui: &mut Ui, t: Lang, panel: &RebasePanel, blocker: Option<&str>, msgs
         });
         ui.add_space(8.0);
         if panel.starting {
-            ui.add(egui::Spinner::new().size(SPINNER));
+            ui.add(crate::widgets::Spinner::new().size(SPINNER));
         }
         if let Some(b) = more_button {
             more(ui, t, panel, b, msgs);

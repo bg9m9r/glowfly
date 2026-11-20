@@ -3,7 +3,8 @@
 //! running job's dots standing still under reduce motion.
 
 use crate::snapshot_check::CheckSnapshot;
-use crate::snapshot_tests::{harness, remove_fixture, with_repo};
+use crate::snapshot_tests::{harness, harness_stepped, remove_fixture, with_repo};
+use eframe::egui;
 use egui_kittest::kittest::Queryable;
 use git2::RepositoryState;
 use glowfly_core::logs::RunInfo;
@@ -100,6 +101,21 @@ fn a_tab_without_states_is_named_by_its_name_alone() {
     h.run();
     assert!(h.query_by_label("site").is_some(), "a tab not loaded yet");
     assert!(h.query_by_label("api-server: 3 changed files, 2 behind origin/main").is_some(), "no job any more");
+    drop(h);
+    remove_fixture(&dir);
+}
+
+/// With motion on, the running tab's dots wake the window at the shared pace, not at once (a
+/// view asking for the next frame straight away would never let `run` finish).
+#[test]
+fn a_running_tab_paces_its_dots() {
+    let (mut st, dir) = states(ThemeChoice::Dark, "tabs-states-paced");
+    st.settings.reduce_motion = false;
+    st.tabs.truncate(2);
+    let mut h = harness_stepped(st, true, 1.0 / 60.0);
+    h.run();
+    let delay = h.output().viewport_output[&egui::ViewportId::ROOT].repaint_delay;
+    assert!(delay > std::time::Duration::ZERO && delay <= crate::widgets::redraw::REDRAW, "{delay:?}");
     drop(h);
     remove_fixture(&dir);
 }

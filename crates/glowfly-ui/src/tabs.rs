@@ -24,6 +24,7 @@ use super::theme::branch_colours::line;
 use super::theme::color;
 use super::theme::tokens::motion;
 use super::widgets::reason::{self, ItemState};
+use super::widgets::redraw;
 use super::widgets::truncate::full_tip;
 use crate::theme::type_scale;
 use crate::widgets::chip::ChipSize;
@@ -97,7 +98,7 @@ pub(super) fn strip(ui: &mut egui::Ui, st: &AppState, height: f32, msgs: &mut Ve
         // Only a running job's dots move; under reduce motion they stand still.
         let pulse = (marks.contains(&Some(Mark::Running)) && !st.motion_reduced()).then(|| ui.input(|i| i.time));
         if pulse.is_some() {
-            ui.ctx().request_repaint();
+            redraw::wake(ui.ctx());
         }
         let described = |i: usize| glances[i].describe(t, name(i));
         let swatch_room = |i: usize| if repo_of(i).is_some() { SWATCH_ROOM } else { 0.0 };

@@ -27,7 +27,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, sync: Option<&RepoSync>, msgs: &mut Vec<M
     let (done, all) = sync.progress();
     if sync.running() {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             let verb = match sync.kind {
                 SyncKind::Fetch => "Fetching",
                 SyncKind::Pull => "Pulling",
@@ -117,7 +117,7 @@ fn state(ui: &mut egui::Ui, t: Lang, kind: SyncKind, s: &RowState, width: f32) {
             ui.label(RichText::new("Waiting").color(color::weak()));
         }
         RowState::Running => {
-            ui.add(egui::Spinner::new().size(12.0));
+            ui.add(crate::widgets::Spinner::new().size(12.0));
             ui.label(RichText::new("Running…").color(color::weak()));
         }
         RowState::Stopped => {

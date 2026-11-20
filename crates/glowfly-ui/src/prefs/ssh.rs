@@ -8,7 +8,7 @@
 use super::{GAP, LABEL_W, ROW_W, fit, help, warn};
 use crate::theme::color;
 use crate::widgets::buttons;
-use eframe::egui::{self, RichText, Ui};
+use eframe::egui::{RichText, Ui};
 use glowfly_core::forge::Account;
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
@@ -56,7 +56,7 @@ pub fn ssh_page(ui: &mut Ui, t: Lang, page: &SshPage, upload_title: &mut Option<
     // The rest of the page waits for the listing.
     let Some(listing) = page.listing.clone() else {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             ui.label(RichText::new(t.tr("prefs.ssh.keys.reading")).color(color::weak()));
         });
         return;

@@ -43,7 +43,7 @@ pub fn sparse_page(ui: &mut Ui, page: &SparsePage, (paths, mode): (&mut String, 
     }
     let Some(status) = page.status.clone() else {
         ui.horizontal(|ui| {
-            ui.add(egui::Spinner::new());
+            ui.add(crate::widgets::Spinner::new());
             ui.label(RichText::new("Reading sparse checkout…").color(color::weak()));
         });
         return;

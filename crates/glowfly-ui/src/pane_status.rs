@@ -47,7 +47,7 @@ pub fn loader_line(ui: &mut Ui, label: &str) {
 /// A list inside a panel is loading: a small spinner and `text` on one line.
 pub fn loading_line(ui: &mut Ui, text: &str) {
     ui.horizontal(|ui| {
-        ui.add(egui::Spinner::new().size(LINE_SPINNER).color(color::weak()));
+        ui.add(crate::widgets::Spinner::new().size(LINE_SPINNER).color(color::weak()));
         ui.label(RichText::new(text).color(color::weak()));
     });
 }

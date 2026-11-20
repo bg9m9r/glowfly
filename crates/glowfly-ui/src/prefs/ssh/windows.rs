@@ -6,7 +6,7 @@
 
 use crate::prefs::{help, warn};
 use crate::widgets::buttons;
-use eframe::egui::{self, Ui};
+use eframe::egui::Ui;
 use glowfly_core::i18n::Lang;
 use glowfly_core::native_path;
 use glowfly_model::msg::Msg;
@@ -57,7 +57,7 @@ fn button(ui: &mut Ui, t: Lang, page: &SshPage, label: &str, tip: &str, on: bool
             msgs.push(Msg::Ssh(SshMsg::UseWindowsSsh(on)));
         }
         if page.choice_busy && !page.choice_repo {
-            ui.add(egui::Spinner::new().size(14.0));
+            ui.add(crate::widgets::Spinner::new().size(14.0));
         }
     });
 }

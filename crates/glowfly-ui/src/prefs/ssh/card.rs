@@ -124,7 +124,7 @@ fn actions(ui: &mut Ui, t: Lang, key: &SshKeyPair, page: &SshPage, cx: &SshConte
             msgs.push(Msg::Ssh(SshMsg::AddToAgent(key.private.clone())));
         }
         if page.agent_adding.as_ref().is_some_and(|p| same_spelling(p, &key.private)) {
-            ui.add(egui::Spinner::new().size(12.0));
+            ui.add(crate::widgets::Spinner::new().size(12.0));
         }
         submenu(ui, t.tr("prefs.ssh.card.add_service.button"), |ui| {
             if cx.services.is_empty() {
