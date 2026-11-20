@@ -1,13 +1,14 @@
 //! Headless tests of the tab a toast names (`Toast::tab`): a toast raised for a repository whose
 //! tab is open but not active says that tab first, by the name the tab strip shows, fixed when
-//! it is raised; the activity log never has the name, and a clone or an init names no tab.
+//! it is raised; the activity log never has the name, and a clone or an init names no tab. The
+//! desktop note's body and the open-dialog toast name a tab the same way, label first.
 
 use super::super::auto_stash::told;
 use super::super::jobs::finish_made;
 use super::super::update;
-use crate::effect::Effect;
+use crate::effect::{Effect, NoteKind};
 use crate::logs::{EarlierLog, LogsEffect, LogsMsg};
-use crate::msg::{JobMsg, Msg, TabsMsg};
+use crate::msg::{JobMsg, Msg, NotifyMsg, TabsMsg};
 use crate::state::menu_bar::tab_name;
 use crate::state::trust::Created;
 use crate::state::{AppState, RunningJob, Tab, Toast};
@@ -233,4 +234,73 @@ fn an_auto_stash_put_back_for_another_tab_is_named() {
     told(&mut st, "stash name", PutBack::Restored, "", git2::Oid::zero(), a.clone(), now);
     told(&mut st, "stash name", PutBack::Failed, "", git2::Oid::zero(), a, now);
     assert!(st.toasts.iter().all(|t| t.tab.is_none()));
+}
+
+/// The desktop notes among `fx`.
+fn notes(fx: &[Effect]) -> Vec<&crate::effect::DesktopNote> {
+    fx.iter().filter_map(|e| if let Effect::Notify(n) = e { Some(n) } else { None }).collect()
+}
+
+#[test]
+fn a_desktop_note_names_a_labelled_tab_by_its_label() {
+    let (mut st, a, b) = two_tabs();
+    st.settings.desktop_notifications = true;
+    st.cues.focused = false;
+    st.tabs[1].label = Some("Work".into());
+    st.job = Some(job("Push", &b));
+    let fx = done(&mut st, false, "remote rejected");
+    let n = notes(&fx);
+    assert_eq!(n.len(), 1);
+    assert_eq!((n[0].body.as_str(), n[0].workdir.as_deref(), n[0].kind), ("Work", Some(b.as_path()), NoteKind::Job));
+
+    st.tabs[1].label = None;
+    st.job = Some(job("Push", &b));
+    let fx = done(&mut st, false, "remote rejected");
+    let n = notes(&fx);
+    assert_eq!(n.len(), 1);
+    assert_eq!(n[0].body, tab_name(&st, 1));
+    assert_eq!(n[0].body, b.file_name().unwrap().to_string_lossy());
+
+    st.tabs[0].label = Some("Main".into());
+    st.job = Some(job("Push", &a));
+    let fx = done(&mut st, false, "remote rejected");
+    assert_eq!(notes(&fx)[0].body, "Main", "the active tab too");
+}
+
+#[test]
+fn the_open_dialog_toast_names_the_tab_by_its_label() {
+    let (mut st, _, b) = two_tabs();
+    let now = Instant::now();
+    st.tabs[1].label = Some("Work".into());
+    update(&mut st, Msg::confirm("Delete branch", "Delete it?".into(), "Delete", Msg::ClearLog), now);
+    assert!(st.modal.is_some());
+    update(&mut st, Msg::Notify(NotifyMsg::DesktopClicked { workdir: Some(b) }), now);
+    assert_eq!(st.toasts.last().map(|t| t.text.as_str()), Some("Close the open dialog to show Work."));
+    let elsewhere = repo("elsewhere");
+    update(&mut st, Msg::Notify(NotifyMsg::DesktopClicked { workdir: Some(elsewhere.clone()) }), now);
+    let folder = elsewhere.file_name().unwrap().to_string_lossy().into_owned();
+    assert_eq!(st.toasts.last().map(|t| t.text.clone()), Some(format!("Close the open dialog to show {folder}.")));
+}
+
+#[test]
+fn a_failure_shown_again_keeps_its_details_until_new_ones_come() {
+    let (mut st, _, b) = two_tabs();
+    let tab = st.tabs[1].id;
+    scoped(&mut st, &b, Msg::Logged { ok: false, text: "boom".into() });
+    let e1 = st.tabs[1].log.last().unwrap().id;
+    let entry = |st: &AppState| match failures(st)[0].action.as_ref().map(|a| &*a.msg) {
+        Some(Msg::Logs(LogsMsg::Details { tab: t, entry })) if *t == tab => *entry,
+        _ => panic!("not Details for the tab"),
+    };
+    assert_eq!(failures(&st).len(), 1);
+    assert_eq!(entry(&st), Some(e1));
+    st.toast_in(Some(&b), false, "boom", Instant::now());
+    assert_eq!(failures(&st).len(), 1);
+    assert_eq!(entry(&st), Some(e1), "a plain re-show keeps them");
+    scoped(&mut st, &b, Msg::Logged { ok: false, text: "boom".into() });
+    let e2 = st.tabs[1].log.last().unwrap().id;
+    assert_ne!(e1, e2);
+    assert_eq!(failures(&st).len(), 1);
+    assert_eq!(entry(&st), Some(e2));
+    assert!(failures(&st)[0].details.is_none(), "one button, not two");
 }
