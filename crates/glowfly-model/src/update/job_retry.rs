@@ -7,7 +7,7 @@
 //! of several commands is offered only when it failed in its first one, so nothing that already
 //! ran runs twice; a commit is made again from the draft as it is now.
 
-use super::jobs::start_job;
+use super::jobs::{Started, start_job};
 use crate::effect::Effect;
 use crate::msg::{JobMsg, Msg};
 use crate::state::job_spec::{JobSpec, Retry};
@@ -84,5 +84,8 @@ pub(super) fn run(st: &mut AppState, retry: Retry, now: Instant, fx: &mut Vec<Ef
         super::commit::commit(st, stage_all, now, fx);
         return;
     }
-    start_job(st, retry.spec, fx);
+    let label = retry.spec.label.clone();
+    if start_job(st, retry.spec, fx) != Started::No {
+        super::prefs_job_save::retried(st, &label);
+    }
 }
