@@ -4,6 +4,8 @@
 //! reasons on disabled items and `update` logs the same text when it refuses a late message. The
 //! compare reasons are shared with the local branch and tag menus.
 
+pub mod move_back;
+
 use git2::Oid;
 use glowfly_core::branch_ops::{FastForward, NameProblem, check_branch_name, fast_forward_state};
 use glowfly_core::gitcli::args;

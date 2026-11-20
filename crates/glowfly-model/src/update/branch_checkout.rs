@@ -2,13 +2,15 @@
 //! instead, update/branch_elsewhere.rs), and a remote branch through a local branch tracking it (`BranchMsg::CheckoutRemote`,
 //! or one chosen tracker with `CheckoutTracking`), or a new one tracking it. A tracker that is
 //! only behind is fast-forwarded in the same job, strictly (`branch_ops::fast_forward_ref_cmds`);
-//! a diverged one is checked out where it is, with a note saying how far each side has gone.
+//! a diverged one is checked out where it is, with a note saying how far each side has gone. A
+//! checkout that fails after the fast-forward moves the branch back (update/branch_checkout_back.rs).
 //! Every checkout goes through the auto-stash guard.
 
 use super::branch_elsewhere::{Go, Route, route, with_prune};
 use super::ops::JobSpec;
 use crate::effect::Effect;
 use crate::msg::{BranchMsg, Msg};
+use crate::state::remote_branch::move_back::{FastForwardCheckout, FfPhase};
 use crate::state::remote_branch::{self, TrackingCheckout};
 use crate::state::{AppState, branches};
 use glowfly_core::branch_ops;
@@ -115,12 +117,24 @@ pub(super) fn checkout_tracking(st: &mut AppState, remote: &str, name: &str, loc
             checkout(st, local, go, fx);
         }
         TrackingCheckout::FastForward { from, to } => {
-            let mut cmds = with_prune(&how, branch_ops::fast_forward_ref_cmds(local, from, to, &upstream));
-            cmds.push(branches::checkout_local(local));
+            let ff = branch_ops::fast_forward_ref_cmds(local, from, to, &upstream);
+            let checkout = branches::checkout_local(local);
+            let pending = FastForwardCheckout {
+                branch: local.to_owned(),
+                upstream: upstream.clone(),
+                from,
+                to,
+                update_ref: ff[1].clone(),
+                checkout: checkout.clone(),
+                phase: FfPhase::Checkout,
+            };
+            let mut cmds = with_prune(&how, ff);
+            cmds.push(checkout);
             let spec = JobSpec { record: Some(UndoKind::Checkout), ..JobSpec::new("Checkout".into(), cmds) };
             let op = AutoStashFor::Checkout { target: local.to_owned() };
             let retry = || Msg::Branch(if go.prune { BranchMsg::PruneThen(Box::new(again())) } else { again() });
-            super::auto_stash::start_guarded_as(st, spec, op, retry, fx);
+            let started = super::auto_stash::start_guarded_as(st, spec, op, retry, fx);
+            super::branch_checkout_back::started(st, started, pending);
         }
     }
 }

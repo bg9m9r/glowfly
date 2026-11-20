@@ -183,6 +183,7 @@ pub mod worktree_manage;
 pub mod worktree_move;
 pub mod worktrees;
 
+pub use app_queries::WHOLE_FILE_BLOCKS_LINE_OPS;
 pub use commit::CommitDraft;
 pub use forge::{ForgeState, ProjectKeys, Status, tracker_target};
 pub use logs::{LOG_LIMIT, LogEntry};
@@ -200,9 +201,6 @@ use std::{collections::HashMap, path::PathBuf, time::Duration, time::Instant};
 
 /// Background refresh of pull requests and issues (GitHub allows 5,000 API calls an hour).
 pub const FORGE_REFRESH_INTERVAL: Duration = Duration::from_secs(300);
-/// Why selecting and applying single lines is refused in the whole-file view.
-pub const WHOLE_FILE_BLOCKS_LINE_OPS: &str =
-    "Line selection isn't available in the whole-file view yet. Switch to Hunks to stage, discard or revert single lines.";
 
 /// The most commits "Load more" goes up to.
 pub const MAX_COMMITS: usize = 200_000;
@@ -289,6 +287,7 @@ pub struct AppState {
     /// The running rename that moves the branch on its remote too (update/branch_sync.rs).
     pub rename_job: Option<branch_sync::RenameJob>,
     pub tag_checkout: Option<tags::TagCheckoutJob>,
+    pub ff_checkout: Option<remote_branch::move_back::FastForwardCheckout>,
     /// The pull request work that outlives a tab, global, never parked: the running clean-up after a merge and the refs keeping panels' heads.
     pub pull_requests: pull_request::PrGlobal,
     /// The running Apply patch job (update/patch.rs), for its headline.
@@ -374,6 +373,7 @@ impl AppState {
             tag_job: None,
             rename_job: None,
             tag_checkout: None,
+            ff_checkout: None,
             pull_requests: Default::default(),
             patch_apply: None,
             deep_link: Default::default(),

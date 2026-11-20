@@ -11,6 +11,7 @@ mod auto_stash_saved;
 mod avatars;
 pub mod blame;
 mod branch_checkout;
+mod branch_checkout_back;
 mod branch_colour;
 mod branch_delete;
 mod branch_elsewhere;

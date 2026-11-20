@@ -118,6 +118,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             let headline =
                 kept.or(remote_back).or(flow).or(tag).or(patch).or(stash).or(unstaged).or(checkout).or(cleanup).or(rename).or(inside);
             let refused = (!ok).then(|| super::op_progress::refused(&output)).flatten();
+            let back = super::branch_checkout_back::ended(st, ok, &output);
             finish_job(st, ok, output, headline.clone(), undo, now, fx);
             if let Some(reason) = refused {
                 super::op_progress::offer_plain(st, &reason);
@@ -129,6 +130,7 @@ pub(super) fn job(st: &mut AppState, msg: JobMsg, now: Instant, fx: &mut Vec<Eff
             if let (false, Some(h)) = (ok, headline) {
                 st.log(false, h);
             }
+            super::branch_checkout_back::then(st, back, now, fx);
         }
     }
 }
