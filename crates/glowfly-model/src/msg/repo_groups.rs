@@ -8,7 +8,8 @@ use glowfly_core::settings::RepoColour;
 use std::path::PathBuf;
 
 /// Repository groups (update/repo_groups.rs). Groups are named by their index in
-/// `Settings::repo_groups`, as the views drew them.
+/// `Settings::repo_groups`, as the views drew them, except `AddRepos`, which names its group by
+/// name.
 pub enum GroupMsg {
     /// Open the New group dialog; with `repo`, that repository moves into the new group.
     NewDialog { repo: Option<PathBuf> },
@@ -30,10 +31,12 @@ pub enum GroupMsg {
     MoveRepo { path: PathBuf, group: Option<usize>, index: usize },
     /// Open the Add repositories picker for this group (its placeholder and ⋯).
     AddDialog(usize),
-    /// Put the repositories at `paths` at the end of `group`, in that order (the picker's Add,
-    /// a Recent row's Add to group): one that isn't a favorite becomes one, one in another group
-    /// moves, and one already in the group stays where it is. One settings save.
-    AddRepos { group: usize, paths: Vec<PathBuf> },
+    /// Put the repositories at `paths` at the end of the group called `group` (case ignored), in
+    /// that order (the picker's Add, a Recent row's Add to group): one that isn't a favorite
+    /// becomes one, one in another group moves, and one already in the group stays where it is.
+    /// Named, not indexed, as the picker can outlive a settings re-read. A group no longer called
+    /// that adds nothing and says so. One settings save.
+    AddRepos { group: String, paths: Vec<PathBuf> },
     /// Give every group the colour the New group color setting would give it, made again top
     /// to bottom (a group menu's Reset all group colors). Toasts with Undo.
     ResetColours,

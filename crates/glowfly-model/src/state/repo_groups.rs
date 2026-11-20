@@ -7,8 +7,15 @@
 use super::AppState;
 use glowfly_core::i18n::Lang;
 use glowfly_core::paths;
-use glowfly_core::settings::{RepoColour, Settings, clean_group_name, default_colours};
+use glowfly_core::settings::{RepoColour, RepoGroup, Settings, clean_group_name, default_colours};
 use std::path::{Path, PathBuf};
+
+/// The index of the group called `name`, case ignored: the group a name picked earlier now is;
+/// None once it was removed or renamed.
+pub fn group_index(groups: &[RepoGroup], name: &str) -> Option<usize> {
+    let low = name.to_lowercase();
+    groups.iter().position(|g| g.name.to_lowercase() == low)
+}
 
 /// Whether the saved entry `f` is in some group.
 fn grouped(s: &Settings, f: &str) -> bool {

@@ -2,6 +2,7 @@
   "repo_group.actions.tip": "Gruppenaktionen",
   "repo_group.add.button": "{count} hinzufügen",
   "repo_group.add.button_none": "Hinzufügen",
+  "repo_group.add.gone": "Nichts hinzugefügt: Es gibt keine Gruppe namens {name} mehr.",
   "repo_group.add.in_group": "In {name}",
   "repo_group.add.none_ticked": "Hake die Repositorys an, die hinzukommen sollen.",
   "repo_group.add.nothing": "Nichts hinzuzufügen: Alle Favoriten sind schon in dieser Gruppe und „Zuletzt verwendet“ ist leer.",

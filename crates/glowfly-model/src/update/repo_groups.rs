@@ -2,13 +2,13 @@
 //! ordering and removing groups, moving favorites between them, adding repositories to one, and
 //! resetting every group's colour to the default (with Undo).
 //! Every change saves the settings; a message that names a group that is gone (the list changed
-//! under a menu) does nothing. A Create or Rename whose name is usable closes the dialog; a
+//! under a menu) does nothing, and an Add to a group gone by name says so. A Create or Rename whose name is usable closes the dialog; a
 //! refused one leaves it open.
 
 use crate::effect::Effect;
 use crate::msg::{GroupMsg, Msg};
 use crate::state::repo_group_picker::AddPicker;
-use crate::state::repo_groups::{GroupForm, favorite_entry, member_entries, members, prune, ungrouped_entries};
+use crate::state::repo_groups::{GroupForm, favorite_entry, group_index, member_entries, members, prune, ungrouped_entries};
 use crate::state::{AppState, Modal, ToastAction};
 use glowfly_core::paths;
 use glowfly_core::settings::{RepoColour, RepoGroup, clean_group_name, default_colours, new_group_colour};
@@ -66,7 +66,7 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
             }
             false
         }
-        GroupMsg::AddRepos { group, paths } => add_repos(st, group, &paths),
+        GroupMsg::AddRepos { group, paths } => add_repos(st, &group, &paths),
         GroupMsg::ResetColours => reset_colours(st, now),
         GroupMsg::RestoreColours(saved) => restore_colours(st, &saved),
     };
@@ -75,15 +75,20 @@ pub(super) fn handle(st: &mut AppState, msg: GroupMsg, now: Instant, fx: &mut Ve
     }
 }
 
-/// Puts each of `paths` at the end of `group`, starring it first if need be; one already in
-/// the group stays put. Closes the Add repositories picker. Returns whether anything changed.
-fn add_repos(st: &mut AppState, group: usize, paths: &[PathBuf]) -> bool {
+/// Puts each of `paths` at the end of the group called `name`, starring it first if need be; one
+/// already in the group stays put. Closes the Add repositories picker. The name is resolved now:
+/// a group gone after a settings re-read adds nothing and logs a failure. Returns whether
+/// anything changed.
+fn add_repos(st: &mut AppState, name: &str, paths: &[PathBuf]) -> bool {
     if matches!(st.modal, Some(Modal::AddToGroup(_))) {
         st.modal = None;
     }
-    if group >= st.settings.repo_groups.len() {
+    // Resolved once: `move_repo` doesn't reorder groups.
+    let Some(group) = group_index(&st.settings.repo_groups, name) else {
+        let t = st.settings.lang();
+        st.log(false, t.trf("repo_group.add.gone", &[("name", &name)]));
         return false;
-    }
+    };
     let mut changed = false;
     for p in paths {
         let here = members(&st.settings, group).iter().any(|m| st.same_folder(m, p));

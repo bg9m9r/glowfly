@@ -7,12 +7,12 @@ use super::tests::state;
 use super::update;
 use crate::effect::Effect;
 use crate::effect::SaveEffect;
-use crate::msg::{GroupMsg, Msg, RecentMsg};
+use crate::msg::{GroupMsg, Msg, PrefsMsg, RecentMsg};
 use crate::state::repo_colours::{listed_colour, tab_colour};
 use crate::state::repo_groups::{colours_at_default, members, ungrouped};
 use crate::state::repo_lists::favorites;
 use crate::state::{AppState, Modal, Tab};
-use glowfly_core::settings::{GroupColourDefault, RepoColour};
+use glowfly_core::settings::{GroupColourDefault, LoadProblem, RepoColour, Settings};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -203,14 +203,19 @@ fn adding_repositories_stars_moves_and_appends_them_with_one_save() {
     let mut st = grouped();
     move_to(&mut st, "/w/b", Some(1), 0);
     let add = paths(&["/w/x", "/w/b", "/w/c", "/w/a"]);
-    let fx = run(&mut st, GroupMsg::AddRepos { group: 0, paths: add });
+    let fx = run(&mut st, GroupMsg::AddRepos { group: "Work".into(), paths: add });
     assert_eq!(saves(&fx), 1, "one save for them all: {fx:?}");
     assert_eq!(members(&st.settings, 0), paths(&["/w/c", "/w/x", "/w/b", "/w/a"]), "c stays put; the rest follow in order");
     assert!(members(&st.settings, 1).is_empty(), "b moved out of Home");
     assert!(st.settings.favorite_repos.contains(&"/w/x".to_owned()), "a Recent repository is starred");
-    assert!(run(&mut st, GroupMsg::AddRepos { group: 0, paths: paths(&["/w/c/", "/w/a"]) }).is_empty(), "all there already");
-    assert!(run(&mut st, GroupMsg::AddRepos { group: 4, paths: paths(&["/w/d"]) }).is_empty(), "no such group");
+    assert!(run(&mut st, GroupMsg::AddRepos { group: "Work".into(), paths: paths(&["/w/c/", "/w/a"]) }).is_empty(), "all there already");
+    assert!(
+        run(&mut st, GroupMsg::AddRepos { group: "work".into(), paths: paths(&["/w/c/", "/w/a"]) }).is_empty(),
+        "the name's case is ignored"
+    );
+    assert!(run(&mut st, GroupMsg::AddRepos { group: "Nowhere".into(), paths: paths(&["/w/d"]) }).is_empty(), "no such group");
     assert!(!st.settings.repo_groups.iter().any(|g| g.repos.contains(&"/w/d".to_owned())));
+    assert!(gone_logged(&st, "Nowhere"), "and it says so");
 }
 
 #[test]
@@ -221,10 +226,11 @@ fn the_add_picker_lists_what_can_join_and_adds_in_list_order() {
     st.missing_repos = paths(&["/w/gone"]);
     run(&mut st, GroupMsg::AddDialog(0));
     let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
-    let rows: Vec<(PathBuf, Option<usize>, bool)> = p.rows.iter().map(|r| (r.path.clone(), r.other_group, r.recent)).collect();
-    let want = [("/w/a", None, false), ("/w/b", None, false), ("/w/d", Some(1), false), ("/w/r", None, true), ("/w/s", None, true)];
-    let want: Vec<_> = want.iter().map(|(p, g, r)| (PathBuf::from(p), *g, *r)).collect();
+    let rows: Vec<(PathBuf, Option<String>, bool)> = p.rows.iter().map(|r| (r.path.clone(), r.other_group.clone(), r.recent)).collect();
+    let want = [("/w/a", None, false), ("/w/b", None, false), ("/w/d", Some("Home"), false), ("/w/r", None, true), ("/w/s", None, true)];
+    let want: Vec<_> = want.iter().map(|(p, g, r)| (PathBuf::from(p), g.map(str::to_owned), *r)).collect();
     assert_eq!(rows, want, "ungrouped favorites, other groups' members, then Recent without favorites or missing ones");
+    assert_eq!(p.group, "Work");
     assert!(!p.filtered(), "five rows need no filter");
     let (d, a) = (p.rows[2].clone(), p.rows[0].clone());
     p.toggle(&d);
@@ -233,12 +239,85 @@ fn the_add_picker_lists_what_can_join_and_adds_in_list_order() {
     p.toggle(&p.rows[3].clone());
     let picked = p.picked();
     assert_eq!(picked, paths(&["/w/a", "/w/d"]), "list order, not tick order; untick works");
-    let fx = run(&mut st, GroupMsg::AddRepos { group: 0, paths: picked });
+    let fx = run(&mut st, GroupMsg::AddRepos { group: "Work".into(), paths: picked });
     assert_eq!(saves(&fx), 1);
     assert!(st.modal.is_none(), "Add closes the picker");
     assert_eq!(members(&st.settings, 0), paths(&["/w/c", "/w/a", "/w/d"]));
     run(&mut st, GroupMsg::AddDialog(7));
     assert!(st.modal.is_none(), "no such group");
+}
+
+/// What the settings file's re-read does to the settings: `f` changes the ones just read.
+fn reread(st: &mut AppState, f: impl FnOnce(&mut Settings)) {
+    let locked = glowfly_core::paths::temp_dir().join("glowfly-groups-reread").join("settings.json");
+    st.settings_file.hold(Some(&LoadProblem { backup: None, reset: None, detail: "locked".into(), locked: Some(locked) }));
+    let mut s = st.settings.clone();
+    f(&mut s);
+    update(st, Msg::Prefs(PrefsMsg::SettingsReread(Box::new((s, None)))), Instant::now());
+}
+
+/// Whether the activity log has the failure line for an Add to the group `name`, now gone.
+fn gone_logged(st: &AppState, name: &str) -> bool {
+    let want = format!("Nothing was added: there is no group called {name} any more.");
+    st.log.iter().any(|l| !l.ok && l.text == want)
+}
+
+#[test]
+fn the_add_picker_adds_to_its_group_after_a_reread_reorders_them() {
+    let mut st = grouped();
+    run(&mut st, GroupMsg::Create { name: "Clients".into(), repo: None });
+    run(&mut st, GroupMsg::AddDialog(0));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    let a = p.rows.iter().find(|r| *r.path == *"/w/a").cloned().expect("a is offered");
+    p.toggle(&a);
+    reread(&mut st, |s| s.repo_groups.reverse());
+    assert!(matches!(st.modal, Some(Modal::AddToGroup(_))), "the re-read leaves the picker open");
+    let Some(Modal::AddToGroup(p)) = &st.modal else { panic!("still open") };
+    let add = GroupMsg::AddRepos { group: p.group.clone(), paths: p.picked() };
+    let fx = run(&mut st, add);
+    assert_eq!(saves(&fx), 1, "{fx:?}");
+    let names: Vec<&str> = st.settings.repo_groups.iter().map(|g| g.name.as_str()).collect();
+    assert_eq!(names, ["Clients", "Home", "Work"]);
+    assert_eq!(members(&st.settings, 2), paths(&["/w/c", "/w/a"]), "Work got it, at its new index");
+    assert!(members(&st.settings, 0).is_empty() && members(&st.settings, 1).is_empty());
+    assert!(st.modal.is_none(), "Add closes the picker");
+}
+
+#[test]
+fn the_add_picker_reports_its_group_gone_after_a_reread() {
+    let mut st = grouped();
+    run(&mut st, GroupMsg::AddDialog(1));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    let a = p.rows[0].clone();
+    p.toggle(&a);
+    reread(&mut st, |s| {
+        s.repo_groups.remove(1);
+    });
+    let (groups, favs) = (st.settings.repo_groups.clone(), st.settings.favorite_repos.clone());
+    let Some(Modal::AddToGroup(p)) = &st.modal else { panic!("still open") };
+    let add = GroupMsg::AddRepos { group: p.group.clone(), paths: p.picked() };
+    let fx = run(&mut st, add);
+    assert_eq!(saves(&fx), 0, "{fx:?}");
+    assert_eq!((&st.settings.repo_groups, &st.settings.favorite_repos), (&groups, &favs), "nothing changed");
+    assert!(st.modal.is_none(), "the picker closes");
+    assert!(gone_logged(&st, "Home"));
+    assert!(st.toasts.iter().any(|t| !t.ok), "announced as a failure");
+}
+
+#[test]
+fn the_add_picker_reports_a_renamed_group_gone() {
+    let mut st = grouped();
+    run(&mut st, GroupMsg::AddDialog(0));
+    let Some(Modal::AddToGroup(p)) = &mut st.modal else { panic!("the picker opens") };
+    let a = p.rows[0].clone();
+    p.toggle(&a);
+    reread(&mut st, |s| s.repo_groups[0].name = "Office".into());
+    let Some(Modal::AddToGroup(p)) = &st.modal else { panic!("still open") };
+    let add = GroupMsg::AddRepos { group: p.group.clone(), paths: p.picked() };
+    let fx = run(&mut st, add);
+    assert_eq!(saves(&fx), 0, "{fx:?}");
+    assert_eq!(members(&st.settings, 0), paths(&["/w/c"]), "Office gained nothing");
+    assert!(gone_logged(&st, "Work"));
 }
 
 #[test]
