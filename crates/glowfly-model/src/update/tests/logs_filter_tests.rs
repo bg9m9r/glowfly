@@ -353,6 +353,27 @@ fn a_step_folds_back_a_match_the_user_had_folded_shut() {
 }
 
 #[test]
+fn ending_the_search_leaves_open_only_what_was_open_before_the_steps() {
+    let mut st = panel(vec![run("Pull", false, "overwritten a"), run("Push", false, "b"), run("Merge", false, "c")]);
+    let all = ids(&st);
+    send(&mut st, LogsMsg::Fold(all[2]));
+    st.view.logs_search = "overwritten".into();
+    send(&mut st, LogsMsg::SearchChanged);
+    send(&mut st, LogsMsg::Fold(all[0]));
+    step_msg(&mut st, false);
+    st.view.logs_search.clear();
+    send(&mut st, LogsMsg::SearchChanged);
+    assert!(!st.logs.open.contains(&all[0]) && st.logs.step_opened.is_none(), "folds again once the search ends");
+    assert!(st.logs.open.contains(&all[2]), "a row opened by hand stays open");
+    send(&mut st, LogsMsg::SetFailuresOnly(true));
+    st.view.activity_focus = None;
+    step_msg(&mut st, false);
+    assert!(st.logs.open.contains(&all[0]) && st.logs.step_opened == Some(all[0]));
+    send(&mut st, LogsMsg::SetFailuresOnly(false));
+    assert!(!st.logs.open.contains(&all[0]) && st.logs.open.contains(&all[2]));
+}
+
+#[test]
 fn step_does_nothing_without_a_filter_or_off_the_activity_tab() {
     let mut st = panel(vec![run("Pull", false, "a"), run("Push", true, "")]);
     step_msg(&mut st, false);

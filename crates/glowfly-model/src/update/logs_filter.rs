@@ -18,12 +18,21 @@ fn filter(st: &AppState) -> Filter {
 
 pub(super) fn set_failures_only(st: &mut AppState, on: bool) {
     st.logs.failures_only = on;
-    st.view.activity_step = false;
+    end_steps(st);
 }
 
 /// The search text changed: rows the user folded under the old search may unfold again.
 pub(super) fn search_changed(st: &mut AppState) {
     st.logs.search_closed.clear();
+    end_steps(st);
+}
+
+/// The filter changed, so stepping ends: the row the last step opened folds again, leaving open
+/// only what the user opened.
+fn end_steps(st: &mut AppState) {
+    if let Some(id) = st.logs.step_opened.take() {
+        st.logs.open.remove(&id);
+    }
     st.view.activity_step = false;
 }
 
