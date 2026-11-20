@@ -1,6 +1,7 @@
 //! The conflict keys end to end, pressed as chords through the default keymap: O, F7, T and
 //! Ctrl+Enter resolve a file with two conflicts, and a rebase through three conflicted files
-//! finishes with Alt+C, without the mouse.
+//! finishes with Alt+C, without the mouse. Ctrl+Enter also marks a conflicted file resolved
+//! when it has no conflict chunks.
 
 use super::conflict_tests::opened_two;
 use super::tests::{drive, git, scratch_repo, state};
@@ -46,6 +47,54 @@ fn two_in_one(name: &str) -> PathBuf {
     commit(&dir, &["f.txt"], &file("our top", "our end"), "ours");
     assert!(!run(&dir, &args(&["merge", "other"])).0, "the merge conflicts");
     dir
+}
+
+/// What f.txt holds once it is resolved to our side.
+const OURS: &str = "our top\n1\n2\n3\n4\n5\n6\n7\nour end\n";
+
+/// `two_in_one`, but the index's theirs stage holds our text, so f.txt re-merges without
+/// conflict chunks while the path stays unmerged, and the working file has no markers.
+fn without_chunks(name: &str) -> PathBuf {
+    let dir = two_in_one(name);
+    let repo = git2::Repository::open(&dir).unwrap();
+    let mut index = repo.index().unwrap();
+    let c = index.conflict_get(Path::new("f.txt")).unwrap();
+    let ours = c.our.unwrap();
+    let theirs = git2::IndexEntry { id: ours.id, ..c.their.unwrap() };
+    // Replaces the stage-3 entry (the stage is in the flags, which `their` already carries).
+    index.add(&theirs).unwrap();
+    index.write().unwrap();
+    std::fs::write(dir.join("f.txt"), OURS).unwrap();
+    dir
+}
+
+#[test]
+fn ctrl_enter_resolves_a_conflicted_file_without_conflicts() {
+    use KeyName as K;
+    let dir = without_chunks("conflict-keys-none");
+    let mut st = state();
+    drive(&mut st, Msg::Repo(RepoMsg::Open(dir.clone())));
+    drive(&mut st, Msg::Conflict(ConflictMsg::OpenConflict("f.txt".into())));
+    let view = st.session.conflict.view.as_ref().unwrap();
+    assert_eq!(view.chunk_count(), 0);
+    assert!(view.mark_resolved_enabled(false));
+    for chord in [
+        Chord::plain(K::Letter('O')),
+        Chord::plain(K::Letter('T')),
+        Chord::plain(K::Letter('B')),
+        Chord::shift(K::Letter('B')),
+        Chord::plain(K::Backspace),
+    ] {
+        let id = st.keymap.lookup(chord, fold_ctrl()).unwrap();
+        assert!(conflict_key(&st, id).is_none(), "{id:?} has no conflict to pick for");
+    }
+    press(&mut st, Chord::cmd(K::Enter));
+
+    assert_eq!(std::fs::read_to_string(dir.join("f.txt")).unwrap(), OURS);
+    let snap = st.snap.as_ref().unwrap();
+    assert!(!snap.unstaged.iter().any(|f| f.status == '!'), "marked resolved");
+    assert!(st.session.conflict.view.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]

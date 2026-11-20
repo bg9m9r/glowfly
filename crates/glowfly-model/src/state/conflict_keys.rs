@@ -1,8 +1,9 @@
 //! What the conflict keys do (`When::Conflict`): take ours, theirs or both (in either order)
 //! for the current conflict, the one Next and Previous conflict move to, or clear its picks;
-//! Mark resolved once it is enabled; and Continue the merge, rebase or cherry-pick, which runs
-//! the conflict strip's Commit merge or Continue while it can, and the rebase's own Continue
-//! otherwise. `ui/shortcuts/global.rs` sends what these return.
+//! Mark resolved whenever it is enabled, with conflicts or without; and Continue the merge,
+//! rebase or cherry-pick, which runs the conflict strip's Commit merge or Continue while it
+//! can, and the rebase's own Continue otherwise. `ui/shortcuts/global.rs` sends what these
+//! return.
 
 use crate::keymap::BindingId;
 use crate::msg::{ConflictMsg, Msg, RebaseMsg};
@@ -13,22 +14,25 @@ use git2::RepositoryState;
 use glowfly_core::rebase::Resume;
 use glowfly_core::repo::Choice;
 
-/// What the conflict key `id` sends now; None when it has nothing to do (no conflict view, or
-/// Mark resolved still disabled). Other ids send nothing here.
+/// What the conflict key `id` sends now; None when it has nothing to do: no conflict view, no
+/// conflict chunks for the pick keys, or Mark resolved still disabled. Other ids send nothing here.
 pub fn conflict_key(st: &AppState, id: BindingId) -> Option<Msg> {
     use BindingId as I;
     let pick = |choice| Some(Msg::Conflict(ConflictMsg::ConflictPickCurrent(choice)));
     let view = st.session.conflict.view.as_ref();
     match id {
         I::RebaseContinue => continue_msg(st),
+        // As the header's Mark resolved, with conflicts or without: only while it is enabled.
+        I::ConflictMarkResolved => {
+            view.filter(|v| v.mark_resolved_enabled(merging(st, &v.path))).map(|_| Msg::Conflict(ConflictMsg::SaveConflict))
+        }
+        // The pick keys need a conflict to pick for.
         _ if view.is_none_or(|v| v.chunk_count() == 0) => None,
         I::ConflictTakeOurs => pick(Choice::Ours),
         I::ConflictTakeTheirs => pick(Choice::Theirs),
         I::ConflictTakeBoth => pick(Choice::OursThenTheirs),
         I::ConflictTakeBothTheirsFirst => pick(Choice::TheirsThenOurs),
         I::ConflictClear => pick(Choice::Unresolved),
-        // As the header's Mark resolved: only while it is enabled.
-        I::ConflictMarkResolved => view.filter(|v| v.can_save() && !merging(st, &v.path)).map(|_| Msg::Conflict(ConflictMsg::SaveConflict)),
         _ => None,
     }
 }
