@@ -119,7 +119,7 @@ fn table(
     let ref_cx = ref_group::RefContext::of(snap, cache.ref_upstreams.of(snap.status_stamp, &snap.locals));
     // The columns as they fit this frame: some narrowed or hidden in a narrow graph (`fit`).
     let s = &st.settings;
-    let oldest = snap.commits.iter().map(|c| c.time).min();
+    let oldest = cells::oldest(ui.ctx(), snap);
     let dates = cells::wide_dates(s, st.cues.now, st.cues.utc_offset, oldest);
     let chips_w = refs_fit::chips_w(ui.painter(), snap, &ref_cx);
     let input = header::HeaderIn { graph_w, cfg: &s.columns, saved: s.column_widths, chips_w, dates: &dates };

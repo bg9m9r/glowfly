@@ -9,6 +9,7 @@
 
 use super::branch_dot::{self, DOT_ROOM};
 use super::common::{hint_row, menu_danger, menu_header, menu_item, menu_item_if};
+use super::long_list;
 use super::ref_visibility;
 use super::remote_branch_menu::{RemoteMenu, remote_branch_menu};
 use super::theme::branch_colours::line;
@@ -44,6 +45,8 @@ pub(super) mod fork_pick;
 pub(super) struct Ctx<'a> {
     /// The left-panel filter.
     pub shown: &'a dyn Fn(&str) -> bool,
+    /// The lowercased left-panel filter text `shown` matches.
+    pub filter: &'a str,
     pub sel: &'a Selection,
     /// The checked-out branch's name ("" when detached).
     pub current: &'a str,
@@ -51,8 +54,6 @@ pub(super) struct Ctx<'a> {
     pub graph: &'a GraphFilter,
     /// No job is running.
     pub idle: bool,
-    /// The left-panel filter has text.
-    pub filtering: bool,
     /// Saved connections, to recognize self-hosted services.
     pub connections: &'a [Connection],
     /// The header's Add remote, and Publish… for a repository without remotes.
@@ -84,7 +85,7 @@ pub(crate) fn section(
     if !*open {
         return;
     }
-    if snap.remotes.is_empty() && !c.filtering {
+    if snap.remotes.is_empty() && c.filter.is_empty() {
         let actions = vec![Action::of(&c.actions.publish), Action::of(&c.actions.remote).quiet()];
         empty_state::show(ui, c.t.tr("sidebar.empty.remote"), actions, msgs);
     }
@@ -99,35 +100,46 @@ pub(crate) fn section(
         };
         let r = group_row(ui, remote).on_hover_text(tooltip(info));
         r.row_menu(|ui| group_menu(ui, info, c.idle, c.connections, msgs));
-        if branches.is_empty() && !c.filtering {
+        if branches.is_empty() && c.filter.is_empty() {
             hint_row(ui, c.t.tr("sidebar.remote.no_branches.hint").to_owned());
         }
-        for (name, oid) in branches.iter().filter(|(n, _)| (c.shown)(n)) {
-            if widgets::list_row_hidden(ui) {
-                continue;
-            }
-            let (r, marker, cut) =
-                widgets::name_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(*oid), false);
-            branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(name)));
-            if r.hovered() {
-                *hover_next = Some(*oid);
-            }
-            let line = super::build_status::tip_row(ui, &r, marker, c.fs, Some(*oid), tips);
-            let r = match widgets::truncate::full_tip(cut, name, line) {
-                Some(tip) => r.on_hover_text(tip),
-                None => r,
-            };
-            let full = format!("{remote}/{name}");
-            if r.double_clicked() {
-                msgs.push(Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.clone(), name: name.clone() }));
-            } else if r.clicked() {
-                msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
-            }
-            ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, c.t, msgs);
-            let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel, t: c.t };
-            r.row_menu(|ui| remote_branch_menu(ui, remote, name, *oid, snap, &m, msgs));
-        }
+        let id = egui::Id::new("sidebar-remote-rows").with(remote);
+        let list = long_list::shown(ui.ctx(), id, (snap.status_stamp, c.filter), branches.len(), |i| (c.shown)(&branches[i].0));
+        long_list::rows(ui, list.len(), |ui, k| {
+            let (name, oid) = &branches[list.at(k)];
+            branch_row(ui, (snap, remote, name, *oid), (&c, slot), hover_next, tips, msgs);
+        });
     }
+}
+
+/// One remote-tracking branch's row: a click jumps to its commit, a double click checks it out.
+fn branch_row(
+    ui: &mut egui::Ui,
+    (snap, remote, name, oid): (&Snapshot, &String, &String, Oid),
+    (c, slot): (&Ctx, f32),
+    hover_next: &mut Option<Oid>,
+    tips: &mut Vec<Oid>,
+    msgs: &mut Vec<Msg>,
+) {
+    let (r, marker, cut) = widgets::name_row_cut(ui, widgets::NESTED_INDENT + DOT_ROOM, name, None, slot, c.sel.includes(oid), false);
+    branch_dot::paint(ui.painter(), r.rect, widgets::NESTED_INDENT, line(snap.branch_swatch(name)));
+    if r.hovered() {
+        *hover_next = Some(oid);
+    }
+    let line = super::build_status::tip_row(ui, &r, marker, c.fs, Some(oid), tips);
+    let r = match widgets::truncate::full_tip(cut, name, line) {
+        Some(tip) => r.on_hover_text(tip),
+        None => r,
+    };
+    let full = format!("{remote}/{name}");
+    if r.double_clicked() {
+        msgs.push(Msg::Branch(BranchMsg::CheckoutRemote { remote: remote.clone(), name: name.clone() }));
+    } else if r.clicked() {
+        msgs.push(Msg::Repo(RepoMsg::JumpTo(oid)));
+    }
+    ref_visibility::row_marker(ui, &r, widgets::NESTED_GUTTER_X, &format!("refs/remotes/{full}"), &full, c.graph, c.t, msgs);
+    let m = RemoteMenu { current: c.current, fs: c.fs, graph: c.graph, sel: c.sel, t: c.t };
+    r.row_menu(|ui| remote_branch_menu(ui, remote, name, oid, snap, &m, msgs));
 }
 
 /// A remote's name, dim and small, on a clickable row lit through `row_fill`.

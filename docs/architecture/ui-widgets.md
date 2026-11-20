@@ -34,6 +34,8 @@ source file, update its line here.
 ## Rows and lists
 
 - `list_row.rs`: list rows (`name_row` for a name, cut in its middle), whose dim right-hand parts paint ahead/behind arrows (`paint_parts`, shared with the branch picker), and the side panels' row heights and insets.
+- `long_list.rs`: the TAGS and remote-branch lists drawn by their visible range, with the filter's matches kept per snapshot.
+- `frame_memo.rs`: values measured from a snapshot, kept in egui's temp data under their key.
 - `list_row.rs` holds the file lists' fixed-height `file_row` and `file_row_with_end`, whose right-hand part keeps its width while the path is cut, and `row_text` for their unnamed path.
 - The file rows are one click target each, with the selection painted across the row and into the panel padding.
 - `widgets/row_fill.rs`: an edge-to-edge list row in each state (`RowState`): the selection fill with a left accent bar, the lifted hover, a flat pressed fill and the inset focus ring; shared by the graph, sidebar rows and headers, file rows, the file history list, the dashboard and the Preferences page list.

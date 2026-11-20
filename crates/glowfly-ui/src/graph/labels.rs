@@ -31,7 +31,7 @@ const TAG_LEAD: f32 = 12.0;
 /// The characters of the first chip's name it keeps beside a "+N" chip; with less room, the
 /// "+N" chip is dropped first.
 const NAME_KEEP: usize = 6;
-const FONT: f32 = CHIP.metrics().text;
+pub(super) const FONT: f32 = CHIP.metrics().text;
 /// How far a halo (`ChipLook::halo`) reaches past its chip: its 1.5 px gap and 1.5 px ring. The
 /// halo takes no layout room: it paints into the cell's inset and padding, or the gap after it,
 /// and a ref chip after a halo chip moves this much further away (a "+N" badge doesn't).

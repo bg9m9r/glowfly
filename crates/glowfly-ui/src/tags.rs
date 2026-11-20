@@ -6,6 +6,7 @@
 //! + makes a tag on HEAD's commit, and its menu a lightweight or an annotated one.
 
 use super::common::{menu_danger, menu_header, menu_item, menu_item_if, menu_row};
+use super::long_list;
 use super::ref_visibility;
 use super::widgets;
 use super::widgets::section_header::{self, Header, HeaderAdd, action_item};
@@ -31,6 +32,8 @@ use glowfly_model::tag::TagMsg;
 /// tags), and the header's New tag and New annotated tag.
 pub(super) struct Rows<'a> {
     pub shown: &'a dyn Fn(&str) -> bool,
+    /// The lowercased left-panel filter text `shown` matches.
+    pub filter: &'a str,
     pub sel: &'a Selection,
     pub idle: bool,
     pub graph: &'a GraphFilter,
@@ -40,7 +43,7 @@ pub(super) struct Rows<'a> {
 }
 
 pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows: Rows, msgs: &mut Vec<Msg>) {
-    let Rows { shown, sel, idle, graph, new_tag, annotated, t } = rows;
+    let Rows { shown, filter, sel, idle, graph, new_tag, annotated, t } = rows;
     let menu = |ui: &mut egui::Ui, msgs: &mut Vec<Msg>| {
         action_item(ui, msgs, new_tag);
         action_item(ui, msgs, annotated);
@@ -52,10 +55,11 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
     if !*open {
         return;
     }
-    for (name, oid) in snap.tags.iter().filter(|(n, _)| shown(n)) {
-        if widgets::list_row_hidden(ui) {
-            continue;
-        }
+    let list = long_list::shown(ui.ctx(), egui::Id::new("sidebar-tag-rows"), (snap.status_stamp, filter), snap.tags.len(), |i| {
+        shown(&snap.tags[i].0)
+    });
+    long_list::rows(ui, list.len(), |ui, k| {
+        let (name, oid) = &snap.tags[list.at(k)];
         let r = widgets::name_row(ui, widgets::ROW_INDENT, name, *sel == Selection::Commit(*oid));
         if r.clicked() {
             msgs.push(Msg::Repo(RepoMsg::JumpTo(*oid)));
@@ -63,7 +67,7 @@ pub(super) fn section(ui: &mut egui::Ui, snap: &Snapshot, open: &mut bool, rows:
         let full = format!("refs/tags/{name}");
         ref_visibility::row_marker(ui, &r, widgets::GUTTER_X, &full, name, graph, t, msgs);
         r.row_menu(|ui| tag_menu(ui, t, name, snap, graph, idle, msgs));
-    }
+    });
 }
 
 /// A tag's menu (also on its label in the graph): checkout, annotate, compare with the
