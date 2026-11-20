@@ -44,6 +44,7 @@ const HTTP_KEYS: &[(&str, &str)] = &[
     ("sslcipherlist", "sslCipherList"),
     ("pinnedpubkey", "pinnedPubkey"),
     ("schannelcheckrevoke", "schannelCheckRevoke"),
+    ("schannelusesslcainfo", "schannelUseSSLCAInfo"),
     ("curloptresolve", "curloptResolve"),
     ("followredirects", "followRedirects"),
     ("extraheader", "extraHeader"),
@@ -56,6 +57,12 @@ const HTTP_KEYS: &[(&str, &str)] = &[
     ("sslkeytype", "sslKeyType"),
     ("version", "version"),
     ("proxy", "proxy"),
+    // How git signs in to the proxy, and the proxy's TLS certificate, key and CA bundle.
+    ("proxyauthmethod", "proxyAuthMethod"),
+    ("proxysslcert", "proxySSLCert"),
+    ("proxysslkey", "proxySSLKey"),
+    ("proxysslcainfo", "proxySSLCAInfo"),
+    ("proxysslcertpasswordprotected", "proxySSLCertPasswordProtected"),
     ("cookiefile", "cookieFile"),
     ("savecookies", "saveCookies"),
 ];
@@ -140,7 +147,7 @@ pub(super) fn command_key(name: &str, value: &str) -> Option<String> {
 /// The display key when `name` (as libgit2 returns it: section and key lowercase) changes how
 /// git connects (`HTTP_KEYS`: TLS checks, the client certificate, headers, redirects, name
 /// resolution, proxies and the cookie file), for every URL (`http.sslVerify`) or
-/// one (`http.<url>.sslVerify`), and a remote's proxy. Any value counts, `true` and a bare host
+/// one (`http.<url>.sslVerify`), and a remote's proxy and how git signs in to it. Any value counts, `true` and a bare host
 /// too: the repository shouldn't pick where sign-ins go or which certificates vouch for them.
 pub(super) fn network_key(name: &str) -> Option<String> {
     let (section, rest) = name.split_once('.')?;
@@ -153,7 +160,11 @@ pub(super) fn network_key(name: &str) -> Option<String> {
             let (_, shown) = HTTP_KEYS.iter().find(|(k, _)| *k == key)?;
             Some(sub.map_or_else(|| format!("http.{shown}"), |s| format!("http.{s}.{shown}")))
         }
-        "remote" => (sub.is_some() && key == "proxy").then(|| name.to_owned()),
+        "remote" => match (sub, key) {
+            (Some(_), "proxy") => Some(name.to_owned()),
+            (Some(s), "proxyauthmethod") => Some(format!("remote.{s}.proxyAuthMethod")),
+            _ => None,
+        },
         _ => None,
     }
 }

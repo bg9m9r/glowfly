@@ -122,6 +122,11 @@ fn each_kind_of_setting_that_runs_a_file_in_the_working_tree_follows_it() {
         ("http.sslCert", "certs/me.pem", &["certs/me.pem"]),
         ("http.https://example.com/.sslKey", "certs/me.key", &["certs/me.key"]),
         ("http.pinnedPubkey", "certs/pin.pem", &["certs/pin.pem"]),
+        // The proxy's certificate, key and CA bundle.
+        ("http.proxySSLCert", "certs/proxy.pem", &["certs/proxy.pem"]),
+        ("http.https://example.com/.proxySSLKey", "certs/proxy.key", &["certs/proxy.key"]),
+        ("http.proxySSLCAInfo", "certs/proxy-ca.pem", &["certs/proxy-ca.pem"]),
+        ("http.proxySSLCertPasswordProtected", "true", &[]),
         ("http.pinnedPubkey", "sha256//certs/pin", &[]),
         // A transfer agent's name, a TLS switch or a proxy names no file.
         ("lfs.standaloneTransferAgent", "present", &[]),

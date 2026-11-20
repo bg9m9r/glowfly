@@ -79,15 +79,32 @@ fn tls_and_proxy_settings_are_listed_whatever_their_value() {
         ("http.version", "HTTP/1.1", "http.version"),
         ("http.https://example.com/.emptyauth", "true", "http.https://example.com/.emptyAuth"),
         ("http.https://example.com/.version", "HTTP/2", "http.https://example.com/.version"),
+        // schannel's use of the CA bundle, and the proxy's sign-in, certificate, key and CA bundle.
+        ("http.schannelusesslcainfo", "true", "http.schannelUseSSLCAInfo"),
+        ("http.proxyauthmethod", "basic", "http.proxyAuthMethod"),
+        ("http.proxysslcert", "certs/proxy.pem", "http.proxySSLCert"),
+        ("http.proxysslkey", "certs/proxy.key", "http.proxySSLKey"),
+        ("http.proxysslcainfo", "certs/proxy-ca.pem", "http.proxySSLCAInfo"),
+        ("http.proxysslcertpasswordprotected", "true", "http.proxySSLCertPasswordProtected"),
+        ("http.https://example.com/.proxyauthmethod", "anyauth", "http.https://example.com/.proxyAuthMethod"),
+        ("http.https://example.com/.proxysslcert", "p.pem", "http.https://example.com/.proxySSLCert"),
+        ("http.https://example.com/.schannelusesslcainfo", "false", "http.https://example.com/.schannelUseSSLCAInfo"),
+        ("remote.origin.proxyauthmethod", "ntlm", "remote.origin.proxyAuthMethod"),
     ];
     for (name, value, shown) in cases {
         assert_eq!(listed(name, value).as_deref(), Some(shown), "{name} = {value}");
         assert!(is_network_setting(shown), "{shown}");
     }
     // Other connection settings, and a proxy key elsewhere, aren't.
-    for name in
-        ["http.postbuffer", "http.https://example.com/.useragent", "remote.origin.fetch", "core.proxy", "http.sslverifyx", "http.sslcertx"]
-    {
+    for name in [
+        "http.postbuffer",
+        "http.https://example.com/.useragent",
+        "remote.origin.fetch",
+        "core.proxy",
+        "http.sslverifyx",
+        "http.sslcertx",
+        "remote.proxyauthmethod",
+    ] {
         assert_eq!(listed(name, "x"), None, "{name}");
     }
     assert!(!is_network_setting("core.sshCommand"));

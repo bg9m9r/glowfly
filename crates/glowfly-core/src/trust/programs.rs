@@ -80,12 +80,14 @@ pub(super) fn scan(
 }
 
 /// The file or folder a TLS setting reads: the CA bundle or folder (`http.sslCAInfo`,
-/// `http.sslCAPath`), the client certificate and key (`http.sslCert`, `http.sslKey`) and the
+/// `http.sslCAPath`), the client certificate and key (`http.sslCert`, `http.sslKey`), the
+/// proxy's (`http.proxySSLCert`, `http.proxySSLKey`, `http.proxySSLCAInfo`) and the
 /// pinned public key's file (`http.pinnedPubkey`, unless it gives `sha256//` hashes). Its whole
 /// value is one path, as git reads it (a `~` expanded), relative to the working tree. One whose
 /// bytes name no file here is named in `unread`, and None.
 fn tls_file(workdir: &Path, home: Option<&Path>, c: &ConfigCommand, unread: &mut Vec<String>) -> Option<PathBuf> {
-    const FILES: [&str; 5] = [".sslcainfo", ".sslcapath", ".sslcert", ".sslkey", ".pinnedpubkey"];
+    const FILES: [&str; 8] =
+        [".sslcainfo", ".sslcapath", ".sslcert", ".sslkey", ".pinnedpubkey", ".proxysslcert", ".proxysslkey", ".proxysslcainfo"];
     let key = c.key.to_ascii_lowercase();
     let hashes = key.ends_with(".pinnedpubkey") && c.value.starts_with("sha256//");
     let reads = super::is_network_setting(&c.key) && FILES.iter().any(|f| key.ends_with(f)) && !hashes;
