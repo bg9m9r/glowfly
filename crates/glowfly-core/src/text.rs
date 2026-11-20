@@ -126,10 +126,12 @@ pub fn command_line(args: &[String]) -> String {
 }
 
 /// A job log's echo of `git args` (`$ git …`, one line): `command_line` with URL credentials
-/// hidden (`redact_credentials`, after quoting, so an echo of plain arguments reads as it always
-/// did). Every `$ git` echo is built here (tests/source_checks/command_echo.rs).
+/// hidden (`redact_credentials` on each argument before quoting, so a URL after a line break
+/// inside an argument is still found). Every `$ git` echo is built here
+/// (tests/source_checks/command_echo.rs).
 pub fn command_echo(args: &[String]) -> String {
-    format!("$ {}", redact_credentials(&command_line(args)))
+    let redacted: Vec<String> = args.iter().map(|a| redact_credentials(a)).collect();
+    format!("$ {}", command_line(&redacted))
 }
 
 #[cfg(test)]
@@ -227,6 +229,16 @@ mod tests {
             r#"$ git remote add "my fork" https://***@h/r"#
         );
         assert_eq!(command_echo(&args(&["-c", "remote.o.url=x y https://a:b@h/x"])), r#"$ git -c "remote.o.url=x y https://***@h/x""#);
+    }
+
+    #[test]
+    fn command_echo_hides_credentials_after_a_line_break_in_an_argument() {
+        assert_eq!(
+            command_echo(&args(&["tag", "-a", "v1", "-m", "Release 1.2\nhttps://ghp_TOKEN@github.com/o/r"])),
+            r#"$ git tag -a v1 -m "Release 1.2\nhttps://***@github.com/o/r""#
+        );
+        assert_eq!(command_echo(&args(&["x", "a\r\nhttps://u:tok@h/x"])), r#"$ git x "a\r\nhttps://***@h/x""#);
+        assert_eq!(command_echo(&args(&["x", "https://h\nhttps://u:tok@h2/x"])), r#"$ git x "https://h\nhttps://***@h2/x""#);
     }
 
     #[test]
