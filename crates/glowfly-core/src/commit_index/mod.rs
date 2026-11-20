@@ -5,7 +5,7 @@
 //! matches in all of them, and says how far the graph has to load to show one.
 //!
 //! The index is built off the UI thread (`build.rs`); after a fetch, a commit or a branch change
-//! it is updated from the previous index, reading only the commits that one lacks. Text and
+//! it is updated from the previous index: the walk reads only the commits that one lacks, and once its queue matches the previous walk's at some point it appends the rest of the previous index as it is (`splice.rs`). Text and
 //! author terms are matched here exactly as the graph matches loaded commits
 //! (`CommitQuery::text_matches`, `CommitQuery::author_matches`, `matching.rs`); path terms are not
 //! indexed. The index keeps authors as written in the commits: the mailmap is applied when a
@@ -26,6 +26,7 @@ use std::sync::Arc;
 mod build;
 pub mod estimate;
 mod matching;
+mod splice;
 pub mod store;
 
 pub use build::{Progress, build};
@@ -35,6 +36,8 @@ pub use store::{Store, StoreFile, Stored, worth_saving};
 mod build_tests;
 #[cfg(test)]
 mod deep_match_tests;
+#[cfg(test)]
+mod splice_tests;
 #[cfg(test)]
 mod store_tests;
 #[cfg(test)]
@@ -296,11 +299,12 @@ impl Builder {
 }
 
 impl CommitIndex {
-    /// The entry of `oid` and its walked parents, when this index holds it.
-    fn walked(&self, oid: Oid) -> Option<(&Entry, &[Oid])> {
-        let e = &self.entries[*self.by_oid.get(&oid)? as usize];
+    /// The position and entry of `oid` and its walked parents, when this index holds it.
+    fn walked(&self, oid: Oid) -> Option<(u32, &Entry, &[Oid])> {
+        let pos = *self.by_oid.get(&oid)?;
+        let e = &self.entries[pos as usize];
         let at = e.parents_at as usize;
-        Some((e, &self.parents[at..at + e.parents_len as usize]))
+        Some((pos, e, &self.parents[at..at + e.parents_len as usize]))
     }
 
     /// The committer time of `oid`, when this index holds it.
