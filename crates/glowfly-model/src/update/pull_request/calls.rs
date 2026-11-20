@@ -191,7 +191,8 @@ pub(super) fn replied(
         _ => false,
     };
     if active && failed_auth {
-        st.auth_cache.forget(&target.account().key());
+        let dir = st.credentials_dir_for(workdir);
+        st.auth_cache.forget_for(&target.account().key(), &dir);
     }
     let prefix = target.provider.pr_prefix();
     let label = format!("{prefix}{id}");

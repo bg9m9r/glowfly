@@ -83,7 +83,8 @@ pub(super) fn commented(
     let result = result.map_err(|e| ForgeError { message: hosting(t, target.provider, Ask::Change, &e), ..e });
     let failure = result.as_ref().err().map(|e| e.message.clone());
     if active && result.as_ref().is_err_and(|e| e.auth) {
-        st.auth_cache.forget(&target.account().key());
+        let dir = st.credentials_dir_for(workdir);
+        st.auth_cache.forget_for(&target.account().key(), &dir);
     }
     let mine = |v: &&mut IssueView| v.comment.posting && v.key == key && &v.target == target;
     let view = if active {

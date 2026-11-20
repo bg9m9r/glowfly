@@ -99,7 +99,7 @@ fn different_credential_folders_dont_share_a_helper_answer() {
 }
 
 #[test]
-fn a_401_clears_it_for_the_whole_account() {
+fn a_rejected_call_clears_what_it_could_have_carried() {
     let rejections: [fn(&mut AppState); 4] = [
         |st| reply(st, ForgeResult::Prs(Err(rejected()))),
         |st| reply(st, ForgeResult::PrDetails(Err(rejected()))),
@@ -114,11 +114,26 @@ fn a_401_clears_it_for_the_whole_account() {
         st.auth_cache.store(github().key(), &dir.join("other"), auth(HELPER_SOURCE), true);
         assert!(cached(&st, &dir, false).is_some());
         reject(&mut st);
-        assert!(st.auth_cache.is_empty(), "case {i}: every folder's answer goes");
+        assert!(cached(&st, &dir, false).is_none(), "case {i}: its folder's answer and the shared ones go");
+        assert!(cached(&st, &dir.join("other"), false).is_some(), "case {i}: another folder's answer stays");
         let sent = refresh_auths(&mut st);
         assert!(!sent.is_empty() && sent.iter().all(Option::is_none), "case {i}: {sent:?}");
         cleanup(&[a]);
     }
+}
+
+#[test]
+fn a_failed_lookup_in_one_tab_keeps_the_sign_in_made_in_another() {
+    let (mut st, a) = opened("auth-cache-failed-a");
+    // The user signed in in tab A: a background refresh there carries the helper's answer.
+    found(&mut st, true, false, auth(HELPER_SOURCE));
+    let b = open_repo(&mut st, "auth-cache-failed-b");
+    // Tab B's own quiet lookup finds nothing.
+    reply(&mut st, ForgeResult::AuthFailed("not signed in to GitHub".into()));
+    drive(&mut st, Msg::Repo(RepoMsg::Open(a.clone())));
+    let sent = refresh_auths(&mut st);
+    assert!(!sent.is_empty() && sent.iter().all(|s| s.as_deref() == Some(HELPER_SOURCE)), "{sent:?}");
+    cleanup(&[a, b]);
 }
 
 #[test]
@@ -185,6 +200,12 @@ fn the_dashboard_sign_in_and_failures_forget_the_account() {
     let target = TargetReply { target: gh("acme", "widgets"), prs: Some(Err(rejected())), issues: None };
     run(&mut st, fetched(1, true, vec![account(Ok(token(Provider::GitHub)), vec![target])]));
     assert!(!held(&st), "a call the service rejected");
+
+    // A failed dashboard lookup says nothing about a repository folder's own credential helper.
+    let folder = AppState::outside_dir().join("a-repository");
+    st.auth_cache.store(github().key(), &folder, auth(HELPER_SOURCE), true);
+    run(&mut st, fetched(1, true, vec![account(Err("not signed in to GitHub".into()), Vec::new())]));
+    assert!(cached(&st, &folder, false).is_some(), "a tab's sign-in stays");
 
     runner_found(&mut st);
     let target = TargetReply { target: gh("acme", "widgets"), prs: Some(Ok(Vec::new())), issues: None };

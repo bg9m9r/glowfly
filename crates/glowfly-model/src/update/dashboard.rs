@@ -112,7 +112,7 @@ fn sign_in(st: &mut AppState, account: Account, fx: &mut Vec<Effect>) {
     if targets.is_empty() {
         return;
     }
-    st.auth_cache.forget(&account.key());
+    st.auth_cache.forget_for(&account.key(), &AppState::outside_dir());
     let d = &mut st.dashboard;
     let me = d.account(&account).and_then(|a| a.me.clone());
     if let Some(row) = d.account_mut(&account) {
@@ -178,7 +178,7 @@ fn fetched(st: &mut AppState, r: FetchReply, now: Instant) {
         d.phase = Phase::Idle;
     }
     for key in forget {
-        st.auth_cache.forget(&key);
+        st.auth_cache.forget_for(&key, &AppState::outside_dir());
     }
 }
 

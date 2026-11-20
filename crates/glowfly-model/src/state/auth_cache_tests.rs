@@ -55,6 +55,19 @@ fn storing_replaces_the_same_account_and_place() {
 }
 
 #[test]
+fn forgetting_for_a_folder_keeps_another_folders_helper_answer() {
+    let mut c = AuthCache::default();
+    c.store("gh".into(), &dir("a"), auth("GITHUB_TOKEN"), true);
+    c.store("gh".into(), &dir("a"), auth(HELPER_SOURCE), true);
+    c.store("gh".into(), &dir("b"), auth(HELPER_SOURCE), true);
+    c.store("gl".into(), &dir("a"), auth(HELPER_SOURCE), true);
+    c.forget_for("gh", &dir("a").join("."));
+    assert!(c.get("gh", &dir("a"), false).is_none(), "the shared answer and the folder's own go");
+    assert!(c.get("gh", &dir("b"), false).is_some());
+    assert!(c.get("gl", &dir("a"), false).is_some());
+}
+
+#[test]
 fn forgetting_drops_the_account_everywhere() {
     let mut c = AuthCache::default();
     c.store("gh".into(), &dir("a"), auth("GITHUB_TOKEN"), true);

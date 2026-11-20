@@ -115,7 +115,8 @@ fn loaded(st: &mut AppState, workdir: &Path, target: &Target, generation: u64, k
         return;
     }
     if result.as_ref().is_err_and(|e| e.auth) {
-        st.auth_cache.forget(&target.account().key());
+        let dir = st.credentials_dir_for(workdir);
+        st.auth_cache.forget_for(&target.account().key(), &dir);
     }
     let Some(v) = st.session.issue.view.as_mut() else { return };
     v.reloading = false;

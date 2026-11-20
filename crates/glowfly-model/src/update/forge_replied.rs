@@ -35,7 +35,8 @@ pub(super) fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &m
     }
     fs.loading = fs.loading.saturating_sub(1);
     let key = reply.target.account().key();
-    // Set when the service rejected the credential: it is forgotten for the whole account.
+    // Set when a call failed to sign in or the service rejected the credential: what the call
+    // could have carried is forgotten (`AuthCache::forget_for`).
     let mut rejected = false;
     for result in reply.results {
         match result {
@@ -136,7 +137,8 @@ pub(super) fn replied(st: &mut AppState, reply: ForgeReply, now: Instant, fx: &m
         }
     }
     if rejected {
-        st.auth_cache.forget(&key);
+        let dir = st.any_dir();
+        st.auth_cache.forget_for(&key, &dir);
     }
     for (ok, text) in logs {
         st.toast(ok, text.lines().next().unwrap_or_default().to_owned(), now);
