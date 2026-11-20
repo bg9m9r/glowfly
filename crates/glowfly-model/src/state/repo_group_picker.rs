@@ -1,7 +1,8 @@
 //! The Add repositories picker of a repository group (`Modal::AddToGroup`, ui/repo_group_picker.rs):
 //! what it lists, taken when it opens (the favorites not in the group, ungrouped ones first,
 //! then those of the other groups in group order; then the Recent rows not found missing), its
-//! filter and the ticked rows, kept by path so a row the filter hides stays ticked.
+//! filter and the ticked rows, kept by path so a row the filter hides stays ticked. The group and
+//! the other groups are kept by name, so a settings re-read that reorders them can't redirect it.
 
 use super::AppState;
 use super::repo_groups::{members, ungrouped};
@@ -15,16 +16,18 @@ pub const FILTER_FROM: usize = 8;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PickRow {
     pub path: PathBuf,
-    /// The other group a favorite is in now (ticking it moves it).
-    pub other_group: Option<usize>,
+    /// The other group a favorite was in when the picker opened, by name (ticking it moves it).
+    pub other_group: Option<String>,
     /// A Recent row, which adding stars.
     pub recent: bool,
 }
 
-/// The Add repositories picker for group `group`.
+/// The Add repositories picker for a group.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddPicker {
-    pub group: usize,
+    /// The group's name when the picker opened, kept by name so a settings re-read that reorders
+    /// groups can't send Add elsewhere.
+    pub group: String,
     pub rows: Vec<PickRow>,
     pub filter: String,
     pub ticked: Vec<PathBuf>,
@@ -34,14 +37,14 @@ impl AddPicker {
     /// The picker for group `g`, listing what can be added to it now.
     pub fn new(st: &AppState, g: usize) -> Self {
         let s = &st.settings;
-        let fav = |path: PathBuf, other_group| PickRow { path, other_group, recent: false };
+        let fav = |path: PathBuf, other_group: Option<String>| PickRow { path, other_group, recent: false };
         let mut rows: Vec<PickRow> = ungrouped(s).into_iter().map(|p| fav(p, None)).collect();
         for o in (0..s.repo_groups.len()).filter(|&o| o != g) {
-            rows.extend(members(s, o).into_iter().map(|p| fav(p, Some(o))));
+            rows.extend(members(s, o).into_iter().map(|p| fav(p, Some(s.repo_groups[o].name.clone()))));
         }
         let recent = recent_rows(st).into_iter().filter(|p| !is_missing(st, p));
         rows.extend(recent.map(|p| PickRow { path: p.clone(), other_group: None, recent: true }));
-        Self { group: g, rows, filter: String::new(), ticked: Vec::new() }
+        Self { group: s.repo_groups[g].name.clone(), rows, filter: String::new(), ticked: Vec::new() }
     }
 
     /// Whether the list is long enough to have a filter field.

@@ -2,6 +2,7 @@
   "repo_group.actions.tip": "Group actions",
   "repo_group.add.button": "Add {count}",
   "repo_group.add.button_none": "Add",
+  "repo_group.add.gone": "Nothing was added: there is no group called {name} any more.",
   "repo_group.add.in_group": "In {name}",
   "repo_group.add.none_ticked": "Tick the repositories to add.",
   "repo_group.add.nothing": "Nothing to add: every favorite is already in this group and Recent is empty.",

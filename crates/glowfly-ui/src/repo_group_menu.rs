@@ -39,8 +39,8 @@ pub fn items(ui: &mut egui::Ui, t: Lang, groups: &[RepoGroup], path: &Path, curr
 /// Either stars the repository as it goes in.
 pub fn add_items(ui: &mut egui::Ui, t: Lang, groups: &[RepoGroup], path: &Path, msgs: &mut Vec<Msg>) {
     submenu(ui, t.tr("repos.row_menu.add_to_group"), |ui| {
-        if let Some(group) = group_rows(ui, groups, None, false) {
-            msgs.push(Msg::Groups(GroupMsg::AddRepos { group, paths: vec![path.to_path_buf()] }));
+        if let Some(g) = group_rows(ui, groups, None, false).and_then(|i| groups.get(i)) {
+            msgs.push(Msg::Groups(GroupMsg::AddRepos { group: g.name.clone(), paths: vec![path.to_path_buf()] }));
             ui.close_menu();
         }
         new_group(ui, t, path, msgs);

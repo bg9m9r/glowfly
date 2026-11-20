@@ -4,7 +4,8 @@
 //! ticking it moves it) and Recent (starred when added). A row is the box, the name and its
 //! parent folder, and a click anywhere on it ticks it. Past `FILTER_FROM` rows a filter field
 //! leads, focused; ticks are kept by path, so a hidden row stays ticked and counted on
-//! "Add {count}". With nothing to offer, a line says so and the footer has only Close.
+//! "Add {count}". With nothing to offer, a line says so and the footer has only Close. The dialog
+//! keeps its group by name, so after a re-read that removed it, Add says so (update/repo_groups.rs).
 
 use super::dialog_frame::{Cx, Dialog, Footer};
 use super::repo_row::ROW_H;
@@ -17,6 +18,7 @@ use glowfly_core::native_path::shown;
 use glowfly_core::settings::RepoGroup;
 use glowfly_model::msg::{GroupMsg, Msg};
 use glowfly_model::state::repo_group_picker::{AddPicker, PickRow};
+use glowfly_model::state::repo_groups::group_index;
 
 /// The list's most height before it scrolls (ten rows).
 const LIST_H: f32 = 320.0;
@@ -30,9 +32,9 @@ const SECTION_GAP: f32 = 8.0;
 /// an Add.
 pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut AddPicker, groups: &[RepoGroup], msgs: &mut Vec<Msg>) -> bool {
     let t = cx.t;
-    let Some(group) = groups.get(form.group) else { return true };
-    let mut d = Dialog::new(cx, t.trf("repo_group.add.title", &[("name", &group.name)]));
-    if let Some(c) = group.hue() {
+    let group = group_index(groups, &form.group).map(|i| &groups[i]);
+    let mut d = Dialog::new(cx, t.trf("repo_group.add.title", &[("name", &form.group)]));
+    if let Some(c) = group.and_then(RepoGroup::hue) {
         d = d.swatch(color::repo_hue(c));
     }
     let mut d = d.begin(ui);
@@ -63,7 +65,7 @@ pub fn show(ui: &mut egui::Ui, cx: Cx, form: &mut AddPicker, groups: &[RepoGroup
     let add = buttons::primary(label).enabled(!picked.is_empty()).why(none);
     let out = d.finish(ui, Footer::new().cancel().primary(add).submit(entered && !picked.is_empty()));
     if out.primary {
-        msgs.push(Msg::Groups(GroupMsg::AddRepos { group: form.group, paths: picked }));
+        msgs.push(Msg::Groups(GroupMsg::AddRepos { group: form.group.clone(), paths: picked }));
     }
     out.dismiss
 }
@@ -132,7 +134,7 @@ fn row(ui: &mut egui::Ui, t: Lang, r: &PickRow, ticked: bool, groups: &[RepoGrou
     ui.painter().galley(at.min, galley, color::text());
     ui.add_space(NAME_GAP);
     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-        if let Some(g) = r.other_group.and_then(|g| groups.get(g)) {
+        if let Some(g) = r.other_group.as_deref().and_then(|n| group_index(groups, n)).map(|i| &groups[i]) {
             ui.label(RichText::new(t.trf("repo_group.add.in_group", &[("name", &g.name)])).size(type_scale::SMALL).color(color::weak()));
             if let Some(c) = g.hue() {
                 ui.add_space(6.0);
