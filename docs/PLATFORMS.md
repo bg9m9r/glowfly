@@ -432,6 +432,8 @@ trust scan all run for untrusted repositories too.
    non-zero exit with the first stderr line. Starting a program is not proof it ran. `git
    difftool` gets 10 s (its scripts start slowly on Windows) and is then waited for
    (`watch_to_end`), so a failure that comes later is still reported.
+   A diff tool's exit with 1 and nothing on stderr is no failure: diff tools exit 1 when the files
+   differ, and `git difftool --no-index` does whenever they do (`external_tools/diff_exit.rs`).
    On Windows, links and files open in Glowfly's own process: the `open` crate is built with
    `shellexecute-on-windows` (`ShellExecuteEx`). Without it `open` starts a hidden PowerShell
    that starts the browser, which may not come to the front, and a PowerShell still starting

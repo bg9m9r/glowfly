@@ -4,7 +4,7 @@
 //! `BASE`. The command travels in an environment variable, never in argv (see
 //! custom_commands/shell.rs).
 
-use super::{ExitReport, Watched, early_exit_message, wait_report, watch};
+use super::{ExitReport, wait_report, watch};
 use crate::custom_commands::{SCRIPT_VAR, ShellMissing, find_sh};
 use crate::error::{Error, Result};
 use crate::native_path::native;
@@ -52,13 +52,11 @@ fn start(l: &ShellLaunch) -> Result<Child> {
     })
 }
 
-/// Starts `l` and watches it for `EARLY_EXIT`, as `external_tools::spawn` does: a quick
-/// failure is the error; after that it is left running.
-pub fn spawn_shell(l: &ShellLaunch) -> Result<()> {
-    match watch(start(l)?) {
-        Watched::Running | Watched::Exited { code: Some(0), .. } => Ok(()),
-        Watched::Exited { code, stderr } => Err(Error::Other(early_exit_message(code, &stderr))),
-    }
+/// Starts the diff command `l` and watches it for `EARLY_EXIT`, as `diff_exit::spawn_diff` does:
+/// a quick failure is the error (0, or 1 with nothing on stderr, is not); after that it is left
+/// running.
+pub fn spawn_diff_shell(l: &ShellLaunch) -> Result<()> {
+    super::diff_exit::diff_watched(watch(start(l)?))
 }
 
 /// Runs `l` until it exits, however long that is.
