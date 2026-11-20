@@ -1,10 +1,12 @@
 //! Where git pushes a branch when no remote is named (`PushRemotes`): `branch.<name>.pushRemote`,
 //! then `remote.pushDefault`, and what it pushes there by `push.default` (`PushMode`). Read with
 //! libgit2 from the repository's whole config (system, global, local and the files they
-//! include), the last value of a key winning as in git. Only remote names are read; whether the
-//! remote exists is up to the caller (`push_target`). Also whether a plain `git pull` rebases
-//! (`pull_rebases`), which the Pull button's tooltip names.
+//! include), the last value of a key winning as in git; the entry rules (`PushRemotes::take`) are
+//! shared with the load's one read of the branch settings (`upstream_config`). Only remote names
+//! are read; whether the remote exists is up to the caller (`push_target`). Also whether a plain
+//! `git pull` rebases (`pull_rebases`), which the Pull button's tooltip names.
 
+use crate::config_entry;
 use git2::Repository;
 
 /// `push.default`: what a plain `git push` sends. Its values are compared case-sensitively,
@@ -91,36 +93,59 @@ pub fn push_remotes(repo: &Repository) -> PushRemotes {
         let mut entries = cfg.entries(Some(r"^(branch\..*\.pushremote|remote\.pushdefault|push\.default)$"))?;
         while let Some(e) = entries.next() {
             let e = e?;
-            if e.name().is_some_and(|n| n.eq_ignore_ascii_case("push.default")) {
-                // A value-less key has no value bytes to read (`value_bytes` would panic).
-                out.mode = if e.has_value() {
-                    PushMode::of(String::from_utf8_lossy(e.value_bytes()).trim())
-                } else {
-                    PushMode::Invalid(String::new())
-                };
-                continue;
-            }
-            let (Some(name), true) = (e.name(), e.has_value()) else { continue };
-            let value = String::from_utf8_lossy(e.value_bytes()).trim().to_owned();
-            let usable = usable_remote(&value);
-            if !usable && !value.is_empty() {
-                tracing::debug!("ignoring {name}: its value can't name a remote");
-            }
-            let set = usable.then_some(value);
-            if name.eq_ignore_ascii_case("remote.pushdefault") {
-                out.default = set;
-                continue;
-            }
-            // `branch.<name>.pushremote`: the branch name keeps its case and may hold dots.
-            let Some(branch) = name.get(7..name.len().saturating_sub(11)).filter(|b| !b.is_empty()) else { continue };
-            out.branches.retain(|(b, _)| b != branch);
-            if let Some(r) = set {
-                out.branches.push((branch.to_owned(), r));
+            if let Some(name) = e.name() {
+                out.take(name, config_entry::raw(e));
             }
         }
         Ok(out)
     };
     read().unwrap_or_default()
+}
+
+/// The branch `name` (`branch.<branch>.<var>`, section and variable in any case) is a setting
+/// of: the subsection, which keeps its case and may hold dots.
+pub(in crate::repo) fn branch_key<'n>(name: &'n str, var: &str) -> Option<&'n str> {
+    let tail_at = name.len().checked_sub(var.len() + 1)?;
+    let (head, tail) = (name.get(..7)?, name.get(tail_at..)?);
+    let branch = name.get(7..tail_at).filter(|b| !b.is_empty())?;
+    (head.eq_ignore_ascii_case("branch.") && tail.starts_with('.') && tail[1..].eq_ignore_ascii_case(var)).then_some(branch)
+}
+
+impl PushRemotes {
+    /// Takes the config entry `name` (with `value`, None for a key written without one) when it
+    /// is `push.default`, `remote.pushDefault` or `branch.<b>.pushRemote`, the last entry of a
+    /// key winning; false for any other key.
+    pub(in crate::repo) fn take(&mut self, name: &str, value: Option<&[u8]>) -> bool {
+        if name.eq_ignore_ascii_case("push.default") {
+            // A value-less key is an error to git.
+            self.mode = match value {
+                Some(v) => PushMode::of(String::from_utf8_lossy(v).trim()),
+                None => PushMode::Invalid(String::new()),
+            };
+            return true;
+        }
+        let branch = branch_key(name, "pushremote");
+        if branch.is_none() && !name.eq_ignore_ascii_case("remote.pushdefault") {
+            return false;
+        }
+        let Some(value) = value else { return true };
+        let value = String::from_utf8_lossy(value).trim().to_owned();
+        let usable = usable_remote(&value);
+        if !usable && !value.is_empty() {
+            tracing::debug!("ignoring {name}: its value can't name a remote");
+        }
+        let set = usable.then_some(value);
+        match branch {
+            None => self.default = set,
+            Some(branch) => {
+                self.branches.retain(|(b, _)| b != branch);
+                if let Some(r) = set {
+                    self.branches.push((branch.to_owned(), r));
+                }
+            }
+        }
+        true
+    }
 }
 
 /// Whether a plain `git pull` on `branch` rebases: `branch.<branch>.rebase`, else
@@ -131,11 +156,8 @@ pub fn pull_rebases(repo: &Repository, branch: Option<&str>) -> bool {
     let Ok(cfg) = repo.config().and_then(|mut c| c.snapshot()) else { return false };
     let keys = branch.map(|b| format!("branch.{b}.rebase")).into_iter().chain(["pull.rebase".to_owned()]);
     for key in keys {
-        if let Ok(e) = cfg.get_entry(&key) {
-            if !e.has_value() {
-                return true;
-            }
-            return rebase_value(&String::from_utf8_lossy(e.value_bytes()));
+        if let Some(v) = config_entry::bool_or_word(&cfg, &key) {
+            return rebase_value(&v);
         }
     }
     false

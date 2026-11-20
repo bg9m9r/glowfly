@@ -15,7 +15,7 @@ use git2::{Oid, Repository};
 use std::collections::HashMap;
 
 #[path = "push_refspecs.rs"]
-mod refspecs;
+pub(in crate::repo) mod refspecs;
 
 use refspecs::RemoteSpecs;
 
@@ -157,11 +157,12 @@ struct Resolver<'a> {
     cfg: &'a PushRemotes,
     remotes: &'a [&'a str],
     specs: HashMap<String, RemoteSpecs>,
+    tip_of: &'a dyn Fn(&str) -> Option<Oid>,
 }
 
 impl<'a> Resolver<'a> {
-    fn new(repo: &'a Repository, cfg: &'a PushRemotes, remotes: &'a [&'a str]) -> Self {
-        Resolver { repo, cfg, remotes, specs: HashMap::new() }
+    fn new(repo: &'a Repository, cfg: &'a PushRemotes, remotes: &'a [&'a str], tip_of: &'a dyn Fn(&str) -> Option<Oid>) -> Self {
+        Resolver { repo, cfg, remotes, specs: HashMap::new(), tip_of }
     }
 
     fn resolve(&mut self, b: &BranchInfo) -> Option<PushTarget> {
@@ -191,7 +192,7 @@ impl<'a> Resolver<'a> {
             }
         };
         let tracking_ref = if here { Some(dest_ref.clone()) } else { specs.and_then(|s| refspecs::tracking_ref(&s.fetch, &dest_ref)) };
-        let tip = tracking_ref.as_deref().and_then(|r| repo.refname_to_id(r).ok());
+        let tip = tracking_ref.as_deref().and_then(self.tip_of);
         if rule == PushRule::Matching && tip.is_none() {
             return Err(PushRefusal::NotOnRemote);
         }
@@ -203,13 +204,21 @@ impl<'a> Resolver<'a> {
 /// `remotes`, from `cfg` and the remotes' own settings; None when `b` has no upstream
 /// configured. The counts are left at 0 (`fill` sets them).
 pub fn resolve(repo: &Repository, cfg: &PushRemotes, remotes: &[&str], b: &BranchInfo) -> Option<PushTarget> {
-    Resolver::new(repo, cfg, remotes).resolve(b)
+    Resolver::new(repo, cfg, remotes, &|r| repo.refname_to_id(r).ok()).resolve(b)
 }
 
 /// Sets `BranchInfo::push` of every branch in `locals`, with the counts against the push
-/// target's tracking ref: the upstream's own when it is that ref, otherwise from `cache`.
-pub(super) fn fill(repo: &Repository, cache: &GraphCache, locals: &mut [BranchInfo], cfg: &PushRemotes, remotes: &[&str]) {
-    let mut resolver = Resolver::new(repo, cfg, remotes);
+/// target's tracking ref: the upstream's own when it is that ref, otherwise from `cache`. The
+/// tips of tracking refs come from `tip_of`.
+pub(super) fn fill(
+    repo: &Repository,
+    cache: &GraphCache,
+    locals: &mut [BranchInfo],
+    cfg: &PushRemotes,
+    remotes: &[&str],
+    tip_of: &dyn Fn(&str) -> Option<Oid>,
+) {
+    let mut resolver = Resolver::new(repo, cfg, remotes, tip_of);
     for b in locals.iter_mut() {
         let mut push = resolver.resolve(b);
         if let Some(d) = push.as_mut().and_then(|p| p.dest.as_mut().ok()) {

@@ -1,19 +1,20 @@
 //! A remote's refspecs as `push_target` reads them: its `remote.<r>.push` specs, which decide a
 //! plain push before `push.default` does, its fetch specs, which name the remote-tracking ref a
-//! pushed ref shows up as, and `remote.<r>.mirror`. Declared from `push_target.rs`.
+//! pushed ref shows up as (and the upstream a branch's `merge` ref maps to, as libgit2 maps it),
+//! and `remote.<r>.mirror`. Declared from `push_target.rs`.
 
 use git2::{Direction, Repository};
 
 /// One refspec's source and destination (`+` dropped); a pattern holds one `*`.
 #[derive(Clone, Debug, PartialEq)]
-pub(super) struct Spec {
+pub(in crate::repo) struct Spec {
     src: String,
     dst: Option<String>,
 }
 
 /// What `push_target` needs of one remote's config.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub(super) struct RemoteSpecs {
+pub(in crate::repo) struct RemoteSpecs {
     /// `remote.<r>.push`, negative (`^`) specs left out.
     pub push: Vec<Spec>,
     /// `remote.<r>.fetch`, negative specs left out.
@@ -23,7 +24,7 @@ pub(super) struct RemoteSpecs {
 }
 
 /// The refspecs and mirror setting of the configured remote `name`; empty when it can't be read.
-pub(super) fn read(repo: &Repository, name: &str) -> RemoteSpecs {
+pub(in crate::repo) fn read(repo: &Repository, name: &str) -> RemoteSpecs {
     let mut out = RemoteSpecs::default();
     if let Ok(remote) = repo.find_remote(name) {
         for spec in remote.refspecs() {
@@ -31,11 +32,12 @@ pub(super) fn read(repo: &Repository, name: &str) -> RemoteSpecs {
                 continue;
             }
             let Some(src) = spec.src().filter(|s| !s.is_empty()) else { continue };
-            let s = Spec { src: src.to_owned(), dst: spec.dst().filter(|d| !d.is_empty()).map(str::to_owned) };
-            match spec.direction() {
-                Direction::Push => out.push.push(s),
-                Direction::Fetch => out.fetch.push(s),
-            }
+            let (list, dst) = match spec.direction() {
+                Direction::Push => (&mut out.push, spec.dst()),
+                // libgit2 leaves a fetch spec's missing destination null, which `dst` can't return.
+                Direction::Fetch => (&mut out.fetch, spec.str().and_then(|s| s.split_once(':')).map(|(_, d)| d)),
+            };
+            list.push(Spec { src: src.to_owned(), dst: dst.filter(|d| !d.is_empty()).map(str::to_owned) });
         }
     }
     out.mirror = repo.config().and_then(|c| c.get_bool(&format!("remote.{name}.mirror"))).unwrap_or(false);
@@ -84,6 +86,21 @@ pub(super) fn push_dest(specs: &[Spec], full: &str, is_head: bool) -> Option<Str
         }
         s.map(full)
     })
+}
+
+/// The ref libgit2 names as the upstream of a branch whose `branch.<b>.merge` is `merge`, from
+/// the remote's fetch specs: the first one whose source matches `merge` (a pattern, `*` standing
+/// for anything, `/` too; otherwise only the same text, a short name not expanded), mapped
+/// through its destination. None when none matches, or when the first that does has no
+/// destination: no later spec is tried.
+pub(in crate::repo) fn upstream_of(fetch: &[Spec], merge: &str) -> Option<String> {
+    fetch.iter().find_map(|s| match s.src.split_once('*') {
+        Some((prefix, suffix)) => {
+            let rest = merge.strip_prefix(prefix)?.strip_suffix(suffix)?;
+            Some(s.dst.as_ref().map(|d| d.replacen('*', rest, 1)))
+        }
+        None => (s.src == merge).then(|| s.dst.clone()),
+    })?
 }
 
 /// The remote-tracking ref the remote's `dest` ref is fetched into (refs/heads/main on fork to

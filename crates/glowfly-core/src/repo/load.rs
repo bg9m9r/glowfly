@@ -18,6 +18,10 @@ mod load_refs;
 mod load_walk;
 #[path = "merge_dest.rs"]
 mod merge_dest;
+#[path = "ref_peel.rs"]
+mod ref_peel;
+#[path = "upstream_config.rs"]
+mod upstream_config;
 
 /// Loads the repository at (or above) `path`.
 pub fn load(path: &Path, opts: &LoadOptions) -> Result<Snapshot> {
@@ -54,22 +58,11 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let opts = &shown_opts(opts, head_branch.as_deref());
     let BoxReads { head_message, commit_template, commit_encoding, merge_message, gitflow, lfs_patterns } =
         box_reads(&repo, &workdir, state);
-    let mut refs = tracing::debug_span!("load.labels")
-        .in_scope(|| load_refs::ref_labels(&repo, opts, (head_oid, head_branch.as_deref(), detached)))?;
 
-    let refs_span = tracing::debug_span!("load.refs").entered();
-    let mut locals = tracing::debug_span!("load.refs.branches").in_scope(|| load_refs::local_branches(&repo, cache))?;
-    let (remotes, reads) = tracing::debug_span!("load.refs.remotes").in_scope(|| -> Result<_> {
-        let remotes = load_refs::remote_branches(&repo)?;
-        let reads = load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
-        Ok((remotes, reads))
-    })?;
-    let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } = reads;
-    let merge_names = merge_dest::merge_names(&repo, head_branch.as_deref(), &branch_refs(&locals, &remotes));
-    let remote_names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
-    tracing::debug_span!("load.refs.push").in_scope(|| super::push_target::fill(&repo, cache, &mut locals, &push_remotes, &remote_names));
-    let (tags, other_tags, lightweight_tags) = tracing::debug_span!("load.refs.tags").in_scope(|| load_refs::tags(&repo))?;
-    drop(refs_span);
+    let RefReads { mut refs, ref_starts, mut locals, remotes, reads, merge_names, push_remotes, tags } =
+        read_refs(&repo, cache, opts, (head_oid, head_branch.as_deref(), detached))?;
+    let load_refs::RemoteReads { remote_info, remote_heads, pull_rebase, remote_urls } = reads;
+    let (tags, other_tags, lightweight_tags) = tags;
 
     let StatusRead { trust_scan, trust_print, collisions, index_memo, unstaged, staged, slow_status, changes } =
         read_status(&repo, opts, cache, &workdir)?;
@@ -85,7 +78,7 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let fetched_at = super::fetch_time::fetched_at(&git_dir, &common.dir);
     let fetched_remotes = super::fetch_time::fetched_remotes(&git_dir, &common.dir, &remote_info, &remote_urls);
 
-    let head = (head_oid, head_branch.as_deref());
+    let head = (head_oid, head_branch.as_deref(), ref_starts.as_slice());
     let mailmap = crate::mailmap::MailmapText::read(&repo);
     let load_walk::History { starts, commits, row_of, truncated, frontier } =
         load_walk::history(&repo, (opts, max_commits), (cache, prior, &mailmap), head, &shallow_roots, &mut refs, &mut locals)?;
@@ -155,6 +148,49 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     tracing::debug_span!("load.layout").in_scope(|| snap.lay_out_graph());
     snap.stacks = crate::stack::read(&repo, &snap);
     Ok(snap)
+}
+
+/// What a load reads of the refs.
+struct RefReads {
+    refs: std::collections::HashMap<git2::Oid, Vec<RefLabel>>,
+    /// The commits of the refs `opts` doesn't hide, where an unfiltered history walk starts.
+    ref_starts: Vec<git2::Oid>,
+    locals: Vec<BranchInfo>,
+    remotes: load_refs::Remotes,
+    reads: load_refs::RemoteReads,
+    merge_names: crate::branch_ref::MergeNames,
+    push_remotes: PushRemotes,
+    tags: load_refs::Tags,
+}
+
+/// Reads the refs: one pass over the references and one read of the branch settings, then what
+/// each part of the snapshot takes from them.
+fn read_refs(repo: &Repository, cache: &GraphCache, opts: &LoadOptions, head: load_refs::Head) -> Result<RefReads> {
+    let head_branch = head.1;
+    let _span = tracing::debug_span!("load.refs").entered();
+    let branch_cfg = tracing::debug_span!("load.refs.config").in_scope(|| upstream_config::read(repo));
+    let pass = tracing::debug_span!("load.refs.pass").in_scope(|| load_refs::RefPass::read(repo))?;
+    let mut peeler = ref_peel::Peeler::new(repo);
+    let (refs, ref_starts) =
+        tracing::debug_span!("load.refs.labels").in_scope(|| (pass.labels(&mut peeler, opts, head), pass.starts(&mut peeler, opts)));
+    let tips = pass.tips();
+    let mut locals = tracing::debug_span!("load.refs.branches").in_scope(|| pass.local_branches(head_branch));
+    tracing::debug_span!("load.refs.upstreams").in_scope(|| upstream_config::fill_upstreams(repo, cache, &branch_cfg, &tips, &mut locals));
+    let (remotes, reads) = tracing::debug_span!("load.refs.remotes").in_scope(|| -> Result<_> {
+        let remotes = pass.remote_branches(repo)?;
+        let reads = load_refs::remote_reads(repo, &remotes, head_branch);
+        Ok((remotes, reads))
+    })?;
+    let merge_names = merge_dest::merge_names(repo, head_branch, &branch_refs(&locals, &remotes));
+    let remote_names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
+    let tip_of = |r: &str| match tips.get(r) {
+        Some(Some(o)) => Some(*o),
+        _ => repo.refname_to_id(r).ok(),
+    };
+    tracing::debug_span!("load.refs.push")
+        .in_scope(|| super::push_target::fill(repo, cache, &mut locals, &branch_cfg.push, &remote_names, &tip_of));
+    let tags = tracing::debug_span!("load.refs.tags").in_scope(|| pass.tags(&mut peeler));
+    Ok(RefReads { refs, ref_starts, locals, remotes, reads, merge_names, push_remotes: branch_cfg.push, tags })
 }
 
 /// Every local and remote-tracking branch, as the menus name them.
