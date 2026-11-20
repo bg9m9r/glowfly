@@ -76,6 +76,8 @@ impl RemoteMsg {
 #[derive(Debug)]
 pub struct ForkRequest {
     pub workdir: PathBuf,
+    /// Where signing in asks git's credential helpers (`AppState::credentials_dir_for`).
+    pub cwd: PathBuf,
     pub target: Target,
     /// A credential from this session; None signs in (environment, saved token, Git Credential
     /// Manager).

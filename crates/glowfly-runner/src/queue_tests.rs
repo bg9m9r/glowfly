@@ -213,7 +213,7 @@ fn which_effects_queue() {
     // Fork lists and forking call the hosting service only; the remote is added by a job.
     use glowfly_model::remote::{ForkRequest, RemoteEffect};
     let target = glowfly_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
-    let req = || ForkRequest { workdir: w.clone(), target: target.clone(), auth: None, connected: false };
+    let req = || ForkRequest { workdir: w.clone(), cwd: w.clone(), target: target.clone(), auth: None, connected: false };
     let remote =
         [RemoteEffect::ListForks(req()), RemoteEffect::FindMyFork(req()), RemoteEffect::CreateFork { req: req(), name: "ada".into() }];
     let names: Vec<&str> = remote.iter().map(RemoteEffect::name).collect();

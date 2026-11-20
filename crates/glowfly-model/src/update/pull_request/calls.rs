@@ -31,7 +31,8 @@ pub(super) fn service_request(st: &AppState) -> Result<PrRequest, String> {
     }
     let auth = fs.auth.get(&account.key()).cloned();
     let connected = forge::is_connected(&account, &st.settings.connections);
-    Ok(PrRequest { workdir, target, auth, connected })
+    let cwd = st.credentials_dir_for(&workdir);
+    Ok(PrRequest { workdir, cwd, target, auth, connected })
 }
 
 /// `service_request`, for a service with in-app reviews.

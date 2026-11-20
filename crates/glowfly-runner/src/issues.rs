@@ -25,7 +25,7 @@ fn call(job: IssueJob) -> Msg {
     let interactive = matches!(call, IssueCall::Create(_) | IssueCall::Comment { .. });
     let auth: Result<Auth, ForgeError> = match req.auth {
         Some(a) => Ok(a),
-        None => forge::resolve_auth(&req.target.account(), &req.workdir, interactive, req.connected).map_err(ForgeError::from),
+        None => forge::resolve_auth(&req.target.account(), &req.cwd, interactive, req.connected).map_err(ForgeError::from),
     };
     let t = &req.target;
     let reply = match call {
@@ -56,7 +56,7 @@ mod tests {
     fn issue_calls_wait_in_no_repository_queue() {
         let target =
             Target { provider: Provider::GitHub, host: "github.com".into(), owner: "o".into(), project: String::new(), repo: "r".into() };
-        let req = IssueRequest { workdir: PathBuf::from("repo"), target, auth: None, connected: false };
+        let req = IssueRequest { workdir: PathBuf::from("repo"), cwd: PathBuf::from("repo"), target, auth: None, connected: false };
         let e = Effect::Issue(IssueEffect::Call(Box::new(IssueJob { req, generation: 1, call: IssueCall::Load("1".into()) })));
         assert_eq!(e.queue(), None);
     }

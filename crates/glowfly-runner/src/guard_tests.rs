@@ -51,7 +51,7 @@ fn a_panicking_job_finishes_failed_and_frees_the_job_slot() {
 fn a_panicking_fork_request_ends_the_dialogs_spinner() {
     use glowfly_model::remote::ForkRequest;
     let target = glowfly_core::forge::parse_remote("https://github.com/team/app", &[]).unwrap();
-    let req = ForkRequest { workdir: "C:/r".into(), target: target.clone(), auth: None, connected: false };
+    let req = ForkRequest { workdir: "C:/r".into(), cwd: "C:/r".into(), target: target.clone(), auth: None, connected: false };
     let effect = Effect::Remote(RemoteEffect::ListForks(req));
     assert!(effect.scope().is_none(), "unscoped: the dialog gets its answer whichever tab is active");
     let msg = guarded(Recovery::of(&effect, effect.name()), || panic!("boom")).unwrap();

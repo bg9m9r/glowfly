@@ -1,7 +1,8 @@
 //! Where the account calls that ask git's credential helpers run (`AppState::credentials_dir`):
 //! signing in through the credential manager, signing it out of hosts and listing a Trello
-//! account's boards run in the active repository only while git runs there unasked, and in a
-//! folder outside any repository otherwise, so its own credential helper never runs untrusted.
+//! account's boards, and the fork dialogs' service calls, run in the active repository only while
+//! git runs there unasked, and in a folder outside any repository otherwise, so its own credential
+//! helper never runs untrusted.
 
 use super::file_trust_tests::{clean, held, refused, trusted};
 use super::tests::state;
@@ -60,4 +61,50 @@ fn account_calls_run_in_the_active_repository_only_while_git_runs_there_unasked(
     }
     // With no repository open there is none to read.
     assert_eq!(asked_in(state()), vec![AppState::outside_dir(); 3]);
+}
+
+/// The folder the fork dialogs' service calls sign in from, opened on a GitHub `origin` in `st`:
+/// Add a fork lists the forks, Fork on GitHub looks for the user's own.
+fn fork_calls_in(mut st: AppState) -> Vec<PathBuf> {
+    use crate::remote::{RemoteEffect, RemoteMsg};
+    use glowfly_core::repo::RemoteInfo;
+    let origin = "https://github.com/team/app.git";
+    st.snap.as_mut().unwrap().remote_info.push(RemoteInfo {
+        name: "origin".into(),
+        urls: vec![origin.into()],
+        push_urls: Vec::new(),
+        skip_fetch_all: false,
+    });
+    let mut out = Vec::new();
+    for msg in [RemoteMsg::ForkDialog("origin".into()), RemoteMsg::ForkOnService("origin".into())] {
+        st.modal = None;
+        for e in update(&mut st, Msg::Remote(msg), Instant::now()) {
+            match e {
+                Effect::Remote(RemoteEffect::ListForks(r) | RemoteEffect::FindMyFork(r)) => out.push(r.cwd),
+                e => panic!("unexpected {e:?}"),
+            }
+        }
+    }
+    assert_eq!(out.len(), 2, "each dialog asks once: {out:?}");
+    out
+}
+
+#[test]
+fn fork_calls_sign_in_from_the_repository_only_while_git_runs_there_unasked() {
+    for st in [clean("fork-cred-clean"), trusted("fork-cred-trusted")] {
+        let workdir = st.workdir().unwrap();
+        assert_eq!(fork_calls_in(st), vec![workdir; 2]);
+    }
+    for st in [held("fork-cred-held"), refused("fork-cred-refused")] {
+        assert_eq!(fork_calls_in(st), vec![AppState::outside_dir(); 2], "its own credential helper never runs");
+    }
+}
+
+#[test]
+fn a_call_for_another_repository_signs_in_outside_any_repository() {
+    let st = trusted("cred-other");
+    let workdir = st.workdir().unwrap();
+    assert_eq!(st.credentials_dir_for(&workdir), workdir);
+    assert_eq!(st.credentials_dir_for(&workdir.join("elsewhere")), AppState::outside_dir());
+    assert_eq!(state().credentials_dir_for(&workdir), AppState::outside_dir());
 }
