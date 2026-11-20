@@ -322,8 +322,7 @@ pub fn finish_job(
         return; // that tab refreshes when it is selected again
     }
     super::notify::fetched(st, &job.label, job.quiet, ok);
-    super::watch::settled(st, now);
-    super::repo::refresh(st, fx);
+    super::refs_check::after_job(st, &job, now, fx);
     super::lfs::job_finished(st, &job.label, ok, job.quiet, fx);
     // Pushes and branch changes affect pull requests; auto-fetch uses the normal interval.
     if !job.quiet {

@@ -38,6 +38,8 @@ fn git_internals_are_classified() {
         "refs/heads/main.lock",
         "HEAD.lock",
         "objects/ab/cdef",
+        "lfs/objects/ab/cd/x",
+        "lfs/tmp/x",
         "logs/HEAD",
         "FETCH_HEAD",
         "ORIG_HEAD",

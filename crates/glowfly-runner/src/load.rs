@@ -1,5 +1,6 @@
 //! The `Execute` impl of `LoadEffect`, and loading the active tab's repository
-//! (`LoadEffect::Repo`): only the status when the refs are as the snapshot on screen has them,
+//! (`LoadEffect::Repo`): only the status when the refs are as the snapshot on screen has them
+//! (nothing at all for a refs-only check after a background fetch),
 //! the next commits of its walk for a load for more (`repo::load_more`), else everything, taking
 //! the commits on screen instead of reading them again (`repo::load_reusing`). The status reads
 //! are in status.rs.
@@ -54,6 +55,9 @@ fn load_repo(
         && unchanged
         && let Some(k) = known
     {
+        if k.refs_only {
+            return Msg::Load(LoadMsg::RefsUnchanged { generation });
+        }
         let open_stamp = k.open.and_then(|p| repo::open_file_stamp(&path, &p));
         let started = std::time::Instant::now();
         let read = repo::status_and_index_with(&path, k.git_status, Some(graph_cache.records())).map_err(ReadFailed::from);
@@ -82,6 +86,22 @@ fn load_repo(
 mod tests {
     use super::*;
     use glowfly_core::error::ReadFailed;
+
+    fn known(key: u64, refs_only: bool) -> KnownRepo {
+        KnownRepo { refs_key: key, refs_only, submodules: false, open: None, git_status: false }
+    }
+
+    #[test]
+    fn a_refs_only_check_of_unchanged_refs_reads_nothing_else() {
+        let dir = glowfly_model::testing::scratch_repo("runner-load-refs-only");
+        let key = repo::refs_key(&dir).unwrap();
+        let load = |known| load_repo(dir.clone(), LoadOptions::default(), 1, LoadKind::Refresh, Some(known), None, &GraphCache::default());
+        assert!(matches!(load(known(key, true)), Msg::Load(LoadMsg::RefsUnchanged { generation: 1 })));
+        let changed = load(known(key.wrapping_add(1), true));
+        assert!(matches!(changed, Msg::Repo(RepoMsg::RepoLoaded { result: Ok(_), .. })), "a changed key loads everything");
+        let status = load(known(key, false));
+        assert!(matches!(status, Msg::Load(LoadMsg::RepoUnchanged { .. })), "without refs_only the status is read");
+    }
 
     #[test]
     fn a_folder_with_no_repository_fails_to_open_naming_it() {

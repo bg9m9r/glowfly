@@ -37,6 +37,12 @@ pub struct WatchState {
     pub down: HashSet<PathBuf>,
     /// Repositories whose silent watcher was already reported this session.
     pub silent_warned: HashSet<PathBuf>,
+    /// A watcher report was held back while a job of Glowfly's ran in the watched repository;
+    /// taken by the job's end (update/refs_check.rs).
+    pub held: bool,
+    /// After a refs-only check: ref reports up to this were caused by the fetch; work-tree and
+    /// index reports still count.
+    pub quiet_refs_until: Option<Instant>,
 }
 
 /// What the watcher's probe (`glowfly_core::watch_probe`) found: its file's event arrived, it
@@ -92,6 +98,11 @@ fn sweep_poll(windows: bool, remote: bool, failed: bool) -> bool {
 }
 
 impl WatchState {
+    /// Whether `workdir` is the watched repository and its probe saw events arrive.
+    pub fn live_for(&self, workdir: &std::path::Path) -> bool {
+        self.target.as_ref().is_some_and(|t| glowfly_core::paths::same_spelling(t, workdir) && self.probes.get(t) == Some(&Probe::Live))
+    }
+
     /// `poll_every` for the watched repository on this system; a watcher whose probe went
     /// unanswered is polled like one on a network file system.
     pub fn poll_interval(&self) -> Option<Duration> {
@@ -167,6 +178,26 @@ mod tests {
         w.last_read = Some(Duration::from_secs(600));
         assert_eq!(w.poll_gap(REMOTE_POLL), POLL_GAP_CAP);
         assert_eq!(w.poll_gap(POLL_GAP_CAP * 2), POLL_GAP_CAP * 2, "the cap never shortens the interval");
+    }
+
+    #[test]
+    fn live_for_is_true_only_for_the_watched_folder_with_a_live_probe() {
+        let repo = PathBuf::from("/r");
+        let mut w = WatchState::default();
+        assert!(!w.live_for(&repo), "no target");
+        w.probes.insert(repo.clone(), Probe::Live);
+        assert!(!w.live_for(&repo), "a probe without a target");
+        w.target = Some(PathBuf::from("/other"));
+        assert!(!w.live_for(&repo), "another target");
+        w.target = Some(repo.clone());
+        w.probes.clear();
+        assert!(!w.live_for(&repo), "still checking");
+        for probe in [Probe::Silent, Probe::Unknown] {
+            w.probes.insert(repo.clone(), probe);
+            assert!(!w.live_for(&repo), "{probe:?}");
+        }
+        w.probes.insert(repo.clone(), Probe::Live);
+        assert!(w.live_for(&repo));
     }
 
     #[test]

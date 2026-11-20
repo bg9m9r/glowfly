@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 
 /// scratch_repo with a linked worktree on `side` beside it (a.txt modified, b.txt added), opened
 /// on the main worktree.
-fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
+pub(super) fn opened(name: &str) -> (AppState, PathBuf, PathBuf) {
     let dir = scratch_repo(name);
     let linked = dir.with_file_name(format!("{}-side", dir.file_name().unwrap().to_string_lossy()));
     let _ = std::fs::remove_dir_all(&linked);

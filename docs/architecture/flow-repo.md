@@ -183,6 +183,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - Moved refs, or a new commit that is a child of a loaded one (`NeedsFullLoad`, clock skew), give a full load at the larger count, reported as `RepoLoaded` with `Refresh`.
 - A full load for a refresh (a Load more turned full included) keeps the top visible commit at its screen position by id (`update/graph_anchor.rs`, taken in `repo_loaded::loaded` before the snapshot is replaced, applied after the hooks that may scroll). It falls back to the next commit still shown below, and does nothing at the top of the graph, on opening, for a freed history, or after a scroll asked for during the load. Tests in `update/tests/graph_anchor_tests.rs` and `flows/graph_anchor_tests.rs`.
 - Every full load for a refresh passes `Snapshot::prior`: the walk takes commits already on screen by oid (`repo::load_reusing`) instead of reading them again. F5 and opening a repository read everything fresh.
+- After auto-fetch or its LFS download in the active tab, with the watcher's probe Live and no report held back during the job (`WatchState::held`), `update/refs_check.rs` asks only for `Depth::Refs`: `LoadEffect::Repo` with `KnownRepo::refs_only` (`check-refs`) answers `LoadMsg::RefsUnchanged` when `refs_key` is unchanged (no status read, no worktree recount), else loads in full. Work-tree and index reports right after it still count (`WatchState::quiet_refs_until` holds back only ref reports). Every other job, and a fetch without a live watcher, refreshes as before. Tests in `update/tests/refs_check_tests.rs` and `flows/fetch_refresh_tests.rs`.
 
 ## Other worktrees' changes
 
@@ -191,7 +192,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The runner reads each through git with `COUNT_TIMEOUT` when git may run there, otherwise through libgit2.
 - `WorktreeMsg::ChangesCounted` fills in the counts for the same `refs_key` and lays the graph out again.
 - A read that times out, or one libgit2 would have to make of a huge index, is `TooLarge` and shown as not counted until the next full load.
-- A reload that keeps the snapshot (the watcher's, a status-only one) counts the counted ones again through the same effect (`worktree_counts::recount`), at most once per `RECOUNT_EVERY` (`state/refresh/recount.rs`); one asked for sooner runs on a tick or when the running count ends. Returning to the tab (its `RefreshState` reset) or the window (`RepoMsg::WindowFocused`) counts at once.
+- A reload that keeps the snapshot (the watcher's, a status-only one; not a refs-only check) counts the counted ones again through the same effect (`worktree_counts::recount`), at most once per `RECOUNT_EVERY` (`state/refresh/recount.rs`); one asked for sooner runs on a tick or when the running count ends. Returning to the tab (its `RefreshState` reset) or the window (`RepoMsg::WindowFocused`) counts at once.
 
 ## Submodules after a job
 

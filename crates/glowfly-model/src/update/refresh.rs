@@ -3,7 +3,8 @@
 //! load for more goes on from where the walk stopped while the refs are unchanged
 //! (`load_more.rs`), a full reload takes the commits on screen instead of reading them again
 //! (except F5 and opening), a refresh asked for while a load runs waits for it (requests merge
-//! into one), and so do status reads.
+//! into one), and so do status reads. A background fetch with the watcher live only checks the
+//! refs (`refs_check.rs`).
 
 use crate::effect::LoadEffect;
 use crate::effect::{Effect, KnownRepo, LoadKind, StatusRead};
@@ -29,13 +30,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             st.refresh.more_retries = 0;
             let state_before = st.snap.as_ref().map(|s| s.state);
             super::notify::unchanged(st);
-            // A file list dropped in flight (a tab switch) is asked for again.
-            if matches!(st.session.selection, Selection::Commits(_))
-                && let Some(snap) = st.snap.take()
-            {
-                super::selection::refreshed(st, &snap, fx);
-                st.snap = Some(snap);
-            }
+            reask_files(st, fx);
             let read = result.is_ok();
             remember_index(st, read, index);
             apply_status(st, result, submodules, open_stamp, now, fx);
@@ -52,6 +47,7 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
             super::worktree_counts::recount(st, now, fx);
             load_finished(st, fx);
         }
+        LoadMsg::RefsUnchanged { generation } => super::refs_check::unchanged(st, generation, now, fx),
         LoadMsg::StatusLoaded { generation, result, submodules, open_stamp, slow, lfs_patterns, index } => {
             if generation != st.load_gen {
                 return;
@@ -123,6 +119,16 @@ pub(super) fn handle(st: &mut AppState, msg: LoadMsg, now: Instant, fx: &mut Vec
     }
 }
 
+/// A file list dropped in flight (a tab switch) is asked for again.
+pub(super) fn reask_files(st: &mut AppState, fx: &mut Vec<Effect>) {
+    if matches!(st.session.selection, Selection::Commits(_))
+        && let Some(snap) = st.snap.take()
+    {
+        super::selection::refreshed(st, &snap, fx);
+        st.snap = Some(snap);
+    }
+}
+
 /// Loads `step` more commits of history into the active tab, after any load still running.
 pub(super) fn more_commits(st: &mut AppState, step: usize, fx: &mut Vec<Effect>) {
     st.refresh.extra_commits += step;
@@ -146,10 +152,12 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
     let opts = st.load_options(&path);
     let known = known.filter(|_| kind == LoadKind::More || st.snap.as_ref().is_some_and(|s| s.loaded_with == opts));
     // Status reads of the older generation are dropped, and the load reads the status anyway;
-    // a load for more that goes on from the walk reads none, so it reads the status once its
-    // page lands when a read was running or waiting, or a refresh was queued. A full load queued
+    // a load for more that goes on from the walk and a refs-only check read none, so they read
+    // the status once they are done when a read was running or waiting, or a refresh was queued.
+    // A full load queued
     // meanwhile still runs after a load that only checks the refs.
     let more = kind == LoadKind::More;
+    let refs_only = known.as_ref().is_some_and(|k| k.refs_only);
     let dropped = st.refresh.status_busy || st.refresh.status_queued.is_some() || st.refresh.queued == Some(Depth::Checked);
     let queued = st.refresh.queued.filter(|d| known.is_some() && *d == Depth::Full);
     // A background count of other worktrees keeps running: its result checks the refs it was for.
@@ -163,7 +171,7 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
         more_retries: st.refresh.more_retries,
         deeper: st.refresh.deeper.take(),
         queued,
-        status_after: more && dropped,
+        status_after: (more || refs_only) && dropped,
         ..Default::default()
     };
     let prior = reuse.then(|| st.snap.as_ref().filter(|s| st.names_repo(s, &path)).map(Snapshot::prior)).flatten();
@@ -174,6 +182,12 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
 /// the load options changed.
 pub(super) fn refresh(st: &mut AppState, fx: &mut Vec<Effect>) {
     request(st, Depth::Checked, fx);
+}
+
+/// After a background fetch: checks only whether refs, HEAD, config or worktrees changed, and
+/// loads everything if they did (no status read otherwise).
+pub(super) fn check_refs(st: &mut AppState, fx: &mut Vec<Effect>) {
+    request(st, Depth::Refs, fx);
 }
 
 /// Reloads the active tab in full (F5). Asked for by the user, it starts at once, superseding a
@@ -200,13 +214,14 @@ fn request(st: &mut AppState, depth: Depth, fx: &mut Vec<Effect>) {
     let opts = st.load_options(&path);
     let more = depth <= Depth::Checked && st.snap.as_ref().is_some_and(|s| only_more(s, &opts));
     let known = match depth {
-        Depth::More | Depth::Checked => {
+        Depth::Refs | Depth::More | Depth::Checked => {
             let git_status = st.runs_git_unasked();
             st.snap.as_ref().map(|s| KnownRepo {
                 refs_key: s.refs_key,
                 submodules: !s.submodules.is_empty(),
                 open: open_file(st),
                 git_status,
+                refs_only: depth == Depth::Refs && !more,
             })
         }
         Depth::Full => None,
