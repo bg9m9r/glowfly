@@ -94,6 +94,14 @@ newest 200,000 commits, so on the kernel it times about a seventh of the history
 1.5M commits). Run it against `git` and `linux` at least, and against `linear` and `many-refs`
 when a change touches the history or refs.
 
+`perf_load_tests` loads the repository three times (the first run warms the OS cache) and
+logs each span of the load when it closes (`load.refs.*`, `load.starts`, `load.walk`, ...). Read
+runs 2 and 3:
+
+```
+GLOWFLY_PERF_REPO=<out>/many-refs cargo test -p glowfly-flows --release perf_load -- --ignored --nocapture
+```
+
 ## Manual checklist
 
 Run a release build (`cargo run --release -- <repo>`) on each repository and time each step

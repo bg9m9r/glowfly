@@ -24,3 +24,5 @@ git2.workspace = true
 serde_json.workspace = true
 # history_preview_tests.rs writes PNGs for the image preview.
 image = { workspace = true, features = ["png"] }
+# perf_load_tests.rs logs the load's spans.
+tracing-subscriber = "0.3.23"

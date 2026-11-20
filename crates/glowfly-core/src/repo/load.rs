@@ -54,17 +54,21 @@ pub fn load_reusing(path: &Path, opts: &LoadOptions, cache: &GraphCache, prior: 
     let opts = &shown_opts(opts, head_branch.as_deref());
     let BoxReads { head_message, commit_template, commit_encoding, merge_message, gitflow, lfs_patterns } =
         box_reads(&repo, &workdir, state);
-    let mut refs = load_refs::ref_labels(&repo, opts, (head_oid, head_branch.as_deref(), detached))?;
+    let mut refs = tracing::debug_span!("load.labels")
+        .in_scope(|| load_refs::ref_labels(&repo, opts, (head_oid, head_branch.as_deref(), detached)))?;
 
     let refs_span = tracing::debug_span!("load.refs").entered();
-    let mut locals = load_refs::local_branches(&repo, cache)?;
-    let remotes = load_refs::remote_branches(&repo)?;
-    let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } =
-        load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
+    let mut locals = tracing::debug_span!("load.refs.branches").in_scope(|| load_refs::local_branches(&repo, cache))?;
+    let (remotes, reads) = tracing::debug_span!("load.refs.remotes").in_scope(|| -> Result<_> {
+        let remotes = load_refs::remote_branches(&repo)?;
+        let reads = load_refs::remote_reads(&repo, &remotes, head_branch.as_deref());
+        Ok((remotes, reads))
+    })?;
+    let load_refs::RemoteReads { remote_info, remote_heads, push_remotes, pull_rebase, remote_urls } = reads;
     let merge_names = merge_dest::merge_names(&repo, head_branch.as_deref(), &branch_refs(&locals, &remotes));
     let remote_names: Vec<&str> = remotes.iter().map(|(r, _)| r.as_str()).collect();
-    super::push_target::fill(&repo, cache, &mut locals, &push_remotes, &remote_names);
-    let (tags, other_tags, lightweight_tags) = load_refs::tags(&repo)?;
+    tracing::debug_span!("load.refs.push").in_scope(|| super::push_target::fill(&repo, cache, &mut locals, &push_remotes, &remote_names));
+    let (tags, other_tags, lightweight_tags) = tracing::debug_span!("load.refs.tags").in_scope(|| load_refs::tags(&repo))?;
     drop(refs_span);
 
     let StatusRead { trust_scan, trust_print, collisions, index_memo, unstaged, staged, slow_status, changes } =
