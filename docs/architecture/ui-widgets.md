@@ -14,7 +14,7 @@ source file, update its line here.
 - `widgets/spinner.rs`: the loading spinner, egui's arc drawn the same but asking for frames only at the `redraw.rs` pace and while seen; views never use `egui::Spinner`; tests in `spinner_tests.rs`.
 - `widgets/fireflies.rs`: the firefly loader of a loading pane or row: three `lantern` dots lit in turn, still at 60% under reduce motion, asking for frames at the shared `redraw.rs` pace and only while seen; tests in `fireflies_tests.rs`.
 - `widgets/quiet_target.rs`: a quiet target a view lays out itself (a tab, the tab list and title-bar menu buttons, a section header's + and ⋯, a Git Flow group's +, a row inset in a padded pane on `radius::SM`, a palette row, the diff's comment button), lit and ringed through `paint_target`.
-- `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, Preferences and the File view.
+- `scroll_cue.rs`: the always-visible thin scroll bar and the edge fades of dialog bodies, the Preferences page and navigation, and the File view; `bring_into_view` scrolls a row clear of the fades.
 - `ghost::close_view`: the × that closes a view (the diff, blame, a history, an issue or pull request), with Close and its Esc cap in the tooltip.
 - `widgets::remove_icon`: the weak × that removes a key in Preferences > Keyboard and closes a toast.
 - `buttons.rs`: the button family, eight kinds: primary, tonal, secondary, quiet, danger, quiet danger, icon-only and split, sized by a `ControlSize` (`.size`, Regular by default; Compact quiet only).

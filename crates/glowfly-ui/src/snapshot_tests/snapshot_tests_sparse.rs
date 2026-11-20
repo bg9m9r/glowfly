@@ -9,7 +9,7 @@ use glowfly_model::state::{AppState, PrefPage, PrefsState, RunningJob};
 use std::path::PathBuf;
 
 /// The fixture repository with the Sparse Checkout page showing `status`, its form filled.
-fn sparse_page(theme: ThemeChoice, name: &str, status: SparseStatus) -> (AppState, PathBuf) {
+pub(super) fn sparse_page(theme: ThemeChoice, name: &str, status: SparseStatus) -> (AppState, PathBuf) {
     let (mut st, dir) = with_repo(theme, name);
     let mut prefs = PrefsState::new(PrefPage::RepoSparse);
     prefs.sparse.generation = 1;
