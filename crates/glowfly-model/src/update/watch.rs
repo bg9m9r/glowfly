@@ -1,7 +1,8 @@
 //! Live working-tree updates: keeping the file watcher on the active tab's repository,
 //! refreshing when it reports changes made outside Glowfly, reading the effective identity
 //! again when the repository's config changed, and noting what the watcher's probe found (a
-//! silent watcher is warned about once per repository and polled instead).
+//! silent watcher is warned about once per repository and polled instead). A report held back
+//! while a job runs is noted, so the job's end refreshes in full (`refs_check.rs`).
 
 use crate::effect::ControlEffect;
 use crate::effect::{Effect, WatchTarget};
@@ -29,7 +30,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
     match msg {
         // Only arrives through `Msg::Scoped`, so it is for the active tab.
         WatchMsg::RepoChanged { full, paths, last_event } => {
-            if !wanted(st, last_event) {
+            if !wanted(st, last_event, full) {
                 return;
             }
             // A full refresh reads the commands files anyway.
@@ -44,7 +45,7 @@ pub(super) fn handle(st: &mut AppState, msg: WatchMsg, now: Instant, fx: &mut Ve
             }
         }
         WatchMsg::IndexChanged { paths, last_event } => {
-            if wanted(st, last_event) {
+            if wanted(st, last_event, false) {
                 super::custom_commands::watched(st, Some(paths.as_slice()), fx);
                 super::refresh_index::refresh_index(st, paths, fx);
             }
@@ -95,9 +96,11 @@ fn probed(st: &mut AppState, workdir: PathBuf, probe: Probe, now: Instant) {
 }
 
 /// Whether a burst whose last event came at `last_event` should refresh the active tab: watching
-/// is on, a repository is open, no job of Glowfly's runs there (it refreshes when it is done),
-/// and the burst wasn't caused by a job or local op that already refreshed.
-fn wanted(st: &AppState, last_event: Instant) -> bool {
+/// is on, a repository is open, no job of Glowfly's runs there (it refreshes when it is done;
+/// the report is noted in `WatchState::held`), and the burst wasn't caused by a job or local op
+/// that already refreshed (`full`: a ref report, which a refs-only check covers up to
+/// `quiet_refs_until`).
+fn wanted(st: &mut AppState, last_event: Instant, full: bool) -> bool {
     if !st.settings.watch_files || st.snap.is_none() {
         return false;
     }
@@ -105,9 +108,11 @@ fn wanted(st: &AppState, last_event: Instant) -> bool {
     if let (Some(job), Some(here)) = (st.job.as_ref().and_then(|j| j.workdir.as_deref()), here.as_deref())
         && glowfly_core::paths::same_spelling(job, here)
     {
+        st.watch.held = true;
         return false;
     }
-    !st.watch.quiet_until.is_some_and(|q| last_event <= q)
+    let covered = |until: Option<Instant>| until.is_some_and(|q| last_event <= q);
+    !(covered(st.watch.quiet_until) || (full && covered(st.watch.quiet_refs_until)))
 }
 
 /// Points the watcher at the active tab's repository, or stops it (no repository, or the
@@ -127,6 +132,8 @@ pub fn sync(st: &mut AppState, fx: &mut Vec<Effect>) {
         }
         st.watch.target = workdir;
         st.watch.quiet_until = None;
+        st.watch.quiet_refs_until = None;
+        st.watch.held = false;
         // Another repository reads at its own speed.
         st.watch.poll_read = None;
         st.watch.last_read = None;
@@ -193,4 +200,10 @@ pub(super) fn status_read(st: &mut AppState, whole: bool, now: Instant) {
 /// Glowfly just changed the repository itself (and refreshes): events up to now are its own.
 pub(super) fn settled(st: &mut AppState, now: Instant) {
     st.watch.quiet_until = Some(now + WATCH_SETTLE);
+}
+
+/// A background fetch ended and only its refs are checked: its own ref reports up to now are
+/// dropped, any other report is the user's.
+pub(super) fn settled_refs(st: &mut AppState, now: Instant) {
+    st.watch.quiet_refs_until = Some(now + WATCH_SETTLE);
 }

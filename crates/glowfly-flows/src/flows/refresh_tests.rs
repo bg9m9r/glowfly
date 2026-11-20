@@ -26,12 +26,12 @@ fn loads(fx: &[Effect]) -> Vec<&Effect> {
 }
 
 /// The one load in `fx`, run: the message it reports.
-fn run_load(fx: Vec<Effect>) -> Msg {
+pub(super) fn run_load(fx: Vec<Effect>) -> Msg {
     let load = fx.into_iter().find(|e| matches!(e, Effect::Load(glowfly_model::effect::LoadEffect::Repo { .. }))).expect("a load");
     glowfly_runner::testing::execute(load).expect("a result")
 }
 
-fn quiet_job(dir: &std::path::Path) -> RunningJob {
+pub(super) fn quiet_job(dir: &std::path::Path) -> RunningJob {
     RunningJob {
         label: "Auto-fetch".into(),
         workdir: Some(dir.to_path_buf()),

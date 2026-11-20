@@ -128,6 +128,7 @@ mod ref_renames;
 pub mod refresh;
 mod refresh_index;
 mod refresh_paths;
+mod refs_check;
 mod release_notes;
 mod remote_forks;
 mod remotes;

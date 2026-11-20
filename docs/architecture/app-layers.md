@@ -232,7 +232,7 @@ source file, update its line here. Features that span every layer are in
 - `state/rebase_quick.rs`: history edits from the graph's menus (reword, squash, drop): why a menu entry is unavailable, the Reword and Squash dialog's form, and the question asked before a drop runs.
 - `state/rebase_remaining.rs`: the rebase panel on the remaining steps of an interactive rebase in progress (`git rebase --edit-todo`): its texts, when it can open, and the request it sends.
 - `state/rebase_steps.rs`: the rebase panel's exec and break steps, its row selection, and the squash groups a typed combined message belongs to.
-- `state/refresh.rs`: keeping repository reloads from piling up: at most one load and one status read run for the active tab at a time, and requests made meanwhile are merged into one more run afterwards.
+- `state/refresh.rs`: keeping repository reloads from piling up: at most one load and one status read run for the active tab at a time, and requests made meanwhile are merged into one more run afterwards. `Depth` orders what a request reads: `Refs` (only whether refs changed, after a background fetch), `More`, `Checked`, `Full`.
 - `state/remotes.rs`: the REMOTE section's text and the Add/Edit remote dialog's form and rules, shared by the views and `update` so a disabled item or a refused request shows the same words.
 - `state/search.rs`: the graph's commit search: the parsed query, its matches, the filter flag, the author list and the answers for its path terms.
 - `state/selection_wip.rs`: one commit compared with the working directory (`Selection::VsWorkdir`): the commit row and the WIP row selected together, and the files that differ from the commit to the working tree (or, swapped, from the working tree to the commit).

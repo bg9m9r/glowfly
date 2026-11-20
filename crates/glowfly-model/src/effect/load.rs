@@ -16,7 +16,8 @@ pub enum LoadEffect {
         opts: LoadOptions,
         generation: u64,
         kind: LoadKind,
-        /// The snapshot on screen: when its `refs_key` still matches, only the status is read (`LoadMsg::RepoUnchanged`).
+        /// The snapshot on screen: when its `refs_key` still matches, only the status is read
+        /// (`LoadMsg::RepoUnchanged`), or nothing for a refs-only check (`LoadMsg::RefsUnchanged`).
         known: Option<KnownRepo>,
         /// The history on screen: commits a full load takes instead of reading them again, and for `More` the walk's frontier.
         prior: Option<glowfly_core::repo::Prior>,
@@ -41,6 +42,8 @@ pub enum LoadEffect {
 impl EffectMeta for LoadEffect {
     fn name(&self) -> &'static str {
         match self {
+            // Its timing includes a full load when the refs changed.
+            LoadEffect::Repo { known: Some(KnownRepo { refs_only: true, .. }), .. } => "check-refs",
             LoadEffect::Repo { .. } => "load-repo",
             LoadEffect::Status { .. } => "load-status",
             LoadEffect::IndexStatus { .. } => "load-index-status",

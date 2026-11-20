@@ -162,6 +162,9 @@ pub enum LoadMsg {
         /// The index the whole or index read was taken from.
         index: Option<Arc<IndexMemo>>,
     },
+    /// A refs-only check (`KnownRepo::refs_only`) found refs, HEAD, config and worktrees as the
+    /// snapshot has them; nothing else was read.
+    RefsUnchanged { generation: u64 },
     /// A load for more went on from the walk: the next commits, or why reading them failed.
     HistoryExtended { generation: u64, result: Result<Box<glowfly_core::repo::HistoryPage>, ReadFailed> },
     StatusLoaded {
@@ -204,6 +207,7 @@ impl LoadMsg {
             | Self::NearHistoryEnd
             // Dropped: the tab loads again when it is shown.
             | Self::HistoryExtended { .. }
+            | Self::RefsUnchanged { .. }
             | Self::SpeedUpStatus { .. }
             | Self::StatusSpedUp { .. }
             | Self::TurnOffMonitor

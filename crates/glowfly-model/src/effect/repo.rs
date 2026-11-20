@@ -151,6 +151,9 @@ pub struct KnownRepo {
     /// Let git read the status (fsmonitor, untracked cache); false while the repository isn't
     /// trusted.
     pub git_status: bool,
+    /// Compare `refs_key` only: unchanged answers `LoadMsg::RefsUnchanged` without reading the
+    /// status; changed loads everything.
+    pub refs_only: bool,
 }
 
 /// A repository for the file watcher.

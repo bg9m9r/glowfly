@@ -15,6 +15,9 @@ use std::time::Instant;
 /// How much a refresh reads.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum Depth {
+    /// Only whether refs, HEAD, config or worktrees changed, everything if they did; no status
+    /// read (after a background fetch with the watcher live, update/refs_check.rs).
+    Refs,
     /// Only more of the history; read like `Checked` when it can't go on from the walk.
     More,
     /// The status, plus everything else only if refs, HEAD, config or worktrees changed (or the
