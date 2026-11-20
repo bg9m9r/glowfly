@@ -104,6 +104,30 @@ fn gitflow_save_failure_shows_the_error_and_never_saved() {
 }
 
 #[test]
+fn a_retried_gitflow_save_ticks_and_clears_the_error() {
+    let (mut st, dir) = edited_flow("job-save-retried");
+    save(&mut st);
+    let lock = dir.join(".git").join("config.lock").to_string_lossy().replace('\\', "/");
+    let output = format!(
+        "$ git config --local gitflow.prefix.feature feat/\nfatal: Unable to create '{lock}': File exists.\n\nAnother git process seems to be running in this repository"
+    );
+    job_done(&mut st, false, &output);
+    assert!(error(&st).is_some() && !tick(&st), "the failed save shows its reason");
+    let id = st.toasts.last().expect("a toast").id;
+
+    // Try again: the page is saving again, and the retry's success ticks and clears the error.
+    let fx = run(&mut st, Msg::ToastAction(id));
+    assert!(git_job(&fx).is_some(), "{fx:?}");
+    assert_eq!(job_label(&st).as_deref(), Some(glowfly_model::state::gitflow::SAVE_LABEL));
+    assert!(waiting(&st) && recorded(&st), "the retry is the page's save again");
+    job_done(&mut st, true, "");
+    assert!(tick(&st));
+    assert_eq!(error(&st), None);
+    assert!(!waiting(&st) && !recorded(&st));
+    cleanup(&dir);
+}
+
+#[test]
 fn sparse_save_shows_saved_only_after_the_job_succeeds() {
     let (mut st, dir) = edited_sparse("sparse-job-save-ok");
     let fx = save(&mut st);

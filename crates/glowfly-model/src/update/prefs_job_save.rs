@@ -1,8 +1,9 @@
 //! The "Saved" tick of the Preferences pages whose Save runs a git job (Git Flow, sparse
 //! checkout): recorded when the job starts or is held (`started`), marked when that job
 //! succeeds and the page shows its reason when it fails (`job_ended`, from ops::finish_job),
-//! forgotten when it is cancelled, runs for another repository than the one shown, or is
-//! dropped at the trust prompt (`dropped`, from trust::forget).
+//! recorded again when Try again runs it once more (`retried`), forgotten when it is cancelled,
+//! runs for another repository than the one shown, or is dropped at the trust prompt (`dropped`,
+//! from trust::forget).
 
 use crate::state::prefs_save::JobSave;
 use crate::state::{AppState, PrefPage, RunningJob};
@@ -13,6 +14,16 @@ pub(super) fn started(st: &mut AppState, page: PrefPage, label: &str) {
     let workdir = st.workdir();
     if let Some(p) = st.prefs.as_mut() {
         p.job_save = Some(JobSave { page, label: label.into(), workdir });
+    }
+}
+
+/// Try again or Delete lock file runs the failed save's job once more (update/job_retry.rs): it is
+/// the page's save again, so its ending ticks or shows its reason like the first run's did. Only
+/// a Git Flow save can be run again (a sparse save has no retry).
+pub(super) fn retried(st: &mut AppState, label: &str) {
+    use crate::state::gitflow::{INIT_LABEL, SAVE_LABEL};
+    if let Some(label) = [INIT_LABEL, SAVE_LABEL].into_iter().find(|l| *l == label) {
+        started(st, PrefPage::RepoGitFlow, label);
     }
 }
 
