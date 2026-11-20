@@ -75,26 +75,27 @@ pub(super) fn discard(st: &mut AppState) {
     }
 }
 
-/// Initialize / Save: checks the form and starts the job; false when it was refused (the
-/// problem is on the page, or another job runs).
-pub(super) fn apply(st: &mut AppState, fx: &mut Vec<Effect>) -> bool {
-    let (Some(prefs), Some(snap)) = (st.prefs.as_mut(), st.snap.as_ref()) else { return false };
+/// Initialize / Save: checks the form and starts the job; the label of the job started (or held
+/// for the trust prompt), None when it was refused (the problem is on the page, or another job
+/// runs).
+pub(super) fn apply(st: &mut AppState, fx: &mut Vec<Effect>) -> Option<&'static str> {
+    let (Some(prefs), Some(snap)) = (st.prefs.as_mut(), st.snap.as_ref()) else { return None };
     let page = &mut prefs.gitflow;
     let form = page.form.trimmed();
     if let Err(p) = gitflow::check_settings(&form) {
         page.error = Some(p.message());
-        return false;
+        return None;
     }
     let cmds = match gitflow::init_cmds(&form, &snap.gitflow, &Branches::of(snap)) {
         Ok(cmds) => cmds,
         Err(p) => {
             page.error = Some(p.message());
-            return false;
+            return None;
         }
     };
     page.error = None;
     let label = if snap.gitflow.is_initialized() { SAVE_LABEL } else { INIT_LABEL };
-    start_job(st, JobSpec::new(label.into(), cmds), fx) != Started::No
+    (start_job(st, JobSpec::new(label.into(), cmds), fx) != Started::No).then_some(label)
 }
 
 /// Shows the Git Flow panel in place of the graph, closing the diff, the conflict view, the

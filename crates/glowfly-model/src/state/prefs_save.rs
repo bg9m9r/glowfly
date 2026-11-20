@@ -3,12 +3,14 @@
 //! whether the open page has any), and leaving such a page asks first (update/prefs_leave.rs).
 //! Either way a short "Saved" tick shows beside the page title (`SavedFlash`); for git config
 //! only once git reports the write succeeded (`PendingSave`), and a refused write's error shows
-//! on its page instead (`save_error`).
+//! on its page instead (`save_error`). Git Flow and sparse checkout save through a git job
+//! (`JobSave`), and their tick waits for it the same way.
 
 use super::PrefPage;
 use super::prefs::{GitConfigValues, PrefsState};
 use glowfly_core::repo::Snapshot;
 use glowfly_core::settings::Settings;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 /// How long the "Saved" tick stays at full strength, then how long it fades.
@@ -67,9 +69,22 @@ pub struct PendingSave {
     pub written: Option<GitConfigValues>,
 }
 
-/// Whether the open page's save is still being written: the bar's Save waits.
+/// A save that runs as the active git job (Git Flow's, sparse checkout's): the tick waits for
+/// the job to succeed (update/prefs_job_save.rs).
+#[derive(Clone, Debug, PartialEq)]
+pub struct JobSave {
+    /// The page it saved.
+    pub page: PrefPage,
+    /// The job's label, which with `workdir` tells its ending from any other job's.
+    pub label: String,
+    /// The repository the job runs in.
+    pub workdir: Option<PathBuf>,
+}
+
+/// Whether the open page's save is still being written, or its job still runs: the bar's Save
+/// waits.
 pub fn saving(p: &PrefsState) -> bool {
-    p.saving.iter().any(|s| s.page == p.page)
+    p.saving.iter().any(|s| s.page == p.page) || p.job_save.as_ref().is_some_and(|j| j.page == p.page)
 }
 
 /// Why git refused the open page's last save, if it did.

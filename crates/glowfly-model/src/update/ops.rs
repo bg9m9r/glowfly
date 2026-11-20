@@ -251,6 +251,7 @@ pub fn finish_job(
     let Some(mut job) = st.job.take() else { return };
     // Cancelled from the status bar, and the runner stopped it (update/job_stop.rs).
     let cancelled = st.job_stop.take().is_some_and(|s| s.stopped);
+    super::prefs_job_save::job_ended(st, &job, ok, cancelled, &output);
     let stash_retry = super::auto_stash::take_retry(st, &job);
     // Trust passed on to what the job made opens `then_open` itself, once it is recorded.
     let took_open = super::trust_inherit::job_ended(st, &job.label, ok, job.then_open.as_ref().map(|(p, _)| p.as_path()), fx);

@@ -193,6 +193,7 @@ mod perf_timing_tests;
 mod pick_empty_tests;
 mod pick_mainline_tests;
 mod pick_tests;
+mod prefs_job_save_tests;
 mod prefs_leave_profile_tests;
 mod prefs_leave_tests;
 mod prefs_pages_tests;
