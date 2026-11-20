@@ -33,7 +33,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, md: &mut Ma
         let mut fields = v.comment.fields();
         egui::TopBottomPanel::bottom("issue-comment-box")
             .frame(Frame::new().fill(color::bg()).inner_margin(Margin::symmetric(0, 8)))
-            .show_inside(ui, |ui| comment_box::show(ui, v, &mut fields, trusted, focus, msgs));
+            .show_inside(ui, |ui| comment_box::show(ui, &st.keymap, v, &mut fields, trusted, focus, msgs));
         if fields != v.comment.fields() {
             msgs.push(Msg::Edit(EditMsg::IssueComment { key: v.key.clone(), fields }));
         }

@@ -76,7 +76,7 @@ pub const ENGLISH_TEXT: &[(&str, usize)] = &[
     ("crates/glowfly-ui/src/history_footer.rs", 9),
     ("crates/glowfly-ui/src/history_preview.rs", 3),
     ("crates/glowfly-ui/src/init_dialog.rs", 16),
-    ("crates/glowfly-ui/src/issue/comment_box.rs", 5),
+    ("crates/glowfly-ui/src/issue/comment_box.rs", 4),
     ("crates/glowfly-ui/src/issue/conversation.rs", 9),
     ("crates/glowfly-ui/src/issue/create_dialog.rs", 15),
     ("crates/glowfly-ui/src/issue/info.rs", 11),

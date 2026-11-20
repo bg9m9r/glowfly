@@ -6,10 +6,11 @@
 
 use super::super::theme::color;
 use super::super::widgets::{self, Icon};
-use super::{note, send_key};
+use super::note;
 use crate::theme::controls;
 use crate::theme::tokens::radius;
 use crate::widgets::buttons;
+use crate::widgets::text_field::send_key;
 use eframe::egui::{self, Align, Key, Margin, RichText, Sense, Stroke, Ui, vec2};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::DiffLine;

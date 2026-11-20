@@ -5,6 +5,7 @@
 //! draws them), with a soft accent halo outside the ring while focused (`tokens::focus_halo`;
 //! the field's Strong focus ring in its place under Strong). A multiline field gets the same
 //! fill, edge and padding, and keeps its rows. Ids, hints, focus, masking and char limits behave as the plain `TextEdit`.
+//! `entered` tells a single-line field's Enter, and `send_key` a multiline box's Command+Enter that posts it.
 //! Labels, help and messages around a field are `field_group`'s.
 
 use crate::theme::sizes::ControlSize;
@@ -131,6 +132,14 @@ pub fn with_button(ui: &mut Ui, field: TextField<'_>, button: StyledButton<'_>) 
 /// before focus is requested again, or the lost focus is gone.
 pub fn entered(ui: &Ui, r: &Response) -> bool {
     r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter))
+}
+
+/// Whether Command+Enter (Ctrl on Windows and Linux) was pressed in the focused box `field`:
+/// it posts the box's text (`BindingId::SendPrText`), and is consumed so nothing else sees it
+/// (a newline included). Call it after the field is drawn and before checking whether posting
+/// is allowed, so the key is consumed either way.
+pub fn send_key(ui: &mut Ui, field: &Response) -> bool {
+    field.has_focus() && ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, Key::Enter))
 }
 
 #[cfg(test)]
