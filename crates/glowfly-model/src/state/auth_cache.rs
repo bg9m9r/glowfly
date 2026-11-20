@@ -72,6 +72,20 @@ impl AuthCache {
         self.entries.retain(|e| e.account != account);
     }
 
+    /// Drops what a request in `dir` could have carried: the answers that serve any folder, and
+    /// `dir`'s own. A failed or rejected call tells nothing about another folder's credential
+    /// helper, so those answers stay (a failed lookup in one tab must not end a sign-in the user
+    /// made in another).
+    pub fn forget_for(&mut self, account: &str, dir: &Path) {
+        self.entries.retain(|e| {
+            e.account != account
+                || match &e.place {
+                    Place::Anywhere => false,
+                    Place::Folder(d) => !same_spelling(d, dir),
+                }
+        });
+    }
+
     pub fn clear(&mut self) {
         self.entries.clear();
     }
