@@ -2,11 +2,13 @@
 //! conflicts, finding a stash again by its commit, and Unstash the latest.
 
 use super::*;
-use crate::state::stash_confirm::tests::{EN, fixture, listed, oid, with_stash};
+use crate::state::stash_confirm::tests::{EN, NOW, clock, fixture, listed, oid, with_stash};
+use crate::state::stashes::drop_confirm_body;
 use glowfly_core::repo::FileEntry;
+use glowfly_core::settings::Settings;
 
 fn menu(snap: &Snapshot) -> [StashItem; 4] {
-    items(snap, EN, &snap.stashes[0])
+    items(snap, clock(&Settings::default()), &snap.stashes[0])
 }
 
 #[test]
@@ -66,10 +68,10 @@ fn conflicts_block_apply_and_pop_only() {
 #[test]
 fn for_commit_finds_the_stash_again_or_gives_none() {
     let (_, snap) = fixture("actions-for-commit");
-    assert!(for_commit(&snap, EN, StashOption::Apply, oid()).is_none(), "no stashes");
+    assert!(for_commit(&snap, clock(&Settings::default()), StashOption::Apply, oid()).is_none(), "no stashes");
     let snap = with_stash(snap);
     for item in menu(&snap) {
-        let msg = for_commit(&snap, EN, item.option, oid()).expect("listed");
+        let msg = for_commit(&snap, clock(&Settings::default()), item.option, oid()).expect("listed");
         let same = matches!(
             (&msg, &item.msg),
             (Msg::Stash(StashMsg::Run { .. }), Msg::Stash(StashMsg::Run { .. }))
@@ -78,7 +80,7 @@ fn for_commit_finds_the_stash_again_or_gives_none() {
         );
         assert!(same, "{:?}", item.option);
     }
-    assert!(for_commit(&snap, EN, StashOption::Pop, Oid::zero()).is_none(), "gone");
+    assert!(for_commit(&snap, clock(&Settings::default()), StashOption::Pop, Oid::zero()).is_none(), "gone");
 }
 
 #[test]
@@ -99,8 +101,29 @@ fn every_entry_point_sends_the_same_run() {
     let o = oid();
     let is =
         |msg: &Msg, want: StashAction| matches!(msg, Msg::Stash(StashMsg::Run { action, index: 2, oid }) if *action == want && *oid == o);
-    let by_commit = |option| for_commit(&snap, EN, option, o).expect("listed");
+    let by_commit = |option| for_commit(&snap, clock(&Settings::default()), option, o).expect("listed");
     let latest = pop_latest(&snap, EN).expect("a stash");
     assert!(is(&pop.msg, StashAction::Pop) && is(&by_commit(StashOption::Pop), StashAction::Pop) && is(&latest, StashAction::Pop));
     assert!(is(&apply.msg, StashAction::Apply) && is(&by_commit(StashOption::Apply), StashAction::Apply));
+}
+
+#[test]
+fn delete_names_when_the_stash_was_made() {
+    let (_, snap) = fixture("actions-delete-when");
+    let mut snap = with_stash(snap);
+    let settings = Settings::default();
+    let body = |msg: Msg| match msg {
+        Msg::ConfirmDanger { body, .. } => body,
+        _ => panic!("not the confirmation"),
+    };
+    let both = |snap: &Snapshot| {
+        let [.., drop] = items(snap, clock(&settings), &snap.stashes[0]);
+        (body(drop.msg), body(for_commit(snap, clock(&settings), StashOption::Drop, oid()).unwrap()))
+    };
+    snap.stashes[0].time = Some(NOW - 3 * 86_400);
+    let want = "Delete \"On main: wip\", stashed 3 days ago? Undo brings it back while this tab is open.";
+    assert_eq!(both(&snap), (want.to_owned(), want.to_owned()));
+    snap.stashes[0].time = None;
+    let undated = drop_confirm_body(EN, "On main: wip", None);
+    assert_eq!(both(&snap), (undated.clone(), undated));
 }

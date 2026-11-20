@@ -7,10 +7,13 @@
 use super::palette::palette_tests::repo_with_topic;
 use super::tests::{drive, finish, git};
 use super::update;
+use glowfly_core::i18n::Lang;
 use glowfly_model::effect::Effect;
 use glowfly_model::effect::StashEffect;
 use glowfly_model::msg::{Msg, PaletteMsg, RepoMsg};
+use glowfly_model::state::clock::Clock;
 use glowfly_model::state::palette::PaletteCommand as C;
+use glowfly_model::state::stash_actions::{self, StashOption};
 use glowfly_model::state::stash_confirm::StashAction;
 use glowfly_model::state::stashes::drop_confirm_body;
 use glowfly_model::state::{AppState, Modal};
@@ -122,7 +125,9 @@ fn dirty_tree_asks_first() {
 
     assert!(palette(&mut st, C::StashOp { action: StashAction::Drop, oid }).is_empty());
     let (title, body, _) = confirm(&st);
-    assert_eq!((title.as_str(), body), ("Delete stash", drop_confirm_body(&message)));
+    let time = st.snap.as_ref().unwrap().stashes[0].time.expect("read at load");
+    let when = st.settings.format_day(time, st.cues.now, st.cues.utc_offset);
+    assert_eq!((title.as_str(), body), ("Delete stash", drop_confirm_body(Lang::En, &message, Some(&when))));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -190,5 +195,37 @@ fn pop_stash_without_stashes_says_so() {
     assert!(palette(&mut st, C::PopStash).is_empty());
     assert_eq!(st.log.last().map(|e| e.text.as_str()), Some("There are no stashes."));
     assert!(st.modal.is_none());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The Delete confirmation's body, from the palette's Delete stash entry and from the STASHES
+/// row menu's Delete item.
+fn delete_bodies(st: &mut AppState, oid: git2::Oid) -> [String; 2] {
+    assert!(palette(st, C::StashOp { action: StashAction::Drop, oid }).is_empty());
+    let from_palette = confirm(st).1;
+    st.modal = None;
+    let snap = st.snap.as_ref().unwrap();
+    let item = stash_actions::items(snap, Clock::of(st), &snap.stashes[0]).into_iter().find(|i| i.option == StashOption::Drop).unwrap();
+    run(st, item.msg);
+    let from_menu = confirm(st).1;
+    st.modal = None;
+    [from_palette, from_menu]
+}
+
+#[test]
+fn delete_says_when_the_stash_was_made() {
+    let (mut st, dir, oid) = one_stash("stash-confirm-delete-when");
+    let snap = st.snap.as_ref().unwrap();
+    let (message, time) = (snap.stashes[0].message.clone(), snap.stashes[0].time.expect("read at load"));
+    st.cues.now = time + 3 * 86_400;
+    let tail = ", stashed 3 days ago? Undo brings it back while this tab is open.";
+    for body in delete_bodies(&mut st, oid) {
+        assert_eq!(body, format!("Delete \"{message}\"{tail}"));
+    }
+    st.snap.as_mut().unwrap().stashes[0].time = None;
+    for body in delete_bodies(&mut st, oid) {
+        assert_eq!(body, format!("Delete \"{message}\"? Undo brings it back while this tab is open."));
+        assert!(!body.contains("stashed"), "{body}");
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }

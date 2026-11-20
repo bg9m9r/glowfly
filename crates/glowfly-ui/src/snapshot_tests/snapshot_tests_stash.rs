@@ -14,6 +14,7 @@ use eframe::egui::{Key, PointerButton, pos2};
 use egui_kittest::kittest::Queryable;
 use glowfly_core::settings::ThemeChoice;
 use glowfly_model::msg::{Msg, StashMsg};
+use glowfly_model::state::clock::Clock;
 use glowfly_model::state::palette::{Mode, Palette, Pick};
 use glowfly_model::state::stash_actions::{self, StashOption};
 use glowfly_model::state::stash_confirm::StashAction;
@@ -132,7 +133,7 @@ fn stash_apply_confirm_light() {
     let (mut st, dir) = with_stashes(ThemeChoice::Light, "stash-apply-confirm");
     let snap = st.snap.as_ref().unwrap();
     let t = st.settings.lang();
-    let msg = stash_actions::for_commit(snap, t, StashOption::Apply, snap.stashes[0].oid).expect("listed");
+    let msg = stash_actions::for_commit(snap, Clock::of(&st), StashOption::Apply, snap.stashes[0].oid).expect("listed");
     let Msg::Stash(glowfly_model::msg::StashMsg::Ask(ask)) = msg else { panic!("a question on a dirty tree") };
     // The stash changes one of the working tree's files and one it leaves alone.
     let paths = vec![snap.unstaged[0].path.clone(), "untouched.txt".to_owned()];

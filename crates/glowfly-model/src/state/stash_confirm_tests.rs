@@ -1,8 +1,10 @@
 //! The stash question's rules: the job on a clean tree, the question on a dirty one, the
 //! refusal over conflicts and the files the stash and the working tree both change.
 
+use super::super::clock::Clock;
 use super::*;
 use glowfly_core::repo::{FileEntry, StashInfo};
+use glowfly_core::settings::Settings;
 
 pub(crate) fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
     let dir = glowfly_core::paths::temp_dir().join(format!("glowfly-stash-confirm-{name}-{}", std::process::id()));
@@ -21,6 +23,13 @@ pub(crate) fn fixture(name: &str) -> (std::path::PathBuf, Snapshot) {
 }
 
 pub(crate) const EN: Lang = Lang::En;
+
+/// A fixed "now" for the dates the stash tests format.
+pub(crate) const NOW: i64 = 1_769_947_200;
+
+pub(crate) fn clock(settings: &Settings) -> Clock<'_> {
+    Clock { settings, now: NOW, offset: 0 }
+}
 
 pub(crate) fn oid() -> Oid {
     Oid::from_str("1234567890123456789012345678901234567890").unwrap()
@@ -43,10 +52,10 @@ pub(crate) fn strings(a: &[&str]) -> Vec<String> {
 fn a_clean_tree_runs_the_guarded_job() {
     let (_, clean) = fixture("clean");
     for action in [StashAction::Apply, StashAction::Pop] {
-        let m = guarded(&clean, EN, action, oid(), "wip", listed(2));
+        let m = guarded(&clean, EN, action, oid(), "wip", None, listed(2));
         assert!(matches!(m, Msg::Stash(StashMsg::Run { action: a, index: 2, oid: o }) if a == action && o == oid()));
     }
-    let m = guarded(&clean, EN, StashAction::Drop, oid(), "wip", listed(2));
+    let m = guarded(&clean, EN, StashAction::Drop, oid(), "wip", None, listed(2));
     assert!(matches!(&m, Msg::ConfirmDanger { title, then, .. }
         if title == "Delete stash" && matches!(**then, Msg::Stash(StashMsg::Run { action: StashAction::Drop, index: 2, .. }))));
 }
@@ -55,7 +64,7 @@ fn a_clean_tree_runs_the_guarded_job() {
 fn a_dirty_tree_asks_after_reading_the_stash() {
     let (_, mut dirty) = fixture("dirty");
     dirty.unstaged.push(FileEntry::new("a.txt", 'M'));
-    let m = guarded(&dirty, EN, StashAction::Pop, oid(), "wip", listed(0));
+    let m = guarded(&dirty, EN, StashAction::Pop, oid(), "wip", None, listed(0));
     let Msg::Stash(StashMsg::Ask(ask)) = m else { panic!("not the question") };
     assert_eq!(ask, StashAsk { action: StashAction::Pop, oid: oid(), message: "wip".into(), run: listed(0) });
     let paths = strings(&["a.txt", "b.txt"]);
@@ -72,10 +81,10 @@ fn conflicts_refuse_apply_and_pop() {
     let why = apply_blocked(&snap, EN).expect("refused over conflicts");
     assert!(why.contains("conflict"), "{why}");
     for action in [StashAction::Apply, StashAction::Pop] {
-        let m = guarded(&snap, EN, action, oid(), "wip", listed(0));
+        let m = guarded(&snap, EN, action, oid(), "wip", None, listed(0));
         assert!(matches!(&m, Msg::Logged { ok: false, text } if text == why), "no question, a reason");
     }
-    assert!(matches!(guarded(&snap, EN, StashAction::Drop, oid(), "wip", listed(0)), Msg::ConfirmDanger { .. }));
+    assert!(matches!(guarded(&snap, EN, StashAction::Drop, oid(), "wip", None, listed(0)), Msg::ConfirmDanger { .. }));
     let (_, clean) = fixture("no-conflicts");
     assert!(apply_blocked(&clean, EN).is_none());
 }
@@ -111,4 +120,20 @@ fn dirty_body_lists_the_overlap_and_leaves_the_warning_out_without_one() {
     let many: Vec<String> = (0..12).map(|i| format!("f{i:02}.txt")).collect();
     let capped = dirty_body(EN, StashAction::Apply, "w", Some(&many));
     assert!(capped.contains("f07.txt") && !capped.contains("f08.txt") && capped.ends_with("and 4 more"), "{capped}");
+}
+
+#[test]
+fn drop_body_names_the_day_or_leaves_it_out() {
+    assert_eq!(drop_confirm_body(EN, "On main: wip", None), "Delete \"On main: wip\"? Undo brings it back while this tab is open.");
+    assert_eq!(
+        drop_confirm_body(EN, "On main: wip", Some("3 days ago")),
+        "Delete \"On main: wip\", stashed 3 days ago? Undo brings it back while this tab is open."
+    );
+    let german = drop_confirm_body(Lang::De, "x", Some("gestern"));
+    assert!(german.contains("gestern") && german.contains("\"x\""), "{german}");
+    let (_, clean) = fixture("drop-dated");
+    let Msg::ConfirmDanger { body, .. } = guarded(&clean, EN, StashAction::Drop, oid(), "wip", Some("yesterday"), listed(2)) else {
+        panic!("not the confirmation")
+    };
+    assert!(body.contains("stashed yesterday"), "{body}");
 }

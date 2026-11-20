@@ -12,6 +12,7 @@ use glowfly_core::repo::FileEntry;
 use glowfly_core::stash_ops::StashScope;
 use glowfly_model::msg::{JobMsg, Msg, RepoMsg};
 use glowfly_model::state::AppState;
+use glowfly_model::state::clock::Clock;
 use glowfly_model::state::stash_actions::{self, StashOption};
 
 fn paths(rows: &[FileEntry]) -> Vec<String> {
@@ -95,7 +96,7 @@ fn a_staged_part_that_no_longer_fits_says_so_for_unstash_and_apply() {
     for option in [StashOption::Pop, StashOption::Apply] {
         let (mut st, dir) = index_wont_fit("si-unfit");
         let oid = st.snap.as_ref().unwrap().stashes[0].oid;
-        let msg = stash_actions::for_commit(st.snap.as_ref().unwrap(), Lang::En, option, oid).unwrap();
+        let msg = stash_actions::for_commit(st.snap.as_ref().unwrap(), Clock::of(&st), option, oid).unwrap();
         drive(&mut st, msg);
         let want = Lang::En.tr("stash.back_unstaged.toast");
         let toast = st.toasts.iter().rev().find(|t| t.text == want).expect("the unstaged toast");
@@ -169,7 +170,7 @@ fn every_entry_point_runs_the_same_job() {
     stash_all(&mut st);
     let snap = st.snap.as_ref().unwrap();
     let oid = snap.stashes[0].oid;
-    let menu = stash_actions::items(snap, Lang::En, &snap.stashes[0]);
+    let menu = stash_actions::items(snap, Clock::of(&st), &snap.stashes[0]);
     let menu_pop = menu.into_iter().find(|i| i.option == StashOption::Pop).unwrap().msg;
     let toolbar = stash_actions::pop_latest(snap, Lang::En).unwrap();
     let palette = |cmd| Msg::Palette(PaletteMsg::RunPaletteCommand(cmd));
@@ -196,7 +197,7 @@ fn every_entry_point_runs_the_same_job() {
 
     let menu_apply = {
         let snap = st.snap.as_ref().unwrap();
-        stash_actions::items(snap, Lang::En, &snap.stashes[0]).into_iter().find(|i| i.option == StashOption::Apply).unwrap().msg
+        stash_actions::items(snap, Clock::of(&st), &snap.stashes[0]).into_iter().find(|i| i.option == StashOption::Apply).unwrap().msg
     };
     let (cmds, _, plain, _) = job(&mut st, menu_apply);
     assert_eq!(cmds, vec![vec!["stash".to_owned(), "apply".into(), "--index".into(), "stash@{0}".into()]]);

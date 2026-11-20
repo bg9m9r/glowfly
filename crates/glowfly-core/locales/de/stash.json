@@ -11,6 +11,8 @@
   "stash.blocked.no_files": "Wähle mindestens eine Datei für den Stash.",
   "stash.blocked.nothing": "Es gibt keine Änderungen für einen Stash.",
   "stash.blocked.nothing_staged": "Nichts ist bereitgestellt. Stelle zuerst die Änderungen bereit, die du beiseitelegen willst, oder wähle eine andere Option.",
+  "stash.drop.body": "\"{message}\" löschen? Rückgängig holt den Stash zurück, solange dieser Tab offen ist.",
+  "stash.drop.body_dated": "\"{message}\" (angelegt {when}) löschen? Rückgängig holt den Stash zurück, solange dieser Tab offen ist.",
   "stash.push.keep_index.check": "Bereitgestellte Änderungen behalten",
   "stash.push.keep_index.help": "Bereitgestellte Änderungen kommen in den Stash und bleiben auch bereitgestellt, bereit zum Committen.",
   "stash.push.keep_index.staged_tip": "Lässt sich nicht damit kombinieren, nur die bereitgestellten Änderungen in den Stash zu legen.",

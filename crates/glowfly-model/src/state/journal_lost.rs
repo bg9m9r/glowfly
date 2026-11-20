@@ -185,7 +185,7 @@ pub fn apply_blocked(snap: &Snapshot, job_running: bool, t: Lang) -> Option<&'st
 /// Apply stash: `git stash apply <oid>`, asking first on a dirty tree.
 pub fn apply(snap: &Snapshot, c: &LostCommit, t: Lang) -> Msg {
     let run = StashRun::Git { label: t.tr("journal.lost.apply.job").into(), cmds: vec![lost::apply_stash(c.oid)] };
-    super::stash_confirm::guarded(snap, t, StashAction::Apply, c.oid, &c.summary, run)
+    super::stash_confirm::guarded(snap, t, StashAction::Apply, c.oid, &c.summary, None, run)
 }
 
 /// Put back in stash list: `git stash store -m <summary> <oid>`.

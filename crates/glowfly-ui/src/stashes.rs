@@ -99,7 +99,7 @@ pub(super) fn section(
         }
         r.row_menu(|ui| {
             super::common::menu_header(ui, &s.message);
-            for item in stash_actions::items(snap, t, s) {
+            for item in stash_actions::items(snap, clock, s) {
                 let label = label(t, item.option);
                 if item.danger {
                     separator(ui);

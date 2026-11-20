@@ -118,6 +118,7 @@
   "toolbar.tip.pop_body": "Apply the latest stash and remove it (git stash pop). If it conflicts, the stash is kept.",
   "toolbar.tip.pop_dirty_note": "You have local changes: Unstash asks before applying.",
   "toolbar.tip.pop_heading": "Applies",
+  "toolbar.tip.pop_stashed": "Stashed {when}",
   "toolbar.tip.pr_body": "Opens the form; nothing is sent until you create it.",
   "toolbar.tip.publish_body": "It has no remote yet: Publish creates one on a hosting service and pushes this branch there.",
   "toolbar.tip.publish_title": "Publish this repository",

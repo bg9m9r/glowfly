@@ -118,6 +118,7 @@
   "toolbar.tip.pop_body": "Aplicar el stash más reciente y eliminarlo (git stash pop). Si hay conflictos, el stash se conserva.",
   "toolbar.tip.pop_dirty_note": "Tienes cambios locales: Recuperar pregunta antes de aplicar.",
   "toolbar.tip.pop_heading": "Aplica",
+  "toolbar.tip.pop_stashed": "Creado {when}",
   "toolbar.tip.pr_body": "Abre el formulario; no se envía nada hasta que lo crees.",
   "toolbar.tip.publish_body": "Aún no tiene remoto: Publicar crea uno en un servicio de alojamiento y envía allí esta rama.",
   "toolbar.tip.publish_title": "Publicar este repositorio",

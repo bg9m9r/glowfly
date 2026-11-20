@@ -11,6 +11,8 @@
   "stash.blocked.no_files": "Elige al menos un archivo para el stash.",
   "stash.blocked.nothing": "No hay cambios que guardar en un stash.",
   "stash.blocked.nothing_staged": "No hay nada preparado. Prepara primero los cambios que quieres apartar, o elige otra opción.",
+  "stash.drop.body": "¿Eliminar \"{message}\"? Deshacer lo recupera mientras esta pestaña esté abierta.",
+  "stash.drop.body_dated": "¿Eliminar \"{message}\", creado {when}? Deshacer lo recupera mientras esta pestaña esté abierta.",
   "stash.push.keep_index.check": "Mantener los cambios preparados",
   "stash.push.keep_index.help": "Los cambios preparados van al stash y también siguen preparados, listos para confirmar.",
   "stash.push.keep_index.staged_tip": "No se puede combinar con guardar en el stash solo los cambios preparados.",

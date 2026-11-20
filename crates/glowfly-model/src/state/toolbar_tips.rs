@@ -1,11 +1,12 @@
 //! The rules the toolbar's buttons and their tooltips share: why each git button is disabled
 //! (the same sentence its tooltip shows), the head branch's ahead/behind line, when the
-//! repository last fetched, and the Push, Pull, Stash and Pop previews built from the loaded
+//! repository last fetched, and the Push, Pull, Stash and Pop previews (Pop's with when the stash was made) built from the loaded
 //! snapshot. Push names, counts and previews against where a plain `git push` goes
 //! (`branches::plain_push`), which config may make another remote than the upstream's. Pure.
 
 use super::AppState;
 use super::branches::plain_push;
+use super::clock::Clock;
 use super::tip::{PREVIEW_ROWS, TipPreview, TipRow, commit_rows};
 use glowfly_core::i18n::Lang;
 use glowfly_core::repo::{BranchInfo, Divergence, Snapshot};
@@ -299,9 +300,14 @@ pub fn stash_preview(t: Lang, snap: &Snapshot) -> Option<TipPreview> {
     Some(p)
 }
 
-/// What Pop applies: the newest stash's message, with a note that a dirty tree asks first.
-pub fn pop_preview(t: Lang, snap: &Snapshot) -> Option<TipPreview> {
+/// What Pop applies: the newest stash's message and, when its commit's time is known, when it
+/// was made ("Stashed 3 days ago", as the STASHES rows date it), with a note that a dirty tree
+/// asks first.
+pub fn pop_preview(clock: Clock<'_>, snap: &Snapshot) -> Option<TipPreview> {
+    let t = clock.lang();
     let top = snap.stashes.first()?;
+    let mut rows = vec![TipRow::Line(top.message.clone())];
+    rows.extend(top.time.map(|secs| TipRow::Line(t.trf("toolbar.tip.pop_stashed", &[("when", &clock.day(secs))]))));
     let note = snap.is_dirty().then(|| t.tr("toolbar.tip.pop_dirty_note").to_owned());
-    Some(TipPreview::new(t.tr("toolbar.tip.pop_heading"), vec![TipRow::Line(top.message.clone())]).note(note))
+    Some(TipPreview::new(t.tr("toolbar.tip.pop_heading"), rows).note(note))
 }
