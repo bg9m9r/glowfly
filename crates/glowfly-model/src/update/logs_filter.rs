@@ -98,7 +98,7 @@ pub(super) fn step(st: &mut AppState, back: bool) {
         }
     }
     if let Some(e) = st.log.iter().find(|e| e.id == id).filter(|e| foldable(e) && !is_open(&st.logs, e, &f)) {
-        st.logs.search_closed.remove(&id);
+        // `open` alone opens it; a hand fold in `search_closed` stays, so folding back restores it.
         st.logs.open.insert(id);
         st.logs.step_opened = Some(e.id);
     }
