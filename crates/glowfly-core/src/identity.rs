@@ -2,6 +2,7 @@
 //! the global identity, and the one path Glowfly uses to write a git config value through the
 //! git CLI.
 
+use crate::config_list::ConfigList;
 use crate::gitcli::{self, args};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -62,22 +63,40 @@ pub fn write_global(cwd: &Path, id: &Identity, env: &[(&str, &str)]) -> Result<(
 
 /// The identity in the global config (user.name, user.email, user.signingkey; blank or unset
 /// values read as empty, a blank key as None). The one read the first-run welcome uses. Goes
-/// through the git CLI, so includes and the XDG config count like they do for git.
+/// through the git CLI, so the XDG config counts like it does for git; like
+/// `git config --global --get`, it does not follow `include.path`.
 pub fn read_global(cwd: &Path, env: &[(&str, &str)]) -> Result<Identity, String> {
-    let name = global_value(cwd, "user.name", env)?.unwrap_or_default();
-    let email = global_value(cwd, "user.email", env)?.unwrap_or_default();
-    let signing_key = global_value(cwd, "user.signingkey", env)?.filter(|k| !k.trim().is_empty());
+    let g = global_list(cwd, env)?;
+    let value = |k: &str| g.text(k).map(|v| v.trim_end_matches(['\r', '\n']).to_owned());
+    let name = value("user.name").unwrap_or_default();
+    let email = value("user.email").unwrap_or_default();
+    let signing_key = value("user.signingkey").filter(|k| !k.trim().is_empty());
     Ok(Identity { name, email, signing_key })
 }
 
+/// The whole global config (`git config --global --list -z`): one process, plus one more only
+/// when the list fails. No global file is an empty list (where `--list` exits 128, `--get` of
+/// the missing file exits 1); any other failure is an error naming `user.name`.
+fn global_list(cwd: &Path, env: &[(&str, &str)]) -> Result<ConfigList, String> {
+    let out = gitcli::output(cwd, &args(&["config", "--global", "--list", "-z"]), "", env, None);
+    if out.ok {
+        return Ok(ConfigList::parse(&out.stdout));
+    }
+    match global_value(cwd, "user.name", env)? {
+        None => Ok(ConfigList::default()),
+        Some(_) => Err(format!("git config --global --list failed: {}", out.combined())),
+    }
+}
+
 /// Applies `writes` to the global config in order, undoing the done ones on the first failure.
+/// The keys of one call are distinct (`writes()` builds them), so one read up front gives each
+/// key's earlier value.
 fn write_global_all(cwd: &Path, writes: &[(&str, Option<String>)], env: &[(&str, &str)]) -> Result<(), String> {
+    let before = global_list(cwd, env)?;
     let mut done: Vec<(&str, Option<String>)> = Vec::new();
     for (key, value) in writes {
-        let step = global_value(cwd, key, env).and_then(|before| {
-            set_config(cwd, true, key, value.as_deref(), env).map_err(|e| e.to_string())?;
-            Ok(before)
-        });
+        let before = before.text(key).map(|v| v.trim_end_matches(['\r', '\n']).to_owned());
+        let step = set_config(cwd, true, key, value.as_deref(), env).map_err(|e| e.to_string()).map(|()| before);
         match step {
             Ok(before) => done.push((key, before)),
             Err(e) => {
@@ -197,6 +216,26 @@ mod tests {
         let env = borrowed(&env);
         let err = read_global(&dir, &env).unwrap_err();
         assert!(err.contains("user.name"), "{err}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_global_without_a_global_file_is_empty() {
+        let dir = scratch_repo("identity-read-missing");
+        let mut env = empty_global_config(&dir);
+        env[0].1 = dir.join("no-such-gitconfig").display().to_string();
+        let env = borrowed(&env);
+        assert_eq!(read_global(&dir, &env), Ok(Identity::default()));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn read_global_reads_case_and_last_value() {
+        let dir = scratch_repo("identity-read-case");
+        let env = empty_global_config(&dir);
+        std::fs::write(&env[0].1, "[User]\n\tName = A\n\tEmail = a@example.com\n[user]\n\tname = B\n\tsigningKey\n").unwrap();
+        let env = borrowed(&env);
+        assert_eq!(read_global(&dir, &env), Ok(id("B", "a@example.com", None)), "the last name; a valueless key is blank");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

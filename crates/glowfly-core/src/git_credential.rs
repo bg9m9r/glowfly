@@ -234,10 +234,8 @@ fn exact_value(value: &str) -> String {
 /// git's exec path (or the `bin` folder next to it, where Git for Windows keeps Git Credential
 /// Manager) or on PATH.
 pub fn installed_helper(cwd: &Path) -> Option<String> {
-    let exec = gitcli::read(cwd, &args(&["--exec-path"]));
-    let exec_dir = PathBuf::from(exec.stdout.trim());
     let mut dirs = Vec::new();
-    if exec.ok && !exec_dir.as_os_str().is_empty() {
+    if let Some(exec_dir) = crate::git_session::exec_path(cwd) {
         dirs.extend(exec_dir.parent().and_then(Path::parent).map(|p| p.join("bin")));
         dirs.insert(0, exec_dir);
     }

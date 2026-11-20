@@ -9,7 +9,6 @@ use super::incoming::Unchecked;
 use crate::gitcli;
 use git2::{Oid, Repository};
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
 /// The folder git runs in for `repo`.
 fn cwd(repo: &Repository) -> &Path {
@@ -30,13 +29,7 @@ fn run(repo: &Repository, cmd: &[String], input: &str) -> (bool, String) {
 
 /// The installed git's (major, minor) version; (0, 0) when it can't be read.
 fn version() -> (u32, u32) {
-    static V: OnceLock<(u32, u32)> = OnceLock::new();
-    *V.get_or_init(|| {
-        let out = gitcli::output(Path::new("."), &gitcli::args(&["version"]), "", gitcli::NO_PROMPTS, None);
-        let num = out.stdout.split_whitespace().nth(2).unwrap_or_default().to_owned();
-        let mut parts = num.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
-        (parts.next().unwrap_or(0), parts.next().unwrap_or(0))
-    })
+    crate::git_session::version(Path::new(".")).map_or((0, 0), |(major, minor, _)| (major, minor))
 }
 
 /// Unmodeled unless git is at least `major.minor` (`what` needs it).

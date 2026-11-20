@@ -16,20 +16,7 @@ use std::path::{Path, PathBuf};
 /// The keys read, as `git config --get-regexp` matches them (section and variable lowercased).
 pub const KEYS: &str = r"^(diff|merge)\.(gui)?tool$|^(diff|merge)tool\.guidefault$|^(diff|merge)tool\..+\.(cmd|path|trustexitcode)$";
 
-/// A config entry: its key and value; None for a key written without `=`.
-pub type Entry = (String, Option<String>);
-
-/// Reads `git config -z --get-regexp` output: entries end in NUL, each `key\nvalue` (the value
-/// may hold newlines) or a bare `key` for a valueless entry.
-pub fn parse_z(out: &str) -> Vec<Entry> {
-    out.split('\0')
-        .filter(|p| !p.is_empty())
-        .map(|p| match p.split_once('\n') {
-            Some((k, v)) => (k.to_owned(), Some(v.to_owned())),
-            None => (p.to_owned(), None),
-        })
-        .collect()
-}
+pub use crate::config_list::{Entry, parse_z};
 
 /// Which of git's two tools: `git difftool` or `git mergetool`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -192,8 +179,8 @@ pub fn builtin_in(dir: &Path, name: &str) -> bool {
 
 /// Reads git config's diff and merge tools in `cwd`; with `has_repo`, also the repository's
 /// own values (`--local` and `--worktree`, with their includes). `env` is added to the
-/// commands' environment. Nothing is run but `git config` and `git --exec-path`. The error is
-/// git's first line. Runner threads only.
+/// commands' environment. Nothing is run but `git config`, and `git --exec-path` (asked once per
+/// session). The error is git's first line. Runner threads only.
 pub fn read(cwd: &Path, has_repo: bool, env: &[(&str, &str)]) -> Result<GitTools, String> {
     let vars: Vec<(&str, &str)> = gitcli::NO_PROMPTS.iter().chain(env).copied().collect();
     let run = |a: &[&str]| gitcli::output(cwd, &gitcli::args(a), "", &vars, Some(gitcli::READ_TIMEOUT));
@@ -218,11 +205,7 @@ pub fn read(cwd: &Path, has_repo: bool, env: &[(&str, &str)]) -> Result<GitTools
     }
     let dir: OnceCell<Option<PathBuf>> = OnceCell::new();
     let builtin = |name: &str| {
-        let dir = dir.get_or_init(|| {
-            let out = run(&["--exec-path"]);
-            let p = out.stdout.trim();
-            (out.code == Some(0) && !p.is_empty()).then(|| PathBuf::from(p).join("mergetools"))
-        });
+        let dir = dir.get_or_init(|| crate::git_session::exec_path(cwd).map(|p| p.join("mergetools")));
         // Unreadable: git says what is wrong itself when it runs the tool.
         dir.as_deref().is_none_or(|d| builtin_in(d, name))
     };
