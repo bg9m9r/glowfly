@@ -1,5 +1,5 @@
 //! The trust prompt for a repository whose own config changes how Git connects (TLS checks,
-//! headers and proxies), listed apart from the settings that run commands, and git-lfs's programs
+//! headers and proxies, without a header's value or a proxy's user and password), listed apart from the settings that run commands, and git-lfs's programs
 //! among those; and for one with a rebase in progress whose steps left run commands (a long one cut,
 //! and shown whole), or whose files couldn't be read.
 
@@ -18,9 +18,9 @@ fn trust_prompt_network() {
         config: vec![
             setting("http.sslVerify", "false"),
             setting("lfs.customtransfer.agent.path", "./bin/agent"),
-            setting("remote.origin.proxy", "proxy.example:8080"),
+            setting("remote.origin.proxy", "ada:pw@proxy.example:8080"),
             setting("http.https://example.com/.sslCAInfo", "certs/ca.pem"),
-            setting("http.extraHeader", "X-Extra: 1"),
+            setting("http.extraHeader", "Authorization: Bearer abc123"),
         ],
         ..TrustScan::default()
     };
@@ -31,7 +31,8 @@ fn trust_prompt_network() {
     assert!(h.query_by_label("lfs.customtransfer.agent.path = ./bin/agent").is_some());
     assert!(h.query_by_label("Settings that change how Git connects").is_some());
     assert!(h.query_by_label("http.sslVerify = false").is_some());
-    assert!(h.query_by_label("http.extraHeader = X-Extra: 1").is_some());
+    assert!(h.query_by_label("http.extraHeader = Authorization: ***").is_some(), "the header's value isn't shown");
+    assert!(h.query_by_label("remote.origin.proxy = ***@proxy.example:8080").is_some(), "nor the proxy's user and password");
     assert!(h.query_by_label_contains("turn off or change certificate checks, add headers").is_some());
 }
 

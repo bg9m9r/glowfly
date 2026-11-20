@@ -334,6 +334,33 @@ pub fn shown_value(value: &str) -> String {
     cut
 }
 
+/// Setting `key`'s value for the dialog (`shown_value`), with what signs in left out: an
+/// `http.<url>.extraHeader` shows only its header's name (`Authorization: ***`), and a proxy
+/// address its host without the user and password (`***@proxy:8080`).
+pub fn shown_setting(key: &str, value: &str) -> String {
+    let key = key.to_ascii_lowercase();
+    let (section, name) = (key.split('.').next().unwrap_or_default(), key.rsplit('.').next().unwrap_or_default());
+    match (section, name) {
+        ("http", "extraheader") => match value.split_once(':') {
+            Some((header, _)) if !header.trim().is_empty() => shown_value(&format!("{}: ***", header.trim())),
+            _ => "***".to_owned(),
+        },
+        ("http" | "remote", "proxy") => shown_value(&proxy_without_user(value)),
+        _ => shown_value(value),
+    }
+}
+
+/// A proxy address (`[scheme://][user[:password]@]host[:port]`, as git takes it) with any user
+/// part, for every scheme, replaced by `***`.
+fn proxy_without_user(value: &str) -> String {
+    let start = value.find("://").map_or(0, |i| i + 3);
+    let end = value[start..].find('/').map_or(value.len(), |i| start + i);
+    match value[start..end].rfind('@') {
+        Some(at) => format!("{}***{}", &value[..start], &value[start + at..]),
+        None => value.to_owned(),
+    }
+}
+
 /// Why what a held job brings in couldn't be compared, for the prompt and the job's output.
 pub fn unchecked_text(t: glowfly_core::i18n::Lang, u: &glowfly_core::trust::incoming::Unchecked) -> String {
     use glowfly_core::text::printable;

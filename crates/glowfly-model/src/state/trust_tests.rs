@@ -63,3 +63,20 @@ fn labels_and_values_are_shortened() {
     assert_eq!(shown.chars().count(), VALUE_CHARS + 1);
     assert!(shown.ends_with('…'));
 }
+
+#[test]
+fn header_and_proxy_values_leave_out_what_signs_in() {
+    for key in ["http.extraHeader", "http.https://example.com/.EXTRAHEADER", "HTTP.extraheader"] {
+        assert_eq!(shown_setting(key, "Authorization: Bearer abc123"), "Authorization: ***", "{key}");
+    }
+    assert_eq!(shown_setting("http.extraHeader", "token-without-a-name"), "***");
+    assert_eq!(shown_setting("http.extraHeader", ": abc"), "***");
+    assert_eq!(shown_setting("http.extraHeader", "X-\u{1b}Id: 1"), "X-Id: ***");
+    assert_eq!(shown_setting("http.proxy", "http://ada:pw@proxy.example:8080"), "http://***@proxy.example:8080");
+    assert_eq!(shown_setting("remote.origin.proxy", "ada:pw@proxy.example:8080"), "***@proxy.example:8080");
+    assert_eq!(shown_setting("http.https://example.com/.proxy", "socks5://u@p:1080"), "socks5://***@p:1080");
+    assert_eq!(shown_setting("remote.origin.proxy", "proxy.example:8080"), "proxy.example:8080");
+    assert_eq!(shown_setting("http.proxy", "http://proxy.example/a@b"), "http://proxy.example/a@b");
+    // Other settings show their value as it is.
+    assert_eq!(shown_setting("http.sslVerify", "false"), "false");
+}

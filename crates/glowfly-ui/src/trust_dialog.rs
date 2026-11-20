@@ -24,7 +24,7 @@ use glowfly_core::trust::known::{self, Known};
 use glowfly_core::trust::{ConfigCommand, Follow, TrustScan, is_network_setting};
 use glowfly_model::msg::{Msg, TrustMsg};
 use glowfly_model::state::trust::rows::{self as model_rows, StepRow, row_follows};
-use glowfly_model::state::trust::{TrustPrompt, hooks_label, shown_value};
+use glowfly_model::state::trust::{TrustPrompt, hooks_label, shown_setting};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -238,7 +238,7 @@ fn settings(ui: &mut Ui, t: Lang, title: &str, list: &[&ConfigCommand], mark: im
     }
     ui.label(type_scale::section_text(ui, title));
     for c in list {
-        rows::setting(ui, t, &printable(&c.key), &shown_value(&c.value), mark(c));
+        rows::setting(ui, t, &printable(&c.key), &shown_setting(&c.key, &c.value), mark(c));
     }
     ui.add_space(6.0);
 }
