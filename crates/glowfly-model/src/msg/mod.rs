@@ -204,6 +204,8 @@ pub enum Inactive {
     ConflictFilesUnread(glowfly_core::error::ReadFailed),
     /// A load or whole status read for that tab: its tab keeps the counts it shows.
     Counts(crate::state::tabs::glance::CountsRead),
+    /// A pull request head fetch for that tab ended: the ref it may have written is held (update/pull_request/head_refs.rs).
+    PrHeadFetched(u64),
 }
 
 /// Which write failed, for the log line `Inactive::WriteFailed` words.

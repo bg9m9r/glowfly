@@ -35,7 +35,7 @@ pub struct FilesJob {
     pub generation: u64,
 }
 
-/// Fetches pull request `id`'s head ref for its objects only (`remote_ops::fetch_ref_cmd`):
+/// Fetches pull request `id`'s head ref into `refs/glowfly/pr/<id>` (`remote_ops::fetch_ref_cmd`):
 /// `head` is the listed head it should bring. Without `prompts` it fails rather than asks for
 /// credentials.
 #[derive(Debug)]
@@ -45,6 +45,18 @@ pub struct HeadJob {
     pub head: String,
     pub cmd: Vec<String>,
     pub prompts: bool,
+}
+
+/// A change to Glowfly's own refs under `refs/glowfly/pr/` that keep pull request heads
+/// (`glowfly_core::pr_head_refs`). Best effort: a failure is only logged.
+#[derive(Debug)]
+pub enum HeadRefJob {
+    /// Points `refs/glowfly/pr/<id>` at the listed head the files were compared to.
+    Keep { workdir: PathBuf, id: u64, oid: Oid },
+    /// Deletes the refs of the pull requests `ids`, which no panel copy shows.
+    Drop { workdir: PathBuf, ids: Vec<u64> },
+    /// Deletes every other ref under the prefix when the repository opens.
+    Sweep { workdir: PathBuf, keep: Vec<u64> },
 }
 
 /// Maps pull request `id`'s threads' lines (on `paths`) from the service's head (`head`) onto
@@ -135,8 +147,10 @@ pub struct CallJob {
 pub enum PrEffect {
     /// The file list and commits, from local refs (scoped to its repository; reads only).
     Files(FilesJob),
-    /// The service's head ref, fetched for its objects (scoped; writes no ref).
+    /// The service's head ref, fetched into `refs/glowfly/pr/<id>` (scoped; writes only that ref).
     FetchHead(HeadJob),
+    /// Keeping or deleting those refs (no result).
+    HeadRef(HeadRefJob),
     /// A call to the hosting service (unscoped: its reply names its repository).
     Call(Box<CallJob>),
     /// The threads' lines mapped onto the local source tip (scoped; reads only).
@@ -149,6 +163,9 @@ impl EffectMeta for PrEffect {
             PrEffect::Files(_) => "load-pr-files",
             PrEffect::FetchHead(_) => "fetch-pr-head",
             PrEffect::LineMaps(_) => "map-pr-lines",
+            PrEffect::HeadRef(HeadRefJob::Keep { .. }) => "keep-pr-head",
+            PrEffect::HeadRef(HeadRefJob::Drop { .. }) => "drop-pr-heads",
+            PrEffect::HeadRef(HeadRefJob::Sweep { .. }) => "sweep-pr-heads",
             PrEffect::Call(j) => match j.call {
                 PrCall::Load => "load-pr-page",
                 PrCall::Checks { .. } => "load-pr-checks",
@@ -168,7 +185,7 @@ impl EffectMeta for PrEffect {
             PrEffect::Files(j) => Some(&j.workdir),
             PrEffect::FetchHead(j) => Some(&j.workdir),
             PrEffect::LineMaps(j) => Some(&j.workdir),
-            PrEffect::Call(_) => None,
+            PrEffect::Call(_) | PrEffect::HeadRef(_) => None,
         }
     }
 
@@ -176,13 +193,18 @@ impl EffectMeta for PrEffect {
         true
     }
 
-    /// Reads and calls, and a pull request head fetch that writes no ref.
+    /// Reads, calls, and a pull request head fetch, which writes only Glowfly's own refs under
+    /// `refs/glowfly/pr/` that no other work reads or writes; a long job never delays them.
     fn queue(&self) -> Option<&Path> {
         None
     }
 
     fn sandbox(&self) -> SandboxRule {
-        SandboxRule::Drop
+        match self {
+            // Local libgit2 work on a test's repository.
+            PrEffect::HeadRef(_) => SandboxRule::Run,
+            _ => SandboxRule::Drop,
+        }
     }
 }
 
@@ -272,23 +294,25 @@ pub enum PullRequestMsg {
 }
 
 impl PullRequestMsg {
-    /// Nothing is kept for an inactive tab: intents (the thread and Checks ones too) are for the
+    /// Nothing is kept for an inactive tab, except that a HeadFetched registers the ref it may
+    /// have written (`Inactive::PrHeadFetched`), which the settle pass deletes once no panel
+    /// shows it: intents (the thread and Checks ones too) are for the
     /// active tab; a dropped FilesLoaded is asked for again by `reload_pending` when its tab
     /// becomes active (as are the checks); a dropped LinesMapped leaves its state Loading, so
     /// reload_pending asks again; a dropped HeadFetched leaves its fetch running, so
-    /// `reload_pending` starts it again; a new code comment's intents (LineComment) are for the
+    /// `reload_pending` starts it again (the fetch's ref is registered meanwhile); a new code comment's intents (LineComment) are for the
     /// active tab too, their answers come in Replied, which its handler applies to a parked
     /// panel; and Replied comes from an unscoped effect, so it never arrives scoped (its handler matches
     /// the repository itself and logs results for other tabs).
     pub fn on_inactive(self) -> Option<crate::msg::Inactive> {
         match self {
+            Self::HeadFetched { id, .. } => Some(crate::msg::Inactive::PrHeadFetched(id)),
             Self::Open(_)
             | Self::Close
             | Self::FilesLoaded { .. }
             | Self::Tab(_)
             | Self::SelectCommit(_)
             | Self::FetchHead
-            | Self::HeadFetched { .. }
             | Self::LinesMapped { .. }
             | Self::Reload
             | Self::ReloadFiles

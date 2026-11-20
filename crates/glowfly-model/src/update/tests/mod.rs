@@ -50,6 +50,7 @@ pub(super) mod palette_profile_tests;
 pub(super) mod palette_theme_tests;
 pub(super) mod parked_free_tests;
 pub(super) mod pr_details_tests;
+pub(super) mod pr_head_refs_tests;
 pub(super) mod pr_heads_tests;
 pub(super) mod pr_kept_drafts_tests;
 pub(super) mod prefs_errors_tests;

@@ -84,7 +84,7 @@ fn names_that_read_as_options_never_load_or_reach_a_command() {
     let mut cmds: Vec<Vec<String>> = Vec::new();
     for (r, branches) in &s.remotes {
         cmds.push(remote_ops::fetch_cmd(r));
-        cmds.push(remote_ops::fetch_ref_cmd(r, "refs/pull/1/head", false));
+        cmds.push(remote_ops::fetch_ref_cmd(r, "refs/pull/1/head", &crate::pr_head_refs::pr_head_ref(1), false));
         cmds.push(remote_ops::remove_cmd(r));
         cmds.extend(crate::partial::fetch_cmds(r, &[git2::Oid::zero()]));
         cmds.push(crate::shallow_ops::deepen_cmd(r, crate::shallow_ops::Deepen::Full));
@@ -155,7 +155,7 @@ fn every_builder_ends_options_before_a_supplied_name() {
     let renamed = RemoteInfo { name: "old".into(), ..old.clone() };
     let mut cmds = vec![
         remote_ops::fetch_cmd(e),
-        remote_ops::fetch_ref_cmd(e, e, true),
+        remote_ops::fetch_ref_cmd(e, e, e, true),
         remote_ops::remove_cmd(e),
         crate::shallow_ops::deepen_cmd(e, crate::shallow_ops::Deepen::By(3)),
         branch_ops::push_cmd(e, e, e, true),

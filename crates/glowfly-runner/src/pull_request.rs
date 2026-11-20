@@ -1,7 +1,8 @@
 //! The pull request panel's work (`Effect::PullRequest`): the files and commits it brings
 //! (`repo::pr_compare`, from the target's remote-tracking tip to the listed head when it is
-//! here, else to the remote-tracking source branch), the fetch of the service's head ref for
-//! its objects (writing no ref), the threads' lines mapped from the service's head onto the
+//! here, else to the remote-tracking source branch), the fetch of the service's head ref into
+//! `refs/glowfly/pr/<id>` and keeping or deleting those refs (`pr_head_refs`, best effort: a
+//! failure only reaches the debug log), the threads' lines mapped from the service's head onto the
 //! local source tip (`repo::pr_line_maps`), and its calls to the hosting service (the page, a comment, a
 //! review, its checks, a merge, a thread reply or resolve, a new code comment on diff lines,
 //! alone or in the pending review). The calls sign in the way the pull
@@ -13,10 +14,10 @@ use glowfly_core::forge::{self, Auth, CheckQuery, ReviewRequest};
 use glowfly_core::repo;
 use glowfly_model::effect::ForgeError;
 use glowfly_model::msg::Msg;
-use glowfly_model::pull_request::{CallJob, PrCall, PrEffect, PrReply, PullRequestMsg};
+use glowfly_model::pull_request::{CallJob, HeadRefJob, PrCall, PrEffect, PrReply, PullRequestMsg};
 
-pub(super) fn run(e: PrEffect, cx: &Cx<'_>) -> Msg {
-    match e {
+pub(super) fn run(e: PrEffect, cx: &Cx<'_>) -> Option<Msg> {
+    Some(match e {
         PrEffect::Files(job) => {
             let result = repo::pr_compare(&job.workdir, job.target, job.branch, job.head.as_deref()).map_err(|e| e.to_string());
             Msg::PullRequest(PullRequestMsg::FilesLoaded { id: job.id, generation: job.generation, result })
@@ -31,13 +32,39 @@ pub(super) fn run(e: PrEffect, cx: &Cx<'_>) -> Msg {
                 repo::pr_line_maps(&job.workdir, &job.head, job.local, job.target, job.base, &job.paths).map_err(|e| e.to_string());
             Msg::PullRequest(PullRequestMsg::LinesMapped { id: job.id, generation: job.generation, result })
         }
+        PrEffect::HeadRef(job) => {
+            head_ref(job);
+            return None;
+        }
         PrEffect::Call(job) => call(*job, cx),
+    })
+}
+
+/// Keeps, deletes or sweeps the refs under `refs/glowfly/pr/`. A failure is only logged: the ref
+/// a failed delete leaves is swept when the repository opens.
+fn head_ref(job: HeadRefJob) {
+    use glowfly_core::pr_head_refs::{keep_head, remove_heads, sweep_heads};
+    match job {
+        HeadRefJob::Keep { workdir, id, oid } => {
+            if let Err(e) = keep_head(&workdir, id, oid) {
+                tracing::warn!("couldn't keep pull request {id}'s head in {}: {e}", workdir.display());
+            }
+        }
+        HeadRefJob::Drop { workdir, ids } => {
+            if let Err(e) = remove_heads(&workdir, &ids) {
+                tracing::debug!("couldn't delete the refs of pull requests {ids:?} in {}: {e}", workdir.display());
+            }
+        }
+        HeadRefJob::Sweep { workdir, keep } => match sweep_heads(&workdir, &keep) {
+            Ok(n) => tracing::debug!("swept {n} pull request head refs in {}", workdir.display()),
+            Err(e) => tracing::debug!("couldn't sweep the pull request head refs in {}: {e}", workdir.display()),
+        },
     }
 }
 
 impl Execute for PrEffect {
     fn execute(self, cx: &Cx<'_>) -> Option<Msg> {
-        Some(run(self, cx))
+        run(self, cx)
     }
 }
 

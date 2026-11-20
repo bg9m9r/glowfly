@@ -104,14 +104,14 @@ fn start_local(
     let spec =
         JobSpec { record: Some(UndoKind::DeleteBranch(d.branch.clone())), on_fail_check: Some(restore), ..JobSpec::new(label, cmds) };
     if start_job(st, spec, fx) != Started::No {
-        st.pr_cleanup = Some(job);
+        st.pull_requests.cleanup = Some(job);
     }
 }
 
 /// The headline of the job that just ended, when it is the pending clean-up and its local part
 /// stopped. Always clears the pending job.
 pub(in crate::update) fn headline(st: &mut AppState, ok: bool, output: &str) -> Option<String> {
-    let pending = st.pr_cleanup.take()?;
+    let pending = st.pull_requests.cleanup.take()?;
     if ok || st.job.as_ref().is_none_or(|j| j.label != pending.label) {
         return None;
     }

@@ -46,6 +46,7 @@ pub(super) fn inactive(st: &mut AppState, workdir: &Path, msg: Msg, now: Instant
             st.log_in(Some(workdir), false, super::conflict_files::read_failed(t, &e));
         }
         Some(Inactive::Counts(read)) => keep_counts(st, workdir, read),
+        Some(Inactive::PrHeadFetched(id)) => super::pull_request::head_refs::fetched_elsewhere(st, workdir, id),
         None => tracing::debug!("dropped a result for {}, which is no longer the active tab", workdir.display()),
     }
 }

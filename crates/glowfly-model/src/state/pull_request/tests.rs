@@ -37,6 +37,7 @@ pub(crate) fn view(pr: PullRequest, tips: Tips) -> PrView {
         head_ref: None,
         shown: None,
         head_fetch: Default::default(),
+        kept_head: None,
         asked: None,
         tab: PrTab::Overview,
         page: Page::Loading,

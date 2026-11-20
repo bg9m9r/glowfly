@@ -7,13 +7,15 @@
 //! `line_map` when the files aren't of the service's head), a new code comment on diff lines in
 //! `line_comment`, the Checks section's in `checks`, the cleanup after a merge in `cleanup`, the
 //! From / Into repositories in `repos`, the detail requests for the listed ones in `details`
-//! and the text kept for closed panels in `kept`.
+//! and the text kept for closed panels in `kept`, and the refs that keep the panels' heads in
+//! `head_refs`.
 
 pub mod actions;
 pub mod checks;
 pub mod cleanup;
 pub mod commits;
 pub(crate) mod details;
+pub mod head_refs;
 pub mod kept;
 pub mod line_comment;
 pub mod line_map;
@@ -32,6 +34,15 @@ use line_comment::LineDraft;
 use line_map::LineMaps;
 use source::{FilesKey, HeadFetch, Shown, files_key};
 use threads::ThreadView;
+
+/// The pull request work that outlives a tab (`AppState::pull_requests`).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PrGlobal {
+    /// The running clean-up after a merge that deletes the local branch, for its headline.
+    pub cleanup: Option<cleanup::CleanupJob>,
+    /// The refs that keep the heads of the panels' pull requests.
+    pub head_refs: head_refs::HeadRefs,
+}
 
 /// The local tips of a pull request's branches: `refs/remotes/<remote>/<target>` and the source
 /// on the remote of the repository it is on (`ForgeState::source_remote`), when they exist.
@@ -132,6 +143,8 @@ pub struct PrView {
     /// The source tip and commits the loaded (or unrelated) files were compared to.
     pub shown: Option<Shown>,
     pub head_fetch: HeadFetch,
+    /// The listed head this panel copy asked `refs/glowfly/pr/<id>` to keep, so it isn't asked twice.
+    pub kept_head: Option<Oid>,
     /// The key the files were last asked for.
     pub asked: Option<FilesKey>,
     pub tab: PrTab,
@@ -168,6 +181,7 @@ impl PrView {
             head_ref: fs.host_provider().and_then(|p| p.pr_head_ref(pr.id)),
             shown: None,
             head_fetch: HeadFetch::Idle,
+            kept_head: None,
             asked: None,
             pr,
             tab: PrTab::Overview,
