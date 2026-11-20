@@ -227,7 +227,7 @@ source file, update its line here.
 - `staging.rs`: the private staging folder, put in the first place the helper runs from (the temp folder, else beside the program or in the cache folder, for a noexec temp), and tidying it; tests in `staging_tests.rs`.
 - `plan.rs`: the helper's plan.
 - `restart.rs`: preparing and handing over; tests in `restart_tests.rs`.
-- `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s); tests in `launch_tests.rs`.
+- `launch.rs`: starting processes detached, and trying whether a copied helper runs (`try_run`: `--version` must print this build's version and exit successfully within 5 s; a start that finds the copy busy (ETXTBSY) is tried up to 5 times, 40 ms apart (`retry_busy`)); tests in `launch_tests.rs`.
 - `finish.rs`: the helper itself, behind `glowfly --finish-update` (a backup's record is deleted only after the backup), and the fixed words it logs; tests in `finish_tests.rs`.
 - `report.rs`: the last installer run's failure or cancel, read from `update.log` at the next start and marked shown; tests in `report_tests.rs`.
 - `error.rs`: `UpdateError`, why a check, a download or Install and restart failed, as the update results carry it: the step, the paths as shown and the system's or the hosting service's own words; `Display` is the English `--check-update` prints, and the model words it (`state/error_words/typed.rs`).
