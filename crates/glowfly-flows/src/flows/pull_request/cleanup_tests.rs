@@ -99,7 +99,7 @@ fn merged_with_local_delete_runs_remote_steps_then_the_checked_delete() {
     assert_eq!(record, Some(Some(UndoKind::DeleteBranch("feature".into()))), "Undo brings the branch back");
     let label = "Delete feature on origin, fetch origin and delete local branch feature";
     assert_eq!(st.job.as_ref().map(|j| j.label.as_str()), Some(label));
-    assert_eq!(st.pr_cleanup.as_ref().map(|j| j.steps.len()), Some(5));
+    assert_eq!(st.pull_requests.cleanup.as_ref().map(|j| j.steps.len()), Some(5));
 
     // Without the remote delete, only the fetch comes first.
     let (mut st2, _, dirs2) = opened("prc-local-fetch");
@@ -153,7 +153,7 @@ fn a_checked_out_branch_with_changes_is_kept() {
     assert_eq!(git_jobs(&fx), [[PUSH_DELETE, FETCH].map(cmd).to_vec()], "the rest still runs");
     let why = "Kept local branch feature. feature is checked out and the working tree has changes, so main can't be checked out first.";
     assert!(logged(&st).contains(&why), "{:?}", logged(&st));
-    assert!(st.pr_cleanup.is_none());
+    assert!(st.pull_requests.cleanup.is_none());
     done(st, dirs);
 }
 
@@ -196,7 +196,7 @@ fn the_merged_branch_is_deleted_for_real() {
         "{:?}",
         st.toasts.iter().map(|t| &t.text).collect::<Vec<_>>()
     );
-    assert!(st.pr_cleanup.is_none());
+    assert!(st.pull_requests.cleanup.is_none());
     done(st, dirs);
 }
 
@@ -239,7 +239,7 @@ fn a_refused_delete_puts_the_upstream_back() {
     assert_eq!(merge.trim(), "refs/heads/feature", "it tracks the source again, not main");
     let toast = st.toasts.iter().find(|t| !t.ok).map(|t| t.text.as_str()).unwrap_or_default();
     assert!(toast.starts_with("Kept local branch feature: Git didn't delete it."), "{toast}");
-    assert!(st.pr_cleanup.is_none());
+    assert!(st.pull_requests.cleanup.is_none());
     drop(st);
     let _ = std::fs::remove_dir_all(&wt);
     super::tests::cleanup(&[&dirs[0], &dirs[1]]);

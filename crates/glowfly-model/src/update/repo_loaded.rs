@@ -77,6 +77,7 @@ fn loaded(st: &mut AppState, mut snap: Snapshot, kind: LoadKind, now: Instant, f
             super::history::close(st);
             super::blame::close(st);
             super::pull_request::close(st);
+            super::pull_request::head_refs::sweep(st, &snap, fx);
             super::issue::close(st);
             super::rebase::close(st);
             super::journal::close(st);

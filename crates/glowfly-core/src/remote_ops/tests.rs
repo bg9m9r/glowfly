@@ -87,12 +87,21 @@ fn add_cmds_lines() {
 #[test]
 fn fetch_ref_cmd_lines() {
     assert_eq!(
-        fetch_ref_cmd("origin", "refs/pull/7/head", false),
-        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "--no-write-fetch-head", "--", "origin", "refs/pull/7/head"])
+        fetch_ref_cmd("origin", "refs/pull/7/head", "refs/glowfly/pr/7", false),
+        v(&[
+            "fetch",
+            "--no-tags",
+            "--recurse-submodules=no",
+            "--refmap=",
+            "--no-write-fetch-head",
+            "--",
+            "origin",
+            "+refs/pull/7/head:refs/glowfly/pr/7"
+        ])
     );
     assert_eq!(
-        fetch_ref_cmd("up", "refs/merge-requests/3/head", true),
-        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "--", "up", "refs/merge-requests/3/head"])
+        fetch_ref_cmd("up", "refs/merge-requests/3/head", "refs/glowfly/pr/3", true),
+        v(&["fetch", "--no-tags", "--recurse-submodules=no", "--refmap=", "--", "up", "+refs/merge-requests/3/head:refs/glowfly/pr/3"])
     );
 }
 

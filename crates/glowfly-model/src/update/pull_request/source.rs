@@ -2,16 +2,21 @@
 //! remote-tracking tips and the listed head (the runner uses the head when it is already here),
 //! asking again when that key changes, and, when no source tip is here at all (a fork, or a
 //! merged branch that was deleted), fetching the service's head ref once in the background
-//! without prompts, then comparing again. The notes' button fetches it with prompts.
+//! without prompts, then comparing again. The notes' button fetches it with prompts. The fetch
+//! writes the head into `refs/glowfly/pr/<id>`, and a head that was already here is pointed at by
+//! that ref once the files are compared from it, so `git gc` can't prune the commits the panel
+//! shows (head_refs.rs holds and deletes them).
 
 use crate::effect::Effect;
-use crate::pull_request::{FilesJob, HeadJob, PrEffect};
+use crate::pull_request::{FilesJob, HeadJob, HeadRefJob, PrEffect};
 use crate::state::AppState;
 use crate::state::pull_request::source::{HeadFetch, Shown, head_fetch_blocked};
 use crate::state::pull_request::{Files, Tips};
+use git2::Oid;
 use glowfly_core::git_version::Feature;
+use glowfly_core::pr_head_refs::pr_head_ref;
 use glowfly_core::remote_ops::fetch_ref_cmd;
-use glowfly_core::repo::PrCompare;
+use glowfly_core::repo::{PrCompare, SourceFrom};
 
 /// Asks for the files and commits of the open view's key; older results are ignored from now
 /// on. Without the target's tip, or with neither a source branch nor a head, there is nothing
@@ -76,6 +81,11 @@ pub(super) fn files_loaded(st: &mut AppState, id: u64, generation: u64, result: 
         return; // superseded: closed, reopened, the key changed, or parked with its tab
     }
     let Some(view) = st.session.pull_request.view.as_mut().filter(|v| v.pr.id == id) else { return };
+    // A head that was already here (not a branch) is kept by its ref once the files are compared.
+    let kept = match &result {
+        Ok(PrCompare::Loaded { source, .. }) | Ok(PrCompare::Unrelated(source)) if source.from == SourceFrom::Head => Some(source.oid),
+        _ => None,
+    };
     match result {
         Ok(PrCompare::NoSource) => {
             view.files = Files::Missing;
@@ -91,7 +101,20 @@ pub(super) fn files_loaded(st: &mut AppState, id: u64, generation: u64, result: 
             st.log(false, e);
         }
     }
+    if let Some(oid) = kept {
+        keep_head(st, id, oid, fx);
+    }
     super::line_map::sync(st, fx, false);
+}
+
+/// Asks for `refs/glowfly/pr/<id>` to point at the listed head `oid`, which the files were
+/// compared to, once per head. Local libgit2 work: it needs no trust.
+fn keep_head(st: &mut AppState, id: u64, oid: Oid, fx: &mut Vec<Effect>) {
+    let Some(workdir) = st.workdir() else { return };
+    let Some(view) = st.session.pull_request.view.as_mut().filter(|v| v.pr.id == id && v.kept_head != Some(oid)) else { return };
+    view.kept_head = Some(oid);
+    fx.push(Effect::PullRequest(PrEffect::HeadRef(HeadRefJob::Keep { workdir: workdir.clone(), id, oid })));
+    super::head_refs::hold(st, &workdir, id);
 }
 
 /// Fetches the head ref without prompts when the service keeps one, the head is known, the
@@ -117,9 +140,11 @@ fn start(st: &mut AppState, prompts: bool, fx: &mut Vec<Effect>) {
     let write_fetch_head = st.git.blocked(Feature::FetchObjects).is_some();
     let Some(v) = st.session.pull_request.view.as_mut() else { return };
     let (Some(head_ref), Some(head)) = (v.head_ref.clone(), v.files_key().head) else { return };
-    let cmd = fetch_ref_cmd(&v.remote, &head_ref, write_fetch_head);
+    let id = v.pr.id;
+    let cmd = fetch_ref_cmd(&v.remote, &head_ref, &pr_head_ref(id), write_fetch_head);
     v.head_fetch = HeadFetch::Running;
-    fx.push(Effect::PullRequest(PrEffect::FetchHead(HeadJob { workdir, id: v.pr.id, head, cmd, prompts })));
+    fx.push(Effect::PullRequest(PrEffect::FetchHead(HeadJob { workdir: workdir.clone(), id, head, cmd, prompts })));
+    super::head_refs::hold(st, &workdir, id);
 }
 
 /// The notes' "Fetch #7's head" button: fetches with prompts, unless it is disabled.
@@ -134,6 +159,11 @@ pub(super) fn fetch_clicked(st: &mut AppState, fx: &mut Vec<Effect>) {
 /// The head ref fetch's result, for the panel copy that is still waiting for it with the same
 /// listed head: compares again, or notes (and logs) the failure.
 pub(super) fn head_fetched(st: &mut AppState, id: u64, head: String, result: Result<(), String>, fx: &mut Vec<Effect>) {
+    // Before any early return: a fetch answered after its panel closed still wrote the ref, and
+    // `settle` deletes it.
+    if let Some(w) = st.workdir() {
+        super::head_refs::hold(st, &w, id);
+    }
     let Some(v) = st.session.pull_request.view.as_mut() else { return };
     if v.pr.id != id || v.files_key().head.as_deref() != Some(head.as_str()) || v.head_fetch != HeadFetch::Running {
         return;

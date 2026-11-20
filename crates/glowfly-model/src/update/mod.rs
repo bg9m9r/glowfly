@@ -272,6 +272,7 @@ fn update_plain(st: &mut AppState, msg: Msg, now: Instant) -> Vec<Effect> {
     prefs_leave::settle(st);
     app::settle(st, &mut fx);
     hints::settle(st, &mut fx);
+    pull_request::head_refs::settle(st, &mut fx);
     // A form kept under a question that has closed comes back (state/dialog_guard.rs).
     crate::state::dialog_guard::restore(&mut st.modal, &mut st.dialog);
     // Records a dialog that just opened (to tell later whether it was edited) and forgets a

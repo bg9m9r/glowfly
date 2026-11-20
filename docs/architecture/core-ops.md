@@ -24,6 +24,7 @@ source file, update its line here.
 
 ## Command lines and checks (`*_ops.rs`)
 
+- `pr_head_refs.rs`: the `refs/glowfly/pr/<id>` refs that keep a pull request's head while its panel shows it (`keep_head`, `remove_heads` with their reflogs, `sweep_heads` at open), libgit2 only; the head fetch writes the same ref (`remote_ops::fetch_ref_cmd`). Tests: `pr_head_refs/tests.rs`, including one that survives `git gc --prune=now`.
 - `branch_ops.rs`, `tag_ops.rs`, `remote_ops.rs`: command lines and input checks for branches, tags and remotes; branch_ops merges and rebases by full ref, with git's own merge title (`branch_ops/merge_ref_tests.rs` checks both against git).
 - `branch_ref.rs`: `BranchRef`, a local or remote-tracking branch given to git by its full ref and shown by its short name; `MergeNames`, what a merge needs to keep git's own message.
 - `push_all.rs`: Push to all remotes: one branch pushed to every remote in turn, going on past a failure, never forced and setting no upstream.
