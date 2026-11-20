@@ -7,7 +7,7 @@
 use super::super::theme::color::{self, Palette};
 use super::super::theme::contrast;
 use super::super::theme::tokens::motion;
-use super::redraw::{self, REDRAW};
+use super::redraw;
 use eframe::egui::{Painter, Pos2, Rect, Response, Sense, Ui, Vec2, WidgetInfo, WidgetType, emath::GuiRounding, pos2, vec2};
 
 /// A dot's diameter and the distance between dot centres.
@@ -81,7 +81,7 @@ pub fn paint_at(ui: &Ui, c: Pos2) {
     let moving = !motion::reduced(ui.ctx()) && redraw::seen(ui, rect);
     paint(ui.painter(), c, &color::current(), moving.then(|| ui.input(|i| i.time)));
     if moving {
-        ui.ctx().request_repaint_after(REDRAW);
+        redraw::pace(ui.ctx());
     }
 }
 

@@ -36,7 +36,7 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
     }
     if f.loading {
         ui.horizontal(|ui| {
-            ui.spinner();
+            ui.add(crate::widgets::Spinner::new());
             ui.label(RichText::new("Signing in to GitHub…").color(color::weak()));
         });
         ui.add_space(8.0);
@@ -77,7 +77,7 @@ pub fn form(ui: &mut egui::Ui, cx: Cx, f: &mut PublishForm, idle: bool, msgs: &m
     }
     if f.creating {
         ui.horizontal(|ui| {
-            ui.spinner();
+            ui.add(crate::widgets::Spinner::new());
             ui.label(RichText::new("Creating the repository…").color(color::weak()));
         });
     }
