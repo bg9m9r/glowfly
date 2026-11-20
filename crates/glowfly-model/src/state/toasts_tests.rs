@@ -69,6 +69,24 @@ fn a_toast_shown_once_restarts_instead_of_stacking() {
 }
 
 #[test]
+fn a_toast_shown_again_with_new_details_takes_them() {
+    let (mut st, t0) = state();
+    let first = st.toast_action(false, "Push failed", details(), t0);
+    let errors =
+        ToastAction { label: "Details".into(), msg: Box::new(Msg::Logs(LogsMsg::Show(crate::logs::LogKind::Errors))), workdir: None };
+    let again = st.toast_action(false, "Push failed", errors, t0 + secs(1.0));
+    assert_eq!((st.toasts.len(), again), (1, first));
+    let t = &st.toasts[0];
+    assert!(matches!(t.action.as_ref().map(|a| &*a.msg), Some(Msg::Logs(LogsMsg::Show(crate::logs::LogKind::Errors)))));
+    assert!(t.details.is_none());
+    st.toast(false, "Push failed", t0 + secs(2.0));
+    assert!(
+        matches!(st.toasts[0].action.as_ref().map(|a| &*a.msg), Some(Msg::Logs(LogsMsg::Show(crate::logs::LogKind::Errors)))),
+        "a plain toast keeps them"
+    );
+}
+
+#[test]
 fn the_same_toast_twice_restarts_the_first() {
     let (mut st, t0) = state();
     let first = st.toast_action(false, "Push failed", details(), t0);
@@ -80,9 +98,9 @@ fn the_same_toast_twice_restarts_the_first() {
     assert_eq!(texts, [(false, "Push failed"), (true, "Copied"), (true, "Push failed")], "a success with the same words is its own");
     let t = &st.toasts[0];
     assert_eq!(
-        (t.id, t.first, t.at, t.counted, t.action.is_none()),
-        (first, first, later, Duration::ZERO, true),
-        "its Details dropped for the new one"
+        (t.id, t.first, t.at, t.counted, t.action.as_ref().map(|a| a.label.as_str())),
+        (first, first, later, Duration::ZERO, Some("Details")),
+        "its Details kept"
     );
     // A plain toast lasts five seconds: shown again at 3 s, it is still up at 7 s.
     st.toast(true, "Copied", later);
