@@ -214,20 +214,22 @@ fn positions_are_trusted_only_from_this_version() {
     let mut bytes = std::fs::read(&file.path).unwrap();
     patch_version(&mut bytes);
     write_fixed(&file.path, bytes);
-    let (_, stored) = store.load(&file, &never).expect("still a base");
+    let (other, stored) = store.load(&file, &never).expect("still a base");
     assert!(!stored.current);
+    assert!(!other.trusted, "another version's positions are not spliced from");
 
     // An incomplete index built with another cap.
     let capped =
         CommitIndex::from_commits(ix.key().clone(), &[super::tests::info("1111111111111111111111111111111111111111", "s", "", "A", "a@x")])
             .marked_incomplete();
     store.save(&file, &capped).unwrap();
-    assert!(store.load(&file, &never).unwrap().1.current, "today's cap");
+    let (loaded, stored) = store.load(&file, &never).unwrap();
+    assert!(stored.current && loaded.trusted, "today's cap");
     let mut bytes = std::fs::read(&file.path).unwrap();
     bytes[20..24].copy_from_slice(&1234u32.to_le_bytes());
     write_fixed(&file.path, bytes);
-    let (_, stored) = store.load(&file, &never).unwrap();
-    assert!(!stored.complete && !stored.current);
+    let (loaded, stored) = store.load(&file, &never).unwrap();
+    assert!(!stored.complete && !stored.current && !loaded.trusted);
     done(&store, &[&dir]);
 }
 

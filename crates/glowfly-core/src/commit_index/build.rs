@@ -119,7 +119,8 @@ pub(crate) fn build_counted(
 
     let mut out = Builder::new(key.clone(), base);
     let mut counts = Counts::default();
-    let mut splice = base.map(Splice::new);
+    // Only a base whose positions are this version's walk order can have its tail appended.
+    let mut splice = base.filter(|b| b.trusted).map(Splice::new);
     // A commit's committer time, and whether the base holds it.
     let time_in = |oid: Oid| -> Result<(i64, bool)> {
         match base.and_then(|b| b.time_of(oid)) {

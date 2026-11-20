@@ -94,6 +94,10 @@ pub struct CommitIndex {
     key: IndexKey,
     /// False when the walk stopped at the cap (`MAX_INDEXED`) with commits left.
     complete: bool,
+    /// Whether the positions are this version's walk order. A saved index of another Glowfly
+    /// version is not: it is only a base for its texts and parents (an update walks it, never
+    /// appends its tail as it is, `splice.rs`).
+    trusted: bool,
     entries: Vec<Entry>,
     by_oid: HashMap<Oid, u32>,
     /// Every entry's walked parents, one after another.
@@ -218,6 +222,7 @@ impl Builder {
         let ix = CommitIndex {
             key,
             complete: false,
+            trusted: true,
             entries: Vec::new(),
             by_oid: HashMap::new(),
             parents: Vec::new(),

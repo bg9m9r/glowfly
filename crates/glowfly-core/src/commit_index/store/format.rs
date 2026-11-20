@@ -250,7 +250,7 @@ pub(super) fn read(path: &Path, expect_repo: &str, stop: &dyn Fn() -> bool) -> R
     let current = version == app_version() && (complete || h.cap as usize == MAX_INDEXED);
     let key = IndexKey { starts, shallow };
     let stored = Stored { key: key.clone(), len: entries.len(), complete, current };
-    let ix = CommitIndex { key, complete, entries, by_oid, parents, texts, people, person_of };
+    let ix = CommitIndex { key, complete, trusted: current, entries, by_oid, parents, texts, people, person_of };
     Ok((ix, stored))
 }
 

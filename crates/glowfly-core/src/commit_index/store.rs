@@ -5,7 +5,7 @@
 //! One file per repository, named by its resolved common git dir, so every worktree of it shares
 //! the file. A saved index written by this Glowfly version for the same history (`IndexKey`) is
 //! used as it is; any other one is only the base of an update (`build` copies what it holds and
-//! reads the commits it lacks), because its positions may come from another walk. The layout
+//! reads the commits it lacks), because its positions may come from another walk (it is never appended as a tail either). The layout
 //! (`format.rs`) carries a `FORMAT` number: a file of another number is ignored and later
 //! overwritten. A damaged file is deleted.
 //!
