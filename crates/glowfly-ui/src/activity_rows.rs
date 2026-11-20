@@ -92,7 +92,7 @@ pub(super) fn show(ui: &mut Ui, st: &AppState, view: &mut ViewState, msgs: &mut 
 }
 
 /// After a row: a click makes it the keyboard cursor and gives the list the focus. While the
-/// list has the focus its cursor row is ringed, reported as selected and scrolled into view
+/// list has the focus, or the search is stepping through its matches, its cursor row is ringed, reported as selected and scrolled into view
 /// once after a move. Whether `resp` is the cursor row, ringed.
 fn cursor(ui: &mut Ui, view: &mut ViewState, list_focused: bool, id: EntryId, resp: &Response) -> bool {
     if resp.clicked() {
@@ -103,7 +103,7 @@ fn cursor(ui: &mut Ui, view: &mut ViewState, list_focused: bool, id: EntryId, re
     if current && view.activity_focus_scroll {
         ui.scroll_to_rect(resp.rect, None);
     }
-    let on = list_focused && current;
+    let on = (list_focused || view.activity_step) && current;
     if on {
         crate::theme::tokens::focus_ring_inset(ui.painter(), resp.rect, 0);
         super::access::mark_selected(resp);
@@ -258,7 +258,7 @@ fn entry(ui: &mut Ui, st: &AppState, filter: &Filter, i: usize, msgs: &mut Vec<M
     if resp.clicked() && open.is_some() {
         msgs.push(Msg::Logs(LogsMsg::Fold(e.id)));
     }
-    row_menu(&resp, st, e.id, msgs);
+    row_menu(&resp, st, filter.needle(), e.id, msgs);
     if open == Some(true) {
         super::activity_fold::show(ui, st, e, filter.needle(), msgs);
     }
@@ -301,7 +301,7 @@ fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, ms
     if resp.clicked() {
         msgs.push(Msg::Logs(LogsMsg::Fold(id)));
     }
-    row_menu(&resp, st, id, msgs);
+    row_menu(&resp, st, "", id, msgs);
     if open {
         for e in &st.log[first..=last] {
             super::activity_fold::sub_row(ui, st, e);
@@ -311,11 +311,11 @@ fn routine(ui: &mut Ui, st: &AppState, first: usize, last: usize, count: u32, ms
 }
 
 /// A row's right-click menu, below the row: Copy entry (a routine group's `id` copies the whole
-/// group) and Copy log.
-fn row_menu(resp: &Response, st: &AppState, id: EntryId, msgs: &mut Vec<Msg>) {
+/// group) and Copy log (which copies what the filter, whose `search` text this is, shows).
+fn row_menu(resp: &Response, st: &AppState, search: &str, id: EntryId, msgs: &mut Vec<Msg>) {
     let t = st.settings.lang();
     resp.row_menu(|ui| {
         menu_item(msgs, ui, t.tr("logs.activity.menu.copy"), Msg::Logs(LogsMsg::CopyEntry(id)));
-        menu_item_if(msgs, ui, t.tr("logs.activity.menu.copy_log"), copy_log_blocked(st), Msg::Logs(LogsMsg::CopyLog));
+        menu_item_if(msgs, ui, t.tr("logs.activity.menu.copy_log"), copy_log_blocked(st, search), Msg::Logs(LogsMsg::CopyLog));
     });
 }

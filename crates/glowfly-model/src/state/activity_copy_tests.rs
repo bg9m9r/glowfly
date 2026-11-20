@@ -27,6 +27,10 @@ fn state() -> AppState {
     AppState::new(Settings::default(), Vec::new(), Instant::now())
 }
 
+fn blocked(st: &AppState) -> Option<&'static str> {
+    copy_log_blocked(st, &st.view.logs_search)
+}
+
 #[test]
 fn entry_text_for_runs_and_notes() {
     let push = run("Push", true, "Everything up-to-date", Some(1250), "$ git push\nEverything up-to-date\n");
@@ -72,42 +76,115 @@ fn activity_text_has_session_heads() {
     old.earlier = Some(Earlier { session: AT - 100, at: AT });
     let log = vec![old, note(true, "Checked out main")];
     assert_eq!(
-        activity_text(&log, EN, 0),
+        activity_text(&log, &Filter::default(), EN, 0),
         "Earlier session · 2026-03-04 05:04:27 +00:00\n\n\
          Fetched origin · 2026-03-04 05:06:07 +00:00\n\n\
          This session\n\n\
          Checked out main · 2026-03-04 05:06:07 +00:00"
     );
-    assert_eq!(activity_text(&log[1..], EN, 0), "Checked out main · 2026-03-04 05:06:07 +00:00", "no head without earlier sessions");
+    assert_eq!(
+        activity_text(&log[1..], &Filter::default(), EN, 0),
+        "Checked out main · 2026-03-04 05:06:07 +00:00",
+        "no head without earlier sessions"
+    );
 }
 
 #[test]
 fn file_text_and_blocked_reasons() {
     let lines = vec!["one".to_owned(), "two".to_owned()];
     let cut = LogTail { lines: lines.clone(), truncated: true };
-    assert_eq!(file_text(&cut, EN), "(Earlier lines of this file are left out. Export logs has all of it.)\none\ntwo");
-    assert_eq!(file_text(&LogTail { lines, truncated: false }, EN), "one\ntwo");
+    assert_eq!(file_text(&cut, "", EN).0, "(Earlier lines of this file are left out. Export logs has all of it.)\none\ntwo");
+    assert_eq!(file_text(&LogTail { lines, truncated: false }, "", EN), ("one\ntwo".to_owned(), 2));
 
     let empty = Some("There is nothing in this log yet.");
     let reading = Some("The log is still being read.");
     let mut st = state();
     st.log.clear();
-    assert_eq!(copy_log_blocked(&st), empty);
+    assert_eq!(blocked(&st), empty);
     assert_eq!(log_text(&st), None);
     st.log.push(note(true, "Checked out main"));
-    assert_eq!(copy_log_blocked(&st), None);
+    assert_eq!(blocked(&st), None);
     assert_eq!(log_text(&st).map(|(_, n)| n), Some(1));
 
     st.logs.tab = LogKind::Errors;
     st.logs.file = Some(LogFileView { kind: LogKind::Errors, tail: None });
-    assert_eq!(copy_log_blocked(&st), reading);
+    assert_eq!(blocked(&st), reading);
     st.logs.file = Some(LogFileView { kind: LogKind::Performance, tail: Some(Ok(cut.clone())) });
-    assert_eq!(copy_log_blocked(&st), reading, "a view of another kind is still being replaced");
+    assert_eq!(blocked(&st), reading, "a view of another kind is still being replaced");
     st.logs.file = Some(LogFileView { kind: LogKind::Errors, tail: Some(Err("denied".into())) });
-    assert_eq!(copy_log_blocked(&st), empty);
+    assert_eq!(blocked(&st), empty);
     st.logs.file = Some(LogFileView { kind: LogKind::Errors, tail: Some(Ok(LogTail::default())) });
-    assert_eq!(copy_log_blocked(&st), empty);
+    assert_eq!(blocked(&st), empty);
     st.logs.file = Some(LogFileView { kind: LogKind::Errors, tail: Some(Ok(cut.clone())) });
-    assert_eq!(copy_log_blocked(&st), None);
-    assert_eq!(log_text(&st), Some((file_text(&cut, EN), 2)));
+    assert_eq!(blocked(&st), None);
+    assert_eq!(log_text(&st), Some((file_text(&cut, "", EN).0, 2)));
+}
+
+#[test]
+fn copy_log_copies_only_the_shown_rows() {
+    let mut old = note(true, "Earlier note");
+    old.earlier = Some(Earlier { session: AT - 100, at: AT });
+    let push = run("Push", true, "Pushed", None, "$ git push");
+    let pull = run("Pull", false, "Rejected", None, "$ git pull");
+    let mut st = state();
+    st.log = vec![old, push.clone(), pull.clone(), auto(AT + 60), auto(AT + 120)];
+    st.logs.failures_only = true;
+    // The only failure is this session's: no session head shows above it.
+    assert_eq!(log_text(&st), Some((entry_text(&pull, EN, 0), 1)));
+    st.logs.failures_only = false;
+    st.view.logs_search = "push".into();
+    assert_eq!(log_text(&st), Some((entry_text(&push, EN, 0), 1)));
+    st.view.logs_search = "earlier".into();
+    let (text, n) = log_text(&st).unwrap();
+    assert_eq!(n, 1);
+    assert!(text.starts_with("Earlier session · "), "{text}");
+    st.view.logs_search = "fetch".into();
+    let (text, n) = log_text(&st).unwrap();
+    assert_eq!(n, 2);
+    assert_eq!(
+        text,
+        format!(
+            "{}
+
+{}",
+            entry_text(&st.log[3], EN, 0),
+            entry_text(&st.log[4], EN, 0)
+        )
+    );
+    st.view.logs_search.clear();
+    let (text, n) = log_text(&st).unwrap();
+    assert_eq!(n, st.log.len());
+    assert_eq!(text, activity_text(&st.log, &Filter::default(), EN, 0));
+    assert!(text.contains("Earlier session"), "the whole log keeps its heads");
+}
+
+#[test]
+fn copy_log_of_a_searched_file_tab() {
+    let tail = LogTail { lines: ["one", "two", "three"].map(String::from).to_vec(), truncated: true };
+    let mut st = state();
+    st.logs.tab = LogKind::Errors;
+    st.logs.file = Some(LogFileView { kind: LogKind::Errors, tail: Some(Ok(tail.clone())) });
+    st.view.logs_search = "two".into();
+    let cut = EN.tr("logs.copy.cut");
+    assert_eq!(
+        log_text(&st),
+        Some((
+            format!(
+                "{cut}
+two"
+            ),
+            1
+        ))
+    );
+    st.view.logs_search.clear();
+    assert_eq!(log_text(&st), Some((file_text(&tail, "", EN).0, 3)));
+    st.view.logs_search = "zzz".into();
+    assert_eq!(blocked(&st), Some(EN.tr("logs.header.copy_log.filtered")));
+    assert_eq!(log_text(&st), None);
+    st.logs.tab = LogKind::Activity;
+    st.logs.failures_only = true;
+    st.view.logs_search.clear();
+    st.log = vec![note(true, "fine")];
+    assert_eq!(blocked(&st), Some(EN.tr("logs.header.copy_log.filtered")));
+    assert_eq!(log_text(&st), None);
 }

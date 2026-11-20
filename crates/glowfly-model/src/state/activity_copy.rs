@@ -1,8 +1,10 @@
 //! What the logs panel's Copy entry and Copy log put on the clipboard: plain text with LF line
 //! ends, times as "YYYY-MM-DD HH:MM:SS +HH:MM" whatever the date-format setting, so a bug report
-//! reads the same everywhere. Pure; update/logs_copy.rs copies it.
+//! reads the same everywhere. Copy log copies what the panel's filter shows: the shown rows of
+//! the activity log, the matching lines of a file tab. Pure; update/logs_copy.rs copies it.
 
 use super::AppState;
+use super::activity_filter::{Filter, filtered_rows, line_count, match_count, matching_lines};
 use super::activity_rows::{ActivityRow, SessionHead, output_of, routine_ok, rows, title_of};
 use super::logs::{EntryId, LogEntry};
 use crate::logs::LogKind;
@@ -64,10 +66,10 @@ pub fn entry_copy(log: &[LogEntry], id: EntryId, grouped: bool, t: Lang, utc_off
     Some(entry_text(&log[i], t, utc_offset))
 }
 
-/// Everything a tab's log shows, oldest first: session headers as a line, each entry and group
-/// as its block, with a blank line between them.
-pub(crate) fn activity_text(log: &[LogEntry], t: Lang, utc_offset: i32) -> String {
-    let blocks: Vec<String> = rows(log)
+/// Everything a tab's log shows under `f`, oldest first: session headers as a line, each entry
+/// and group as its block, with a blank line between them.
+pub(crate) fn activity_text(log: &[LogEntry], f: &Filter, t: Lang, utc_offset: i32) -> String {
+    let blocks: Vec<String> = filtered_rows(log, f)
         .into_iter()
         .map(|row| match row {
             ActivityRow::Session(SessionHead::Earlier(s)) => t.trf("logs.activity.earlier_session", &[("date", &stamp(s, utc_offset))]),
@@ -79,11 +81,14 @@ pub(crate) fn activity_text(log: &[LogEntry], t: Lang, utc_offset: i32) -> Strin
     blocks.join("\n\n")
 }
 
-/// An error or performance log's lines as its tab shows them, after a note when the start of
-/// the file was left out.
-pub fn file_text(tail: &LogTail, t: Lang) -> String {
+/// An error or performance log's lines as its tab shows them (only those with the lowercase
+/// `needle`, all with none), after a note when the start of the file was left out. Also how many
+/// lines that is.
+pub fn file_text(tail: &LogTail, needle: &str, t: Lang) -> (String, usize) {
     let cut = tail.truncated.then(|| t.tr("logs.copy.cut"));
-    cut.into_iter().chain(tail.lines.iter().map(String::as_str)).collect::<Vec<_>>().join("\n")
+    let shown = matching_lines(&tail.lines, needle);
+    let lines = shown.iter().map(|&i| tail.lines[i].as_str());
+    (cut.into_iter().chain(lines).collect::<Vec<_>>().join("\n"), shown.len())
 }
 
 /// The tail the current file tab shows: None while it is read; Err for a failed read.
@@ -91,33 +96,44 @@ fn shown_tail(st: &AppState) -> Option<&Result<LogTail, String>> {
     st.logs.file.as_ref().filter(|v| v.kind == st.logs.tab).and_then(|v| v.tail.as_ref())
 }
 
-/// Why Copy log can't copy the current tab yet; None when it can.
-pub fn copy_log_blocked(st: &AppState) -> Option<&'static str> {
+/// Why Copy log can't copy the current tab yet; None when it can. `search` is the panel's search
+/// text (`ViewState::logs_search`, which the views are given, not read from `st`).
+pub fn copy_log_blocked(st: &AppState, search: &str) -> Option<&'static str> {
     let t = st.settings.lang();
     let empty = Some(t.tr("logs.header.copy_log.empty"));
+    let nothing = Some(t.tr("logs.header.copy_log.filtered"));
     match st.logs.tab {
         LogKind::Activity if st.log.is_empty() => empty,
-        LogKind::Activity => None,
+        LogKind::Activity => match match_count(&st.log, &Filter::new(st.logs.failures_only, search)) {
+            Some(c) if c.shown == 0 => nothing,
+            _ => None,
+        },
         _ => match shown_tail(st) {
             None => Some(t.tr("logs.header.copy_log.reading")),
             Some(Err(_)) => empty,
             Some(Ok(tail)) if tail.lines.is_empty() => empty,
+            Some(Ok(tail)) if line_count(&tail.lines, Filter::new(false, search).needle()).is_some_and(|c| c.shown == 0) => nothing,
             Some(Ok(_)) => None,
         },
     }
 }
 
-/// What Copy log copies for the current tab, and how many entries or lines it holds. None when
-/// `copy_log_blocked`.
+/// What Copy log copies for the current tab (only what its filter shows), and how many entries or
+/// lines that is. None when `copy_log_blocked`.
 pub fn log_text(st: &AppState) -> Option<(String, usize)> {
-    if copy_log_blocked(st).is_some() {
+    let search = st.view.logs_search.as_str();
+    if copy_log_blocked(st, search).is_some() {
         return None;
     }
     let t = st.settings.lang();
     match st.logs.tab {
-        LogKind::Activity => Some((activity_text(&st.log, t, st.cues.utc_offset), st.log.len())),
+        LogKind::Activity => {
+            let f = Filter::new(st.logs.failures_only, search);
+            let count = match_count(&st.log, &f).map_or(st.log.len(), |c| c.shown);
+            Some((activity_text(&st.log, &f, t, st.cues.utc_offset), count))
+        }
         _ => match shown_tail(st)? {
-            Ok(tail) => Some((file_text(tail, t), tail.lines.len())),
+            Ok(tail) => Some(file_text(tail, Filter::new(false, search).needle(), t)),
             Err(_) => None,
         },
     }

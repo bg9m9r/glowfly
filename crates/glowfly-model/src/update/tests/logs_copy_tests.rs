@@ -7,6 +7,7 @@ use crate::logs::{LogKind, LogsMsg};
 use crate::msg::Msg;
 use crate::state::AppState;
 use crate::state::activity_copy::{activity_text, entry_text};
+use crate::state::activity_filter::Filter;
 use crate::state::logs::{EntryId, LogEntry, LogFileView};
 use glowfly_core::i18n::Lang;
 use glowfly_core::logs::{LogTail, RunInfo};
@@ -60,7 +61,7 @@ fn copy_log_activity_and_file_tabs() {
     }
     let toasts = st.toasts.len();
     // Before the copy: its toast then adds a line of its own.
-    let want = activity_text(&st.log, Lang::En, 0);
+    let want = activity_text(&st.log, &Filter::default(), Lang::En, 0);
     let fx = logs(&mut st, LogsMsg::CopyLog);
     assert_eq!(copied(&fx), [want.as_str()]);
     assert_eq!(st.toasts.len(), toasts + 1);

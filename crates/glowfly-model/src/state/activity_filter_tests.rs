@@ -143,3 +143,44 @@ fn matching_lines_filters_a_tail() {
     assert_eq!(matching_lines(&lines, "theme"), [1]);
     assert!(matching_lines(&lines, "zzz").is_empty());
 }
+
+#[test]
+fn match_count_and_line_count() {
+    let log = [note(true, "ok note"), run("Pull", false, "Rejected", "x"), run("Push", true, "", "y"), auto("a"), auto("b")];
+    assert_eq!(match_count(&log, &f(false, "")), None);
+    assert_eq!(match_count(&log, &f(false, "  ")), None);
+    let c = match_count(&log, &f(true, "")).unwrap();
+    assert_eq!(c, MatchCount { shown: 1, total: 5 });
+    assert_eq!(c.hidden(), 4);
+    let fetches = match_count(&log, &f(false, "fetch")).unwrap();
+    assert_eq!(fetches.shown, 2, "each auto-fetch counts on its own");
+    let lines: Vec<String> = ["one", "two", "three"].map(String::from).to_vec();
+    assert_eq!(line_count(&lines, ""), None);
+    assert_eq!(line_count(&lines, "two"), Some(MatchCount { shown: 1, total: 3 }));
+}
+
+#[test]
+fn step_from_wraps_and_starts_from_the_cursor() {
+    // Shown: indexes 1, 3 and 4 (failures).
+    let log = [note(true, "a"), note(false, "b"), note(true, "c"), note(false, "d"), note(false, "e")];
+    let id = |i: usize| log[i].id;
+    let fail = f(true, "");
+    assert_eq!(step_from(&log, &fail, None, false), Some(id(1)));
+    assert_eq!(step_from(&log, &fail, None, true), Some(id(4)));
+    assert_eq!(step_from(&log, &fail, Some(id(1)), false), Some(id(3)));
+    assert_eq!(step_from(&log, &fail, Some(id(4)), false), Some(id(1)));
+    assert_eq!(step_from(&log, &fail, Some(id(3)), true), Some(id(1)));
+    assert_eq!(step_from(&log, &fail, Some(id(1)), true), Some(id(4)));
+    // From a hidden entry.
+    assert_eq!(step_from(&log, &fail, Some(id(2)), false), Some(id(3)));
+    assert_eq!(step_from(&log, &fail, Some(id(2)), true), Some(id(1)));
+    assert_eq!(step_from(&log, &fail, Some(id(0)), true), Some(id(4)), "wraps to the last");
+    let log2 = [note(false, "x"), note(true, "y")];
+    assert_eq!(step_from(&log2, &fail, Some(log2[1].id), false), Some(log2[0].id), "wraps to the first");
+    assert_eq!(step_from(&log, &f(false, ""), None, false), None);
+    assert_eq!(step_from(&log, &f(false, "nothing like this"), None, false), None);
+    assert_eq!(place(&log, &fail, id(1)), Some(1));
+    assert_eq!(place(&log, &fail, id(4)), Some(3));
+    assert_eq!(place(&log, &fail, id(2)), None);
+    assert_eq!(place(&log, &f(false, ""), id(1)), None);
+}

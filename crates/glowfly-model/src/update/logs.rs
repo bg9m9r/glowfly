@@ -2,12 +2,15 @@
 //! the panel's tabs, the logs folder and extended logging. The runner's log worker does the
 //! file work and stamps the times (runner/logs.rs). Finished jobs, open rows and fixes are in
 //! update/logs_runs.rs; the filters, folding and the list's keys in update/logs_filter.rs; Copy
-//! entry and Copy log in update/logs_copy.rs; Export logs in update/logs_export.rs.
+//! entry and Copy log in update/logs_copy.rs; Export logs in update/logs_export.rs. Clear asks
+//! first while the filter hides entries (`clear_or_ask`, then `LogsMsg::ClearConfirmed`).
 
 use crate::effect::Effect;
 use crate::logs::{EarlierLog, LogKind, LogsEffect, LogsMsg};
-use crate::state::AppState;
+use crate::msg::Msg;
+use crate::state::activity_filter::{Filter, match_count};
 use crate::state::logs::{LogFileView, Persist};
+use crate::state::{AppState, Modal};
 use glowfly_core::logs::{git_run_line, same_repo};
 use std::time::Instant;
 
@@ -58,6 +61,8 @@ pub(super) fn handle(st: &mut AppState, m: LogsMsg, now: Instant, fx: &mut Vec<E
             st.logs.dismissed.insert(id);
         }
         LogsMsg::Fold(id) => super::logs_filter::fold(st, id),
+        LogsMsg::Step { back } => super::logs_filter::step(st, back),
+        LogsMsg::ClearConfirmed => clear(st, fx),
         LogsMsg::SetFailuresOnly(on) => super::logs_filter::set_failures_only(st, on),
         LogsMsg::SearchChanged => super::logs_filter::search_changed(st),
         LogsMsg::RowKey(key) => super::logs_filter::row_key(st, key),
@@ -97,6 +102,7 @@ fn persistence_off(st: &mut AppState) {
 pub(super) fn show(st: &mut AppState, kind: LogKind, fx: &mut Vec<Effect>) {
     st.view.show_log = true;
     st.logs.tab = kind;
+    st.view.activity_step = false;
     if kind == LogKind::Activity {
         return;
     }
@@ -105,9 +111,29 @@ pub(super) fn show(st: &mut AppState, kind: LogKind, fx: &mut Vec<Effect>) {
     fx.push(Effect::Logs(LogsEffect::ReadFile { kind, generation: st.logs.file_gen }));
 }
 
-/// The activity panel's Clear: empties the active tab's log, earlier sessions' entries too,
+/// The activity panel's Clear button: clears at once, or asks first while the filter hides some
+/// of the log's entries (they would go too).
+pub(super) fn clear_or_ask(st: &mut AppState, fx: &mut Vec<Effect>) {
+    let f = Filter::new(st.logs.failures_only, &st.view.logs_search);
+    if let Some(c) = match_count(&st.log, &f).filter(|c| c.hidden() > 0) {
+        let t = st.settings.lang();
+        let body = if c.shown == 0 {
+            t.trn("logs.clear.confirm.all", c.total, &[])
+        } else {
+            t.trn("logs.clear.confirm.body", c.hidden(), &[("total", &c.total)])
+        };
+        let ok = t.tr("logs.clear.confirm.button");
+        st.modal = Some(Modal::danger(t.tr("logs.clear.confirm.title"), body, ok, Msg::Logs(LogsMsg::ClearConfirmed)));
+        return;
+    }
+    clear(st, fx);
+}
+
+/// Empties the active tab's log, earlier sessions' entries too,
 /// and removes its repository's lines from the file. Other tabs keep theirs.
 pub(super) fn clear(st: &mut AppState, fx: &mut Vec<Effect>) {
+    st.logs.step_opened = None;
+    st.view.activity_step = false;
     let tag = st.tabs.get(st.active_tab).and_then(|t| t.path.clone());
     let cleared: std::collections::HashSet<_> = st.log.drain(..).map(|e| e.id).collect();
     st.logs.open.retain(|id| !cleared.contains(id));

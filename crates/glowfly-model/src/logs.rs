@@ -93,6 +93,12 @@ pub enum LogsMsg {
     SetFailuresOnly(bool),
     /// The search text (`ViewState::logs_search`) changed or was cleared.
     SearchChanged,
+    /// Enter / Shift+Enter in the search field and the header's Next / Previous match: move the
+    /// activity list's cursor to the next (previous) shown row, wrapping, and open it.
+    Step { back: bool },
+    /// The Clear confirmation's button: clear the active tab's whole activity log, whatever the
+    /// filter hides.
+    ClearConfirmed,
     /// A key of the focused activity list: moves the keyboard cursor, or folds its row.
     RowKey(crate::state::list_keys::ListKey),
     /// Run a failed run's fix: the panel's button, and the failure toast's.
@@ -137,6 +143,8 @@ impl LogsMsg {
             | Self::Fold(_)
             | Self::SetFailuresOnly(_)
             | Self::SearchChanged
+            | Self::Step { .. }
+            | Self::ClearConfirmed
             | Self::RowKey(_)
             | Self::Fix(_)
             | Self::AltFix(_)
