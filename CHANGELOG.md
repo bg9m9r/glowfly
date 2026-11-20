@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.6.0-rc.1...v0.7.0-rc.1) (2026-11-20)
+
+
+### Features
+
+* keep a fetched pull request head under refs/glowfly/pr/ID while its panel shows it ([665b575](https://github.com/bg9m9r/glowfly/commit/665b575c38cb4b1e87da6363e5cfe20a2238cde8)), closes [#954](https://github.com/bg9m9r/glowfly/issues/954)
+
+
+### Bug fixes
+
+* desktop notifications name a tab by its label, and a toast shown again keeps its Details ([42b3c7e](https://github.com/bg9m9r/glowfly/commit/42b3c7e89eee469f4b19c6a5040ee81b8bfaebca)), closes [#894](https://github.com/bg9m9r/glowfly/issues/894)
+* Git Flow and sparse checkout show "Saved" only when their job succeeds ([380f9da](https://github.com/bg9m9r/glowfly/commit/380f9da3232ca765e17ea4c9e216a843a954c474)), closes [#951](https://github.com/bg9m9r/glowfly/issues/951)
+* keep the staged selection when a stash goes back over staged changes ([449c671](https://github.com/bg9m9r/glowfly/commit/449c6713dca026e90ee678b4cfb062c2b50a9cf3)), closes [#950](https://github.com/bg9m9r/glowfly/issues/950)
+* retry trying a copied helper while the system finds it busy ([c8885e3](https://github.com/bg9m9r/glowfly/commit/c8885e38cd896846b37b9faec8deda7a3326d530)), closes [#949](https://github.com/bg9m9r/glowfly/issues/949)
+* review findings for Git Flow and sparse checkout show "Saved" only when their job succeeds ([2a60fca](https://github.com/bg9m9r/glowfly/commit/2a60fcacf5b3e5d84ca444253e9ea379ab5d93f4))
+* the Add repositories picker keeps its group by name, so a settings re-read can't redirect it ([728cb21](https://github.com/bg9m9r/glowfly/commit/728cb21e388333bdbdf85bb9c50d1de8e2f48218)), closes [#952](https://github.com/bg9m9r/glowfly/issues/952)
+
 ## [0.6.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.5.0-rc.1...v0.6.0-rc.1) (2026-11-20)
 
 
