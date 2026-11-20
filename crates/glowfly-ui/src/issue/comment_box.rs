@@ -17,6 +17,8 @@ use glowfly_model::state::issue_comment::{CommentFields, FIELD, comment_blocked,
 
 /// The tallest the draft gets before it scrolls.
 const MAX_FIELD_H: f32 = 160.0;
+/// The field's name, the button's label and its tooltip.
+const COMMENT: &str = "Comment";
 
 /// Draws the box for panel `v` from `f`, the frame's copy of its draft (sent back by the
 /// caller); `focus` puts the cursor at the end of the draft (after a Reply).
@@ -35,7 +37,7 @@ pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &IssueView, f: &mut CommentFie
         controls::field(ui, edit)
     });
     let r = r.inner;
-    access::name_field(&r, "Comment");
+    access::name_field(&r, COMMENT);
     form_message::track(&mut f.touched, FIELD, &r);
     if focus {
         r.request_focus();
@@ -51,8 +53,8 @@ pub(super) fn show(ui: &mut Ui, keys: &Keymap, v: &IssueView, f: &mut CommentFie
     let blocked = comment_blocked(v, trusted);
     // The key is read first, so it is consumed even when posting is blocked.
     let keyed = send_key(ui, &r) && blocked.is_none();
-    let label = if posting { "Posting…" } else { "Comment" };
-    let tip = keys.tip("Comment", BindingId::SendPrText);
+    let label = if posting { "Posting…" } else { COMMENT };
+    let tip = keys.tip(COMMENT, BindingId::SendPrText);
     let clicked = ui.add(buttons::secondary(label).enabled(blocked.is_none()).tip(&tip).why(blocked.as_deref())).clicked();
     if clicked || keyed {
         msgs.push(Msg::Issue(IssueMsg::PostComment));
