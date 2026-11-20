@@ -222,7 +222,9 @@ fn move_back_results() {
     assert_eq!(st.toasts.len(), toasts, "no new toast");
     assert!(st.ff_checkout.is_none());
 
-    let (mut st, dir2, _, _) = behind("ffc-results-failed");
+    // A second repository has its own commits (their ids depend on the clock), so read them anew.
+    let (mut st, dir2, a, b) = behind("ffc-results-failed");
+    let (a7, b7) = (&a.to_string()[..7], &b.to_string()[..7]);
     let cmds = start(&mut st);
     done(&mut st, false, output(&cmds, 3, UNTRACKED));
     let refusal = "The repository changed since it was shown (refs/heads/feature is now abc, not def), so nothing was done.";
