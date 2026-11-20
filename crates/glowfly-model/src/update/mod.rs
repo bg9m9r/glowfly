@@ -184,6 +184,7 @@ mod tool_compare;
 mod tool_git;
 mod tools;
 mod trello;
+mod trello_sign_in;
 pub mod trust;
 mod trust_inherit;
 mod trust_revoke;

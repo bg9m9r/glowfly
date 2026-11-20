@@ -73,6 +73,9 @@ pub(super) fn handle(st: &mut AppState, msg: ForgeMsg, now: Instant, fx: &mut Ve
         ForgeMsg::ShowTrackerPage => super::prefs_nav::enter_page(st, PrefPage::RepoTracker, fx),
         ForgeMsg::LoadTrelloBoards(account) => super::trello::load_boards(st, account, fx),
         ForgeMsg::TrelloBoardsLoaded { account, result } => super::trello::boards_loaded(st, account, result),
+        ForgeMsg::StartTrelloSignIn => super::trello_sign_in::start(st, now, fx),
+        ForgeMsg::CancelTrelloSignIn => super::trello_sign_in::cancel(st, fx),
+        ForgeMsg::TrelloSignInEnded { started, key, result } => super::trello_sign_in::ended(st, started, key, result, now, fx),
     }
 }
 
@@ -347,6 +350,7 @@ fn connected(
             }
             refresh(st, true, false, now, fx);
             super::dashboard::account_changed(st, &account, fx);
+            super::trello_sign_in::connected(st, &account);
         }
         Err(e) => {
             let t = st.settings.lang();

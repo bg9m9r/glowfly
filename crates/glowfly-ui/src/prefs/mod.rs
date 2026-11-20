@@ -42,6 +42,7 @@ mod theme_picker;
 mod theme_row;
 mod tools;
 mod trello;
+mod trello_sign_in;
 mod trusted_network;
 mod trusted_repos;
 mod trusted_repos_row;
@@ -204,7 +205,7 @@ pub fn show(ctx: &egui::Context, st: &AppState, view: &mut ViewState, msgs: &mut
                     PrefPage::Git => git_program::git_program_page(ui, settings, git_state, msgs),
                     PrefPage::Integrations => {
                         let form = integrations::SignIn { prefs, fields: &mut fields, token: &mut secrets.int_token };
-                        integrations::integration_page(ui, settings, form, fs, msgs)
+                        integrations::integration_page(ui, settings, form, fs, workdir.as_deref(), msgs)
                     }
                     PrefPage::RepoTracker => {
                         integrations::tracker_page(ui, settings, prefs, &mut fields.jira_project, fs, workdir.as_deref(), msgs)

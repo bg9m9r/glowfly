@@ -126,6 +126,7 @@ pub(crate) mod testutil;
 pub mod text;
 pub mod tls_config;
 pub(crate) mod tree_files;
+pub mod trello_sign_in;
 pub mod trust;
 pub mod undo;
 pub mod url_scheme;

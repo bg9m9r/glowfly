@@ -92,6 +92,8 @@ pub enum StopKey {
     Content(u64),
     /// The download of Glowfly's own update (`UpdateEffect::Download`).
     UpdateDownload,
+    /// Sign in with Trello's wait for Trello's answer (`AccountEffect::TrelloSignIn`).
+    TrelloSignIn,
 }
 
 impl Effect {
