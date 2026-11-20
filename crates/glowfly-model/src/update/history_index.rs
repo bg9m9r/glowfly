@@ -9,11 +9,21 @@
 //! an update of an index in memory starts at once. A tab parked for `PARKED_FREE_AFTER` frees a
 //! large index, and asks for it again (through the same wait) when shown. The runner reads the
 //! saved index before a build without a base and saves the result (runner/index_disk.rs).
+//!
+//! A very large history (`ON_DEMAND_MIN_COMMITS` or more commits by git's commit-graph count,
+//! read once per repository by `IndexEffect::Count`) has no first-build delay: its first build
+//! waits until search is first used (`want_build` runs from `query_changed`), then starts at
+//! once. Reading the saved index is on-demand too: it costs the same memory as a build (the saved
+//! file becomes the same in-memory index), and the runner reads it only inside
+//! `IndexEffect::Build`, which isn't sent before search is used. An unknown count (no
+//! commit-graph files) keeps the delayed build.
 
 use crate::effect::{Effect, IndexEffect};
 use crate::state::AppState;
 use crate::state::error_words::typed;
-use crate::state::history_index::{BuildDelay, Building, FIRST_BUILD_DELAY, FREE_MIN_COMMITS, HistoryIndex, PARKED_FREE_AFTER};
+use crate::state::history_index::{
+    BuildDelay, Building, FIRST_BUILD_DELAY, FREE_MIN_COMMITS, HistoryIndex, ON_DEMAND_MIN_COMMITS, PARKED_FREE_AFTER, SizeRead,
+};
 use glowfly_core::commit_index::{CommitIndex, IndexKey};
 use glowfly_core::error::ReadFailed;
 use glowfly_core::i18n::Lang;
@@ -38,7 +48,10 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     if !st.settings.index_history || !snap.truncated {
         return;
     }
+    // Search used with a query the index can answer releases a very large history's first build.
+    let searching = st.session.search.active() && !st.session.search.query.has_paths();
     let ix = &mut st.session.search.index;
+    ix.demanded |= searching;
     let covered = |k: &IndexKey| k.covers(snap);
     if ix.ready.as_ref().is_some_and(|r| covered(r.key()))
         || ix.building.as_ref().is_some_and(|b| covered(&b.key))
@@ -46,11 +59,8 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     {
         return;
     }
-    // A first build (nothing in memory to update) waits for the tab to settle.
-    if ix.ready.is_none() && ix.delay != BuildDelay::Passed {
-        if ix.delay == BuildDelay::Idle {
-            ix.delay = BuildDelay::Wanted;
-        }
+    // A first build (nothing in memory to update) waits for the tab to settle, or for search.
+    if ix.ready.is_none() && !first_build_due(ix, &snap.workdir, fx) {
         return;
     }
     let key = IndexKey::of(snap);
@@ -61,6 +71,47 @@ pub(super) fn want_build(st: &mut AppState, fx: &mut Vec<Effect>) {
     let fresh = base.as_ref().is_none_or(|b| !b.complete() || b.key().shallow != key.shallow);
     ix.building = Some(Building { build: ix.builds, key: key.clone(), indexed: 0, estimate: None, fresh });
     fx.push(Effect::Index(IndexEffect::Build { workdir: snap.workdir.clone(), build: ix.builds, key, base }));
+}
+
+/// Whether a first build (no index in memory) may start now. The repository's size is read once
+/// (`IndexEffect::Count`). A history of `ON_DEMAND_MIN_COMMITS` or more waits for search and then
+/// starts at once. Any other history (or an unknown size) waits `FIRST_BUILD_DELAY`, and past it,
+/// for a count still being read.
+fn first_build_due(ix: &mut HistoryIndex, workdir: &Path, fx: &mut Vec<Effect>) -> bool {
+    if ix.size == SizeRead::Unread {
+        ix.size = SizeRead::Reading;
+        fx.push(Effect::Index(IndexEffect::Count { workdir: workdir.to_path_buf() }));
+    }
+    if ix.size.on_demand() {
+        // Nothing to wait for until search is used; then no delay. Idle drops a wait started
+        // before the count arrived.
+        ix.delay = if ix.demanded { BuildDelay::Passed } else { BuildDelay::Idle };
+        return ix.demanded;
+    }
+    if ix.delay != BuildDelay::Passed {
+        if ix.delay == BuildDelay::Idle {
+            ix.delay = BuildDelay::Wanted;
+        }
+        return false;
+    }
+    ix.size != SizeRead::Reading
+}
+
+/// The repository's commit-graph count arrived (`IndexEffect::Count`): a very large history waits
+/// for search, any other builds after its delay. The message is scoped to this tab's repository,
+/// and a second read gives the same value, so it is taken in any state.
+pub(super) fn counted(st: &mut AppState, estimate: Option<usize>, fx: &mut Vec<Effect>) {
+    let size = SizeRead::Read(estimate);
+    if size.on_demand() {
+        tracing::debug!(
+            workdir = ?st.session.search.index.workdir,
+            commits = ?estimate,
+            threshold = ON_DEMAND_MIN_COMMITS,
+            "very large history: its index builds on first search"
+        );
+    }
+    st.session.search.index.size = size;
+    want_build(st, fx);
 }
 
 /// A tick at `t`: the active tab's delayed build starts once due, and a parked tab's large index

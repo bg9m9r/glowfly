@@ -1,5 +1,5 @@
 //! The whole-history search index (runner/index.rs): building or updating a tab's index, asking
-//! it for a query's matches, and forgetting a tab's build. Reads only (libgit2, no program runs),
+//! it for a query's matches, counting a repository's commits, and forgetting a tab's build. Reads only (libgit2, no program runs),
 //! apart from the index's saved copy in the cache folder, scoped to the repository's tab.
 
 use super::EffectMeta;
@@ -31,6 +31,10 @@ pub enum IndexEffect {
     /// large to match on the UI thread; reported as `SearchMsg::LoadedMatched` with `request`. A
     /// newer one replaces one still waiting, as for Query (on a worker of its own).
     MatchLoaded { workdir: PathBuf, request: u64, commits: Shared, query: CommitQuery },
+    /// About how many commits the repository has, from git's commit-graph files
+    /// (`commit_index::estimate::of_workdir`), reported as `SearchMsg::IndexCounted`. Reads only
+    /// those files.
+    Count { workdir: PathBuf },
     /// The tab closed, opened another repository or turned indexing off: stops its build, waiting
     /// or running. Reports nothing.
     Forget { workdir: PathBuf },
@@ -52,6 +56,7 @@ impl EffectMeta for IndexEffect {
             IndexEffect::Build { .. } => "index-build",
             IndexEffect::Query { .. } => "index-query",
             IndexEffect::MatchLoaded { .. } => "match-loaded",
+            IndexEffect::Count { .. } => "index-count",
             IndexEffect::Forget { .. } => "index-forget",
         }
     }
@@ -61,6 +66,7 @@ impl EffectMeta for IndexEffect {
             IndexEffect::Build { workdir, .. }
             | IndexEffect::Query { workdir, .. }
             | IndexEffect::MatchLoaded { workdir, .. }
+            | IndexEffect::Count { workdir }
             | IndexEffect::Forget { workdir } => Some(workdir),
         }
     }
@@ -68,7 +74,11 @@ impl EffectMeta for IndexEffect {
     /// Whether the runner times it for the performance log.
     fn timed(&self) -> bool {
         match self {
-            IndexEffect::Build { .. } | IndexEffect::Query { .. } | IndexEffect::MatchLoaded { .. } | IndexEffect::Forget { .. } => true,
+            IndexEffect::Build { .. }
+            | IndexEffect::Query { .. }
+            | IndexEffect::MatchLoaded { .. }
+            | IndexEffect::Count { .. }
+            | IndexEffect::Forget { .. } => true,
         }
     }
 

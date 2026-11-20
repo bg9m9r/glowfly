@@ -7,6 +7,13 @@
 //! (`BuildDelay`), so opening a large repository doesn't start indexing on the same frame. A tab
 //! parked for `PARKED_FREE_AFTER` frees an index of `FREE_MIN_COMMITS` or more (`seen` dates it);
 //! shown again, it reads the index back from the saved copy through the same delayed build.
+//!
+//! A very large history (`ON_DEMAND_MIN_COMMITS` or more commits by git's commit-graph count,
+//! `SizeRead`) has no delay: its first build waits until search is first used (`demanded`), and
+//! then starts at once. That holds for reading the saved index too, which costs as much memory as
+//! a build (the saved file becomes the same in-memory `CommitIndex`); the runner reads it only
+//! inside a build, so nothing is read before search is used. A freed index of such a history
+//! waits for the next search again.
 
 use crate::state::AppState;
 use git2::Oid;
@@ -21,6 +28,10 @@ use std::time::{Duration, Instant};
 pub const FIRST_BUILD_DELAY: Duration = Duration::from_secs(2);
 /// How long a tab must be parked before its index is freed.
 pub const PARKED_FREE_AFTER: Duration = Duration::from_secs(5 * 60);
+/// From this many commits (git's commit-graph count) a tab's first build, including reading the
+/// saved index, waits until search is first used. Below it, for example git/git at about 80,000,
+/// it starts after `FIRST_BUILD_DELAY`.
+pub const ON_DEMAND_MIN_COMMITS: usize = 300_000;
 /// The least commits an index must hold to be freed in a parked tab.
 pub const FREE_MIN_COMMITS: usize = 50_000;
 
@@ -36,6 +47,25 @@ pub enum BuildDelay {
     Due(Instant),
     /// The wait is over, until the index is freed or the tab opens another repository.
     Passed,
+}
+
+/// How far reading a repository's size (`IndexEffect::Count`) got.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SizeRead {
+    /// Not asked yet.
+    #[default]
+    Unread,
+    /// Asked; the answer hasn't arrived.
+    Reading,
+    /// Read: about how many commits there are, `None` when git's commit-graph files don't say.
+    Read(Option<usize>),
+}
+
+impl SizeRead {
+    /// The count says the first build waits for search (`ON_DEMAND_MIN_COMMITS`).
+    pub fn on_demand(self) -> bool {
+        matches!(self, SizeRead::Read(Some(n)) if n >= ON_DEMAND_MIN_COMMITS)
+    }
 }
 
 /// A build in flight.
@@ -89,6 +119,11 @@ pub struct HistoryIndex {
     pub delay: BuildDelay,
     /// The last tick this tab was active at: how long a parked tab has been parked.
     pub seen: Option<Instant>,
+    /// The repository's commit-graph count, read before its first build.
+    pub size: SizeRead,
+    /// Search was used (a query the index could answer) since the repository opened or the index
+    /// was freed: releases an on-demand first build.
+    pub demanded: bool,
 }
 
 impl HistoryIndex {
@@ -111,6 +146,15 @@ impl HistoryIndex {
         self.ready = None;
         self.drop_answer();
         self.delay = BuildDelay::Idle;
+        self.demanded = false;
+    }
+
+    /// The tab was shown again: a count asked while it was parked was dropped, so it is asked
+    /// again.
+    pub fn reask_count(&mut self) {
+        if self.size == SizeRead::Reading {
+            self.size = SizeRead::Unread;
+        }
     }
 
     /// Whether a first build is waiting for its delay.
@@ -213,6 +257,33 @@ mod tests {
             time: 0,
             parents: Default::default(),
         }
+    }
+
+    #[test]
+    fn only_a_read_count_at_the_threshold_is_on_demand() {
+        assert!(!SizeRead::Read(Some(ON_DEMAND_MIN_COMMITS - 1)).on_demand());
+        assert!(SizeRead::Read(Some(ON_DEMAND_MIN_COMMITS)).on_demand());
+        assert!(!SizeRead::Read(None).on_demand());
+        assert!(!SizeRead::Reading.on_demand());
+        assert!(!SizeRead::Unread.on_demand());
+    }
+
+    #[test]
+    fn free_and_reset_forget_the_demand_and_reask_only_a_dropped_count() {
+        let mut ix = HistoryIndex { size: SizeRead::Read(Some(5)), demanded: true, ..Default::default() };
+        ix.free();
+        assert!(!ix.demanded);
+        assert_eq!(ix.size, SizeRead::Read(Some(5)), "the size stays");
+        ix.demanded = true;
+        ix.reset();
+        assert!(!ix.demanded);
+        assert_eq!(ix.size, SizeRead::Unread);
+        ix.size = SizeRead::Reading;
+        ix.reask_count();
+        assert_eq!(ix.size, SizeRead::Unread);
+        ix.size = SizeRead::Read(None);
+        ix.reask_count();
+        assert_eq!(ix.size, SizeRead::Read(None));
     }
 
     #[test]

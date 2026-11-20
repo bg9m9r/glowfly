@@ -287,6 +287,8 @@ fn turning_the_preference_off_drops_the_index() {
     let mut fx = Vec::new();
     super::prefs::sync_live_settings(&mut st, &mut fx);
     assert!(builds(&fx).is_empty(), "nothing in memory: the build waits");
+    assert!(fx.iter().any(|e| matches!(e, Effect::Index(IndexEffect::Count { .. }))), "the size is read again: {fx:?}");
+    finish(&mut st, fx);
     assert_eq!(builds(&past_the_delay(&mut st)).len(), 1, "turning it on starts a build");
     let _ = std::fs::remove_dir_all(&dir);
 }

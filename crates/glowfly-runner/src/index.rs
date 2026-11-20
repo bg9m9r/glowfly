@@ -4,7 +4,8 @@
 //! both. A stopped build reports nothing; its tab has asked for a newer one or no longer wants it.
 //! With the store attached (`index_disk.rs`), a build without a base reads the repository's saved
 //! index first, and a finished build is saved after it is reported, before the next request.
-//! Queries go to their own worker (`index_query.rs`).
+//! Queries go to their own worker (`index_query.rs`), and a repository's commit count is read on a
+//! short thread of its own.
 
 use super::Waker;
 use super::execute::{Cx, Execute};
@@ -93,6 +94,7 @@ impl IndexWorker {
                 }
             }
             IndexEffect::Forget { workdir } => self.builds().forget(&workdir),
+            IndexEffect::Count { workdir } => count(workdir, tx, waker),
             IndexEffect::Query { workdir, request, index, query, mailmap } => {
                 self.query.submit(QueryRequest { workdir, request, haystack: Haystack::Index(index, mailmap), query }, tx, waker);
             }
@@ -148,6 +150,20 @@ impl IndexWorker {
     }
 }
 
+/// Reads `workdir`'s commit-graph count off the calling thread and reports it. Always reports: a
+/// failed read, a panic or a thread that can't start gives `None`, so the tab doesn't wait.
+fn count(workdir: PathBuf, tx: Sender<Msg>, waker: Waker) {
+    let (tx2, waker2, workdir2) = (tx.clone(), waker.clone(), workdir.clone());
+    let spawned = std::thread::Builder::new().name("glowfly-index-count".into()).spawn(move || {
+        let estimate = catch_unwind(AssertUnwindSafe(|| commit_index::estimate::of_workdir(&workdir2))).ok().flatten();
+        send(&tx2, &waker2, &workdir2, SearchMsg::IndexCounted { estimate });
+    });
+    if let Err(e) = spawned {
+        tracing::error!("could not start the index count thread: {e}");
+        send(&tx, &waker, &workdir, SearchMsg::IndexCounted { estimate: None });
+    }
+}
+
 /// Sends `msg` for the tab of `workdir`.
 pub(super) fn send(tx: &Sender<Msg>, waker: &Waker, workdir: &std::path::Path, msg: SearchMsg) {
     if tx.send(Msg::Scoped { workdir: workdir.to_path_buf(), msg: Box::new(Msg::Search(msg)) }).is_ok() {
@@ -167,6 +183,7 @@ pub(super) fn once(e: IndexEffect) -> Option<Msg> {
         }
         IndexEffect::Query { request, index, query, mailmap, .. } => Haystack::Index(index, mailmap).answer(&query, request, &|| false)?,
         IndexEffect::MatchLoaded { request, commits, query, .. } => Haystack::Loaded(commits.0).answer(&query, request, &|| false)?,
+        IndexEffect::Count { workdir } => SearchMsg::IndexCounted { estimate: commit_index::estimate::of_workdir(&workdir) },
         IndexEffect::Forget { .. } => return None,
     };
     Some(Msg::Search(msg))
@@ -303,6 +320,27 @@ mod tests {
         assert!(file.path.exists(), "a stopped read keeps the file");
         let _ = std::fs::remove_dir_all(&store);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_count_is_reported_for_its_repository() {
+        let (dir, _key) = repo("count");
+        let (ok, out) = run(&dir, &args(&["commit-graph", "write", "--reachable"]));
+        assert!(ok, "{out}");
+        let (tx, rx) = mpsc::channel();
+        IndexWorker::default().submit(IndexEffect::Count { workdir: dir.clone() }, tx, Waker::none());
+        let msg = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        let Msg::Scoped { workdir, msg } = msg else { panic!("a scoped message") };
+        assert_eq!(workdir, dir);
+        assert!(matches!(*msg, Msg::Search(SearchMsg::IndexCounted { estimate: Some(1) })));
+
+        let (bare, _key) = repo("count-none");
+        let Some(Msg::Search(SearchMsg::IndexCounted { estimate })) = once(IndexEffect::Count { workdir: bare.clone() }) else {
+            panic!("a count")
+        };
+        assert_eq!(estimate, None, "no commit-graph");
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&bare);
     }
 
     #[test]

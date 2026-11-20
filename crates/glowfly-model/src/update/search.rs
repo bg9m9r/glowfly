@@ -65,6 +65,7 @@ pub(super) fn handle(st: &mut AppState, msg: SearchMsg, now: Instant, fx: &mut V
         }
         SearchMsg::PathsSearched { request, result } => super::search_paths::searched(st, request, result, fx),
         SearchMsg::IndexProgress { build, indexed, estimate } => super::history_index::progress(st, build, indexed, estimate),
+        SearchMsg::IndexCounted { estimate } => super::history_index::counted(st, estimate, fx),
         SearchMsg::IndexBuilt { build, result } => super::history_index::built(st, build, result, fx),
         SearchMsg::IndexQueried { request, result } => super::search_index::queried(st, request, result, fx),
         SearchMsg::LoadedMatched { request, result } => super::search_loaded::matched(st, request, result, fx),
@@ -80,6 +81,8 @@ pub fn query_changed(st: &mut AppState, now: bool, fx: &mut Vec<Effect>) {
         recompute(st);
     }
     super::search_paths::want(st, fx);
+    // Search is used: a very large history's first build starts now.
+    super::history_index::want_build(st, fx);
     super::search_index::want(st, fx);
     // The next Enter lands on the first (newest) match.
     st.session.search.cursor = st.snap.as_ref().map_or(0, |s| s.commits.len().saturating_sub(1));

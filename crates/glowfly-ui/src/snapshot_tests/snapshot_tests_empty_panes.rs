@@ -81,6 +81,8 @@ fn graph_search_no_matches() {
 fn graph_search_no_matches_truncated() {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, "search-none-truncated");
     st.snap.as_mut().unwrap().truncated = true;
+    // The index isn't part of this pane.
+    st.settings.index_history = false;
     // Without the preference nothing loads by itself, so the pane offers Load more commits.
     st.settings.load_more_on_scroll = false;
     searching(&mut st, "nothing like this");
