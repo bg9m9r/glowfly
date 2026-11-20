@@ -23,6 +23,8 @@ fn filtering(name: &str, q: &str) -> (AppState, PathBuf) {
     let snap = st.snap.as_mut().unwrap();
     snap.truncated = true;
     snap.loaded_with.max_commits = limit;
+    // The index isn't part of these panes.
+    st.settings.index_history = false;
     searching(&mut st, q);
     send(&mut st, SearchMsg::ToggleFilter);
     assert!(st.searching_older(&st.view), "the search loads further back");

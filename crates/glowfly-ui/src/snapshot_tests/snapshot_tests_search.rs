@@ -44,6 +44,7 @@ fn search_msgs(h: &Harness<'_, (AppState, Vec<Msg>)>) -> Vec<String> {
                 SearchMsg::PathsSearched { request, .. } => format!("PathsSearched({request})"),
                 SearchMsg::IndexProgress { build, .. } => format!("IndexProgress({build})"),
                 SearchMsg::IndexBuilt { build, .. } => format!("IndexBuilt({build})"),
+                SearchMsg::IndexCounted { .. } => "IndexCounted".to_owned(),
                 SearchMsg::IndexQueried { request, .. } => format!("IndexQueried({request})"),
                 SearchMsg::LoadedMatched { request, .. } => format!("LoadedMatched({request})"),
             }),

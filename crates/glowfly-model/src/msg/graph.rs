@@ -162,6 +162,9 @@ pub enum SearchMsg {
     IndexProgress { build: u64, indexed: usize, estimate: Option<usize> },
     /// Index build `build` finished, or failed with this error.
     IndexBuilt { build: u64, result: Result<Arc<CommitIndex>, ReadFailed> },
+    /// About how many commits the repository has, from git's commit-graph files, or `None` when
+    /// they don't say (`IndexEffect::Count`).
+    IndexCounted { estimate: Option<usize> },
     /// The walk positions of the index's matches for query request `request` (`IndexEffect::Query`).
     IndexQueried { request: u64, result: Result<Vec<u32>, ReadFailed> },
     /// The loaded rows matching the query of request `request` (`IndexEffect::MatchLoaded`).
@@ -202,6 +205,8 @@ impl SearchMsg {
             Self::IndexProgress { .. } | Self::IndexQueried { .. } => None,
             // Matched again when the tab is shown (tabs::activate → search_index::resume).
             Self::LoadedMatched { .. } => None,
+            // The tab asks again when it is shown (search_index::resume → HistoryIndex::reask_count).
+            Self::IndexCounted { .. } => None,
         }
     }
 }

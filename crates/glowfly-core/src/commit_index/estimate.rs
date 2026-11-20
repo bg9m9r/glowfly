@@ -7,6 +7,14 @@ use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
+/// The commit count for the repository holding `workdir`, read from its common directory so a
+/// linked worktree counts the main repository's graph; `None` when it isn't a repository or has
+/// no readable commit-graph.
+pub fn of_workdir(workdir: &Path) -> Option<usize> {
+    let repo = git2::Repository::discover(workdir).ok()?;
+    commit_count(repo.commondir())
+}
+
 /// The commit count the repository's commit-graph files give (a single file, or the sum over a
 /// split chain), or `None` when there are none or one can't be read as a commit-graph.
 pub fn commit_count(common_dir: &Path) -> Option<usize> {
@@ -98,6 +106,27 @@ mod tests {
         let chain = std::fs::read_to_string(graph_dir(&dir).join("commit-graphs").join("commit-graph-chain")).unwrap();
         assert_eq!(chain.lines().count(), 2, "two layers: {chain}");
         assert_eq!(commit_count(&common), Some(5));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn of_workdir_reads_the_common_dir() {
+        let dir = scratch_repo("estimate-workdir");
+        commits(&dir, &["a", "b", "c"]);
+        assert_eq!(of_workdir(&dir), None, "no commit-graph yet");
+        git(&dir, &["commit-graph", "write", "--reachable"]);
+        assert_eq!(of_workdir(&dir), Some(3));
+
+        let wt = crate::paths::temp_dir().join(format!("glowfly-estimate-wt-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&wt);
+        git(&dir, &["worktree", "add", "-q", wt.to_str().unwrap(), "-b", "wt"]);
+        assert_eq!(of_workdir(&wt), Some(3), "a linked worktree counts the shared graph");
+
+        let plain = crate::paths::temp_dir().join(format!("glowfly-estimate-plain-{}", std::process::id()));
+        std::fs::create_dir_all(&plain).unwrap();
+        assert_eq!(of_workdir(&plain), None);
+        let _ = std::fs::remove_dir_all(&plain);
+        let _ = std::fs::remove_dir_all(&wt);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

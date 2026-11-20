@@ -19,7 +19,10 @@ use std::sync::Arc;
 /// The two-author fixture with its history marked as cut short.
 fn truncated(name: &str) -> (AppState, PathBuf) {
     let (mut st, dir) = with_two_authors(ThemeChoice::Dark, name);
-    st.snap.as_mut().unwrap().truncated = true;
+    let snap = st.snap.as_mut().unwrap();
+    snap.truncated = true;
+    // The staged index belongs to this repository, so a query doesn't start over.
+    st.session.search.index.workdir = Some(snap.workdir.clone());
     (st, dir)
 }
 

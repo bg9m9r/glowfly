@@ -77,6 +77,7 @@ pub(super) fn resume(st: &mut AppState, fx: &mut Vec<Effect>) {
     super::search_loaded::resume(st, fx);
     st.session.search.index.pending = None;
     st.session.search.index.asked = None;
+    st.session.search.index.reask_count();
     super::history_index::want_build(st, fx);
     want(st, fx);
 }

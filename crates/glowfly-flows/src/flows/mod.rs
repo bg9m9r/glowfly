@@ -130,6 +130,7 @@ mod highlight_tests;
 mod history_file_tests;
 mod history_find_tests;
 mod history_folder_tests;
+mod history_index_demand_tests;
 mod history_index_tests;
 mod history_index_wait_tests;
 mod history_preview_tests;

@@ -21,7 +21,7 @@ fn tick(st: &mut AppState, t: Instant) -> Vec<Effect> {
 }
 
 /// An index of `n` synthetic commits for `key`.
-fn index_of(key: IndexKey, n: usize) -> Arc<CommitIndex> {
+pub(super) fn index_of(key: IndexKey, n: usize) -> Arc<CommitIndex> {
     let author = Author::new("A", "a@x.org");
     let commits: Vec<CommitInfo> = (0..n as u32)
         .map(|i| {

@@ -63,7 +63,7 @@ source file, update its line here.
 - `commit_index/store.rs`: the saved index per repository in the cache folder: used as it is or as a base, pruned by age and size.
 - `commit_index/store/format.rs`: the saved file's layout: header, sections, CRC trailer, and the checks on read.
 - `commit_index/matching.rs`: `CommitIndex::matching`: the index matches through `CommitQuery`'s own text and author tests, with each stored signature mapped once per query through the mailmap (the index keeps them as written).
-- `estimate.rs`: the commit-graph estimate of the commit count.
+- `estimate.rs`: the commit-graph estimate of the commit count (by common dir, or by workdir via `of_workdir`).
 - The walk's order is shared with the graph through `repo/walk_order.rs` (see [core-repo.md](core-repo.md)).
 
 ## Watching for changes
