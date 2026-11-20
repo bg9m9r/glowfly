@@ -101,6 +101,7 @@ mod file_tree_tests;
 mod files_open_tests;
 mod files_tests;
 mod files_undo_tests;
+mod focus_tests;
 mod fold_key_tests;
 mod fold_tests;
 mod force_push_fork_tests;

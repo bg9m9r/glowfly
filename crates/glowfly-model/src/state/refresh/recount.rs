@@ -1,8 +1,8 @@
 //! How often other worktrees' changes are counted again while the snapshot stays (after a
 //! watcher or status-only reload): at most once per `RECOUNT_EVERY`, so many worktrees aren't
 //! read on every file event. One asked for sooner, or while a count runs, is kept and runs once
-//! the interval has passed (on a tick, or when that count ends). Returning to the tab or the
-//! window counts at once (`forget`).
+//! the interval has passed (on a tick, or when that count ends). Returning to the tab counts at once
+//! (its `RefreshState` is reset); returning to the window keeps the interval.
 
 use std::time::{Duration, Instant};
 
@@ -59,11 +59,6 @@ impl Recount {
     pub fn drop_due(&mut self) {
         self.due = None;
     }
-
-    /// The next recount runs at once (back in the window).
-    pub fn forget(&mut self) {
-        *self = Self::default();
-    }
 }
 
 #[cfg(test)]
@@ -86,7 +81,6 @@ mod tests {
 
         r.wait(t0 + RECOUNT_EVERY * 3);
         assert_eq!(r.due(), Some(t0 + RECOUNT_EVERY * 3), "past the interval: as soon as the running count ends");
-        r.forget();
-        assert!(r.ask(t0 + RECOUNT_EVERY + Duration::from_secs(1)), "back in the window: at once");
+        assert!(!r.ask(t0 + RECOUNT_EVERY + Duration::from_secs(1)), "back in the window: the interval holds");
     }
 }

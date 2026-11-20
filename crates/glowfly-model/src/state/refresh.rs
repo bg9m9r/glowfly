@@ -10,7 +10,11 @@ use crate::state::{AppState, MAX_COMMITS};
 use glowfly_core::repo::{LoadOptions, Snapshot};
 use glowfly_core::watch::MAX_WATCH_PATHS;
 use std::collections::BTreeSet;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+
+/// How long after the last whole status read returning to the window reads nothing again while the
+/// file watcher is live (update/focus.rs); as long as Windows' safety poll, `watch::WINDOWS_POLL`.
+pub const FOCUS_FRESH: Duration = Duration::from_secs(30);
 
 /// How much a refresh reads.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
@@ -83,6 +87,10 @@ pub struct RefreshState {
     /// When other worktrees' changes are counted again after a reload that kept the snapshot.
     /// Kept across loads like `counting`; a tab switch resets it, so returning counts at once.
     pub recount: recount::Recount,
+    /// When the last whole status read of the active tab's repository ended (a load, an unchanged
+    /// refresh, a whole status read); None after a failed one. Kept across loads like `counting`; a
+    /// tab switch resets it.
+    pub status_read_at: Option<Instant>,
     /// The error of the last load that asked for more history, until a load starts.
     pub more_failed: Option<String>,
     /// When the next automatic retry of that load is due.

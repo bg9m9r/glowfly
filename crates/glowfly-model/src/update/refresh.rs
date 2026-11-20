@@ -165,6 +165,7 @@ fn start(st: &mut AppState, path: PathBuf, kind: LoadKind, known: Option<KnownRe
     // commits), but the retries made and a filtering search's budget carry on.
     st.refresh = RefreshState {
         open_stamp: st.refresh.open_stamp,
+        status_read_at: st.refresh.status_read_at,
         extra_commits: st.refresh.extra_commits,
         counting: st.refresh.counting,
         recount: st.refresh.recount,
@@ -327,6 +328,7 @@ fn apply_status(
     now: Instant,
     fx: &mut Vec<Effect>,
 ) {
+    super::focus::whole_read(st, result.is_ok(), now);
     match result {
         Ok(status) => {
             let Some(snap) = st.snap.as_mut() else { return };

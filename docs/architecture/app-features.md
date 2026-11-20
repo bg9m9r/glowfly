@@ -79,7 +79,7 @@ source file, update its line here. Each section lists one feature's files in eve
 - `AppState::includes`: the one-at-a-time include sync and the git dirs repaired this session.
 - `state/repo_identity.rs`: the words of the Open repository row, the commit box's identity line and the Repo > Identity hints, and both views' warnings for `GIT_AUTHOR_*` / `GIT_COMMITTER_*` in the environment.
 - `state/profile_rules.rs`: the Folders row's texts.
-- `update/profile_rules.rs`: adding after the runner's check, removing, syncing (never during a switch), reading the identity on open, focus, closing Preferences, a watched config change (`WatchMsg::ConfigChanged`) and after a sync or switch, the one placing repair per git dir, and Use <profile> here behind a danger confirmation.
+- `update/profile_rules.rs`: adding after the runner's check, removing, syncing (never during a switch), reading the identity on open, closing Preferences, a watched config change (`WatchMsg::ConfigChanged`) and after a sync or switch, and on focus only when a config file changed (`ConfigStamp`), the one placing repair per git dir, and Use <profile> here behind a danger confirmation.
 - `ui/prefs/profile_rules.rs`: the Folders and Open repository rows.
 
 ## Several selected commits

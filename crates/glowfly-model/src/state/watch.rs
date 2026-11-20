@@ -103,6 +103,13 @@ impl WatchState {
         self.target.as_ref().is_some_and(|t| glowfly_core::paths::same_spelling(t, workdir) && self.probes.get(t) == Some(&Probe::Live))
     }
 
+    /// Whether the watcher's reports can stand in for reading `workdir` again (returning to the
+    /// window): it is live (`live_for`), hasn't failed since, and isn't on a network or virtual
+    /// file system, which may not report changes made elsewhere.
+    pub fn trusted_for(&self, workdir: &std::path::Path) -> bool {
+        self.live_for(workdir) && self.target.as_ref().is_some_and(|t| !self.down.contains(t) && !self.remote.contains_key(t))
+    }
+
     /// `poll_every` for the watched repository on this system; a watcher whose probe went
     /// unanswered is polled like one on a network file system.
     pub fn poll_interval(&self) -> Option<Duration> {
@@ -198,6 +205,25 @@ mod tests {
         }
         w.probes.insert(repo.clone(), Probe::Live);
         assert!(w.live_for(&repo));
+    }
+
+    #[test]
+    fn trusted_for_needs_a_live_local_watcher_that_hasn_t_failed() {
+        let repo = PathBuf::from("/r");
+        let mut w = WatchState { target: Some(repo.clone()), ..WatchState::default() };
+        assert!(!w.trusted_for(&repo), "still checking");
+        for probe in [Probe::Silent, Probe::Unknown] {
+            w.probes.insert(repo.clone(), probe);
+            assert!(!w.trusted_for(&repo), "{probe:?}");
+        }
+        w.probes.insert(repo.clone(), Probe::Live);
+        assert!(w.trusted_for(&repo));
+        assert!(!w.trusted_for(&PathBuf::from("/other")), "another folder");
+        w.remote.insert(repo.clone(), "network");
+        assert!(!w.trusted_for(&repo), "a network or virtual volume");
+        w.remote.clear();
+        w.down.insert(repo.clone());
+        assert!(!w.trusted_for(&repo), "a failed watcher");
     }
 
     #[test]

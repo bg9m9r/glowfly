@@ -1,8 +1,9 @@
 //! Profile folder rules (Preferences > Profile > Folders): adding a picked folder or the open
 //! repository after checking it on disk, removing one, and keeping the include files and the
 //! global config's entries in step (one sync at a time, never during a switch). The open
-//! repository's effective identity is read from git on open, focus, closing Preferences and
-//! after a sync or a switch; when a rule should apply but git gives the global file, the
+//! repository's effective identity is read from git on open, closing Preferences, a watched
+//! config change and after a sync or a switch, and on focus only when a config file changed
+//! (`check_identity`); when a rule should apply but git gives the global file, the
 //! entries are placed again once per git dir and session (a `[user]` section written after
 //! them). Using a profile in a repository that sets its own identity removes that identity,
 //! after a danger confirmation only.
@@ -97,9 +98,21 @@ pub(super) fn synced(st: &mut AppState, result: Result<(), String>, now: Instant
 
 /// Reads the active repository's effective identity from git.
 pub(super) fn want_identity(st: &mut AppState, fx: &mut Vec<Effect>) {
+    ask_identity(st, false, fx);
+}
+
+/// Reads the identity unless no config file git reads for it changed since the stored one was
+/// read (the runner compares the stamps): returning to the window.
+pub(super) fn check_identity(st: &mut AppState, fx: &mut Vec<Effect>) {
+    ask_identity(st, true, fx);
+}
+
+fn ask_identity(st: &mut AppState, check: bool, fx: &mut Vec<Effect>) {
     let Some(snap) = &st.snap else { return };
     let (workdir, git_dir) = (snap.workdir.clone(), snap.git_dir.clone());
-    fx.push(Effect::Profile(ProfileEffect::ReadIdentity { workdir, git_dir, rules: st.settings.rules() }));
+    // None when nothing is stored (never read, or the last read failed): read in any case.
+    let known = if check { st.identities.get(&git_dir).and_then(|i| i.stamp) } else { None };
+    fx.push(Effect::Profile(ProfileEffect::ReadIdentity { workdir, git_dir, rules: st.settings.rules(), known }));
 }
 
 /// Stores a read; a rule git didn't apply gets its entries placed again, once per git dir.

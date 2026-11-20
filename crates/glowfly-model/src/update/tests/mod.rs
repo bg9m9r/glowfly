@@ -28,6 +28,7 @@ pub(super) mod edit_tests;
 pub(super) mod editor_tests;
 pub(super) mod file_trust_held_tests;
 pub(super) mod file_trust_tests;
+pub(super) mod focus_tests;
 pub(super) mod force_push_tests;
 pub(super) mod forge_errors_tests;
 pub(super) mod getting_started_tests;

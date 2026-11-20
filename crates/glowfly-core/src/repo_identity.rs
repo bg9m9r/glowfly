@@ -41,6 +41,9 @@ pub struct RepoIdentity {
     /// The identity variables set in Glowfly's environment, which git children inherit and use
     /// instead of the config (`env_overrides`); `read` leaves them empty.
     pub overrides: Vec<EnvOverride>,
+    /// The config files' fingerprint taken just before this read (`config_stamp::of_repo`); `read` leaves it
+    /// None and the runner fills it in, like `overrides`.
+    pub stamp: Option<crate::config_stamp::ConfigStamp>,
 }
 
 /// The variables git reads for a commit's author and committer before any config, in this

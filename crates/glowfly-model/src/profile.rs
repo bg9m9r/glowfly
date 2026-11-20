@@ -8,6 +8,7 @@ use crate::effect::EffectMeta;
 use crate::effect::SandboxRule;
 use crate::msg::Inactive;
 use crate::state::prefs::GitConfigValues;
+use glowfly_core::config_stamp::ConfigStamp;
 use glowfly_core::identity::Identity;
 use glowfly_core::profile_includes::IncludePlan;
 use glowfly_core::repo_identity::RepoIdentity;
@@ -121,8 +122,10 @@ pub enum ProfileEffect {
     /// Write the include files and, with `place`, put the entries at the end of the global
     /// config.
     SyncIncludes { cwd: PathBuf, plan: IncludePlan, place: bool },
-    /// Read the repository's effective identity and its origin from git.
-    ReadIdentity { workdir: PathBuf, git_dir: PathBuf, rules: Vec<(ProfileId, FolderRule)> },
+    /// Read the repository's effective identity and its origin from git. `known`: the stamp of the
+    /// identity stored for `git_dir`. While the config files still match it, git isn't asked and
+    /// nothing comes back. None reads in any case.
+    ReadIdentity { workdir: PathBuf, git_dir: PathBuf, rules: Vec<(ProfileId, FolderRule)>, known: Option<ConfigStamp> },
     /// Remove the repository's own user.name and user.email, then read the identity again.
     ClearLocalIdentity { workdir: PathBuf, git_dir: PathBuf, rules: Vec<(ProfileId, FolderRule)> },
 }

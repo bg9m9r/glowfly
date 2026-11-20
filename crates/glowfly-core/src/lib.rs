@@ -23,6 +23,7 @@ pub mod commit_text;
 pub mod config_entry;
 pub mod config_includes;
 pub mod config_list;
+pub mod config_stamp;
 pub mod conflict_check;
 pub mod conflict_edit;
 pub mod conflict_folds;

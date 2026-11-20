@@ -160,6 +160,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - `update/watch.rs` keeps the answer per repository in `WatchState::probes`; a silent watcher is warned about once per repository and session (not on a network volume, whose notice already said why) and polled like a network volume (`WatchState::poll_interval`) until any later event sends `Live`.
 - A timed status read is due `WatchState::poll_gap` after the end of the last whole status read (three times a slow read's length, at most `POLL_GAP_CAP`), and skipped while one runs; tests in `flows/watch_poll_spacing_tests.rs`.
 - The status bar's mark and label (`ui/live_updates.rs`) shows `WatchState::live_updates`; tests in `flows/watch_poll_tests.rs` and `ui/snapshot_tests/snapshot_tests_live_updates.rs`.
+- Returning to the window reads nothing again while the watcher is trusted (`WatchState::trusted_for`) and the last whole read is under `FOCUS_FRESH` (30 s) old (`update/focus.rs`); otherwise it refreshes.
 
 ## Incremental status
 
@@ -199,7 +200,7 @@ shell's flows (dialogs, toasts, layout, window, menus, logs, links) are in
 - The runner reads each through git with `COUNT_TIMEOUT` when git may run there, otherwise through libgit2.
 - `WorktreeMsg::ChangesCounted` fills in the counts for the same `refs_key` and lays the graph out again.
 - A read that times out, or one libgit2 would have to make of a huge index, is `TooLarge` and shown as not counted until the next full load.
-- A reload that keeps the snapshot (the watcher's, a status-only one; not a refs-only check) counts the counted ones again through the same effect (`worktree_counts::recount`), at most once per `RECOUNT_EVERY` (`state/refresh/recount.rs`); one asked for sooner runs on a tick or when the running count ends. Returning to the tab (its `RefreshState` reset) or the window (`RepoMsg::WindowFocused`) counts at once.
+- A reload that keeps the snapshot (the watcher's, a status-only one; not a refs-only check) counts the counted ones again through the same effect (`worktree_counts::recount`), at most once per `RECOUNT_EVERY` (`state/refresh/recount.rs`); one asked for sooner runs on a tick or when the running count ends. Returning to the tab (its `RefreshState` reset) counts at once; returning to the window keeps the interval.
 
 ## Submodules after a job
 
