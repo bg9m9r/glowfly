@@ -184,6 +184,7 @@ mod patch_tests;
 mod path_alias_tests;
 mod path_case_tests;
 mod path_hazards_tests;
+mod perf_load_tests;
 mod perf_tests;
 mod perf_timing_tests;
 mod pick_empty_tests;

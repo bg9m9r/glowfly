@@ -76,6 +76,7 @@ pub(super) fn ref_labels(
 /// The local branches with their upstreams and ahead/behind counts (from `cache`).
 pub(super) fn local_branches(repo: &Repository, cache: &GraphCache) -> Result<Vec<BranchInfo>> {
     let mut locals = Vec::new();
+    let mut upstreams = std::time::Duration::ZERO;
     for b in repo.branches(Some(BranchType::Local))? {
         let (b, _) = b?;
         let name = b.name()?.unwrap_or_default().to_owned();
@@ -84,6 +85,7 @@ pub(super) fn local_branches(repo: &Repository, cache: &GraphCache) -> Result<Ve
         }
         let oid = b.get().target();
         let full = format!("refs/heads/{name}");
+        let timed = std::time::Instant::now();
         let tracking = match (repo.branch_upstream_remote(&full), repo.branch_upstream_merge(&full)) {
             (Ok(r), Ok(m)) => match (r.as_str(), m.as_str()) {
                 (Some(r), Some(m)) => Some(Tracking { remote: r.to_owned(), merge: m.strip_prefix("refs/heads/").unwrap_or(m).to_owned() }),
@@ -93,7 +95,9 @@ pub(super) fn local_branches(repo: &Repository, cache: &GraphCache) -> Result<Ve
         };
         // An upstream whose remote or branch name git could misread is dropped as a whole.
         let tracking = tracking.filter(|t| safe_names::upstream_remote_ok(&t.remote) && is_safe_ref_name(&t.merge));
-        let (upstream, upstream_ref, ahead, behind) = match b.upstream() {
+        let found = b.upstream();
+        upstreams += timed.elapsed();
+        let (upstream, upstream_ref, ahead, behind) = match found {
             Ok(u) if tracking.is_some() => {
                 let (a, bh) = match (oid, u.get().target()) {
                     (Some(x), Some(y)) => cache.ahead_behind(repo, x, y),
@@ -118,6 +122,7 @@ pub(super) fn local_branches(repo: &Repository, cache: &GraphCache) -> Result<Ve
             push: None,
         });
     }
+    tracing::debug!(upstreams = ?upstreams, branches = locals.len(), "load.refs.upstreams");
     Ok(locals)
 }
 

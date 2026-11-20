@@ -36,7 +36,7 @@ pub(super) fn history(
     locals: &mut [BranchInfo],
 ) -> Result<History> {
     let tips = visible_tips(repo, opts, head_branch, locals);
-    let starts = walk_starts(repo, opts, head_oid, tips.as_deref())?;
+    let starts = tracing::debug_span!("load.starts").in_scope(|| walk_starts(repo, opts, head_oid, tips.as_deref()))?;
     // Labels follow the same visibility as the history.
     keep_visible_labels(refs, tips.as_deref());
     let reuse = prior.and_then(|p| crate::repo::walk_reuse::CommitCache::new(p, repo, shallow_roots, mailmap));
