@@ -1,5 +1,53 @@
 # Changelog
 
+## [0.6.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.5.0-rc.1...v0.6.0-rc.1) (2026-11-20)
+
+
+### Features
+
+* build the search index on first search for very large histories ([1baec41](https://github.com/bg9m9r/glowfly/commit/1baec417345f2313e38b6a3cf11497c8e3988995)), closes [#929](https://github.com/bg9m9r/glowfly/issues/929)
+* cap redraws while a spinner shows ([8611efb](https://github.com/bg9m9r/glowfly/commit/8611efb5257ae3c40ee2d2a31996d737c5a94e8c)), closes [#920](https://github.com/bg9m9r/glowfly/issues/920)
+* count other worktrees' changes after a load, not inside it ([4293b18](https://github.com/bg9m9r/glowfly/commit/4293b18e482fa5614fb2a3718a2b5b653b435a41)), closes [#926](https://github.com/bg9m9r/glowfly/issues/926)
+* count the activity log's matches, step through them and let Copy log and Clear respect the filter ([a39075e](https://github.com/bg9m9r/glowfly/commit/a39075e0147520d7233df45aef24e83147e6b265)), closes [#891](https://github.com/bg9m9r/glowfly/issues/891)
+* count WIP lines for a status read's paths and time the status steps ([3e3b261](https://github.com/bg9m9r/glowfly/commit/3e3b261931d7ea0d815dbbd0a8c1eff634e6ae9b)), closes [#928](https://github.com/bg9m9r/glowfly/issues/928)
+* Delete remote branch… in the command palette ([01a4f5f](https://github.com/bg9m9r/glowfly/commit/01a4f5ff9425088b5caafb6aeff7e2fb0b65372c)), closes [#889](https://github.com/bg9m9r/glowfly/issues/889)
+* don't re-run the whole refresh on every window focus ([89c9639](https://github.com/bg9m9r/glowfly/commit/89c9639c99273f3c33f888fe5cb7096c07436243)), closes [#925](https://github.com/bg9m9r/glowfly/issues/925)
+* load refs in one pass with one config read ([4d5432a](https://github.com/bg9m9r/glowfly/commit/4d5432acc8a54092ecf9ea5803a229e2b59d8042)), closes [#927](https://github.com/bg9m9r/glowfly/issues/927)
+* look up hosting credentials once per account and folder ([d6af327](https://github.com/bg9m9r/glowfly/commit/d6af32749a6fc0866e3f73def8cf3b30043ae861)), closes [#923](https://github.com/bg9m9r/glowfly/issues/923)
+* post an issue comment with Ctrl+Enter from the comment box ([e8ffa07](https://github.com/bg9m9r/glowfly/commit/e8ffa077aadf4341ac8744338301c572babd7e6a)), closes [#874](https://github.com/bg9m9r/glowfly/issues/874)
+* read git config in one process per scope ([972db10](https://github.com/bg9m9r/glowfly/commit/972db101ad68acca46e366347256dac0cfcc223a)), closes [#924](https://github.com/bg9m9r/glowfly/issues/924)
+* scroll the Preferences navigation column in a short window ([fccee8e](https://github.com/bg9m9r/glowfly/commit/fccee8e205f5dd77270531eaa7de98695f37cefa)), closes [#897](https://github.com/bg9m9r/glowfly/issues/897)
+* show when a stash was made in the Unstash tip, the palette and the Delete stash confirmation ([f1b8a26](https://github.com/bg9m9r/glowfly/commit/f1b8a2672bd2b251a9db6ec18c64289a7c8d1993)), closes [#890](https://github.com/bg9m9r/glowfly/issues/890)
+* sign in with Trello from Preferences ([22f454e](https://github.com/bg9m9r/glowfly/commit/22f454e224e41bd9d15e764e8103d46caee85106)), closes [#919](https://github.com/bg9m9r/glowfly/issues/919)
+* skip the status read and worktree recount after an auto-fetch that moved nothing ([01d20e1](https://github.com/bg9m9r/glowfly/commit/01d20e12c54982ebce9859478566715f8e7c046b)), closes [#922](https://github.com/bg9m9r/glowfly/issues/922)
+* update the search index from new commits only ([beac831](https://github.com/bg9m9r/glowfly/commit/beac83158a93dc5fe2b68f839ddfe3d59d04ebbd)), closes [#930](https://github.com/bg9m9r/glowfly/issues/930)
+
+
+### Bug fixes
+
+* background hosting refreshes for an unconnected account use only an environment token ([c35038a](https://github.com/bg9m9r/glowfly/commit/c35038ac7f1012148199b135dda238dae9ebd253)), closes [#921](https://github.com/bg9m9r/glowfly/issues/921)
+* combine Cap redraws while a spinner shows with main ([322f77a](https://github.com/bg9m9r/glowfly/commit/322f77a2b7ec48bf24e153ffcfd8093456116758))
+* combine Scroll the Preferences navigation column in a short window with main ([6c07a16](https://github.com/bg9m9r/glowfly/commit/6c07a167a9f00b3a90040aefc46f409719e475b2))
+* Ctrl+Enter marks a conflicted text file resolved when it has no conflict chunks ([1653e55](https://github.com/bg9m9r/glowfly/commit/1653e5573fad21954f44e3dc3a262e24c6fe54c4)), closes [#895](https://github.com/bg9m9r/glowfly/issues/895)
+* **diff:** drop older git's line-ending warnings from a diff tool's stderr too ([2297b0e](https://github.com/bg9m9r/glowfly/commit/2297b0eb2f2939563e9bbe99d50a6a67d6a9ef72))
+* **diff:** treat an exit with 1 and nothing on stderr as a normal end of a diff tool ([b2c3440](https://github.com/bg9m9r/glowfly/commit/b2c3440b132520d56bcbbe0558546a38b43fff40)), closes [#898](https://github.com/bg9m9r/glowfly/issues/898)
+* fold the row a search step opened when the search or Failures only changes ([a7a1a61](https://github.com/bg9m9r/glowfly/commit/a7a1a61c5ed3a13ba7022e55bc27cb0b9a5e8f56))
+* quote arguments with spaces in the activity log's command echo ([29a7b98](https://github.com/bg9m9r/glowfly/commit/29a7b98184f5ad80df2316220b5affa29f9da642)), closes [#896](https://github.com/bg9m9r/glowfly/issues/896)
+* review findings for Activity log search shows a match count and steps through matches; Copy log copies what the filter shows ([5bbd6bc](https://github.com/bg9m9r/glowfly/commit/5bbd6bcbe7b43f1ecf833cd5d82e30e0c9b486e7))
+* review findings for Cap redraws while a spinner shows ([c326fe4](https://github.com/bg9m9r/glowfly/commit/c326fe4bfe1c69d319c4e301ff763fb872b2d929))
+* review findings for Look up hosting credentials once per account, not once per request ([1ba75a3](https://github.com/bg9m9r/glowfly/commit/1ba75a39885ef8e8476926ba1d9d04a2d7185f88))
+* review findings for Quote arguments with spaces in the activity log's command echo ([d27e9f5](https://github.com/bg9m9r/glowfly/commit/d27e9f593b6dd0370e8b899206d33a73bf60f0a5))
+* review findings for Read a 500,000-file work tree's status and line counts in a few seconds ([35affad](https://github.com/bg9m9r/glowfly/commit/35affadb9cba6b789c26c2ef117988e41dc11351)), closes [#928](https://github.com/bg9m9r/glowfly/issues/928)
+* review findings for Skip the status read and worktree recount after an auto-fetch that moved nothing ([7b182a1](https://github.com/bg9m9r/glowfly/commit/7b182a163cbb99570ebdfcc7dd0b5f87e9129450))
+* review findings for Update the search index from new commits only ([78c951a](https://github.com/bg9m9r/glowfly/commit/78c951af01dd43230d79adad5432a523868d4609))
+* share one Comment label in the issue comment box ([759750b](https://github.com/bg9m9r/glowfly/commit/759750bfc518c01bf978db9e5a8e4aba6c8314ea)), closes [#874](https://github.com/bg9m9r/glowfly/issues/874)
+* tidy the Trello sign-in wait ([1923b01](https://github.com/bg9m9r/glowfly/commit/1923b016acaa66b26439699ad3fdb0b88de1695d)), closes [#919](https://github.com/bg9m9r/glowfly/issues/919)
+
+
+### Performance
+
+* keep per-frame drawing work proportional to what's visible on repos with 100k refs ([cdf109d](https://github.com/bg9m9r/glowfly/commit/cdf109d5a281f2efcfd075997a2a9e54f6810e1d)), closes [#931](https://github.com/bg9m9r/glowfly/issues/931)
+
 ## [0.5.0-rc.1](https://github.com/bg9m9r/glowfly/compare/v0.4.0-rc.1...v0.5.0-rc.1) (2026-11-20)
 
 
