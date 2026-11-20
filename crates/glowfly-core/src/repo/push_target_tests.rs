@@ -255,3 +255,19 @@ fn load_fills_branch_push() {
     assert_eq!(resolve(&repo, &snap.push_remotes, &["origin", "fork"], head).map(|p| p.remote), Some("origin".into()));
     cleanup(&[&work, &origin, &fork]);
 }
+
+#[test]
+fn push_remote_and_push_default_through_the_loads_config_read() {
+    let (work, origin, fork) = fixture("pt-load-config", "current");
+    tracking_branch(&work, "feat", "feat");
+    write(&work, ".git/push-remotes.cfg", "[branch \"feat\"]\n\tpushRemote = fork\n");
+    set_config(&work, &[("remote.pushDefault", "origin"), ("include.path", "push-remotes.cfg")]);
+    let feat = target(&work, "feat").unwrap();
+    assert_eq!((feat.remote.as_str(), feat.key.as_deref()), ("fork", Some("branch.feat.pushRemote")), "set through an include");
+    let main = target(&work, "main").unwrap();
+    assert_eq!((main.remote.as_str(), main.key.as_deref()), ("origin", Some("remote.pushDefault")));
+    set_config(&work, &[("remote.pushDefault", "")]);
+    let main = target(&work, "main").unwrap();
+    assert_eq!((main.remote.as_str(), main.key.as_deref()), ("origin", None), "an empty value is unset: the upstream's remote");
+    cleanup(&[&work, &origin, &fork]);
+}

@@ -85,6 +85,85 @@ fn a_tracking_branch_counts_its_commits_ahead_and_behind() {
     assert_eq!(main.upstream_ref.as_deref(), Some("refs/remotes/origin/main"));
 }
 
+#[test]
+fn an_upstream_on_dot_is_a_local_branch() {
+    let dir = scratch_repo("load-refs-dot-upstream");
+    commit(&dir, "base");
+    commit(&dir, "ahead of feat");
+    git(&dir, &["branch", "feat", "HEAD~1"]);
+    git(&dir, &["config", "branch.feat.remote", "."]);
+    git(&dir, &["config", "branch.feat.merge", "refs/heads/main"]);
+    let s = snap(&dir);
+    let feat = s.locals.iter().find(|b| b.name == "feat").unwrap();
+    assert_eq!(feat.tracking, Some(Tracking { remote: ".".into(), merge: "main".into() }));
+    assert_eq!((feat.upstream.as_deref(), feat.upstream_ref.as_deref()), (Some("main"), Some("refs/heads/main")));
+    assert_eq!((feat.ahead, feat.behind), (0, 1));
+    assert_eq!(feat.push.as_ref().map(|p| p.remote.as_str()), Some("."));
+}
+
+#[test]
+fn a_missing_tracking_ref_drops_only_the_upstream() {
+    let dir = scratch_repo("load-refs-gone-upstream");
+    commit(&dir, "base");
+    git(&dir, &["remote", "add", "origin", "https://example.invalid/r.git"]);
+    git(&dir, &["branch", "gone"]);
+    git(&dir, &["config", "branch.gone.remote", "origin"]);
+    git(&dir, &["config", "branch.gone.merge", "refs/heads/gone"]);
+    let gone = |dir: &Path| snap(dir).locals.into_iter().find(|b| b.name == "gone").unwrap();
+    let b = gone(&dir);
+    assert_eq!(b.tracking, Some(Tracking { remote: "origin".into(), merge: "gone".into() }));
+    assert_eq!((b.upstream, b.upstream_ref, b.ahead, b.behind), (None, None, 0, 0));
+    git(&dir, &["update-ref", "refs/remotes/origin/gone", "HEAD"]);
+    assert_eq!(gone(&dir).upstream.as_deref(), Some("origin/gone"));
+}
+
+#[test]
+fn tags_of_every_kind_loose_and_packed() {
+    let dir = scratch_repo("load-refs-tag-kinds");
+    let c = commit(&dir, "c");
+    git(&dir, &["tag", "light"]);
+    git(&dir, &["tag", "-a", "inner", "-m", "i"]);
+    git(&dir, &["tag", "-a", "outer", "-m", "o", "inner"]);
+    git(&dir, &["symbolic-ref", "refs/tags/sym", "refs/heads/main"]);
+    git(&dir, &["symbolic-ref", "refs/tags/dangling", "refs/heads/nope"]);
+    let repo = Repository::open(&dir).unwrap();
+    repo.reference("refs/tags/on-tree", repo.find_commit(c).unwrap().tree_id(), false, "a tag on a tree").unwrap();
+    repo.reference("refs/tags/-x", c, false, "a name git could read as an option").unwrap();
+    // Packing leaves the symbolic refs loose, and libgit2 lists loose refs before packed ones:
+    // the order is its own, so the lists are compared sorted.
+    let kinds = |s: &Snapshot| {
+        let mut lightweight: Vec<_> = s.lightweight_tags.iter().cloned().collect();
+        lightweight.sort();
+        let mut tags = s.tags.clone();
+        tags.sort();
+        (tags, s.other_tags.clone(), lightweight)
+    };
+    let loose = kinds(&snap(&dir));
+    let mut names: Vec<&str> = loose.0.iter().map(|(n, _)| n.as_str()).collect();
+    names.sort();
+    assert_eq!(
+        names,
+        ["inner", "light", "outer", "sym"],
+        "a nested annotated tag sits on the commit; neither the dangling nor the unsafe one is listed"
+    );
+    assert!(loose.0.iter().all(|(_, o)| *o == c));
+    assert_eq!(loose.1, ["on-tree"]);
+    assert_eq!(loose.2, ["light", "sym"]);
+    git(&dir, &["pack-refs", "--all"]);
+    assert_eq!(kinds(&snap(&dir)), loose, "packed refs read the same");
+}
+
+#[test]
+fn a_symbolic_branch_keeps_its_old_shape() {
+    let dir = scratch_repo("load-refs-symbolic-branch");
+    let c = commit(&dir, "c");
+    git(&dir, &["symbolic-ref", "refs/heads/alias", "refs/heads/main"]);
+    let s = snap(&dir);
+    let alias = s.locals.iter().find(|b| b.name == "alias").unwrap();
+    assert_eq!((alias.oid, alias.is_head), (None, false));
+    assert!(s.refs[&c].iter().any(|l| l.name == "alias" && l.kind == RefKind::Local && !l.is_head), "labelled at main's commit");
+}
+
 /// FETCH_HEAD's remotes are read straight after its time, after the status read and outside the
 /// `load.refs` span, so a fetch landing during a slow status read can't pair a new time with the
 /// old fetch's remotes.

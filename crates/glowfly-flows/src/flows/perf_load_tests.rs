@@ -14,15 +14,20 @@ use tracing_subscriber::prelude::*;
 fn perf_load() {
     let dir = std::env::var("GLOWFLY_PERF_REPO").expect("set GLOWFLY_PERF_REPO to a large repository");
     let layer = tracing_subscriber::fmt::layer().with_ansi(false).with_span_events(FmtSpan::CLOSE).with_test_writer();
-    let _ = tracing_subscriber::registry()
-        .with(layer.with_filter(Targets::new().with_target("glowfly_core", LevelFilter::DEBUG)))
-        .try_init();
+    let _ =
+        tracing_subscriber::registry().with(layer.with_filter(Targets::new().with_target("glowfly_core", LevelFilter::DEBUG))).try_init();
     let opts = LoadOptions::all(glowfly_core::settings::Settings::default().commit_limit());
     let cache = GraphCache::default();
     for run in 1..=3 {
         println!("--- run {run}{}", if run == 1 { " (warms the OS cache)" } else { "" });
         let t = Instant::now();
         let snap = load_cached(std::path::Path::new(&dir), &opts, &cache).unwrap();
-        println!("run {run}: load of {} commits, {} branches, {} tags in {:?}", snap.commits.len(), snap.locals.len(), snap.tags.len(), t.elapsed());
+        println!(
+            "run {run}: load of {} commits, {} branches, {} tags in {:?}",
+            snap.commits.len(),
+            snap.locals.len(),
+            snap.tags.len(),
+            t.elapsed()
+        );
     }
 }

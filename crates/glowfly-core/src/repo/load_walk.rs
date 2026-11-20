@@ -20,8 +20,8 @@ pub(super) struct History {
     pub frontier: Option<Frontier>,
 }
 
-/// The checked-out commit and branch.
-pub(super) type Head<'a> = (Option<Oid>, Option<&'a str>);
+/// The checked-out commit and branch, and the commits of the refs (`load_refs::RefPass::starts`).
+pub(super) type Head<'a> = (Option<Oid>, Option<&'a str>, &'a [Oid]);
 
 /// Walks at most `max_commits` of the history from HEAD and the tips `opts` shows, keeping only
 /// the labels (`refs`) of the refs walked, reading again only the commits `prior` lacks, then
@@ -30,13 +30,13 @@ pub(super) fn history(
     repo: &Repository,
     (opts, max_commits): (&LoadOptions, usize),
     (cache, prior, mailmap): (&GraphCache, Option<&Prior>, &MailmapText),
-    (head_oid, head_branch): Head,
+    (head_oid, head_branch, ref_starts): Head,
     shallow_roots: &[Oid],
     refs: &mut HashMap<Oid, Vec<RefLabel>>,
     locals: &mut [BranchInfo],
 ) -> Result<History> {
     let tips = visible_tips(repo, opts, head_branch, locals);
-    let starts = tracing::debug_span!("load.starts").in_scope(|| walk_starts(repo, opts, head_oid, tips.as_deref()))?;
+    let starts = tracing::debug_span!("load.starts").in_scope(|| walk_starts(repo, head_oid, ref_starts, tips.as_deref()));
     // Labels follow the same visibility as the history.
     keep_visible_labels(refs, tips.as_deref());
     let reuse = prior.and_then(|p| crate::repo::walk_reuse::CommitCache::new(p, repo, shallow_roots, mailmap));
@@ -60,9 +60,9 @@ fn keep_visible_labels(refs: &mut HashMap<Oid, Vec<RefLabel>>, tips: Option<&[St
     }
 }
 
-/// Where the history walk starts: HEAD, then the commits of `tips` (a filtered graph's) or of
-/// every branch, remote branch and tag `opts` doesn't hide.
-fn walk_starts(repo: &Repository, opts: &LoadOptions, head_oid: Option<Oid>, tips: Option<&[String]>) -> Result<Vec<Oid>> {
+/// Where the history walk starts: HEAD, then the commits of `tips` (a filtered graph's) or the
+/// `ref_starts` the load's pass found (every branch, remote branch and tag not hidden).
+fn walk_starts(repo: &Repository, head_oid: Option<Oid>, ref_starts: &[Oid], tips: Option<&[String]>) -> Vec<Oid> {
     let mut starts: Vec<Oid> = head_oid.into_iter().collect();
     match tips {
         Some(list) => {
@@ -72,20 +72,9 @@ fn walk_starts(repo: &Repository, opts: &LoadOptions, head_oid: Option<Oid>, tip
                 }
             }
         }
-        None => {
-            for r in repo.references()?.flatten() {
-                let Some(full) = r.name() else { continue };
-                let wanted = full.starts_with("refs/heads/") || full.starts_with("refs/remotes/") || full.starts_with("refs/tags/");
-                if !wanted || opts.hidden.iter().any(|h| h == full) {
-                    continue;
-                }
-                if let Ok(c) = r.peel_to_commit() {
-                    starts.push(c.id());
-                }
-            }
-        }
+        None => starts.extend_from_slice(ref_starts),
     }
-    Ok(starts)
+    starts
 }
 
 /// Ref names to walk when the graph is filtered; None means everything.

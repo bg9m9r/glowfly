@@ -14,8 +14,7 @@ use crate::lexer::bare_lines;
 const HELPER: &str = "crates/glowfly-core/src/config_entry.rs";
 
 /// Files that still read entries inline, each with why. The list only shrinks.
-const ALLOWED: &[(&str, &str)] =
-    &[("crates/glowfly-core/src/repo/push_config.rs", "#599 rewrites it; read through config_entry once that lands")];
+const ALLOWED: &[(&str, &str)] = &[];
 
 /// What a file that reads config entries names.
 const ENTRY_APIS: &[&str] = &["multivar(", "get_entry(", ".entries(None", ".entries(Some(", "ConfigEntr"];
