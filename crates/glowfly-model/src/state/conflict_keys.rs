@@ -1,8 +1,9 @@
 //! What the conflict keys do (`When::Conflict`): take ours, theirs or both (in either order)
 //! for the current conflict, the one Next and Previous conflict move to, or clear its picks;
-//! Mark resolved whenever it is enabled, with conflicts or without; and Continue the merge, rebase or cherry-pick, which runs
-//! the conflict strip's Commit merge or Continue while it can, and the rebase's own Continue
-//! otherwise. `ui/shortcuts/global.rs` sends what these return.
+//! Mark resolved whenever it is enabled, with conflicts or without; and Continue the merge,
+//! rebase or cherry-pick, which runs the conflict strip's Commit merge or Continue while it
+//! can, and the rebase's own Continue otherwise. `ui/shortcuts/global.rs` sends what these
+//! return.
 
 use crate::keymap::BindingId;
 use crate::msg::{ConflictMsg, Msg, RebaseMsg};
