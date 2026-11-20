@@ -1,5 +1,5 @@
 //! The palette's second steps: the sub-lists a command opens (tracked files, stashes,
-//! profiles, assigned issues, branches and tags to switch to, tags to delete, local branches to delete) and free-text steps (a stash message, a commit count), with their titles, prompts
+//! profiles, assigned issues, branches and tags to switch to, tags to delete, local branches and remote branches to delete) and free-text steps (a stash message, a commit count), with their titles, prompts
 //! and footers, and which command opens which step.
 
 use crate::state::palette::commands::PaletteCommand;
@@ -21,6 +21,7 @@ impl PaletteCommand {
             PaletteCommand::ChooseCheckout => Some(PickKind::SwitchBranch),
             PaletteCommand::ChooseTagToDelete => Some(PickKind::DeleteTag),
             PaletteCommand::ChooseBranchToDelete => Some(PickKind::DeleteBranch),
+            PaletteCommand::ChooseRemoteBranchToDelete => Some(PickKind::DeleteRemoteBranch),
             _ => None,
         }
     }
@@ -56,6 +57,8 @@ pub enum PickKind {
     DeleteTag,
     /// Choose a local branch to open the Delete branch dialog for.
     DeleteBranch,
+    /// Choose a remote branch to open the Delete remote branch dialog for.
+    DeleteRemoteBranch,
 }
 
 impl PickKind {
@@ -76,6 +79,7 @@ impl PickKind {
             PickKind::SwitchBranch => "Switch branch",
             PickKind::DeleteTag => "Delete tag",
             PickKind::DeleteBranch => "Delete branch",
+            PickKind::DeleteRemoteBranch => "Delete remote branch",
         }
     }
 
@@ -96,6 +100,7 @@ impl PickKind {
             PickKind::SwitchBranch => "Find a branch or tag to switch to",
             PickKind::DeleteTag => "Find a tag to delete",
             PickKind::DeleteBranch => "Find a branch to delete",
+            PickKind::DeleteRemoteBranch => "Find a remote branch to delete",
         }
     }
 
@@ -105,7 +110,7 @@ impl PickKind {
             PickKind::Stash(_) | PickKind::RenameStash => "Loading stashes…",
             PickKind::Profile => "Loading profiles…",
             PickKind::GitFlowIssue(_) | PickKind::ViewIssue => "Loading issues…",
-            PickKind::SwitchBranch | PickKind::DeleteBranch => "Loading branches…",
+            PickKind::SwitchBranch | PickKind::DeleteBranch | PickKind::DeleteRemoteBranch => "Loading branches…",
             PickKind::DeleteTag => "Loading tags…",
         }
     }
@@ -121,6 +126,7 @@ impl PickKind {
             PickKind::SwitchBranch => "No matching branches or tags",
             PickKind::DeleteTag => "No matching tags",
             PickKind::DeleteBranch => "No matching branches",
+            PickKind::DeleteRemoteBranch => "No matching remote branches",
         }
     }
 
@@ -135,6 +141,7 @@ impl PickKind {
             PickKind::SwitchBranch => "No other branches or tags to switch to",
             PickKind::DeleteTag => "This repository has no tags",
             PickKind::DeleteBranch => "This repository has no local branches",
+            PickKind::DeleteRemoteBranch => "This repository has no remote branches",
         }
     }
 
@@ -152,7 +159,9 @@ impl PickKind {
             PickKind::GitFlowIssue(_) => "Up/Down to choose, Enter to start, Backspace or Esc to go back",
             PickKind::ViewIssue => "Up/Down to choose, Enter to view, Backspace or Esc to go back",
             PickKind::SwitchBranch => "Up/Down to choose, Enter to switch, Backspace or Esc to go back",
-            PickKind::DeleteTag | PickKind::DeleteBranch => "Up/Down to choose, Enter to choose, Backspace or Esc to go back",
+            PickKind::DeleteTag | PickKind::DeleteBranch | PickKind::DeleteRemoteBranch => {
+                "Up/Down to choose, Enter to choose, Backspace or Esc to go back"
+            }
         }
     }
 
@@ -166,6 +175,7 @@ impl PickKind {
             PickKind::SwitchBranch => "branches and tags",
             PickKind::DeleteTag => "tags",
             PickKind::DeleteBranch => "branches",
+            PickKind::DeleteRemoteBranch => "remote branches",
         };
         format!("Showing {shown} of {total} {noun}. Type more to narrow the list.")
     }
@@ -177,7 +187,7 @@ impl PickKind {
 
     /// Whether the step lists ref entries (branches or tags), drawn as names with their detail.
     pub fn lists_refs(self) -> bool {
-        matches!(self, PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch)
+        matches!(self, PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch | PickKind::DeleteRemoteBranch)
     }
 
     /// Whether rows dim their folder part (through the last '/').

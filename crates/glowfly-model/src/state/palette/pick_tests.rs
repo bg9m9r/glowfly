@@ -85,3 +85,23 @@ fn other_kinds_keep_their_detail() {
         assert_eq!(pick.detail_tip(i, &s, NOW, 0), None);
     }
 }
+
+#[test]
+fn remote_rows_are_sorted_and_skip_head() {
+    use glowfly_core::repo::Tracking;
+    let mut snap = crate::state::op_fixture::snapshot("pick-remote");
+    let o = snap.head_oid.expect("born");
+    snap.remotes = vec![
+        ("origin".into(), vec![("zeta".into(), o), ("HEAD".into(), o), ("alpha".into(), o)]),
+        ("backup".into(), vec![("main".into(), o)]),
+    ];
+    let name = snap.locals[0].name.clone();
+    snap.locals[0].tracking = Some(Tracking { remote: "origin".into(), merge: "alpha".into() });
+    let pick = Pick::remote_branches_to_delete(&snap);
+    let rows = pick.rank("").unwrap().total;
+    let labels: Vec<&str> = (0..rows).map(|i| pick.label(i)).collect();
+    assert_eq!(labels, ["backup/main", "origin/alpha", "origin/zeta"]);
+    let details: Vec<Option<String>> = (0..rows).map(|i| pick.detail(i)).collect();
+    assert_eq!(details, [None, Some(name), None]);
+    let _ = std::fs::remove_dir_all(&snap.workdir);
+}

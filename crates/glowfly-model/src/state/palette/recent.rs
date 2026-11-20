@@ -77,6 +77,7 @@ impl PaletteCommand {
             C::ChooseCheckout => "switch-branch",
             C::ChooseTagToDelete => "delete-tag",
             C::ChooseBranchToDelete => "delete-branch",
+            C::ChooseRemoteBranchToDelete => "delete-remote-branch",
             C::SwitchProfile(_) => return None,
             C::ChooseStashToRename => "stash-rename",
             C::RenameStash { .. } => return None,
@@ -152,7 +153,13 @@ impl PaletteCommand {
             C::Theme(ThemeChoice::Graphite) => "theme-graphite",
             C::Theme(ThemeChoice::Porcelain) => "theme-porcelain",
             C::Theme(ThemeChoice::Custom(_)) => return None,
-            C::Checkout(_) | C::CheckoutRemote { .. } | C::CheckoutTag(_) | C::DeleteTag(_) | C::DeleteBranch(_) | C::OpenRecent(_) => {
+            C::Checkout(_)
+            | C::CheckoutRemote { .. }
+            | C::CheckoutTag(_)
+            | C::DeleteTag(_)
+            | C::DeleteBranch(_)
+            | C::DeleteRemoteBranch { .. }
+            | C::OpenRecent(_) => {
                 return None;
             }
             // Names are the user's own data.

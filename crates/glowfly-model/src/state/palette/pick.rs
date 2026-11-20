@@ -108,6 +108,36 @@ impl Pick {
         Self { items: Items::Ready(labels), refs, reasons, ..Self::new(PickKind::DeleteBranch) }
     }
 
+    /// The Delete remote branch sub-list: one row per remote-tracking branch of `snap` (not a
+    /// remote's HEAD), labelled remote/name, sorted by remote then name, with the local branches
+    /// tracking it as its detail.
+    pub fn remote_branches_to_delete(snap: &glowfly_core::repo::Snapshot) -> Self {
+        use super::commands::{entry, with_detail};
+        let mut pairs: Vec<(&str, &str)> = snap
+            .remotes
+            .iter()
+            .flat_map(|(remote, branches)| branches.iter().map(move |(branch, _)| (remote.as_str(), branch.as_str())))
+            .filter(|(_, branch)| *branch != "HEAD")
+            .collect();
+        pairs.sort();
+        let refs: Vec<Entry> = pairs
+            .into_iter()
+            .map(|(remote, branch)| {
+                let trackers: Vec<&str> = snap
+                    .locals
+                    .iter()
+                    .filter(|b| crate::state::remote_branch::tracks(b, remote, branch))
+                    .map(|b| b.name.as_str())
+                    .collect();
+                let detail = (!trackers.is_empty()).then(|| trackers.join(", "));
+                let command = PaletteCommand::DeleteRemoteBranch { remote: remote.to_owned(), branch: branch.to_owned() };
+                with_detail(entry(command, format!("{remote}/{branch}"), ""), detail)
+            })
+            .collect();
+        let labels = refs.iter().map(|e| e.label.clone()).collect();
+        Self { items: Items::Ready(labels), refs, ..Self::new(PickKind::DeleteRemoteBranch) }
+    }
+
     /// Why item `index` cannot be chosen (Delete branch sub-list); None for the others.
     pub fn blocked(&self, index: usize) -> Option<&str> {
         self.reasons.get(index).and_then(|r| r.as_deref())
@@ -122,7 +152,9 @@ impl Pick {
             PickKind::Stash(_) | PickKind::RenameStash => self.stashes.get(index).map(|s| format!("stash@{{{}}}", s.index)),
             PickKind::Profile => self.profiles.get(index).map(|r| r.detail.clone()),
             PickKind::GitFlowIssue(_) | PickKind::ViewIssue => self.issues.get(index).map(|r| r.detail.clone()),
-            PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch => self.refs.get(index).and_then(|e| e.detail.clone()),
+            PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch | PickKind::DeleteRemoteBranch => {
+                self.refs.get(index).and_then(|e| e.detail.clone())
+            }
             PickKind::FileHistory | PickKind::Blame => None,
         }
     }
@@ -170,7 +202,9 @@ impl Pick {
                 self.issues.get(index).map(|r| PaletteCommand::StartGitFlowFromIssue { kind, name: r.name.clone() })
             }
             PickKind::ViewIssue => self.issues.get(index).map(|r| PaletteCommand::ViewIssue(r.key.clone())),
-            PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch => self.refs.get(index).map(|e| e.command.clone()),
+            PickKind::SwitchBranch | PickKind::DeleteTag | PickKind::DeleteBranch | PickKind::DeleteRemoteBranch => {
+                self.refs.get(index).map(|e| e.command.clone())
+            }
         }
     }
 
