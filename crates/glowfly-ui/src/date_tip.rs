@@ -1,35 +1,11 @@
-//! Dates drawn as labels with their full date on hover, and the `Clock` views format them with.
+//! Dates drawn as labels with their full date on hover, and re-exports `Clock` (glowfly-model's state/clock.rs), which views format dates with.
 
 use super::theme::color;
 use super::widgets::truncate;
 use eframe::egui::{Response, RichText, Ui};
 use glowfly_core::settings::Settings;
-use glowfly_model::state::AppState;
 
-/// What a view formats dates with: the settings, and now and the zone from `st.cues` (no clock
-/// is read in a view).
-#[derive(Clone, Copy)]
-pub(crate) struct Clock<'a> {
-    pub settings: &'a Settings,
-    pub now: i64,
-    pub offset: i32,
-}
-
-impl<'a> Clock<'a> {
-    pub(crate) fn of(st: &'a AppState) -> Self {
-        Self { settings: &st.settings, now: st.cues.now, offset: st.cues.utc_offset }
-    }
-
-    /// `secs` as a day: relative or in the user's date format (`Settings::format_day`).
-    pub(crate) fn day(&self, secs: i64) -> String {
-        self.settings.format_day(secs, self.now, self.offset)
-    }
-
-    /// The full date (and the age when dates aren't relative) for a tooltip (`Settings::date_tooltip`).
-    pub(crate) fn tip(&self, secs: i64) -> String {
-        self.settings.date_tooltip(secs, self.now, self.offset)
-    }
-}
+pub(crate) use glowfly_model::state::clock::Clock;
 
 /// A weak label with `settings.format_time(secs…)` and the date tooltip, which also covers the
 /// label when it is cut short. In a wrapping row it moves onto the next row rather than being

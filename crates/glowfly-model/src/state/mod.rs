@@ -14,6 +14,7 @@ pub mod branch_delete;
 pub mod branch_sync;
 pub mod branches;
 pub mod build_status;
+pub mod clock;
 pub mod clone;
 pub mod clone_service;
 pub mod commit;

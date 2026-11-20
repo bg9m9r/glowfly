@@ -307,7 +307,7 @@ fn repo_entries(st: &AppState, snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(entry(C::Push, "Push", "upload publish"));
     }
     pr::pr_entries(st, snap, out);
-    stash::stash_entries(snap, out);
+    stash::stash_entries(snap, crate::state::clock::Clock::of(st), out);
     conflict::conflict_entries(st, snap, out);
     rebase::entries(st, snap, out);
     if !snap.unstaged.is_empty() {

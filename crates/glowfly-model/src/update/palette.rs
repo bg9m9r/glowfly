@@ -27,6 +27,7 @@ use crate::msg::StageMsg;
 use crate::msg::StashMsg;
 use crate::msg::TabsMsg;
 use crate::msg::TrustMsg;
+use crate::state::clock::Clock;
 use crate::state::conflict_files::{conflicted_paths, mark_conflicted_body, restorable_paths};
 use crate::state::palette::files::with_folders;
 use crate::state::palette::{self, Items, Mode, Palette, PaletteCommand, PickKind};
@@ -305,8 +306,7 @@ fn mark_conflicted(t: glowfly_core::i18n::Lang, paths: Vec<String>) -> Msg {
 /// The message `option` on the stash with commit `oid` sends, the same as the sidebar's
 /// STASHES menu; logs and gives None when the stash is gone.
 fn stash_option(st: &mut AppState, option: StashOption, oid: git2::Oid) -> Option<Msg> {
-    let t = st.settings.lang();
-    let msg = st.snap.as_ref().and_then(|snap| stash_actions::for_commit(snap, t, option, oid));
+    let msg = st.snap.as_ref().and_then(|snap| stash_actions::for_commit(snap, Clock::of(st), option, oid));
     if msg.is_none() {
         st.log(false, "That stash no longer exists.");
     }

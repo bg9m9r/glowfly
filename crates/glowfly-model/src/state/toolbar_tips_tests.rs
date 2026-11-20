@@ -10,6 +10,9 @@ use git2::Oid;
 use glowfly_core::repo::{CommitInfo, PushDest, PushRefusal, PushRule, PushTarget, StashInfo, Tracking};
 use std::time::Instant;
 
+/// A fixed "now" for the dates the tests format.
+const NOW: i64 = 1_769_947_200;
+
 /// The one-commit fixture with its branch called main.
 pub fn state(name: &str) -> AppState {
     let mut st = AppState::new(Settings::default(), Vec::new(), Instant::now());
@@ -262,11 +265,30 @@ fn stash_and_pop_previews() {
     assert_eq!(paths, ["a.txt", "b.txt", "c.txt", "d.txt", "e.txt"], "merged, once each, by path");
     assert_eq!((p.heading.as_str(), p.more), ("Stashes", 2));
 
-    assert_eq!(pop_preview(Lang::En, snap), None);
+    let settings = Settings::default();
+    let clock = Clock { settings: &settings, now: NOW, offset: 0 };
+    assert_eq!(pop_preview(clock, snap), None);
     snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9), time: None }];
-    let p = pop_preview(Lang::En, snap).unwrap();
+    let p = pop_preview(clock, snap).unwrap();
     assert_eq!((p.heading.as_str(), &p.rows[..]), ("Applies", &[TipRow::Line("On main: wip".into())][..]));
     assert_eq!(p.note.as_deref(), Some("You have local changes: Unstash asks before applying."));
+}
+
+#[test]
+fn pop_preview_says_when_it_was_stashed() {
+    let mut st = state("tips-pop-when");
+    let snap = st.snap.as_mut().unwrap();
+    let made = NOW - 3 * 86_400;
+    snap.stashes = vec![StashInfo { index: 0, message: "On main: wip".into(), oid: fake(9), time: Some(made) }];
+    let rows = |settings: &Settings, snap: &Snapshot| pop_preview(Clock { settings, now: NOW, offset: 0 }, snap).unwrap().rows;
+    let line = |s: &str| TipRow::Line(s.into());
+    assert_eq!(rows(&Settings::default(), snap), [line("On main: wip"), line("Stashed 3 days ago")]);
+    let absolute = Settings { relative_dates: false, ..Settings::default() };
+    assert_eq!(rows(&absolute, snap)[1], line(&format!("Stashed {}", absolute.format_date(made, 0))));
+    let german = Settings { language: "de".into(), ..Settings::default() };
+    assert_eq!(rows(&german, snap)[1], line("Angelegt vor 3 Tagen"));
+    snap.stashes[0].time = None;
+    assert_eq!(rows(&Settings::default(), snap), [line("On main: wip")]);
 }
 
 /// `push_target_parts` gives `push_target`'s template and its names whole, for a menu to cut.

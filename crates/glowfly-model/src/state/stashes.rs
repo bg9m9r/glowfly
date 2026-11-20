@@ -7,9 +7,13 @@ use glowfly_core::repo::{FileEntry, Snapshot, StashInfo};
 use glowfly_core::stash_ops::{StashScope, edited_message, split_message};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// The question before dropping the stash listed as `message` (sidebar STASHES menu and palette).
-pub fn drop_confirm_body(message: &str) -> String {
-    format!("Delete \"{message}\"? Undo brings it back while this tab is open.")
+/// The question before dropping the stash listed as `message`, made `when` (a day as
+/// `Clock::day` gives it; None, when the stash commit's time is unknown, leaves the date out).
+pub fn drop_confirm_body(t: Lang, message: &str, when: Option<&str>) -> String {
+    match when {
+        Some(when) => t.trf("stash.drop.body_dated", &[("message", &message), ("when", &when)]),
+        None => t.trf("stash.drop.body", &[("message", &message)]),
+    }
 }
 
 /// Why a stash can't run: nothing has changed. In English for the Stash dialog, which isn't

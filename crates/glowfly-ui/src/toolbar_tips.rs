@@ -139,7 +139,7 @@ pub fn stash(st: &AppState) -> Tip {
     }
 }
 
-/// Unstash: its keys, how many stashes there are, the one it applies, and what unstashing does.
+/// Unstash: its keys, how many stashes there are, the one it applies and when it was made, and what unstashing does.
 pub fn pop(st: &AppState) -> Tip {
     let t = lang(st);
     let tip = Tip::new(t.tr("toolbar.pop.name")).keys(BindingId::PopStash);
@@ -148,7 +148,7 @@ pub fn pop(st: &AppState) -> Tip {
     let tip = if n > 0 { tip.state(t.trn("toolbar.tip.stashes", n, &[])) } else { tip };
     match rules::pop_blocked(st) {
         Some(why) => tip.body(why),
-        None => tip.body(t.tr("toolbar.tip.pop_body")).preview(rules::pop_preview(t, snap)),
+        None => tip.body(t.tr("toolbar.tip.pop_body")).preview(rules::pop_preview(crate::date_tip::Clock::of(st), snap)),
     }
 }
 

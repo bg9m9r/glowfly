@@ -73,11 +73,12 @@ pub(crate) fn apply_blocked(snap: &Snapshot, t: Lang) -> Option<&'static str> {
 }
 
 /// What `action` on the stash with commit `oid` (named `message`) sends: the job, the question
-/// before it, or the refusal over conflicts.
-pub(super) fn guarded(snap: &Snapshot, t: Lang, action: StashAction, oid: Oid, message: &str, run: StashRun) -> Msg {
+/// before it, or the refusal over conflicts. `when` is the day the stash was made, named by
+/// Delete's question.
+pub(super) fn guarded(snap: &Snapshot, t: Lang, action: StashAction, oid: Oid, message: &str, when: Option<&str>, run: StashRun) -> Msg {
     let ask = StashAsk { action, oid, message: message.to_owned(), run };
     match action {
-        StashAction::Drop => Msg::confirm_danger("Delete stash", drop_confirm_body(message), "Delete", ask.job()),
+        StashAction::Drop => Msg::confirm_danger("Delete stash", drop_confirm_body(t, message, when), "Delete", ask.job()),
         StashAction::Apply | StashAction::Pop => match apply_blocked(snap, t) {
             Some(why) => Msg::Logged { ok: false, text: why.to_owned() },
             None if snap.is_dirty() => Msg::Stash(StashMsg::Ask(ask)),

@@ -118,6 +118,7 @@
   "toolbar.tip.pop_body": "Den neuesten Stash anwenden und entfernen (git stash pop). Gibt es Konflikte, bleibt der Stash erhalten.",
   "toolbar.tip.pop_dirty_note": "Du hast lokale Änderungen: Unstash fragt vor dem Anwenden.",
   "toolbar.tip.pop_heading": "Wendet an",
+  "toolbar.tip.pop_stashed": "Angelegt {when}",
   "toolbar.tip.pr_body": "Öffnet das Formular; gesendet wird erst, wenn du erstellst.",
   "toolbar.tip.publish_body": "Es hat noch kein Remote: Veröffentlichen legt eines bei einem Hosting-Dienst an und pusht diesen Branch dorthin.",
   "toolbar.tip.publish_title": "Dieses Repository veröffentlichen",

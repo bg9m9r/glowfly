@@ -1,14 +1,15 @@
 //! The palette's stash entries: Stash changes, Stash with message…, the Stash dialog's Stash
 //! staged changes… and Stash selected files… (while the tree is dirty), then Unstash the latest
-//! stash and the apply, unstash, delete and rename sub-lists (while there are stashes).
+//! stash (its message and when it was made) and the apply, unstash, delete and rename sub-lists (while there are stashes).
 
 use super::{Entry, PaletteCommand as C, entry, with_detail};
+use crate::state::clock::Clock;
 use crate::state::stash_confirm::StashAction;
 use crate::state::stashes::wip_files;
 use glowfly_core::repo::Snapshot;
 use glowfly_core::stash_ops::StashScope;
 
-pub(super) fn stash_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
+pub(super) fn stash_entries(snap: &Snapshot, clock: Clock<'_>, out: &mut Vec<Entry>) {
     if snap.is_dirty() {
         out.push(entry(C::Stash, "Stash changes", "save shelve park untracked wip stash push"));
         out.push(entry(C::StashMessage, "Stash with message…", "save shelve park untracked wip stash push name describe message"));
@@ -32,7 +33,11 @@ pub(super) fn stash_entries(snap: &Snapshot, out: &mut Vec<Entry>) {
         out.push(with_detail(e, Some(files)));
     }
     if let Some(top) = snap.stashes.first() {
-        out.push(with_detail(entry(C::PopStash, "Unstash the latest stash", "unstash pop apply restore stash"), Some(top.message.clone())));
+        let detail = match top.time {
+            Some(secs) => format!("{} · {}", top.message, clock.day(secs)),
+            None => top.message.clone(),
+        };
+        out.push(with_detail(entry(C::PopStash, "Unstash the latest stash", "unstash pop apply restore stash"), Some(detail)));
     }
     if !snap.stashes.is_empty() {
         let len = snap.stashes.len();

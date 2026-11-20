@@ -89,6 +89,24 @@ pub(crate) fn two_stashes(name: &str) -> (AppState, PathBuf) {
 }
 
 #[test]
+fn unstash_latest_detail_says_when() {
+    let (mut st, dir) = two_stashes("stash-latest-when");
+    let top = &st.snap.as_ref().unwrap().stashes[0];
+    let (message, time) = (top.message.clone(), top.time.expect("read at load"));
+    st.cues.now = time + 3 * 86_400;
+    let detail = |st: &AppState| {
+        let entries = glowfly_model::state::palette::entries(st);
+        entries.into_iter().find(|e| e.label == "Unstash the latest stash").expect("listed").detail
+    };
+    assert_eq!(detail(&st), Some(format!("{message} · 3 days ago")));
+    st.settings.relative_dates = false;
+    assert_eq!(detail(&st), Some(format!("{message} · {}", st.settings.format_date(time, st.cues.utc_offset))));
+    st.snap.as_mut().unwrap().stashes[0].time = None;
+    assert_eq!(detail(&st), Some(message));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn stash_entries_availability() {
     let st = state();
     let l = labels(&st, "");
