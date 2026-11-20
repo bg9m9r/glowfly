@@ -26,7 +26,7 @@ pub(super) fn sign_in(ui: &mut Ui, t: Lang, key: &str, form: SignIn<'_>, cancel:
     aligned(ui, |ui| match step {
         SignInStep::Waiting(_) => {
             ui.horizontal_wrapped(|ui| {
-                ui.add(egui::Spinner::new().size(14.0));
+                ui.add(crate::widgets::Spinner::new().size(14.0));
                 ui.label(RichText::new(t.tr("prefs.trello.sign_in.waiting")).size(type_scale::BODY).color(color::text()));
                 ui.add_space(8.0);
                 if ui.add(buttons::secondary(t.tr("common.cancel.button"))).clicked() {
@@ -41,7 +41,7 @@ pub(super) fn sign_in(ui: &mut Ui, t: Lang, key: &str, form: SignIn<'_>, cancel:
                     msgs.push(Msg::Forge(ForgeMsg::StartTrelloSignIn));
                 }
                 if prefs.int_busy {
-                    ui.add(egui::Spinner::new().size(14.0));
+                    ui.add(crate::widgets::Spinner::new().size(14.0));
                 }
             });
             help(ui, t.tr("prefs.trello.sign_in.help"));
