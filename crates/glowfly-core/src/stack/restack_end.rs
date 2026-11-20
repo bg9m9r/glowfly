@@ -1,8 +1,8 @@
 //! The auto-stash of a restack and how a restack ends: `stash_first` stashes the uncommitted
 //! changes once before the first step (`git stash push -m "Auto-stash before restacking onto
 //! <lower>"`), and `come_back` checks the branch checked out before out again and puts the
-//! stash back there with `stash_ops::pop_put_back` (`pop --index`, so what was staged comes
-//! back staged). The stash only goes back onto that branch: when HEAD can't get there, it stays
+//! stash back there with `stash_ops::pop_put_back` (`pop --index` unless something is staged, so what was
+//! staged comes back staged). The stash only goes back onto that branch: when HEAD can't get there, it stays
 //! in the stash list and the output says why. `end_stopped` ends a restack whose stopped step's
 //! rebase is over (Abort, or finished outside Glowfly), from the step's top where git leaves
 //! HEAD.

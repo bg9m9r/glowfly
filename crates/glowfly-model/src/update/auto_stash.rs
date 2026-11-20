@@ -13,7 +13,7 @@
 //! `job_finished` arms a pending entry with `from = load_gen + 1`, and `seen`, after each
 //! snapshot of that tab, finds the stash and, once nothing is in progress, puts it back as a
 //! quiet job (`StashEffect::PutBack`), whose result `handle` turns into a toast. It goes back
-//! with `git stash pop --index`, falling back to a plain pop when the staged state no longer
+//! with `git stash pop --index` (the plain pop when something is staged by then, keeping it), falling back to a plain pop when the staged state no longer
 //! fits (`PutBack::RestoredUnstaged`). The runner writes the stash's saved record as soon as it
 //! exists (`AutoStashMsg::Made`), and every end of its put-back removes it, so a crash or restart
 //! in between still offers it (update/auto_stash_saved.rs, read on every `LoadKind::Open`

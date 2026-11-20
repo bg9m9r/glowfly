@@ -114,7 +114,7 @@ impl Action {
     }
 
     /// Whether "Stash changes and undo" puts the stashed changes back once the undo is done
-    /// (with `stash pop --index`): for a merge, pull, cherry-pick, revert or rebase. Undoing a
+    /// (with `stash pop`, `--index` unless something is staged): for a merge, pull, cherry-pick, revert or rebase. Undoing a
     /// hard reset, Discard all or a stash brings back other changes at the same paths, so the
     /// newer ones stay in the stash.
     pub fn restores_stash(&self) -> bool {

@@ -17,7 +17,7 @@
 //! `auto` names the stash Glowfly makes before an operation that needs a clean work tree
 //! (checkout, pull, merge, rebase, cherry-pick, revert, hard reset), recognises it and git's own
 //! kept "autostash" in the list, finds the entry a job made (`made_in`), and puts it back with
-//! `git stash pop --index` (a plain pop when the staged state no longer fits) once nothing is in
+//! `git stash pop --index` (the plain pop when something is staged, or when the staged state no longer fits) once nothing is in
 //! progress. `saved` keeps the ones still waiting to go back across restarts, each written as
 //! soon as its stash exists (`add_saved`). `paths` lists the files a stash changes.
 //!

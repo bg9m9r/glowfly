@@ -75,3 +75,21 @@ fn redo_of_an_apply_that_fell_back_falls_back_again() {
     assert!(stashes(&dir).is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn push_undo_over_unrelated_staged_changes_pops_plainly() {
+    let (dir, _) = base("undo-stash-push-staged");
+    write(&dir, "a.txt", "a staged\n");
+    git(&dir, &["add", "a.txt"]);
+    let (_, action) = record_kind(&dir, &["stash", "push", "-u"]);
+    let action = action.expect("recorded");
+    assert!(clean(&dir), "{:?}", split(&dir));
+    write(&dir, "b.txt", "b staged\n");
+    git(&dir, &["add", "b.txt"]);
+    let undo = plan(&dir, &action, false).unwrap();
+    assert_eq!(undo, super::tests::cmds(&[&["stash", "pop", "stash@{0}"]]));
+    run_plan(&dir, undo);
+    assert_eq!(split(&dir), (vec!["Ma.txt".to_owned()], vec!["Mb.txt".to_owned()]));
+    assert!(stashes(&dir).is_empty());
+    let _ = std::fs::remove_dir_all(&dir);
+}
