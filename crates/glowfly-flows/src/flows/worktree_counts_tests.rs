@@ -3,8 +3,8 @@
 //! one count runs at a time (also through unchanged refreshes), a count for other refs is
 //! dropped, a too-large worktree isn't retried, the option off counts nothing, a slow count
 //! offers the untracked cache, git reads a worktree only by that worktree's own trust, and a
-//! status-only reload counts the others again, at most once per interval unless the window or
-//! tab is returned to, with a recount kept for later dropped once nothing is left to count, and
+//! status-only reload (or returning to the window) counts the others again, at most once per
+//! interval, with a recount kept for later dropped once nothing is left to count, and
 //! a worktree whose read a count found held is counted by the next recount, while one whose
 //! record names another network place is never asked for.
 
@@ -285,12 +285,15 @@ fn a_status_only_reload_counts_other_worktrees_again_at_most_once_per_interval()
     assert_eq!((linked_info(&st).read, linked_info(&st).changes), (ChangesRead::Counted, more));
     assert_eq!(st.refresh.counting, None);
 
-    // Within the interval again, but back in the window: at once.
+    // Within the interval again, back in the window: still throttled, kept for the tick.
     std::fs::remove_file(linked.join("c.txt")).unwrap();
     assert!(counts(&step(&mut st, watched())).is_empty(), "throttled");
     let fx = step(&mut st, Msg::Repo(RepoMsg::WindowFocused));
-    assert_eq!(counts(&fx).len(), 1, "returning to the window counts at once: {fx:?}");
-    run_count(&mut st, fx, Instant::now());
+    assert!(counts(&fx).is_empty(), "returning to the window keeps the interval: {fx:?}");
+    let due = st.refresh.recount.due().expect("kept for the end of the interval");
+    let fx = update(&mut st, Msg::Tick(due), due);
+    assert_eq!(counts(&fx).len(), 1, "{fx:?}");
+    run_count(&mut st, fx, due);
     assert_eq!(linked_info(&st).changes, SIDE);
     cleanup(&[&linked, &dir]);
 }
@@ -348,10 +351,12 @@ fn a_waiting_recount_is_dropped_once_nothing_is_left_to_count() {
     let path = linked_info(&st).path.clone();
     let key = refs_key(&st);
     // A recount runs, and a watcher reload asks for another meanwhile.
-    let fx = step(&mut st, Msg::Repo(RepoMsg::WindowFocused));
+    let watched = || Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
+    assert!(counts(&step(&mut st, watched())).is_empty(), "the load counted them just now");
+    let first = st.refresh.recount.due().expect("kept for the end of the interval");
+    let fx = update(&mut st, Msg::Tick(first), first);
     assert_eq!(counts(&fx).len(), 1, "{fx:?}");
-    let watched = Msg::Watch(WatchMsg::RepoChanged { full: false, paths: None, last_event: Instant::now() });
-    assert!(counts(&step(&mut st, watched)).is_empty());
+    assert!(counts(&step(&mut st, watched())).is_empty());
     let due = st.refresh.recount.due().expect("kept for when the count ends");
     // The recount's read times out: the worktree is too large to count now.
     let too_large = vec![result(&path, ChangesRead::TooLarge, ChangeCounts::default(), None)];

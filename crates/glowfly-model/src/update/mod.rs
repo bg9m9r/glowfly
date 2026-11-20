@@ -45,6 +45,7 @@ mod edit;
 mod file_list_keys;
 mod file_trust;
 mod files;
+mod focus;
 mod fold_keys;
 mod forge;
 mod forge_filter_edit;

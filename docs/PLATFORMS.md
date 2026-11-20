@@ -857,7 +857,7 @@ trust scan all run for untrusted repositories too.
    submodules' and nested repositories' work trees walked by their own ignore rules with their
    HEAD and refs compared) and feeds what changed through the usual
    classification; a failed watcher, a tree past `SWEEP_MAX_ENTRIES` and the first sweep read the
-   whole status. Keep the refresh on focus and F5.
+   whole status. Keep the refresh on focus (skipped only while the watcher is trusted and the last whole read is under `FOCUS_FRESH` old) and F5.
 4. **Never trust size plus mtime alone.** Hash files up to 64 KiB, and treat a stamp taken
    within `refs_key::RACY_WINDOW` (2 s) of the modification time as untrustworthy
    (`refs_key::stamp_trustworthy`): FAT has 2 s timestamps and HFS+ 1 s.

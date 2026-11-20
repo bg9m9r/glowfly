@@ -41,6 +41,16 @@ fn reads(fx: &[Effect]) -> Vec<(PathBuf, usize)> {
         .collect()
 }
 
+/// The `known` stamp of each identity read in `fx`.
+fn known_stamps(fx: &[Effect]) -> Vec<Option<glowfly_core::config_stamp::ConfigStamp>> {
+    fx.iter()
+        .filter_map(|e| match e {
+            Effect::Profile(ProfileEffect::ReadIdentity { known, .. }) => Some(*known),
+            _ => None,
+        })
+        .collect()
+}
+
 fn rules_error(st: &AppState) -> Option<&str> {
     st.prefs.as_ref().and_then(|p| p.profiles.rules_error.as_deref())
 }
@@ -204,10 +214,19 @@ fn identity_is_read_on_open_focus_and_closing_preferences() {
     let kept = finish_keeping(&mut st, fx);
     let git_dir = git_dir(&st);
     assert_eq!(reads(&kept), [(git_dir.clone(), 1)]);
+    // The runner stamps what it reads (profile effects aren't run by `finish`).
+    let read = kept.into_iter().find(|e| matches!(e, Effect::Profile(ProfileEffect::ReadIdentity { .. }))).unwrap();
+    let stored_msg = glowfly_runner::testing::execute(read).expect("a first read asks git");
+    run(&mut st, stored_msg);
+    // Focus only checks: the read carries the stamp of the stored identity; closing Preferences forces it.
+    let stored = st.identities[&git_dir].stamp;
+    assert!(stored.is_some());
     let fx = run(&mut st, Msg::Repo(RepoMsg::WindowFocused));
     assert_eq!(reads(&fx), [(git_dir.clone(), 1)]);
+    assert_eq!(known_stamps(&fx), [stored]);
     let fx = run(&mut st, Msg::Prefs(PrefsMsg::ClosePrefs));
     assert_eq!(reads(&fx), [(git_dir, 1)]);
+    assert_eq!(known_stamps(&fx), [None]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 

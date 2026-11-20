@@ -24,16 +24,7 @@ pub(super) fn handle(st: &mut AppState, msg: RepoMsg, now: Instant, fx: &mut Vec
             super::refresh::reload(st, fx);
             super::forge::refresh(st, true, false, now, fx);
         }
-        RepoMsg::WindowFocused => {
-            // Pick up changes made outside the app, other worktrees' included at once.
-            st.refresh.recount.forget();
-            if st.job.is_none() {
-                refresh(st, fx);
-            }
-            super::recent::check_folders(st, fx);
-            super::profile_rules::want_identity(st, fx);
-            super::lfs::window_focused(st, now, fx);
-        }
+        RepoMsg::WindowFocused => super::focus::window_focused(st, now, fx),
         RepoMsg::RepoLoaded { generation, kind, result } => {
             let t = st.settings.lang();
             if let Some(places) = super::open_anyway::askable(kind, &result) {

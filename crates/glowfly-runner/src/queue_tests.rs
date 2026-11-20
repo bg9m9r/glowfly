@@ -196,7 +196,12 @@ fn which_effects_queue() {
     let (workdir, git_dir) = (w.clone(), w.join(".git"));
     for e in [
         glowfly_model::profile::ProfileEffect::SyncIncludes { cwd: w.clone(), plan, place: true },
-        glowfly_model::profile::ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() },
+        glowfly_model::profile::ProfileEffect::ReadIdentity {
+            workdir: workdir.clone(),
+            git_dir: git_dir.clone(),
+            rules: Vec::new(),
+            known: None,
+        },
         glowfly_model::profile::ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() },
         glowfly_model::profile::ProfileEffect::CheckFolder { id, path: w.clone(), repository: true },
     ] {

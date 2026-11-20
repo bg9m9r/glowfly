@@ -4,8 +4,8 @@
 //! (`WorktreeMsg::ChangesCounted`) fills in their counts and lays the graph out again. One count
 //! runs per tab at a time, and it outlives refreshes that find the repository unchanged.
 //!
-//! A reload that keeps the snapshot (the watcher's, a status-only one, returning to the tab or
-//! the window) counts the counted ones again through the same effect (`recount`), throttled by
+//! A reload that keeps the snapshot (the watcher's, a status-only one, or returning to the window,
+//! update/focus.rs) counts the counted ones again through the same effect (`recount`), throttled by
 //! `RefreshState::recount` so many worktrees aren't read on every file event. One whose read a
 //! count found Held is asked again the same way, so it is counted once what held it is gone;
 //! a NotCounted one (its files name another network place) is never asked for.
@@ -60,7 +60,8 @@ fn recountable(w: &WorktreeInfo) -> bool {
 
 /// Counts the other worktrees again after a reload that kept the snapshot, at `now`: at once
 /// when the last count is `RECOUNT_EVERY` old, else once it is (on a tick, or when a running
-/// count ends).
+/// count ends). Also asked when the window is focused and the status isn't read again
+/// (update/focus.rs).
 pub(super) fn recount(st: &mut AppState, now: Instant, fx: &mut Vec<Effect>) {
     let wanted = st.settings.worktree_wips && st.snap.as_ref().is_some_and(|s| s.worktrees.iter().any(recountable));
     if !wanted {

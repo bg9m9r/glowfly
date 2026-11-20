@@ -179,7 +179,7 @@ mod tests {
         let (tx, _rx) = mpsc::channel();
         let runner = super::super::testing::sandboxed(tx, Waker::none(), dir.clone());
         let (workdir, git_dir) = (dir.clone(), dir.join(".git"));
-        let read = ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new() };
+        let read = ProfileEffect::ReadIdentity { workdir: workdir.clone(), git_dir: git_dir.clone(), rules: Vec::new(), known: None };
         assert!(runner.admit(Effect::Profile(read)).is_some());
         assert!(runner.admit(Effect::Profile(ProfileEffect::ClearLocalIdentity { workdir, git_dir, rules: Vec::new() })).is_some());
         let id = glowfly_core::settings::ProfileId(1);
