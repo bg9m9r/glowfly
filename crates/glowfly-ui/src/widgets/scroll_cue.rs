@@ -2,7 +2,7 @@
 //! text colour at low opacity, with 8 px kept free beside it so it never covers row text), and a
 //! fade where a vertical scroll area cuts its content, from transparent to the surface colour:
 //! at the top once scrolled down, at the bottom while more is below. Dialog bodies, the
-//! Preferences page and the file history's File view use it.
+//! Preferences page and navigation, and the file history's File view use it.
 
 use eframe::egui::{self, Color32, Mesh, Rect, Ui, pos2, scroll_area::ScrollAreaOutput, style::ScrollStyle};
 
@@ -75,6 +75,14 @@ pub fn show<R>(ui: &mut Ui, area: egui::ScrollArea, surface: Color32, add: impl 
         out.inner
     })
     .inner
+}
+
+/// Scrolls the cue's area around `rect` so it shows clear of the fades, unless it is already
+/// wholly in view. Call it with the area's content ui, which is what `add` receives.
+pub fn bring_into_view(ui: &Ui, rect: Rect) {
+    if !ui.clip_rect().contains_rect(rect) {
+        ui.scroll_to_rect(rect.expand2(egui::vec2(0.0, FADE_H)), None);
+    }
 }
 
 #[cfg(test)]

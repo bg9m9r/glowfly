@@ -1,13 +1,15 @@
 //! Preferences' navigation column: Back, the "Search preferences" field, then the pages, and
 //! the repository's pages under one "This repository · name" line. While a query is typed only
 //! the pages it matches show, each with its count of matching rows; Enter opens the first match
-//! and reveals its row (reveal.rs), and Esc clears the query. Ctrl+F focuses the field.
+//! and reveals its row (reveal.rs), and Esc clears the query. Ctrl+F focuses the field. Back and the
+//! field stay at the top; the page list below scrolls with the scroll cue when it doesn't fit,
+//! and brings the open page's row into view when the page changes.
 
 use super::caption;
 use super::index::{self, PageMatch};
 use crate::theme::sizes::ControlSize;
 use crate::theme::{color, controls, type_scale};
-use crate::widgets::{self, Icon};
+use crate::widgets::{self, Icon, scroll_cue};
 use eframe::egui::{self, Id, Key, RichText, Ui};
 use glowfly_core::i18n::Lang;
 use glowfly_model::msg::{Msg, PrefsMsg};
@@ -65,32 +67,58 @@ pub fn show(ctx: &egui::Context, v: &NavView, query: &mut String, focus: &mut bo
         let found = index::search(t, query, &pages);
         search_field(ui, v, query, focus, found.first(), msgs);
         ui.add_space(12.0);
-        caption(ui, t.tr("prefs.nav.caption"));
-        let searching = !query.trim().is_empty();
-        if searching && found.is_empty() {
-            no_match(ui, t, query.trim());
+        let area = egui::ScrollArea::vertical().id_salt("prefs-nav-scroll").auto_shrink([false, false]);
+        scroll_cue::show(ui, area, color::panel(), |ui| page_list(ui, v, query, &found, msgs));
+    });
+}
+
+/// The caption, the pages the query matches and, with a repository open, its own pages.
+fn page_list(ui: &mut Ui, v: &NavView, query: &str, found: &[PageMatch], msgs: &mut Vec<Msg>) {
+    let t = v.t;
+    ui.spacing_mut().item_spacing.y = 0.0;
+    caption(ui, t.tr("prefs.nav.caption"));
+    let searching = !query.trim().is_empty();
+    if searching && found.is_empty() {
+        no_match(ui, t, query.trim());
+        return;
+    }
+    let shown = |p: PrefPage| !searching || found.iter().any(|m| m.page == p);
+    let count = |p: PrefPage| found.iter().find(|m| m.page == p).map(|m| m.rows).filter(|&n| n > 0);
+    // Every row goes through update, which asks first when the page has unsaved edits.
+    let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon| {
+        if !shown(pg) {
             return;
         }
-        let shown = |p: PrefPage| !searching || found.iter().any(|m| m.page == p);
-        let count = |p: PrefPage| found.iter().find(|m| m.page == p).map(|m| m.rows).filter(|&n| n > 0);
-        // Every row goes through update, which asks first when the page has unsaved edits.
-        let mut go = |ui: &mut Ui, pg: PrefPage, icon: Icon| {
-            if shown(pg) && widgets::nav_row_count(ui, Some(icon), pg.nav_label(t), v.page == pg, count(pg)).clicked() {
-                msgs.push(Msg::Prefs(PrefsMsg::Navigate(pg)));
-            }
-        };
-        for &(pg, icon) in PAGES {
+        let selected = v.page == pg;
+        let r = widgets::nav_row_count(ui, Some(icon), pg.nav_label(t), selected, count(pg));
+        if selected {
+            bring_into_view_once(ui, &r, pg);
+        }
+        if r.clicked() {
+            msgs.push(Msg::Prefs(PrefsMsg::Navigate(pg)));
+        }
+    };
+    for &(pg, icon) in PAGES {
+        go(ui, pg, icon);
+    }
+    let Some(name) = v.repo_name else { return };
+    if REPO_PAGES.iter().any(|(p, _)| shown(*p)) {
+        ui.add_space(20.0);
+        repo_line(ui, t, name);
+        for &(pg, icon) in REPO_PAGES {
             go(ui, pg, icon);
         }
-        let Some(name) = v.repo_name else { return };
-        if REPO_PAGES.iter().any(|(p, _)| shown(*p)) {
-            ui.add_space(20.0);
-            repo_line(ui, t, name);
-            for &(pg, icon) in REPO_PAGES {
-                go(ui, pg, icon);
-            }
-        }
-    });
+    }
+}
+
+/// The open page's row, brought into view once when the page changes (a click, Enter, a
+/// reveal), so the list never fights the user's own scrolling.
+fn bring_into_view_once(ui: &Ui, row: &egui::Response, page: PrefPage) {
+    let key = Id::new("prefs-nav-shown");
+    if ui.ctx().data(|d| d.get_temp::<PrefPage>(key)) != Some(page) {
+        scroll_cue::bring_into_view(ui, row.rect);
+        ui.ctx().data_mut(|d| d.insert_temp(key, page));
+    }
 }
 
 /// The field; Enter opens `first` and reveals its first matching row.

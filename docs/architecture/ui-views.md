@@ -269,7 +269,7 @@ start with `state/`, `update/` or `ui/`.
 
 ## Preferences (`prefs/`)
 
-- `prefs/nav.rs`: the navigation column: Back, "Search preferences" (Ctrl+F), the pages filtered by the query with their match counts, and the "This repository · name" line.
+- `prefs/nav.rs`: the navigation column: Back and "Search preferences" (Ctrl+F) fixed at the top; below them the pages, filtered by the query with their match counts, and the "This repository · name" line, in a scroll-cue area that brings the open page's row into view when the page changes.
 - `prefs/index.rs`: the search index, (page, label key, help key) for every row, and the query match; a test fails on a row label missing from it.
 - `prefs/reveal.rs`: the row Enter in the search opened: scrolled to and tinted for 1.2 s (solid under reduce motion).
 - `prefs/form_help.rs`: help lines: 13 px, at most 64 characters a line, long help behind "Learn more".
@@ -301,6 +301,7 @@ start with `state/`, `update/` or `ui/`.
 - `prefs/trusted_repos_row.rs`: Preferences > Trusted repositories: one decision's row: name, decision chip and Revoke or Forget; under it the path, date, source, heir count and a painted Not found mark.
 - `prefs/trello.rs`: Trello's parts of Preferences: the API key and token links on its Integrations page, and the Board picker under This repository > Issue tracker.
 - `prefs/trello_sign_in.rs`: Integrations > Trello with Glowfly's own key set: Sign in with Trello (the wait, its Cancel, the fallback to Trello's token page), the manual fields under "Use your own API key", and the offer to use Trello for the open repository.
+- `snapshot_tests/snapshot_tests_prefs_nav.rs`: the navigation column in a short window: the page list scrolls, the open page's row comes into view, the wheel stays in the column.
 - `snapshot_tests/snapshot_tests_prefs_search.rs`: the search, the 760 px page in a wide window, Learn more, and D18's light goldens.
 
 ## Snapshot tests
